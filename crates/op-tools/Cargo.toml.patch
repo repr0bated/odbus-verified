@@ -1,0 +1,9 @@
+# Add to [dependencies] in crates/op-tools/Cargo.toml:
+
+[dependencies]
+# ... existing deps ...
+zbus = { workspace = true }  # For D-Bus agent services
+
+[features]
+default = []
+dbus-tools = []  # Enable if you have dbus.rs, dbus_introspection.rs etc.

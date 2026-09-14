@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package assistant.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "assistant/common.proto";
+
+service SessionService {
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc GetSession(GetSessionRequest) returns (Session);
+  rpc CreateSession(CreateSessionRequest) returns (Session);
+  rpc DeleteSession(DeleteSessionRequest) returns (Empty);
+  rpc GetSessionHistory(GetSessionHistoryRequest) returns (SessionHistory);
+  rpc SendMessage(SendMessageRequest) returns (Message);
+}
+
+message Session {
+  string id = 1;
+  string agent_id = 2;
+  string title = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  optional google.protobuf.Struct metadata = 6;
+}
+
+message Message {
+  string id = 1;
+  string session_id = 2;
+  string role = 3;       // user|assistant|system|tool
+  string content = 4;
+  google.protobuf.Timestamp timestamp = 5;
+  optional google.protobuf.Struct metadata = 6;
+}
+
+message SessionHistory {
+  string session_id = 1;
+  repeated Message messages = 2;
+}
+
+message ListSessionsRequest {
+  optional string agent_id = 1;
+  Pagination pagination = 2;
+}
+
+message ListSessionsResponse {
+  repeated Session sessions = 1;
+  uint32 total = 2;
+}
+
+message GetSessionRequest { string id = 1; }
+
+message CreateSessionRequest {
+  string agent_id = 1;
+  optional string title = 2;
+  optional google.protobuf.Struct metadata = 3;
+}
+
+message DeleteSessionRequest { string id = 1; }
+
+message GetSessionHistoryRequest {
+  string session_id = 1;
+  Pagination pagination = 2;
+}
+
+message SendMessageRequest {
+  string session_id = 1;
+  string content = 2;
+  optional string role = 3;
+  optional google.protobuf.Struct metadata = 4;
+}

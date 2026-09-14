@@ -1,0 +1,18 @@
+#!/bin/sh
+exec 2>&1
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+wait_dep dbus
+wait_dep ovs-vswitchd
+wait_dep uplink-dhcp
+/usr/local/libexec/3tched/ovsbr0-uplink-up
+install -d -m 0755 /run/opdbus/runit-ready
+touch /run/opdbus/runit-ready/ovsbr0-uplink
+exec pause

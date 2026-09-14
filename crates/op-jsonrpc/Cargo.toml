@@ -1,0 +1,17 @@
+[package]
+name = "op-jsonrpc"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "JSON-RPC server with OVSDB and NonNet database support for op-dbus-v2"
+
+[dependencies]
+op-core = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+simd-json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }

@@ -1,0 +1,8 @@
+#!/bin/sh
+exec 2>&1
+logdir=/var/log/op-dbus/incus-ct-qdrant
+install -d -m 755 -o svlog -g svlog "$logdir"
+rm -f "$logdir/lock"
+printf '%s\n' 's4000000' 'n10' 't86400' >"$logdir/config"
+chown -R svlog:svlog "$logdir" 2>/dev/null || true
+exec chpst -u svlog svlogd -tt "$logdir"

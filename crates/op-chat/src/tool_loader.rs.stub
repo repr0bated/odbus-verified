@@ -1,0 +1,1072 @@
+//! Tool loader - registers all available tools at startup
+//!
+//! Discovers tools via D-Bus introspection, creates plugins if missing,
+//! and registers both raw D-Bus tools and plugin state management tools.
+
+use crate::orchestration::{SkillRegistry, WorkstackRegistry};
+use op_core::BusType;
+use op_introspection::IntrospectionService;
+use op_plugins::PluginRegistry;
+use op_tools::{
+    create_ovs_tools, create_response_tools, create_shell_tools, DbusToolFactory,
+    ListNetworkInterfacesTool, ProcFsTool, SysFsTool, ToolRegistry,
+};
+use std::collections::HashSet;
+use std::sync::Arc;
+use tracing::{debug, info, warn};
+
+/// Service-to-plugin mapping for known D-Bus services
+fn get_plugin_for_service(service: &str) -> Option<&'static str> {
+    match service {
+        s if s.starts_with("org.freedesktop.systemd1") => Some("systemd"),
+        s if s.starts_with("org.freedesktop.NetworkManager") => Some("networkmanager"),
+        s if s.starts_with("org.freedesktop.PackageKit") => Some("packagekit"),
+        s if s.starts_with("org.freedesktop.login1") => Some("login1"),
+        s if s.starts_with("org.freedesktop.UDisks2") => Some("udisks"),
+        s if s.starts_with("org.freedesktop.hostname1") => Some("hostname"),
+        s if s.starts_with("org.freedesktop.timedate1") => Some("timedate"),
+        s if s.starts_with("org.freedesktop.locale1") => Some("locale"),
+        s if s.starts_with("org.freedesktop.resolve1") => Some("resolved"),
+        s if s.starts_with("org.freedesktop.Accounts") => Some("accounts"),
+        s if s.starts_with("org.freedesktop.UPower") => Some("upower"),
+        _ => None,
+    }
+}
+
+/// Load and register all available tools (without plugin integration)
+pub async fn load_all_tools(
+    registry: &ToolRegistry,
+    introspection: &IntrospectionService,
+) -> Result<usize, String> {
+    load_all_tools_with_plugins(registry, introspection, None).await
+}
+
+/// Load and register all tools with plugin integration
+///
+/// For each D-Bus service discovered:
+/// 1. Check if there's a matching plugin
+/// 2. If plugin exists, register plugin state tools (_query, _diff, _apply)
+/// 3. If no plugin, auto-create one if possible
+/// 4. Register raw D-Bus method tools for direct method calls
+pub async fn load_all_tools_with_plugins(
+    registry: &ToolRegistry,
+    introspection: &IntrospectionService,
+    plugin_registry: Option<Arc<PluginRegistry>>,
+) -> Result<usize, String> {
+    let mut count = 0;
+
+    // Register /proc and /sys tools
+    info!("Registering filesystem tools...");
+    registry.register(ProcFsTool).await?;
+    count += 1;
+
+    registry.register(SysFsTool).await?;
+    count += 1;
+
+    registry.register(ListNetworkInterfacesTool).await?;
+    count += 1;
+
+    // Register OVS/OVSDB tools (native JSON-RPC to openvswitch)
+    info!("Registering OVS tools...");
+    for ovs_tool in create_ovs_tools() {
+        if let Err(e) = registry
+            .register_boxed(std::sync::Arc::from(ovs_tool))
+            .await
+        {
+            warn!("Failed to register OVS tool: {}", e);
+        } else {
+            count += 1;
+        }
+    }
+    info!("OVS tools registered");
+
+    // Register response tools (forced tool execution architecture)
+    // These tools allow the LLM to communicate with users through tool calls
+    // This ensures EVERY interaction goes through the orchestrator
+    info!("Registering response tools (forced execution architecture)...");
+    for response_tool in create_response_tools() {
+        if let Err(e) = registry
+            .register_boxed(std::sync::Arc::from(response_tool))
+            .await
+        {
+            warn!("Failed to register response tool: {}", e);
+        } else {
+            count += 1;
+        }
+    }
+    info!("Response tools registered (respond_to_user, cannot_perform)");
+
+    // Register shell/file tools (escape hatch for arbitrary commands)
+    // These allow the LLM to run bash commands and read/write files
+    info!("Registering shell tools (bash escape hatch)...");
+    for shell_tool in create_shell_tools() {
+        if let Err(e) = registry
+            .register_boxed(std::sync::Arc::from(shell_tool))
+            .await
+        {
+            warn!("Failed to register shell tool: {}", e);
+        } else {
+            count += 1;
+        }
+    }
+    info!("Shell tools registered (shell_execute, read_file, write_file)");
+
+    // Track which plugins we've registered tools for
+    let mut registered_plugins: HashSet<String> = HashSet::new();
+
+    // Discover and register D-Bus tools from system bus
+    info!("Discovering D-Bus services on system bus...");
+    match discover_dbus_tools_with_plugins(
+        registry,
+        introspection,
+        BusType::System,
+        plugin_registry.as_ref(),
+        &mut registered_plugins,
+    )
+    .await
+    {
+        Ok(n) => {
+            info!("Registered {} D-Bus tools from system bus", n);
+            count += n;
+        }
+        Err(e) => warn!("Failed to discover system bus D-Bus tools: {}", e),
+    }
+
+    // Also discover from session bus if available
+    info!("Discovering D-Bus services on session bus...");
+    match discover_dbus_tools_with_plugins(
+        registry,
+        introspection,
+        BusType::Session,
+        plugin_registry.as_ref(),
+        &mut registered_plugins,
+    )
+    .await
+    {
+        Ok(n) => {
+            info!("Registered {} D-Bus tools from session bus", n);
+            count += n;
+        }
+        Err(e) => warn!("Failed to discover session bus D-Bus tools: {}", e),
+    }
+
+    // Log plugin summary
+    if !registered_plugins.is_empty() {
+        info!("Plugins with state tools: {:?}", registered_plugins);
+    }
+
+    // Discover and register agent D-Bus services
+    info!("Discovering agent services...");
+    match crate::agent_tools::discover_and_register_agent_tools(registry, introspection).await {
+        Ok(n) => {
+            if n > 0 {
+                info!("Registered {} agent tools", n);
+                count += n;
+            }
+        }
+        Err(e) => debug!("Agent discovery: {}", e),
+    }
+
+    // Register agent management tools (list_agents, agent_info)
+    match crate::agent_tools::register_agent_management_tools(registry).await {
+        Ok(n) => {
+            info!("Registered {} agent management tools", n);
+            count += n;
+        }
+        Err(e) => debug!("Agent management tools: {}", e),
+    }
+
+    // Register orchestration helpers (skills/workstacks)
+    match register_orchestration_tools(registry).await {
+        Ok(n) => {
+            if n > 0 {
+                info!("Registered {} orchestration tools", n);
+                count += n;
+            }
+        }
+        Err(e) => warn!("Failed to register orchestration tools: {}", e),
+    }
+
+    info!("Total tools registered: {}", count);
+    Ok(count)
+}
+
+/// Discover D-Bus services and register them as tools, with plugin integration
+async fn discover_dbus_tools_with_plugins(
+    registry: &ToolRegistry,
+    introspection: &IntrospectionService,
+    bus_type: BusType,
+    plugin_registry: Option<&Arc<PluginRegistry>>,
+    registered_plugins: &mut HashSet<String>,
+) -> Result<usize, String> {
+    // Get list of services
+    let services = introspection
+        .list_services(bus_type)
+        .await
+        .map_err(|e| format!("Failed to list services: {}", e))?;
+
+    info!("Found {} services on {:?} bus", services.len(), bus_type);
+
+    let mut tool_count = 0;
+
+    // Key services to introspect deeply (these have many useful methods)
+    let key_services = vec![
+        "org.freedesktop.systemd1",
+        "org.freedesktop.login1",
+        "org.freedesktop.NetworkManager",
+        "org.freedesktop.UDisks2",
+        "org.freedesktop.PackageKit",
+        "org.freedesktop.PolicyKit1",
+        "org.freedesktop.hostname1",
+        "org.freedesktop.timedate1",
+        "org.freedesktop.locale1",
+        "org.freedesktop.resolve1",
+        "org.freedesktop.Accounts",
+        "org.freedesktop.UPower",
+        "org.freedesktop.ModemManager1",
+        "org.freedesktop.secrets",
+        "org.freedesktop.DBus",
+    ];
+
+    // Track paths we've already introspected
+    let mut visited_paths: HashSet<String> = HashSet::new();
+
+    for service_info in &services {
+        // Check if this is a key service
+        let is_key_service = key_services
+            .iter()
+            .any(|s| service_info.name.starts_with(s));
+
+        if !is_key_service {
+            continue;
+        }
+
+        debug!("Introspecting service: {}", service_info.name);
+
+        // Check for matching plugin and register state tools
+        if let Some(plugin_name) = get_plugin_for_service(&service_info.name) {
+            if !registered_plugins.contains(plugin_name) {
+                if let Some(pr) = plugin_registry {
+                    match register_plugin_state_tools(registry, pr, plugin_name).await {
+                        Ok(n) => {
+                            tool_count += n;
+                            registered_plugins.insert(plugin_name.to_string());
+                            info!("Registered {} state tools for plugin '{}'", n, plugin_name);
+                        }
+                        Err(e) => {
+                            debug!(
+                                "Could not register plugin tools for '{}': {}",
+                                plugin_name, e
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // Introspect recursively starting from root
+        let methods_found = introspect_recursive(
+            registry,
+            introspection,
+            bus_type,
+            &service_info.name,
+            "/",
+            &mut visited_paths,
+            3, // max depth
+        )
+        .await;
+
+        tool_count += methods_found;
+    }
+
+    Ok(tool_count)
+}
+
+/// Register plugin state management tools (_query, _diff, _apply)
+async fn register_plugin_state_tools(
+    registry: &ToolRegistry,
+    plugin_registry: &Arc<PluginRegistry>,
+    plugin_name: &str,
+) -> Result<usize, String> {
+    use async_trait::async_trait;
+    use op_core::{ToolDefinition, ToolRequest, ToolResult};
+    use op_tools::Tool;
+    use serde_json::json;
+
+    // Try to get or create the plugin
+    let _plugin = plugin_registry
+        .get_or_create(plugin_name)
+        .await
+        .map_err(|e| format!("Failed to get/create plugin '{}': {}", plugin_name, e))?;
+
+    let mut count = 0;
+
+    // Create query tool
+    struct PluginQueryTool {
+        plugin_name: String,
+        plugin_registry: Arc<PluginRegistry>,
+    }
+
+    #[async_trait]
+    impl Tool for PluginQueryTool {
+        fn name(&self) -> &str {
+            Box::leak(format!("plugin_{}_query", self.plugin_name).into_boxed_str())
+        }
+
+        fn definition(&self) -> ToolDefinition {
+            ToolDefinition {
+                name: format!("plugin_{}_query", self.plugin_name),
+                description: format!("Query current state from {} plugin", self.plugin_name),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }),
+                category: Some("plugin".to_string()),
+                tags: vec![
+                    "plugin".to_string(),
+                    "state".to_string(),
+                    self.plugin_name.clone(),
+                ],
+            }
+        }
+
+        async fn execute(&self, request: ToolRequest) -> ToolResult {
+            let start = std::time::Instant::now();
+            match self.plugin_registry.get(&self.plugin_name).await {
+                Some(plugin) => {
+                    let p = plugin.read().await;
+                    match p.get_state().await {
+                        Ok(state) => ToolResult::success(
+                            &request.id,
+                            state,
+                            start.elapsed().as_millis() as u64,
+                        ),
+                        Err(e) => ToolResult::error(
+                            &request.id,
+                            format!("Query failed: {}", e),
+                            start.elapsed().as_millis() as u64,
+                        ),
+                    }
+                }
+                None => ToolResult::error(
+                    &request.id,
+                    format!("Plugin '{}' not found", self.plugin_name),
+                    start.elapsed().as_millis() as u64,
+                ),
+            }
+        }
+    }
+
+    registry
+        .register(PluginQueryTool {
+            plugin_name: plugin_name.to_string(),
+            plugin_registry: Arc::clone(plugin_registry),
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    count += 1;
+
+    // Create diff tool
+    struct PluginDiffTool {
+        plugin_name: String,
+        plugin_registry: Arc<PluginRegistry>,
+    }
+
+    #[async_trait]
+    impl Tool for PluginDiffTool {
+        fn name(&self) -> &str {
+            Box::leak(format!("plugin_{}_diff", self.plugin_name).into_boxed_str())
+        }
+
+        fn definition(&self) -> ToolDefinition {
+            ToolDefinition {
+                name: format!("plugin_{}_diff", self.plugin_name),
+                description: format!(
+                    "Calculate state diff for {} plugin (current vs desired)",
+                    self.plugin_name
+                ),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }),
+                category: Some("plugin".to_string()),
+                tags: vec![
+                    "plugin".to_string(),
+                    "state".to_string(),
+                    "diff".to_string(),
+                    self.plugin_name.clone(),
+                ],
+            }
+        }
+
+        async fn execute(&self, request: ToolRequest) -> ToolResult {
+            let start = std::time::Instant::now();
+            match self.plugin_registry.diff_plugin(&self.plugin_name).await {
+                Ok(changes) => ToolResult::success(
+                    &request.id,
+                    json!({"changes": changes}),
+                    start.elapsed().as_millis() as u64,
+                ),
+                Err(e) => ToolResult::error(
+                    &request.id,
+                    format!("Diff failed: {}", e),
+                    start.elapsed().as_millis() as u64,
+                ),
+            }
+        }
+    }
+
+    registry
+        .register(PluginDiffTool {
+            plugin_name: plugin_name.to_string(),
+            plugin_registry: Arc::clone(plugin_registry),
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    count += 1;
+
+    // Create apply tool
+    struct PluginApplyTool {
+        plugin_name: String,
+        plugin_registry: Arc<PluginRegistry>,
+    }
+
+    #[async_trait]
+    impl Tool for PluginApplyTool {
+        fn name(&self) -> &str {
+            Box::leak(format!("plugin_{}_apply", self.plugin_name).into_boxed_str())
+        }
+
+        fn definition(&self) -> ToolDefinition {
+            ToolDefinition {
+                name: format!("plugin_{}_apply", self.plugin_name),
+                description: format!(
+                    "Apply desired state changes for {} plugin",
+                    self.plugin_name
+                ),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }),
+                category: Some("plugin".to_string()),
+                tags: vec![
+                    "plugin".to_string(),
+                    "state".to_string(),
+                    "apply".to_string(),
+                    self.plugin_name.clone(),
+                ],
+            }
+        }
+
+        async fn execute(&self, request: ToolRequest) -> ToolResult {
+            let start = std::time::Instant::now();
+            match self
+                .plugin_registry
+                .apply_plugin_state(&self.plugin_name)
+                .await
+            {
+                Ok(changes) => ToolResult::success(
+                    &request.id,
+                    json!({
+                        "applied": true,
+                        "changes": changes
+                    }),
+                    start.elapsed().as_millis() as u64,
+                ),
+                Err(e) => ToolResult::error(
+                    &request.id,
+                    format!("Apply failed: {}", e),
+                    start.elapsed().as_millis() as u64,
+                ),
+            }
+        }
+    }
+
+    registry
+        .register(PluginApplyTool {
+            plugin_name: plugin_name.to_string(),
+            plugin_registry: Arc::clone(plugin_registry),
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    count += 1;
+
+    Ok(count)
+}
+
+/// Register orchestration helper tools (skills/workstacks)
+async fn register_orchestration_tools(registry: &ToolRegistry) -> Result<usize, String> {
+    use async_trait::async_trait;
+    use op_core::{ToolDefinition, ToolRequest, ToolResult};
+    use op_tools::Tool;
+    use serde_json::json;
+    use std::collections::HashSet;
+    use std::sync::Arc;
+    use std::time::Instant;
+
+    let skill_registry = Arc::new(SkillRegistry::new());
+    skill_registry.load_builtin_skills().await;
+    let workstack_registry = Arc::new(WorkstackRegistry::new());
+    workstack_registry.load_builtin_workstacks().await;
+    let mut count = 0;
+
+    struct SkillListTool {
+        registry: Arc<SkillRegistry>,
+    }
+
+    #[async_trait]
+    impl Tool for SkillListTool {
+        fn name(&self) -> &str {
+            "skill_list"
+        }
+
+        fn definition(&self) -> ToolDefinition {
+            ToolDefinition {
+                name: "skill_list".to_string(),
+                description: "List registered orchestration skills with optional filters"
+                    .to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "category": {
+                            "type": "string",
+                            "description": "Return only skills in this category"
+                        },
+                        "tag": {
+                            "type": "string",
+                            "description": "Return only skills that include this tag"
+                        },
+                        "context": {
+                            "type": "string",
+                            "description": "Free-form text to match the \"Use when\" trigger"
+                        }
+                    },
+                    "additionalProperties": false
+                }),
+                category: Some("skills".to_string()),
+                tags: vec!["skills".to_string(), "metadata".to_string()],
+            }
+        }
+
+        async fn execute(&self, request: ToolRequest) -> ToolResult {
+            let start = Instant::now();
+
+            let category = request
+                .arguments
+                .as_object()
+                .and_then(|arg| arg.get("category"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_lowercase())
+                .filter(|s| !s.is_empty());
+            let tag = request
+                .arguments
+                .as_object()
+                .and_then(|arg| arg.get("tag"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_lowercase())
+                .filter(|s| !s.is_empty());
+            let context = request
+                .arguments
+                .as_object()
+                .and_then(|arg| arg.get("context"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty());
+
+            let mut skills = if let Some(ctx) = context {
+                self.registry.find_by_trigger(&ctx).await
+            } else {
+                self.registry.list().await
+            };
+
+            if let Some(cat) = category {
+                skills.retain(|s| {
+                    s.category
+                        .as_ref()
+                        .map(|value| value.to_lowercase() == cat)
+                        .unwrap_or(false)
+                });
+            }
+
+            if let Some(tag_value) = tag {
+                skills.retain(|s| s.tags.iter().any(|t| t.to_lowercase() == tag_value));
+            }
+
+            ToolResult::success(
+                &request.id,
+                json!({ "skills": skills }),
+                start.elapsed().as_millis() as u64,
+            )
+        }
+    }
+
+    registry
+        .register(SkillListTool {
+            registry: Arc::clone(&skill_registry),
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    count += 1;
+
+    struct SkillDescribeTool {
+        registry: Arc<SkillRegistry>,
+    }
+
+    #[async_trait]
+    impl Tool for SkillDescribeTool {
+        fn name(&self) -> &str {
+            "skill_describe"
+        }
+
+        fn definition(&self) -> ToolDefinition {
+            ToolDefinition {
+                name: "skill_describe".to_string(),
+                description: "Return metadata, instructions, or full resources for a skill"
+                    .to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Skill identifier (hyphen-case)"
+                        },
+                        "level": {
+                            "type": "string",
+                            "enum": ["metadata", "instructions", "full"],
+                            "default": "metadata"
+                        }
+                    },
+                    "required": ["name"],
+                    "additionalProperties": false
+                }),
+                category: Some("skills".to_string()),
+                tags: vec![
+                    "skills".to_string(),
+                    "disclosure".to_string(),
+                    "detail".to_string(),
+                ],
+            }
+        }
+
+        async fn execute(&self, request: ToolRequest) -> ToolResult {
+            let start = Instant::now();
+            let arguments = match request.arguments.as_object() {
+                Some(map) => map,
+                None => {
+                    return ToolResult::error(
+                        &request.id,
+                        "Arguments must be an object",
+                        start.elapsed().as_millis() as u64,
+                    )
+                }
+            };
+
+            let Some(name) = arguments
+                .get("name")
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+            else {
+                return ToolResult::error(
+                    &request.id,
+                    "Missing skill 'name'",
+                    start.elapsed().as_millis() as u64,
+                );
+            };
+
+            let level = arguments
+                .get("level")
+                .and_then(|v| v.as_str())
+                .unwrap_or("metadata")
+                .to_lowercase();
+
+            let payload = match level.as_str() {
+                "metadata" => match self.registry.get_metadata(name).await {
+                    Some(meta) => json!({ "skill": meta, "level": "metadata" }),
+                    None => {
+                        return ToolResult::error(
+                            &request.id,
+                            format!("Skill '{}' not found", name),
+                            start.elapsed().as_millis() as u64,
+                        )
+                    }
+                },
+                "instructions" => match self.registry.get_with_instructions(name).await {
+                    Some(skill) => json!({ "skill": skill, "level": "instructions" }),
+                    None => {
+                        return ToolResult::error(
+                            &request.id,
+                            format!("Skill '{}' not found", name),
+                            start.elapsed().as_millis() as u64,
+                        )
+                    }
+                },
+                "full" => match self.registry.get_full(name).await {
+                    Some(skill) => json!({ "skill": skill, "level": "full" }),
+                    None => {
+                        return ToolResult::error(
+                            &request.id,
+                            format!("Skill '{}' not found", name),
+                            start.elapsed().as_millis() as u64,
+                        )
+                    }
+                },
+                _ => {
+                    return ToolResult::error(
+                        &request.id,
+                        "level must be one of: metadata, instructions, full",
+                        start.elapsed().as_millis() as u64,
+                    )
+                }
+            };
+
+            ToolResult::success(&request.id, payload, start.elapsed().as_millis() as u64)
+        }
+    }
+
+    registry
+        .register(SkillDescribeTool {
+            registry: Arc::clone(&skill_registry),
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    count += 1;
+
+    struct WorkstackListTool {
+        registry: Arc<WorkstackRegistry>,
+    }
+
+    #[async_trait]
+    impl Tool for WorkstackListTool {
+        fn name(&self) -> &str {
+            "workstack_list"
+        }
+
+        fn definition(&self) -> ToolDefinition {
+            ToolDefinition {
+                name: "workstack_list".to_string(),
+                description: "List built-in workstacks with summaries".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "tag": {
+                            "type": "string",
+                            "description": "Filter workstacks by tag"
+                        }
+                    },
+                    "additionalProperties": false
+                }),
+                category: Some("workstacks".to_string()),
+                tags: vec![
+                    "workstack".to_string(),
+                    "orchestration".to_string(),
+                    "summary".to_string(),
+                ],
+            }
+        }
+
+        async fn execute(&self, request: ToolRequest) -> ToolResult {
+            let start = Instant::now();
+            let tag = request
+                .arguments
+                .as_object()
+                .and_then(|map| map.get("tag"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_lowercase())
+                .filter(|s| !s.is_empty());
+
+            let mut workstacks = self.registry.list().await;
+            if let Some(tag_value) = tag.clone() {
+                workstacks.retain(|w| {
+                    w.tags
+                        .iter()
+                        .any(|existing| existing.to_lowercase() == tag_value)
+                });
+            }
+
+            let summaries: Vec<_> = workstacks
+                .into_iter()
+                .map(|w| {
+                    let total_steps: usize = w.phases.iter().map(|phase| phase.steps.len()).sum();
+                    let mut skills = HashSet::new();
+                    for phase in &w.phases {
+                        for step in &phase.steps {
+                            for skill in &step.skills {
+                                skills.insert(skill.clone());
+                            }
+                        }
+                    }
+
+                    json!({
+                        "id": w.id,
+                        "name": w.name,
+                        "description": w.description,
+                        "tags": w.tags,
+                        "phase_count": w.phases.len(),
+                        "step_count": total_steps,
+                        "skills": skills.into_iter().collect::<Vec<_>>()
+                    })
+                })
+                .collect();
+
+            ToolResult::success(
+                &request.id,
+                json!({ "workstacks": summaries, "filter_tag": tag }),
+                start.elapsed().as_millis() as u64,
+            )
+        }
+    }
+
+    registry
+        .register(WorkstackListTool {
+            registry: Arc::clone(&workstack_registry),
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    count += 1;
+
+    struct WorkstackDescribeTool {
+        registry: Arc<WorkstackRegistry>,
+    }
+
+    #[async_trait]
+    impl Tool for WorkstackDescribeTool {
+        fn name(&self) -> &str {
+            "workstack_describe"
+        }
+
+        fn definition(&self) -> ToolDefinition {
+            ToolDefinition {
+                name: "workstack_describe".to_string(),
+                description: "Return the full definition for a workstack".to_string(),
+                input_schema: json!({
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "Workstack identifier"
+                        }
+                    },
+                    "required": ["id"],
+                    "additionalProperties": false
+                }),
+                category: Some("workstacks".to_string()),
+                tags: vec![
+                    "workstack".to_string(),
+                    "orchestration".to_string(),
+                    "detail".to_string(),
+                ],
+            }
+        }
+
+        async fn execute(&self, request: ToolRequest) -> ToolResult {
+            let start = Instant::now();
+            let arguments = match request.arguments.as_object() {
+                Some(map) => map,
+                None => {
+                    return ToolResult::error(
+                        &request.id,
+                        "Arguments must be an object",
+                        start.elapsed().as_millis() as u64,
+                    )
+                }
+            };
+
+            let Some(id) = arguments
+                .get("id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+            else {
+                return ToolResult::error(
+                    &request.id,
+                    "Missing workstack 'id'",
+                    start.elapsed().as_millis() as u64,
+                );
+            };
+
+            let Some(workstack) = self.registry.get(id).await else {
+                return ToolResult::error(
+                    &request.id,
+                    format!("Workstack '{}' not found", id),
+                    start.elapsed().as_millis() as u64,
+                );
+            };
+
+            ToolResult::success(
+                &request.id,
+                json!({ "workstack": workstack }),
+                start.elapsed().as_millis() as u64,
+            )
+        }
+    }
+
+    registry
+        .register(WorkstackDescribeTool {
+            registry: Arc::clone(&workstack_registry),
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    count += 1;
+
+    Ok(count)
+}
+
+/// Discover D-Bus services and register them as tools
+async fn discover_dbus_tools(
+    registry: &ToolRegistry,
+    introspection: &IntrospectionService,
+    bus_type: BusType,
+) -> Result<usize, String> {
+    // Get list of services
+    let services = introspection
+        .list_services(bus_type)
+        .await
+        .map_err(|e| format!("Failed to list services: {}", e))?;
+
+    info!("Found {} services on {:?} bus", services.len(), bus_type);
+
+    let mut tool_count = 0;
+
+    // Key services to introspect deeply (these have many useful methods)
+    let key_services = vec![
+        "org.freedesktop.systemd1",
+        "org.freedesktop.login1",
+        "org.freedesktop.NetworkManager",
+        "org.freedesktop.UDisks2",
+        "org.freedesktop.PackageKit",
+        "org.freedesktop.PolicyKit1",
+        "org.freedesktop.hostname1",
+        "org.freedesktop.timedate1",
+        "org.freedesktop.locale1",
+        "org.freedesktop.resolve1",
+        "org.freedesktop.Accounts",
+        "org.freedesktop.UPower",
+        "org.freedesktop.ModemManager1",
+        "org.freedesktop.secrets",
+        "org.freedesktop.DBus",
+    ];
+
+    // Track paths we've already introspected
+    let mut visited_paths: HashSet<String> = HashSet::new();
+
+    for service_info in &services {
+        // Check if this is a key service
+        let is_key_service = key_services
+            .iter()
+            .any(|s| service_info.name.starts_with(s));
+
+        if !is_key_service {
+            continue;
+        }
+
+        debug!("Introspecting service: {}", service_info.name);
+
+        // Introspect recursively starting from root
+        let methods_found = introspect_recursive(
+            registry,
+            introspection,
+            bus_type,
+            &service_info.name,
+            "/",
+            &mut visited_paths,
+            3, // max depth
+        )
+        .await;
+
+        tool_count += methods_found;
+    }
+
+    Ok(tool_count)
+}
+
+/// Recursively introspect a D-Bus service and register tools for all methods found
+async fn introspect_recursive(
+    registry: &ToolRegistry,
+    introspection: &IntrospectionService,
+    bus_type: BusType,
+    service: &str,
+    path: &str,
+    visited: &mut HashSet<String>,
+    max_depth: usize,
+) -> usize {
+    // Check depth limit
+    let depth = path.matches('/').count();
+    if depth > max_depth {
+        return 0;
+    }
+
+    // Check if already visited
+    let cache_key = format!("{}:{}", service, path);
+    if visited.contains(&cache_key) {
+        return 0;
+    }
+    visited.insert(cache_key);
+
+    let mut tool_count = 0;
+
+    // Introspect this path
+    match introspection.introspect(bus_type, service, path).await {
+        Ok(object_info) => {
+            // Register tools for each interface
+            for interface in &object_info.interfaces {
+                // Skip standard D-Bus introspection interfaces
+                if interface.name.starts_with("org.freedesktop.DBus.") {
+                    continue;
+                }
+
+                // Skip if no methods
+                if interface.methods.is_empty() {
+                    continue;
+                }
+
+                debug!(
+                    "  {} {} - {} with {} methods",
+                    service,
+                    path,
+                    interface.name,
+                    interface.methods.len()
+                );
+
+                // Create and register tools for each method
+                let tools = DbusToolFactory::methods_to_tools(
+                    bus_type,
+                    service,
+                    path,
+                    &interface.name,
+                    &interface.methods,
+                );
+
+                for tool in tools {
+                    if let Err(e) = registry.register_boxed(tool).await {
+                        debug!("Failed to register tool: {}", e);
+                    } else {
+                        tool_count += 1;
+                    }
+                }
+            }
+
+            // Recurse into child paths
+            for child_path in &object_info.children {
+                tool_count += Box::pin(introspect_recursive(
+                    registry,
+                    introspection,
+                    bus_type,
+                    service,
+                    child_path,
+                    visited,
+                    max_depth,
+                ))
+                .await;
+            }
+        }
+        Err(e) => {
+            debug!("Failed to introspect {} {}: {}", service, path, e);
+        }
+    }
+
+    tool_count
+}

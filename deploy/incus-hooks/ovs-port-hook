@@ -1,0 +1,79 @@
+#!/bin/sh
+# OVS internal port lifecycle hook for Incus containers (openvswitch proxy).
+# Replaces veth pairs with OVS internal ports for zero-copy L2 bridging.
+#
+# Required raw.lxc config on container:
+#   lxc.hook.version=1
+#   lxc.hook.pre-start=/var/lib/incus/hooks/ovs-port-hook
+#   lxc.hook.start-host=/var/lib/incus/hooks/ovs-port-hook
+#   lxc.hook.post-stop=/var/lib/incus/hooks/ovs-port-hook
+#
+# Also requires: lxc.net.0.type = empty (prevent incus veth creation)
+# and a NIC device must NOT be defined in incus config (or set nictype=physical).
+#
+# Environment (lxc.hook.version=1):
+#   LXC_HOOK_TYPE = pre-start | start-host | post-stop
+#   LXC_NAME      = container name
+
+set -eu
+
+HOOK_TYPE="${LXC_HOOK_TYPE:-}"
+CONTAINER="${LXC_NAME:-}"
+BRIDGE="ovsbr0"
+PORT_NAME="${CONTAINER}-net0"
+IFACE_NAME="eth0"
+
+case "$HOOK_TYPE" in
+    pre-start)
+        # Create OVS internal port on the bridge
+        ovs-vsctl --may-exist add-port "$BRIDGE" "$PORT_NAME" -- \
+            set Interface "$PORT_NAME" type=internal || true
+        ip link set "$PORT_NAME" up 2>/dev/null || true
+        echo "ovs-port-hook[$CONTAINER]: created OVS internal port $PORT_NAME"
+        ;;
+
+    start-host)
+        # Container netns exists now — find its PID and move port in
+        # For privileged containers, find PID from incus or /proc
+        PID=""
+
+        # Try to find PID from incus (requires incus CLI)
+        if command -v incus >/dev/null 2>&1; then
+            PID=$(incus list --format csv --columns ns "${CONTAINER}" 2>/dev/null | cut -d, -f2 || true)
+        fi
+
+        # Fallback: find by cgroup
+        if [ -z "$PID" ]; then
+            PID=$(pgrep -f "lxc-start.*-n.*${CONTAINER}" 2>/dev/null | head -1 || true)
+        fi
+
+        if [ -z "$PID" ] || [ "$PID" = "0" ]; then
+            echo "ovs-port-hook[$CONTAINER]: WARNING - could not find container PID, port left on host"
+            exit 0
+        fi
+
+        # Move OVS internal port into container's network namespace
+        ip link set "$PORT_NAME" netns "$PID" 2>/dev/null || {
+            echo "ovs-port-hook[$CONTAINER]: failed to move $PORT_NAME into netns PID=$PID"
+            exit 0
+        }
+
+        # Rename to eth0 inside the container and bring up
+        nsenter -t "$PID" -n ip link set "$PORT_NAME" name "$IFACE_NAME" 2>/dev/null || true
+        nsenter -t "$PID" -n ip link set "$IFACE_NAME" up 2>/dev/null || true
+
+        echo "ovs-port-hook[$CONTAINER]: moved $PORT_NAME -> netns PID=$PID as $IFACE_NAME"
+        ;;
+
+    post-stop)
+        # Remove OVS internal port
+        ovs-vsctl --if-exists del-port "$BRIDGE" "$PORT_NAME" || true
+        echo "ovs-port-hook[$CONTAINER]: removed OVS internal port $PORT_NAME"
+        ;;
+
+    *)
+        echo "ovs-port-hook[$CONTAINER]: unknown hook type '$HOOK_TYPE', skipping"
+        ;;
+esac
+
+exit 0

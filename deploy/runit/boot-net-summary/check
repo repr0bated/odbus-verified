@@ -1,0 +1,4 @@
+#!/bin/sh
+[ -f /run/opdbus/runit-ready/boot-net-summary ] || exit 1
+[ -f /var/log/boot-net-summary.log ] || exit 1
+exit 0

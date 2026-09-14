@@ -1,0 +1,5 @@
+# Applied as the release-owned block in prepared mail-3tched Postfix main.cf.
+# op-mail-admin owns these texthash inputs and replaces them atomically.
+virtual_mailbox_domains = texthash:/etc/postfix/opdbus-domains
+virtual_mailbox_maps = texthash:/etc/postfix/vmailbox
+virtual_alias_maps = texthash:/etc/postfix/virtual

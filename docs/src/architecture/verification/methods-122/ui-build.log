@@ -1,0 +1,35 @@
+
+added 243 packages, and audited 244 packages in 3s
+
+60 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+npm notice run vercel-json-render-ui@0.1.0 type-check
+npm notice run tsc -b --pretty false
+npm notice run vercel-json-render-ui@0.1.0 lint
+npm notice run eslint .
+npm notice run vercel-json-render-ui@0.1.0 test
+npm notice run vitest run
+
+ RUN  v4.1.11 /var/tmp/op-ui-build.VPG3n7/vercel-json-render-ui
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  21:43:49
+   Duration  2.19s (transform 130ms, setup 117ms, import 242ms, tests 869ms, environment 787ms)
+
+npm notice run vercel-json-render-ui@0.1.0 build
+npm notice run vite build --base /vercel-json-render/
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 112 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.60 kB │ gzip:   0.35 kB
+dist/assets/index-D19ay4Jq.css   13.20 kB │ gzip:   3.87 kB
+dist/assets/index-CUIwGBgg.js   375.20 kB │ gzip: 114.63 kB
+
+✓ built in 275ms
+built UI assets: /srv/git/odbus/target/ui-artifacts/vercel-json-render-ui

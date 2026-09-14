@@ -1,0 +1,13 @@
+{
+  "servers": [
+    {
+      "name": "op-dbus-unified",
+      "transport": {
+        "type": "http",
+        "url": "https://10.0.0.3:8090/mcp"
+      },
+      "description": "Unified authenticated MCP control plane"
+    }
+  ],
+  "_note": "The integration must attach a fresh Oracle identity assertion to each request."
+}

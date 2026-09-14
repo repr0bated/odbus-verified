@@ -1,0 +1,57 @@
+#!/bin/sh
+# netclient pull advertises the laptop as 10.0.0.3, which is on-link svc0.
+# Pin listen-port and restore the last public endpoint when that happens.
+set -eu
+export PATH="/usr/bin:/usr/sbin:${PATH:-}"
+PEER="${NM_GUARD_PEER:-qDDvV3S/vkxkwjtyr8segDjRO4UUgu0JaHNlMFbq62Y=}"
+STATE=/run/opdbus/nm-laptop-endpoint
+LISTEN="${NM_GUARD_LISTEN:-51821}"
+
+endpoint_of() {
+    wg show netmaker endpoints 2>/dev/null | awk -v p="$PEER" '$1==p {print $2; exit}'
+}
+
+is_poison() {
+    case "$1" in
+        10.0.0.*|10.0.0.*:* ) return 0 ;;
+    esac
+    return 1
+}
+
+save_if_good() {
+    ep="$1"
+    [ -n "$ep" ] || return 0
+    is_poison "$ep" && return 0
+    hs=$(wg show netmaker latest-handshakes 2>/dev/null | awk -v p="$PEER" '$1==p {print $2; exit}')
+    [ -n "$hs" ] && [ "$hs" != "0" ] || return 0
+    now=$(date +%s)
+    age=$((now - hs))
+    [ "$age" -ge 0 ] && [ "$age" -lt 180 ] || return 0
+    printf '%s\n' "$ep" >"$STATE"
+}
+
+restore() {
+    [ -s "$STATE" ] || return 0
+    good=$(cat "$STATE")
+    [ -n "$good" ] || return 0
+    wg set netmaker listen-port "$LISTEN" 2>/dev/null || true
+    wg set netmaker peer "$PEER" endpoint "$good" 2>/dev/null || true
+    echo "nm-endpoint-guard: restored $PEER -> $good"
+}
+
+install -d -m 0755 /run/opdbus
+[ -s "$STATE" ] || printf '%s\n' "${NM_GUARD_DEFAULT_ENDPOINT:-172.58.131.241:38363}" >"$STATE"
+
+wg set netmaker listen-port "$LISTEN" 2>/dev/null || true
+
+while :; do
+    ep=$(endpoint_of || true)
+    if [ -n "$ep" ]; then
+        if is_poison "$ep"; then
+            restore
+        else
+            save_if_good "$ep"
+        fi
+    fi
+    sleep 2
+done

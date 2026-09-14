@@ -1,0 +1,4246 @@
+{
+  "contract": "PLUGIN-RENDER-CONTRACT.md",
+  "source": "zeroclaw.rs",
+  "plugin": {
+    "name": "zeroclaw",
+    "category": "llm",
+    "version": "1.0.0",
+    "description": "Zeroclaw schema/RPC-native model router for Antigravity UI, CLI providers, and structured JSON output",
+    "display_name": "GB.Zeroclaw",
+    "state_root": "ZeroclawState",
+    "fields": {
+      "configurable_options": {
+        "rust_type": "ConfigurableOptions",
+        "description": "Configurable options schema: registration, user container options, identity chain, memory namespaces, and privacy rules.",
+        "subid": "sch.service.zeroclaw.options@v1",
+        "has_serde_default": true,
+        "optional": false
+      },
+      "model_assignments": {
+        "rust_type": "ModelAssignments",
+        "description": "Per-capability model assignments.",
+        "subid": "mut.service.zeroclaw.model-assignments@v1",
+        "has_serde_default": true,
+        "optional": false
+      },
+      "projection": {
+        "rust_type": "LlmProjection",
+        "description": "Shared LLM projection fields (flattened to the top level).",
+        "subid": "sch.software.zeroclaw.llm-projection@v1",
+        "has_serde_default": false,
+        "optional": false
+      },
+      "selected_model": {
+        "rust_type": "String",
+        "description": "Selected model identifier.",
+        "subid": "exp.service.zeroclaw.selected-model@v1",
+        "has_serde_default": true,
+        "optional": false,
+        "json_type": "string"
+      },
+      "selected_provider": {
+        "rust_type": "String",
+        "description": "Selected provider identifier.",
+        "subid": "mut.service.zeroclaw.selected-provider@v1",
+        "has_serde_default": true,
+        "optional": false,
+        "json_type": "string"
+      },
+      "status": {
+        "rust_type": "String",
+        "description": "Operational status.",
+        "subid": "obs.software.zeroclaw.status@v1",
+        "has_serde_default": true,
+        "optional": false,
+        "json_type": "string"
+      },
+      "transport": {
+        "rust_type": "LlmTransport",
+        "description": "Transport layer metadata.",
+        "subid": "mut.service.zeroclaw.transport@v1",
+        "has_serde_default": true,
+        "optional": false
+      }
+    },
+    "nested_types": {
+      "ChatInput": {
+        "message": {
+          "rust_type": "String",
+          "description": "Compatibility form for callers sending a single user turn.",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "messages": {
+          "rust_type": "Vec<ZeroclawChatMessage>",
+          "description": "Full ordered conversation. When non-empty this takes precedence over `message`.",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        },
+        "model": {
+          "rust_type": "String",
+          "description": "Model id or route hint. Empty uses `selected_model`.",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "provider": {
+          "rust_type": "String",
+          "description": "Provider id, route, or alias. Empty uses `selected_provider`.",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "ChatOutput": {
+        "content": {
+          "rust_type": "String",
+          "description": "Assistant response text.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        },
+        "finish_reason": {
+          "rust_type": "String",
+          "description": "Provider finish reason, or an empty string when none was supplied.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        },
+        "model": {
+          "rust_type": "String",
+          "description": "Resolved model identifier.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        },
+        "provider": {
+          "rust_type": "String",
+          "description": "Resolved upstream provider identifier.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        },
+        "usage": {
+          "rust_type": "JsonValue",
+          "description": "Provider-specific token usage object.",
+          "has_serde_default": false,
+          "optional": false
+        }
+      },
+      "ConfigurableOptionErrorCode": {
+        "name": {
+          "rust_type": "String",
+          "description": "Symbolic proto enum name.",
+          "subid": "sch.service.zeroclaw-options.error-code.name@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "value": {
+          "rust_type": "i32",
+          "description": "Numeric proto value.",
+          "subid": "sch.service.zeroclaw-options.error-code.value@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "integer"
+        }
+      },
+      "ConfigurableOptionField": {
+        "json_type": {
+          "rust_type": "String",
+          "description": "JSON/schema rendering type.",
+          "subid": "sch.service.zeroclaw-options.field.json-type@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "name": {
+          "rust_type": "String",
+          "description": "Field name.",
+          "subid": "sch.service.zeroclaw-options.field.name@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "proto_type": {
+          "rust_type": "String",
+          "description": "Proto type, including optional/repeated marker when applicable.",
+          "subid": "sch.service.zeroclaw-options.field.proto-type@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "required": {
+          "rust_type": "bool",
+          "description": "True when this option is required by the source contract.",
+          "subid": "sch.service.zeroclaw-options.field.required@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "boolean"
+        },
+        "sensitive": {
+          "rust_type": "bool",
+          "description": "True when the field contains sensitive material.",
+          "subid": "sch.service.zeroclaw-options.field.sensitive@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "boolean"
+        }
+      },
+      "ConfigurableOptionMessage": {
+        "fields": {
+          "rust_type": "Vec<ConfigurableOptionField>",
+          "description": "Message fields keyed by proto field name.",
+          "subid": "sch.service.zeroclaw-options.message.fields@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        },
+        "name": {
+          "rust_type": "String",
+          "description": "Message type name.",
+          "subid": "sch.service.zeroclaw-options.message.name@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "ConfigurableOptionRpc": {
+        "capability_id": {
+          "rust_type": "String",
+          "description": "Required capability for this RPC.",
+          "subid": "sch.service.zeroclaw-options.rpc.capability@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "name": {
+          "rust_type": "String",
+          "description": "RPC name from RegistrationService.",
+          "subid": "sch.service.zeroclaw-options.rpc.name@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "request_type": {
+          "rust_type": "String",
+          "description": "Request message type.",
+          "subid": "sch.service.zeroclaw-options.rpc.request@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "response_type": {
+          "rust_type": "String",
+          "description": "Response message type.",
+          "subid": "sch.service.zeroclaw-options.rpc.response@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "side_effect": {
+          "rust_type": "String",
+          "description": "Read or mutation side-effect classification.",
+          "subid": "sch.service.zeroclaw-options.rpc.side-effect@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "subid": {
+          "rust_type": "String",
+          "description": "OSCAL operation taxonomy key.",
+          "subid": "sch.service.zeroclaw-options.rpc.subid@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "ConfigurableOptions": {
+        "identity_chain": {
+          "rust_type": "IdentityOptions",
+          "description": "Identity chain schema.",
+          "subid": "sch.software.zeroclaw-options.identity-chain@v1",
+          "has_serde_default": true,
+          "optional": false
+        },
+        "memory_namespaces": {
+          "rust_type": "Vec<MemoryNamespaceOption>",
+          "description": "Memory namespace templates.",
+          "subid": "sch.software.zeroclaw-options.memory-namespaces@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        },
+        "privacy_policy": {
+          "rust_type": "PrivacyOptions",
+          "description": "Privacy handling rules.",
+          "subid": "sch.policy.zeroclaw-options.privacy@v1",
+          "has_serde_default": true,
+          "optional": false
+        },
+        "registration_service": {
+          "rust_type": "RegistrationServiceSchema",
+          "description": "Magic-link and WireGuard registration RPC schema.",
+          "subid": "sch.service.zeroclaw-options.registration-service@v1",
+          "has_serde_default": true,
+          "optional": false
+        },
+        "user_container": {
+          "rust_type": "UserContainerOptions",
+          "description": "User container configurable option schema.",
+          "subid": "sch.process-procedure.zeroclaw-options.user-container@v1",
+          "has_serde_default": true,
+          "optional": false
+        }
+      },
+      "EmptyZeroclawInput": {},
+      "GetConfigSchemaOutput": {
+        "config_schema": {
+          "rust_type": "ConfigSchema",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false
+        }
+      },
+      "GetConfigurableOptionsOutput": {
+        "configurable_options": {
+          "rust_type": "ConfigurableOptions",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false
+        }
+      },
+      "GetModelAssignmentsOutput": {
+        "model_assignments": {
+          "rust_type": "ModelAssignments",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false
+        }
+      },
+      "GetModelRoutesOutput": {
+        "model_routes": {
+          "rust_type": "Vec<ModelRoute>",
+          "description": "Declared model routes.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "array"
+        }
+      },
+      "GetProviderCatalogOutput": {
+        "providers": {
+          "rust_type": "Vec<Provider>",
+          "description": "Declared providers.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "array"
+        }
+      },
+      "GetRouterOutput": {
+        "router": {
+          "rust_type": "Router",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false
+        }
+      },
+      "GetStateOutput": {
+        "state": {
+          "rust_type": "ZeroclawState",
+          "description": "Complete projected ZeroClaw state.",
+          "has_serde_default": false,
+          "optional": false
+        }
+      },
+      "GetStructuredOutputOutput": {
+        "structured_output": {
+          "rust_type": "StructuredOutput",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false
+        }
+      },
+      "GetToolsOutput": {
+        "tools": {
+          "rust_type": "Vec<LlmTool>",
+          "description": "Declared LLM tools.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "array"
+        }
+      },
+      "IdentityOptions": {
+        "mac_address_key": {
+          "rust_type": "String",
+          "description": "Hardware-bound seed accepted by the user container flow.",
+          "subid": "src.hardware.zeroclaw-options.identity.mac@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "mcp_token_derivation": {
+          "rust_type": "String",
+          "description": "MCP bearer token derivation rule.",
+          "subid": "sch.software.zeroclaw-options.identity.mcp-token@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "pre_shared_key": {
+          "rust_type": "String",
+          "description": "Optional shared key accepted by the user container flow.",
+          "subid": "src.policy.zeroclaw-options.identity.psk@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "wireguard_pubkey": {
+          "rust_type": "String",
+          "description": "WireGuard public key identity.",
+          "subid": "src.network.zeroclaw-options.identity.wireguard-pubkey@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "ListModelsInput": {
+        "provider": {
+          "rust_type": "String",
+          "description": "Optional provider id, route, or alias used to filter the model catalog.",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "ListModelsOutput": {
+        "model_routes": {
+          "rust_type": "Vec<ModelRoute>",
+          "description": "Schema-declared model routes, optionally filtered by provider.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "array"
+        }
+      },
+      "ListProvidersOutput": {
+        "providers": {
+          "rust_type": "Vec<Provider>",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "array"
+        }
+      },
+      "ListUiSurfacesOutput": {
+        "ui_surfaces": {
+          "rust_type": "Vec<UiSurface>",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "array"
+        }
+      },
+      "ListUserContainerMemoryNamespaceOptionsOutput": {
+        "memory_namespaces": {
+          "rust_type": "Vec<MemoryNamespaceOption>",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "array"
+        }
+      },
+      "LlmTransport": {
+        "browser_surface": {
+          "rust_type": "String",
+          "description": "Browser-facing surface description.",
+          "subid": "exp.service.zeroclaw-transport.browser-surface@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "dbus_object": {
+          "rust_type": "String",
+          "description": "D-Bus object path served by this plugin.",
+          "subid": "mut.service.zeroclaw-transport.dbus-object@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "grpc_target": {
+          "rust_type": "String",
+          "description": "gRPC upstream target.",
+          "subid": "mut.service.zeroclaw-transport.grpc-target@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "incus_container": {
+          "rust_type": "String",
+          "description": "Incus / WireGuard container target for xray routing. Kept as a published-schema field for backward compatibility, but zeroclaw's LLM transport now runs on the host (xray through its runit-managed service and the gRPC-bridge via `op-grpc-bridge-zeroclaw`); there is no per-service incus container. Defaults to the `\"host\"` sentinel.",
+          "subid": "mut.service.zeroclaw-transport.incus-container@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "policy_source": {
+          "rust_type": "String",
+          "description": "Canonical OSCAL/subid mapping authority.",
+          "subid": "src.service.zeroclaw-transport.policy-source@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "rest_aliases": {
+          "rust_type": "Vec<String>",
+          "description": "REST aliases exposed by the bridge.",
+          "subid": "exp.service.zeroclaw-transport.rest-aliases@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        }
+      },
+      "MemoryNamespaceOption": {
+        "identity_link_key": {
+          "rust_type": "String",
+          "description": "Identity key used to bind this namespace to the container/user identity.",
+          "subid": "sch.software.zeroclaw-options.memory-namespace.identity-link@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "keys": {
+          "rust_type": "Vec<String>",
+          "description": "Keys owned by this namespace.",
+          "subid": "sch.software.zeroclaw-options.memory-namespace.keys@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        },
+        "namespace_template": {
+          "rust_type": "String",
+          "description": "Namespace template.",
+          "subid": "sch.software.zeroclaw-options.memory-namespace.template@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "purpose": {
+          "rust_type": "String",
+          "description": "Human-readable purpose.",
+          "subid": "sch.software.zeroclaw-options.memory-namespace.purpose@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "ModelAssignments": {
+        "cozo_retrieval": {
+          "rust_type": "String",
+          "description": "",
+          "subid": "mut.service.zeroclaw.model-assignments.cozo-retrieval@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "obfuscation": {
+          "rust_type": "String",
+          "description": "",
+          "subid": "mut.service.zeroclaw.model-assignments.obfuscation@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "ovs_routing": {
+          "rust_type": "String",
+          "description": "",
+          "subid": "mut.service.zeroclaw.model-assignments.ovs-routing@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "qdrant_retrieval": {
+          "rust_type": "String",
+          "description": "",
+          "subid": "mut.service.zeroclaw.model-assignments.qdrant-retrieval@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "vectorization": {
+          "rust_type": "String",
+          "description": "",
+          "subid": "mut.service.zeroclaw.model-assignments.vectorization@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "PrivacyOptions": {
+        "email_storage_rule": {
+          "rust_type": "String",
+          "description": "Whether email may be written to CozoDB.",
+          "subid": "sch.policy.zeroclaw-options.privacy.email-storage@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "sensitive_fields": {
+          "rust_type": "Vec<String>",
+          "description": "Sensitive fields that must not be rendered casually.",
+          "subid": "sch.policy.zeroclaw-options.privacy.sensitive-fields@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        }
+      },
+      "RegistrationServiceSchema": {
+        "error_codes": {
+          "rust_type": "Vec<ConfigurableOptionErrorCode>",
+          "description": "Error enum values.",
+          "subid": "sch.service.zeroclaw-options.registration-service.errors@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        },
+        "messages": {
+          "rust_type": "Vec<ConfigurableOptionMessage>",
+          "description": "Message schemas used by those RPCs.",
+          "subid": "sch.service.zeroclaw-options.registration-service.messages@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        },
+        "package": {
+          "rust_type": "String",
+          "description": "Proto package name.",
+          "subid": "sch.service.zeroclaw-options.registration-service.package@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "rpcs": {
+          "rust_type": "Vec<ConfigurableOptionRpc>",
+          "description": "RPC methods exposed by the registration service.",
+          "subid": "sch.service.zeroclaw-options.registration-service.rpcs@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        },
+        "service": {
+          "rust_type": "String",
+          "description": "Service name.",
+          "subid": "sch.service.zeroclaw-options.registration-service.name@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "source_proto": {
+          "rust_type": "String",
+          "description": "Owning proto source path.",
+          "subid": "src.software.zeroclaw-options.registration-service.proto@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "ResolveRouteInput": {
+        "hint": {
+          "rust_type": "String",
+          "description": "Route hint or model identifier.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "ResolveRouteOutput": {
+        "route": {
+          "rust_type": "ModelRoute",
+          "description": "Resolved route.",
+          "has_serde_default": false,
+          "optional": false
+        }
+      },
+      "SetCozoRetrievalModelInput": {
+        "model_id": {
+          "rust_type": "String",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetCozoRetrievalModelOutput": {
+        "cozo_retrieval": {
+          "rust_type": "String",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetModelInput": {
+        "model_id": {
+          "rust_type": "String",
+          "description": "Model identifier declared in the model route catalog.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetModelOutput": {
+        "selected_model": {
+          "rust_type": "String",
+          "description": "Selected model identifier.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetObfuscationModelInput": {
+        "model_id": {
+          "rust_type": "String",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetObfuscationModelOutput": {
+        "obfuscation": {
+          "rust_type": "String",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetOvsRoutingModelInput": {
+        "model_id": {
+          "rust_type": "String",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetOvsRoutingModelOutput": {
+        "ovs_routing": {
+          "rust_type": "String",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetProviderInput": {
+        "provider_id": {
+          "rust_type": "String",
+          "description": "Provider identifier declared in the provider catalog.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetProviderOutput": {
+        "selected_provider": {
+          "rust_type": "String",
+          "description": "Selected provider identifier.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetQdrantRetrievalModelInput": {
+        "model_id": {
+          "rust_type": "String",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetQdrantRetrievalModelOutput": {
+        "qdrant_retrieval": {
+          "rust_type": "String",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetVectorizationModelInput": {
+        "model_id": {
+          "rust_type": "String",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "SetVectorizationModelOutput": {
+        "vectorization": {
+          "rust_type": "String",
+          "description": "",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "UserContainerOptions": {
+        "arguments": {
+          "rust_type": "Vec<ConfigurableOptionField>",
+          "description": "User-visible container arguments.",
+          "subid": "sch.process-procedure.zeroclaw-options.user-container.arguments@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        },
+        "cognitive_mcp_endpoint": {
+          "rust_type": "String",
+          "description": "Cognitive MCP endpoint used by the user container memory flow.",
+          "subid": "exp.service.zeroclaw-options.user-container.mcp-endpoint@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "container_id_template": {
+          "rust_type": "String",
+          "description": "Incus container name template.",
+          "subid": "sch.service.zeroclaw-options.user-container.container-template@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "feature_flags": {
+          "rust_type": "Vec<String>",
+          "description": "Feature flags declared for the user container flow.",
+          "subid": "sch.policy.zeroclaw-options.user-container.features@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "array"
+        },
+        "image": {
+          "rust_type": "String",
+          "description": "Default Incus image.",
+          "subid": "sch.service.zeroclaw-options.user-container.image@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        },
+        "source_script": {
+          "rust_type": "String",
+          "description": "Source script that currently materializes the user container flow.",
+          "subid": "src.process-procedure.zeroclaw-options.user-container.script@v1",
+          "has_serde_default": true,
+          "optional": false,
+          "json_type": "string"
+        }
+      },
+      "ZeroclawChatMessage": {
+        "content": {
+          "rust_type": "String",
+          "description": "Text content carried by this conversation turn.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        },
+        "role": {
+          "rust_type": "String",
+          "description": "OpenAI-compatible message role such as `system`, `user`, or `assistant`.",
+          "has_serde_default": false,
+          "optional": false,
+          "json_type": "string"
+        }
+      }
+    },
+    "methods": {
+      "Chat": {
+        "name": "Chat",
+        "input_type": "ChatInput",
+        "output_type": "ChatOutput",
+        "side_effect": "read",
+        "idempotent": false,
+        "required_capability": "cap.software.zeroclaw.chat@v1",
+        "subid": "exp.service.zeroclaw.chat@v1",
+        "args": {
+          "properties": {
+            "message": {
+              "description": "Compatibility form for callers sending a single user turn.",
+              "type": "string"
+            },
+            "messages": {
+              "description": "Full ordered conversation. When non-empty this takes precedence over `message`.",
+              "type": "array"
+            },
+            "model": {
+              "description": "Model id or route hint. Empty uses `selected_model`.",
+              "type": "string"
+            },
+            "provider": {
+              "description": "Provider id, route, or alias. Empty uses `selected_provider`.",
+              "type": "string"
+            }
+          },
+          "title": "ChatInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "content": {
+              "description": "Assistant response text.",
+              "type": "string"
+            },
+            "finish_reason": {
+              "description": "Provider finish reason, or an empty string when none was supplied.",
+              "type": "string"
+            },
+            "model": {
+              "description": "Resolved model identifier.",
+              "type": "string"
+            },
+            "provider": {
+              "description": "Resolved upstream provider identifier.",
+              "type": "string"
+            },
+            "usage": {
+              "description": "Provider-specific token usage object.",
+              "type": "object",
+              "x-rust-type": "JsonValue"
+            }
+          },
+          "required": [
+            "content",
+            "finish_reason",
+            "model",
+            "provider",
+            "usage"
+          ],
+          "title": "ChatOutput",
+          "type": "object"
+        }
+      },
+      "GetConfigSchema": {
+        "name": "GetConfigSchema",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "GetConfigSchemaOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.config-schema.read@v1",
+        "subid": "obs.service.zeroclaw.config-schema.get@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "config_schema": {
+              "type": "object",
+              "x-rust-type": "ConfigSchema"
+            }
+          },
+          "required": [
+            "config_schema"
+          ],
+          "title": "GetConfigSchemaOutput",
+          "type": "object"
+        }
+      },
+      "GetConfigurableOptions": {
+        "name": "GetConfigurableOptions",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "GetConfigurableOptionsOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.options.read@v1",
+        "subid": "obs.service.zeroclaw.options.get@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "configurable_options": {
+              "type": "object",
+              "x-rust-type": "ConfigurableOptions"
+            }
+          },
+          "required": [
+            "configurable_options"
+          ],
+          "title": "GetConfigurableOptionsOutput",
+          "type": "object"
+        }
+      },
+      "GetModelAssignments": {
+        "name": "GetModelAssignments",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "GetModelAssignmentsOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.model-assignments.read@v1",
+        "subid": "obs.service.zeroclaw.model-assignments.get@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "model_assignments": {
+              "type": "object",
+              "x-rust-type": "ModelAssignments"
+            }
+          },
+          "required": [
+            "model_assignments"
+          ],
+          "title": "GetModelAssignmentsOutput",
+          "type": "object"
+        }
+      },
+      "GetModelRoutes": {
+        "name": "GetModelRoutes",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "GetModelRoutesOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.routes.read@v1",
+        "subid": "obs.service.zeroclaw.model-routes.list@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "model_routes": {
+              "description": "Declared model routes.",
+              "type": "array"
+            }
+          },
+          "required": [
+            "model_routes"
+          ],
+          "title": "GetModelRoutesOutput",
+          "type": "object"
+        }
+      },
+      "GetProviderCatalog": {
+        "name": "GetProviderCatalog",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "GetProviderCatalogOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.providers.read@v1",
+        "subid": "obs.service.zeroclaw.provider-catalog.list@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "providers": {
+              "description": "Declared providers.",
+              "type": "array"
+            }
+          },
+          "required": [
+            "providers"
+          ],
+          "title": "GetProviderCatalogOutput",
+          "type": "object"
+        }
+      },
+      "GetRouter": {
+        "name": "GetRouter",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "GetRouterOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.router.read@v1",
+        "subid": "obs.service.zeroclaw.router.get@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "router": {
+              "type": "object",
+              "x-rust-type": "Router"
+            }
+          },
+          "required": [
+            "router"
+          ],
+          "title": "GetRouterOutput",
+          "type": "object"
+        }
+      },
+      "GetState": {
+        "name": "GetState",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "GetStateOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.state.read@v1",
+        "subid": "obs.service.zeroclaw.state.get@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "state": {
+              "description": "Complete projected ZeroClaw state.",
+              "type": "object",
+              "x-rust-type": "ZeroclawState"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "title": "GetStateOutput",
+          "type": "object"
+        }
+      },
+      "GetStructuredOutput": {
+        "name": "GetStructuredOutput",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "GetStructuredOutputOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.structured-output.read@v1",
+        "subid": "obs.service.zeroclaw.structured-output.get@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "structured_output": {
+              "type": "object",
+              "x-rust-type": "StructuredOutput"
+            }
+          },
+          "required": [
+            "structured_output"
+          ],
+          "title": "GetStructuredOutputOutput",
+          "type": "object"
+        }
+      },
+      "GetTools": {
+        "name": "GetTools",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "GetToolsOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.tools.read@v1",
+        "subid": "obs.service.zeroclaw.tools.list@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "tools": {
+              "description": "Declared LLM tools.",
+              "type": "array"
+            }
+          },
+          "required": [
+            "tools"
+          ],
+          "title": "GetToolsOutput",
+          "type": "object"
+        }
+      },
+      "ListModels": {
+        "name": "ListModels",
+        "input_type": "ListModelsInput",
+        "output_type": "ListModelsOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.models.read@v1",
+        "subid": "obs.service.zeroclaw.models.list@v1",
+        "args": {
+          "properties": {
+            "provider": {
+              "description": "Optional provider id, route, or alias used to filter the model catalog.",
+              "type": "string"
+            }
+          },
+          "title": "ListModelsInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "model_routes": {
+              "description": "Schema-declared model routes, optionally filtered by provider.",
+              "type": "array"
+            }
+          },
+          "required": [
+            "model_routes"
+          ],
+          "title": "ListModelsOutput",
+          "type": "object"
+        }
+      },
+      "ListProviders": {
+        "name": "ListProviders",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "ListProvidersOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.providers.read@v1",
+        "subid": "obs.service.zeroclaw.providers.list@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "providers": {
+              "type": "array"
+            }
+          },
+          "required": [
+            "providers"
+          ],
+          "title": "ListProvidersOutput",
+          "type": "object"
+        }
+      },
+      "ListUiSurfaces": {
+        "name": "ListUiSurfaces",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "ListUiSurfacesOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.ui-surfaces.read@v1",
+        "subid": "obs.service.zeroclaw.ui-surfaces.list@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "ui_surfaces": {
+              "type": "array"
+            }
+          },
+          "required": [
+            "ui_surfaces"
+          ],
+          "title": "ListUiSurfacesOutput",
+          "type": "object"
+        }
+      },
+      "ListUserContainerMemoryNamespaceOptions": {
+        "name": "ListUserContainerMemoryNamespaceOptions",
+        "input_type": "EmptyZeroclawInput",
+        "output_type": "ListUserContainerMemoryNamespaceOptionsOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.options.memory-namespaces.read@v1",
+        "subid": "obs.service.zeroclaw.options.memory-namespaces.list@v1",
+        "args": {
+          "properties": {},
+          "title": "EmptyZeroclawInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "memory_namespaces": {
+              "type": "array"
+            }
+          },
+          "required": [
+            "memory_namespaces"
+          ],
+          "title": "ListUserContainerMemoryNamespaceOptionsOutput",
+          "type": "object"
+        }
+      },
+      "ResolveRoute": {
+        "name": "ResolveRoute",
+        "input_type": "ResolveRouteInput",
+        "output_type": "ResolveRouteOutput",
+        "side_effect": "read",
+        "idempotent": true,
+        "required_capability": "cap.software.zeroclaw.route.resolve@v1",
+        "subid": "obs.service.zeroclaw.route.resolve@v1",
+        "args": {
+          "properties": {
+            "hint": {
+              "description": "Route hint or model identifier.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "hint"
+          ],
+          "title": "ResolveRouteInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "route": {
+              "description": "Resolved route.",
+              "type": "object",
+              "x-rust-type": "ModelRoute"
+            }
+          },
+          "required": [
+            "route"
+          ],
+          "title": "ResolveRouteOutput",
+          "type": "object"
+        }
+      },
+      "SetCozoRetrievalModel": {
+        "name": "SetCozoRetrievalModel",
+        "input_type": "SetCozoRetrievalModelInput",
+        "output_type": "SetCozoRetrievalModelOutput",
+        "side_effect": "mutation",
+        "idempotent": false,
+        "required_capability": "cap.software.zeroclaw.model-assignments.cozo-retrieval.set@v1",
+        "subid": "mut.service.zeroclaw.model-assignments.cozo-retrieval.set@v1",
+        "args": {
+          "properties": {
+            "model_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "model_id"
+          ],
+          "title": "SetCozoRetrievalModelInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "cozo_retrieval": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "cozo_retrieval"
+          ],
+          "title": "SetCozoRetrievalModelOutput",
+          "type": "object"
+        }
+      },
+      "SetModel": {
+        "name": "SetModel",
+        "input_type": "SetModelInput",
+        "output_type": "SetModelOutput",
+        "side_effect": "mutation",
+        "idempotent": false,
+        "required_capability": "cap.software.zeroclaw.model.set@v1",
+        "subid": "mut.service.zeroclaw.model.set@v1",
+        "args": {
+          "properties": {
+            "model_id": {
+              "description": "Model identifier declared in the model route catalog.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "model_id"
+          ],
+          "title": "SetModelInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "selected_model": {
+              "description": "Selected model identifier.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "selected_model"
+          ],
+          "title": "SetModelOutput",
+          "type": "object"
+        }
+      },
+      "SetObfuscationModel": {
+        "name": "SetObfuscationModel",
+        "input_type": "SetObfuscationModelInput",
+        "output_type": "SetObfuscationModelOutput",
+        "side_effect": "mutation",
+        "idempotent": false,
+        "required_capability": "cap.software.zeroclaw.model-assignments.obfuscation.set@v1",
+        "subid": "mut.service.zeroclaw.model-assignments.obfuscation.set@v1",
+        "args": {
+          "properties": {
+            "model_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "model_id"
+          ],
+          "title": "SetObfuscationModelInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "obfuscation": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "obfuscation"
+          ],
+          "title": "SetObfuscationModelOutput",
+          "type": "object"
+        }
+      },
+      "SetOvsRoutingModel": {
+        "name": "SetOvsRoutingModel",
+        "input_type": "SetOvsRoutingModelInput",
+        "output_type": "SetOvsRoutingModelOutput",
+        "side_effect": "mutation",
+        "idempotent": false,
+        "required_capability": "cap.software.zeroclaw.model-assignments.ovs-routing.set@v1",
+        "subid": "mut.service.zeroclaw.model-assignments.ovs-routing.set@v1",
+        "args": {
+          "properties": {
+            "model_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "model_id"
+          ],
+          "title": "SetOvsRoutingModelInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "ovs_routing": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ovs_routing"
+          ],
+          "title": "SetOvsRoutingModelOutput",
+          "type": "object"
+        }
+      },
+      "SetProvider": {
+        "name": "SetProvider",
+        "input_type": "SetProviderInput",
+        "output_type": "SetProviderOutput",
+        "side_effect": "mutation",
+        "idempotent": false,
+        "required_capability": "cap.software.zeroclaw.provider.set@v1",
+        "subid": "mut.service.zeroclaw.provider.set@v1",
+        "args": {
+          "properties": {
+            "provider_id": {
+              "description": "Provider identifier declared in the provider catalog.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "provider_id"
+          ],
+          "title": "SetProviderInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "selected_provider": {
+              "description": "Selected provider identifier.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "selected_provider"
+          ],
+          "title": "SetProviderOutput",
+          "type": "object"
+        }
+      },
+      "SetQdrantRetrievalModel": {
+        "name": "SetQdrantRetrievalModel",
+        "input_type": "SetQdrantRetrievalModelInput",
+        "output_type": "SetQdrantRetrievalModelOutput",
+        "side_effect": "mutation",
+        "idempotent": false,
+        "required_capability": "cap.software.zeroclaw.model-assignments.qdrant-retrieval.set@v1",
+        "subid": "mut.service.zeroclaw.model-assignments.qdrant-retrieval.set@v1",
+        "args": {
+          "properties": {
+            "model_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "model_id"
+          ],
+          "title": "SetQdrantRetrievalModelInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "qdrant_retrieval": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "qdrant_retrieval"
+          ],
+          "title": "SetQdrantRetrievalModelOutput",
+          "type": "object"
+        }
+      },
+      "SetVectorizationModel": {
+        "name": "SetVectorizationModel",
+        "input_type": "SetVectorizationModelInput",
+        "output_type": "SetVectorizationModelOutput",
+        "side_effect": "mutation",
+        "idempotent": false,
+        "required_capability": "cap.software.zeroclaw.model-assignments.vectorization.set@v1",
+        "subid": "mut.service.zeroclaw.model-assignments.vectorization.set@v1",
+        "args": {
+          "properties": {
+            "model_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "model_id"
+          ],
+          "title": "SetVectorizationModelInput",
+          "type": "object"
+        },
+        "returns": {
+          "properties": {
+            "vectorization": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "vectorization"
+          ],
+          "title": "SetVectorizationModelOutput",
+          "type": "object"
+        }
+      }
+    }
+  },
+  "audit": {
+    "ok": false,
+    "fail": 41,
+    "warn": 90,
+    "hint": 41,
+    "findings": [
+      {
+        "code": "missing_field_doc",
+        "location": "ModelAssignments.ovs_routing",
+        "message": "field `ovs_routing` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "ModelAssignments.obfuscation",
+        "message": "field `obfuscation` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "ModelAssignments.vectorization",
+        "message": "field `vectorization` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "ModelAssignments.qdrant_retrieval",
+        "message": "field `qdrant_retrieval` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "ModelAssignments.cozo_retrieval",
+        "message": "field `cozo_retrieval` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "suggest_readonly_obs",
+        "location": "ZeroclawState.status",
+        "message": "`status` is obs.* — consider #[schemars(extend(\"readOnly\" = true))] if display-only",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ZeroclawState.projection",
+        "message": "consider #[serde(default)] on `projection` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct EmptyZeroclawInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct ResolveRouteInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ResolveRouteInput.hint",
+        "message": "field `hint` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ResolveRouteInput.hint",
+        "message": "consider #[serde(default)] on `hint` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct ZeroclawChatMessage",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ZeroclawChatMessage.role",
+        "message": "field `role` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ZeroclawChatMessage.role",
+        "message": "consider #[serde(default)] on `role` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ZeroclawChatMessage.content",
+        "message": "field `content` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ZeroclawChatMessage.content",
+        "message": "consider #[serde(default)] on `content` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct ChatInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ChatInput.message",
+        "message": "field `message` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ChatInput.messages",
+        "message": "field `messages` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ChatInput.provider",
+        "message": "field `provider` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ChatInput.model",
+        "message": "field `model` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct ListModelsInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ListModelsInput.provider",
+        "message": "field `provider` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetProviderInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetProviderInput.provider_id",
+        "message": "field `provider_id` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetProviderInput.provider_id",
+        "message": "consider #[serde(default)] on `provider_id` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetModelInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetModelInput.model_id",
+        "message": "field `model_id` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetModelInput.model_id",
+        "message": "consider #[serde(default)] on `model_id` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "GetStateOutput.state",
+        "message": "field `state` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "GetStateOutput.state",
+        "message": "consider #[serde(default)] on `state` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "GetModelRoutesOutput.model_routes",
+        "message": "field `model_routes` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "GetModelRoutesOutput.model_routes",
+        "message": "consider #[serde(default)] on `model_routes` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "GetProviderCatalogOutput.providers",
+        "message": "field `providers` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "GetProviderCatalogOutput.providers",
+        "message": "consider #[serde(default)] on `providers` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "GetToolsOutput.tools",
+        "message": "field `tools` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "GetToolsOutput.tools",
+        "message": "consider #[serde(default)] on `tools` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ListProvidersOutput.providers",
+        "message": "field `providers` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "ListProvidersOutput.providers",
+        "message": "field `providers` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ListProvidersOutput.providers",
+        "message": "consider #[serde(default)] on `providers` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "GetRouterOutput.router",
+        "message": "field `router` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "GetRouterOutput.router",
+        "message": "field `router` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "GetRouterOutput.router",
+        "message": "consider #[serde(default)] on `router` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "GetConfigSchemaOutput.config_schema",
+        "message": "field `config_schema` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "GetConfigSchemaOutput.config_schema",
+        "message": "field `config_schema` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "GetConfigSchemaOutput.config_schema",
+        "message": "consider #[serde(default)] on `config_schema` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ListUiSurfacesOutput.ui_surfaces",
+        "message": "field `ui_surfaces` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "ListUiSurfacesOutput.ui_surfaces",
+        "message": "field `ui_surfaces` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ListUiSurfacesOutput.ui_surfaces",
+        "message": "consider #[serde(default)] on `ui_surfaces` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "GetStructuredOutputOutput.structured_output",
+        "message": "field `structured_output` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "GetStructuredOutputOutput.structured_output",
+        "message": "field `structured_output` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "GetStructuredOutputOutput.structured_output",
+        "message": "consider #[serde(default)] on `structured_output` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ResolveRouteOutput.route",
+        "message": "field `route` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ResolveRouteOutput.route",
+        "message": "consider #[serde(default)] on `route` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ChatOutput.content",
+        "message": "field `content` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ChatOutput.content",
+        "message": "consider #[serde(default)] on `content` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ChatOutput.provider",
+        "message": "field `provider` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ChatOutput.provider",
+        "message": "consider #[serde(default)] on `provider` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ChatOutput.model",
+        "message": "field `model` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ChatOutput.model",
+        "message": "consider #[serde(default)] on `model` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ChatOutput.finish_reason",
+        "message": "field `finish_reason` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ChatOutput.finish_reason",
+        "message": "consider #[serde(default)] on `finish_reason` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ChatOutput.usage",
+        "message": "field `usage` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ChatOutput.usage",
+        "message": "consider #[serde(default)] on `usage` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ListModelsOutput.model_routes",
+        "message": "field `model_routes` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ListModelsOutput.model_routes",
+        "message": "consider #[serde(default)] on `model_routes` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetProviderOutput.selected_provider",
+        "message": "field `selected_provider` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetProviderOutput.selected_provider",
+        "message": "consider #[serde(default)] on `selected_provider` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetModelOutput.selected_model",
+        "message": "field `selected_model` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetModelOutput.selected_model",
+        "message": "consider #[serde(default)] on `selected_model` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "GetModelAssignmentsOutput.model_assignments",
+        "message": "field `model_assignments` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "GetModelAssignmentsOutput.model_assignments",
+        "message": "field `model_assignments` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "GetModelAssignmentsOutput.model_assignments",
+        "message": "consider #[serde(default)] on `model_assignments` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "GetConfigurableOptionsOutput.configurable_options",
+        "message": "field `configurable_options` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "GetConfigurableOptionsOutput.configurable_options",
+        "message": "field `configurable_options` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "GetConfigurableOptionsOutput.configurable_options",
+        "message": "consider #[serde(default)] on `configurable_options` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "ListUserContainerMemoryNamespaceOptionsOutput.memory_namespaces",
+        "message": "field `memory_namespaces` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "ListUserContainerMemoryNamespaceOptionsOutput.memory_namespaces",
+        "message": "field `memory_namespaces` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "ListUserContainerMemoryNamespaceOptionsOutput.memory_namespaces",
+        "message": "consider #[serde(default)] on `memory_namespaces` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetOvsRoutingModelInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetOvsRoutingModelInput.model_id",
+        "message": "field `model_id` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "SetOvsRoutingModelInput.model_id",
+        "message": "field `model_id` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetOvsRoutingModelInput.model_id",
+        "message": "consider #[serde(default)] on `model_id` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetOvsRoutingModelOutput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_struct_doc",
+        "location": "struct SetOvsRoutingModelOutput",
+        "message": "struct has no /// doc comment — renders as blank section description",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetOvsRoutingModelOutput.ovs_routing",
+        "message": "field `ovs_routing` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "SetOvsRoutingModelOutput.ovs_routing",
+        "message": "field `ovs_routing` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetOvsRoutingModelOutput.ovs_routing",
+        "message": "consider #[serde(default)] on `ovs_routing` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetObfuscationModelInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_struct_doc",
+        "location": "struct SetObfuscationModelInput",
+        "message": "struct has no /// doc comment — renders as blank section description",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetObfuscationModelInput.model_id",
+        "message": "field `model_id` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "SetObfuscationModelInput.model_id",
+        "message": "field `model_id` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetObfuscationModelInput.model_id",
+        "message": "consider #[serde(default)] on `model_id` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetObfuscationModelOutput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_struct_doc",
+        "location": "struct SetObfuscationModelOutput",
+        "message": "struct has no /// doc comment — renders as blank section description",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetObfuscationModelOutput.obfuscation",
+        "message": "field `obfuscation` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "SetObfuscationModelOutput.obfuscation",
+        "message": "field `obfuscation` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetObfuscationModelOutput.obfuscation",
+        "message": "consider #[serde(default)] on `obfuscation` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetVectorizationModelInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_struct_doc",
+        "location": "struct SetVectorizationModelInput",
+        "message": "struct has no /// doc comment — renders as blank section description",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetVectorizationModelInput.model_id",
+        "message": "field `model_id` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "SetVectorizationModelInput.model_id",
+        "message": "field `model_id` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetVectorizationModelInput.model_id",
+        "message": "consider #[serde(default)] on `model_id` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetVectorizationModelOutput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_struct_doc",
+        "location": "struct SetVectorizationModelOutput",
+        "message": "struct has no /// doc comment — renders as blank section description",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetVectorizationModelOutput.vectorization",
+        "message": "field `vectorization` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "SetVectorizationModelOutput.vectorization",
+        "message": "field `vectorization` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetVectorizationModelOutput.vectorization",
+        "message": "consider #[serde(default)] on `vectorization` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetQdrantRetrievalModelInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_struct_doc",
+        "location": "struct SetQdrantRetrievalModelInput",
+        "message": "struct has no /// doc comment — renders as blank section description",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetQdrantRetrievalModelInput.model_id",
+        "message": "field `model_id` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "SetQdrantRetrievalModelInput.model_id",
+        "message": "field `model_id` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetQdrantRetrievalModelInput.model_id",
+        "message": "consider #[serde(default)] on `model_id` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetQdrantRetrievalModelOutput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_struct_doc",
+        "location": "struct SetQdrantRetrievalModelOutput",
+        "message": "struct has no /// doc comment — renders as blank section description",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetQdrantRetrievalModelOutput.qdrant_retrieval",
+        "message": "field `qdrant_retrieval` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "SetQdrantRetrievalModelOutput.qdrant_retrieval",
+        "message": "field `qdrant_retrieval` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetQdrantRetrievalModelOutput.qdrant_retrieval",
+        "message": "consider #[serde(default)] on `qdrant_retrieval` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetCozoRetrievalModelInput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_struct_doc",
+        "location": "struct SetCozoRetrievalModelInput",
+        "message": "struct has no /// doc comment — renders as blank section description",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetCozoRetrievalModelInput.model_id",
+        "message": "field `model_id` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "SetCozoRetrievalModelInput.model_id",
+        "message": "field `model_id` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetCozoRetrievalModelInput.model_id",
+        "message": "consider #[serde(default)] on `model_id` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_struct_subid",
+        "location": "struct SetCozoRetrievalModelOutput",
+        "message": "schemars struct missing x-oscal-subid — nested schemas need it for UI audit binding",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_struct_doc",
+        "location": "struct SetCozoRetrievalModelOutput",
+        "message": "struct has no /// doc comment — renders as blank section description",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_field_subid",
+        "location": "SetCozoRetrievalModelOutput.cozo_retrieval",
+        "message": "field `cozo_retrieval` missing x-oscal-subid",
+        "severity": "fail"
+      },
+      {
+        "code": "missing_field_doc",
+        "location": "SetCozoRetrievalModelOutput.cozo_retrieval",
+        "message": "field `cozo_retrieval` has no /// doc — UI label/tooltip will be empty",
+        "severity": "warn"
+      },
+      {
+        "code": "missing_serde_default",
+        "location": "SetCozoRetrievalModelOutput.cozo_retrieval",
+        "message": "consider #[serde(default)] on `cozo_retrieval` so defaults round-trip",
+        "severity": "hint"
+      },
+      {
+        "code": "missing_schema_seeded_test",
+        "location": null,
+        "message": "add #[test] fn schema_is_schemars_seeded_and_typed (see antigravity_chat.rs)",
+        "severity": "warn"
+      },
+      {
+        "code": "external_surface",
+        "location": null,
+        "message": "external repomix source pack (universal): source=repomix:/home/jeremy/zeroclaw/repomix-output.xml version=repomix nodes=0 elements=21220 — see --surface-out for full catalog",
+        "severity": "hint"
+      },
+      {
+        "code": "gadget_coverage_summary",
+        "location": null,
+        "message": "declared=142 introspected=21220 missing_in_plugin=21220 extra_in_plugin=142",
+        "severity": "hint"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.aardvark_sys.AardvarkError",
+        "message": "external surface has `enum.aardvark_sys.AardvarkError` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.aardvark_sys.AardvarkError.GpioError",
+        "message": "external surface has `enum.aardvark_sys.AardvarkError.GpioError` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.aardvark_sys.AardvarkError.I2cReadFailed",
+        "message": "external surface has `enum.aardvark_sys.AardvarkError.I2cReadFailed` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.aardvark_sys.AardvarkError.I2cWriteFailed",
+        "message": "external surface has `enum.aardvark_sys.AardvarkError.I2cWriteFailed` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.aardvark_sys.AardvarkError.LibraryNotFound",
+        "message": "external surface has `enum.aardvark_sys.AardvarkError.LibraryNotFound` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.aardvark_sys.AardvarkError.NotFound",
+        "message": "external surface has `enum.aardvark_sys.AardvarkError.NotFound` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.aardvark_sys.AardvarkError.OpenFailed",
+        "message": "external surface has `enum.aardvark_sys.AardvarkError.OpenFailed` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.aardvark_sys.AardvarkError.SpiTransferFailed",
+        "message": "external surface has `enum.aardvark_sys.AardvarkError.SpiTransferFailed` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression",
+        "message": "external surface has `enum.robot_kit.Expression` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression.Angry",
+        "message": "external surface has `enum.robot_kit.Expression.Angry` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression.Confused",
+        "message": "external surface has `enum.robot_kit.Expression.Confused` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression.Excited",
+        "message": "external surface has `enum.robot_kit.Expression.Excited` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression.Happy",
+        "message": "external surface has `enum.robot_kit.Expression.Happy` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression.Love",
+        "message": "external surface has `enum.robot_kit.Expression.Love` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression.Sad",
+        "message": "external surface has `enum.robot_kit.Expression.Sad` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression.Sleepy",
+        "message": "external surface has `enum.robot_kit.Expression.Sleepy` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression.Surprised",
+        "message": "external surface has `enum.robot_kit.Expression.Surprised` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression.Thinking",
+        "message": "external surface has `enum.robot_kit.Expression.Thinking` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.Expression.Wink",
+        "message": "external surface has `enum.robot_kit.Expression.Wink` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SafetyEvent",
+        "message": "external surface has `enum.robot_kit.SafetyEvent` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SafetyEvent.BumpDetected",
+        "message": "external surface has `enum.robot_kit.SafetyEvent.BumpDetected` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SafetyEvent.EmergencyStop",
+        "message": "external surface has `enum.robot_kit.SafetyEvent.EmergencyStop` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SafetyEvent.MovementApproved",
+        "message": "external surface has `enum.robot_kit.SafetyEvent.MovementApproved` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SafetyEvent.MovementDenied",
+        "message": "external surface has `enum.robot_kit.SafetyEvent.MovementDenied` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SafetyEvent.ObstacleDetected",
+        "message": "external surface has `enum.robot_kit.SafetyEvent.ObstacleDetected` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SafetyEvent.Recovered",
+        "message": "external surface has `enum.robot_kit.SafetyEvent.Recovered` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SafetyEvent.WatchdogTimeout",
+        "message": "external surface has `enum.robot_kit.SafetyEvent.WatchdogTimeout` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SensorReading",
+        "message": "external surface has `enum.robot_kit.SensorReading` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SensorReading.Bump",
+        "message": "external surface has `enum.robot_kit.SensorReading.Bump` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SensorReading.Estop",
+        "message": "external surface has `enum.robot_kit.SensorReading.Estop` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.robot_kit.SensorReading.Lidar",
+        "message": "external surface has `enum.robot_kit.SensorReading.Lidar` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.rs.Action",
+        "message": "external surface has `enum.rs.Action` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.rs.Action.AddToPath",
+        "message": "external surface has `enum.rs.Action.AddToPath` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.rs.Action.BuildWebDashboard",
+        "message": "external surface has `enum.rs.Action.BuildWebDashboard` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.rs.Action.CargoInstallApp",
+        "message": "external surface has `enum.rs.Action.CargoInstallApp` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.rs.Action.CargoInstallSelf",
+        "message": "external surface has `enum.rs.Action.CargoInstallSelf` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.rs.Action.DownloadPrebuilt",
+        "message": "external surface has `enum.rs.Action.DownloadPrebuilt` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.rs.Action.InstallApp",
+        "message": "external surface has `enum.rs.Action.InstallApp` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.rs.Action.InstallBinary",
+        "message": "external surface has `enum.rs.Action.InstallBinary` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_element_not_in_plugin",
+        "location": "enum.rs.Action.InstallToolchain",
+        "message": "external surface has `enum.rs.Action.InstallToolchain` — not mirrored as a schemars field (expected until mapped)",
+        "severity": "warn"
+      },
+      {
+        "code": "surface_warn_cap",
+        "location": null,
+        "message": "omitted 21180 further surface_element_not_in_plugin WARNs (cap=40); full catalog in --surface-out",
+        "severity": "hint"
+      }
+    ]
+  },
+  "introspect": {
+    "surface_kind": "repomix",
+    "surface_source": "repomix:/home/jeremy/zeroclaw/repomix-output.xml",
+    "files_by_kind": {
+      "json": 24,
+      "proto": 1,
+      "rust": 1063,
+      "toml": 60,
+      "yaml": 50
+    },
+    "by_kind": {
+      "json": 428,
+      "proto": 227,
+      "rust": 14219,
+      "toml": 4473,
+      "yaml": 2267
+    },
+    "element_path_count": 21220,
+    "gaps": {
+      "surface_paths_total": 21220,
+      "signal_paths_considered": 12435,
+      "covered_approx": 845,
+      "missing_from_plugin": 11590,
+      "missing_cli_commands": [
+        "enum.zeroclaw.AgentsCommands.Create",
+        "enum.zeroclaw.AgentsCommands.Delete",
+        "enum.zeroclaw.AgentsCommands.List",
+        "enum.zeroclaw.AgentsCommands.Rename",
+        "enum.zeroclaw.AuthCommands.EmailLogin",
+        "enum.zeroclaw.AuthCommands.List",
+        "enum.zeroclaw.AuthCommands.Login",
+        "enum.zeroclaw.AuthCommands.Logout",
+        "enum.zeroclaw.AuthCommands.PasteRedirect",
+        "enum.zeroclaw.AuthCommands.PasteToken",
+        "enum.zeroclaw.AuthCommands.Refresh",
+        "enum.zeroclaw.AuthCommands.SetupToken",
+        "enum.zeroclaw.AuthCommands.Use",
+        "enum.zeroclaw.ChannelCommands.Add",
+        "enum.zeroclaw.ChannelCommands.BindTelegram",
+        "enum.zeroclaw.ChannelCommands.Doctor",
+        "enum.zeroclaw.ChannelCommands.List",
+        "enum.zeroclaw.ChannelCommands.Remove",
+        "enum.zeroclaw.ChannelCommands.Send",
+        "enum.zeroclaw.ChannelCommands.Start",
+        "enum.zeroclaw.ChannelsCommands.Create",
+        "enum.zeroclaw.ChannelsCommands.Delete",
+        "enum.zeroclaw.ChannelsCommands.List",
+        "enum.zeroclaw.ChannelsCommands.Rename",
+        "enum.zeroclaw.Commands.Acp",
+        "enum.zeroclaw.Commands.Agent",
+        "enum.zeroclaw.Commands.Agents",
+        "enum.zeroclaw.Commands.Browse",
+        "enum.zeroclaw.Commands.Channel",
+        "enum.zeroclaw.Commands.Channels",
+        "enum.zeroclaw.Commands.Completions",
+        "enum.zeroclaw.Commands.Config",
+        "enum.zeroclaw.Commands.Cron",
+        "enum.zeroclaw.Commands.Daemon",
+        "enum.zeroclaw.Commands.Desktop",
+        "enum.zeroclaw.Commands.Doctor",
+        "enum.zeroclaw.Commands.Estop",
+        "enum.zeroclaw.Commands.Eval",
+        "enum.zeroclaw.Commands.Gateway",
+        "enum.zeroclaw.Commands.Hardware",
+        "enum.zeroclaw.Commands.Integrations",
+        "enum.zeroclaw.Commands.MarkdownHelp",
+        "enum.zeroclaw.Commands.MarkdownSchema",
+        "enum.zeroclaw.Commands.Memory",
+        "enum.zeroclaw.Commands.Migrate",
+        "enum.zeroclaw.Commands.Models",
+        "enum.zeroclaw.Commands.Onboard",
+        "enum.zeroclaw.Commands.Peripheral",
+        "enum.zeroclaw.Commands.Plugin",
+        "enum.zeroclaw.Commands.Props",
+        "enum.zeroclaw.Commands.Quickstart",
+        "enum.zeroclaw.Commands.Security",
+        "enum.zeroclaw.Commands.SelfTest",
+        "enum.zeroclaw.Commands.Skills",
+        "enum.zeroclaw.Commands.Sop",
+        "enum.zeroclaw.Commands.Update",
+        "enum.zeroclaw.ConfigCommands.Complete",
+        "enum.zeroclaw.ConfigCommands.Docs",
+        "enum.zeroclaw.ConfigCommands.Generate",
+        "enum.zeroclaw.ConfigCommands.Get",
+        "enum.zeroclaw.ConfigCommands.Init",
+        "enum.zeroclaw.ConfigCommands.List",
+        "enum.zeroclaw.ConfigCommands.Migrate",
+        "enum.zeroclaw.ConfigCommands.Patch",
+        "enum.zeroclaw.ConfigCommands.Set",
+        "enum.zeroclaw.CronCommands.Add",
+        "enum.zeroclaw.CronCommands.AddAt",
+        "enum.zeroclaw.CronCommands.AddEvery",
+        "enum.zeroclaw.CronCommands.List",
+        "enum.zeroclaw.CronCommands.Once",
+        "enum.zeroclaw.CronCommands.Pause",
+        "enum.zeroclaw.CronCommands.Remove",
+        "enum.zeroclaw.CronCommands.Resume",
+        "enum.zeroclaw.CronCommands.Update",
+        "enum.zeroclaw.DeprecatedPropsCommands.Any",
+        "enum.zeroclaw.DoctorCommands.Models",
+        "enum.zeroclaw.DoctorCommands.Traces",
+        "enum.zeroclaw.DoctorCommands.UpdateContextWindows",
+        "enum.zeroclaw.EvalCommands.Run",
+        "enum.zeroclaw.GatewayCommands.GetPaircode",
+        "enum.zeroclaw.GatewayCommands.Restart",
+        "enum.zeroclaw.GatewayCommands.Start",
+        "enum.zeroclaw.HardwareCommands.Discover",
+        "enum.zeroclaw.HardwareCommands.Info",
+        "enum.zeroclaw.HardwareCommands.Introspect",
+        "enum.zeroclaw.IntegrationCommands.Info",
+        "enum.zeroclaw.MemoryCommands.Clear",
+        "enum.zeroclaw.MemoryCommands.Get",
+        "enum.zeroclaw.MemoryCommands.List",
+        "enum.zeroclaw.MemoryCommands.Reindex",
+        "enum.zeroclaw.MemoryCommands.Stats",
+        "enum.zeroclaw.MigrateCommands.Openclaw",
+        "enum.zeroclaw.ModelCommands.List",
+        "enum.zeroclaw.ModelCommands.Refresh",
+        "enum.zeroclaw.PeripheralCommands.Add",
+        "enum.zeroclaw.PeripheralCommands.Flash",
+        "enum.zeroclaw.PeripheralCommands.FlashNucleo",
+        "enum.zeroclaw.PeripheralCommands.List",
+        "enum.zeroclaw.PeripheralCommands.SetupUnoQ",
+        "enum.zeroclaw.PluginCommands.Info",
+        "enum.zeroclaw.PluginCommands.Install",
+        "enum.zeroclaw.PluginCommands.List",
+        "enum.zeroclaw.PluginCommands.Migrate",
+        "enum.zeroclaw.PluginCommands.Remove",
+        "enum.zeroclaw.PluginCommands.Search",
+        "enum.zeroclaw.ProvidersCommands.Create",
+        "enum.zeroclaw.ProvidersCommands.Delete",
+        "enum.zeroclaw.ProvidersCommands.Rename",
+        "enum.zeroclaw.ServiceCommands.Install",
+        "enum.zeroclaw.ServiceCommands.Logs",
+        "enum.zeroclaw.ServiceCommands.Restart",
+        "enum.zeroclaw.ServiceCommands.Start",
+        "enum.zeroclaw.ServiceCommands.Stop",
+        "enum.zeroclaw.ServiceCommands.Uninstall",
+        "enum.zeroclaw.SkillBundleCommands.Add",
+        "enum.zeroclaw.SkillBundleCommands.List",
+        "enum.zeroclaw.SkillBundleCommands.Remove",
+        "enum.zeroclaw.SkillBundleCommands.Rename",
+        "enum.zeroclaw.SkillBundleCommands.Show",
+        "enum.zeroclaw.SkillCommands.Add",
+        "enum.zeroclaw.SkillCommands.Audit",
+        "enum.zeroclaw.SkillCommands.Bundle",
+        "enum.zeroclaw.SkillCommands.Edit",
+        "enum.zeroclaw.SkillCommands.Install",
+        "enum.zeroclaw.SkillCommands.List",
+        "enum.zeroclaw.SkillCommands.Remove",
+        "enum.zeroclaw.SkillCommands.Test",
+        "enum.zeroclaw.SopCommands.Approve",
+        "enum.zeroclaw.SopCommands.Delete",
+        "enum.zeroclaw.SopCommands.Deny",
+        "enum.zeroclaw.SopCommands.Graph",
+        "enum.zeroclaw.SopCommands.List",
+        "enum.zeroclaw.SopCommands.Pending",
+        "enum.zeroclaw.SopCommands.Show",
+        "enum.zeroclaw.SopCommands.Validate",
+        "struct.zeroclaw.AgentsCommands.Create.alias",
+        "struct.zeroclaw.AgentsCommands.Delete.alias",
+        "struct.zeroclaw.AgentsCommands.Delete.dry_run",
+        "struct.zeroclaw.AgentsCommands.Delete.yes",
+        "struct.zeroclaw.AgentsCommands.Rename.from",
+        "struct.zeroclaw.AgentsCommands.Rename.to",
+        "struct.zeroclaw.AuthCommands.EmailLogin.channel",
+        "struct.zeroclaw.AuthCommands.EmailLogin.profile",
+        "struct.zeroclaw.AuthCommands.Login.device_code",
+        "struct.zeroclaw.AuthCommands.Login.import",
+        "struct.zeroclaw.AuthCommands.Login.model_provider",
+        "struct.zeroclaw.AuthCommands.Login.profile",
+        "struct.zeroclaw.AuthCommands.Logout.model_provider",
+        "struct.zeroclaw.AuthCommands.Logout.profile",
+        "struct.zeroclaw.AuthCommands.PasteRedirect.input",
+        "struct.zeroclaw.AuthCommands.PasteRedirect.model_provider",
+        "struct.zeroclaw.AuthCommands.PasteRedirect.profile",
+        "struct.zeroclaw.AuthCommands.PasteToken.auth_kind",
+        "struct.zeroclaw.AuthCommands.PasteToken.model_provider",
+        "struct.zeroclaw.AuthCommands.PasteToken.profile",
+        "struct.zeroclaw.AuthCommands.PasteToken.token",
+        "struct.zeroclaw.AuthCommands.Refresh.model_provider",
+        "struct.zeroclaw.AuthCommands.Refresh.profile",
+        "struct.zeroclaw.AuthCommands.SetupToken.model_provider",
+        "struct.zeroclaw.AuthCommands.SetupToken.profile",
+        "struct.zeroclaw.AuthCommands.Use.model_provider",
+        "struct.zeroclaw.AuthCommands.Use.profile",
+        "struct.zeroclaw.ChannelCommands.Add.channel_type",
+        "struct.zeroclaw.ChannelCommands.Add.config",
+        "struct.zeroclaw.ChannelCommands.BindTelegram.alias",
+        "struct.zeroclaw.ChannelCommands.BindTelegram.identity",
+        "struct.zeroclaw.ChannelCommands.Send.channel_id",
+        "struct.zeroclaw.ChannelCommands.Send.message",
+        "struct.zeroclaw.ChannelCommands.Send.recipient",
+        "struct.zeroclaw.ChannelsCommands.Create.alias",
+        "struct.zeroclaw.ChannelsCommands.Create.channel_type",
+        "struct.zeroclaw.ChannelsCommands.Delete.alias",
+        "struct.zeroclaw.ChannelsCommands.Delete.channel_type",
+        "struct.zeroclaw.ChannelsCommands.Delete.dry_run",
+        "struct.zeroclaw.ChannelsCommands.Delete.yes",
+        "struct.zeroclaw.ChannelsCommands.List.channel_type",
+        "struct.zeroclaw.ChannelsCommands.Rename.channel_type",
+        "struct.zeroclaw.ChannelsCommands.Rename.from",
+        "struct.zeroclaw.ChannelsCommands.Rename.to",
+        "struct.zeroclaw.Commands.Acp.max_sessions",
+        "struct.zeroclaw.Commands.Acp.session_timeout",
+        "struct.zeroclaw.Commands.Agent.agent",
+        "struct.zeroclaw.Commands.Agent.message",
+        "struct.zeroclaw.Commands.Agent.model_provider",
+        "struct.zeroclaw.Commands.Agent.peripheral",
+        "struct.zeroclaw.Commands.Agent.session_state_file",
+        "struct.zeroclaw.Commands.Agent.temperature",
+        "struct.zeroclaw.Commands.Agents.agents_command",
+        "struct.zeroclaw.Commands.Auth.auth_command",
+        "struct.zeroclaw.Commands.Channel.channel_command",
+        "struct.zeroclaw.Commands.Channels.channels_command",
+        "struct.zeroclaw.Commands.Completions.shell",
+        "struct.zeroclaw.Commands.Config.config_command",
+        "struct.zeroclaw.Commands.Cron.cron_command",
+        "struct.zeroclaw.Commands.Daemon.allow_degraded_security",
+        "struct.zeroclaw.Commands.Daemon.ephemeral",
+        "struct.zeroclaw.Commands.Daemon.host",
+        "struct.zeroclaw.Commands.Daemon.port",
+        "struct.zeroclaw.Commands.Desktop.install",
+        "struct.zeroclaw.Commands.Doctor.doctor_command",
+        "struct.zeroclaw.Commands.Estop.domains",
+        "struct.zeroclaw.Commands.Estop.estop_command",
+        "struct.zeroclaw.Commands.Estop.level",
+        "struct.zeroclaw.Commands.Eval.eval_command",
+        "struct.zeroclaw.Commands.Gateway.gateway_command",
+        "struct.zeroclaw.Commands.Hardware.hardware_command",
+        "struct.zeroclaw.Commands.Integrations.integration_command",
+        "struct.zeroclaw.Commands.Memory.memory_command",
+        "struct.zeroclaw.Commands.Migrate.migrate_command",
+        "struct.zeroclaw.Commands.Models.model_command",
+        "struct.zeroclaw.Commands.Onboard.channels_only",
+        "struct.zeroclaw.Commands.Onboard.cli",
+        "struct.zeroclaw.Commands.Onboard.force",
+        "struct.zeroclaw.Commands.Onboard.hardware_only",
+        "struct.zeroclaw.Commands.Onboard.memory",
+        "struct.zeroclaw.Commands.Onboard.memory_only",
+        "struct.zeroclaw.Commands.Onboard.model_provider",
+        "struct.zeroclaw.Commands.Onboard.providers_only",
+        "struct.zeroclaw.Commands.Onboard.quick",
+        "struct.zeroclaw.Commands.Onboard.reinit",
+        "struct.zeroclaw.Commands.Onboard.section",
+        "struct.zeroclaw.Commands.Onboard.tui",
+        "struct.zeroclaw.Commands.Onboard.tunnel_only",
+        "struct.zeroclaw.Commands.Peripheral.peripheral_command",
+        "struct.zeroclaw.Commands.Plugin.plugin_command",
+        "struct.zeroclaw.Commands.Props.props_command",
+        "struct.zeroclaw.Commands.Providers.providers_command",
+        "struct.zeroclaw.Commands.Quickstart.agent",
+        "struct.zeroclaw.Commands.Quickstart.model_provider",
+        "struct.zeroclaw.Commands.Security.security_command",
+        "struct.zeroclaw.Commands.SelfTest.quick",
+        "struct.zeroclaw.Commands.Service.service_command",
+        "struct.zeroclaw.Commands.Service.service_init",
+        "struct.zeroclaw.Commands.Skills.skill_command",
+        "struct.zeroclaw.Commands.Sop.sop_command",
+        "struct.zeroclaw.Commands.Status.format",
+        "struct.zeroclaw.Commands.Update.check",
+        "struct.zeroclaw.Commands.Update.force",
+        "struct.zeroclaw.Commands.Update.json",
+        "struct.zeroclaw.Commands.Update.version",
+        "struct.zeroclaw.ConfigCommands.Complete.partial",
+        "struct.zeroclaw.ConfigCommands.Generate.encrypt",
+        "struct.zeroclaw.ConfigCommands.Generate.version",
+        "struct.zeroclaw.ConfigCommands.Get.json",
+        "struct.zeroclaw.ConfigCommands.Init.json",
+        "struct.zeroclaw.ConfigCommands.Init.section",
+        "struct.zeroclaw.ConfigCommands.List.filter",
+        "struct.zeroclaw.ConfigCommands.List.secrets",
+        "struct.zeroclaw.ConfigCommands.Migrate.json",
+        "struct.zeroclaw.ConfigCommands.Patch.input",
+        "struct.zeroclaw.ConfigCommands.Patch.json",
+        "struct.zeroclaw.ConfigCommands.Set.comment",
+        "struct.zeroclaw.ConfigCommands.Set.json",
+        "struct.zeroclaw.ConfigCommands.Set.no_interactive",
+        "struct.zeroclaw.CronCommands.Add.agent_alias",
+        "struct.zeroclaw.CronCommands.Add.allowed_tools",
+        "struct.zeroclaw.CronCommands.Add.command",
+        "struct.zeroclaw.CronCommands.Add.expression",
+        "struct.zeroclaw.CronCommands.Add.prompt",
+        "struct.zeroclaw.CronCommands.Add.tz",
+        "struct.zeroclaw.CronCommands.Add.uses_memory",
+        "struct.zeroclaw.CronCommands.AddAt.agent_alias",
+        "struct.zeroclaw.CronCommands.AddAt.allowed_tools",
+        "struct.zeroclaw.CronCommands.AddAt.at",
+        "struct.zeroclaw.CronCommands.AddAt.command",
+        "struct.zeroclaw.CronCommands.AddAt.prompt",
+        "struct.zeroclaw.CronCommands.AddAt.uses_memory",
+        "struct.zeroclaw.CronCommands.AddEvery.agent_alias",
+        "struct.zeroclaw.CronCommands.AddEvery.allowed_tools",
+        "struct.zeroclaw.CronCommands.AddEvery.command",
+        "struct.zeroclaw.CronCommands.AddEvery.every_ms",
+        "struct.zeroclaw.CronCommands.AddEvery.prompt",
+        "struct.zeroclaw.CronCommands.AddEvery.uses_memory",
+        "struct.zeroclaw.CronCommands.Once.agent_alias",
+        "struct.zeroclaw.CronCommands.Once.allowed_tools",
+        "struct.zeroclaw.CronCommands.Once.command",
+        "struct.zeroclaw.CronCommands.Once.delay",
+        "struct.zeroclaw.CronCommands.Once.prompt",
+        "struct.zeroclaw.CronCommands.Once.uses_memory",
+        "struct.zeroclaw.CronCommands.Update.agent_alias",
+        "struct.zeroclaw.CronCommands.Update.allowed_tools",
+        "struct.zeroclaw.CronCommands.Update.command",
+        "struct.zeroclaw.CronCommands.Update.expression",
+        "struct.zeroclaw.CronCommands.Update.tz",
+        "struct.zeroclaw.CronCommands.Update.uses_memory",
+        "struct.zeroclaw.DeprecatedPropsCommands.Any.0",
+        "struct.zeroclaw.DoctorCommands.Models.model_provider",
+        "struct.zeroclaw.DoctorCommands.Models.use_cache",
+        "struct.zeroclaw.DoctorCommands.Traces.contains",
+        "struct.zeroclaw.DoctorCommands.Traces.event",
+        "struct.zeroclaw.DoctorCommands.Traces.limit",
+        "struct.zeroclaw.DoctorCommands.UpdateContextWindows.dry_run",
+        "struct.zeroclaw.DoctorCommands.UpdateContextWindows.model_provider",
+        "struct.zeroclaw.EvalCommands.Run.format",
+        "struct.zeroclaw.EvalCommands.Run.mode",
+        "struct.zeroclaw.EvalCommands.Run.suite",
+        "struct.zeroclaw.GatewayCommands.GetPaircode.host",
+        "struct.zeroclaw.GatewayCommands.GetPaircode.new",
+        "struct.zeroclaw.GatewayCommands.GetPaircode.port",
+        "struct.zeroclaw.GatewayCommands.GetPaircode.rotate",
+        "struct.zeroclaw.GatewayCommands.GetPaircode.rotate_device",
+        "struct.zeroclaw.GatewayCommands.Restart.allow_degraded_security",
+        "struct.zeroclaw.GatewayCommands.Restart.host",
+        "struct.zeroclaw.GatewayCommands.Restart.port",
+        "struct.zeroclaw.GatewayCommands.Start.allow_degraded_security",
+        "struct.zeroclaw.GatewayCommands.Start.host",
+        "struct.zeroclaw.GatewayCommands.Start.port",
+        "struct.zeroclaw.HardwareCommands.Info.chip",
+        "struct.zeroclaw.MemoryCommands.Clear.category",
+        "struct.zeroclaw.MemoryCommands.Clear.key",
+        "struct.zeroclaw.MemoryCommands.Clear.yes",
+        "struct.zeroclaw.MemoryCommands.Get.key",
+        "struct.zeroclaw.MemoryCommands.List.category",
+        "struct.zeroclaw.MemoryCommands.List.limit",
+        "struct.zeroclaw.MemoryCommands.List.offset",
+        "struct.zeroclaw.MemoryCommands.List.session",
+        "struct.zeroclaw.MigrateCommands.Openclaw.dry_run",
+        "struct.zeroclaw.MigrateCommands.Openclaw.reindex",
+        "struct.zeroclaw.ModelCommands.List.check",
+        "struct.zeroclaw.ModelCommands.List.model_provider",
+        "struct.zeroclaw.ModelCommands.Refresh.all",
+        "struct.zeroclaw.ModelCommands.Refresh.force",
+        "struct.zeroclaw.ModelCommands.Refresh.model_provider",
+        "struct.zeroclaw.PeripheralCommands.Add.board",
+        "struct.zeroclaw.PeripheralCommands.Flash.port",
+        "struct.zeroclaw.PeripheralCommands.SetupUnoQ.host",
+        "struct.zeroclaw.PluginCommands.Install.registry",
+        "struct.zeroclaw.PluginCommands.Search.query",
+        "struct.zeroclaw.PluginCommands.Search.registry",
+        "struct.zeroclaw.ProvidersCommands.Create.alias",
+        "struct.zeroclaw.ProvidersCommands.Create.category",
+        "struct.zeroclaw.ProvidersCommands.Create.family",
+        "struct.zeroclaw.ProvidersCommands.Delete.alias",
+        "struct.zeroclaw.ProvidersCommands.Delete.category",
+        "struct.zeroclaw.ProvidersCommands.Delete.dry_run",
+        "struct.zeroclaw.ProvidersCommands.Delete.family",
+        "struct.zeroclaw.ProvidersCommands.Delete.yes",
+        "struct.zeroclaw.ProvidersCommands.List.category",
+        "struct.zeroclaw.ProvidersCommands.Rename.category",
+        "struct.zeroclaw.ProvidersCommands.Rename.family",
+        "struct.zeroclaw.ProvidersCommands.Rename.from",
+        "struct.zeroclaw.ProvidersCommands.Rename.to",
+        "struct.zeroclaw.SecurityCommands.Status.agent",
+        "struct.zeroclaw.SecurityCommands.Status.json",
+        "struct.zeroclaw.ServiceCommands.Logs.follow",
+        "struct.zeroclaw.ServiceCommands.Logs.lines",
+        "struct.zeroclaw.SkillBundleCommands.Add.alias",
+        "struct.zeroclaw.SkillBundleCommands.Add.directory",
+        "struct.zeroclaw.SkillBundleCommands.Remove.alias",
+        "struct.zeroclaw.SkillBundleCommands.Remove.yes",
+        "struct.zeroclaw.SkillBundleCommands.Rename.from",
+        "struct.zeroclaw.SkillBundleCommands.Rename.to",
+        "struct.zeroclaw.SkillBundleCommands.Show.alias",
+        "struct.zeroclaw.SkillCommands.Add.author",
+        "struct.zeroclaw.SkillCommands.Add.bundle",
+        "struct.zeroclaw.SkillCommands.Add.category",
+        "struct.zeroclaw.SkillCommands.Add.edit",
+        "struct.zeroclaw.SkillCommands.Add.license",
+        "struct.zeroclaw.SkillCommands.Add.no_scaffold",
+        "struct.zeroclaw.SkillCommands.Add.version",
+        "struct.zeroclaw.SkillCommands.Bundle.bundle_command",
+        "struct.zeroclaw.SkillCommands.Edit.bundle",
+        "struct.zeroclaw.SkillCommands.Edit.file",
+        "struct.zeroclaw.SkillCommands.Install.agent",
+        "struct.zeroclaw.SkillCommands.Install.bundle",
+        "struct.zeroclaw.SkillCommands.Install.no_tier_banner",
+        "struct.zeroclaw.SkillCommands.Install.skill",
+        "struct.zeroclaw.SkillCommands.List.agent",
+        "struct.zeroclaw.SkillCommands.List.bundle",
+        "struct.zeroclaw.SkillCommands.Remove.agent",
+        "struct.zeroclaw.SkillCommands.Remove.bundle",
+        "struct.zeroclaw.SkillCommands.Test.verbose",
+        "struct.zeroclaw.SopCommands.Approve.run_id",
+        "struct.zeroclaw.SopCommands.Graph.format"
+      ],
+      "missing_config_fields": [
+        "enum.zeroclaw_config.AccessMode",
+        "enum.zeroclaw_config.AccessMode.Read",
+        "enum.zeroclaw_config.AccessMode.ReadWrite",
+        "enum.zeroclaw_config.AccessMode.Write",
+        "enum.zeroclaw_config.AliasKind",
+        "enum.zeroclaw_config.AliasKind.Agent",
+        "enum.zeroclaw_config.AliasKind.Channel",
+        "enum.zeroclaw_config.AliasSource",
+        "enum.zeroclaw_config.AliasSource.Agents",
+        "enum.zeroclaw_config.AliasSource.Channels",
+        "enum.zeroclaw_config.AliasSource.KnowledgeBundles",
+        "enum.zeroclaw_config.AliasSource.McpBundles",
+        "enum.zeroclaw_config.AliasSource.ModelProviders",
+        "enum.zeroclaw_config.AliasSource.RiskProfiles",
+        "enum.zeroclaw_config.AliasSource.RuntimeProfiles",
+        "enum.zeroclaw_config.AliasSource.SkillBundles",
+        "enum.zeroclaw_config.AliasSource.TranscriptionProviders",
+        "enum.zeroclaw_config.AliasSource.TtsProviders",
+        "enum.zeroclaw_config.AutonomyLevel",
+        "enum.zeroclaw_config.AutonomyLevel.Full",
+        "enum.zeroclaw_config.AutonomyLevel.ReadOnly",
+        "enum.zeroclaw_config.AutonomyLevel.Supervised",
+        "enum.zeroclaw_config.BudgetCheck",
+        "enum.zeroclaw_config.BudgetCheck.Allowed",
+        "enum.zeroclaw_config.BudgetCheck.Exceeded",
+        "enum.zeroclaw_config.BudgetCheck.Warning",
+        "enum.zeroclaw_config.BundleDirectoryError",
+        "enum.zeroclaw_config.BundleDirectoryError.DirectoryCollision",
+        "enum.zeroclaw_config.BundleDirectoryError.EscapesShared",
+        "enum.zeroclaw_config.BundleDirectoryError.UnknownBundle",
+        "enum.zeroclaw_config.CascadeError",
+        "enum.zeroclaw_config.CascadeError.NotFound",
+        "enum.zeroclaw_config.CascadeError.NotImplemented",
+        "enum.zeroclaw_config.CascadeError.PostCondition",
+        "enum.zeroclaw_config.CascadeError.Refused",
+        "enum.zeroclaw_config.CascadePolicy",
+        "enum.zeroclaw_config.CascadePolicy.DryRun",
+        "enum.zeroclaw_config.CascadePolicy.RefuseOnHard",
+        "enum.zeroclaw_config.CommandRiskLevel",
+        "enum.zeroclaw_config.CommandRiskLevel.High",
+        "enum.zeroclaw_config.CommandRiskLevel.Low",
+        "enum.zeroclaw_config.CommandRiskLevel.Medium",
+        "enum.zeroclaw_config.ConfigApiCode",
+        "enum.zeroclaw_config.ConfigApiCode.ConfigChangedExternally",
+        "enum.zeroclaw_config.ConfigApiCode.DanglingReference",
+        "enum.zeroclaw_config.ConfigApiCode.InternalError",
+        "enum.zeroclaw_config.ConfigApiCode.InvalidEnumVariant",
+        "enum.zeroclaw_config.ConfigApiCode.InvalidFormat",
+        "enum.zeroclaw_config.ConfigApiCode.InvalidNumericRange",
+        "enum.zeroclaw_config.ConfigApiCode.OpNotSupported",
+        "enum.zeroclaw_config.ConfigApiCode.PathNotFound",
+        "enum.zeroclaw_config.ConfigApiCode.ReloadFailed",
+        "enum.zeroclaw_config.ConfigApiCode.RequiredFieldEmpty",
+        "enum.zeroclaw_config.ConfigApiCode.SecretTestForbidden",
+        "enum.zeroclaw_config.ConfigApiCode.ValidationFailed",
+        "enum.zeroclaw_config.ConfigApiCode.ValueTypeMismatch",
+        "enum.zeroclaw_config.ConfigTab",
+        "enum.zeroclaw_config.ConfigTab.Advanced",
+        "enum.zeroclaw_config.ConfigTab.Behavior",
+        "enum.zeroclaw_config.ConfigTab.Bundles",
+        "enum.zeroclaw_config.ConfigTab.Channels",
+        "enum.zeroclaw_config.ConfigTab.Connection",
+        "enum.zeroclaw_config.ConfigTab.Costs",
+        "enum.zeroclaw_config.ConfigTab.Cron",
+        "enum.zeroclaw_config.ConfigTab.General",
+        "enum.zeroclaw_config.ConfigTab.Limits",
+        "enum.zeroclaw_config.ConfigTab.Memory",
+        "enum.zeroclaw_config.ConfigTab.None",
+        "enum.zeroclaw_config.ConfigTab.PeerGroups",
+        "enum.zeroclaw_config.ConfigTab.Personality",
+        "enum.zeroclaw_config.ConfigTab.Servers",
+        "enum.zeroclaw_config.ConfigTab.Settings",
+        "enum.zeroclaw_config.ConfigTab.Skills",
+        "enum.zeroclaw_config.ConfigTab.Tuning",
+        "enum.zeroclaw_config.ConfigTab.Workspace",
+        "enum.zeroclaw_config.CreateError",
+        "enum.zeroclaw_config.CreateError.Invalid",
+        "enum.zeroclaw_config.CreateError.Reserved",
+        "enum.zeroclaw_config.CredentialSurfaceClass",
+        "enum.zeroclaw_config.CredentialSurfaceClass.EncryptedSecret",
+        "enum.zeroclaw_config.CredentialSurfaceClass.ExternalAuthStore",
+        "enum.zeroclaw_config.CredentialSurfaceClass.LegacyEnvPath",
+        "enum.zeroclaw_config.CredentialSurfaceClass.PathOnlyReference",
+        "enum.zeroclaw_config.CredentialSurfaceClass.PublicValue",
+        "enum.zeroclaw_config.CredentialSurfaceClass.RequiresFollowUp",
+        "enum.zeroclaw_config.DelegationMode",
+        "enum.zeroclaw_config.DelegationMode.Allow",
+        "enum.zeroclaw_config.DelegationMode.Forbidden",
+        "enum.zeroclaw_config.DockerWorkspaceMountError",
+        "enum.zeroclaw_config.DockerWorkspaceMountError.AllowedRoot",
+        "enum.zeroclaw_config.DockerWorkspaceMountError.WorkspacePath",
+        "enum.zeroclaw_config.EscalationViolation",
+        "enum.zeroclaw_config.EscalationViolation.AutonomyAboveParent",
+        "enum.zeroclaw_config.EscalationViolation.BlockHighRiskCommandsDisabledByChild",
+        "enum.zeroclaw_config.EscalationViolation.CommandNotInParent",
+        "enum.zeroclaw_config.EscalationViolation.ForbiddenPathDroppedByChild",
+        "enum.zeroclaw_config.EscalationViolation.MaxActionsExceeded",
+        "enum.zeroclaw_config.EscalationViolation.MaxCostExceeded",
+        "enum.zeroclaw_config.EscalationViolation.ReadOnlyRootNotInParent",
+        "enum.zeroclaw_config.EscalationViolation.ReadWriteRootNotInParent",
+        "enum.zeroclaw_config.EscalationViolation.RequireApprovalDisabledByChild",
+        "enum.zeroclaw_config.EscalationViolation.ShellEnvPassthroughExpanded",
+        "enum.zeroclaw_config.EscalationViolation.ShellTimeoutExceeded",
+        "enum.zeroclaw_config.EscalationViolation.WorkspaceOnlyDisabledByChild",
+        "enum.zeroclaw_config.EscalationViolation.WriteOnlyRootNotInParent",
+        "enum.zeroclaw_config.GeneratePairingCodeError",
+        "enum.zeroclaw_config.GeneratePairingCodeError.PairingDisabled",
+        "enum.zeroclaw_config.GeneratePairingCodeError.Pending",
+        "enum.zeroclaw_config.MapKeyKind",
+        "enum.zeroclaw_config.MapKeyKind.List",
+        "enum.zeroclaw_config.MapKeyKind.Map",
+        "enum.zeroclaw_config.MemoryBackendKind",
+        "enum.zeroclaw_config.MemoryBackendKind.Lucid",
+        "enum.zeroclaw_config.MemoryBackendKind.Markdown",
+        "enum.zeroclaw_config.MemoryBackendKind.None",
+        "enum.zeroclaw_config.MemoryBackendKind.Postgres",
+        "enum.zeroclaw_config.MemoryBackendKind.Qdrant",
+        "enum.zeroclaw_config.MemoryBackendKind.Sqlite",
+        "enum.zeroclaw_config.OnNoApprover",
+        "enum.zeroclaw_config.OnNoApprover.Deny",
+        "enum.zeroclaw_config.OnNoApprover.InheritOriginator",
+        "enum.zeroclaw_config.OutputModality",
+        "enum.zeroclaw_config.OutputModality.Mirror",
+        "enum.zeroclaw_config.OutputModality.Text",
+        "enum.zeroclaw_config.OutputModality.Voice",
+        "enum.zeroclaw_config.PropKind",
+        "enum.zeroclaw_config.PropKind.AliasRef",
+        "enum.zeroclaw_config.PropKind.Bool",
+        "enum.zeroclaw_config.PropKind.Enum",
+        "enum.zeroclaw_config.PropKind.Float",
+        "enum.zeroclaw_config.PropKind.Integer",
+        "enum.zeroclaw_config.PropKind.Object",
+        "enum.zeroclaw_config.PropKind.ObjectArray",
+        "enum.zeroclaw_config.PropKind.String",
+        "enum.zeroclaw_config.PropKind.StringArray",
+        "enum.zeroclaw_config.ProviderCategory",
+        "enum.zeroclaw_config.ProviderCategory.Models",
+        "enum.zeroclaw_config.ProviderCategory.Transcription",
+        "enum.zeroclaw_config.ProviderCategory.Tts",
+        "enum.zeroclaw_config.QuoteState",
+        "enum.zeroclaw_config.QuoteState.Double",
+        "enum.zeroclaw_config.QuoteState.None",
+        "enum.zeroclaw_config.QuoteState.Single",
+        "enum.zeroclaw_config.RedirectionArgument",
+        "enum.zeroclaw_config.RedirectionArgument.FdOnly",
+        "enum.zeroclaw_config.RedirectionArgument.NeedsNextToken",
+        "enum.zeroclaw_config.RedirectionArgument.None",
+        "enum.zeroclaw_config.RedirectionArgument.Target",
+        "enum.zeroclaw_config.RefStrength",
+        "enum.zeroclaw_config.RefStrength.Hard",
+        "enum.zeroclaw_config.RefStrength.Soft",
+        "enum.zeroclaw_config.RenameError",
+        "enum.zeroclaw_config.RenameError.InvalidName",
+        "enum.zeroclaw_config.RenameError.NotFound",
+        "enum.zeroclaw_config.RenameError.PostCondition",
+        "enum.zeroclaw_config.RenameError.Reserved",
+        "enum.zeroclaw_config.ScrubAction",
+        "enum.zeroclaw_config.ScrubAction.ClearOptional",
+        "enum.zeroclaw_config.ScrubAction.DropFromVec",
+        "enum.zeroclaw_config.ScrubAction.Refuse",
+        "enum.zeroclaw_config.ScrubAction.RemoveMapKey",
+        "enum.zeroclaw_config.SectionGroup",
+        "enum.zeroclaw_config.SectionGroup.Agent",
+        "enum.zeroclaw_config.SectionGroup.Foundation",
+        "enum.zeroclaw_config.SectionGroup.Integrations",
+        "enum.zeroclaw_config.SectionGroup.MultiAgent",
+        "enum.zeroclaw_config.SectionGroup.Network",
+        "enum.zeroclaw_config.SectionGroup.Operations",
+        "enum.zeroclaw_config.SectionGroup.Other",
+        "enum.zeroclaw_config.SectionGroup.Storage",
+        "enum.zeroclaw_config.SectionShape",
+        "enum.zeroclaw_config.SectionShape.BackendPicker",
+        "enum.zeroclaw_config.SectionShape.DirectForm",
+        "enum.zeroclaw_config.SectionShape.OneTierAliasMap",
+        "enum.zeroclaw_config.SectionShape.TypedFamilyMap",
+        "enum.zeroclaw_config.SelectorChoice",
+        "enum.zeroclaw_config.SelectorChoice.Existing",
+        "enum.zeroclaw_config.SelectorChoice.Fresh",
+        "enum.zeroclaw_config.ThinkingLevel",
+        "enum.zeroclaw_config.ThinkingLevel.High",
+        "enum.zeroclaw_config.ThinkingLevel.Low",
+        "enum.zeroclaw_config.ThinkingLevel.Max",
+        "enum.zeroclaw_config.ThinkingLevel.Medium",
+        "enum.zeroclaw_config.ThinkingLevel.Minimal",
+        "enum.zeroclaw_config.ThinkingLevel.Off",
+        "enum.zeroclaw_config.ToolOperation",
+        "enum.zeroclaw_config.ToolOperation.Act",
+        "enum.zeroclaw_config.ToolOperation.Read",
+        "enum.zeroclaw_config.TranscriptionProviderEntry",
+        "enum.zeroclaw_config.TranscriptionProviderEntry.AssemblyAi",
+        "enum.zeroclaw_config.TranscriptionProviderEntry.Deepgram",
+        "enum.zeroclaw_config.TranscriptionProviderEntry.Google",
+        "enum.zeroclaw_config.TranscriptionProviderEntry.Groq",
+        "enum.zeroclaw_config.TranscriptionProviderEntry.LocalWhisper",
+        "enum.zeroclaw_config.TranscriptionProviderEntry.OpenAi",
+        "enum.zeroclaw_config.UsagePeriod",
+        "enum.zeroclaw_config.UsagePeriod.Day",
+        "enum.zeroclaw_config.UsagePeriod.Month",
+        "enum.zeroclaw_config.UsagePeriod.Session",
+        "enum.zeroclaw_config.V2WorkspaceDest",
+        "enum.zeroclaw_config.V2WorkspaceDest.AgentDefault",
+        "enum.zeroclaw_config.V2WorkspaceDest.DataDir",
+        "enum.zeroclaw_config.V2WorkspaceDest.MemorySubentryDispatch",
+        "enum.zeroclaw_config.V2WorkspaceDest.SharedDir",
+        "enum.zeroclaw_config.VecRoute",
+        "enum.zeroclaw_config.VecRoute.Ambiguous",
+        "enum.zeroclaw_config.VecRoute.Hit",
+        "enum.zeroclaw_config.VecRoute.Miss",
+        "enum.zeroclaw_config.VoiceProvider",
+        "enum.zeroclaw_config.VoiceProvider.Plivo",
+        "enum.zeroclaw_config.VoiceProvider.Telnyx",
+        "enum.zeroclaw_config.VoiceProvider.Twilio",
+        "struct.zeroclaw_config.A2aServerConfig",
+        "struct.zeroclaw_config.A2aServerConfig.bind",
+        "struct.zeroclaw_config.A2aServerConfig.enabled",
+        "struct.zeroclaw_config.A2aServerConfig.port",
+        "struct.zeroclaw_config.A2aServerConfig.public_base_url",
+        "struct.zeroclaw_config.A2aServerSection",
+        "struct.zeroclaw_config.A2aServerSection.server",
+        "struct.zeroclaw_config.ActionTracker",
+        "struct.zeroclaw_config.ActionTracker.actions",
+        "struct.zeroclaw_config.AgentA2aConfig",
+        "struct.zeroclaw_config.AgentA2aConfig.exposed_skills",
+        "struct.zeroclaw_config.AgentA2aConfig.published",
+        "struct.zeroclaw_config.AgentCostStats",
+        "struct.zeroclaw_config.AgentCostStats.agent_alias",
+        "struct.zeroclaw_config.AgentCostStats.cached_input_tokens",
+        "struct.zeroclaw_config.AgentCostStats.cost_usd",
+        "struct.zeroclaw_config.AgentCostStats.input_tokens",
+        "struct.zeroclaw_config.AgentCostStats.output_tokens",
+        "struct.zeroclaw_config.AgentCostStats.request_count",
+        "struct.zeroclaw_config.AgentCostStats.total_tokens",
+        "struct.zeroclaw_config.AgentIdentity",
+        "struct.zeroclaw_config.AgentIdentity.personality_file",
+        "struct.zeroclaw_config.AgentIdentity.personality_files",
+        "struct.zeroclaw_config.AgentIdentity.system_prompt",
+        "struct.zeroclaw_config.AgentMemoryConfig",
+        "struct.zeroclaw_config.AgentMemoryConfig.backend",
+        "struct.zeroclaw_config.AgentTotals",
+        "struct.zeroclaw_config.AgentTotals.cost_usd",
+        "struct.zeroclaw_config.AgentTotals.request_count",
+        "struct.zeroclaw_config.AgentTotals.total_tokens",
+        "struct.zeroclaw_config.AgentWorkspaceConfig",
+        "struct.zeroclaw_config.AgentWorkspaceConfig.access",
+        "struct.zeroclaw_config.AgentWorkspaceConfig.read_memory_from",
+        "struct.zeroclaw_config.AgentWorkspaceConfig.unrestricted_filesystem",
+        "struct.zeroclaw_config.AliasKind.Channel.channel_type",
+        "struct.zeroclaw_config.AliasKind.Provider.category",
+        "struct.zeroclaw_config.AliasKind.Provider.family",
+        "struct.zeroclaw_config.AppliedOverrides",
+        "struct.zeroclaw_config.AppliedOverrides.paths",
+        "struct.zeroclaw_config.AppliedOverrides.snapshots",
+        "struct.zeroclaw_config.ApprovalRoute",
+        "struct.zeroclaw_config.ApprovalRoute.approver_channel",
+        "struct.zeroclaw_config.ApprovalRoute.on_no_approver",
+        "struct.zeroclaw_config.ApprovalRoute.timeout_secs",
+        "struct.zeroclaw_config.AutoClassifyConfig",
+        "struct.zeroclaw_config.AutoClassifyConfig.complex_hint",
+        "struct.zeroclaw_config.AutoClassifyConfig.cost_optimized_hint",
+        "struct.zeroclaw_config.AutoClassifyConfig.simple_hint",
+        "struct.zeroclaw_config.AutoClassifyConfig.standard_hint",
+        "struct.zeroclaw_config.BrowserDelegateConfig",
+        "struct.zeroclaw_config.BrowserDelegateConfig.allowed_domains",
+        "struct.zeroclaw_config.BrowserDelegateConfig.blocked_domains",
+        "struct.zeroclaw_config.BrowserDelegateConfig.chrome_profile_dir",
+        "struct.zeroclaw_config.BrowserDelegateConfig.cli_binary",
+        "struct.zeroclaw_config.BrowserDelegateConfig.enabled",
+        "struct.zeroclaw_config.BrowserDelegateConfig.task_timeout_secs",
+        "struct.zeroclaw_config.BudgetCheck.Exceeded.current_usd",
+        "struct.zeroclaw_config.BudgetCheck.Exceeded.limit_usd",
+        "struct.zeroclaw_config.BudgetCheck.Exceeded.period",
+        "struct.zeroclaw_config.BudgetCheck.Warning.current_usd",
+        "struct.zeroclaw_config.BudgetCheck.Warning.limit_usd",
+        "struct.zeroclaw_config.BudgetCheck.Warning.period",
+        "struct.zeroclaw_config.BuilderSubmission",
+        "struct.zeroclaw_config.BuilderSubmission.agent",
+        "struct.zeroclaw_config.BuilderSubmission.channels",
+        "struct.zeroclaw_config.BuilderSubmission.memory",
+        "struct.zeroclaw_config.BuilderSubmission.model_provider",
+        "struct.zeroclaw_config.BuilderSubmission.peer_groups",
+        "struct.zeroclaw_config.BuilderSubmission.risk_profile",
+        "struct.zeroclaw_config.BuilderSubmission.runtime_profile",
+        "struct.zeroclaw_config.BundleDirectoryError.DirectoryCollision.first",
+        "struct.zeroclaw_config.BundleDirectoryError.DirectoryCollision.second",
+        "struct.zeroclaw_config.BundleDirectoryError.EscapesShared.shared",
+        "struct.zeroclaw_config.BundleDirectoryError.UnknownBundle.0",
+        "struct.zeroclaw_config.CascadeError.NotFound.0",
+        "struct.zeroclaw_config.CascadeError.NotImplemented.0",
+        "struct.zeroclaw_config.CascadeError.PostCondition.0",
+        "struct.zeroclaw_config.CascadeError.Refused.0",
+        "struct.zeroclaw_config.CascadeReport",
+        "struct.zeroclaw_config.CascadeReport.applied",
+        "struct.zeroclaw_config.CascadeReport.deleted_entry",
+        "struct.zeroclaw_config.CascadeReport.plan",
+        "struct.zeroclaw_config.ChannelInfo",
+        "struct.zeroclaw_config.ChannelInfo.configured",
+        "struct.zeroclaw_config.ChannelInfo.desc",
+        "struct.zeroclaw_config.ChannelPrecheckConfig",
+        "struct.zeroclaw_config.ChannelPrecheckConfig.enabled",
+        "struct.zeroclaw_config.ChannelPrecheckConfig.timeout_secs",
+        "struct.zeroclaw_config.ChannelQuickStart",
+        "struct.zeroclaw_config.ChannelQuickStart.alias",
+        "struct.zeroclaw_config.ChannelQuickStart.channel_type",
+        "struct.zeroclaw_config.ClawdTalkConfig",
+        "struct.zeroclaw_config.ClawdTalkConfig.allowed_destinations",
+        "struct.zeroclaw_config.ClawdTalkConfig.connection_id",
+        "struct.zeroclaw_config.ClawdTalkConfig.enabled",
+        "struct.zeroclaw_config.ClawdTalkConfig.excluded_tools",
+        "struct.zeroclaw_config.ClawdTalkConfig.from_number",
+        "struct.zeroclaw_config.ClawdTalkConfig.webhook_secret",
+        "struct.zeroclaw_config.ConfigApiError",
+        "struct.zeroclaw_config.ConfigApiError.code",
+        "struct.zeroclaw_config.ConfigApiError.message",
+        "struct.zeroclaw_config.ConfigApiError.op_index",
+        "struct.zeroclaw_config.ConfigFieldEntry",
+        "struct.zeroclaw_config.ConfigFieldEntry.alias_source",
+        "struct.zeroclaw_config.ConfigFieldEntry.category",
+        "struct.zeroclaw_config.ConfigFieldEntry.enum_variants",
+        "struct.zeroclaw_config.ConfigFieldEntry.is_env_overridden",
+        "struct.zeroclaw_config.ConfigFieldEntry.is_secret",
+        "struct.zeroclaw_config.ConfigFieldEntry.multiline",
+        "struct.zeroclaw_config.ConfigFieldEntry.populated",
+        "struct.zeroclaw_config.ConfigFieldEntry.section",
+        "struct.zeroclaw_config.ConfigFieldEntry.tab",
+        "struct.zeroclaw_config.ConfigFieldEntry.type_hint",
+        "struct.zeroclaw_config.ConfigLoadAttribution",
+        "struct.zeroclaw_config.ContextCompressionConfig",
+        "struct.zeroclaw_config.ContextCompressionConfig.enabled",
+        "struct.zeroclaw_config.ContextCompressionConfig.identifier_policy",
+        "struct.zeroclaw_config.ContextCompressionConfig.max_passes",
+        "struct.zeroclaw_config.ContextCompressionConfig.protect_first_n",
+        "struct.zeroclaw_config.ContextCompressionConfig.protect_last_n",
+        "struct.zeroclaw_config.ContextCompressionConfig.source_max_chars",
+        "struct.zeroclaw_config.ContextCompressionConfig.summary_max_chars",
+        "struct.zeroclaw_config.ContextCompressionConfig.summary_model",
+        "struct.zeroclaw_config.ContextCompressionConfig.summary_provider",
+        "struct.zeroclaw_config.ContextCompressionConfig.threshold_ratio",
+        "struct.zeroclaw_config.ContextCompressionConfig.timeout_secs",
+        "struct.zeroclaw_config.ContextCompressionConfig.tool_result_retrim_chars",
+        "struct.zeroclaw_config.ContextCompressionConfig.tool_result_trim_exempt",
+        "struct.zeroclaw_config.CostRecord",
+        "struct.zeroclaw_config.CostRecord.agent_alias",
+        "struct.zeroclaw_config.CostRecord.session_id",
+        "struct.zeroclaw_config.CostRecord.task_id",
+        "struct.zeroclaw_config.CostRecord.usage",
+        "struct.zeroclaw_config.CostStorage",
+        "struct.zeroclaw_config.CostStorage.aggregates_current",
+        "struct.zeroclaw_config.CostStorage.cached_day",
+        "struct.zeroclaw_config.CostStorage.cached_month",
+        "struct.zeroclaw_config.CostStorage.cached_year",
+        "struct.zeroclaw_config.CostStorage.daily_cost_usd",
+        "struct.zeroclaw_config.CostStorage.monthly_cost_usd",
+        "struct.zeroclaw_config.CostSummary",
+        "struct.zeroclaw_config.CostSummary.by_agent",
+        "struct.zeroclaw_config.CostSummary.by_model",
+        "struct.zeroclaw_config.CostSummary.daily_cost_usd",
+        "struct.zeroclaw_config.CostSummary.monthly_cost_usd",
+        "struct.zeroclaw_config.CostSummary.request_count",
+        "struct.zeroclaw_config.CostSummary.session_cost_usd",
+        "struct.zeroclaw_config.CostSummary.total_tokens",
+        "struct.zeroclaw_config.CostSummaryAccumulator",
+        "struct.zeroclaw_config.CostSummaryAccumulator.by_agent",
+        "struct.zeroclaw_config.CostSummaryAccumulator.by_model",
+        "struct.zeroclaw_config.CostSummaryAccumulator.request_count",
+        "struct.zeroclaw_config.CostSummaryAccumulator.total_cost",
+        "struct.zeroclaw_config.CostSummaryAccumulator.total_tokens",
+        "struct.zeroclaw_config.CostTracker",
+        "struct.zeroclaw_config.CostTracker.config",
+        "struct.zeroclaw_config.CostTracker.session_id",
+        "struct.zeroclaw_config.CostTracker.session_totals",
+        "struct.zeroclaw_config.CostTracker.storage",
+        "struct.zeroclaw_config.CreateError.Invalid.0",
+        "struct.zeroclaw_config.CreateError.Reserved.0",
+        "struct.zeroclaw_config.DelegationPolicy",
+        "struct.zeroclaw_config.DelegationPolicy.mode",
+        "struct.zeroclaw_config.DockerRuntime",
+        "struct.zeroclaw_config.DockerRuntime.config",
+        "struct.zeroclaw_config.EmailConfig",
+        "struct.zeroclaw_config.EmailConfig.default_subject",
+        "struct.zeroclaw_config.EmailConfig.enabled",
+        "struct.zeroclaw_config.EmailConfig.excluded_tools",
+        "struct.zeroclaw_config.EmailConfig.from_address",
+        "struct.zeroclaw_config.EmailConfig.html_body",
+        "struct.zeroclaw_config.EmailConfig.idle_timeout_secs",
+        "struct.zeroclaw_config.EmailConfig.imap_folder",
+        "struct.zeroclaw_config.EmailConfig.imap_host",
+        "struct.zeroclaw_config.EmailConfig.imap_port",
+        "struct.zeroclaw_config.EmailConfig.max_attachment_bytes",
+        "struct.zeroclaw_config.EmailConfig.oauth2",
+        "struct.zeroclaw_config.EmailConfig.observer_mode",
+        "struct.zeroclaw_config.EmailConfig.password",
+        "struct.zeroclaw_config.EmailConfig.poll_interval_secs",
+        "struct.zeroclaw_config.EmailConfig.smtp_host",
+        "struct.zeroclaw_config.EmailConfig.smtp_password",
+        "struct.zeroclaw_config.EmailConfig.smtp_port",
+        "struct.zeroclaw_config.EmailConfig.smtp_tls",
+        "struct.zeroclaw_config.EmailConfig.smtp_username",
+        "struct.zeroclaw_config.EmailConfig.username",
+        "struct.zeroclaw_config.EmailOAuth2Config",
+        "struct.zeroclaw_config.EmailOAuth2Config.client_id",
+        "struct.zeroclaw_config.EmailOAuth2Config.device_code_url",
+        "struct.zeroclaw_config.EmailOAuth2Config.scopes",
+        "struct.zeroclaw_config.EmailOAuth2Config.token_url",
+        "struct.zeroclaw_config.EscalationViolation.AutonomyAboveParent.child",
+        "struct.zeroclaw_config.EscalationViolation.AutonomyAboveParent.parent",
+        "struct.zeroclaw_config.EscalationViolation.CommandNotInParent.command",
+        "struct.zeroclaw_config.EscalationViolation.MaxActionsExceeded.child",
+        "struct.zeroclaw_config.EscalationViolation.MaxActionsExceeded.parent",
+        "struct.zeroclaw_config.EscalationViolation.MaxCostExceeded.child",
+        "struct.zeroclaw_config.EscalationViolation.MaxCostExceeded.parent",
+        "struct.zeroclaw_config.EscalationViolation.ShellEnvPassthroughExpanded.variable",
+        "struct.zeroclaw_config.EscalationViolation.ShellTimeoutExceeded.child",
+        "struct.zeroclaw_config.EscalationViolation.ShellTimeoutExceeded.parent",
+        "struct.zeroclaw_config.EvalConfig",
+        "struct.zeroclaw_config.EvalConfig.enabled",
+        "struct.zeroclaw_config.EvalConfig.max_retries",
+        "struct.zeroclaw_config.EvalConfig.min_quality_score",
+        "struct.zeroclaw_config.EvalHarnessConfig",
+        "struct.zeroclaw_config.EvalHarnessConfig.mode",
+        "struct.zeroclaw_config.EvalHarnessConfig.suite_dir",
+        "struct.zeroclaw_config.FailedAttemptState",
+        "struct.zeroclaw_config.FailedAttemptState.count",
+        "struct.zeroclaw_config.FailedAttemptState.last_attempt",
+        "struct.zeroclaw_config.FailedAttemptState.lockout_until",
+        "struct.zeroclaw_config.FilesystemMigrationReport",
+        "struct.zeroclaw_config.FilesystemMigrationReport.backup_dir",
+        "struct.zeroclaw_config.FilesystemMigrationReport.entries_relocated",
+        "struct.zeroclaw_config.GenerateOptions",
+        "struct.zeroclaw_config.GenerateOptions.encrypt_secrets",
+        "struct.zeroclaw_config.GenerateOptions.secret_store_dir",
+        "struct.zeroclaw_config.GmailPushConfig",
+        "struct.zeroclaw_config.GmailPushConfig.enabled",
+        "struct.zeroclaw_config.GmailPushConfig.excluded_tools",
+        "struct.zeroclaw_config.GmailPushConfig.label_filter",
+        "struct.zeroclaw_config.GmailPushConfig.oauth_token",
+        "struct.zeroclaw_config.GmailPushConfig.topic",
+        "struct.zeroclaw_config.GmailPushConfig.webhook_secret",
+        "struct.zeroclaw_config.GmailPushConfig.webhook_url",
+        "struct.zeroclaw_config.HistoryPrunerConfig",
+        "struct.zeroclaw_config.HistoryPrunerConfig.collapse_tool_results",
+        "struct.zeroclaw_config.HistoryPrunerConfig.enabled",
+        "struct.zeroclaw_config.HistoryPrunerConfig.keep_recent",
+        "struct.zeroclaw_config.HistoryPrunerConfig.max_tokens",
+        "struct.zeroclaw_config.ImpactReport",
+        "struct.zeroclaw_config.ImpactReport.allowed",
+        "struct.zeroclaw_config.ImpactReport.blockers",
+        "struct.zeroclaw_config.ImpactReport.owned_state",
+        "struct.zeroclaw_config.ImpactReport.scrubs",
+        "struct.zeroclaw_config.ImpactReport.target_alias",
+        "struct.zeroclaw_config.ImpactReport.target_kind",
+        "struct.zeroclaw_config.IntegrationDescriptor",
+        "struct.zeroclaw_config.IntegrationDescriptor.active",
+        "struct.zeroclaw_config.IntegrationDescriptor.category",
+        "struct.zeroclaw_config.IntegrationDescriptor.display_name",
+        "struct.zeroclaw_config.MapKeySection",
+        "struct.zeroclaw_config.MapKeySection.natural_key",
+        "struct.zeroclaw_config.MapKeySection.resource_key",
+        "struct.zeroclaw_config.MapKeySection.value_type",
+        "struct.zeroclaw_config.MigrateReport",
+        "struct.zeroclaw_config.MigrateReport.backup_path",
+        "struct.zeroclaw_config.MigrateReport.to_version",
+        "struct.zeroclaw_config.ModelProviderChoice",
+        "struct.zeroclaw_config.ModelProviderChoice.alias",
+        "struct.zeroclaw_config.ModelProviderChoice.provider_type",
+        "struct.zeroclaw_config.ModelStats",
+        "struct.zeroclaw_config.ModelStats.cached_input_tokens",
+        "struct.zeroclaw_config.ModelStats.cost_usd",
+        "struct.zeroclaw_config.ModelStats.input_tokens",
+        "struct.zeroclaw_config.ModelStats.output_tokens",
+        "struct.zeroclaw_config.ModelStats.request_count",
+        "struct.zeroclaw_config.ModelStats.total_tokens",
+        "struct.zeroclaw_config.NativeRuntime",
+        "struct.zeroclaw_config.NativeRuntime.shell",
+        "struct.zeroclaw_config.NestedOptionEntry",
+        "struct.zeroclaw_config.NestedOptionEntry.display_name",
+        "struct.zeroclaw_config.NestedOptionEntry.field",
+        "struct.zeroclaw_config.NestedOptionEntry.present",
+        "struct.zeroclaw_config.NormalizedRootlessPath",
+        "struct.zeroclaw_config.NormalizedRootlessPath.drive",
+        "struct.zeroclaw_config.NormalizedRootlessPath.text",
+        "struct.zeroclaw_config.OwnedArtifact",
+        "struct.zeroclaw_config.OwnedArtifact.action",
+        "struct.zeroclaw_config.OwnedArtifact.locator",
+        "struct.zeroclaw_config.OwnedArtifact.store",
+        "struct.zeroclaw_config.OwnedArtifact.strength",
+        "struct.zeroclaw_config.PairingGuard",
+        "struct.zeroclaw_config.PairingGuard.failed_attempts",
+        "struct.zeroclaw_config.PairingGuard.paired_tokens",
+        "struct.zeroclaw_config.PairingGuard.pairing_code",
+        "struct.zeroclaw_config.PairingGuard.require_pairing",
+        "struct.zeroclaw_config.PeerGroupConfig",
+        "struct.zeroclaw_config.PeerGroupConfig.admin_for_agent_scope",
+        "struct.zeroclaw_config.PeerGroupConfig.agents",
+        "struct.zeroclaw_config.PeerGroupConfig.channel",
+        "struct.zeroclaw_config.PeerGroupConfig.external_peers",
+        "struct.zeroclaw_config.PeerGroupConfig.ignore",
+        "struct.zeroclaw_config.PeerGroupConfig.output_modality",
+        "struct.zeroclaw_config.PerSenderTracker",
+        "struct.zeroclaw_config.PerSenderTracker.buckets",
+        "struct.zeroclaw_config.PropFieldInfo",
+        "struct.zeroclaw_config.PropFieldInfo.alias_source",
+        "struct.zeroclaw_config.PropFieldInfo.category",
+        "struct.zeroclaw_config.PropFieldInfo.credential_class",
+        "struct.zeroclaw_config.PropFieldInfo.derived_from_secret",
+        "struct.zeroclaw_config.PropFieldInfo.display_value",
+        "struct.zeroclaw_config.PropFieldInfo.enum_variants",
+        "struct.zeroclaw_config.PropFieldInfo.is_secret",
+        "struct.zeroclaw_config.PropFieldInfo.multiline",
+        "struct.zeroclaw_config.PropFieldInfo.tab",
+        "struct.zeroclaw_config.PropFieldInfo.type_hint",
+        "struct.zeroclaw_config.Providers.models",
+        "struct.zeroclaw_config.Providers.transcription",
+        "struct.zeroclaw_config.Providers.tts",
+        "struct.zeroclaw_config.QuickstartPeerGroup",
+        "struct.zeroclaw_config.QuickstartPeerGroup.channel",
+        "struct.zeroclaw_config.QuickstartPeerGroup.external_peers",
+        "struct.zeroclaw_config.QuickstartPeerGroup.ignore",
+        "struct.zeroclaw_config.QuickstartPersonalityFile",
+        "struct.zeroclaw_config.QuickstartPersonalityFile.content",
+        "struct.zeroclaw_config.QuickstartPersonalityFile.filename",
+        "struct.zeroclaw_config.RedirectionArgument.FdOnly.prefix",
+        "struct.zeroclaw_config.RedirectionArgument.NeedsNextToken.prefix",
+        "struct.zeroclaw_config.RedirectionArgument.Target.prefix",
+        "struct.zeroclaw_config.RedirectionArgument.Target.target",
+        "struct.zeroclaw_config.RefSite",
+        "struct.zeroclaw_config.RefSite.action",
+        "struct.zeroclaw_config.RefSite.raw_value",
+        "struct.zeroclaw_config.RefSite.strength",
+        "struct.zeroclaw_config.RenameError.InvalidName.0",
+        "struct.zeroclaw_config.RenameError.NotFound.0",
+        "struct.zeroclaw_config.RenameError.PostCondition.0",
+        "struct.zeroclaw_config.RenameError.Reserved.0",
+        "struct.zeroclaw_config.RenameReport",
+        "struct.zeroclaw_config.RenameReport.dirty_paths",
+        "struct.zeroclaw_config.RenameReport.new_alias",
+        "struct.zeroclaw_config.RenameReport.old_alias",
+        "struct.zeroclaw_config.RenameReport.target_kind",
+        "struct.zeroclaw_config.ResilientLoad",
+        "struct.zeroclaw_config.ResilientLoad.config",
+        "struct.zeroclaw_config.ResilientLoad.dropped",
+        "struct.zeroclaw_config.ResilientLoad.dropped_security",
+        "struct.zeroclaw_config.RiskPreset",
+        "struct.zeroclaw_config.RiskPreset.help",
+        "struct.zeroclaw_config.RiskPreset.label",
+        "struct.zeroclaw_config.RiskPreset.preset_name",
+        "struct.zeroclaw_config.RiskPreset.values",
+        "struct.zeroclaw_config.RootEscapeError",
+        "struct.zeroclaw_config.RootEscapeError.input",
+        "struct.zeroclaw_config.RootEscapeError.root",
+        "struct.zeroclaw_config.RuntimePreset",
+        "struct.zeroclaw_config.RuntimePreset.help",
+        "struct.zeroclaw_config.RuntimePreset.label",
+        "struct.zeroclaw_config.RuntimePreset.preset_name",
+        "struct.zeroclaw_config.RuntimePreset.values",
+        "struct.zeroclaw_config.ScrubAction.DropFromVec.index",
+        "struct.zeroclaw_config.ScrubAction.RemoveMapKey.key",
+        "struct.zeroclaw_config.SecretFieldInfo",
+        "struct.zeroclaw_config.SecretFieldInfo.category",
+        "struct.zeroclaw_config.SecretFieldInfo.is_set",
+        "struct.zeroclaw_config.SecretStore",
+        "struct.zeroclaw_config.SecretStore.enabled",
+        "struct.zeroclaw_config.SecretStore.key_path",
+        "struct.zeroclaw_config.SecurityPolicy",
+        "struct.zeroclaw_config.SecurityPolicy.allowed_commands",
+        "struct.zeroclaw_config.SecurityPolicy.allowed_roots",
+        "struct.zeroclaw_config.SecurityPolicy.allowed_roots_read_only",
+        "struct.zeroclaw_config.SecurityPolicy.allowed_roots_write_only",
+        "struct.zeroclaw_config.SecurityPolicy.allowed_tools",
+        "struct.zeroclaw_config.SecurityPolicy.always_ask",
+        "struct.zeroclaw_config.SecurityPolicy.auto_approve",
+        "struct.zeroclaw_config.SecurityPolicy.autonomy",
+        "struct.zeroclaw_config.SecurityPolicy.block_high_risk_commands",
+        "struct.zeroclaw_config.SecurityPolicy.config_path",
+        "struct.zeroclaw_config.SecurityPolicy.data_dir",
+        "struct.zeroclaw_config.SecurityPolicy.delegation_policy",
+        "struct.zeroclaw_config.SecurityPolicy.excluded_tools",
+        "struct.zeroclaw_config.SecurityPolicy.firejail_args",
+        "struct.zeroclaw_config.SecurityPolicy.forbidden_paths",
+        "struct.zeroclaw_config.SecurityPolicy.max_actions_per_hour",
+        "struct.zeroclaw_config.SecurityPolicy.max_cost_per_day_cents",
+        "struct.zeroclaw_config.SecurityPolicy.require_approval_for_medium_risk",
+        "struct.zeroclaw_config.SecurityPolicy.risk_profile_name",
+        "struct.zeroclaw_config.SecurityPolicy.sandbox_backend",
+        "struct.zeroclaw_config.SecurityPolicy.sandbox_enabled",
+        "struct.zeroclaw_config.SecurityPolicy.shell_env_passthrough",
+        "struct.zeroclaw_config.SecurityPolicy.shell_timeout_secs",
+        "struct.zeroclaw_config.SecurityPolicy.tracker",
+        "struct.zeroclaw_config.SecurityPolicy.workspace_dir",
+        "struct.zeroclaw_config.SecurityPolicy.workspace_only",
+        "struct.zeroclaw_config.SelectorChoice.Existing.0",
+        "struct.zeroclaw_config.SelectorChoice.Fresh.0",
+        "struct.zeroclaw_config.ThinkingConfig",
+        "struct.zeroclaw_config.ThinkingConfig.budget_tokens",
+        "struct.zeroclaw_config.ThinkingConfig.default_level",
+        "struct.zeroclaw_config.ThinkingConfig.native_thinking",
+        "struct.zeroclaw_config.TokenUsage",
+        "struct.zeroclaw_config.TokenUsage.cached_input_tokens",
+        "struct.zeroclaw_config.TokenUsage.cost_usd",
+        "struct.zeroclaw_config.TokenUsage.input_tokens",
+        "struct.zeroclaw_config.TokenUsage.output_tokens",
+        "struct.zeroclaw_config.TokenUsage.pricing_available",
+        "struct.zeroclaw_config.TokenUsage.timestamp",
+        "struct.zeroclaw_config.TokenUsage.total_tokens",
+        "struct.zeroclaw_config.TranscriptionProviderEntry.AssemblyAi.0",
+        "struct.zeroclaw_config.TranscriptionProviderEntry.Deepgram.0",
+        "struct.zeroclaw_config.TranscriptionProviderEntry.Google.0",
+        "struct.zeroclaw_config.TranscriptionProviderEntry.Groq.0",
+        "struct.zeroclaw_config.TranscriptionProviderEntry.LocalWhisper.0",
+        "struct.zeroclaw_config.TranscriptionProviderEntry.OpenAi.0",
+        "struct.zeroclaw_config.TranscriptionProviders",
+        "struct.zeroclaw_config.TranscriptionProviders.assemblyai",
+        "struct.zeroclaw_config.TranscriptionProviders.deepgram",
+        "struct.zeroclaw_config.TranscriptionProviders.google",
+        "struct.zeroclaw_config.TranscriptionProviders.groq",
+        "struct.zeroclaw_config.TranscriptionProviders.local_whisper",
+        "struct.zeroclaw_config.TranscriptionProviders.openai",
+        "struct.zeroclaw_config.TrustConfig",
+        "struct.zeroclaw_config.TrustConfig.correction_penalty",
+        "struct.zeroclaw_config.TrustConfig.decay_half_life_days",
+        "struct.zeroclaw_config.TrustConfig.initial_score",
+        "struct.zeroclaw_config.TrustConfig.regression_threshold",
+        "struct.zeroclaw_config.TrustConfig.success_boost",
+        "struct.zeroclaw_config.TtsProviders",
+        "struct.zeroclaw_config.TtsProviders.edge",
+        "struct.zeroclaw_config.TtsProviders.elevenlabs",
+        "struct.zeroclaw_config.TtsProviders.google",
+        "struct.zeroclaw_config.TtsProviders.openai",
+        "struct.zeroclaw_config.TtsProviders.piper",
+        "struct.zeroclaw_config.V1Config",
+        "struct.zeroclaw_config.V1Config.api_path",
+        "struct.zeroclaw_config.V1Config.api_url",
+        "struct.zeroclaw_config.V1Config.channels_config",
+        "struct.zeroclaw_config.V1Config.default_model",
+        "struct.zeroclaw_config.V1Config.default_provider",
+        "struct.zeroclaw_config.V1Config.default_temperature",
+        "struct.zeroclaw_config.V1Config.embedding_routes",
+        "struct.zeroclaw_config.V1Config.extra_headers",
+        "struct.zeroclaw_config.V1Config.model_providers",
+        "struct.zeroclaw_config.V1Config.passthrough",
+        "struct.zeroclaw_config.V1Config.provider_max_tokens",
+        "struct.zeroclaw_config.V1Config.provider_timeout_secs",
+        "struct.zeroclaw_config.V2Config",
+        "struct.zeroclaw_config.V2Config.agent",
+        "struct.zeroclaw_config.V2Config.agents",
+        "struct.zeroclaw_config.V2Config.autonomy",
+        "struct.zeroclaw_config.V2Config.channels",
+        "struct.zeroclaw_config.V2Config.cost",
+        "struct.zeroclaw_config.V2Config.cron",
+        "struct.zeroclaw_config.V2Config.passthrough",
+        "struct.zeroclaw_config.V2Config.schema_version",
+        "struct.zeroclaw_config.V2Config.swarms",
+        "struct.zeroclaw_config.ValidationWarning",
+        "struct.zeroclaw_config.ValidationWarning.code",
+        "struct.zeroclaw_config.ValidationWarning.message",
+        "struct.zeroclaw_config.VecRoute.Ambiguous.count",
+        "struct.zeroclaw_config.VecRoute.Ambiguous.key",
+        "struct.zeroclaw_config.VecRoute.Hit.index",
+        "struct.zeroclaw_config.VecRoute.Hit.inner_name",
+        "struct.zeroclaw_config.VoiceCallConfig",
+        "struct.zeroclaw_config.VoiceCallConfig.account_id",
+        "struct.zeroclaw_config.VoiceCallConfig.auth_token",
+        "struct.zeroclaw_config.VoiceCallConfig.enabled",
+        "struct.zeroclaw_config.VoiceCallConfig.excluded_tools",
+        "struct.zeroclaw_config.VoiceCallConfig.from_number",
+        "struct.zeroclaw_config.VoiceCallConfig.max_call_duration_secs",
+        "struct.zeroclaw_config.VoiceCallConfig.model_provider",
+        "struct.zeroclaw_config.VoiceCallConfig.require_outbound_approval",
+        "struct.zeroclaw_config.VoiceCallConfig.transcription_logging",
+        "struct.zeroclaw_config.VoiceCallConfig.tts_voice",
+        "struct.zeroclaw_config.VoiceCallConfig.webhook_base_url",
+        "struct.zeroclaw_config.VoiceCallConfig.webhook_port",
+        "toml.demo.config.schema_version",
+        "toml.dev.config.harness-test",
+        "toml.dev.config.harness-test.agents",
+        "toml.dev.config.harness-test.agents.default",
+        "toml.dev.config.harness-test.agents.default.enabled",
+        "toml.dev.config.harness-test.agents.default.model_provider",
+        "toml.dev.config.harness-test.agents.default.risk_profile",
+        "toml.dev.config.harness-test.agents.default.runtime_profile",
+        "toml.dev.config.harness-test.agents.default.workspace",
+        "toml.dev.config.harness-test.gateway",
+        "toml.dev.config.harness-test.gateway.allow_public_bind",
+        "toml.dev.config.harness-test.gateway.host",
+        "toml.dev.config.harness-test.gateway.port",
+        "toml.dev.config.harness-test.gateway.require_pairing",
+        "toml.dev.config.harness-test.memory",
+        "toml.dev.config.harness-test.memory.archive_after_days",
+        "toml.dev.config.harness-test.memory.auto_save",
+        "toml.dev.config.harness-test.memory.backend",
+        "toml.dev.config.harness-test.memory.embedding_provider",
+        "toml.dev.config.harness-test.memory.hygiene_enabled",
+        "toml.dev.config.harness-test.memory.purge_after_days",
+        "toml.dev.config.harness-test.providers.models",
+        "toml.dev.config.harness-test.providers.models.ollama",
+        "toml.dev.config.harness-test.providers.models.ollama.default",
+        "toml.dev.config.harness-test.providers.models.ollama.default.temperature",
+        "toml.dev.config.harness-test.providers.models.ollama.default.uri",
+        "toml.dev.config.harness-test.risk_profiles",
+        "toml.dev.config.harness-test.risk_profiles.default",
+        "toml.dev.config.harness-test.risk_profiles.default.auto_approve",
+        "toml.dev.config.harness-test.risk_profiles.default.auto_approve[*]",
+        "toml.dev.config.harness-test.risk_profiles.default.level",
+        "toml.dev.config.harness-test.runtime_profiles",
+        "toml.dev.config.harness-test.runtime_profiles.default",
+        "toml.dev.config.harness-test.runtime_profiles.default.context_compression",
+        "toml.dev.config.harness-test.runtime_profiles.default.context_compression.enabled",
+        "toml.dev.config.harness-test.runtime_profiles.default.context_compression.tool_result_retrim_chars",
+        "toml.dev.config.harness-test.runtime_profiles.default.max_context_tokens",
+        "toml.dev.config.harness-test.runtime_profiles.default.max_tool_iterations",
+        "toml.dev.config.harness-test.runtime_profiles.default.max_tool_result_chars",
+        "toml.dev.config.harness-test.schema_version",
+        "toml.dev.config.template",
+        "toml.dev.config.template.agents",
+        "toml.dev.config.template.agents.default",
+        "toml.dev.config.template.agents.default.enabled",
+        "toml.dev.config.template.agents.default.model_provider",
+        "toml.dev.config.template.agents.default.risk_profile",
+        "toml.dev.config.template.agents.default.runtime_profile",
+        "toml.dev.config.template.agents.default.workspace",
+        "toml.dev.config.template.cost",
+        "toml.dev.config.template.cost.allow_override",
+        "toml.dev.config.template.cost.daily_limit_usd",
+        "toml.dev.config.template.cost.enabled",
+        "toml.dev.config.template.cost.monthly_limit_usd",
+        "toml.dev.config.template.cost.warn_at_percent",
+        "toml.dev.config.template.gateway",
+        "toml.dev.config.template.gateway.allow_public_bind",
+        "toml.dev.config.template.gateway.host",
+        "toml.dev.config.template.gateway.port",
+        "toml.dev.config.template.gateway.require_pairing",
+        "toml.dev.config.template.gateway.web_dist_dir",
+        "toml.dev.config.template.providers.models",
+        "toml.dev.config.template.providers.models.ollama",
+        "toml.dev.config.template.providers.models.ollama.default",
+        "toml.dev.config.template.providers.models.ollama.default.temperature",
+        "toml.dev.config.template.providers.models.ollama.default.uri",
+        "toml.dev.config.template.risk_profiles",
+        "toml.dev.config.template.risk_profiles.default",
+        "toml.dev.config.template.runtime_profiles",
+        "toml.dev.config.template.runtime_profiles.default",
+        "toml.dev.config.template.schema_version",
+        "toml.scripts.rpi-config.storage.provider.config.table",
+        "toml.scripts.rpi-config.storage.provider.config.tls"
+      ],
+      "missing_by_group": {
+        "cli_commands": 374,
+        "rust_enum": 1857,
+        "rust_struct": 7275,
+        "toml": 1413,
+        "zeroclaw_config": 671
+      },
+      "missing_paths_sample": [
+        "enum.zeroclaw.AgentsCommands",
+        "enum.zeroclaw.AgentsCommands.Create",
+        "enum.zeroclaw.AgentsCommands.Delete",
+        "enum.zeroclaw.AgentsCommands.List",
+        "enum.zeroclaw.AgentsCommands.Rename",
+        "enum.zeroclaw.AuthCommands",
+        "enum.zeroclaw.AuthCommands.EmailLogin",
+        "enum.zeroclaw.AuthCommands.List",
+        "enum.zeroclaw.AuthCommands.Login",
+        "enum.zeroclaw.AuthCommands.Logout",
+        "enum.zeroclaw.AuthCommands.PasteRedirect",
+        "enum.zeroclaw.AuthCommands.PasteToken",
+        "enum.zeroclaw.AuthCommands.Refresh",
+        "enum.zeroclaw.AuthCommands.SetupToken",
+        "enum.zeroclaw.AuthCommands.Use",
+        "enum.zeroclaw.CappedLine",
+        "enum.zeroclaw.CappedLine.Eof",
+        "enum.zeroclaw.CappedLine.Line",
+        "enum.zeroclaw.CappedLine.Truncated",
+        "enum.zeroclaw.ChannelCommands",
+        "enum.zeroclaw.ChannelCommands.Add",
+        "enum.zeroclaw.ChannelCommands.BindTelegram",
+        "enum.zeroclaw.ChannelCommands.Doctor",
+        "enum.zeroclaw.ChannelCommands.List",
+        "enum.zeroclaw.ChannelCommands.Remove",
+        "enum.zeroclaw.ChannelCommands.Send",
+        "enum.zeroclaw.ChannelCommands.Start",
+        "enum.zeroclaw.ChannelsCommands",
+        "enum.zeroclaw.ChannelsCommands.Create",
+        "enum.zeroclaw.ChannelsCommands.Delete",
+        "enum.zeroclaw.ChannelsCommands.List",
+        "enum.zeroclaw.ChannelsCommands.Rename",
+        "enum.zeroclaw.Commands",
+        "enum.zeroclaw.Commands.Acp",
+        "enum.zeroclaw.Commands.Agent",
+        "enum.zeroclaw.Commands.Agents",
+        "enum.zeroclaw.Commands.Browse",
+        "enum.zeroclaw.Commands.Channel",
+        "enum.zeroclaw.Commands.Channels",
+        "enum.zeroclaw.Commands.Completions",
+        "enum.zeroclaw.Commands.Config",
+        "enum.zeroclaw.Commands.Cron",
+        "enum.zeroclaw.Commands.Daemon",
+        "enum.zeroclaw.Commands.Desktop",
+        "enum.zeroclaw.Commands.Doctor",
+        "enum.zeroclaw.Commands.Estop",
+        "enum.zeroclaw.Commands.Eval",
+        "enum.zeroclaw.Commands.Gateway",
+        "enum.zeroclaw.Commands.Hardware",
+        "enum.zeroclaw.Commands.Integrations",
+        "enum.zeroclaw.Commands.MarkdownHelp",
+        "enum.zeroclaw.Commands.MarkdownSchema",
+        "enum.zeroclaw.Commands.Memory",
+        "enum.zeroclaw.Commands.Migrate",
+        "enum.zeroclaw.Commands.Models",
+        "enum.zeroclaw.Commands.Onboard",
+        "enum.zeroclaw.Commands.Peripheral",
+        "enum.zeroclaw.Commands.Plugin",
+        "enum.zeroclaw.Commands.Props",
+        "enum.zeroclaw.Commands.Quickstart",
+        "enum.zeroclaw.Commands.Security",
+        "enum.zeroclaw.Commands.SelfTest",
+        "enum.zeroclaw.Commands.Skills",
+        "enum.zeroclaw.Commands.Sop",
+        "enum.zeroclaw.Commands.Update",
+        "enum.zeroclaw.CompletionShell",
+        "enum.zeroclaw.CompletionShell.Bash",
+        "enum.zeroclaw.CompletionShell.Elvish",
+        "enum.zeroclaw.CompletionShell.Fish",
+        "enum.zeroclaw.CompletionShell.PowerShell",
+        "enum.zeroclaw.CompletionShell.Zsh",
+        "enum.zeroclaw.ConfigCommands",
+        "enum.zeroclaw.ConfigCommands.Complete",
+        "enum.zeroclaw.ConfigCommands.Docs",
+        "enum.zeroclaw.ConfigCommands.Generate",
+        "enum.zeroclaw.ConfigCommands.Get",
+        "enum.zeroclaw.ConfigCommands.Init",
+        "enum.zeroclaw.ConfigCommands.List",
+        "enum.zeroclaw.ConfigCommands.Migrate",
+        "enum.zeroclaw.ConfigCommands.Patch",
+        "enum.zeroclaw.ConfigCommands.Set",
+        "enum.zeroclaw.CronCommands",
+        "enum.zeroclaw.CronCommands.Add",
+        "enum.zeroclaw.CronCommands.AddAt",
+        "enum.zeroclaw.CronCommands.AddEvery",
+        "enum.zeroclaw.CronCommands.List",
+        "enum.zeroclaw.CronCommands.Once",
+        "enum.zeroclaw.CronCommands.Pause",
+        "enum.zeroclaw.CronCommands.Remove",
+        "enum.zeroclaw.CronCommands.Resume",
+        "enum.zeroclaw.CronCommands.Update",
+        "enum.zeroclaw.DeprecatedPropsCommands",
+        "enum.zeroclaw.DeprecatedPropsCommands.Any",
+        "enum.zeroclaw.DoctorCommands",
+        "enum.zeroclaw.DoctorCommands.Models",
+        "enum.zeroclaw.DoctorCommands.Traces",
+        "enum.zeroclaw.DoctorCommands.UpdateContextWindows",
+        "enum.zeroclaw.EstopLevelArg",
+        "enum.zeroclaw.EstopLevelArg.DomainBlock",
+        "enum.zeroclaw.EstopLevelArg.KillAll",
+        "enum.zeroclaw.EstopLevelArg.NetworkKill",
+        "enum.zeroclaw.EstopLevelArg.ToolFreeze",
+        "enum.zeroclaw.EstopSubcommands",
+        "enum.zeroclaw.EstopSubcommands.Resume",
+        "enum.zeroclaw.EvalCommands",
+        "enum.zeroclaw.EvalCommands.Run",
+        "enum.zeroclaw.GatewayCommands",
+        "enum.zeroclaw.GatewayCommands.GetPaircode",
+        "enum.zeroclaw.GatewayCommands.Restart",
+        "enum.zeroclaw.GatewayCommands.Start",
+        "enum.zeroclaw.HardwareCommands",
+        "enum.zeroclaw.HardwareCommands.Discover",
+        "enum.zeroclaw.HardwareCommands.Info",
+        "enum.zeroclaw.HardwareCommands.Introspect",
+        "enum.zeroclaw.InlineProviderAuth",
+        "enum.zeroclaw.InlineProviderAuth.AnthropicSetupToken",
+        "enum.zeroclaw.InlineProviderAuth.Codex",
+        "enum.zeroclaw.IntegrationCommands",
+        "enum.zeroclaw.IntegrationCommands.Info",
+        "enum.zeroclaw.LogLevel",
+        "enum.zeroclaw.LogLevel.Debug",
+        "enum.zeroclaw.LogLevel.Error",
+        "enum.zeroclaw.LogLevel.Info",
+        "enum.zeroclaw.LogLevel.Trace",
+        "enum.zeroclaw.LogLevel.Warn",
+        "enum.zeroclaw.MemoryCommands",
+        "enum.zeroclaw.MemoryCommands.Clear",
+        "enum.zeroclaw.MemoryCommands.Get",
+        "enum.zeroclaw.MemoryCommands.List",
+        "enum.zeroclaw.MemoryCommands.Reindex",
+        "enum.zeroclaw.MemoryCommands.Stats",
+        "enum.zeroclaw.MigrateCommands",
+        "enum.zeroclaw.MigrateCommands.Openclaw",
+        "enum.zeroclaw.ModelCommands",
+        "enum.zeroclaw.ModelCommands.List",
+        "enum.zeroclaw.ModelCommands.Refresh",
+        "enum.zeroclaw.OutputFormat",
+        "enum.zeroclaw.OutputFormat.Json",
+        "enum.zeroclaw.OutputFormat.Table",
+        "enum.zeroclaw.PaircodeAction",
+        "enum.zeroclaw.PaircodeAction.AddClient",
+        "enum.zeroclaw.PaircodeAction.RotateAll",
+        "enum.zeroclaw.PaircodeAction.RotateDevice",
+        "enum.zeroclaw.PaircodeAction.Show",
+        "enum.zeroclaw.PaircodeResult",
+        "enum.zeroclaw.PaircodeResult.Code",
+        "enum.zeroclaw.PaircodeResult.NoCode",
+        "enum.zeroclaw.PeripheralCommands",
+        "enum.zeroclaw.PeripheralCommands.Add",
+        "enum.zeroclaw.PeripheralCommands.Flash",
+        "enum.zeroclaw.PeripheralCommands.FlashNucleo",
+        "enum.zeroclaw.PeripheralCommands.List",
+        "enum.zeroclaw.PeripheralCommands.SetupUnoQ",
+        "enum.zeroclaw.PluginCommands",
+        "enum.zeroclaw.PluginCommands.Info",
+        "enum.zeroclaw.PluginCommands.Install",
+        "enum.zeroclaw.PluginCommands.List",
+        "enum.zeroclaw.PluginCommands.Migrate",
+        "enum.zeroclaw.PluginCommands.Remove",
+        "enum.zeroclaw.PluginCommands.Search",
+        "enum.zeroclaw.ProvidersCommands",
+        "enum.zeroclaw.ProvidersCommands.Create",
+        "enum.zeroclaw.ProvidersCommands.Delete",
+        "enum.zeroclaw.ProvidersCommands.Rename",
+        "enum.zeroclaw.SecurityCommands",
+        "enum.zeroclaw.ServiceCommands",
+        "enum.zeroclaw.ServiceCommands.Install",
+        "enum.zeroclaw.ServiceCommands.Logs",
+        "enum.zeroclaw.ServiceCommands.Restart",
+        "enum.zeroclaw.ServiceCommands.Start",
+        "enum.zeroclaw.ServiceCommands.Stop",
+        "enum.zeroclaw.ServiceCommands.Uninstall",
+        "enum.zeroclaw.SkillBundleCommands",
+        "enum.zeroclaw.SkillBundleCommands.Add",
+        "enum.zeroclaw.SkillBundleCommands.List",
+        "enum.zeroclaw.SkillBundleCommands.Remove",
+        "enum.zeroclaw.SkillBundleCommands.Rename",
+        "enum.zeroclaw.SkillBundleCommands.Show",
+        "enum.zeroclaw.SkillCommands",
+        "enum.zeroclaw.SkillCommands.Add",
+        "enum.zeroclaw.SkillCommands.Audit",
+        "enum.zeroclaw.SkillCommands.Bundle",
+        "enum.zeroclaw.SkillCommands.Edit",
+        "enum.zeroclaw.SkillCommands.Install",
+        "enum.zeroclaw.SkillCommands.List",
+        "enum.zeroclaw.SkillCommands.Remove",
+        "enum.zeroclaw.SkillCommands.Test",
+        "enum.zeroclaw.SkillLocation",
+        "enum.zeroclaw.SkillLocation.Bundle",
+        "enum.zeroclaw.SkillLocation.Global",
+        "enum.zeroclaw.SopCommands",
+        "enum.zeroclaw.SopCommands.Approve",
+        "enum.zeroclaw.SopCommands.Delete",
+        "enum.zeroclaw.SopCommands.Deny",
+        "enum.zeroclaw.SopCommands.Graph",
+        "enum.zeroclaw.SopCommands.List",
+        "enum.zeroclaw.SopCommands.Pending",
+        "enum.zeroclaw.SopCommands.Show",
+        "enum.zeroclaw.SopCommands.Validate",
+        "enum.zeroclaw.SopGraphFormat",
+        "enum.zeroclaw.SopGraphFormat.Adjacency",
+        "enum.zeroclaw.SopGraphFormat.Json",
+        "enum.zeroclaw.SopGraphFormat.Outline",
+        "enum.zeroclaw_api.ApprovalSource",
+        "enum.zeroclaw_api.ApprovalSource.Operator",
+        "enum.zeroclaw_api.ApprovalSource.TimedOut",
+        "enum.zeroclaw_api.ApprovalSource.Unavailable",
+        "enum.zeroclaw_api.ApprovalSource.Unreachable",
+        "enum.zeroclaw_api.AuthMethod",
+        "enum.zeroclaw_api.AuthMethod.Native",
+        "enum.zeroclaw_api.AuthMethod.None",
+        "enum.zeroclaw_api.AuthMethod.Oidc",
+        "enum.zeroclaw_api.AuthMethod.Peercred",
+        "enum.zeroclaw_api.AuthMethod.SharedOperator",
+        "enum.zeroclaw_api.AuthMethod.SshKey",
+        "enum.zeroclaw_api.AuthOutcome",
+        "enum.zeroclaw_api.AuthOutcome.Authenticated",
+        "enum.zeroclaw_api.AuthOutcome.Denied",
+        "enum.zeroclaw_api.AuthOutcome.Trusted",
+        "enum.zeroclaw_api.ChannelApprovalResponse",
+        "enum.zeroclaw_api.ChannelApprovalResponse.AlwaysApprove",
+        "enum.zeroclaw_api.ChannelApprovalResponse.Approve",
+        "enum.zeroclaw_api.ChannelApprovalResponse.Deny",
+        "enum.zeroclaw_api.ChannelApprovalResponse.DenyWithEdit",
+        "enum.zeroclaw_api.ChannelConversationScope",
+        "enum.zeroclaw_api.ChannelConversationScope.ReplyTarget",
+        "enum.zeroclaw_api.ChannelConversationScope.Sender",
+        "enum.zeroclaw_api.ChannelKind",
+        "enum.zeroclaw_api.ChannelKind.AcpChannel",
+        "enum.zeroclaw_api.ChannelKind.Amqp",
+        "enum.zeroclaw_api.ChannelKind.Bluesky",
+        "enum.zeroclaw_api.ChannelKind.ClawdTalk",
+        "enum.zeroclaw_api.ChannelKind.Cli",
+        "enum.zeroclaw_api.ChannelKind.DingTalk",
+        "enum.zeroclaw_api.ChannelKind.Discord",
+        "enum.zeroclaw_api.ChannelKind.Email",
+        "enum.zeroclaw_api.ChannelKind.Filesystem",
+        "enum.zeroclaw_api.ChannelKind.Git",
+        "enum.zeroclaw_api.ChannelKind.GmailPush",
+        "enum.zeroclaw_api.ChannelKind.IMessage",
+        "enum.zeroclaw_api.ChannelKind.Irc",
+        "enum.zeroclaw_api.ChannelKind.Lark",
+        "enum.zeroclaw_api.ChannelKind.Line",
+        "enum.zeroclaw_api.ChannelKind.Linq",
+        "enum.zeroclaw_api.ChannelKind.Matrix",
+        "enum.zeroclaw_api.ChannelKind.Mattermost",
+        "enum.zeroclaw_api.ChannelKind.MoChat",
+        "enum.zeroclaw_api.ChannelKind.NextcloudTalk",
+        "enum.zeroclaw_api.ChannelKind.Nostr",
+        "enum.zeroclaw_api.ChannelKind.Notion",
+        "enum.zeroclaw_api.ChannelKind.Plugin",
+        "enum.zeroclaw_api.ChannelKind.Qq",
+        "enum.zeroclaw_api.ChannelKind.Reddit",
+        "enum.zeroclaw_api.ChannelKind.Signal",
+        "enum.zeroclaw_api.ChannelKind.Slack",
+        "enum.zeroclaw_api.ChannelKind.Telegram",
+        "enum.zeroclaw_api.ChannelKind.Twitch",
+        "enum.zeroclaw_api.ChannelKind.Twitter",
+        "enum.zeroclaw_api.ChannelKind.VoiceCall",
+        "enum.zeroclaw_api.ChannelKind.VoiceWake",
+        "enum.zeroclaw_api.ChannelKind.Wati",
+        "enum.zeroclaw_api.ChannelKind.WeCom",
+        "enum.zeroclaw_api.ChannelKind.WeComWs",
+        "enum.zeroclaw_api.ChannelKind.Webhook",
+        "enum.zeroclaw_api.ChannelKind.Wechat",
+        "enum.zeroclaw_api.ChannelKind.WhatsappBusiness",
+        "enum.zeroclaw_api.ChannelKind.WhatsappWeb",
+        "enum.zeroclaw_api.CleaningStrategy",
+        "enum.zeroclaw_api.CleaningStrategy.Anthropic",
+        "enum.zeroclaw_api.CleaningStrategy.Conservative",
+        "enum.zeroclaw_api.CleaningStrategy.Gemini",
+        "enum.zeroclaw_api.CleaningStrategy.OpenAI",
+        "enum.zeroclaw_api.ConversationMessage",
+        "enum.zeroclaw_api.ConversationMessage.AssistantToolCalls",
+        "enum.zeroclaw_api.ConversationMessage.ToolResults",
+        "enum.zeroclaw_api.CronKind",
+        "enum.zeroclaw_api.CronKind.At",
+        "enum.zeroclaw_api.CronKind.Cron",
+        "enum.zeroclaw_api.CronKind.Interval",
+        "enum.zeroclaw_api.CronKind.Once",
+        "enum.zeroclaw_api.DenyReason",
+        "enum.zeroclaw_api.DenyReason.AliasNotEntitled",
+        "enum.zeroclaw_api.DenyReason.BadCredential",
+        "enum.zeroclaw_api.DenyReason.MfaRequired",
+        "enum.zeroclaw_api.DenyReason.Misconfigured",
+        "enum.zeroclaw_api.DenyReason.NoCredential",
+        "enum.zeroclaw_api.DenyReason.TokenExpired",
+        "enum.zeroclaw_api.ElicitationMode",
+        "enum.zeroclaw_api.ElicitationMode.Form",
+        "enum.zeroclaw_api.ElicitationMode.Url",
+        "enum.zeroclaw_api.ElicitationResponse",
+        "enum.zeroclaw_api.ElicitationResponse.Accept",
+        "enum.zeroclaw_api.ElicitationResponse.Cancel",
+        "enum.zeroclaw_api.ElicitationResponse.Decline",
+        "enum.zeroclaw_api.GateChoiceEmphasis",
+        "enum.zeroclaw_api.GateChoiceEmphasis.Negative",
+        "enum.zeroclaw_api.GateChoiceEmphasis.Neutral",
+        "enum.zeroclaw_api.GateChoiceEmphasis.Positive",
+        "enum.zeroclaw_api.GateChoiceKind",
+        "enum.zeroclaw_api.GateChoiceKind.Approve",
+        "enum.zeroclaw_api.GateChoiceKind.Deny",
+        "enum.zeroclaw_api.GateChoiceKind.Edit",
+        "enum.zeroclaw_api.GateChoiceKind.Revise",
+        "enum.zeroclaw_api.HookResult",
+        "enum.zeroclaw_api.HookResult.Cancel",
+        "enum.zeroclaw_api.HookResult.Continue",
+        "enum.zeroclaw_api.IngressDecision",
+        "enum.zeroclaw_api.IngressDecision.Annotate",
+        "enum.zeroclaw_api.IngressDecision.Drop",
+        "enum.zeroclaw_api.IngressDecision.Gate",
+        "enum.zeroclaw_api.IngressDecision.Loop",
+        "enum.zeroclaw_api.MediaKind",
+        "enum.zeroclaw_api.MediaKind.Audio",
+        "enum.zeroclaw_api.MediaKind.Unknown",
+        "enum.zeroclaw_api.MediaKind.Video",
+        "enum.zeroclaw_api.MemoryCategory",
+        "enum.zeroclaw_api.MemoryCategory.Conversation",
+        "enum.zeroclaw_api.MemoryCategory.Core",
+        "enum.zeroclaw_api.MemoryCategory.Custom",
+        "enum.zeroclaw_api.MemoryCategory.Daily",
+        "enum.zeroclaw_api.MemoryKind",
+        "enum.zeroclaw_api.MemoryKind.AgentScoped",
+        "enum.zeroclaw_api.MemoryKind.AgentScopedMarkdown",
+        "enum.zeroclaw_api.MemoryKind.Episodic",
+        "enum.zeroclaw_api.MemoryKind.InMemory",
+        "enum.zeroclaw_api.MemoryKind.Json",
+        "enum.zeroclaw_api.MemoryKind.Lucid",
+        "enum.zeroclaw_api.MemoryKind.Markdown",
+        "enum.zeroclaw_api.MemoryKind.None",
+        "enum.zeroclaw_api.MemoryKind.Plugin",
+        "enum.zeroclaw_api.MemoryKind.Postgres",
+        "enum.zeroclaw_api.MemoryKind.Procedural",
+        "enum.zeroclaw_api.MemoryKind.Qdrant",
+        "enum.zeroclaw_api.MemoryKind.Semantic",
+        "enum.zeroclaw_api.MemoryKind.Sqlite",
+        "enum.zeroclaw_api.MemoryPolicyDecision",
+        "enum.zeroclaw_api.MemoryPolicyDecision.Allow",
+        "enum.zeroclaw_api.MemoryPolicyDecision.Deny",
+        "enum.zeroclaw_api.ModelProviderKind",
+        "enum.zeroclaw_api.ModelProviderKind.Ai21",
+        "enum.zeroclaw_api.ModelProviderKind.Aihubmix",
+        "enum.zeroclaw_api.ModelProviderKind.Anthropic",
+        "enum.zeroclaw_api.ModelProviderKind.Anyscale",
+        "enum.zeroclaw_api.ModelProviderKind.Astrai",
+        "enum.zeroclaw_api.ModelProviderKind.AtomicChat",
+        "enum.zeroclaw_api.ModelProviderKind.Avian",
+        "enum.zeroclaw_api.ModelProviderKind.Azure",
+        "enum.zeroclaw_api.ModelProviderKind.Baichuan",
+        "enum.zeroclaw_api.ModelProviderKind.Baseten",
+        "enum.zeroclaw_api.ModelProviderKind.Bedrock",
+        "enum.zeroclaw_api.ModelProviderKind.Cerebras",
+        "enum.zeroclaw_api.ModelProviderKind.Cloudflare",
+        "enum.zeroclaw_api.ModelProviderKind.Cohere",
+        "enum.zeroclaw_api.ModelProviderKind.Copilot",
+        "enum.zeroclaw_api.ModelProviderKind.Custom",
+        "enum.zeroclaw_api.ModelProviderKind.Deepinfra",
+        "enum.zeroclaw_api.ModelProviderKind.Deepmyst",
+        "enum.zeroclaw_api.ModelProviderKind.Deepseek",
+        "enum.zeroclaw_api.ModelProviderKind.Doubao",
+        "enum.zeroclaw_api.ModelProviderKind.Fireworks",
+        "enum.zeroclaw_api.ModelProviderKind.Friendli",
+        "enum.zeroclaw_api.ModelProviderKind.Gemini",
+        "enum.zeroclaw_api.ModelProviderKind.GeminiCli",
+        "enum.zeroclaw_api.ModelProviderKind.Glm",
+        "enum.zeroclaw_api.ModelProviderKind.GoogleAi",
+        "enum.zeroclaw_api.ModelProviderKind.Groq",
+        "enum.zeroclaw_api.ModelProviderKind.Huggingface",
+        "enum.zeroclaw_api.ModelProviderKind.Hunyuan",
+        "enum.zeroclaw_api.ModelProviderKind.Hyperbolic",
+        "enum.zeroclaw_api.ModelProviderKind.Kilo",
+        "enum.zeroclaw_api.ModelProviderKind.KiloCli",
+        "enum.zeroclaw_api.ModelProviderKind.Lepton",
+        "enum.zeroclaw_api.ModelProviderKind.Litellm",
+        "enum.zeroclaw_api.ModelProviderKind.Llamacpp",
+        "enum.zeroclaw_api.ModelProviderKind.Lmstudio",
+        "enum.zeroclaw_api.ModelProviderKind.Minimax",
+        "enum.zeroclaw_api.ModelProviderKind.Mistral",
+        "enum.zeroclaw_api.ModelProviderKind.Moonshot",
+        "enum.zeroclaw_api.ModelProviderKind.Nearai",
+        "enum.zeroclaw_api.ModelProviderKind.Nebius",
+        "enum.zeroclaw_api.ModelProviderKind.Novita",
+        "enum.zeroclaw_api.ModelProviderKind.Nscale",
+        "enum.zeroclaw_api.ModelProviderKind.Nvidia",
+        "enum.zeroclaw_api.ModelProviderKind.Ollama",
+        "enum.zeroclaw_api.ModelProviderKind.OpenAi",
+        "enum.zeroclaw_api.ModelProviderKind.OpenAiCodex",
+        "enum.zeroclaw_api.ModelProviderKind.OpenRouter",
+        "enum.zeroclaw_api.ModelProviderKind.Opencode",
+        "enum.zeroclaw_api.ModelProviderKind.Osaurus",
+        "enum.zeroclaw_api.ModelProviderKind.Ovh",
+        "enum.zeroclaw_api.ModelProviderKind.Perplexity",
+        "enum.zeroclaw_api.ModelProviderKind.Plugin",
+        "enum.zeroclaw_api.ModelProviderKind.Qianfan",
+        "enum.zeroclaw_api.ModelProviderKind.Qwen",
+        "enum.zeroclaw_api.ModelProviderKind.Reka",
+        "enum.zeroclaw_api.ModelProviderKind.Sambanova",
+        "enum.zeroclaw_api.ModelProviderKind.Sglang",
+        "enum.zeroclaw_api.ModelProviderKind.Siliconflow",
+        "enum.zeroclaw_api.ModelProviderKind.Stepfun",
+        "enum.zeroclaw_api.ModelProviderKind.Synthetic",
+        "enum.zeroclaw_api.ModelProviderKind.Telnyx",
+        "enum.zeroclaw_api.ModelProviderKind.Together",
+        "enum.zeroclaw_api.ModelProviderKind.Venice",
+        "enum.zeroclaw_api.ModelProviderKind.Vercel",
+        "enum.zeroclaw_api.ModelProviderKind.Vllm",
+        "enum.zeroclaw_api.ModelProviderKind.Xai",
+        "enum.zeroclaw_api.ModelProviderKind.Yi",
+        "enum.zeroclaw_api.ModelProviderKind.Zai",
+        "enum.zeroclaw_api.ObserverEvent",
+        "enum.zeroclaw_api.ObserverEvent.AgentEnd",
+        "enum.zeroclaw_api.ObserverEvent.AgentStart",
+        "enum.zeroclaw_api.ObserverEvent.CacheHit",
+        "enum.zeroclaw_api.ObserverEvent.CacheMiss",
+        "enum.zeroclaw_api.ObserverEvent.ChannelMessage",
+        "enum.zeroclaw_api.ObserverEvent.DeploymentCompleted",
+        "enum.zeroclaw_api.ObserverEvent.DeploymentFailed",
+        "enum.zeroclaw_api.ObserverEvent.DeploymentStarted",
+        "enum.zeroclaw_api.ObserverEvent.Error",
+        "enum.zeroclaw_api.ObserverEvent.HeartbeatTick",
+        "enum.zeroclaw_api.ObserverEvent.HistoryTrimmed",
+        "enum.zeroclaw_api.ObserverEvent.LlmRequest",
+        "enum.zeroclaw_api.ObserverEvent.LlmResponse",
+        "enum.zeroclaw_api.ObserverEvent.MemoryAudit",
+        "enum.zeroclaw_api.ObserverEvent.MemoryRecall",
+        "enum.zeroclaw_api.ObserverEvent.MemoryStore",
+        "enum.zeroclaw_api.ObserverEvent.RagRetrieve",
+        "enum.zeroclaw_api.ObserverEvent.RecoveryCompleted",
+        "enum.zeroclaw_api.ObserverEvent.ToolCall",
+        "enum.zeroclaw_api.ObserverEvent.ToolCallStart",
+        "enum.zeroclaw_api.ObserverEvent.TurnComplete",
+        "enum.zeroclaw_api.ObserverMetric",
+        "enum.zeroclaw_api.ObserverMetric.ActiveSessions",
+        "enum.zeroclaw_api.ObserverMetric.DeploymentLeadTime",
+        "enum.zeroclaw_api.ObserverMetric.QueueDepth",
+        "enum.zeroclaw_api.ObserverMetric.RecoveryTime",
+        "enum.zeroclaw_api.ObserverMetric.RequestLatency",
+        "enum.zeroclaw_api.ObserverMetric.TokensUsed",
+        "enum.zeroclaw_api.OptionDomain",
+        "enum.zeroclaw_api.OptionDomain.AgentAliases",
+        "enum.zeroclaw_api.OptionDomain.ChannelRefs",
+        "enum.zeroclaw_api.OptionDomain.MemoryCategories",
+        "enum.zeroclaw_api.OptionDomain.PeerGroups",
+        "enum.zeroclaw_api.OptionDomain.PeerTargets",
+        "enum.zeroclaw_api.OptionDomain.ToolNames",
+        "enum.zeroclaw_api.PlanPriority",
+        "enum.zeroclaw_api.PlanPriority.High",
+        "enum.zeroclaw_api.PlanPriority.Low",
+        "enum.zeroclaw_api.PlanPriority.Medium",
+        "enum.zeroclaw_api.PlanStatus",
+        "enum.zeroclaw_api.PlanStatus.Completed",
+        "enum.zeroclaw_api.PlanStatus.InProgress",
+        "enum.zeroclaw_api.PlanStatus.Pending",
+        "enum.zeroclaw_api.ProgressEvent",
+        "enum.zeroclaw_api.ProgressEvent.CompactingContext",
+        "enum.zeroclaw_api.ProgressEvent.FinalizingResponse",
+        "enum.zeroclaw_api.ProgressEvent.Planning",
+        "enum.zeroclaw_api.ProgressEvent.Received",
+        "enum.zeroclaw_api.ProgressEvent.RunningTool",
+        "enum.zeroclaw_api.ProgressEvent.WaitingOnModel",
+        "enum.zeroclaw_api.ProviderKind",
+        "enum.zeroclaw_api.ProviderKind.Transcription",
+        "enum.zeroclaw_api.ProviderKind.Tts",
+        "enum.zeroclaw_api.ProviderKind.Tunnel",
+        "enum.zeroclaw_api.Role.Agent",
+        "enum.zeroclaw_api.Role.Channel",
+        "enum.zeroclaw_api.Role.Cron",
+        "enum.zeroclaw_api.Role.Mcp",
+        "enum.zeroclaw_api.Role.Memory",
+        "enum.zeroclaw_api.Role.PeerGroup",
+        "enum.zeroclaw_api.Role.Session",
+        "enum.zeroclaw_api.Role.Skill",
+        "enum.zeroclaw_api.Role.Sop",
+        "enum.zeroclaw_api.Role.Swarm",
+        "enum.zeroclaw_api.Role.System",
+        "enum.zeroclaw_api.Role.Tool",
+        "enum.zeroclaw_api.RoomVisibility",
+        "enum.zeroclaw_api.RoomVisibility.Private",
+        "enum.zeroclaw_api.RoomVisibility.Public",
+        "enum.zeroclaw_api.RuntimeConfigKind",
+        "enum.zeroclaw_api.RuntimeConfigKind.Custom",
+        "enum.zeroclaw_api.RuntimeConfigKind.Default",
+        "enum.zeroclaw_api.RuntimeConfigKind.Temporary",
+        "enum.zeroclaw_api.SemanticSubtype",
+        "enum.zeroclaw_api.SemanticSubtype.Decision",
+        "enum.zeroclaw_api.SemanticSubtype.Entity",
+        "enum.zeroclaw_api.SemanticSubtype.Fact",
+        "enum.zeroclaw_api.SemanticSubtype.Preference",
+        "enum.zeroclaw_api.SourceClass",
+        "enum.zeroclaw_api.SourceClass.External",
+        "enum.zeroclaw_api.SourceClass.Internal",
+        "enum.zeroclaw_api.StreamError",
+        "enum.zeroclaw_api.StreamError.Http",
+        "enum.zeroclaw_api.StreamError.InvalidSse",
+        "enum.zeroclaw_api.StreamError.Io",
+        "enum.zeroclaw_api.StreamError.Json",
+        "enum.zeroclaw_api.StreamError.ModelProvider",
+        "enum.zeroclaw_api.StreamEvent",
+        "enum.zeroclaw_api.StreamEvent.Final",
+        "enum.zeroclaw_api.StreamEvent.PreExecutedToolCall",
+        "enum.zeroclaw_api.StreamEvent.PreExecutedToolResult"
+      ],
+      "note": "Introspected findings not represented in the plugin .rs — this is the gap list. Full catalog is --surface-out."
+    }
+  }
+}

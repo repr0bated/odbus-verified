@@ -1,0 +1,10 @@
+{
+  "$schema": "https://spec.modelcontextprotocol.io/schemas/mcp-config.json",
+  "servers": {
+    "op-dbus-unified": {
+      "serverUrl": "https://10.0.0.3:8090/mcp",
+      "transport": "http",
+      "description": "Unified authenticated MCP control plane"
+    }
+  }
+}

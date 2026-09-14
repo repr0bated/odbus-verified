@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package assistant.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "assistant/common.proto";
+
+service CronService {
+  rpc ListCronJobs(ListCronJobsRequest) returns (ListCronJobsResponse);
+  rpc CreateCronJob(CreateCronJobRequest) returns (CronJob);
+  rpc DeleteCronJob(DeleteCronJobRequest) returns (Empty);
+  rpc TriggerCronJob(TriggerCronJobRequest) returns (CronJob);
+}
+
+message CronJob {
+  string id = 1;
+  string name = 2;
+  string schedule = 3;          // cron expression
+  string agent_id = 4;
+  string task_name = 5;
+  bool enabled = 6;
+  google.protobuf.Timestamp created_at = 7;
+  optional google.protobuf.Timestamp last_run = 8;
+  optional google.protobuf.Timestamp next_run = 9;
+  optional google.protobuf.Struct parameters = 10;
+}
+
+message ListCronJobsRequest {
+  optional string agent_id = 1;
+}
+message ListCronJobsResponse {
+  repeated CronJob jobs = 1;
+}
+
+message CreateCronJobRequest {
+  string name = 1;
+  string schedule = 2;
+  string agent_id = 3;
+  string task_name = 4;
+  bool enabled = 5;
+  optional google.protobuf.Struct parameters = 6;
+}
+
+message DeleteCronJobRequest { string id = 1; }
+message TriggerCronJobRequest { string id = 1; }

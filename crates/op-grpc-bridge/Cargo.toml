@@ -1,0 +1,124 @@
+[package]
+name = "op-grpc-bridge"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Bidirectional D-Bus <-> gRPC bridge with event chain integration"
+
+[dependencies]
+op-core = { workspace = true }
+# gRPC
+tonic = { workspace = true }
+tonic-web = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+prost-reflect = { workspace = true }
+tonic-reflection = { workspace = true }
+tonic-health = { workspace = true }
+
+# HTTP / middleware
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+rustls = { version = "0.23", features = ["aws_lc_rs"] }
+rustls-pemfile = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true, features = ["full", "sync"] }
+tokio-stream = { version = "0.1", features = ["sync", "net"] }
+tokio-tungstenite = { version = "=0.24.0", features = ["connect"] }
+
+# D-Bus
+zbus = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+simd-json = { workspace = true }
+jsonschema = { workspace = true }
+# HTTP client used by the tched_router runtime integration. Cognitive-tool dispatch
+# itself is in-process behind MutationEngine and does not use this dependency.
+reqwest = { workspace = true }
+
+# Internal crates
+op-state-store = { path = "../op-state-store" }
+op-blob = { path = "../op-blob" }
+op-snowball = { path = "../op-snowball" }
+op-state = { path = "../op-state" }
+op-plugins = { path = "../op-plugins" }
+op-identity = { path = "../op-identity" }
+op-network = { path = "../op-network" }
+op-cozo-store = { path = "../op-cozo-store" }
+op-jsonrpc = { path = "../op-jsonrpc" }
+op-mcp.workspace = true
+op-cognitive-mcp = { path = "../op-cognitive-mcp" }
+op-llm = { path = "../op-llm" }
+op-xray-daemon = { path = "../op-xray-daemon" }
+nix = { version = "0.28", features = ["fs", "signal", "user"] }
+socket2 = "0.6"
+
+# Zero-copy shared memory (1:1 Direct Read)
+memmap2 = { workspace = true }
+hex = { workspace = true }
+sha2 = { workspace = true }
+blake3 = { workspace = true }
+ed25519-dalek = "2.2"
+
+# Utilities
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+futures = "0.3"
+async-stream = "0.3"
+base64 = "0.21"
+qdrant-client = "1.17"
+rcgen = "0.13"
+
+[[bin]]
+name = "op-grpc-bridge"
+path = "src/bin/op-grpc-bridge.rs"
+
+[[bin]]
+name = "dump-protos"
+path = "src/bin/dump-protos.rs"
+
+[[bin]]
+name = "op-grants-materializer"
+path = "src/bin/op-grants-materializer.rs"
+
+[build-dependencies]
+tonic-build = { workspace = true }
+op-blob = { path = "../op-blob" }
+op-plugins = { path = "../op-plugins" }
+op-state-store = { path = "../op-state-store" }
+tokio = { workspace = true, features = ["rt"] }
+serde_json = { workspace = true }
+simd-json = { workspace = true }
+
+[dev-dependencies]
+google-cloud-auth = "1.15"
+http = "1"
+tokio-test = "0.4"
+tempfile = { workspace = true }
+serde_json = { workspace = true }
+rustls = { version = "0.23", features = ["aws_lc_rs"] }
+
+[[test]]
+name = "tched_router_integration"
+path = "tests/tched_router_integration.rs"
+
+[[test]]
+name = "tonic_tls_reflection"
+path = "tests/tonic_tls_reflection.rs"
+
+[[test]]
+name = "negative_topology_gates"
+path = "tests/negative_topology_gates.rs"
+
+[[test]]
+name = "oracle_assertion_e2e"
+path = "tests/oracle_assertion_e2e.rs"

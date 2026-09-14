@@ -1,0 +1,1 @@
+include!("depreciated-wg.rs");

@@ -1,0 +1,232 @@
+#!/bin/sh
+exec 2>&1
+
+DEFAULT_READY_PATH=/run/opdbus/runit-ready/op-grpc-bridge
+rm -f -- "$DEFAULT_READY_PATH"
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+# Nothing in the boot path calls back into this service: ovs-vswitchd
+# materializes the topology from conf.db and the ovsbr0-* units use plain `ip`.
+# That absence of a back-edge is what keeps this list cycle-free — check it with
+# deploy/runit/check-dep-cycles.py before any reboot.
+wait_dep opdbus-rundirs
+wait_dep opdbus-grants
+wait_dep dbus
+wait_dep op-runit-systemctl
+wait_dep op-session-bus
+wait_dep ovsdb-server
+# Qdrant is optional here. The bridge initializes its semantic shuttle
+# best-effort and must still open :8090 for D-Bus and gRPC when vector search
+# is unavailable.
+
+set -a
+[ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
+[ -r /etc/op-dbus/decoy-network-client.env ] && . /etc/op-dbus/decoy-network-client.env
+set +a
+
+# The native router's provider-only generation protocol requires a real paired
+# subject. Consume the operator-provisioned token from a root-only file; never
+# accept the secret itself from the broad environment file.
+export TCHED_ROUTER_RUNTIME_ENDPOINT="${TCHED_ROUTER_RUNTIME_ENDPOINT:-http://127.0.0.1:8082}"
+export TCHED_ROUTER_RUNTIME_AGENT="${TCHED_ROUTER_RUNTIME_AGENT:-dashboard}"
+TCHED_ROUTER_RUNTIME_TOKEN_FILE=${TCHED_ROUTER_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/tched-router-runtime-token}
+unset TCHED_ROUTER_RUNTIME_TOKEN
+if [ ! -f "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ] || [ -L "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ]; then
+    echo "protected tched_router runtime token file is missing or not a regular file" >&2
+    exit 78
+fi
+set -- $(stat -Lc '%u %a' "$TCHED_ROUTER_RUNTIME_TOKEN_FILE")
+[ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
+    echo "tched_router runtime token file must be root-owned with mode 0400 or 0600" >&2
+    exit 78
+}
+TCHED_ROUTER_RUNTIME_TOKEN=$(cat "$TCHED_ROUTER_RUNTIME_TOKEN_FILE")
+case "$TCHED_ROUTER_RUNTIME_TOKEN" in
+    ''|*[!A-Za-z0-9._~-]*)
+        echo "tched_router runtime token file has an invalid token" >&2
+        exit 78
+        ;;
+esac
+[ "${#TCHED_ROUTER_RUNTIME_TOKEN}" -le 8192 ] || {
+    echo "tched_router runtime token exceeds its transport bound" >&2
+    exit 78
+}
+export TCHED_ROUTER_RUNTIME_TOKEN
+export OPDBUS_READY_PATH="${OPDBUS_READY_PATH:-$DEFAULT_READY_PATH}"
+rm -f -- "$OPDBUS_READY_PATH"
+
+has_ipv4() {
+    interface=$1
+    address=$2
+    ip -4 -o addr show dev "$interface" 2>/dev/null | awk -v wanted="$address" '
+        {
+            split($4, parts, "/")
+            if (parts[1] == wanted) found = 1
+        }
+        END { exit(found ? 0 : 1) }
+    '
+}
+
+has_local_ipv4() {
+    address=$1
+    ip -4 -o addr show 2>/dev/null | awk -v wanted="$address" '
+        {
+            split($4, parts, "/")
+            if (parts[1] == wanted) found = 1
+        }
+        END { exit(found ? 0 : 1) }
+    '
+}
+
+wait_for_ipv4() {
+    interface=$1
+    address=$2
+    timeout=${3:-90}
+    elapsed=0
+    while ! has_ipv4 "$interface" "$address"; do
+        elapsed=$((elapsed + 1))
+        if [ "$elapsed" -ge "$timeout" ]; then
+            echo "required address $address did not appear on $interface after ${timeout}s" >&2
+            exit 1
+        fi
+        sleep 1
+    done
+}
+
+# svc0 is a required canonical ingress. Do not silently degrade to loopback if
+# the network-critical owner has not materialized the address yet.
+wait_for_ipv4 svc0 10.0.0.3 "${OP_GRPC_SVC0_WAIT_SECS:-90}"
+
+# `:8090` is the fabric: one bridge-owned TLS surface for gRPC-Web, native
+# gRPC, MCP, generated plugin methods, and mutation/control traffic. 3tched
+# identities (10.0.0.2 tonic-web, 10.200.0.2 gRPC) arrive through Xray; this
+# process must not bind them. Loopback and the UDS are internal transports,
+# not additional fabric surfaces.
+FABRIC_BIND="127.0.0.1:8090,10.0.0.3:8090"
+export TCHED_ROUTER_BIND_ADDR="$FABRIC_BIND"
+export GRPC_BIND="$FABRIC_BIND"
+export TCHED_ROUTER_UNIX_SOCKET="${TCHED_ROUTER_UNIX_SOCKET:-/run/opdbus/grpc.sock}"
+export TCHED_ROUTER_TLS_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
+export TCHED_ROUTER_TLS_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
+/usr/local/libexec/3tched/emqx-prepare
+export OP_EMQX_EXHOOK_ENABLE=1
+export OP_EMQX_EXHOOK_BIND_ADDR=127.0.0.1:9000
+export OP_EMQX_EXHOOK_SERVER_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE}"
+export OP_EMQX_EXHOOK_SERVER_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE}"
+export OP_EMQX_EXHOOK_CLIENT_CA_FILE=/etc/emqx/certs/opdbus-ca.crt
+export OP_EMQX_EXHOOK_CLIENT_CERT_FILE=/etc/emqx/certs/emqx-exhook-client.crt
+# The bridge opens this append-only journal with mode 0600 and syncs every
+# accepted nonce before dispatch. Keeping it outside tmpfs preserves replay
+# rejection across service/process restarts.
+export OP_AUTH_REPLAY_DB_PATH="${OP_AUTH_REPLAY_DB_PATH:-/var/lib/op-dbus/auth-replay.db}"
+# The decoy endpoint and its certificate name are deployment inputs loaded
+# above. All kernel WireGuard effects stay on that authenticated decoy owner.
+export OP_DECOY_NATIVE_CA_FILE="${OP_DECOY_NATIVE_CA_FILE:-/etc/op-dbus/decoy-native/ca.pem}"
+export OP_DECOY_NATIVE_CERT_FILE="${OP_DECOY_NATIVE_CERT_FILE:-/etc/op-dbus/decoy-native/bridge.pem}"
+export OP_DECOY_NATIVE_KEY_FILE="${OP_DECOY_NATIVE_KEY_FILE:-/etc/op-dbus/decoy-native/bridge-key.pem}"
+export OPDBUS_SNOWBALL_PATH="${OPDBUS_SNOWBALL_PATH:-/var/lib/opdbus/snowball}"
+export OP_DBUS_CACHE_DIR="${OP_DBUS_CACHE_DIR:-/var/lib/opdbus/cache}"
+export OPDBUS_CACHE_PLACEMENT="${OPDBUS_CACHE_PLACEMENT:-local}"
+export OPDBUS_CACHE_MEMORY_POLICY="${OPDBUS_CACHE_MEMORY_POLICY:-default}"
+export OPDBUS_NUMA_POLICY="${OPDBUS_NUMA_POLICY:-localalloc}"
+export OP_MCP_AUDIENCE_POLICY_PATH="${OP_MCP_AUDIENCE_POLICY_PATH:-/etc/opdbus/mcp-audience-policy.json}"
+export OP_MCP_TOOLSETS_PATH="${OP_MCP_TOOLSETS_PATH:-/etc/opdbus/mcp-toolsets.json}"
+export OP_IDENTITY_PROJECTION_GROUP="${OP_IDENTITY_PROJECTION_GROUP:-secrets}"
+# jacob-bd nlm lives at /usr/local/bin/nlm. Never put NOTEBOOKLM_COOKIES in this
+# environment — those vars freeze stale auth over the on-disk profile.
+unset NOTEBOOKLM_COOKIES NOTEBOOKLM_CSRF_TOKEN NOTEBOOKLM_SESSION_ID NOTEBOOKLM_COOKIE
+export OP_NLM_BIN="${OP_NLM_BIN:-/usr/local/bin/nlm}"
+NLM_READY_DIR=/run/opdbus/runit-ready
+install -d -m 0755 "$NLM_READY_DIR"
+if [ -x "$OP_NLM_BIN" ]; then
+    touch -- "$NLM_READY_DIR/notebooklm-mcp"
+else
+    rm -f -- "$NLM_READY_DIR/notebooklm-mcp"
+fi
+# The singleton control-plane chatbot's service identity. These are public
+# selectors, not credentials; this identity belongs only to that chatbot.
+export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="${OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY:-VaRh9EUieQxA3zIoOj3qNiNIqZoPGpqztPU4muyF1zM=}"
+export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-bea37ecb-92be-197c-660f-09e806f1a34f}"
+export OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-87b0decc-8464-5abf-05d8-b52ec88ff9f1}"
+# Local interactive clients, including Codex, authenticate as the existing
+# human WireGuard principal. The MutationEngine mints SID1 into this same sled;
+# there is deliberately no Codex-specific service identity.
+export OP_LOCAL_HUMAN_WIREGUARD_PUBKEY="${OP_LOCAL_HUMAN_WIREGUARD_PUBKEY:-GEMLT/+I81zs5HDPsOF22ntqGf71OEy6eFKMm7P7Dzk=}"
+export OP_LOCAL_HUMAN_SESSION_ID="${OP_LOCAL_HUMAN_SESSION_ID:-f036f8d8-aabb-c5f2-49c9-18dac19f41ea}"
+export OP_LOCAL_HUMAN_PRINCIPAL_ID="${OP_LOCAL_HUMAN_PRINCIPAL_ID:-0b7933b7-c8d5-1c01-814e-0c3066d19bbd}"
+export OP_LOCAL_HUMAN_DISPLAY_ALIAS="${OP_LOCAL_HUMAN_DISPLAY_ALIAS:-jeremy-wg-f036}"
+# WARP + Xray necessarily replace the decoy's human-WG inner source address.
+# Bind OIA1 to the trusted decoy signature, short lifetime, one-time nonce, and
+# registered human key rather than the legacy Netmaker TCP-source equality.
+export OP_ORACLE_ASSERTION_SOURCE_BINDING="${OP_ORACLE_ASSERTION_SOURCE_BINDING:-trusted-decoy-signature}"
+export RUST_LOG="${GRPC_RUST_LOG:-info}"
+export COGNITIVE_MCP_QDRANT_URL="${COGNITIVE_MCP_QDRANT_URL:-http://10.200.0.2:6334}"
+[ -r /etc/op-dbus/secrets/voyage-api-key ] && export VOYAGE_API_KEY="$(cat /etc/op-dbus/secrets/voyage-api-key)"
+# Phase 2: tool dispatch is in-process ToolRegistry — no HTTP MCP loopback URL.
+
+# These are runtime requirements, not merely build-host packages. Fail with a
+# precise error on a received golden image instead of silently dropping the
+# Btrfs/NUMA path when a target is missing a dependency.
+for command_name in btrfs findmnt numactl taskset; do
+    if ! command -v "$command_name" >/dev/null 2>&1; then
+        echo "required runtime command is missing: $command_name" >&2
+        exit 127
+    fi
+done
+
+existing_path() {
+    candidate=$1
+    while [ ! -e "$candidate" ]; do
+        parent=${candidate%/*}
+        [ -n "$parent" ] || parent=/
+        [ "$parent" != "$candidate" ] || break
+        candidate=$parent
+    done
+    printf '%s\n' "$candidate"
+}
+
+snowball_mount=$(existing_path "$OPDBUS_SNOWBALL_PATH")
+cache_mount=$(existing_path "$OP_DBUS_CACHE_DIR")
+snowball_fstype=$(findmnt -n -o FSTYPE -T "$snowball_mount")
+cache_fstype=$(findmnt -n -o FSTYPE -T "$cache_mount")
+snowball_device=$(findmnt -n -o MAJ:MIN -T "$snowball_mount")
+cache_device=$(findmnt -n -o MAJ:MIN -T "$cache_mount")
+if [ "$snowball_fstype" != btrfs ] || [ "$cache_fstype" != btrfs ]; then
+    echo "snowball timing and cache require Btrfs storage" >&2
+    exit 78
+fi
+if [ "$snowball_device" != "$cache_device" ]; then
+    echo "snowball timing and cache must use the same Btrfs filesystem" >&2
+    exit 78
+fi
+
+case "$OPDBUS_NUMA_POLICY" in
+    localalloc|interleave|default|disabled|none) ;;
+    *)
+        echo "unsupported OPDBUS_NUMA_POLICY: $OPDBUS_NUMA_POLICY" >&2
+        exit 64
+        ;;
+esac
+
+umask 0077
+
+case "$OPDBUS_NUMA_POLICY" in
+    localalloc)
+        exec numactl --localalloc /usr/local/bin/op-grpc-bridge
+        ;;
+    interleave)
+        exec numactl --interleave=all /usr/local/bin/op-grpc-bridge
+        ;;
+    default|disabled|none)
+        exec /usr/local/bin/op-grpc-bridge
+        ;;
+esac

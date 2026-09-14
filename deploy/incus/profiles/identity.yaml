@@ -1,0 +1,24 @@
+# Incus profile: identity CT seed (NIC-less, shared-socket only).
+# Apply: sudo incus profile create identity  (if missing)
+#        sudo incus profile edit identity < this file  OR use provision script.
+#
+# Rules:
+#   - no nic (xray is the only CT with a real NIC)
+#   - no proxy devices (identity path is shared host UDS + loopback)
+#   - root on btrfs pool `default` (RO seed image at create time)
+#   - ghostbridge bind at /opt/run-mounts/ghostbridge (not /run — CT /run is tmpfs)
+
+config:
+  boot.autostart: "false"
+  security.nesting: "false"
+description: NIC-less identity container — shared ghostbridge UDS only
+devices:
+  root:
+    path: /
+    pool: default
+    type: disk
+  ghostbridge-socket:
+    path: /opt/run-mounts/ghostbridge
+    source: /run/ghostbridge
+    type: disk
+name: identity

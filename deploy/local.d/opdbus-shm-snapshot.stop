@@ -1,0 +1,34 @@
+#!/bin/sh
+# Persist the SHM present-state tree across a reboot.
+#
+# /dev/shm is tmpfs, so the projected plugin tree — the mutation fold the
+# MutationEngine rewrites on every mutation — dies at shutdown. The snowball
+# replays the *audit* trail (bounded, newest-N) but never reconstructs the state
+# a mutation produced, so without this a reboot silently drops every plugin back
+# to its schema defaults while the real data sits on disk unread.
+#
+# Runs from runit stage 3's /etc/local.d/*.stop loop, which fires AFTER
+# `sv force-stop`, so the bridge is down and the last projection write has
+# landed. /var/lib is still mounted here; run_shutdown unmounts later.
+set -u
+
+SHM_DIR=/dev/shm/opdbus
+SNAP_DIR=/var/lib/opdbus/shm-snapshot
+
+[ -d "$SHM_DIR/state" ] || exit 0
+command -v rsync >/dev/null 2>&1 || exit 0
+
+install -d -m 0755 "$SNAP_DIR"
+
+# state/ is restored on boot: it is the only copy of mutation-derived state.
+rsync -a --delete "$SHM_DIR/state/" "$SNAP_DIR/state/" 2>/dev/null || exit 0
+
+# plugin-blobs/ is captured for forensics but deliberately NOT restored — blobs
+# are derived from the running binary and reseal themselves at startup. Putting
+# stale ones back would mask a schema change that was supposed to take effect.
+if [ -d "$SHM_DIR/plugin-blobs" ]; then
+    rsync -a --delete "$SHM_DIR/plugin-blobs/" "$SNAP_DIR/plugin-blobs/" 2>/dev/null || true
+fi
+
+date -u +%Y-%m-%dT%H:%M:%SZ > "$SNAP_DIR/.taken-at" 2>/dev/null || true
+exit 0

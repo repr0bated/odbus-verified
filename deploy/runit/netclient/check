@@ -1,0 +1,4 @@
+#!/bin/sh
+pgrep -x netclient >/dev/null 2>&1 || exit 1
+[ -d /sys/class/net/netmaker ] || exit 1
+ip -4 addr show netmaker 2>/dev/null | grep -q '100.69.0.1/'

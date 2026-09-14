@@ -1,0 +1,15 @@
+// In crates/op-tools/src/builtin/mod.rs, add:
+
+pub mod self_tools;
+
+// And in the register_builtin_tools() function or equivalent, add:
+
+use self_tools::create_self_tools;
+
+// If OP_SELF_REPO_PATH is configured, register self-tools
+if op_core::is_self_repo_configured() {
+    for tool in create_self_tools() {
+        registry.register(tool).await;
+    }
+    tracing::info!("✅ Registered {} self-repository tools", 10);
+}

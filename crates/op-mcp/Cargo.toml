@@ -1,0 +1,63 @@
+[package]
+name = "op-mcp"
+version = "0.4.0"
+edition = "2021"
+description = "MCP protocol, tool-registry, and transport library for bridge-owned frontends"
+
+[features]
+default = []
+op-chat = []
+code_search = []
+grpc = ["tonic", "prost", "tonic-build", "tonic-reflection", "tonic-health", "tonic-web"]
+
+[dependencies]
+# Core
+anyhow = "1.0"
+async-trait = "0.1"
+chrono = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+simd-json = { workspace = true }
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+tokio = { version = "1.0", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+futures = "0.3"
+uuid = { version = "1.0", features = ["v4"] }
+prost-types = { workspace = true }
+
+# HTTP/WebSocket
+axum = { version = "0.7", features = ["ws"] }
+hyper = { workspace = true }
+hyper-util = { workspace = true }
+libc = { workspace = true }
+tower = { workspace = true, features = ["util"] }
+tower-http = { version = "0.5", features = ["cors"] }
+reqwest.workspace = true
+
+# D-Bus (for agent executor)
+zbus = { workspace = true }
+
+# CLI
+clap = { version = "4.0", features = ["derive", "env"] }
+
+# gRPC (optional)
+tonic = { workspace = true, optional = true }
+prost = { workspace = true, optional = true }
+tonic-reflection = { workspace = true, optional = true }
+tonic-health = { workspace = true, optional = true }
+tonic-web = { workspace = true, optional = true }
+
+# Internal crates
+op-blob = { path = "../op-blob" }
+op-core = { path = "../op-core" }
+op-identity = { path = "../op-identity" }
+op-tools = { path = "../op-tools" }
+op-plugins = { path = "../op-plugins" }
+op-introspection = { path = "../op-introspection" }
+op-state = { path = "../op-state" }
+op-state-store = { path = "../op-state-store" }
+op-network = { path = "../op-network" }
+
+[build-dependencies]
+tonic-build = { workspace = true, optional = true }

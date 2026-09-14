@@ -1,0 +1,103 @@
+--- a/crates/zeroclaw-gateway/src/sse.rs
++++ b/crates/zeroclaw-gateway/src/sse.rs
+@@ -52,8 +52,8 @@
+ /// and delivery-once**: they ride the live `event_tx` fan-out and are never
+ /// written to the history buffer or the persisted JSONL. A subscriber must be
+ /// connected *before* pairing to observe them; a client that connects late,
+-/// reconnects, or lags past the broadcast ring (the discarded
+-/// `BroadcastStreamRecvError` below) deliberately cannot recover the credential
++/// reconnects, or lags past the broadcast ring (which closes the live stream)
++/// deliberately cannot recover the credential
+ /// — that is the non-persistent boundary, not a bug. Recovery would require
+ /// buffering the secret, which the credential boundary forbids.
+ pub async fn handle_sse_events(
+@@ -83,7 +83,26 @@
+     }
+ 
+     let rx = state.event_tx.subscribe();
+-    let stream = BroadcastStream::new(rx).filter_map(
++    let stream = live_event_stream(rx, auth_enforced);
++
++    Sse::new(stream)
++        .keep_alive(KeepAlive::default())
++        .into_response()
++}
++
++/// Convert the broadcast receiver into the live SSE stream.
++///
++/// A lag error means at least one frame was irretrievably skipped. Ending the
++/// response makes that loss observable to clients, which can subscribe again
++/// and rehydrate their authoritative snapshot. Continuing after the error
++/// would make the last delivered frame look current when it is not.
++fn live_event_stream(
++    rx: tokio::sync::broadcast::Receiver<serde_json::Value>,
++    auth_enforced: bool,
++) -> impl tokio_stream::Stream<Item = Result<Event, Infallible>> {
++    BroadcastStream::new(rx)
++        .take_while(Result::is_ok)
++        .filter_map(
+         move |result: Result<
+             serde_json::Value,
+             tokio_stream::wrappers::errors::BroadcastStreamRecvError,
+@@ -91,14 +110,13 @@
+             match result {
+                 Ok(value) => sse_frame_for_stream(value, auth_enforced)
+                     .map(|v| Ok::<_, Infallible>(Event::default().data(v.to_string()))),
+-                Err(_) => None, // Skip lagged messages
++                // `take_while` terminates before this arm on lag. Retain the
++                // exhaustive arm so the mapping remains fail closed if the
++                // wrapper gains another receive error.
++                Err(_) => None,
+             }
+         },
+-    );
+-
+-    Sse::new(stream)
+-        .keep_alive(KeepAlive::default())
+-        .into_response()
++    )
+ }
+ 
+ /// Decide the deliverable form of a broadcast frame for an SSE stream with the
+@@ -386,6 +404,41 @@
+         (obs, rx, buffer)
+     }
+ 
++    #[tokio::test]
++    async fn live_event_stream_terminates_when_broadcast_receiver_lags() {
++        let (tx, rx) = tokio::sync::broadcast::channel(1);
++        let stream = live_event_stream(rx, true);
++        tokio::pin!(stream);
++
++        // The receiver has capacity for only the newest frame, so its first
++        // receive reports that earlier frames were irretrievably lost.
++        tx.send(serde_json::json!({"type": "first"})).unwrap();
++        tx.send(serde_json::json!({"type": "second"})).unwrap();
++
++        assert!(
++            tokio::time::timeout(std::time::Duration::from_secs(1), stream.next())
++                .await
++                .expect("lagged stream must terminate promptly")
++                .is_none(),
++            "a lagged SSE response must close instead of resuming after a gap"
++        );
++    }
++
++    #[tokio::test]
++    async fn live_event_stream_still_delivers_ordinary_frames() {
++        let (tx, rx) = tokio::sync::broadcast::channel(2);
++        let stream = live_event_stream(rx, true);
++        tokio::pin!(stream);
++        tx.send(serde_json::json!({"type": "cron_result", "job_id": "job-1"}))
++            .unwrap();
++
++        let _frame = tokio::time::timeout(std::time::Duration::from_secs(1), stream.next())
++            .await
++            .expect("ordinary frame must arrive")
++            .expect("stream must remain open")
++            .expect("SSE frame conversion is infallible");
++    }
++
+     #[test]
+     fn tool_call_event_is_broadcast_and_buffered() {
+         let (obs, mut rx, buffer) = make_broadcast();

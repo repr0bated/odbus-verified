@@ -1,0 +1,8 @@
+#!/bin/sh
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-}"
+[ -f /run/opdbus/runit-ready/netmaker-ovs-attach ] || exit 1
+set -a; [ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf; set +a
+BRIDGE="${BRIDGE:-ovsbr0}"
+IFACE="${NETMAKER_PORT:-netmaker}"
+cur=$(/usr/local/libexec/3tched/ovsdb-port port-to-br "$IFACE" 2>/dev/null) || exit 1
+[ "$cur" = "$BRIDGE" ]

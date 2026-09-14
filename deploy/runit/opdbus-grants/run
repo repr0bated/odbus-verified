@@ -1,0 +1,11 @@
+#!/bin/sh
+exec 2>&1
+# Periodically checks /dev/shm/opdbus/capability-grants.json against the
+# installed durable copy at /etc/opdbus/capability-grants.json and
+# rematerializes on drift. Replaces the old one-shot `install` + `exec
+# pause` — that only ever materialized once at service start, so a grants
+# change any time after boot silently never reached SHM until someone
+# noticed an AccessDenied and manually restarted this service. That exact
+# failure mode is documented in the identity-handoff design, section 7.1.
+install -d -m 0755 /run/opdbus/runit-ready
+exec /usr/local/bin/op-grants-materializer run

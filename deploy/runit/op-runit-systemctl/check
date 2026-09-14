@@ -1,0 +1,5 @@
+#!/bin/sh
+busctl --system introspect \
+    org.opdbus.v1.Runit.Systemctl \
+    /org/opdbus/v1/plugins/runit/systemctl \
+    org.opdbus.v1.Runit.Systemctl >/dev/null 2>&1

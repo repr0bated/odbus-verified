@@ -1,0 +1,45 @@
+#!/bin/sh
+# Public :443 SNI demux — mail.* to the mail container's web.sock, else Reality.
+# Bound on the public IP and svc0 (10.0.0.2). Mesh webmail is uds-mail-web.
+/usr/local/libexec/3tched/runit-ready-signal fwd-443
+exec 2>&1
+
+until ip -4 addr show dev 3tched 2>/dev/null | grep -q "10\\.0\\.0\\.2/"; do sleep 1; done
+
+REALITY=/run/ghostbridge/xray-reality.sock
+MAIL=/run/ghostbridge/mail/web.sock
+until [ -S "$REALITY" ]; do sleep 1; done
+
+# Reality is REQUIRED (it is --default and it is the cover story: a probe to
+# :443 that gets connection-refused from an IP that used to serve a valid
+# apple.com handshake is exactly the inconsistency active probing looks for).
+#
+# Mail is OPTIONAL. It only backs the two mail.* SNI maps. Blocking on it took
+# public :443 down entirely — mail-web.sock depends on 127.0.0.1:8440, which
+# nothing provides since the Incus proxy devices were retired, so this waited
+# forever and Reality went dark with it. Wait briefly, then serve without mail.
+i=0
+while [ ! -S "$MAIL" ] && [ "$i" -lt 30 ]; do i=$((i+1)); sleep 1; done
+chmod 666 "$REALITY" 2>/dev/null || true
+chmod 1777 /run/ghostbridge 2>/dev/null || true
+
+pkill -f "socat TCP-LISTEN:443,bind=188.68.58.237" 2>/dev/null || true
+pkill -f "socat TCP-LISTEN:443,bind=10.0.0.2" 2>/dev/null || true
+pkill -f "/usr/local/libexec/3tched/sni-demux.py" 2>/dev/null || true
+sleep 0.2
+
+# Listen set. Public and the local 3tched service segment only. Human identity
+# arrives inside the TLS/gRPC payload through Xray; this edge listener never
+# mints, injects, or derives identity from a transport address.
+set -- --listen 188.68.58.237:443 --listen 10.0.0.2:443
+if [ -S "$MAIL" ]; then
+    chmod 666 "$MAIL" 2>/dev/null || true
+    set -- "$@" \
+      --map mail.3tched.com="$MAIL" \
+      --map 10.0.0.2="$MAIL" \
+      --map mail.ghostbridge.tech="$MAIL"
+else
+    echo "fwd-443: $MAIL absent - serving Reality only (mail SNI unavailable)"
+fi
+
+exec /usr/local/libexec/3tched/sni-demux.py "$@" --default "$REALITY"

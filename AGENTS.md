@@ -1,0 +1,181 @@
+# AGENTS.md
+
+This file provides guidance to the AI agent when working with code in this repository.
+
+## Mandatory skill preload — every agent and model
+
+At the start of every session, before any analysis, planning, edits, or subagent work, read these four files completely:
+
+- `.agents/skills/grpc-expert/SKILL.md`
+- `.agents/skills/grpc-protocol-expert/SKILL.md`
+- `.agents/skills/json-render/SKILL.md`
+- `.agents/skills/ovs-db-analysis/SKILL.md`
+
+Mandatory even when the task does not mention these domains. Every subagent and model handoff must repeat the preload for its own session — a parent's preload does not count for a child. For OP-DBUS PluginSchema, generated plugin services, reflection, and seal/freeze/hot work, `grpc-expert` takes precedence over the generic `grpc-protocol-expert`; use the generic skill for protocol, channel, TLS, streaming, and observability concerns.
+
+## Host-service policy (runit)
+
+This host runs **runit** as PID 1. Manage services with `sudo sv <command> <service>` (e.g., `sudo sv restart op-grpc-bridge`). `sv` needs root to read `supervise/ok`.
+
+- `/etc/runit/sv/<service>/run` is the service definition.
+- Enabled by a symlink in `/etc/runit/runsvdir/default`.
+- Update path: edit the `run` script or install a new binary, then `sudo sv restart <service>`.
+
+Do not edit `/run/runit/service` directly. Do not invoke `runsv`/`runsvdir` by hand. **s6 is legacy**: `service6`, `s6-rc`, `s6-*`, `/run/service` are stale — treat any doc assuming them as historical. Note: `/usr/local/bin/systemctl` on this host is a shim that returns plausible answers — using it masks the deprecation; always use `sv`. Do not use `systemctl` or other foreign service-manager CLIs. Container/app deployment uses D-Bus via `busctl`.
+
+## Xray configuration policy — mandatory
+
+**Xray's live config must exist only at `/etc/xray/xray_config.json` inside the container.** Never point Xray at `/dev/shm/xray_config.json`, `/usr/local/etc/xray/config.json`, or any other disk-backed live path. The static bootstrap config is materialized at boot; the future model-generated generator replaces the same file atomically and reloads through D-Bus. Models must not write or reload Xray directly.
+
+## Deployment (btrfs send/receive)
+
+**Owner clarification (2026-09-13): there is no deployment script. Deployment
+is btrfs send/receive of the prepared filesystem snapshot.** The release
+boundary is the snapshot's contents and the send/receive transfer. Existing
+`deploy/` scripts are source/history or preparation tooling; neither
+`build-golden.sh` nor `btrfs-layout.sh` defines the current deployment mechanism.
+Never hand-copy binaries onto a running host as a deploy step.
+
+`deploy/runit/build-golden.sh` only populates and validates
+`/opt/op-dbus/golden` from already built artifacts and an already sealed,
+persisted catalog. Set `OP_PERSISTED_CATALOG_SOURCE` to use an isolated release
+catalog; the script validates and copies it but never reseals it. It does not
+create the read-only release snapshot, send
+or receive it, activate a received filesystem, install files into the running
+host, or restart services. `--golden-only` remains a compatibility alias for
+its default behavior; the former `--live-only` and `--no-restart` modes are
+retired. Snapshot creation, `btrfs send/receive`, target activation, and any
+deliberate target service action are separate operator steps.
+
+```sh
+CXXFLAGS="-include cstdint" cargo build --workspace --release
+sudo target/release/opblob seal-shm            # explicitly reseal after the build
+sudo target/release/opblob persist             # retain the catalog across reboot
+```
+
+After builds, explicitly run the freshly built `opblob seal-shm`; bridge startup only consumes sealed blobs and never reseals. Use the service's schema-shaping environment when sealing: on this host, `sudo env COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334 target/release/opblob seal-shm` matches `deploy/runit/op-grpc-bridge/run`. Verify the live and persisted catalogs match after restart. Review catalog removals and keep a recoverable copy before a full reseal, which sweeps plugin IDs absent from the build.
+
+The commands above describe build/catalog preparation, not deployment. Do not
+infer a live install or restart from a successful build or snapshot preparation.
+Network-critical services (OVS, uplink, DHCP, session bus) require deliberate
+operator action; a learning or inventory pass never restarts them.
+
+## Workspace shape and build
+
+The workspace has **37 member crates under `crates/`, plus the root `op-dbus`
+package** (38 workspace packages total). The root package has no application
+binary. Binary targets live in members: for example `op-grpc-bridge` and
+`op-grants-materializer` in `op-grpc-bridge`, `op-web-server` and `opdbus` in
+`op-web`, `opblob` in `op-plugins`, and `op-runit-systemctl`/`svd` in
+`op-runit-systemctl`. A binary target or runit directory is source inventory,
+not proof that it is deployed; reconcile it with `enabled-services` and
+`retired-services`. There is no `op-projection` crate. `[patch.crates-io]`
+patches only `rovs-openflow` (vendored fork for OF1.5 `packet_type` match at
+`vendor/rovs-openflow`). `op-ml`, `op-gallery-gen`, `op-uds-relay`, and
+`zeroclaw-gui` have manifests under `crates/` but are outside workspace
+membership; `op-ml` remains disabled for the ort API breakage (`#ml-fixme`).
+
+**Rust-first: no new Python.** New automation, probes, and helpers go in Rust (`cargo run --bin <name> -p <crate> -- <args>`, a small binary in the relevant crate, or a `cargo-script`-style one-shot) or in shell + POSIX tools (`jq`, `curl`, `busctl`, `sv`). Do not add new `.py` files to the repo. Pre-existing scripts under `scripts/` (`export-llm-sessions-to-notebooklm-sources.py`, `or-fusion-archive.py`, `notebook-sources-cleanup.py`, etc.) are grandfathered — maintain them in place, don't propagate the pattern.
+
+All cargo commands run from repo root:
+
+```bash
+cargo build --workspace
+cargo check -p <crate>
+cargo test --workspace --all-targets --all-features
+cargo test -p <crate> <test_name>
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+```
+
+**Build gotchas**:
+- **Release builds need `CXXFLAGS="-include cstdint"`** — vendored RocksDB in `cozorocks` fails on modern GCC without it.
+
+**Frontend — single Vite app, external repo**:
+
+The active UI lives in **`/srv/git/vercel-json-render-ui`** (not in this repo). It is a Vite + React app that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/vercel-json-render/` at `http://10.0.0.1:8080/vercel-json-render/`.
+
+```bash
+# Build and deploy (from the UI repo)
+cd /srv/git/vercel-json-render-ui && ./scripts/deploy-op-web.sh
+
+# Dev server
+cd /srv/git/vercel-json-render-ui && npm run dev
+```
+
+The script runs `npm run build -- --base /vercel-json-render/`, then rsyncs `dist/` into the static directory. op-web does **not** embed the UI via RustEmbed — it serves the deployed static files.
+
+Fresh source exports also include the pinned UI source archive and verifier at
+`vendor/vercel-json-render-ui/build-assets.sh`. That helper builds and checks the
+captured UI without the sibling checkout or live rsync; golden preparation
+stages only its validated asset archive and provenance manifest.
+
+**Deprecated** (do not use for new work):
+- `crates/op-web/ui/` (`zeroclaw-gui-repo`) — old RustEmbed path, no longer the active UI.
+- `/srv/git/operation-dashboard-ui-07` — old operator console, superseded by `vercel-json-render-ui`.
+- `crates/` dev dashboard (`crates/src/`) — legacy dev tooling.
+
+**CI does NOT gate `cargo test` or `cargo clippy`** — never assume "CI green" means tests pass. The only CI code review is the Codex full-repo-review action (best-effort LLM pass, not a deterministic check).
+
+## Conventional commits
+
+`feat` / `fix` / `docs` / etc. with scoped `(<crate>)` and `!` for breaking changes (e.g., `feat(op-plugins)!:`, `fix(mcp):`). Convention only — no enforced hook.
+
+## Verify before marking done
+
+Run `/verify` before reporting work complete. CI won't catch fmt drift, clippy warnings, or test regressions, so the agent must. `/verify` runs `cargo fmt --all -- --check` + `cargo clippy --workspace --all-targets --all-features -- -D warnings` + `cargo test --workspace --all-targets --all-features`.
+
+## Architecture — the load-bearing invariants (read these before touching plugins, state, or identity)
+
+- **D-Bus is the only control plane.** Every plugin is a D-Bus object at `/org/opdbus/v1/plugins/<name>` under `org.opdbus.v1`. No `Command::new(...)` subprocesses, no direct file reads for live state, no polling loops in plugin/service code. New backend capabilities register as plugins in `crates/op-plugins/src/default_registry.rs` — never as new gRPC proto service packages.
+- **The plugin IS the schema — one source of truth, nonnegotiable.** That single schema is sealed into the blob, which IS the plugin. D-Bus method signatures, MCP tool inputs, gRPC shapes, and UI field renderers derive from it. Validate inputs against it. Each plugin defines its schema under `crates/op-plugins/src/state_plugins/`, using `plugin_scaffold_helpers.rs`. **There must be no parallel plugin schema source in a repository-level or plugin `schemas/` directory.** The former plugin capture directories, separate section files, and JSON-file loader have been removed. `crates/op-grpc-bridge/src/schema_loader.rs` still exists by name, but it reads only a manifest-pinned `PluginSchema` from the sealed blob catalog; it is not a file-schema fallback. The tched_router upstream document is imported once into `tched_router_contract.rs`; `tched_router_config_surface.rs` and its methods derive from that plugin-owned contract. Importing a new binary schema must replace that embedded contract through `gen_tched_router_config_surface --import-json`; it must not create a second captured-schema authority. Older docs claiming a single `plugin_schema_defs.rs` are also stale — that file does not exist. Owner reaffirmed this rule on 2026-09-13.
+- **The sealed blob IS the plugin.** Present state lives in the sealed blob catalog at `/dev/shm/opdbus/plugin-blobs/<plugin_id>.<schema_hash16>.blob`. A plugin exists ⟺ its blob is in the catalog. The sole writer is the blob sealer in `op-blob`. Consumers read SHM directly (zero-copy) — they never re-hash and never consult the Rust registry for existence. The old `/dev/shm/opdbus/schemas` folder and `live-schema.json` are gone.
+- **MutationEngine owns state; streaming comes from SHM (owner reaffirmed 2026-09-13).** MutationEngine folds authoritative backend results into the complete state tree, including child objects, and commits that state to canonical SHM before change notifications. Child updates/deletions must preserve unrelated children and parent fields. Existing subscriptions derive their values from committed SHM; an in-memory event payload, method argument, or generator buffer is not a second state authority. Preserve verified principal/session scope for private state. Do not add a separate per-method streaming control plane or claim a buffered unary response provides state streaming.
+- **MCP gateway (settled).** One public MCP door: `:8090` on `op-grpc-bridge` (cognitive MCP is in-process there; no standalone `op-cognitive-mcp` runit service). `compact_mcp` is a retired plugin id. Compact *mode* (4 meta-tools) is in-process in op-web for the singleton control-plane chatbot; it is not an MCP plugin and not a second listener. Never create new shims or point external clients at `op-assistant-grpc`.
+- **External binaries back plugins; the plugin remains the single schema source.** 3tched-router / tched-router (`tched_router` in code) is the framework/schema/plugin integration backed by the autonomous `/usr/bin/zeroclaw` executable. The reproducible native input is pinned in `vendor/tched-router/source.pin`; `vendor/tched-router/build-native.sh` applies the checked-in patches and emits `target/native-artifacts/tched-router/{zeroclaw,manifest.json}` without installing it. `build-golden.sh` validates the pin, patch and binary provenance, then stages the binary, manifest, `/etc/op-dbus/zeroclaw-runtime.toml`, and the tracked default skill bundle into the golden filesystem. The `zeroclaw` runit service verifies that manifest, exact commit, binary digest, and version before exec, then seeds its private runtime config and skills from those staged bootstrap files. A fresh checkout includes the digest-pinned upstream source archive, patches and build recipe; the helper verifies and uses that archive by default. Cargo registry dependencies and system build tools still need provisioning. The executable keeps its upstream name. The plugin contract remains `tched_router_contract.rs`, and source attribution may identify `zeroclaw config schema`.
+- **Owner-confirmed lifecycle and model roles (2026-09-13, reaffirmed 2026-09-14).** Waypipe is retired: its crate directory, Cargo membership, binary target and protocol are absent; `retired-binaries`/`retired-services` prevent stale build or service artifacts from entering golden. Do not restore it in source exports or release inputs. Assistant is the control-plane chatbot, not an `assistant` container. The historical Gemma routing role is model agnostic; the `op-gemma` package name does not constrain the model/provider. Cargo membership and legacy names do not establish active deployments.
+- **Factory role correction (2026-09-14).** The former Factory account/platform plugin is retired from the registry and dispatch. The intended access is CLI/SSH; routing belongs to `tched_router`, and Factory billing requires an actual native binding. Provider names or relabelled direct upstream routes do not prove that binding. A future Missions integration needs its own verified native contract; do not restore the retired REST platform methods from historical fixtures or docs.
+- **Standalone vendor adapters are retired (2026-09-14).** The `op-grpc-adapters` crate directory and its `op.adapters.v1` protocol are absent after Netmaker retirement. Its duplicate mail/MQ services bypassed canonical plugin admission. Do not restore this crate or its old Netmaker clients. The existing bridge `operation.mail.v1` service and retained EMQX plugin are separate surfaces; their presence does not prove every mail or MQTT method is implemented.
+- **Owner-confirmed network topology (2026-09-13).** There is no WireGuard on this server. WireGuard terminates at the decoy; identity is transported by WARP. WireGuard types, plugin declarations, credentials or historical configuration paths in source do not establish a server WireGuard interface or a requirement to install one. Classify those surfaces by their decoy/server role before proposing implementation or retirement. An unwired `wgcf` method is not evidence that the actual WARP identity transport is broken.
+- **Identity minting and metadata (owner reaffirmed 2026-09-13).** The identity subsystem owns minting the identity and its SealedId/SID1 credential blob. This is distinct from an OPBLOB01 plugin blob and does not belong in the plugin catalog. Clients forward the authored credential through the transport's identity metadata; they do not mint or reconstruct it from genesis/trace/key headers. Verify minting, persistence, injection and receiver validation as separate links. Current source assigns session/SID1 creation to MutationEngine with the op-identity format; the existence of an HTTP/MCP helper does not prove every gRPC client injects SID1.
+- **Btrfs is transport, not backup/restore.** Deployment is the prepared snapshot transferred by `btrfs send/receive`, not a deployment script. Subvolume count must stay at **5 or fewer**: 1 golden for send/receive, 2-3 rotating for cache. Despite historical member names such as `timing_subvol`, Snowball `timing/`, `vectors/`, `state/`, and `snapshots/` are ordinary directories inside its data root and never create child subvolumes. `deploy/btrfs-layout.sh` only checks the filesystem and mount point; it does not define or create a backup hierarchy. Historical layouts or script names do not authorize extra subvolumes or a different deployment mechanism.
+- **No SQLite — use CozoDB.** CozoDB (`op-cozo-store`) is the embedded database for this project. Do not add new `rusqlite` or other SQLite use. `op-cache/src/btrfs_cache.rs` already uses a Cozo index; current `workstack_cache.rs`, `workflow_cache.rs`, `workflow_tracker.rs`, and `pattern_tracker.rs` still use `rusqlite` and remain migration debt rather than an approved pattern.
+
+## Signals and task board
+
+- **Append observations to `SIGNALS.md`** rather than letting them evaporate in chat. Three signal types: `💡 SUGGESTION` · `⚠️ CONCERN` · `👁️ OBSERVATION`. Each row: date · model · signal · optional `→ OD-##` link. Models leave status `open`. Promote anything actionable to `WISHLIST.md` as an `OD-##` and link it back.
+- **`WISHLIST.md` is the canonical task board** — do not create new TODO docs. Priority buckets: Critical/Urgent → Current → Next → Future → When I Have Staff. Dispatch syntax: "dispatch <ID> to <agent>" spawns an agent with the task context and updates status here.
+- **Read recent `SIGNALS.md` rows before non-trivial work** in the area they touch — the file records load-bearing gotchas (stale vendored deps, live/deployed drift, the live-vs-intent identity topology) that source alone will not surface.
+
+## Stale documentation
+
+- **README.md is stale**: crate count (31) is wrong, `cd lovable` is a deleted directory, `sudo service6` references are retired. Prefer AGENTS.md and source over README claims.
+- Many older deploy scripts and HANDOFF docs still reference s6 — treat them as archival; runit/`sv` is current.
+- Anything mentioning `/dev/shm/plugin_schema.dat`, `live-schema.json`, or `/dev/shm/opdbus/schemas` is describing a retired design.
+- Anything mentioning `OIB1`, `oib1:`, `blob_ref`, `SessionIdentityBlob`, or `x-opdbus-identity-blob-bin` is pre-2026-09-01 and stale; the session-identity envelope is now `SID1` / `SealedId`.
+- Anything referencing `crates/op-web/ui/` as the active UI, or `operation-dashboard-ui-07` as the operator console — the active UI is `/srv/git/vercel-json-render-ui`, deployed via its `scripts/deploy-op-web.sh`.
+- Older deployment-script and backup/restore hierarchy descriptions are not current deployment authority. Deployment is btrfs send/receive of the prepared snapshot — see architecture invariants above.
+
+## Subagent and model selection
+
+**Owner preference (2026-09-13): assess task difficulty and required reasoning
+before delegation, and use the cheapest available model that can complete it
+reliably. Do not inherit an expensive parent model by default.** For the current
+model pool, use the low-cost `gpt-5.6-luna` for lookups, inventory extraction,
+documentation assembly, builds/tests and routine checks; choose low effort for
+mechanical work and medium effort for bounded reasoning. Escalate only when
+specific complexity or a failed attempt warrants it, and briefly state why.
+
+Keep the primary agent available for user communication and coordination.
+Delegate longer execution/research jobs, use nonblocking progress checks, and
+avoid long blocking tool calls on the primary. User messages steer active work;
+answer them promptly while delegated work continues. Small immediate edits and
+decisions can remain with the primary when delegation would add overhead.
+
+Prefer the **least-expensive subagent that preserves quality** for builds and tests:
+
+- `Explore` (fast read-only) for locating code, grepping symbols, answering "where is X."
+- `Plan` for architecture/design before writing code.
+- `general-purpose` only when the task needs multi-step reasoning or execution that Explore/Plan cannot cover.
+- Reserve expensive model overrides (Opus-class) for tasks that genuinely require them — complex cross-crate reasoning, security review, or ambiguous architectural decisions. Standard edits, build fixes, and test work belong on the default agent.
+- Do not spawn a subagent for a single-file edit or a direct grep you can do yourself.

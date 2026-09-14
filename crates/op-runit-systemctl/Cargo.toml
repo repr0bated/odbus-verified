@@ -1,0 +1,26 @@
+[package]
+name = "op-runit-systemctl"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "D-Bus service for systemctl-to-runit command mapping on Artix Linux"
+
+[dependencies]
+op-core = { path = "../op-core" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+simd-json = { workspace = true }
+zbus = { workspace = true }
+
+[[bin]]
+name = "op-runit-systemctl"
+path = "src/main.rs"
+
+[[bin]]
+name = "svd"
+path = "src/bin/svd.rs"

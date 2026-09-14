@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package assistant.v1;
+
+import "google/protobuf/struct.proto";
+import "assistant/common.proto";
+
+service ModelService {
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  rpc GetModel(GetModelRequest) returns (Model);
+  rpc SwitchModel(SwitchModelRequest) returns (Model);
+}
+
+message Model {
+  string id = 1;
+  string name = 2;
+  string provider = 3;
+  string family = 4;
+  uint32 context_window = 5;
+  bool active = 6;
+  optional google.protobuf.Struct capabilities = 7;
+}
+
+message ListModelsRequest {
+  string filter = 1;
+}
+message ListModelsResponse {
+  repeated Model models = 1;
+}
+
+message GetModelRequest { string id = 1; }
+
+message SwitchModelRequest {
+  string model_id = 1;
+  optional string agent_id = 2;
+  optional string session_id = 3;
+}

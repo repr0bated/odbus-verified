@@ -1,0 +1,41 @@
+#!/bin/sh
+# Host netclient joins after the local NetMaker control plane is on loopback.
+# API is https://127.0.0.1:8443; EMQX MQTT/WebSocket is demuxed by the
+# op-grpc-bridge at ws://127.0.0.1:8090/mqtt.
+exec 2>&1
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-}"
+[ -r /etc/op-dbus/netmaker-broker.env ] && . /etc/op-dbus/netmaker-broker.env
+BROKER_PORT="${NETMAKER_BROKER_PORT:-8090}"
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 180 ] && { echo "dependency $1 not ready after 180s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+wait_port() {
+    host="$1"
+    port="$2"
+    i=0
+    until python3 -c "import socket; socket.create_connection(('$host', $port), 1).close()" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 180 ] && { echo "netclient: $host:$port not listening after 180s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+wait_dep opdbus-rundirs
+wait_dep incus-ct-netmaker
+wait_dep op-grpc-bridge
+sv start uds-netmaker-api >/dev/null 2>&1 || true
+sv start nm-api-tls >/dev/null 2>&1 || true
+wait_port 127.0.0.1 8081
+wait_port 127.0.0.1 "$BROKER_PORT"
+wait_port 127.0.0.1 8443
+
+/usr/local/libexec/3tched/runit-ready-signal netclient
+exec /usr/bin/netclient daemon

@@ -1,0 +1,9 @@
+// Add this to crates/op-mcp/src/lib.rs
+
+// At the top with other module declarations:
+#[cfg(feature = "grpc")]
+pub mod grpc;
+
+// Re-export gRPC types when feature is enabled
+#[cfg(feature = "grpc")]
+pub use grpc::{GrpcTransport, GrpcConfig, GrpcClient, GrpcClientConfig};

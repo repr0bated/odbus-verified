@@ -1,0 +1,2 @@
+#!/bin/sh
+[ -f /run/opdbus/runit-ready/ovsbr0-uplink ]

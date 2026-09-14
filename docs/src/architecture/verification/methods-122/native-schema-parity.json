@@ -1,0 +1,100 @@
+{
+  "status": "passed",
+  "command": "/srv/git/odbus/target/native-artifacts/tched-router/zeroclaw --config-dir /var/tmp/odbus-native-schema-124/config config schema",
+  "binary_sha256": "8ee2629d9fd6f63c9d1ad4bfd4f5cc7d7c911f8b782379806cc0c915e5c0da4d",
+  "normalized_schema_sha256": "b1da7f77c4110c1505bdd6c6dc3293611cf05b436feb14c5e999569c0edabd74",
+  "normalization": "Only the isolated config-root prefix and the imported config-root prefix were replaced by <CONFIG_DIR>/; every replacement is within a JSON Schema default. All remaining JSON values, constraints and metadata match exactly.",
+  "normalized_default_count": 13,
+  "normalized_default_paths": [
+    [
+      "$defs",
+      "EstopConfig",
+      "properties",
+      "state_file",
+      "default"
+    ],
+    [
+      "$defs",
+      "KnowledgeConfig",
+      "properties",
+      "db_path",
+      "default"
+    ],
+    [
+      "$defs",
+      "PluginsConfig",
+      "properties",
+      "plugins_dir",
+      "default"
+    ],
+    [
+      "$defs",
+      "ProjectIntelConfig",
+      "properties",
+      "report_output_dir",
+      "default"
+    ],
+    [
+      "$defs",
+      "SecurityConfig",
+      "properties",
+      "estop",
+      "default",
+      "state_file"
+    ],
+    [
+      "$defs",
+      "SecurityOpsConfig",
+      "properties",
+      "playbooks_dir",
+      "default"
+    ],
+    [
+      "$defs",
+      "SecurityOpsConfig",
+      "properties",
+      "report_output_dir",
+      "default"
+    ],
+    [
+      "properties",
+      "knowledge",
+      "default",
+      "db_path"
+    ],
+    [
+      "properties",
+      "plugins",
+      "default",
+      "plugins_dir"
+    ],
+    [
+      "properties",
+      "project_intel",
+      "default",
+      "report_output_dir"
+    ],
+    [
+      "properties",
+      "security",
+      "default",
+      "estop",
+      "state_file"
+    ],
+    [
+      "properties",
+      "security_ops",
+      "default",
+      "playbooks_dir"
+    ],
+    [
+      "properties",
+      "security_ops",
+      "default",
+      "report_output_dir"
+    ]
+  ],
+  "native_runtime_config": "isolated temporary directory",
+  "plugin_source": "crates/op-plugins/src/state_plugins/tched_router_contract.rs",
+  "source_reimported": false
+}

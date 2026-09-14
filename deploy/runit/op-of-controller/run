@@ -1,0 +1,21 @@
+#!/bin/sh
+exec 2>&1
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+wait_dep ovsbr0-svc-addr
+set -a
+[ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
+[ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf
+set +a
+export OF_CONTROLLER_LISTEN="${OF_CONTROLLER_LISTEN:-127.0.0.1:6653}"
+export OF_FLOW_PAIRS="${OF_FLOW_PAIRS:-}"
+export RUST_LOG="${RUST_LOG:-info}"
+/usr/local/libexec/3tched/runit-ready-signal op-of-controller
+exec /usr/local/bin/op-of-controller

@@ -1,0 +1,33 @@
+scope: DEBUG packaging/runtime linkage proof only; not release-optimized, golden, btrfs, deployed, or daemon execution
+source_edits: none by proof runner
+services_changed: none
+live_catalogs_touched: none
+credentials_used: none
+proof_root: /var/tmp/odbus-decoy-package-proof.cLuFA9
+artifact: /srv/git/odbus/target/container-artifacts/verification-debug/decoy-network-x86_64-linux-gnu-bundle.tar
+debug_op_decoy_network_sha256: 767b99b0d3c97638f6820483d4cc73b53c0c385095b112f7ff9c7c17885795e8
+debug_opblob_sha256: adbc5ab02424241c3fb78d13291c477c1a6ff46222d92219d18576372035f813
+sealed_manifest_sha256: 97a79552c0bdf645a30a0af486d7cdc518e17e5f5deeee86b73696af978a4369
+persisted_manifest_sha256: 97a79552c0bdf645a30a0af486d7cdc518e17e5f5deeee86b73696af978a4369
+catalog_hash: f0715eb44e8e6a3965cb7fe7a7c129fb1fc3e3d80a40da02faee3337555cfd37
+catalog_generation: 66
+catalog_plugin_count: 66
+catalog_file_set_sha256: 6d86e1160a626264a59ee22a8a7f574be110c217b4b92bf1da4ed40a51e38d40
+artifact_tar_sha256: abec9890e7ac4421e328a79884aa189a73db597a8d2b9f4c5c5cf0a42c1025d5
+artifact_manifest_sha256: 42d2f85c49087f24181810e00d98df0cb9951d6a70c7a4e563cadcf5832fc2a0
+artifact_payload_checksum_list_sha256: 162a78dee86572636347e685f808241122dba21f8d9e99c0de5e0c439b2f4503
+loader_op_decoy_network_list_sha256: 85ee353f5850cc5e0e2162804c8def63b895b5172ef8086806f9d8462e63445e
+loader_opblob_list_sha256: d4e494d44f1f9148a7bb36fe56c296e5d4098786cfc581622cd9819b347d3ac8
+frozen_helper_pre_fix_sha256: 11ba0ca8fcd672a61d477d637ad0f3def9ceada5724cc31981bdd663715ea3ed
+repaired_repo_and_execution_helper_sha256: 6d5d5631b94960e56325d31717f8da0bb73428201092b018a7509d19a96af359
+execution_patch_sha256: 5d0192f0e527edabb9fc468c2f57bcf8ea400ef6fa2be4b4e42a5e147bf13706
+packaging_log_sha256: 1144eb05c99a51f20dcefaf5f570ec664590d13c9fbc041b7a358738ab1ca575
+
+[recorded commands]
+COMMAND COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334 /srv/git/odbus/target/debug/opblob seal-plugins /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed
+COMMAND /srv/git/odbus/target/debug/opblob persist /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed /var/tmp/odbus-decoy-package-proof.cLuFA9/persisted
+COMMAND OP_DECOY_RELEASE_DIR=/srv/git/odbus/target/debug OP_DECOY_PERSISTED_CATALOG_SOURCE=/var/tmp/odbus-decoy-package-proof.cLuFA9/persisted OP_DECOY_ARTIFACT_DIR=/srv/git/odbus/target/container-artifacts/verification-debug /var/tmp/odbus-source-closure-check-67/deploy/decoy-network/build-artifact.sh
+DEVIATION execution-only helper patch: accept dotted semantic plugin versions; see helper-execution-only.patch
+COMMAND OP_DECOY_RELEASE_DIR=/srv/git/odbus/target/debug OP_DECOY_PERSISTED_CATALOG_SOURCE=/var/tmp/odbus-decoy-package-proof.cLuFA9/persisted OP_DECOY_ARTIFACT_DIR=/srv/git/odbus/target/container-artifacts/verification-debug /var/tmp/odbus-decoy-package-proof.cLuFA9/helper-exec/deploy/decoy-network/build-artifact.sh
+COMMAND packaged ld-linux-x86-64.so.2 --library-path packaged/lib --list packaged/op-decoy-network.bin
+COMMAND packaged ld-linux-x86-64.so.2 --library-path packaged/lib --list packaged/opblob.bin

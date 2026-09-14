@@ -1,0 +1,217 @@
+# ZeroClaw introspect → plugin gaps
+
+Goal: findings from Repomix introspection that are **not** in the existing plugin.
+
+## Summary
+
+- Surface paths total: **21220**
+- Signal paths considered: **15340**
+- Approx covered by plugin: **2724**
+- **Missing from plugin: 12616**
+- Missing CLI command variants: **118**
+- Missing zeroclaw-config fields: **331**
+
+## Plugin has these methods today
+
+- `Chat`
+- `GetConfigSchema`
+- `GetConfigurableOptions`
+- `GetModelAssignments`
+- `GetModelRoutes`
+- `GetProviderCatalog`
+- `GetRouter`
+- `GetState`
+- `GetStructuredOutput`
+- `GetTools`
+- `ListModels`
+- `ListProviders`
+- `ListUiSurfaces`
+- `ListUserContainerMemoryNamespaceOptions`
+- `ResolveRoute`
+- `SetCozoRetrievalModel`
+- `SetModel`
+- `SetObfuscationModel`
+- `SetOvsRoutingModel`
+- `SetProvider`
+- `SetQdrantRetrievalModel`
+- `SetVectorizationModel`
+
+## CLI command variants NOT in plugin methods
+
+- `enum.zeroclaw.AgentsCommands.Create`
+- `enum.zeroclaw.AgentsCommands.Delete`
+- `enum.zeroclaw.AgentsCommands.List`
+- `enum.zeroclaw.AgentsCommands.Rename`
+- `enum.zeroclaw.AuthCommands.EmailLogin`
+- `enum.zeroclaw.AuthCommands.List`
+- `enum.zeroclaw.AuthCommands.Login`
+- `enum.zeroclaw.AuthCommands.PasteRedirect`
+- `enum.zeroclaw.AuthCommands.PasteToken`
+- `enum.zeroclaw.AuthCommands.Refresh`
+- `enum.zeroclaw.AuthCommands.SetupToken`
+- `enum.zeroclaw.AuthCommands.Use`
+- `enum.zeroclaw.ChannelCommands.Add`
+- `enum.zeroclaw.ChannelCommands.BindTelegram`
+- `enum.zeroclaw.ChannelCommands.Doctor`
+- `enum.zeroclaw.ChannelCommands.List`
+- `enum.zeroclaw.ChannelCommands.Remove`
+- `enum.zeroclaw.ChannelCommands.Send`
+- `enum.zeroclaw.ChannelCommands.Start`
+- `enum.zeroclaw.ChannelsCommands.Create`
+- `enum.zeroclaw.ChannelsCommands.Delete`
+- `enum.zeroclaw.ChannelsCommands.List`
+- `enum.zeroclaw.ChannelsCommands.Rename`
+- `enum.zeroclaw.Commands.Acp`
+- `enum.zeroclaw.Commands.Agents`
+- `enum.zeroclaw.Commands.Channel`
+- `enum.zeroclaw.Commands.Channels`
+- `enum.zeroclaw.Commands.Completions`
+- `enum.zeroclaw.Commands.Cron`
+- `enum.zeroclaw.Commands.Daemon`
+- `enum.zeroclaw.Commands.Desktop`
+- `enum.zeroclaw.Commands.Doctor`
+- `enum.zeroclaw.Commands.Estop`
+- `enum.zeroclaw.Commands.Eval`
+- `enum.zeroclaw.Commands.Integrations`
+- `enum.zeroclaw.Commands.MarkdownHelp`
+- `enum.zeroclaw.Commands.MarkdownSchema`
+- `enum.zeroclaw.Commands.Migrate`
+- `enum.zeroclaw.Commands.Onboard`
+- `enum.zeroclaw.Commands.Peripheral`
+- `enum.zeroclaw.Commands.Props`
+- `enum.zeroclaw.Commands.Quickstart`
+- `enum.zeroclaw.Commands.Security`
+- `enum.zeroclaw.Commands.Skills`
+- `enum.zeroclaw.Commands.Sop`
+- `enum.zeroclaw.Commands.Update`
+- `enum.zeroclaw.ConfigCommands.Docs`
+- `enum.zeroclaw.ConfigCommands.Get`
+- `enum.zeroclaw.ConfigCommands.Init`
+- `enum.zeroclaw.ConfigCommands.List`
+- `enum.zeroclaw.ConfigCommands.Migrate`
+- `enum.zeroclaw.ConfigCommands.Set`
+- `enum.zeroclaw.CronCommands.Add`
+- `enum.zeroclaw.CronCommands.AddAt`
+- `enum.zeroclaw.CronCommands.AddEvery`
+- `enum.zeroclaw.CronCommands.List`
+- `enum.zeroclaw.CronCommands.Once`
+- `enum.zeroclaw.CronCommands.Pause`
+- `enum.zeroclaw.CronCommands.Remove`
+- `enum.zeroclaw.CronCommands.Resume`
+- `enum.zeroclaw.CronCommands.Update`
+- `enum.zeroclaw.DeprecatedPropsCommands.Any`
+- `enum.zeroclaw.DoctorCommands.Traces`
+- `enum.zeroclaw.DoctorCommands.UpdateContextWindows`
+- `enum.zeroclaw.EvalCommands.Run`
+- `enum.zeroclaw.GatewayCommands.GetPaircode`
+- `enum.zeroclaw.GatewayCommands.Restart`
+- `enum.zeroclaw.GatewayCommands.Start`
+- `enum.zeroclaw.HardwareCommands.Discover`
+- `enum.zeroclaw.HardwareCommands.Info`
+- `enum.zeroclaw.HardwareCommands.Introspect`
+- `enum.zeroclaw.IntegrationCommands.Info`
+- `enum.zeroclaw.MemoryCommands.Clear`
+- `enum.zeroclaw.MemoryCommands.Get`
+- `enum.zeroclaw.MemoryCommands.List`
+- `enum.zeroclaw.MemoryCommands.Reindex`
+- `enum.zeroclaw.MemoryCommands.Stats`
+- `enum.zeroclaw.MigrateCommands.Openclaw`
+- `enum.zeroclaw.ModelCommands.List`
+- `enum.zeroclaw.ModelCommands.Refresh`
+- … +38 more
+
+## zeroclaw-config struct fields NOT in plugin
+
+- `struct.zeroclaw_config.A2aServerConfig.bind`
+- `struct.zeroclaw_config.A2aServerConfig.enabled`
+- `struct.zeroclaw_config.A2aServerConfig.port`
+- `struct.zeroclaw_config.A2aServerConfig.public_base_url`
+- `struct.zeroclaw_config.A2aServerSection.server`
+- `struct.zeroclaw_config.ActionTracker.actions`
+- `struct.zeroclaw_config.AgentA2aConfig.exposed_skills`
+- `struct.zeroclaw_config.AgentCostStats.agent_alias`
+- `struct.zeroclaw_config.AgentCostStats.cached_input_tokens`
+- `struct.zeroclaw_config.AgentCostStats.cost_usd`
+- `struct.zeroclaw_config.AgentCostStats.input_tokens`
+- `struct.zeroclaw_config.AgentCostStats.output_tokens`
+- `struct.zeroclaw_config.AgentCostStats.request_count`
+- `struct.zeroclaw_config.AgentCostStats.total_tokens`
+- `struct.zeroclaw_config.AgentIdentity.personality_file`
+- `struct.zeroclaw_config.AgentIdentity.personality_files`
+- `struct.zeroclaw_config.AgentIdentity.system_prompt`
+- `struct.zeroclaw_config.AgentTotals.cost_usd`
+- `struct.zeroclaw_config.AgentTotals.request_count`
+- `struct.zeroclaw_config.AgentTotals.total_tokens`
+- `struct.zeroclaw_config.AgentWorkspaceConfig.read_memory_from`
+- `struct.zeroclaw_config.AgentWorkspaceConfig.unrestricted_filesystem`
+- `struct.zeroclaw_config.AliasKind.Channel.channel_type`
+- `struct.zeroclaw_config.AliasKind.Provider.family`
+- `struct.zeroclaw_config.AppliedOverrides.snapshots`
+- `struct.zeroclaw_config.ApprovalRoute.approver_channel`
+- `struct.zeroclaw_config.ApprovalRoute.on_no_approver`
+- `struct.zeroclaw_config.ApprovalRoute.timeout_secs`
+- `struct.zeroclaw_config.AutoClassifyConfig.complex_hint`
+- `struct.zeroclaw_config.AutoClassifyConfig.cost_optimized_hint`
+- `struct.zeroclaw_config.AutoClassifyConfig.simple_hint`
+- `struct.zeroclaw_config.AutoClassifyConfig.standard_hint`
+- `struct.zeroclaw_config.BrowserDelegateConfig.allowed_domains`
+- `struct.zeroclaw_config.BrowserDelegateConfig.blocked_domains`
+- `struct.zeroclaw_config.BrowserDelegateConfig.chrome_profile_dir`
+- `struct.zeroclaw_config.BrowserDelegateConfig.cli_binary`
+- `struct.zeroclaw_config.BrowserDelegateConfig.enabled`
+- `struct.zeroclaw_config.BrowserDelegateConfig.task_timeout_secs`
+- `struct.zeroclaw_config.BudgetCheck.Exceeded.current_usd`
+- `struct.zeroclaw_config.BudgetCheck.Exceeded.limit_usd`
+- `struct.zeroclaw_config.BudgetCheck.Exceeded.period`
+- `struct.zeroclaw_config.BudgetCheck.Warning.current_usd`
+- `struct.zeroclaw_config.BudgetCheck.Warning.limit_usd`
+- `struct.zeroclaw_config.BudgetCheck.Warning.period`
+- `struct.zeroclaw_config.BuilderSubmission.channels`
+- `struct.zeroclaw_config.BuilderSubmission.model_provider`
+- `struct.zeroclaw_config.BuilderSubmission.peer_groups`
+- `struct.zeroclaw_config.BuilderSubmission.risk_profile`
+- `struct.zeroclaw_config.BuilderSubmission.runtime_profile`
+- `struct.zeroclaw_config.BundleDirectoryError.DirectoryCollision.first`
+- `struct.zeroclaw_config.BundleDirectoryError.DirectoryCollision.second`
+- `struct.zeroclaw_config.BundleDirectoryError.UnknownBundle.0`
+- `struct.zeroclaw_config.CascadeError.NotFound.0`
+- `struct.zeroclaw_config.CascadeError.NotImplemented.0`
+- `struct.zeroclaw_config.CascadeError.PostCondition.0`
+- `struct.zeroclaw_config.CascadeError.Refused.0`
+- `struct.zeroclaw_config.CascadeReport.applied`
+- `struct.zeroclaw_config.CascadeReport.deleted_entry`
+- `struct.zeroclaw_config.CascadeReport.plan`
+- `struct.zeroclaw_config.ChannelInfo.desc`
+- `struct.zeroclaw_config.ChannelPrecheckConfig.enabled`
+- `struct.zeroclaw_config.ChannelPrecheckConfig.timeout_secs`
+- `struct.zeroclaw_config.ChannelQuickStart.channel_type`
+- `struct.zeroclaw_config.ClawdTalkConfig.allowed_destinations`
+- `struct.zeroclaw_config.ClawdTalkConfig.connection_id`
+- `struct.zeroclaw_config.ClawdTalkConfig.enabled`
+- `struct.zeroclaw_config.ClawdTalkConfig.excluded_tools`
+- `struct.zeroclaw_config.ClawdTalkConfig.from_number`
+- `struct.zeroclaw_config.ClawdTalkConfig.webhook_secret`
+- `struct.zeroclaw_config.ConfigApiError.code`
+- `struct.zeroclaw_config.ConfigApiError.op_index`
+- `struct.zeroclaw_config.ConfigFieldEntry.alias_source`
+- `struct.zeroclaw_config.ConfigFieldEntry.enum_variants`
+- `struct.zeroclaw_config.ConfigFieldEntry.is_env_overridden`
+- `struct.zeroclaw_config.ConfigFieldEntry.is_secret`
+- `struct.zeroclaw_config.ConfigFieldEntry.multiline`
+- `struct.zeroclaw_config.ConfigFieldEntry.populated`
+- `struct.zeroclaw_config.ConfigFieldEntry.section`
+- `struct.zeroclaw_config.ConfigFieldEntry.tab`
+- `struct.zeroclaw_config.ConfigFieldEntry.type_hint`
+- … +251 more
+
+## Counts by group
+
+- **other_signal**: 2467
+- **providers**: 57
+- **rust_cli_enums**: 1997
+- **rust_config_structs**: 404
+- **rust_zeroclaw_structs**: 6406
+- **toml_keys**: 1285
+
+Full machine report: `/tmp/zeroclaw.introspect.gaps.json`
+

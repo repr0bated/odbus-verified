@@ -1,0 +1,11 @@
+# Agents retain the broad wheel workflow, but the privileged supervisor entry
+# points are rejected: service management must go through `sudo sv ...` per
+# AGENTS.md. `sv` itself stays allowed and does its own privilege work.
+#
+# runsv/runsvdir start supervisors rather than manage services; invoking them by
+# hand desynchronises /run/runit/service from /etc/runit/runsvdir/default.
+# The s6 paths are still denied even though s6 is not installed, so reinstalling
+# it cannot reopen the legacy path.
+%wheel ALL=(ALL) NOPASSWD: ALL, \
+    !/usr/bin/runsv, !/usr/bin/runsvdir, !/usr/bin/runit, !/usr/bin/runit-init, \
+    !/usr/bin/s6*, !/bin/s6*, !/usr/local/bin/s6*, !/usr/bin/service6

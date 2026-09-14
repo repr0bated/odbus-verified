@@ -1,0 +1,246 @@
+syntax = "proto3";
+
+package operation.privacy.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// PRIVACY NETWORK SERVICE - wgcf + OVS + Xray Privacy Infrastructure
+// Comprehensive service for the entire privacy network stack
+// =============================================================================
+
+service PrivacyNetworkService {
+  // Ensure the full privacy network topology is provisioned
+  rpc EnsurePrivacyNetwork(EnsurePrivacyNetworkRequest) returns (EnsurePrivacyNetworkResponse);
+  
+  // Get current privacy network status
+  rpc GetNetworkStatus(GetNetworkStatusRequest) returns (GetNetworkStatusResponse);
+  
+  // Provision a user with WireGuard access to privacy network
+  rpc ProvisionUser(ProvisionUserRequest) returns (ProvisionUserResponse);
+  
+  // Get WireGuard configuration for privacy network
+  rpc GetPrivacyWireGuardConfig(GetPrivacyWireGuardConfigRequest) returns (GetPrivacyWireGuardConfigResponse);
+  
+  // Manage privacy network components (wgcf, OVS, Xray)
+  rpc ManageComponent(ManageComponentRequest) returns (ManageComponentResponse);
+
+  // Get detailed network topology
+  rpc GetNetworkTopology(GetNetworkTopologyRequest) returns (GetNetworkTopologyResponse);
+
+  // Health check for all privacy network components
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+
+  // Configure packet routing and proxy settings for containers
+  rpc ConfigurePacketRouting(ConfigurePacketRoutingRequest) returns (ConfigurePacketRoutingResponse);
+
+  // Generate WireGuard keypair for user registration (simplified approach)
+  rpc GenerateWireGuardKeyPair(GenerateWireGuardKeyPairRequest) returns (GenerateWireGuardKeyPairResponse);
+}
+
+// =============================================================================
+// PRIVACY NETWORK MESSAGES
+// =============================================================================
+
+message EnsurePrivacyNetworkRequest {
+  string domain = 1; // "3tched.com"
+  bool force_reprovision = 2;
+  optional google.protobuf.Struct config_overrides = 3;
+}
+
+message EnsurePrivacyNetworkResponse {
+  bool success = 1;
+  string message = 2;
+  string bridge_name = 3; // "ovsbr0"
+  string wgcf_status = 4;
+  string xray_status = 5;
+  repeated string active_ports = 6;
+  google.protobuf.Timestamp provisioned_at = 7;
+  string topology_summary = 8;
+}
+
+message GetNetworkStatusRequest {
+  string component = 1; // "all", "wgcf", "ovs", "xray", "ports"
+}
+
+message GetNetworkStatusResponse {
+  bool healthy = 1;
+  string overall_status = 2; // "healthy", "degraded", "unhealthy"
+  repeated NetworkComponent components = 3;
+  string message = 4;
+  google.protobuf.Timestamp last_updated = 5;
+}
+
+message NetworkComponent {
+  string name = 1; // "wgcf", "ovsbr0", "xray", "gbr_xray", etc
+  string status = 2; // "up", "down", "configuring"
+  string type = 3; // "wireguard", "bridge", "proxy", "interface"
+  string ip_address = 4;
+  string details = 5;
+  bool critical = 6;
+}
+
+message ProvisionUserRequest {
+  string email = 1;
+  string wireguard_public_key = 2;
+  bool is_admin = 3;
+  string domain = 4;
+  string container_type = 5; // "internal" or "user"
+  optional google.protobuf.Struct metadata = 6;
+}
+
+message ProvisionUserResponse {
+  bool success = 1;
+  string user_id = 2;
+  string assigned_ip = 3; // e.g. "10.200.0.100"
+  string privacy_config = 4; // Full WireGuard config for privacy network
+  string message = 5;
+  google.protobuf.Timestamp provisioned_at = 6;
+  string xray_endpoint = 7;
+}
+
+message GetPrivacyWireGuardConfigRequest {
+  string email = 1;
+  string user_id = 2;
+  bool include_xray = 3;
+}
+
+message GetPrivacyWireGuardConfigResponse {
+  bool success = 1;
+  string wireguard_config = 2;
+  string public_key = 3;
+  string endpoint = 4; // "registration.3tched.com:51820"
+  string assigned_ip = 5;
+  string dns_servers = 6;
+  string message = 7;
+  google.protobuf.Timestamp generated_at = 8;
+}
+
+message ManageComponentRequest {
+  string action = 1; // "start", "stop", "restart", "status", "reconfigure"
+  string component = 2; // "wgcf", "ovsbr0", "xray", "all"
+  optional google.protobuf.Struct parameters = 3;
+}
+
+message ManageComponentResponse {
+  bool success = 1;
+  string message = 2;
+  string component = 3;
+  string status = 4;
+  string output = 5;
+  google.protobuf.Timestamp completed_at = 6;
+}
+
+message GetNetworkTopologyRequest {
+  bool include_details = 1;
+}
+
+message GetNetworkTopologyResponse {
+  string bridge_name = 1;
+  string wgcf_status = 2;
+  repeated string ports = 3;
+  string management_ip = 4; // "10.200.0.1"
+  string xray_config = 5;
+  repeated NetworkRoute routes = 6;
+  google.protobuf.Struct topology_data = 7;
+  string summary = 8;
+  repeated ProxyConfig proxy_configs = 9;
+}
+
+message ProxyConfig {
+  string container_name = 1;
+  string container_type = 2; // "internal", "user"
+  bool http_proxy_enabled = 3;
+  bool grpc_proxy_enabled = 4;
+  uint32 http_port = 5; // 1080 for SOCKS
+  uint32 grpc_port = 6;
+  string proxy_mode = 7; // "socks+http", "http-only", "tproxy"
+}
+
+message NetworkRoute {
+  string destination = 1;
+  string gateway = 2;
+  string device = 3;
+  string metric = 4;
+}
+
+message HealthCheckRequest {
+  bool check_wgcf = 1;
+  bool check_ovs = 2;
+  bool check_xray = 3;
+  bool check_ports = 4;
+}
+
+message HealthCheckResponse {
+  bool all_healthy = 1;
+  uint32 healthy_components = 2;
+  uint32 total_components = 3;
+  repeated HealthIssue issues = 4;
+  string overall_status = 5;
+  google.protobuf.Timestamp checked_at = 6;
+}
+
+message HealthIssue {
+  string component = 1;
+  string severity = 2; // "critical", "warning", "info"
+  string message = 3;
+  string suggested_fix = 4;
+}
+
+message ConfigurePacketRoutingRequest {
+  string container_name = 1;
+  string container_type = 2; // "internal", "user"
+  bool enable_http_proxy = 3;
+  bool enable_grpc_proxy = 4;
+  string proxy_type = 5; // "socks", "http", "tproxy", "dokodemo-door"
+  uint32 socks_port = 6; // default 1080
+  uint32 http_port = 7;
+  bool enable_tproxy = 8;
+}
+
+message ConfigurePacketRoutingResponse {
+  bool success = 1;
+  string message = 2;
+  string container_name = 3;
+  string proxy_config_summary = 4;
+  google.protobuf.Timestamp configured_at = 5;
+  repeated string applied_rules = 6;
+}
+
+message GenerateWireGuardKeyPairRequest {
+  string user_token = 1;           // Magic link token from registration
+  string user_email = 2;
+  bool is_admin = 3;
+  string container_type = 4;       // "user" or "internal"
+}
+
+message GenerateWireGuardKeyPairResponse {
+  bool success = 1;
+  string client_public_key = 2;    // Client's public key (for server registration)
+  string wireguard_config = 3;     // Complete config with private key
+  string assigned_ip = 4;
+  string key_id = 5;               // For tracking/revocation
+  string message = 6;
+  google.protobuf.Timestamp generated_at = 7;
+}
+
+// =============================================================================
+// ERROR HANDLING
+// =============================================================================
+
+message PrivacyError {
+  int32 code = 1;
+  string message = 2;
+  optional google.protobuf.Struct details = 3;
+}
+
+enum PrivacyErrorCode {
+  PRIVACY_ERROR_UNSPECIFIED = 0;
+  PRIVACY_ERROR_WGCF_FAILED = 1;
+  PRIVACY_ERROR_OVS_UNAVAILABLE = 2;
+  PRIVACY_ERROR_XRAY_FAILED = 3;
+  PRIVACY_ERROR_NETWORK_UNHEALTHY = 4;
+  PRIVACY_ERROR_USER_PROVISIONING_FAILED = 5;
+  PRIVACY_ERROR_CONFIG_INVALID = 6;
+}

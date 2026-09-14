@@ -1,0 +1,40 @@
+// ADD this to the builtin_groups() function in groups.rs
+// Find the vec![] and add these entries:
+
+        // =====================================================================
+        // SELF DOMAIN - Self-repository tools
+        // =====================================================================
+        ToolGroup::new("self-read", "Self Read", "Read your own source code")
+            .domain("self")
+            .patterns(vec!["self_read_file", "self_list_directory", "self_search_code"])
+            .count(3)
+            .priority(80)
+            .security_level(SecurityLevel::Standard)
+            .tags(vec!["self".to_string(), "introspection".to_string()]),
+        
+        ToolGroup::new("self-write", "Self Write", "Modify your own source code")
+            .domain("self")
+            .patterns(vec!["self_write_file"])
+            .count(1)
+            .priority(70)
+            .depends_on(vec!["self-read"])
+            .security_level(SecurityLevel::Elevated)
+            .tags(vec!["self".to_string(), "modify".to_string()]),
+        
+        ToolGroup::new("self-git", "Self Git", "Git operations on your source code")
+            .domain("self")
+            .patterns(vec!["self_git_status", "self_git_diff", "self_git_commit", "self_git_log"])
+            .count(4)
+            .priority(75)
+            .depends_on(vec!["self-read"])
+            .security_level(SecurityLevel::Elevated)
+            .tags(vec!["self".to_string(), "git".to_string()]),
+        
+        ToolGroup::new("self-build", "Self Build", "Build and deploy yourself")
+            .domain("self")
+            .patterns(vec!["self_build", "self_deploy"])
+            .count(2)
+            .priority(60)
+            .depends_on(vec!["self-read", "self-git"])
+            .restricted()
+            .tags(vec!["self".to_string(), "build".to_string(), "deploy".to_string()]),

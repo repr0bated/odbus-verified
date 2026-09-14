@@ -1,0 +1,18 @@
+# Release-owned host SSH configuration.  Network identity is not inferred from
+# SSH: authenticated human identity assertions remain a separate OIA1 path.
+Include /etc/ssh/sshd_config.d/*.conf
+
+Port 22
+AddressFamily inet
+ListenAddress 127.0.0.1
+
+PermitRootLogin yes
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication yes
+KbdInteractiveAuthentication yes
+UsePAM yes
+
+X11Forwarding no
+PrintMotd no
+Subsystem sftp internal-sftp

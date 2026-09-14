@@ -1,0 +1,6 @@
+#!/bin/sh
+# Emit a readiness signal for later dbus / ordering wiring.
+# Usage: runit-ready-signal <name>
+name=${1:?runit-ready-signal: name required}
+install -d -m 0755 /run/opdbus/runit-ready
+touch "/run/opdbus/runit-ready/$name"

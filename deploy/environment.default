@@ -1,0 +1,64 @@
+# Database and State
+OP_DBUS_STATE_DIR=/var/lib/op-dbus
+
+# Durable audit trail (event chain persisted to the streaming snowball's
+# timing subvolume). Must be on Btrfs — op-grpc-bridge creates subvolumes here
+# at startup and replays the trail back into the in-memory event chain, so the
+# accountability history survives an `sv restart`. Commented out: the built-in
+# default below is what the host already uses.
+#OPDBUS_SNOWBALL_PATH=/var/lib/opdbus/snowball
+
+# The bridge initializes this as a Btrfs cache beside the authoritative timing
+# trail. The runit service applies the NUMA policy to the bridge process before
+# it starts. These explicit values are release-owned so the integration cannot
+# disappear merely because the process environment was rebuilt.
+OP_DBUS_CACHE_DIR=/var/lib/opdbus/cache
+OPDBUS_CACHE_PLACEMENT=local
+OPDBUS_CACHE_MEMORY_POLICY=default
+OPDBUS_NUMA_POLICY=localalloc
+
+# gRPC — consolidated op-grpc-bridge (HTTP/gRPC-Web + native gRPC)
+# Prefer fabric-capable TCP endpoint first-class; loopback stays available via this env
+# override for local-only debug.
+OP_DBUS_GRPC_ADDR=https://10.0.0.3:8090
+GRPC_BIND=0.0.0.0:8090
+TCHED_ROUTER_BIND_ADDR=0.0.0.0:8090
+# Host-local native gRPC (op-web, zbusctl)
+TCHED_ROUTER_UNIX_SOCKET=/run/opdbus/grpc.sock
+# Shared fabric for NIC-less containers (bind-mount /run/ghostbridge)
+GHOSTBRIDGE_SOCKET_PATH=/run/ghostbridge/container.sock
+# Root-owned append-only OIA replay journal. Every bridge ingress shares this
+# file, so accepted nonces remain rejected after an op-grpc-bridge restart.
+OP_AUTH_REPLAY_DB_PATH=/var/lib/op-dbus/auth-replay.db
+
+# Decoy-only native network control over mTLS D-Bus. Supply endpoint and
+# certificate DNS name in /etc/op-dbus/decoy-network-client.env before using
+# wireguard, wg_opdbus or wgcf. Provision these protected TLS files in the
+# offline server snapshot; they never belong in source or plugin blobs.
+# OP_DECOY_NATIVE_ADDRESS=<private-or-WARP-routed-IP>:8732
+# OP_DECOY_NATIVE_SERVER_NAME=<decoy-certificate-DNS-name>
+OP_DECOY_NATIVE_CA_FILE=/etc/op-dbus/decoy-native/ca.pem
+OP_DECOY_NATIVE_CERT_FILE=/etc/op-dbus/decoy-native/bridge.pem
+OP_DECOY_NATIVE_KEY_FILE=/etc/op-dbus/decoy-native/bridge-key.pem
+
+# OpenFlow controller on ovsbr0
+OPENFLOW_CONTROLLER=tcp:10.200.0.1:6653
+
+# Email Configuration for Magic Links
+SMTP_HOST=10.149.181.121
+SMTP_PORT=587
+SMTP_USER=noreply@3tched.com
+SMTP_PASS=${SMTP_PASS_SECRET:-please_set_smtp_pass}
+SMTP_FROM_EMAIL=noreply@3tched.com
+SMTP_FROM_NAME="Operation DBUS Registration"
+
+# Base URL for magic links (uses the reverse proxy we just set up)
+BASE_URL=https://registration.3tched.com
+
+# Trusted networks for WireGuard/authenticated access (comma-separated CIDRs/prefixes)
+OP_TRUSTED_NETWORKS=10.0.0.0/24,10.200.0.0/24
+
+# OpenClaw Gateway Configuration
+OPENCLAW_TOKEN=your-openclaw-api-token-here
+OPENCLAW_BASE_URL=http://10.0.0.1:8090
+OPENCLAW_DEFAULT_MODEL=openclaw:main

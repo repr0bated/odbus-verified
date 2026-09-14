@@ -1,0 +1,39 @@
+#!/bin/sh
+exec 2>&1
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+# Was `wait_dep ovsbr0-addr` until 2026-08-13. ovsbr0-addr's helper does not
+# exist and its run script has no `set -e`, so its only real effect was to
+# touch /run/opdbus/runit-ready/ovsbr0-addr — which this service and incusd
+# both gated on. Retiring it (3tched-network-install.sh) therefore took both
+# down. opdbus-rundirs is what actually creates the rundirs op-web needs.
+wait_dep opdbus-rundirs
+# The bridge owns CognitiveMcpServer and its single-writer RocksDB. Web must
+# not start until the bridge has completed replay and opened its socket.
+wait_dep op-grpc-bridge
+
+set -a
+[ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
+set +a
+
+export PORT="${PORT:-8080}"
+export OP_WEB_STATIC_DIR="${OP_WEB_STATIC_DIR:-/usr/local/share/op-dbus/dashboard}"
+export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://10.0.0.3:8090}"
+export OP_DBUS_GRPC_CA_FILE="${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
+export COGNITIVE_MCP_CONTEXT_HTTP_DISABLED=1
+export RUST_LOG="${RUST_LOG:-op_web=info,info}"
+
+# NOTE the readiness token is written BEFORE the exec, so it asserts "the run
+# script got this far", not "op-web-server is serving". `check` is what closes
+# that gap — it tests the listener, not the token. Do not let anything gate on
+# the token alone.
+/usr/local/libexec/3tched/runit-ready-signal op-web
+exec /usr/local/bin/op-web-server

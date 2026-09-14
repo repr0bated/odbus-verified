@@ -1,0 +1,19 @@
+# Existing files whose pinned-base contents are verified before patching.
+Cargo.lock
+crates/zeroclaw-api/src/model_provider.rs
+crates/zeroclaw-gateway/Cargo.toml
+crates/zeroclaw-gateway/src/lib.rs
+crates/zeroclaw-gateway/src/sse.rs
+crates/zeroclaw-gateway/src/ws.rs
+crates/zeroclaw-providers/src/anthropic.rs
+crates/zeroclaw-providers/src/compatible.rs
+crates/zeroclaw-providers/src/gemini.rs
+crates/zeroclaw-providers/src/lib.rs
+crates/zeroclaw-providers/src/ollama.rs
+crates/zeroclaw-providers/src/openai.rs
+crates/zeroclaw-providers/src/openrouter.rs
+crates/zeroclaw-providers/src/vision_override.rs
+# New files that must be absent before patching.
+crates/zeroclaw-gateway/src/ws_stateless.rs
+crates/zeroclaw-gateway/src/ws_stateless_tests.rs
+crates/zeroclaw-providers/src/stateless.rs

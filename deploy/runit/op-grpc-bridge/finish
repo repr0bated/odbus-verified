@@ -1,0 +1,6 @@
+#!/bin/sh
+default_ready_path=/run/opdbus/runit-ready/op-grpc-bridge
+set -a
+[ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
+set +a
+rm -f -- "$default_ready_path" "${OPDBUS_READY_PATH:-$default_ready_path}"

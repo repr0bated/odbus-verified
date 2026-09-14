@@ -1,0 +1,133 @@
+syntax = "proto3";
+package opdbus.services.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+service ServiceManager {
+    rpc Start(StartRequest) returns (StartResponse);
+    rpc Stop(StopRequest) returns (StopResponse);
+    rpc Restart(RestartRequest) returns (RestartResponse);
+    rpc Reload(ReloadRequest) returns (ReloadResponse);
+    
+    rpc Create(CreateRequest) returns (CreateResponse);
+    rpc Delete(DeleteRequest) returns (DeleteResponse);
+    rpc Get(GetRequest) returns (GetResponse);
+    rpc List(ListRequest) returns (ListResponse);
+    
+    rpc Enable(EnableRequest) returns (EnableResponse);
+    rpc Disable(DisableRequest) returns (DisableResponse);
+    
+    rpc WatchStatus(WatchRequest) returns (stream ServiceEvent);
+}
+
+message ServiceDef {
+    string name = 1;
+    ServiceType type = 2;
+    ExecConfig exec = 3;
+    repeated string depends_on = 4;
+    RestartPolicy restart = 5;
+    map<string, string> environment = 6;
+    optional ResourceLimits resources = 7;
+    optional HealthCheck health_check = 8;
+    bool enabled = 9;
+}
+
+enum ServiceType {
+    SERVICE_TYPE_SIMPLE = 0;
+    SERVICE_TYPE_FORKING = 1;
+    SERVICE_TYPE_ONESHOT = 2;
+    SERVICE_TYPE_NOTIFY = 3;
+}
+
+message ExecConfig {
+    string start_program = 1;
+    repeated string start_args = 2;
+    optional string stop_program = 3;
+    repeated string stop_args = 4;
+    optional string working_dir = 5;
+    optional string user = 6;
+    optional string group = 7;
+}
+
+message RestartPolicy {
+    RestartCondition condition = 1;
+    google.protobuf.Duration delay = 2;
+    optional uint32 max_retries = 3;
+}
+
+enum RestartCondition {
+    RESTART_NEVER = 0;
+    RESTART_ALWAYS = 1;
+    RESTART_ON_FAILURE = 2;
+}
+
+message ResourceLimits {
+    optional uint64 memory_max = 1;
+    optional float cpu_quota = 2;
+    optional uint32 tasks_max = 3;
+}
+
+message HealthCheck {
+    string program = 1;
+    repeated string args = 2;
+    google.protobuf.Duration interval = 3;
+    google.protobuf.Duration timeout = 4;
+    uint32 retries = 5;
+}
+
+message ServiceStatus {
+    string name = 1;
+    ServiceState state = 2;
+    optional uint32 pid = 3;
+    optional string error = 4;
+    optional google.protobuf.Timestamp started_at = 5;
+}
+
+enum ServiceState {
+    STATE_STOPPED = 0;
+    STATE_STARTING = 1;
+    STATE_RUNNING = 2;
+    STATE_STOPPING = 3;
+    STATE_FAILED = 4;
+}
+
+message ServiceEvent {
+    string name = 1;
+    ServiceState old_state = 2;
+    ServiceState new_state = 3;
+    google.protobuf.Timestamp timestamp = 4;
+}
+
+// Request/Response messages
+message StartRequest { string name = 1; }
+message StartResponse { ServiceStatus status = 1; }
+
+message StopRequest { string name = 1; }
+message StopResponse { ServiceStatus status = 1; }
+
+message RestartRequest { string name = 1; }
+message RestartResponse { ServiceStatus status = 1; }
+
+message ReloadRequest { string name = 1; }
+message ReloadResponse { ServiceStatus status = 1; }
+
+message CreateRequest { ServiceDef service = 1; }
+message CreateResponse { ServiceDef service = 1; }
+
+message DeleteRequest { string name = 1; }
+message DeleteResponse {}
+
+message GetRequest { string name = 1; }
+message GetResponse { ServiceDef service = 1; ServiceStatus status = 2; }
+
+message ListRequest { optional string filter = 1; }
+message ListResponse { repeated ServiceDef services = 1; }
+
+message EnableRequest { string name = 1; }
+message EnableResponse {}
+
+message DisableRequest { string name = 1; }
+message DisableResponse {}
+
+message WatchRequest { repeated string names = 1; }

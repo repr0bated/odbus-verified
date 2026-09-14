@@ -1,0 +1,27 @@
+[package]
+name = "op-introspection"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "DBus introspection capabilities for op-dbus-v2"
+
+[dependencies]
+op-core = { workspace = true }
+op-snowball = { path = "../op-snowball" }
+tokio = { workspace = true }
+serde = { workspace = true }
+simd-json = { workspace = true }
+zbus = { workspace = true }
+zbus_xml = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+quick-xml = { workspace = true }
+rusqlite = { workspace = true, features = ["bundled"] }
+chrono = { workspace = true }
+parking_lot = "0.12"
+sha2 = { workspace = true }
+hex = "0.4"

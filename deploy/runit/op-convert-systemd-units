@@ -1,0 +1,65 @@
+#!/bin/sh
+# op-convert-systemd-units — batch driver for the pacman hook.
+#
+# pacman passes the installed target paths on stdin (one per line, relative to
+# the filesystem root because of `NeedsTargets`). Each .service unit is handed
+# to systemd-unit-to-runit. Units that already have a runit counterpart are left
+# alone so an upgrade never clobbers a hand-tuned run script.
+#
+# Nothing is enabled or started: a package install must not launch daemons.
+set -eu
+
+CONVERTER=${CONVERTER:-/usr/local/sbin/systemd-unit-to-runit}
+SV_DIR=${SV_DIR:-/etc/runit/sv}
+
+if [ ! -x "$CONVERTER" ]; then
+    echo "op-convert-systemd-units: $CONVERTER not installed; skipping" >&2
+    exit 0
+fi
+
+converted=0
+skipped=0
+
+while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    case "$target" in
+        *.service) ;;
+        *) continue ;;
+    esac
+
+    # pacman emits paths without a leading slash.
+    case "$target" in
+        /*) unit_path=$target ;;
+        *)  unit_path="/$target" ;;
+    esac
+    [ -f "$unit_path" ] || continue
+
+    base=${unit_path##*/}
+    svc=${base%.service}
+
+    if [ -e "$SV_DIR/$svc/run" ]; then
+        # Only replace scripts this converter generated; never a hand-written one.
+        if head -3 "$SV_DIR/$svc/run" 2>/dev/null | grep -q 'systemd-unit-to-runit'; then
+            if "$CONVERTER" "$unit_path" --force; then
+                converted=$((converted + 1))
+                continue
+            fi
+        fi
+        echo "op-convert-systemd-units: keeping existing $SV_DIR/$svc/run" >&2
+        skipped=$((skipped + 1))
+        continue
+    fi
+
+    if "$CONVERTER" "$unit_path"; then
+        converted=$((converted + 1))
+    else
+        skipped=$((skipped + 1))
+    fi
+done
+
+if [ "$converted" -gt 0 ]; then
+    echo "op-convert-systemd-units: converted $converted unit(s) to $SV_DIR"
+    echo "  enable with: sudo ln -sfn $SV_DIR/<svc> /etc/runit/runsvdir/default/<svc>"
+fi
+[ "$skipped" -gt 0 ] && echo "op-convert-systemd-units: skipped $skipped unit(s)" >&2
+exit 0

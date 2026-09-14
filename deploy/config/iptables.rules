@@ -1,0 +1,18 @@
+# Staged host iptables. SSH is loopback-only; administration enters through
+# the decoy's localhost reverse-SSH door.
+# Live path: /etc/iptables/iptables.rules (iptables-nft restores this on boot).
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -p tcp -m tcp --dport 22 -m conntrack --ctstate RELATED,ESTABLISHED -m comment --comment ssh-est -j ACCEPT
+-A INPUT -i lo -p tcp -m tcp --dport 22 -m comment --comment ssh-lo -j ACCEPT
+-A INPUT -p tcp -m tcp --dport 22 -m comment --comment ssh-public -j DROP
+-A INPUT -p tcp -m tcp --dport 8444 -m comment --comment decoy-xhttp -j ACCEPT
+COMMIT
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+COMMIT

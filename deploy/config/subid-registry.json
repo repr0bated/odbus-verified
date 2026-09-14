@@ -1,0 +1,400 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "uuid": "2f834f7b-bba8-4bef-be24-6b5210fd582d",
+      "subid": "src.network.xray-serve@v1",
+      "category": "src",
+      "component_type": "network",
+      "subject": "xray",
+      "verb": "serve",
+      "version": 1,
+      "tags": [
+        "xray-tls",
+        "xray-reality"
+      ],
+      "subdomains": [
+        "*.ghostbridge.tech"
+      ],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "ingress"
+        }
+      }
+    },
+    {
+      "uuid": "e6c51396-649e-471e-95de-ee17224b1afb",
+      "subid": "exp.service.zeroclaw-serve@v1",
+      "category": "exp",
+      "component_type": "service",
+      "subject": "zeroclaw",
+      "verb": "serve",
+      "version": 1,
+      "tags": [
+        "grpc-bridge"
+      ],
+      "subdomains": [
+        "assistant.ghostbridge.tech"
+      ],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "grpc",
+          "host": "127.0.0.1",
+          "port": 8090,
+          "service_name": "Ghostbridge.StateSync"
+        }
+      }
+    },
+    {
+      "uuid": "99204d8e-35ac-448a-b09e-b5fb648da3aa",
+      "subid": "exp.service.cognitive-mcp-serve@v1",
+      "category": "exp",
+      "component_type": "service",
+      "subject": "cognitive-mcp",
+      "verb": "serve",
+      "version": 1,
+      "tags": [
+        "cognitive-mcp"
+      ],
+      "subdomains": [
+        "mcp.internal"
+      ],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "unix",
+          "path": "/run/ghostbridge/container.sock"
+        }
+      }
+    },
+    {
+      "uuid": "ab97d8a6-c630-4cff-8fa9-aaaa894e8015",
+      "subid": "src.service.qdrant-serve@v1",
+      "category": "src",
+      "component_type": "service",
+      "subject": "qdrant",
+      "verb": "serve",
+      "version": 1,
+      "tags": [
+        "qdrant"
+      ],
+      "subdomains": [
+        "qdrant.ghostbridge.tech"
+      ],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "unix",
+          "path": "/run/ghostbridge/container.sock"
+        }
+      }
+    },
+    {
+      "uuid": "54513fa8-ab1f-40e6-911e-8b237c8caa12",
+      "subid": "src.service.netmaker-api-serve@v1",
+      "category": "src",
+      "component_type": "service",
+      "subject": "netmaker-api",
+      "verb": "serve",
+      "version": 1,
+      "tags": [
+        "netmaker-api"
+      ],
+      "subdomains": [
+        "api.ghostbridge.tech"
+      ],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "unix",
+          "path": "/run/ghostbridge/container.sock"
+        }
+      }
+    },
+    {
+      "uuid": "570dc5ce-526a-475d-bb5b-908f48470b61",
+      "subid": "src.service.netmaker-mq-serve@v1",
+      "category": "src",
+      "component_type": "service",
+      "subject": "netmaker-mq",
+      "verb": "serve",
+      "version": 1,
+      "tags": [
+        "netmaker-mq"
+      ],
+      "subdomains": [
+        "broker.ghostbridge.tech"
+      ],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "unix",
+          "path": "/run/ghostbridge/container.sock"
+        }
+      }
+    },
+    {
+      "uuid": "8d8d8d49-ac19-44e2-8118-651b31dbc003",
+      "subid": "exp.service.netmaker-ui-serve@v1",
+      "category": "exp",
+      "component_type": "service",
+      "subject": "netmaker-ui",
+      "verb": "serve",
+      "version": 1,
+      "tags": [
+        "netmaker-ui"
+      ],
+      "subdomains": [
+        "dashboard.ghostbridge.tech"
+      ],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "unix",
+          "path": "/run/ghostbridge/container.sock"
+        }
+      }
+    },
+    {
+      "uuid": "a4b64253-c9d5-4153-ae50-69a842d89c72",
+      "subid": "src.service.nextdns-serve@v1",
+      "category": "src",
+      "component_type": "service",
+      "subject": "nextdns",
+      "verb": "serve",
+      "version": 1,
+      "tags": [
+        "nextdns"
+      ],
+      "subdomains": [],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "dns",
+          "host": "127.0.0.1",
+          "port": 53
+        }
+      }
+    },
+    {
+      "uuid": "e42be741-37ef-40f7-92a4-b3e92610d346",
+      "subid": "src.service.zeroclaw-schema.file@v1",
+      "category": "src",
+      "component_type": "service",
+      "subject": "zeroclaw-schema",
+      "verb": "file",
+      "version": 1,
+      "tags": [
+        "zeroclaw",
+        "schema",
+        "tmpfs"
+      ],
+      "subdomains": [],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "file",
+          "path": "/dev/shm/opdbus/schemas/zeroclaw.json"
+        }
+      }
+    },
+    {
+      "uuid": "ed030e86-6ba1-43ac-a247-f18b16348114",
+      "subid": "prj.service.zeroclaw-axum-host.bind@v1",
+      "category": "prj",
+      "component_type": "service",
+      "subject": "zeroclaw-axum-host",
+      "verb": "bind",
+      "version": 1,
+      "tags": [
+        "zeroclaw",
+        "axum-host",
+        "dbus"
+      ],
+      "subdomains": [],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "internal"
+        }
+      }
+    },
+    {
+      "uuid": "271c2f53-26ee-4aa9-ab4e-e7442552e8cf",
+      "subid": "obs.service.zeroclaw-schema.fetch@v1",
+      "category": "obs",
+      "component_type": "service",
+      "subject": "zeroclaw-schema",
+      "verb": "fetch",
+      "version": 1,
+      "tags": [
+        "zeroclaw",
+        "schema",
+        "grpc"
+      ],
+      "subdomains": [],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "grpc",
+          "host": "127.0.0.1",
+          "port": 8090,
+          "service_name": "zeroclaw.ZeroclawService"
+        }
+      }
+    },
+    {
+      "uuid": "5ddc10a9-d0e6-4949-8402-d719470b6201",
+      "subid": "obs.service.zeroclaw-schema.watch@v1",
+      "category": "obs",
+      "component_type": "service",
+      "subject": "zeroclaw-schema",
+      "verb": "watch",
+      "version": 1,
+      "tags": [
+        "zeroclaw",
+        "schema",
+        "grpc"
+      ],
+      "subdomains": [],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "grpc",
+          "host": "127.0.0.1",
+          "port": 8090,
+          "service_name": "zeroclaw.ZeroclawService"
+        }
+      }
+    },
+    {
+      "uuid": "e8988adc-79eb-4042-ba48-ad2f395361d3",
+      "subid": "mut.service.zeroclaw-axum-host.reload@v1",
+      "category": "mut",
+      "component_type": "service",
+      "subject": "zeroclaw-axum-host",
+      "verb": "reload",
+      "version": 1,
+      "tags": [
+        "zeroclaw",
+        "axum-host",
+        "reload"
+      ],
+      "subdomains": [],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "internal"
+        }
+      }
+    },
+    {
+      "uuid": "159ecfb8-20e6-45c4-93dd-04275f27bece",
+      "subid": "evt.service.zeroclaw-schema.reloaded@v1",
+      "category": "evt",
+      "component_type": "service",
+      "subject": "zeroclaw-schema",
+      "verb": "reloaded",
+      "version": 1,
+      "tags": [
+        "zeroclaw",
+        "schema",
+        "reload"
+      ],
+      "subdomains": [],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "internal"
+        }
+      }
+    },
+    {
+      "uuid": "5dfebf81-55d2-46f8-88de-705dbf7cdb29",
+      "subid": "exp.service.zeroclaw-schema.grpc-web@v1",
+      "category": "exp",
+      "component_type": "service",
+      "subject": "zeroclaw-schema",
+      "verb": "grpc-web",
+      "version": 1,
+      "tags": [
+        "zeroclaw",
+        "schema",
+        "grpc-web"
+      ],
+      "subdomains": [
+        "assistant.ghostbridge.tech"
+      ],
+      "control_source": "",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "grpc",
+          "host": "0.0.0.0",
+          "port": 8090,
+          "service_name": "zeroclaw.ZeroclawService"
+        }
+      }
+    },
+    {
+      "uuid": "7a3c1d20-9e8b-4f2a-a6d1-0c5e8f4b7a91",
+      "subid": "mut.service.unix-socket.create-socket@v1",
+      "category": "mut",
+      "component_type": "service",
+      "subject": "unix-socket",
+      "verb": "create-socket",
+      "version": 1,
+      "tags": [
+        "unix-socket",
+        "grpc-bridge",
+        "createunixsocket"
+      ],
+      "subdomains": [],
+      "control_source": "NIST_SP_800_53_R5",
+      "control_refs": [],
+      "statement_refs": [],
+      "gemma": {
+        "backend": {
+          "type": "grpc",
+          "host": "127.0.0.1",
+          "port": 8090,
+          "service_name": "operation.v1.PluginService",
+          "method": "CallMethod",
+          "plugin_id": "unix_socket",
+          "method_name": "createunixsocket"
+        }
+      }
+    }
+  ]
+}

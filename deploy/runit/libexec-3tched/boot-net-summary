@@ -1,0 +1,42 @@
+#!/bin/sh
+# Emit a short ordered boot-network summary to console + persistent file.
+set -eu
+OUT=/var/log/boot-net-summary.log
+{
+  echo "======== boot-net-summary $(date -u +%Y-%m-%dT%H:%M:%SZ) uptime=$(cut -d. -f1 /proc/uptime)s ========"
+  echo "-- ready flags --"
+  ls -1 /run/opdbus/runit-ready 2>/dev/null || true
+  echo "-- addresses (sysfs) --"
+  for iface in /sys/class/net/*; do
+    n=${iface##*/}
+    [ "$n" = "lo" ] && continue
+    oper=$(cat "$iface/operstate" 2>/dev/null || echo "?")
+    printf '%s %s' "$n" "$oper"
+    if [ -d "$iface/addr_gen_mode" ] || [ -f "$iface/address" ]; then
+      printf ' mac=%s' "$(cat "$iface/address" 2>/dev/null || true)"
+    fi
+    echo
+  done
+  echo "-- ovs ports --"
+  if /usr/local/libexec/3tched/wait-op-plugins 5 2>/dev/null; then
+    zcall rovs_commands list_ports -a '{"bridge_name":"ovsbr0"}' 2>/dev/null || true
+  else
+    /usr/local/libexec/3tched/ovsdb-port list-ports ovsbr0 2>/dev/null || true
+  fi
+  echo "-- service log tails (early chain) --"
+  for s in uplink-dhcp ovsdb-server ovs-vswitchd ovsbr0-uplink ovsbr0-addr ovsbr0-svc-addr ovsbr0-eth0; do
+    f=/var/log/op-dbus/$s/current
+    echo "#### $s"
+    if [ -f "$f" ]; then
+      tail -n 40 "$f"
+    else
+      echo "(no log)"
+    fi
+  done
+  echo "======== end boot-net-summary ========"
+} | tee "$OUT" > /dev/console 2>/dev/null || {
+  cat > "$OUT"
+  cat "$OUT" > /dev/tty1 2>/dev/null || true
+}
+cp -a "$OUT" /var/log/op-dbus/boot-net-summary/summary.log 2>/dev/null || true
+echo "wrote $OUT"

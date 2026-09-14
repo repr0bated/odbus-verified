@@ -1,0 +1,22 @@
+[package]
+name = "op-cozo-store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+nix = { version = "0.28", features = ["fs", "user"] }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+cozo = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[[bin]]
+name = "identity-sled-bind"
+path = "src/bin/identity_sled_bind.rs"
+
+[dev-dependencies]
+tempfile = { workspace = true }

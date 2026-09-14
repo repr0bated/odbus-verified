@@ -1,0 +1,1392 @@
+{
+  "schema_version": 1,
+  "observed_date": "2026-09-14",
+  "git_head": "1b82c594acd8d17a7e1b64b1b6ba52a21e5d9e97",
+  "scope": "Working-tree manifests; declared workspace dependencies, not a resolved feature graph, symbol call graph, or live service inventory",
+  "nodes": [
+    {
+      "id": "op-agents",
+      "manifest": "crates/op-agents/Cargo.toml",
+      "binaries": [
+        {
+          "name": "dbus-agent",
+          "source": "crates/op-agents/src/bin/dbus-agent.rs",
+          "required_features": []
+        },
+        {
+          "name": "gen-agent-defs",
+          "source": "crates/op-agents/src/bin/gen-agent-defs.rs",
+          "required_features": []
+        },
+        {
+          "name": "op-agent-manager",
+          "source": "crates/op-agents/src/bin/dbus-agent-manager.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-assistant-grpc",
+      "manifest": "crates/op-assistant-grpc/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-assistant-grpc",
+          "source": "crates/op-assistant-grpc/src/bin/op-assistant-grpc.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-blob",
+      "manifest": "crates/op-blob/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-cache",
+      "manifest": "crates/op-cache/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-chat",
+      "manifest": "crates/op-chat/Cargo.toml",
+      "binaries": [
+        {
+          "name": "list_tools_client",
+          "source": "crates/op-chat/src/bin/list_tools_client.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-cognitive-mcp",
+      "manifest": "crates/op-cognitive-mcp/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-chain-vectors",
+          "source": "crates/op-cognitive-mcp/src/bin/op-chain-vectors.rs",
+          "required_features": []
+        },
+        {
+          "name": "op-cog-admin",
+          "source": "crates/op-cognitive-mcp/src/bin/op-cog-admin.rs",
+          "required_features": []
+        },
+        {
+          "name": "rag-ingest",
+          "source": "crates/op-cognitive-mcp/src/bin/rag-ingest.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-compliance",
+      "manifest": "crates/op-compliance/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-core",
+      "manifest": "crates/op-core/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-cozo-store",
+      "manifest": "crates/op-cozo-store/Cargo.toml",
+      "binaries": [
+        {
+          "name": "identity-sled-bind",
+          "source": "crates/op-cozo-store/src/bin/identity_sled_bind.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-dbus",
+      "manifest": "Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-dbus-cli",
+      "manifest": "crates/op-dbus-cli/Cargo.toml",
+      "binaries": [
+        {
+          "name": "dbus-plugin-cli",
+          "source": "crates/op-dbus-cli/src/main.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-dbus-model",
+      "manifest": "crates/op-dbus-model/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-deployment",
+      "manifest": "crates/op-deployment/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-dynamic-loader",
+      "manifest": "crates/op-dynamic-loader/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-execution-tracker",
+      "manifest": "crates/op-execution-tracker/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-gateway",
+      "manifest": "crates/op-gateway/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-gemma",
+      "manifest": "crates/op-gemma/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-gemma",
+          "source": "crates/op-gemma/src/main.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-grpc-bridge",
+      "manifest": "crates/op-grpc-bridge/Cargo.toml",
+      "binaries": [
+        {
+          "name": "dump-protos",
+          "source": "crates/op-grpc-bridge/src/bin/dump-protos.rs",
+          "required_features": []
+        },
+        {
+          "name": "op-decoy-network",
+          "source": "crates/op-grpc-bridge/src/bin/op-decoy-network.rs",
+          "required_features": []
+        },
+        {
+          "name": "op-grants-materializer",
+          "source": "crates/op-grpc-bridge/src/bin/op-grants-materializer.rs",
+          "required_features": []
+        },
+        {
+          "name": "op-grpc-bridge",
+          "source": "crates/op-grpc-bridge/src/bin/op-grpc-bridge.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-http",
+      "manifest": "crates/op-http/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-identity",
+      "manifest": "crates/op-identity/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-decoy-issuer",
+          "source": "crates/op-identity/src/bin/op-decoy-issuer.rs",
+          "required_features": []
+        },
+        {
+          "name": "op-identity-headers",
+          "source": "crates/op-identity/src/bin/op-identity-headers.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-inspector",
+      "manifest": "crates/op-inspector/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-introspection",
+      "manifest": "crates/op-introspection/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-jsonrpc",
+      "manifest": "crates/op-jsonrpc/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-llm",
+      "manifest": "crates/op-llm/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-mcp",
+      "manifest": "crates/op-mcp/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-mcp-aggregator",
+      "manifest": "crates/op-mcp-aggregator/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-network",
+      "manifest": "crates/op-network/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-of-controller",
+          "source": "crates/op-network/src/bin/op-of-controller.rs",
+          "required_features": []
+        },
+        {
+          "name": "op-ovsbr0-setup",
+          "source": "crates/op-network/src/bin/op-ovsbr0-setup.rs",
+          "required_features": []
+        },
+        {
+          "name": "op-rtnetlink-init",
+          "source": "crates/op-network/src/bin/op-rtnetlink-init.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-plugin-lint",
+      "manifest": "crates/op-plugin-lint/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-plugin-lint",
+          "source": "crates/op-plugin-lint/src/main.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-plugins",
+      "manifest": "crates/op-plugins/Cargo.toml",
+      "binaries": [
+        {
+          "name": "gen_tched_router_config_surface",
+          "source": "crates/op-plugins/src/bin/gen_tched_router_config_surface.rs",
+          "required_features": []
+        },
+        {
+          "name": "op-mail-admin",
+          "source": "crates/op-plugins/src/bin/op-mail-admin.rs",
+          "required_features": []
+        },
+        {
+          "name": "opblob",
+          "source": "crates/op-plugins/src/bin/opblob.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-runit-systemctl",
+      "manifest": "crates/op-runit-systemctl/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-runit-systemctl",
+          "source": "crates/op-runit-systemctl/src/main.rs",
+          "required_features": []
+        },
+        {
+          "name": "svd",
+          "source": "crates/op-runit-systemctl/src/bin/svd.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-services",
+      "manifest": "crates/op-services/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-services",
+          "source": "crates/op-services/src/bin/op-services.rs",
+          "required_features": []
+        },
+        {
+          "name": "op-svctl",
+          "source": "crates/op-services/src/bin/op-svctl.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-snowball",
+      "manifest": "crates/op-snowball/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-state",
+      "manifest": "crates/op-state/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-state-store",
+      "manifest": "crates/op-state-store/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-tools",
+      "manifest": "crates/op-tools/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-packagekit-install",
+          "source": "crates/op-tools/src/bin/op-packagekit-install.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-web",
+      "manifest": "crates/op-web/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-web-server",
+          "source": "crates/op-web/src/main.rs",
+          "required_features": []
+        },
+        {
+          "name": "opdbus",
+          "source": "crates/op-web/src/bin/opdbus.rs",
+          "required_features": []
+        }
+      ]
+    },
+    {
+      "id": "op-workflows",
+      "manifest": "crates/op-workflows/Cargo.toml",
+      "binaries": []
+    },
+    {
+      "id": "op-xray-daemon",
+      "manifest": "crates/op-xray-daemon/Cargo.toml",
+      "binaries": [
+        {
+          "name": "op-xray-daemon",
+          "source": "crates/op-xray-daemon/src/main.rs",
+          "required_features": []
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "op-agents",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-agents",
+      "to": "op-http",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-assistant-grpc",
+      "to": "op-cognitive-mcp",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-assistant-grpc",
+      "to": "op-core",
+      "kind": "dev",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-assistant-grpc",
+      "to": "op-identity",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-blob",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cache",
+      "to": "op-cozo-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-chat",
+      "to": "op-agents",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-chat",
+      "to": "op-cognitive-mcp",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-chat",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-chat",
+      "to": "op-execution-tracker",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-chat",
+      "to": "op-grpc-bridge",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-chat",
+      "to": "op-introspection",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-chat",
+      "to": "op-llm",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-chat",
+      "to": "op-tools",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-agents",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-blob",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-cache",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-cozo-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-dynamic-loader",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-identity",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-mcp",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-plugins",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-snowball",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-cognitive-mcp",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-compliance",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-compliance",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-core",
+      "to": "op-execution-tracker",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-cache",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-cognitive-mcp",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-dbus-model",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-execution-tracker",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-grpc-bridge",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-http",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-inspector",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-introspection",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-jsonrpc",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-mcp",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-network",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-plugins",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-snowball",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-state",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-tools",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-web",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus",
+      "to": "op-workflows",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus-cli",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus-cli",
+      "to": "op-identity",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus-cli",
+      "to": "op-introspection",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus-model",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dbus-model",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dynamic-loader",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dynamic-loader",
+      "to": "op-execution-tracker",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-dynamic-loader",
+      "to": "op-tools",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-gemma",
+      "to": "op-blob",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-gemma",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-blob",
+      "kind": "build",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-blob",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-cognitive-mcp",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-cozo-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-identity",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-jsonrpc",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-llm",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-mcp",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-network",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-plugins",
+      "kind": "build",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-plugins",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-snowball",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-state",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-state-store",
+      "kind": "build",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-grpc-bridge",
+      "to": "op-xray-daemon",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-identity",
+      "to": "op-compliance",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-identity",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-inspector",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-inspector",
+      "to": "op-introspection",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-introspection",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-introspection",
+      "to": "op-snowball",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-jsonrpc",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-llm",
+      "to": "op-identity",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-llm",
+      "to": "op-plugins",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-llm",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp",
+      "to": "op-blob",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp",
+      "to": "op-identity",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp",
+      "to": "op-introspection",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp",
+      "to": "op-network",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp",
+      "to": "op-plugins",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp",
+      "to": "op-state",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp",
+      "to": "op-tools",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp-aggregator",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp-aggregator",
+      "to": "op-plugins",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-mcp-aggregator",
+      "to": "op-tools",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-network",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugin-lint",
+      "to": "op-inspector",
+      "kind": "normal",
+      "optional": true,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-agents",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-blob",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-cozo-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-dbus-model",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-dynamic-loader",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-execution-tracker",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-network",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-snowball",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-state",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-plugins",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-runit-systemctl",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-services",
+      "to": "op-plugins",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-snowball",
+      "to": "op-cache",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-snowball",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-state",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-state",
+      "to": "op-jsonrpc",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-state",
+      "to": "op-network",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-state",
+      "to": "op-snowball",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-state",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-tools",
+      "to": "op-agents",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-tools",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-tools",
+      "to": "op-execution-tracker",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-tools",
+      "to": "op-http",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-tools",
+      "to": "op-inspector",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-tools",
+      "to": "op-introspection",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-tools",
+      "to": "op-network",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-tools",
+      "to": "op-state",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-agents",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-blob",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-chat",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-cozo-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-grpc-bridge",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-identity",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-introspection",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-llm",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-mcp-aggregator",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-network",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-state",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-state-store",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-web",
+      "to": "op-tools",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-workflows",
+      "to": "op-core",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-workflows",
+      "to": "op-execution-tracker",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-workflows",
+      "to": "op-plugins",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    },
+    {
+      "from": "op-workflows",
+      "to": "op-tools",
+      "kind": "normal",
+      "optional": false,
+      "target": null
+    }
+  ]
+}

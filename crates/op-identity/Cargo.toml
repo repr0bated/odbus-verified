@@ -1,0 +1,38 @@
+[package]
+name = "op-identity"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "op-identity-headers"
+path = "src/bin/op-identity-headers.rs"
+
+[dependencies]
+anyhow = "1"
+thiserror = { workspace = true }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { workspace = true }
+simd-json = { workspace = true }
+zbus = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = { workspace = true }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+tracing = "0.1"
+op-core = { path = "../op-core" }
+op-compliance = { path = "../op-compliance" }
+dashmap = { workspace = true }
+dirs = "5"
+hostname = "0.4"
+rand = { workspace = true }
+base64 = { workspace = true }
+hex = { workspace = true }
+md5 = { workspace = true }
+blake3 = { workspace = true }
+argon2 = { workspace = true }
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+ed25519-dalek = "2.2"
+bip39 = "2"
+
+[dev-dependencies]
+tempfile = "3"

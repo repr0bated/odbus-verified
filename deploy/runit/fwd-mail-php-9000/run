@@ -1,0 +1,15 @@
+#!/bin/sh
+# PHP-FPM (SnappyMail) on mesh 100.69.0.1:9000 only — not pub0.
+exec 2>&1
+until ss -lnt | grep -q "127.0.0.1:9000"; do sleep 1; done
+until ip -4 addr show netmaker 2>/dev/null | grep -q "100.69.0.1/"; do sleep 1; done
+/usr/local/libexec/3tched/runit-ready-signal fwd-mail-php-9000 2>/dev/null || true
+# ghostbridge sock (same pattern as other mail ports)
+SOCK=/run/ghostbridge/mail-php.sock
+rm -f "$SOCK"
+if [ -S /run/opdbus/session-bus.sock ]; then
+  zcall shared_unix_socket create_unix_socket -a '{"name":"mail-php","ports":[9000]}' >/dev/null 2>&1 || true
+fi
+# unix sock in background; mesh TCP is the supervised process
+/usr/local/libexec/3tched/socket-relay unix-listen "$SOCK" tcp-connect 127.0.0.1 9000 &
+exec /usr/local/libexec/3tched/socket-relay tcp-listen 100.69.0.1 9000 tcp-connect 127.0.0.1 9000

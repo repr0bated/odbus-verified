@@ -1,0 +1,5 @@
+#!/bin/sh
+exec 2>&1
+until [ -d /run/ghostbridge ]; do sleep 1; done
+/usr/local/libexec/3tched/runit-ready-signal xsock-decoy
+exec socat UNIX-LISTEN:/run/ghostbridge/decoy.sock,fork,unlink-early,mode=666 TCP:129.153.134.63:443,connect-timeout=5

@@ -1,0 +1,71 @@
+#!/bin/sh
+set -eu
+exec 2>&1
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+wait_dep op-grpc-bridge
+/usr/local/libexec/3tched/emqx-prepare
+
+[ -x /opt/emqx/bin/emqx ] || { echo "standalone EMQX artifact is not installed" >&2; exit 1; }
+
+export EMQX_NODE__COOKIE="$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-node-cookie)"
+export EMQX_DASHBOARD__DEFAULT_USERNAME=admin
+export EMQX_DASHBOARD__DEFAULT_PASSWORD="$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-dashboard-password)"
+export EMQX_LOG_DIR=/var/log/emqx
+export EMQX_DEFAULT_LOG_HANDLER=console
+
+READY_DIR=/run/opdbus/runit-ready
+READY_FILE="$READY_DIR/emqx"
+install -d -m 0755 "$READY_DIR"
+rm -f -- "$READY_FILE"
+
+emqx_pid=0
+cleanup() {
+    rm -f -- "$READY_FILE"
+    if [ "$emqx_pid" -gt 0 ]; then
+        kill -TERM "$emqx_pid" 2>/dev/null || true
+    fi
+}
+trap cleanup HUP INT TERM EXIT
+
+cd /opt/emqx
+chpst -u emqx:emqx /opt/emqx/bin/emqx foreground &
+emqx_pid=$!
+
+attempt=0
+until ss -H -lnt 2>/dev/null | awk '
+    $4 == "127.0.0.1:1883" { mqtt = 1 }
+    $4 == "127.0.0.1:18083" { api = 1 }
+    END { exit(mqtt && api ? 0 : 1) }
+'; do
+    attempt=$((attempt + 1))
+    if ! kill -0 "$emqx_pid" 2>/dev/null; then
+        status=0
+        wait "$emqx_pid" || status=$?
+        emqx_pid=0
+        exit "$status"
+    fi
+    [ "$attempt" -lt 90 ] || {
+        echo "emqx: loopback listeners not ready after 90s" >&2
+        exit 1
+    }
+    sleep 1
+done
+touch "$READY_FILE"
+chmod 0644 "$READY_FILE"
+
+status=0
+wait "$emqx_pid" || status=$?
+emqx_pid=0
+trap - HUP INT TERM EXIT
+rm -f -- "$READY_FILE"
+exit "$status"

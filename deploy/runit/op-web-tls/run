@@ -1,0 +1,28 @@
+#!/bin/sh
+# TLS door for the op-web dashboard. op-web itself stays plain HTTP on
+# loopback-facing :8080; this relay terminates TLS on :8448 and forwards to
+# it. nftables admits :8448 only from the NetMaker mesh (100.69.0.0/16), so
+# the dashboard is reachable as https://100.69.0.1:8448/ from mesh peers.
+exec 2>&1
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+wait_dep op-web
+
+export LISTEN_HOST="${LISTEN_HOST:-0.0.0.0}"
+export LISTEN_PORT="${LISTEN_PORT:-8448}"
+export BACKEND_HOST="${BACKEND_HOST:-127.0.0.1}"
+export BACKEND_PORT="${BACKEND_PORT:-${PORT:-8080}}"
+export CERT="${OP_WEB_TLS_CERT:-/etc/op-dbus/tls/op-web-mesh.crt}"
+export KEY="${OP_WEB_TLS_KEY:-/etc/op-dbus/tls/op-web-mesh.key}"
+
+/usr/local/libexec/3tched/runit-ready-signal op-web-tls
+exec /usr/bin/python3 /usr/local/libexec/3tched/tls-relay.py

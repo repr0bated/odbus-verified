@@ -1,0 +1,941 @@
+syntax = "proto3";
+
+package operation.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/empty.proto";
+
+// =============================================================================
+// Core State Synchronization Service
+// =============================================================================
+
+// Bidirectional state sync between D-Bus and gRPC clients
+service StateSync {
+  // Subscribe to all state changes (D-Bus -> gRPC streaming)
+  rpc Subscribe(SubscribeRequest) returns (stream StateChange);
+
+  // Apply a mutation (gRPC -> D-Bus -> Event Chain)
+  rpc Mutate(MutateRequest) returns (MutateResponse);
+
+  // Get current state snapshot
+  rpc GetState(GetStateRequest) returns (GetStateResponse);
+
+  // Batch mutations (transactional)
+  rpc BatchMutate(BatchMutateRequest) returns (BatchMutateResponse);
+}
+
+// =============================================================================
+// Plugin Service - Per-plugin operations
+// =============================================================================
+
+service PluginService {
+  // List all registered plugins
+  rpc ListPlugins(google.protobuf.Empty) returns (ListPluginsResponse);
+
+  // Get plugin schema (JSON Schema 2026)
+  rpc GetSchema(GetSchemaRequest) returns (GetSchemaResponse);
+
+  // Call a plugin method
+  rpc CallMethod(CallMethodRequest) returns (CallMethodResponse);
+
+  // Get/Set property
+  rpc GetProperty(GetPropertyRequest) returns (GetPropertyResponse);
+  rpc SetProperty(SetPropertyRequest) returns (SetPropertyResponse);
+
+  // Subscribe to plugin signals
+  rpc SubscribeSignals(SubscribeSignalsRequest) returns (stream Signal);
+}
+
+// =============================================================================
+// Event Chain Service - Audit and compliance
+// =============================================================================
+
+service EventChainService {
+  // Get events in range
+  rpc GetEvents(GetEventsRequest) returns (GetEventsResponse);
+
+  // Subscribe to new events as they occur
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream ChainEvent);
+
+  // Verify chain integrity
+  rpc VerifyChain(VerifyChainRequest) returns (VerifyChainResponse);
+
+  // Get Merkle proof for an event
+  rpc GetProof(GetProofRequest) returns (GetProofResponse);
+
+  // Prove tag immutability
+  rpc ProveTagImmutability(ProveTagImmutabilityRequest) returns (ProveTagImmutabilityResponse);
+
+  // Get/Create snapshot
+  rpc GetSnapshot(GetSnapshotRequest) returns (GetSnapshotResponse);
+  rpc CreateSnapshot(CreateSnapshotRequest) returns (CreateSnapshotResponse);
+
+  // Trace-scoped semantic lookup for the Accountability pane
+  rpc SearchSemanticTrace(SearchSemanticTraceRequest) returns (SearchSemanticTraceResponse);
+}
+
+// =============================================================================
+// Message Types - State Sync
+// =============================================================================
+
+message SubscribeRequest {
+  // Filter by plugin IDs (empty = all)
+  repeated string plugin_ids = 1;
+  // Filter by object paths (glob patterns supported)
+  repeated string path_patterns = 2;
+  // Filter by tags
+  repeated string tags = 3;
+  // Include initial state snapshot
+  bool include_initial_state = 4;
+  // Include the running plugin contracts at hydration. Each arrives as a frame
+  // with change_type CHANGE_TYPE_SCHEMA_MIGRATION, member_name = schema hash,
+  // and new_value = the sealed PluginSchema JSON. Independent of
+  // include_initial_state: a consumer may want contracts without present state.
+  bool include_schema = 5;
+}
+
+message StateChange {
+  // Unique change ID
+  string change_id = 1;
+  // Event chain event ID
+  uint64 event_id = 2;
+  // Plugin that changed
+  string plugin_id = 3;
+  // D-Bus object path
+  string object_path = 4;
+  // Change type
+  ChangeType change_type = 5;
+  // Property/method name (if applicable)
+  string member_name = 6;
+  // Previous value (for updates)
+  google.protobuf.Value old_value = 7;
+  // New value
+  google.protobuf.Value new_value = 8;
+  // Tags touched by this change
+  repeated string tags_touched = 9;
+  // Event hash for verification
+  string event_hash = 10;
+  // Timestamp
+  google.protobuf.Timestamp timestamp = 11;
+  // Actor who made the change
+  string actor_id = 12;
+  // Stream framing: initial static-tree state, a live update, or keepalive.
+  StateFrameKind frame_kind = 13;
+  // Hash of the contract observed for this frame's currently published
+  // plugin. Empty for keepalives and removal tombstones.
+  string schema_hash = 14;
+  // Identity of the whole catalog observed stable around this state read —
+  // blake3 over the sorted
+  // (plugin_id, schema_hash) pairs. Present on EVERY frame, keepalives
+  // included. Keepalives repeat the last committed observation and do not poll
+  // for catalog changes. This does not claim the state generation was authored
+  // from that schema revision.
+  string catalog_hash = 15;
+  // Monotonic generation of the committed selected SHM namespace. Explicit
+  // private workspace paths use that verified owner namespace, not the public
+  // global counter. Do not compare generations across owners or namespaces.
+  // Audit event identifiers are deliberately independent of this counter.
+  uint64 state_generation = 16;
+}
+
+enum StateFrameKind {
+  STATE_FRAME_KIND_UNSPECIFIED = 0;
+  STATE_FRAME_KIND_INITIAL_STATE = 1;
+  STATE_FRAME_KIND_UPDATE = 2;
+  STATE_FRAME_KIND_HEARTBEAT = 3;
+}
+
+enum ChangeType {
+  CHANGE_TYPE_UNSPECIFIED = 0;
+  CHANGE_TYPE_PROPERTY_SET = 1;
+  CHANGE_TYPE_PROPERTY_DELETE = 2;
+  CHANGE_TYPE_METHOD_CALL = 3;
+  CHANGE_TYPE_SIGNAL = 4;
+  CHANGE_TYPE_OBJECT_ADDED = 5;
+  CHANGE_TYPE_OBJECT_REMOVED = 6;
+  CHANGE_TYPE_SCHEMA_MIGRATION = 7;
+}
+
+message MutateRequest {
+  // Plugin to mutate
+  string plugin_id = 1;
+  // D-Bus object path
+  string object_path = 2;
+  // Operation type
+  OperationType operation = 3;
+  // Member (property or method name)
+  string member_name = 4;
+  // Arguments/value
+  google.protobuf.Value value = 5;
+  // Actor ID for audit
+  string actor_id = 6;
+  // Capability ID for authorization
+  string capability_id = 7;
+  // Idempotency key
+  string idempotency_key = 8;
+}
+
+enum OperationType {
+  OPERATION_TYPE_UNSPECIFIED = 0;
+  OPERATION_TYPE_SET_PROPERTY = 1;
+  OPERATION_TYPE_CALL_METHOD = 2;
+  OPERATION_TYPE_APPLY_PATCH = 3;
+}
+
+message MutateResponse {
+  // Whether mutation succeeded
+  bool success = 1;
+  // Event chain event ID
+  uint64 event_id = 2;
+  // Event hash
+  string event_hash = 3;
+  // Result value (for method calls)
+  google.protobuf.Value result = 4;
+  // Error details if failed
+  MutationError error = 5;
+  // Resulting effective state hash
+  string effective_hash = 6;
+}
+
+message MutationError {
+  ErrorCode code = 1;
+  string message = 2;
+  // Denial reason from event chain
+  DenyReason deny_reason = 3;
+}
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_NOT_FOUND = 1;
+  ERROR_CODE_PERMISSION_DENIED = 2;
+  ERROR_CODE_VALIDATION_FAILED = 3;
+  ERROR_CODE_READ_ONLY = 4;
+  ERROR_CODE_TAG_LOCKED = 5;
+  ERROR_CODE_INTERNAL = 6;
+}
+
+message DenyReason {
+  oneof reason {
+    TagLock tag_lock = 1;
+    ConstraintFail constraint_fail = 2;
+    CapabilityMissing capability_missing = 3;
+    ReadOnlyViolation read_only_violation = 4;
+  }
+}
+
+message TagLock {
+  string tag = 1;
+  string wrapper_id = 2;
+}
+
+message ConstraintFail {
+  string constraint = 1;
+  string message = 2;
+}
+
+message CapabilityMissing {
+  string capability = 1;
+}
+
+message ReadOnlyViolation {
+  string field = 1;
+}
+
+message GetStateRequest {
+  string plugin_id = 1;
+  string object_path = 2;
+}
+
+message GetStateResponse {
+  google.protobuf.Struct state = 1;
+  string effective_hash = 2;
+  uint64 at_event_id = 3;
+  // Exact selected JSON value. Present also for scalar/array/null descendants;
+  // state remains populated for object clients. Value numbers retain the
+  // standard protobuf double-precision limitation.
+  google.protobuf.Value value = 4;
+}
+
+message BatchMutateRequest {
+  repeated MutateRequest mutations = 1;
+  // All-or-nothing semantics
+  bool atomic = 2;
+  string actor_id = 3;
+}
+
+message BatchMutateResponse {
+  bool success = 1;
+  repeated MutateResponse results = 2;
+  // If atomic and failed, which index failed
+  int32 failed_index = 3;
+}
+
+// =============================================================================
+// Message Types - Plugin Service
+// =============================================================================
+
+message ListPluginsResponse {
+  repeated PluginInfo plugins = 1;
+}
+
+message PluginInfo {
+  string id = 1;
+  string name = 2;
+  string version = 3;
+  string description = 4;
+  string dbus_path = 5;
+  repeated string interfaces = 6;
+  repeated string tags = 7;
+}
+
+message GetSchemaRequest {
+  string plugin_id = 1;
+  // Schema format (json-schema-2026, json-schema-draft07, protobuf)
+  string format = 2;
+}
+
+message GetSchemaResponse {
+  string schema_json = 1;
+  string dialect = 2;
+  string version = 3;
+}
+
+message CallMethodRequest {
+  string plugin_id = 1;
+  string object_path = 2;
+  string interface_name = 3;
+  string method_name = 4;
+  repeated google.protobuf.Value arguments = 5;
+  string actor_id = 6;
+  string capability_id = 7;
+}
+
+message CallMethodResponse {
+  bool success = 1;
+  google.protobuf.Value result = 2;
+  uint64 event_id = 3;
+  string event_hash = 4;
+  MutationError error = 5;
+}
+
+message GetPropertyRequest {
+  string plugin_id = 1;
+  string object_path = 2;
+  string interface_name = 3;
+  string property_name = 4;
+}
+
+message GetPropertyResponse {
+  google.protobuf.Value value = 1;
+  bool read_only = 2;
+}
+
+message SetPropertyRequest {
+  string plugin_id = 1;
+  string object_path = 2;
+  string interface_name = 3;
+  string property_name = 4;
+  google.protobuf.Value value = 5;
+  string actor_id = 6;
+  string capability_id = 7;
+}
+
+message SetPropertyResponse {
+  bool success = 1;
+  uint64 event_id = 2;
+  string event_hash = 3;
+  MutationError error = 4;
+}
+
+message SubscribeSignalsRequest {
+  string plugin_id = 1;
+  repeated string signal_names = 2;
+  string object_path = 3;
+}
+
+message Signal {
+  string plugin_id = 1;
+  string object_path = 2;
+  string interface_name = 3;
+  string signal_name = 4;
+  repeated google.protobuf.Value arguments = 5;
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+// =============================================================================
+// Message Types - Event Chain Service
+// =============================================================================
+
+message GetEventsRequest {
+  uint64 from_event_id = 1;
+  uint64 to_event_id = 2;
+  // Max events to return
+  uint32 limit = 3;
+  // Filter by plugin
+  string plugin_id = 4;
+  // Filter by tags
+  repeated string tags = 5;
+  // Filter by decision
+  Decision decision_filter = 6;
+}
+
+enum Decision {
+  DECISION_UNSPECIFIED = 0;
+  DECISION_ALLOW = 1;
+  DECISION_DENY = 2;
+}
+
+message GetEventsResponse {
+  repeated ChainEvent events = 1;
+  bool has_more = 2;
+}
+
+message ChainEvent {
+  uint64 event_id = 1;
+  string prev_hash = 2;
+  string event_hash = 3;
+  google.protobuf.Timestamp timestamp = 4;
+  string actor_id = 5;
+  string capability_id = 6;
+  string plugin_id = 7;
+  string schema_version = 8;
+  string operation_type = 9;
+  string target = 10;
+  repeated string tags_touched = 11;
+  Decision decision = 12;
+  DenyReason deny_reason = 13;
+  string input_patch_hash = 14;
+  string result_effective_hash = 15;
+}
+
+message SubscribeEventsRequest {
+  // Start from this event ID (0 = latest)
+  uint64 from_event_id = 1;
+  // Filter by plugin
+  string plugin_id = 2;
+  // Filter by tags
+  repeated string tags = 3;
+}
+
+message VerifyChainRequest {
+  // Verify from this event
+  uint64 from_event_id = 1;
+  // Verify to this event (0 = latest)
+  uint64 to_event_id = 2;
+}
+
+message VerifyChainResponse {
+  bool valid = 1;
+  uint64 events_verified = 2;
+  uint64 batches_verified = 3;
+  repeated string errors = 4;
+}
+
+message GetProofRequest {
+  uint64 event_id = 1;
+}
+
+message GetProofResponse {
+  string event_hash = 1;
+  repeated MerkleProofSibling siblings = 2;
+  string root = 3;
+  uint64 batch_first_event_id = 4;
+  uint64 batch_last_event_id = 5;
+}
+
+message MerkleProofSibling {
+  string hash = 1;
+  bool is_right = 2;
+}
+
+message ProveTagImmutabilityRequest {
+  string tag = 1;
+  // Optional: prove for specific plugin only
+  string plugin_id = 2;
+}
+
+message ProveTagImmutabilityResponse {
+  string tag = 1;
+  bool is_immutable = 2;
+  repeated uint64 violation_event_ids = 3;
+  uint64 total_events_checked = 4;
+}
+
+message GetSnapshotRequest {
+  string snapshot_id = 1;
+}
+
+message GetSnapshotResponse {
+  Snapshot snapshot = 1;
+}
+
+message CreateSnapshotRequest {
+  string plugin_id = 1;
+}
+
+message CreateSnapshotResponse {
+  Snapshot snapshot = 1;
+}
+
+message Snapshot {
+  string snapshot_id = 1;
+  uint64 at_event_id = 2;
+  string plugin_id = 3;
+  string schema_version = 4;
+  string stub_hash = 5;
+  string immutable_wrappers_hash = 6;
+  string tunable_patch_hash = 7;
+  string effective_hash = 8;
+  google.protobuf.Timestamp timestamp = 9;
+  google.protobuf.Struct state = 10;
+}
+
+message SearchSemanticTraceRequest {
+  // Max matches to return (0 = server default)
+  uint32 limit = 1;
+}
+
+message SearchSemanticTraceResponse {
+  string trace_id = 1;
+  uint64 mutation_index = 2;
+  repeated SemanticTraceMatch matches = 3;
+}
+
+message SemanticTraceMatch {
+  string point_id = 1;
+  float score = 2;
+  google.protobuf.Struct payload = 3;
+}
+
+// =============================================================================
+// OVSDB Mirror Service - RFC 7047 native gRPC bridge
+// =============================================================================
+
+// 1:1 gRPC projection of the OVSDB management protocol (RFC 7047).
+// All operations pass through to ovsdb-server via the D-Bus mirror.
+service OvsdbMirror {
+  // RFC 7047 §4.1.1 — List available databases
+  rpc ListDbs(google.protobuf.Empty) returns (OvsdbListDbsResponse);
+
+  // RFC 7047 §4.1.2 — Get database schema (<database-schema>)
+  rpc GetSchema(OvsdbGetSchemaRequest) returns (OvsdbGetSchemaResponse);
+
+  // RFC 7047 §4.1.3 — Execute a transaction (insert/select/update/mutate/delete/wait)
+  rpc Transact(OvsdbTransactRequest) returns (OvsdbTransactResponse);
+
+  // RFC 7047 §4.1.5 — Monitor database changes (streaming)
+  rpc Monitor(OvsdbMonitorRequest) returns (stream OvsdbUpdate);
+
+  // RFC 7047 §4.1.11 — Echo for liveness
+  rpc Echo(OvsdbEchoRequest) returns (OvsdbEchoResponse);
+
+  // Dump full database state (convenience, not in RFC)
+  rpc DumpDb(OvsdbDumpDbRequest) returns (OvsdbDumpDbResponse);
+
+  // Get the full Bridge→Port→Interface hierarchy (reconciled mirror view)
+  rpc GetBridgeState(OvsdbGetBridgeStateRequest) returns (OvsdbGetBridgeStateResponse);
+  // Safe datapath health: fail_mode + controller list + fallback NORMAL present
+  rpc GetDatapathHealth(OvsdbGetDatapathHealthRequest) returns (OvsdbGetDatapathHealthResponse);
+  // Plugin-first attach: never bare set-controller (rollback on unhealthy)
+  rpc AttachControllerSafe(OvsdbAttachControllerSafeRequest) returns (OvsdbAttachControllerSafeResponse);
+  rpc EnsureFallbackNormal(OvsdbEnsureFallbackNormalRequest) returns (OvsdbEnsureFallbackNormalResponse);
+  rpc DelController(OvsdbDelControllerRequest) returns (OvsdbDelControllerResponse);
+
+}
+
+// --- OVSDB Mirror Messages ---
+
+message OvsdbListDbsResponse {
+  repeated string databases = 1;
+}
+
+message OvsdbGetSchemaRequest {
+  string database = 1;
+}
+
+message OvsdbGetSchemaResponse {
+  // RFC 7047 §3.2 <database-schema> as JSON
+  string schema_json = 1;
+  string name = 2;
+  string version = 3;
+}
+
+message OvsdbTransactRequest {
+  string database = 1;
+  // RFC 7047 §4.1.3 — array of operations as JSON
+  string operations_json = 2;
+  // Actor for event chain audit
+  string actor_id = 3;
+}
+
+message OvsdbTransactResponse {
+  bool success = 1;
+  // Array of per-operation results as JSON
+  string results_json = 2;
+  // Event chain event ID (if recorded)
+  uint64 event_id = 3;
+  string error = 4;
+}
+
+message OvsdbMonitorRequest {
+  string database = 1;
+  // RFC 7047 §4.1.5 — monitor-requests per table as JSON
+  // e.g. {"Bridge": {}, "Port": {}, "Interface": {}}
+  string monitor_requests_json = 2;
+}
+
+message OvsdbUpdate {
+  // Table name
+  string table = 1;
+  // Row UUID
+  string uuid = 2;
+  // Old row (null for inserts)
+  google.protobuf.Struct old_row = 3;
+  // New row (null for deletes)
+  google.protobuf.Struct new_row = 4;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+message OvsdbEchoRequest {
+  repeated string payload = 1;
+}
+
+message OvsdbEchoResponse {
+  repeated string payload = 1;
+}
+
+message OvsdbDumpDbRequest {
+  string database = 1;
+}
+
+message OvsdbDumpDbResponse {
+  // Full database dump as JSON (table → rows)
+  string dump_json = 1;
+}
+
+message OvsdbGetBridgeStateRequest {
+  // Optional: filter by bridge name (empty = all)
+  string bridge_name = 1;
+}
+
+message OvsdbGetBridgeStateResponse {
+  repeated OvsdbBridge bridges = 1;
+}
+
+message OvsdbGetDatapathHealthRequest {
+  string bridge_name = 1;
+}
+message OvsdbGetDatapathHealthResponse {
+  string bridge = 1;
+  string fail_mode = 2;
+  repeated string controllers = 3;
+  bool fallback_normal = 4;
+  uint32 fallback_priority = 5;
+  string detail_json = 6;
+}
+
+message OvsdbAttachControllerSafeRequest {
+  string bridge_name = 1;
+  string endpoint = 2; // e.g. tcp:10.200.0.1:6653
+}
+message OvsdbAttachControllerSafeResponse {
+  bool ok = 1;
+  string message = 2;
+  OvsdbGetDatapathHealthResponse health = 3;
+}
+
+message OvsdbEnsureFallbackNormalRequest {
+  string bridge_name = 1;
+}
+message OvsdbEnsureFallbackNormalResponse {
+  bool ok = 1;
+  string message = 2;
+}
+
+message OvsdbDelControllerRequest {
+  string bridge_name = 1;
+}
+message OvsdbDelControllerResponse {
+  bool ok = 1;
+  string message = 2;
+}
+
+
+// RFC 7047 Bridge table — hierarchical view
+message OvsdbBridge {
+  string name = 1;
+  string datapath_type = 2;
+  string fail_mode = 3;
+  bool stp_enable = 4;
+  bool mcast_snooping_enable = 5;
+  map<string, string> other_config = 6;
+  repeated OvsdbPort ports = 7;
+  // OVS design: priority=0 NORMAL must remain while controller is attached
+  // (async PACKET_IN / in-band control). See docs.openvswitch.org topics/design.
+  bool fallback_normal = 8;
+  repeated string controllers = 9;
+}
+
+// RFC 7047 Port table
+message OvsdbPort {
+  string name = 1;
+  uint32 tag = 2;       // VLAN tag (0 = untagged)
+  repeated uint32 trunks = 3;
+  string vlan_mode = 4;
+  string bond_mode = 5;
+  repeated OvsdbInterface interfaces = 6;
+}
+
+// RFC 7047 Interface table
+message OvsdbInterface {
+  string name = 1;
+  string type = 2;      // "system" | "internal" | "patch" | "vxlan" | ...
+  string mac_in_use = 3;
+  string mac = 4;
+  string admin_state = 5;
+  string link_state = 6;
+  map<string, string> options = 7;  // tunnel options: remote_ip, local_ip, key
+}
+
+// =============================================================================
+// Runtime Service - Live operational state
+// =============================================================================
+
+// Live runtime state: process info, services, system metrics.
+// Not stored in any database — queried directly from the running system.
+service RuntimeMirror {
+  // Get overall system runtime info
+  rpc GetSystemInfo(google.protobuf.Empty) returns (RuntimeGetSystemInfoResponse);
+
+  // List dinit services and their states
+  rpc ListServices(RuntimeListServicesRequest) returns (RuntimeListServicesResponse);
+
+  // Get a specific service's state
+  rpc GetService(RuntimeGetServiceRequest) returns (RuntimeServiceInfo);
+
+  // Stream live metric updates (CPU, memory, network counters)
+  rpc StreamMetrics(RuntimeStreamMetricsRequest) returns (stream RuntimeMetricUpdate);
+
+  // Get network interface states (from rtnetlink)
+  rpc ListInterfaces(google.protobuf.Empty) returns (RuntimeListInterfacesResponse);
+
+  // Get NUMA topology
+  rpc GetNumaTopology(google.protobuf.Empty) returns (RuntimeGetNumaTopologyResponse);
+
+  // Probe Unix domain socket paths from the bridge host (tonic-web clients cannot
+  // open UDS directly — this is the supported health path for socket pills).
+  rpc CheckUnixSockets(RuntimeCheckUnixSocketsRequest) returns (RuntimeCheckUnixSocketsResponse);
+}
+
+// --- Runtime Messages ---
+
+message RuntimeGetSystemInfoResponse {
+  string hostname = 1;
+  string kernel_version = 2;
+  uint64 uptime_seconds = 3;
+  uint64 boot_timestamp = 4;
+  uint32 cpu_count = 5;
+  uint64 memory_total_bytes = 6;
+  uint64 memory_available_bytes = 7;
+  uint64 memory_used_bytes = 8;
+  string init_system = 9;            // "dinit" | "systemd"
+  string arch = 10;                  // "x86_64" | "aarch64"
+  google.protobuf.Timestamp queried_at = 11;
+}
+
+message RuntimeListServicesRequest {
+  // Filter by state (empty = all)
+  string state_filter = 1;
+}
+
+message RuntimeListServicesResponse {
+  repeated RuntimeServiceInfo services = 1;
+}
+
+message RuntimeGetServiceRequest {
+  string service_name = 1;
+}
+
+message RuntimeServiceInfo {
+  string name = 1;
+  string state = 2;           // "STARTED" | "STOPPED" | "STARTING" | "STOPPING"
+  uint32 pid = 3;
+  bool enabled = 4;
+  string description = 5;
+  repeated string dependencies = 6;
+  google.protobuf.Timestamp started_at = 7;
+}
+
+message RuntimeStreamMetricsRequest {
+  // Interval in seconds between updates (default: 5)
+  uint32 interval_seconds = 1;
+  // Which metric categories to include (empty = all)
+  repeated string categories = 2;   // "cpu" | "memory" | "network" | "disk"
+}
+
+message RuntimeMetricUpdate {
+  string category = 1;
+  string name = 2;
+  double value = 3;
+  string unit = 4;
+  map<string, string> labels = 5;   // e.g. {"interface": "ens3", "direction": "rx"}
+  google.protobuf.Timestamp timestamp = 6;
+}
+
+message RuntimeListInterfacesResponse {
+  repeated RuntimeNetworkInterface interfaces = 1;
+}
+
+message RuntimeNetworkInterface {
+  string name = 1;
+  uint32 index = 2;
+  string mac_address = 3;
+  string state = 4;           // "UP" | "DOWN" | "UNKNOWN"
+  uint32 mtu = 5;
+  repeated string ipv4_addresses = 6;
+  repeated string ipv6_addresses = 7;
+  uint64 rx_bytes = 8;
+  uint64 tx_bytes = 9;
+  uint64 rx_packets = 10;
+  uint64 tx_packets = 11;
+  string driver = 12;
+  uint32 speed_mbps = 13;
+}
+
+message RuntimeGetNumaTopologyResponse {
+  repeated NumaNode nodes = 1;
+}
+
+message RuntimeCheckUnixSocketsRequest {
+  repeated string paths = 1;
+}
+
+message RuntimeUnixSocketStatus {
+  string path = 1;
+  bool exists = 2;
+  bool connectable = 3;
+  string detail = 4;
+}
+
+message RuntimeCheckUnixSocketsResponse {
+  repeated RuntimeUnixSocketStatus sockets = 1;
+  google.protobuf.Timestamp queried_at = 2;
+}
+
+message NumaNode {
+  uint32 node_id = 1;
+  repeated uint32 cpus = 2;
+  uint64 memory_total_bytes = 3;
+  uint64 memory_free_bytes = 4;
+  uint64 memory_used_bytes = 5;
+}
+
+// =============================================================================
+// D-Bus Passthrough Service
+// =============================================================================
+
+// Generic D-Bus method call passthrough. Allows gRPC-Web clients (browser UI)
+// to invoke any method on any D-Bus interface reachable from the session or
+// system bus. This is the extension point for services that register on the
+// bus (e.g. ai.assistant.v1) without needing dedicated gRPC proto definitions.
+service DbusPassthrough {
+  // Call a D-Bus method and return the JSON result.
+  rpc Call(DbusCallRequest) returns (dbusCallResponse);
+
+  // Get a D-Bus property value as JSON.
+  rpc Get(DbusGetPropertyRequest) returns (DbusGetPropertyResponse);
+
+  // Set a D-Bus property value from JSON.
+  rpc Set(DbusSetPropertyRequest) returns (DbusSetPropertyResponse);
+
+  // Subscribe to a D-Bus signal, streaming events as JSON.
+  rpc Watch(DbusWatchRequest) returns (stream DbusSignalEvent);
+}
+
+message DbusCallRequest {
+  string bus = 1;            // "session" | "system"
+  string destination = 2;    // e.g. "ai.assistant.v1"
+  string path = 3;           // e.g. "/ai/assistant"
+  string interface = 4;      // e.g. "ai.assistant.v1"
+  string method = 5;         // e.g. "GetSoulMemory"
+  string json_body = 6;      // JSON-encoded argument(s)
+}
+
+message dbusCallResponse {
+  bool success = 1;
+  string json_result = 2;    // JSON-encoded return value
+  string error = 3;          // error message if failed
+}
+
+message DbusGetPropertyRequest {
+  string bus = 1;
+  string destination = 2;
+  string path = 3;
+  string interface = 4;
+  string property = 5;
+}
+
+message DbusGetPropertyResponse {
+  bool success = 1;
+  string json_value = 2;
+  string error = 3;
+}
+
+message DbusSetPropertyRequest {
+  string bus = 1;
+  string destination = 2;
+  string path = 3;
+  string interface = 4;
+  string property = 5;
+  string json_value = 6;
+}
+
+message DbusSetPropertyResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message DbusWatchRequest {
+  string bus = 1;
+  string destination = 2;
+  string path = 3;
+  string interface = 4;
+  repeated string signal_names = 5;  // empty = all signals
+}
+
+message DbusSignalEvent {
+  string signal_name = 1;
+  string path = 2;
+  string interface = 3;
+  string json_body = 4;
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+// =============================================================================
+// 3tched Router projection (read-only gRPC view of the plugin's route/provider tree)
+// subid: exp.service.3tched-router-bridge.grpc-stream@v1
+// =============================================================================
+
+message ModelRouteProto {
+  string hint = 1;
+  string model = 2;
+  string provider = 3;
+  bool available = 4;
+  string effort_level = 5;
+  string privacy_tier = 6;
+  uint32 context_window = 7;
+}
+
+message ProviderProto {
+  string id = 1;
+  string route = 2;
+  string kind = 3;
+}
+
+message TchedRouterProjection {
+  string schema_json = 1;
+  repeated ModelRouteProto model_routes = 2;
+  repeated ProviderProto providers = 3;
+}

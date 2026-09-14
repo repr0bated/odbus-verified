@@ -1,0 +1,24 @@
+   Compiling zeroclaw-gateway v0.8.4 (/var/tmp/odbus-native-stateless-v084/crates/zeroclaw-gateway)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 22.64s
+     Running unittests src/lib.rs (/var/tmp/odbus-native-stateless-target/debug/deps/zeroclaw_gateway-33439b964a8b6849)
+
+running 7 tests
+test ws_stateless_tests::ws_stateless_protocol_errors_are_terminal_before_provider_effect ... ok
+test ws_stateless_tests::ws_stateless_requires_pairing_and_rejects_bad_admission_before_provider ... ok
+test ws_stateless_tests::ws_stateless_rejects_pairing_disabled_disabled_and_missing_agents_before_provider ... ok
+test ws_stateless_tests::ws_stateless_rejects_empty_and_oversized_prompts_before_provider_effect ... ok
+test ws_stateless_tests::ws_stateless_forwards_sse_delta_before_the_provider_terminal_event ... ok
+test ws_stateless_tests::ws_stateless_uses_only_the_one_user_prompt_and_reports_terminal_done ... ok
+test ws_stateless_tests::ws_stateless_ack_pins_configured_provider_and_model_before_prompt ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 397 filtered out; finished in 0.10s
+
+     Running unittests src/lib.rs (/var/tmp/odbus-native-stateless-target/debug/deps/zeroclaw_providers-efb1b99b1bd5deaa)
+
+running 3 tests
+test stateless::tests::premature_end_tool_events_and_overflow_fail_without_success ... ok
+test stateless::tests::reasoning_never_becomes_output_and_final_preserves_reported_usage ... ok
+test stateless::tests::arbitrary_request_overrides_are_not_stateless_capable ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 1167 filtered out; finished in 0.01s
+

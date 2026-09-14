@@ -1,0 +1,364 @@
+#!/bin/sh
+# systemd-unit-to-runit — convert a systemd .service unit into a runit service.
+#
+# Third-party installers ship systemd units and call `systemctl enable`. This
+# host boots runit, so those units are inert. This script translates one unit
+# into `/etc/runit/sv/<name>/run` (plus `log/run`) following the same shape the
+# hand-written services in this repo use: `exec 2>&1`, a `wait_dep` helper for
+# ordering, environment sourcing, then `exec` of the real binary.
+#
+# Usage:
+#   systemd-unit-to-runit <unit-file|unit-name> [--enable] [--force] [--dry-run]
+#
+# Runit differences that cannot be expressed and are reported, not hidden:
+#   * Type=oneshot / RemainAfterExit — runit supervises long-running processes.
+#     Converted with a `once` marker; use `sv once <svc>` to run it one time.
+#   * Restart=no — runit always restarts a supervised service. A `down` file is
+#     written so it does not auto-start, and the limitation is printed.
+#   * Timers, sockets, mounts, paths — not services; refused.
+#
+# Exit codes: 0 converted, 1 usage/parse error, 2 unsupported unit type.
+set -eu
+
+SV_DIR=${SV_DIR:-/etc/runit/sv}
+RUNSVDIR_DEFAULT=${RUNSVDIR_DEFAULT:-/etc/runit/runsvdir/default}
+SERVICE_DIR=${SERVICE_DIR:-/run/runit/service}
+LOG_ROOT=${LOG_ROOT:-/var/log/sv}
+
+UNIT_SEARCH_PATH="/etc/systemd/system /usr/lib/systemd/system /lib/systemd/system /usr/local/lib/systemd/system"
+
+DO_ENABLE=0
+FORCE=0
+DRY_RUN=0
+UNIT_ARG=""
+
+usage() {
+    cat >&2 <<'EOF'
+usage: systemd-unit-to-runit <unit-file|unit-name> [--enable] [--force] [--dry-run]
+
+  --enable    also enable the service (symlink into the default runlevel)
+  --force     overwrite an existing /etc/runit/sv/<name>/run
+  --dry-run   print the generated run script instead of writing it
+EOF
+    exit 1
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        --enable)  DO_ENABLE=1 ;;
+        --force)   FORCE=1 ;;
+        --dry-run) DRY_RUN=1 ;;
+        -h|--help) usage ;;
+        -*)        echo "unknown option: $arg" >&2; usage ;;
+        *)
+            if [ -n "$UNIT_ARG" ]; then
+                echo "only one unit may be given" >&2
+                usage
+            fi
+            UNIT_ARG=$arg
+            ;;
+    esac
+done
+
+[ -n "$UNIT_ARG" ] || usage
+
+# ── Resolve the unit file ────────────────────────────────────────────────────
+resolve_unit() {
+    candidate=$1
+    if [ -f "$candidate" ]; then
+        printf '%s\n' "$candidate"
+        return 0
+    fi
+    # Bare name: append .service if the caller omitted it, then search.
+    case "$candidate" in
+        *.*) name=$candidate ;;
+        *)   name="$candidate.service" ;;
+    esac
+    for dir in $UNIT_SEARCH_PATH; do
+        if [ -f "$dir/$name" ]; then
+            printf '%s\n' "$dir/$name"
+            return 0
+        fi
+    done
+    return 1
+}
+
+UNIT_FILE=$(resolve_unit "$UNIT_ARG") || {
+    echo "unit not found: $UNIT_ARG (searched: $UNIT_SEARCH_PATH)" >&2
+    exit 1
+}
+
+UNIT_BASE=$(basename "$UNIT_FILE")
+case "$UNIT_BASE" in
+    *.service) ;;
+    *.timer|*.socket|*.mount|*.path|*.target)
+        echo "unsupported unit type: $UNIT_BASE — only .service units convert to runit services" >&2
+        exit 2
+        ;;
+    *)
+        echo "not a systemd unit: $UNIT_BASE" >&2
+        exit 1
+        ;;
+esac
+SERVICE_NAME=${UNIT_BASE%.service}
+
+# Templated units need an instance; refuse rather than emit something wrong.
+case "$SERVICE_NAME" in
+    *@)
+        echo "template unit $UNIT_BASE needs an instance (e.g. ${SERVICE_NAME}name.service)" >&2
+        exit 2
+        ;;
+esac
+
+# ── Parse the unit ──────────────────────────────────────────────────────────
+# Reads one directive, last-wins, from a given section. Values may be
+# continued with a trailing backslash, which is folded onto one line.
+unit_get() {
+    section=$1
+    key=$2
+    awk -v section="[$section]" -v key="$key" '
+        # Strip comments and trailing whitespace.
+        { sub(/[ \t]+$/, "") }
+        /^[ \t]*[#;]/ { next }
+        /^\[/ { in_section = ($0 == section); next }
+        !in_section { next }
+        {
+            line = $0
+            # Fold continuation lines.
+            while (line ~ /\\$/) {
+                sub(/\\$/, "", line)
+                if ((getline nextline) <= 0) break
+                sub(/^[ \t]+/, "", nextline)
+                line = line nextline
+            }
+            eq = index(line, "=")
+            if (eq == 0) next
+            k = substr(line, 1, eq - 1)
+            v = substr(line, eq + 1)
+            gsub(/^[ \t]+|[ \t]+$/, "", k)
+            gsub(/^[ \t]+|[ \t]+$/, "", v)
+            if (k == key) value = v
+        }
+        END { if (value != "") print value }
+    ' "$UNIT_FILE"
+}
+
+# Multi-valued directives (Environment=, ExecStartPre=, After=…) — all lines.
+unit_get_all() {
+    section=$1
+    key=$2
+    awk -v section="[$section]" -v key="$key" '
+        { sub(/[ \t]+$/, "") }
+        /^[ \t]*[#;]/ { next }
+        /^\[/ { in_section = ($0 == section); next }
+        !in_section { next }
+        {
+            eq = index($0, "=")
+            if (eq == 0) next
+            k = substr($0, 1, eq - 1)
+            v = substr($0, eq + 1)
+            gsub(/^[ \t]+|[ \t]+$/, "", k)
+            gsub(/^[ \t]+|[ \t]+$/, "", v)
+            if (k == key && v != "") print v
+        }
+    ' "$UNIT_FILE"
+}
+
+EXEC_START=$(unit_get Service ExecStart)
+if [ -z "$EXEC_START" ]; then
+    echo "$UNIT_BASE has no ExecStart= — nothing to supervise" >&2
+    exit 1
+fi
+
+SVC_TYPE=$(unit_get Service Type)
+SVC_USER=$(unit_get Service User)
+SVC_GROUP=$(unit_get Service Group)
+WORKDIR=$(unit_get Service WorkingDirectory)
+RESTART=$(unit_get Service Restart)
+REMAIN=$(unit_get Service RemainAfterExit)
+UMASK_VAL=$(unit_get Service UMask)
+
+# systemd allows `-`, `@`, `+`, `!` prefixes on ExecStart; strip them for sh.
+EXEC_START=$(printf '%s' "$EXEC_START" | sed 's/^[-@+!]*//')
+
+ONESHOT=0
+if [ "$SVC_TYPE" = "oneshot" ] || [ "$REMAIN" = "yes" ]; then
+    ONESHOT=1
+fi
+
+NO_RESTART=0
+case "$RESTART" in
+    ""|no|never) [ "$ONESHOT" = 1 ] && NO_RESTART=1 ;;
+esac
+
+# Runit supervises the foreground process. A daemon that forks and exits makes
+# runsv believe it died, producing a restart loop. Say so loudly rather than
+# emitting a service that looks fine and thrashes.
+FOREGROUND_WARNING=""
+case "$SVC_TYPE" in
+    forking)
+        FOREGROUND_WARNING="Type=forking: runit supervises the foreground process, so a
+      daemonising binary will be restarted in a loop. Add the binary's
+      no-fork flag (commonly -N, -f, --foreground or --nodaemon) to the
+      exec line in the generated run script."
+        ;;
+    notify)
+        FOREGROUND_WARNING="Type=notify: there is no sd_notify socket under runit. The service
+      will run, but readiness signalling is lost — dependants should use
+      'sv check' instead."
+        ;;
+    dbus)
+        FOREGROUND_WARNING="Type=dbus: systemd would wait for a bus name. Runit does not;
+      ordering must be expressed with a wait_dep on the bus service."
+        ;;
+esac
+
+# ── Generate the run script ─────────────────────────────────────────────────
+RUN_SCRIPT=$(
+    printf '#!/bin/sh\n'
+    printf '# Generated from %s by systemd-unit-to-runit.\n' "$UNIT_FILE"
+    printf '# Do not hand-edit: re-run the converter, or detach it from the unit\n'
+    printf '# by deleting this header.\n'
+    printf 'exec 2>&1\n\n'
+
+    # Ordering: systemd After=/Requires= become sv waits, matching the pattern
+    # used by the hand-written services in this repo.
+    deps=""
+    for dep in $(unit_get_all Unit After) $(unit_get_all Unit Requires); do
+        case "$dep" in
+            *.service)
+                dep_name=${dep%.service}
+                # Only wait on services that actually exist under runit.
+                if [ -d "$SV_DIR/$dep_name" ]; then
+                    deps="$deps $dep_name"
+                fi
+                ;;
+        esac
+    done
+    if [ -n "$deps" ]; then
+        cat <<'DEPFN'
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+DEPFN
+        for dep_name in $deps; do
+            printf 'wait_dep %s\n' "$dep_name"
+        done
+        printf '\n'
+    fi
+
+    # EnvironmentFile= — a leading `-` means "ignore if missing".
+    env_files=$(unit_get_all Service EnvironmentFile || true)
+    if [ -n "$env_files" ]; then
+        printf 'set -a\n'
+        printf '%s\n' "$env_files" | while IFS= read -r ef; do
+            case "$ef" in
+                -*) printf '[ -r %s ] && . %s\n' "${ef#-}" "${ef#-}" ;;
+                *)  printf '. %s\n' "$ef" ;;
+            esac
+        done
+        printf 'set +a\n\n'
+    fi
+
+    # Environment= — may hold several KEY=VALUE pairs per line.
+    env_inline=$(unit_get_all Service Environment || true)
+    if [ -n "$env_inline" ]; then
+        printf '%s\n' "$env_inline" | while IFS= read -r line; do
+            printf '%s\n' "$line" | tr ' ' '\n' | while IFS= read -r pair; do
+                [ -n "$pair" ] || continue
+                case "$pair" in
+                    *=*) printf 'export %s\n' "$pair" ;;
+                esac
+            done
+        done
+        printf '\n'
+    fi
+
+    [ -n "$UMASK_VAL" ] && printf 'umask %s\n' "$UMASK_VAL"
+    [ -n "$WORKDIR" ] && printf 'cd %s || exit 1\n' "$WORKDIR"
+
+    # ExecStartPre= runs before the main process, same as systemd.
+    pre=$(unit_get_all Service ExecStartPre || true)
+    if [ -n "$pre" ]; then
+        printf '%s\n' "$pre" | while IFS= read -r cmd; do
+            cmd=$(printf '%s' "$cmd" | sed 's/^[-@+!]*//')
+            printf '%s || exit 1\n' "$cmd"
+        done
+    fi
+
+    if [ "$ONESHOT" = 1 ]; then
+        printf '\n# Type=oneshot in systemd. Runit supervises long-running\n'
+        printf '# processes, so run this with `sv once %s`.\n' "$SERVICE_NAME"
+    fi
+
+    # chpst is runit's privilege dropper (equivalent of User=/Group=).
+    printf '\n'
+    if [ -n "$SVC_USER" ]; then
+        target="$SVC_USER"
+        [ -n "$SVC_GROUP" ] && target="$SVC_USER:$SVC_GROUP"
+        printf 'exec chpst -u %s %s\n' "$target" "$EXEC_START"
+    else
+        printf 'exec %s\n' "$EXEC_START"
+    fi
+)
+
+LOG_RUN_SCRIPT=$(
+    printf '#!/bin/sh\n'
+    printf '# Generated from %s by systemd-unit-to-runit.\n' "$UNIT_FILE"
+    printf 'exec svlogd -tt %s/%s\n' "$LOG_ROOT" "$SERVICE_NAME"
+)
+
+if [ "$DRY_RUN" = 1 ]; then
+    printf '=== %s/%s/run ===\n' "$SV_DIR" "$SERVICE_NAME"
+    printf '%s\n' "$RUN_SCRIPT"
+    printf '\n=== %s/%s/log/run ===\n' "$SV_DIR" "$SERVICE_NAME"
+    printf '%s\n' "$LOG_RUN_SCRIPT"
+    [ -n "$FOREGROUND_WARNING" ] && printf '\nnote: %s\n' "$FOREGROUND_WARNING" >&2
+    exit 0
+fi
+
+TARGET_DIR="$SV_DIR/$SERVICE_NAME"
+if [ -e "$TARGET_DIR/run" ] && [ "$FORCE" != 1 ]; then
+    echo "$TARGET_DIR/run already exists (use --force to overwrite)" >&2
+    exit 1
+fi
+
+mkdir -p "$TARGET_DIR/log"
+printf '%s\n' "$RUN_SCRIPT" > "$TARGET_DIR/run"
+chmod 755 "$TARGET_DIR/run"
+printf '%s\n' "$LOG_RUN_SCRIPT" > "$TARGET_DIR/log/run"
+chmod 755 "$TARGET_DIR/log/run"
+# svlogd creates this itself on first run; pre-creating is a convenience that
+# must not fail the conversion when running unprivileged.
+mkdir -p "$LOG_ROOT/$SERVICE_NAME" 2>/dev/null ||
+    echo "note: could not pre-create $LOG_ROOT/$SERVICE_NAME (svlogd will create it)" >&2
+
+echo "converted $UNIT_BASE -> $TARGET_DIR/run"
+
+if [ -n "$FOREGROUND_WARNING" ]; then
+    echo "note: $FOREGROUND_WARNING" >&2
+fi
+
+if [ "$NO_RESTART" = 1 ]; then
+    touch "$TARGET_DIR/down"
+    echo "note: Restart=$RESTART — runit always restarts supervised services;" >&2
+    echo "      wrote $TARGET_DIR/down so it will not auto-start." >&2
+fi
+if [ "$ONESHOT" = 1 ]; then
+    echo "note: Type=oneshot — run it with: sv once $SERVICE_NAME" >&2
+fi
+
+# WantedBy= is systemd's enablement; the runit equivalent is a runlevel symlink.
+if [ "$DO_ENABLE" = 1 ]; then
+    mkdir -p "$RUNSVDIR_DEFAULT"
+    ln -sfn "$TARGET_DIR" "$RUNSVDIR_DEFAULT/$SERVICE_NAME"
+    echo "enabled: $RUNSVDIR_DEFAULT/$SERVICE_NAME -> $TARGET_DIR"
+    echo "runsvdir scans $SERVICE_DIR automatically; no reload needed."
+fi

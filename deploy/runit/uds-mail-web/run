@@ -1,0 +1,19 @@
+#!/bin/sh
+# NIC-less publication: host TCP -> ghostbridge UDS -> container loopback.
+# Webmail on the mesh address, attached the same way qdrant/xray/cozo are.
+#
+# This used to hang off fwd-443's SNI demux, which meant webmail over the mesh
+# only worked when the client sent SNI - a bare https://100.69.0.1/ fell to the
+# --default and got Reality. Reality is the cover story for the PUBLIC address;
+# on the mesh the address serves one thing, so relay it directly.
+exec 2>&1
+until ip -4 addr show dev netmaker 2>/dev/null | grep -q "100\.69\.0\.1/"; do
+    echo "uds-mail-web: waiting for netmaker address 100.69.0.1"
+    sleep 1
+done
+until [ -S "/run/ghostbridge/mail/web.sock" ]; do
+    echo "uds-mail-web: waiting for CT socket /run/ghostbridge/mail/web.sock"
+    sleep 1
+done
+/usr/local/libexec/3tched/runit-ready-signal uds-mail-web 2>/dev/null || true
+exec /usr/local/libexec/3tched/op-uds-relay --tcp-to-unix "100.69.0.1:443=/run/ghostbridge/mail/web.sock"

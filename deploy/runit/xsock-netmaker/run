@@ -1,0 +1,10 @@
+#!/bin/sh
+exec 2>&1
+until [ -d /run/ghostbridge ]; do sleep 1; done
+until ss -lnt | grep -q "127.0.0.1:8081"; do sleep 1; done
+/usr/local/libexec/3tched/runit-ready-signal xsock-netmaker
+rm -f /run/ghostbridge/netmaker.sock
+if [ -S /run/opdbus/session-bus.sock ]; then
+  zcall shared_unix_socket create_unix_socket -a '{"name":"xsock-netmaker","ports":[8081]}' >/dev/null 2>&1 || true
+fi
+exec /usr/local/libexec/3tched/socket-relay unix-listen /run/ghostbridge/netmaker.sock tcp-connect 127.0.0.1 8081

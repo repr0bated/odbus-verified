@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+"""Early-boot OVSDB port ops via ovsdb-client (no ovs-vsctl).
+
+Used only before op-grpc-bridge/plugins are up. Prefer `zcall rovs_commands`
+once the session plugin tree is ready.
+"""
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from typing import Any
+
+SOCK = "unix:/var/run/openvswitch/db.sock"
+
+
+def iface_mtu(port: str) -> int:
+    if port == os.environ.get("NETMAKER_PORT", "netmaker"):
+        return int(os.environ.get("NETMAKER_MTU", "1420"))
+    return int(os.environ.get("BRIDGE_MTU", "1420"))
+
+
+def dump(table: str) -> dict[str, Any]:
+    raw = subprocess.check_output(
+        ["ovsdb-client", "-f", "json", "dump", SOCK, "Open_vSwitch", table],
+        text=True,
+    )
+    return json.loads(raw)
+
+
+def port_to_br(port: str) -> str | None:
+    bridges = dump("Bridge")
+    ports = dump("Port")
+    name_i = ports["headings"].index("name")
+    uuid_i = ports["headings"].index("_uuid")
+    port_uuid = None
+    for row in ports["data"]:
+        if row[name_i] == port:
+            port_uuid = row[uuid_i][1]
+            break
+    if not port_uuid:
+        return None
+    b_name_i = bridges["headings"].index("name")
+    b_ports_i = bridges["headings"].index("ports")
+    for row in bridges["data"]:
+        plist = row[b_ports_i]
+        uuids = []
+        if isinstance(plist, list) and plist and plist[0] == "set":
+            for item in plist[1]:
+                if isinstance(item, list) and item[0] == "uuid":
+                    uuids.append(item[1])
+        if port_uuid in uuids:
+            return row[b_name_i]
+    return None
+
+
+def list_ports(bridge: str) -> list[str]:
+    bridges = dump("Bridge")
+    ports = dump("Port")
+    b_name_i = bridges["headings"].index("name")
+    b_ports_i = bridges["headings"].index("ports")
+    p_name_i = ports["headings"].index("name")
+    p_uuid_i = ports["headings"].index("_uuid")
+    uuid_to_name = {row[p_uuid_i][1]: row[p_name_i] for row in ports["data"]}
+    for row in bridges["data"]:
+        if row[b_name_i] != bridge:
+            continue
+        plist = row[b_ports_i]
+        out = []
+        if isinstance(plist, list) and plist and plist[0] == "set":
+            for item in plist[1]:
+                if isinstance(item, list) and item[0] == "uuid":
+                    name = uuid_to_name.get(item[1])
+                    if name:
+                        out.append(name)
+        return out
+    return []
+
+
+def transact(ops: list[Any]) -> Any:
+    payload = json.dumps(["Open_vSwitch", *ops])
+    raw = subprocess.check_output(
+        ["ovsdb-client", "transact", SOCK, payload],
+        text=True,
+    )
+    return json.loads(raw)
+
+
+def add_port(bridge: str, port: str) -> None:
+    cur = port_to_br(port)
+    if cur == bridge:
+        return
+    if cur and cur != bridge:
+        del_port(port)
+    # Insert Interface + Port, mutate Bridge.ports
+    ops = [
+        {
+            "op": "insert",
+            "table": "Interface",
+            "row": {"name": port, "type": "system", "mtu_request": iface_mtu(port)},
+            "uuid-name": "iface",
+        },
+        {
+            "op": "insert",
+            "table": "Port",
+            "row": {"name": port, "interfaces": ["named-uuid", "iface"]},
+            "uuid-name": "port",
+        },
+        {
+            "op": "mutate",
+            "table": "Bridge",
+            "where": [["name", "==", bridge]],
+            "mutations": [["ports", "insert", ["set", [["named-uuid", "port"]]]]],
+        },
+    ]
+    result = transact(ops)
+    if any(isinstance(r, dict) and "error" in r for r in result):
+        raise SystemExit(f"add_port failed: {result}")
+
+
+def del_port(port: str) -> None:
+    br = port_to_br(port)
+    if not br:
+        return
+    ports = dump("Port")
+    name_i = ports["headings"].index("name")
+    uuid_i = ports["headings"].index("_uuid")
+    port_uuid = None
+    for row in ports["data"]:
+        if row[name_i] == port:
+            port_uuid = row[uuid_i][1]
+            break
+    if not port_uuid:
+        return
+    ops = [
+        {
+            "op": "mutate",
+            "table": "Bridge",
+            "where": [["name", "==", br]],
+            "mutations": [["ports", "delete", ["set", [["uuid", port_uuid]]]]],
+        },
+        {
+            "op": "delete",
+            "table": "Port",
+            "where": [["_uuid", "==", ["uuid", port_uuid]]],
+        },
+    ]
+    result = transact(ops)
+    if any(isinstance(r, dict) and "error" in r for r in result):
+        raise SystemExit(f"del_port failed: {result}")
+
+
+def set_mtu(port: str, mtu: int) -> None:
+    result = transact(
+        [
+            {
+                "op": "update",
+                "table": "Interface",
+                "where": [["name", "==", port]],
+                "row": {"mtu_request": mtu},
+            }
+        ]
+    )
+    if any(isinstance(r, dict) and "error" in r for r in result):
+        raise SystemExit(f"set_mtu failed: {result}")
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) < 2:
+        print(
+            "usage: ovsdb-port port-to-br <port>|list-ports <bridge>|add-port <bridge> <port>|del-port <port>|set-mtu <port> [mtu]",
+            file=sys.stderr,
+        )
+        return 2
+    cmd = argv[1]
+    if cmd == "port-to-br":
+        br = port_to_br(argv[2])
+        if not br:
+            return 1
+        print(br)
+        return 0
+    if cmd == "list-ports":
+        for p in list_ports(argv[2]):
+            print(p)
+        return 0
+    if cmd == "add-port":
+        add_port(argv[2], argv[3])
+        return 0
+    if cmd == "del-port":
+        del_port(argv[2])
+        return 0
+    if cmd == "set-mtu":
+        port = argv[2]
+        mtu = int(argv[3]) if len(argv) > 3 else iface_mtu(port)
+        set_mtu(port, mtu)
+        return 0
+    print(f"unknown command {cmd}", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

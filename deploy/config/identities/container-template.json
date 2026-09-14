@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "description": "NIC-less identity CT template — shared host UDS, no Incus proxy, no eth0. Container name = session_id derived from WG pubkey.",
+  "image": {
+    "fingerprint_prefix": "3a639373bb7a",
+    "description": "Ubuntu noble amd64 (seed / RO rootfs)",
+    "fallback_alias": "images:ubuntu/noble"
+  },
+  "storage": {
+    "pool": "default",
+    "driver": "btrfs",
+    "notes": "Seed rootfs on the Incus btrfs pool. Persist is a dedicated loop-backed fstorage.img, not a second pool device."
+  },
+  "profiles": ["identity"],
+  "forbidden_devices": ["nic", "proxy"],
+  "devices": {
+    "root": {
+      "type": "disk",
+      "path": "/",
+      "pool": "default"
+    },
+    "ghostbridge-socket": {
+      "type": "disk",
+      "source": "/run/ghostbridge",
+      "path": "/opt/run-mounts/ghostbridge",
+      "notes": "Host owns container.sock; bind under /opt not /run (CT /run is tmpfs)."
+    },
+    "identity": {
+      "type": "disk",
+      "source": "/var/lib/opdbus-runtime/identities/${ROLE}",
+      "path": "/opt/run-mounts/identity",
+      "readonly": true
+    }
+  },
+  "sockets": {
+    "shared_container": {
+      "host_path": "/run/ghostbridge/container.sock",
+      "env": "GHOSTBRIDGE_SOCKET_PATH",
+      "registration": "createunixsocket / shared_unix_socket — name=session_id, ports metadata only"
+    },
+    "host_grpc": {
+      "host_path": "/run/opdbus/grpc.sock",
+      "env": "ZEROCLAW_UNIX_SOCKET",
+      "notes": "Host tools only; not bind-mounted into identity CTs by default"
+    }
+  },
+  "fstorage": {
+    "path_template": "/var/lib/opdbus-runtime/identities/${ROLE}/fstorage.img",
+    "size_gib": 2,
+    "attach": "losetup + mount fstorage.img; Incus disk bind to /opt/run-mounts/persist",
+    "notes": "Dedicated per-identity btrfs on the loop image. Do not btrfs device add onto the Incus pool (rootfs is a pool subvolume). ATTACH_FSTORAGE=0 skips the loop mount. Timeouts: ATTACH_FSTORAGE_TIMEOUT / DETACH_FSTORAGE_TIMEOUT default 60s/120s.",
+    "teardown_order": [
+      "incus stop",
+      "umount persist mount",
+      "losetup -d <loop>",
+      "incus delete"
+    ]
+  },
+  "memory": {
+    "leaf": "single cozo / cognitive store on host fabric",
+    "namespaces_template": [
+      "container:${SESSION_ID}:identity",
+      "container:${SESSION_ID}:soul",
+      "container:${SESSION_ID}:domain:work",
+      "container:${SESSION_ID}:domain:personal",
+      "container:${SESSION_ID}:domain:home",
+      "container:${SESSION_ID}:index",
+      "container:${SESSION_ID}:features"
+    ]
+  },
+  "heartbeat": {
+    "rpc": "operation.registry.v1.ComponentRegistry/Heartbeat",
+    "status": "spec + server handler in tree; identity CT client not deployed"
+  }
+}

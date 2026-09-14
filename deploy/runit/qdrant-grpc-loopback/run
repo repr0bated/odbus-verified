@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+exec 2>&1
+
+SOCKET=${QDRANT_GRPC_SOCKET:-/var/lib/opdbus-runtime/qdrant/qdrant-grpc.sock}
+PORT=${QDRANT_GRPC_PORT:-6334}
+
+while [ ! -S "$SOCKET" ]; do
+    sleep 1
+done
+
+exec socat \
+    "TCP-LISTEN:${PORT},bind=127.0.0.1,reuseaddr,fork" \
+    "UNIX-CONNECT:${SOCKET}"

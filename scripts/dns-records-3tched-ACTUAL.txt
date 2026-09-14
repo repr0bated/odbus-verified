@@ -1,0 +1,65 @@
+DNS Records for 3tched.com Mail Server
+======================================
+
+Current public origin IP: 148.113.204.83
+
+1. A Record (Webmail Hostname)
+------------------------------
+Type: A
+Name: mail
+Value: 148.113.204.83
+Proxy: Proxied through Cloudflare
+TTL: Auto
+
+2. MX Record (Mail Exchange)
+-----------------------------
+Type: MX
+Name: @
+Value: _dc-mx.b4237c6de800.3tched.com
+Priority: 10
+TTL: Provider-managed
+
+3. SPF Record (Sender Policy Framework)
+----------------------------------------
+Type: TXT
+Name: @
+Value: v=spf1 ip4:148.113.204.83 ~all
+TTL: 300
+
+4. DMARC Record
+---------------
+Type: TXT
+Name: _dmarc
+Value: v=DMARC1; p=quarantine; rua=mailto:admin@3tched.com; ruf=mailto:admin@3tched.com; fo=1
+TTL: 300
+
+5. DKIM Selectors (ACTUAL)
+--------------------------
+The live zone currently publishes multiple selectors, including:
+
+- `default._domainkey.3tched.com`
+- `neo1._domainkey.3tched.com`
+- `s202602._domainkey.3tched.com`
+
+Testing
+-------
+After DNS propagation (can take up to 48 hours, usually minutes):
+
+1. Test MX record:
+   dig MX 3tched.com
+
+2. Test SPF:
+   dig TXT 3tched.com
+
+3. Test DKIM:
+   dig TXT default._domainkey.3tched.com
+   dig TXT neo1._domainkey.3tched.com
+   dig TXT s202602._domainkey.3tched.com
+
+4. Send test email to:
+   https://www.mail-tester.com/
+
+5. Check DKIM/SPF/DMARC:
+   https://mxtoolbox.com/
+
+Note: For internal testing, you don't need public DNS - just use the IP directly.

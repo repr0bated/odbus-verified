@@ -1,0 +1,33 @@
+#!/bin/sh
+# Re-bind the PTAP encap flow to netmaker's CURRENT ofport.
+#
+# OpenFlow wire format carries port NUMBERS, not names: a flow pinned to
+# in_port=88 silently matches nothing after netclient recreates the interface
+# and the ofport churns (2026-08-24: 88 -> 199 overnight, mesh SSH died while
+# handshakes stayed green). Idempotent: exits 0 without touching anything when
+# the correct flow already exists. Stopgap until the controller translator
+# gains packet_type/Encap support and installs this itself.
+set -u
+BRIDGE="${BRIDGE:-ovsbr0}"
+IFACE="${NETMAKER_PORT:-netmaker}"
+ETH_SRC="02:00:64:45:00:01"
+
+command -v ovs-ofctl >/dev/null 2>&1 || exit 0
+command -v ovs-vsctl >/dev/null 2>&1 || exit 0
+[ -d "/sys/class/net/$IFACE" ] || exit 0
+
+OFPORT="$(ovs-vsctl --bare get interface "$IFACE" ofport 2>/dev/null)" || exit 0
+case "$OFPORT" in ''|'[]'|'*[]*') exit 0 ;; esac
+
+ETH_DST="$(ip link show "$BRIDGE" 2>/dev/null | awk '/link\/ether/{print $2}')"
+[ -n "$ETH_DST" ] || exit 0
+
+if ovs-ofctl -O OpenFlow15 dump-flows "$BRIDGE" 2>/dev/null \
+   | grep -q "priority=200,packet_type=(1,0x800),in_port=$OFPORT actions"; then
+    exit 0
+fi
+
+ovs-ofctl -O OpenFlow15 del-flows "$BRIDGE" \
+    "priority=200,packet_type=(1,0x800)" 2>/dev/null || true
+exec ovs-ofctl -O OpenFlow14 add-flow "$BRIDGE" \
+    "priority=200,in_port=$IFACE,packet_type=(1,0x800),actions=encap(ethernet),set_field:$ETH_SRC->eth_src,set_field:$ETH_DST->eth_dst,output:LOCAL"

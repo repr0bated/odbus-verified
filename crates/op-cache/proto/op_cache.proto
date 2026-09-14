@@ -1,0 +1,540 @@
+syntax = "proto3";
+package op_cache;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
+
+// ============================================================================
+// Core Types
+// ============================================================================
+
+enum Capability {
+    CAPABILITY_UNSPECIFIED = 0;
+    CAPABILITY_CODE_ANALYSIS = 1;
+    CAPABILITY_SECURITY_AUDIT = 2;
+    CAPABILITY_PERFORMANCE_ANALYSIS = 3;
+    CAPABILITY_DEPENDENCY_ANALYSIS = 4;
+    CAPABILITY_CODE_GENERATION = 10;
+    CAPABILITY_TEST_GENERATION = 11;
+    CAPABILITY_DOCUMENTATION_GENERATION = 12;
+    CAPABILITY_REFACTORING_SUGGESTION = 13;
+    CAPABILITY_CODE_TRANSFORMATION = 14;
+    CAPABILITY_FORMAT_CONVERSION = 15;
+    CAPABILITY_LANGUAGE_TRANSLATION = 16;
+    CAPABILITY_DATA_EXTRACTION = 20;
+    CAPABILITY_DATA_VALIDATION = 21;
+    CAPABILITY_DATA_ENRICHMENT = 22;
+    CAPABILITY_EMBEDDING = 23;
+    CAPABILITY_PLANNING = 30;
+    CAPABILITY_SUMMARIZATION = 31;
+    CAPABILITY_QUESTION_ANSWERING = 32;
+    CAPABILITY_CLASSIFICATION = 33;
+    CAPABILITY_API_CALL = 40;
+    CAPABILITY_DATABASE_QUERY = 41;
+    CAPABILITY_FILE_OPERATION = 42;
+    CAPABILITY_SHELL_EXECUTION = 43;
+}
+
+enum Priority {
+    PRIORITY_UNSPECIFIED = 0;
+    PRIORITY_HIGH = 1;
+    PRIORITY_NORMAL = 2;
+    PRIORITY_LOW = 3;
+}
+
+message Agent {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    repeated Capability capabilities = 4;
+    repeated Capability requires = 5;
+    Priority priority = 6;
+    bool parallelizable = 7;
+    uint64 estimated_latency_ms = 8;
+    bool enabled = 9;
+}
+
+// ============================================================================
+// Structured Agent Input/Output
+// ============================================================================
+
+message AgentInput {
+    oneof input_type {
+        TextInput text = 1;
+        CodeInput code = 2;
+        AwsInput aws = 3;
+        DatabaseInput database = 4;
+        FileSystemInput filesystem = 5;
+        google.protobuf.Any generic = 99;
+    }
+    map<string, string> context = 100;
+}
+
+message AgentOutput {
+    oneof output_type {
+        TextOutput text = 1;
+        CodeOutput code = 2;
+        AwsOutput aws = 3;
+        DatabaseOutput database = 4;
+        FileSystemOutput filesystem = 5;
+        google.protobuf.Any generic = 99;
+    }
+    map<string, string> metadata = 100;
+}
+
+// Input types
+message TextInput {
+    string content = 1;
+    optional string language = 2;
+    optional string format = 3;
+}
+
+message CodeInput {
+    string source_code = 1;
+    string language = 2;
+    repeated string analysis_types = 3;
+}
+
+message AwsInput {
+    string service = 1;
+    string operation = 2;
+    google.protobuf.Struct parameters = 3;
+}
+
+message DatabaseInput {
+    string query = 1;
+    map<string, string> parameters = 2;
+    optional string database_type = 3;
+}
+
+message FileSystemInput {
+    string path = 1;
+    optional string content = 2;
+    FileOperation operation = 3;
+}
+
+enum FileOperation {
+    FILE_OPERATION_READ = 0;
+    FILE_OPERATION_WRITE = 1;
+    FILE_OPERATION_DELETE = 2;
+    FILE_OPERATION_LIST = 3;
+}
+
+// Output types
+message TextOutput {
+    string content = 1;
+    optional string summary = 2;
+    repeated string key_points = 3;
+}
+
+message CodeOutput {
+    string source_code = 1;
+    repeated CodeIssue issues = 2;
+    repeated CodeSuggestion suggestions = 3;
+}
+
+message CodeIssue {
+    string type = 1;
+    string message = 2;
+    uint32 line = 3;
+    uint32 column = 4;
+    string severity = 5;
+}
+
+message CodeSuggestion {
+    string type = 1;
+    string description = 2;
+    string code = 3;
+}
+
+message AwsOutput {
+    google.protobuf.Struct result = 1;
+    optional string next_token = 2;
+}
+
+message DatabaseOutput {
+    repeated google.protobuf.Struct rows = 1;
+    uint32 row_count = 2;
+}
+
+message FileSystemOutput {
+    oneof result {
+        FileContent content = 1;
+        FileList list = 2;
+        OperationResult operation = 3;
+    }
+}
+
+message FileContent {
+    string content = 1;
+    uint64 size = 2;
+    string mime_type = 3;
+}
+
+message FileList {
+    repeated FileInfo files = 1;
+}
+
+message FileInfo {
+    string name = 1;
+    uint64 size = 2;
+    bool is_directory = 3;
+    uint64 modified_time = 4;
+}
+
+message OperationResult {
+    bool success = 1;
+    optional string error = 2;
+}
+
+// ============================================================================
+// Agent Service
+// ============================================================================
+
+service AgentService {
+    rpc Register(RegisterAgentRequest) returns (RegisterAgentResponse);
+    rpc Unregister(UnregisterAgentRequest) returns (UnregisterAgentResponse);
+    rpc Execute(ExecuteAgentRequest) returns (ExecuteAgentResponse);
+    rpc ExecuteStream(ExecuteAgentRequest) returns (stream ExecuteAgentChunk);
+    rpc GetAgent(GetAgentRequest) returns (Agent);
+    rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+    rpc FindByCapability(FindByCapabilityRequest) returns (FindByCapabilityResponse);
+    rpc ListCapabilities(Empty) returns (ListCapabilitiesResponse);
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message Empty {}
+
+message RegisterAgentRequest {
+    Agent agent = 1;
+    string endpoint = 2;
+}
+
+message RegisterAgentResponse {
+    bool success = 1;
+    string agent_id = 2;
+    string error = 3;
+}
+
+message UnregisterAgentRequest {
+    string agent_id = 1;
+}
+
+message UnregisterAgentResponse {
+    bool success = 1;
+    Agent removed_agent = 2;
+}
+
+message ExecuteAgentRequest {
+    string agent_id = 1;
+    bytes input = 2;
+    map<string, string> context = 3;
+    uint64 timeout_ms = 4;
+}
+
+message ExecuteAgentResponse {
+    bytes output = 1;
+    uint64 latency_ms = 2;
+    bool success = 3;
+    string error = 4;
+    map<string, string> metadata = 5;
+}
+
+message ExecuteAgentChunk {
+    bytes chunk = 1;
+    bool is_final = 2;
+}
+
+message ProgressUpdate {
+    uint32 percent_complete = 1;
+    string status_message = 2;
+    optional uint64 estimated_remaining_ms = 3;
+}
+
+message PartialResult {
+    AgentOutput output = 1;
+    bool is_complete = 2;
+}
+
+message FinalResult {
+    AgentOutput output = 1;
+    uint64 total_duration_ms = 2;
+}
+
+message ErrorInfo {
+    string message = 1;
+    string code = 2;
+    optional google.protobuf.Struct details = 3;
+}
+
+message GetAgentRequest {
+    string agent_id = 1;
+}
+
+message ListAgentsRequest {
+    bool enabled_only = 1;
+}
+
+message ListAgentsResponse {
+    repeated Agent agents = 1;
+}
+
+message FindByCapabilityRequest {
+    repeated Capability capabilities = 1;
+    bool match_all = 2;
+}
+
+message FindByCapabilityResponse {
+    repeated Agent agents = 1;
+}
+
+message ListCapabilitiesResponse {
+    repeated Capability capabilities = 1;
+    map<int32, int32> capability_agent_count = 2;
+}
+
+message HealthCheckRequest {
+    string agent_id = 1;
+}
+
+message HealthCheckResponse {
+    bool healthy = 1;
+    string status = 2;
+    uint64 uptime_seconds = 3;
+}
+
+// ============================================================================
+// Orchestrator Service
+// ============================================================================
+
+service OrchestratorService {
+    rpc Execute(OrchestratorRequest) returns (OrchestratorResponse);
+    rpc ExecuteStream(OrchestratorRequest) returns (stream WorkstackStepResult);
+    rpc ExecuteAgents(ExecuteAgentsRequest) returns (OrchestratorResponse);
+    rpc Resolve(ResolveRequest) returns (ResolveResponse);
+    rpc GetPatterns(Empty) returns (GetPatternsResponse);
+    rpc PromotePattern(PromotePatternRequest) returns (PromotePatternResponse);
+    rpc GetStats(Empty) returns (OrchestratorStats);
+}
+
+message OrchestratorRequest {
+    string request_id = 1;
+    repeated Capability required_capabilities = 2;
+    bytes input = 3;
+    repeated string preferred_agents = 4;
+    repeated string excluded_agents = 5;
+}
+
+message OrchestratorResponse {
+    string request_id = 1;
+    bytes output = 2;
+    repeated WorkstackStepResult steps = 3;
+    uint64 total_latency_ms = 4;
+    uint32 cache_hits = 5;
+    uint32 cache_misses = 6;
+    bool used_workstack = 7;
+    repeated string resolved_agents = 8;
+    repeated Capability fulfilled_capabilities = 9;
+    repeated Capability missing_capabilities = 10;
+}
+
+message ExecuteAgentsRequest {
+    string request_id = 1;
+    repeated string agent_ids = 2;
+    bytes input = 3;
+}
+
+message WorkstackStepResult {
+    uint32 step_index = 1;
+    string agent_id = 2;
+    bytes output = 3;
+    uint64 latency_ms = 4;
+    bool cached = 5;
+    uint64 output_size = 6;
+    bool success = 7;
+    string error = 8;
+}
+
+message ResolveRequest {
+    repeated Capability required_capabilities = 1;
+    repeated string preferred_agents = 2;
+    repeated string excluded_agents = 3;
+}
+
+message ResolveResponse {
+    repeated Agent agents = 1;
+    repeated Capability fulfilled_capabilities = 2;
+    repeated Capability missing_capabilities = 3;
+    uint64 estimated_latency_ms = 4;
+    repeated string resolution_path = 5;
+}
+
+message GetPatternsResponse {
+    repeated PatternSuggestion patterns = 1;
+}
+
+message PromotePatternRequest {
+    string pattern_id = 1;
+}
+
+message PromotePatternResponse {
+    bool success = 1;
+    string workstack_id = 2;
+    string error = 3;
+}
+
+message PatternSuggestion {
+    string pattern_id = 1;
+    repeated string agent_sequence = 2;
+    uint32 call_count = 3;
+    uint64 avg_latency_ms = 4;
+    string suggested_name = 5;
+    double confidence_score = 6;
+    uint64 estimated_time_saved_ms = 7;
+}
+
+message OrchestratorStats {
+    uint32 registered_agents = 1;
+    uint32 enabled_agents = 2;
+    uint32 available_capabilities = 3;
+    uint32 tracked_patterns = 4;
+    uint32 promoted_patterns = 5;
+    uint64 cache_entries = 6;
+    double cache_hit_rate = 7;
+    uint32 numa_nodes = 8;
+}
+
+// ============================================================================
+// Cache Service
+// ============================================================================
+
+service CacheService {
+    rpc GetStep(GetStepRequest) returns (GetStepResponse);
+    rpc PutStep(PutStepRequest) returns (PutStepResponse);
+    rpc InvalidateWorkstack(InvalidateWorkstackRequest) returns (InvalidateWorkstackResponse);
+    rpc InvalidateStep(InvalidateStepRequest) returns (InvalidateStepResponse);
+    rpc Cleanup(CleanupRequest) returns (CleanupResponse);
+    rpc GetStats(Empty) returns (CacheStats);
+    rpc GetWorkstackStats(GetWorkstackStatsRequest) returns (WorkstackCacheStats);
+}
+
+message GetStepRequest {
+    string workstack_id = 1;
+    uint32 step_index = 2;
+    string input_hash = 3;
+}
+
+message GetStepResponse {
+    bool found = 1;
+    bytes output = 2;
+    uint64 created_at = 3;
+    uint64 expires_at = 4;
+    uint32 access_count = 5;
+}
+
+message PutStepRequest {
+    string workstack_id = 1;
+    uint32 step_index = 2;
+    string input_hash = 3;
+    bytes output = 4;
+    int64 ttl_seconds = 5;
+}
+
+message PutStepResponse {
+    bool success = 1;
+    string cache_key = 2;
+    uint64 size_bytes = 3;
+    bool compressed = 4;
+}
+
+message InvalidateWorkstackRequest {
+    string workstack_id = 1;
+}
+
+message InvalidateWorkstackResponse {
+    uint32 entries_removed = 1;
+}
+
+message InvalidateStepRequest {
+    string workstack_id = 1;
+    uint32 step_index = 2;
+}
+
+message InvalidateStepResponse {
+    uint32 entries_removed = 1;
+}
+
+message CleanupRequest {
+    bool expired_only = 1;
+    uint64 max_age_seconds = 2;
+}
+
+message CleanupResponse {
+    uint32 entries_removed = 1;
+    uint64 bytes_freed = 2;
+}
+
+message CacheStats {
+    uint64 total_entries = 1;
+    uint64 total_size_bytes = 2;
+    uint64 hot_entries = 3;
+    uint64 expired_entries = 4;
+    uint64 total_hits = 5;
+    uint64 total_misses = 6;
+    uint64 workstacks_cached = 7;
+    double hit_rate = 8;
+}
+
+message GetWorkstackStatsRequest {
+    string workstack_id = 1;
+}
+
+message WorkstackCacheStats {
+    string workstack_id = 1;
+    uint64 total_entries = 2;
+    uint64 total_size_bytes = 3;
+    uint64 hit_count = 4;
+    uint64 miss_count = 5;
+    double hit_rate = 6;
+}
+
+// ============================================================================
+// MCP Service
+// ============================================================================
+
+service McpService {
+    rpc HandleRequest(McpRequest) returns (McpResponse);
+    rpc ListTools(ListToolsRequest) returns (ListToolsResponse);
+}
+
+message McpRequest {
+    string jsonrpc = 1;
+    string method = 2;
+    string id = 3;
+    bytes params = 4;
+}
+
+message McpResponse {
+    string jsonrpc = 1;
+    string id = 2;
+    bytes result = 3;
+    McpError error = 4;
+}
+
+message McpError {
+    int32 code = 1;
+    string message = 2;
+    bytes data = 3;
+}
+
+message ListToolsRequest {}
+
+message ListToolsResponse {
+    repeated McpTool tools = 1;
+}
+
+message McpTool {
+    string name = 1;
+    string description = 2;
+    bytes input_schema = 3;
+}

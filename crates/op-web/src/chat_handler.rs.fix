@@ -1,0 +1,33 @@
+//! Chat Handler Fix
+//!
+//! Ensure the system prompt is actually passed to the LLM.
+//! Look for where messages are constructed and verify system prompt is first.
+
+use op_chat::system_prompt::generate_system_prompt;
+use op_llm::provider::ChatMessage;
+
+/// Build messages for LLM including system prompt
+pub async fn build_messages(
+    user_message: &str,
+    history: &[ChatMessage],
+) -> Vec<ChatMessage> {
+    let mut messages = Vec::new();
+    
+    // 1. ALWAYS add system prompt first
+    let system_prompt = generate_system_prompt().await;
+    messages.push(system_prompt);
+    
+    // 2. Add conversation history
+    for msg in history {
+        messages.push(msg.clone());
+    }
+    
+    // 3. Add current user message
+    messages.push(ChatMessage::user(user_message));
+    
+    messages
+}
+
+// In your chat endpoint handler, ensure you call:
+// let messages = build_messages(&request.message, &session.history).await;
+// let response = llm_provider.chat(&model, messages).await?;

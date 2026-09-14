@@ -1,0 +1,255 @@
+#!/bin/sh
+# systemctl — compatibility shim mapping systemd commands onto runit.
+#
+# Purpose: third-party installers (vendor install.sh, pacman hooks, language
+# package postinstall steps) assume systemd and call `systemctl enable --now X`.
+# This host boots runit as PID 1 and has no systemd, so those calls would fail
+# and leave a half-installed service. This shim translates them to `sv` and,
+# when a systemd unit was just dropped on disk with no runit counterpart, runs
+# systemd-unit-to-runit to generate one.
+#
+# It is a compatibility layer for *foreign* installers. Our own deployment path
+# is unchanged: agents use `sudo sv ...` and D-Bus per AGENTS.md.
+#
+# Install as /usr/local/bin/systemctl. `secure_path` puts /usr/local/bin ahead
+# of /usr/bin, so this shim wins for installers that run under sudo.
+#
+# Preference order for each operation:
+#   1. D-Bus (org.opdbus.v1.Runit.Systemctl) when the daemon is reachable —
+#      keeps service changes on the audited control plane.
+#   2. Direct `sv` / symlink manipulation as the fallback.
+set -eu
+
+SV_DIR=${SV_DIR:-/etc/runit/sv}
+RUNSVDIR_DEFAULT=${RUNSVDIR_DEFAULT:-/etc/runit/runsvdir/default}
+SERVICE_DIR=${SERVICE_DIR:-/run/runit/service}
+CONVERTER=${CONVERTER:-/usr/local/sbin/systemd-unit-to-runit}
+
+DBUS_NAME="org.opdbus.v1.Runit.Systemctl"
+DBUS_PATH="/org/opdbus/v1/plugins/runit/systemctl"
+DBUS_IFACE="org.opdbus.v1.Runit.Systemctl"
+# Well-known-name alias only — never used as path or interface.
+DBUS_LEGACY_NAME="org.opdbus.v1.S6.Systemctl"
+
+log() { printf 'systemctl-shim: %s\n' "$*" >&2; }
+
+# Strip systemd-only flags, remember the ones that change behaviour.
+NOW=0
+VERB=""
+UNITS=""
+for arg in "$@"; do
+    case "$arg" in
+        --now) NOW=1 ;;
+        --no-pager|--quiet|-q|--system|--no-ask-password|--no-block|--force|-f)
+            ;;
+        --user)
+            log "--user is not supported (no per-user runit tree); treating as system"
+            ;;
+        -*)
+            log "ignoring unsupported flag: $arg"
+            ;;
+        *)
+            if [ -z "$VERB" ]; then
+                VERB=$arg
+            else
+                UNITS="$UNITS $arg"
+            fi
+            ;;
+    esac
+done
+
+[ -n "$VERB" ] || { log "usage: systemctl <verb> [unit...]"; exit 1; }
+
+# systemd unit names carry a type suffix; runit services do not.
+service_name() {
+    name=${1##*/}
+    case "$name" in
+        *.service) printf '%s\n' "${name%.service}" ;;
+        *.timer|*.socket|*.mount|*.path|*.target)
+            printf '%s\n' "$name"   # caller decides whether it is supported
+            ;;
+        *) printf '%s\n' "$name" ;;
+    esac
+}
+
+is_supported_unit() {
+    case "$1" in
+        *.timer|*.socket|*.mount|*.path|*.target) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
+dbus_available() {
+    command -v busctl >/dev/null 2>&1 || return 1
+    busctl --system list 2>/dev/null | grep -q "$DBUS_NAME" && return 0
+    busctl --system list 2>/dev/null | grep -q "$DBUS_LEGACY_NAME" && return 0
+    return 1
+}
+
+dbus_call() {
+    method=$1
+    unit=$2
+    dest=$DBUS_NAME
+    # Path and interface stay on the runit coordinates. Only the destination
+    # may fall back to the legacy well-known name if the Runit name is absent.
+    if ! busctl --system list 2>/dev/null | grep -q "$DBUS_NAME"; then
+        dest=$DBUS_LEGACY_NAME
+    fi
+    busctl --system call "$dest" "$DBUS_PATH" "$DBUS_IFACE" "$method" s "$unit" >/dev/null 2>&1
+}
+
+# Generate a runit service from a systemd unit if we have one but not the other.
+ensure_runit_service() {
+    svc=$1
+    [ -d "$SV_DIR/$svc" ] && return 0
+    [ -x "$CONVERTER" ] || return 1
+    for dir in /etc/systemd/system /usr/lib/systemd/system /lib/systemd/system; do
+        if [ -f "$dir/$svc.service" ]; then
+            log "no runit service for '$svc'; converting $dir/$svc.service"
+            "$CONVERTER" "$dir/$svc.service" || return 1
+            return 0
+        fi
+    done
+    return 1
+}
+
+sv_do() {
+    action=$1
+    svc=$2
+    if dbus_available; then
+        case "$action" in
+            start)   dbus_call Start "$svc" && return 0 ;;
+            stop)    dbus_call Stop "$svc" && return 0 ;;
+            restart) dbus_call Restart "$svc" && return 0 ;;
+        esac
+        log "D-Bus call failed for $action $svc; falling back to sv"
+    fi
+    sv "$action" "$svc"
+}
+
+rc=0
+run_for_each_unit() {
+    handler=$1
+    [ -n "$UNITS" ] || { log "$VERB needs a unit name"; exit 1; }
+    for unit in $UNITS; do
+        if ! is_supported_unit "$unit"; then
+            log "skipping '$unit': runit has no equivalent for that unit type"
+            rc=1
+            continue
+        fi
+        svc=$(service_name "$unit")
+        ensure_runit_service "$svc" || true
+        if [ ! -d "$SV_DIR/$svc" ]; then
+            log "unknown service '$svc' (no $SV_DIR/$svc, no systemd unit to convert)"
+            rc=1
+            continue
+        fi
+        "$handler" "$svc" || rc=1
+    done
+}
+
+h_start()   { sv_do start "$1"; }
+h_stop()    { sv_do stop "$1"; }
+h_restart() { sv_do restart "$1"; }
+h_reload()  { sv hup "$1"; }
+h_status()  { sv status "$1"; }
+
+h_enable() {
+    svc=$1
+    mkdir -p "$RUNSVDIR_DEFAULT"
+    ln -sfn "$SV_DIR/$svc" "$RUNSVDIR_DEFAULT/$svc"
+    rm -f "$SV_DIR/$svc/down"
+    log "enabled $svc (runsvdir picks it up automatically)"
+    [ "$NOW" = 1 ] && sv_do start "$svc"
+    return 0
+}
+
+h_disable() {
+    svc=$1
+    [ "$NOW" = 1 ] && sv down "$svc" 2>/dev/null || true
+    rm -f "$RUNSVDIR_DEFAULT/$svc" "$SERVICE_DIR/$svc"
+    touch "$SV_DIR/$svc/down"
+    log "disabled $svc"
+    return 0
+}
+
+h_is_active() {
+    sv status "$1" 2>/dev/null | grep -q '^run:' && { echo active; return 0; }
+    echo inactive
+    return 3   # systemd's exit code for "not active"
+}
+
+h_is_enabled() {
+    if [ -L "$RUNSVDIR_DEFAULT/$1" ]; then
+        echo enabled
+        return 0
+    fi
+    echo disabled
+    return 1
+}
+
+h_mask() {
+    svc=$1
+    rm -f "$RUNSVDIR_DEFAULT/$svc" "$SERVICE_DIR/$svc"
+    touch "$SV_DIR/$svc/down"
+    log "masked $svc (down file written; runit has no separate mask concept)"
+    return 0
+}
+
+case "$VERB" in
+    start)      run_for_each_unit h_start ;;
+    stop)       run_for_each_unit h_stop ;;
+    restart|try-restart|reload-or-restart)
+                run_for_each_unit h_restart ;;
+    reload)     run_for_each_unit h_reload ;;
+    status)     run_for_each_unit h_status ;;
+    enable)     run_for_each_unit h_enable ;;
+    disable)    run_for_each_unit h_disable ;;
+    mask)       run_for_each_unit h_mask ;;
+    unmask)     run_for_each_unit h_enable ;;
+    is-active)  run_for_each_unit h_is_active ;;
+    is-enabled) run_for_each_unit h_is_enabled ;;
+    daemon-reload|daemon-reexec)
+        # Runit has no compiled service database; runsvdir rescans on its own.
+        log "daemon-reload is a no-op under runit (no compiled service database)"
+        ;;
+    list-units|list-unit-files)
+        printf '%-28s %s\n' UNIT STATE
+        for dir in "$SV_DIR"/*; do
+            [ -d "$dir" ] || continue
+            svc=${dir##*/}
+            if [ -L "$RUNSVDIR_DEFAULT/$svc" ]; then
+                printf '%-28s %s\n' "$svc.service" enabled
+            else
+                printf '%-28s %s\n' "$svc.service" disabled
+            fi
+        done
+        ;;
+    cat)
+        for unit in $UNITS; do
+            svc=$(service_name "$unit")
+            [ -f "$SV_DIR/$svc/run" ] && cat "$SV_DIR/$svc/run"
+        done
+        ;;
+    show)
+        for unit in $UNITS; do
+            svc=$(service_name "$unit")
+            printf 'Id=%s.service\n' "$svc"
+            printf 'FragmentPath=%s/%s/run\n' "$SV_DIR" "$svc"
+            if sv status "$svc" 2>/dev/null | grep -q '^run:'; then
+                printf 'ActiveState=active\nSubState=running\n'
+            else
+                printf 'ActiveState=inactive\nSubState=dead\n'
+            fi
+        done
+        ;;
+    preset|set-default|get-default|isolate)
+        log "'$VERB' has no runit equivalent; ignoring so the installer can continue"
+        ;;
+    *)
+        log "unsupported verb '$VERB' — no runit mapping"
+        exit 1
+        ;;
+esac
+
+exit $rc

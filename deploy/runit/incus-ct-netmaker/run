@@ -1,0 +1,70 @@
+#!/bin/sh
+# NetMaker is socket-only and starts before OVS/gRPC. Do not wait_dep
+# op-grpc-bridge: that binds 100.69.0.1 and would deadlock boot.
+exec 2>&1
+set -eu
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:/usr/lib/incus:${PATH:-}"
+
+wait_dep() {
+    dep="$1"
+    sv start "$dep" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$dep" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 90 ] && { echo "dependency $dep not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+wait_dep opdbus-rundirs
+wait_dep incusd
+
+NAME="${NETMAKER_INCUS_NAME:-NetMaker}"
+START_PID=
+
+cleanup() {
+    if [ -n "$START_PID" ]; then
+        kill "$START_PID" 2>/dev/null || true
+        wait "$START_PID" 2>/dev/null || true
+    fi
+    if incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; then
+        echo "stopping container $NAME"
+        incus stop "$NAME" --timeout 30 2>/dev/null \
+            || incus stop "$NAME" --force 2>/dev/null || true
+    fi
+}
+trap cleanup TERM INT HUP
+
+incus config set "$NAME" boot.autostart=false 2>/dev/null || true
+
+if ! incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; then
+    echo "starting container $NAME"
+    incus start "$NAME" &
+    START_PID=$!
+    wait "$START_PID"
+    START_PID=
+fi
+
+i=0
+until incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; do
+    i=$((i + 1))
+    [ "$i" -ge 60 ] && { echo "container $NAME did not reach RUNNING" >&2; exit 1; }
+    sleep 1
+done
+
+GB=/run/ghostbridge/NetMaker
+i=0
+until [ -S "$GB/api.sock" ] && [ -S "$GB/broker.sock" ]; do
+    i=$((i + 1))
+    [ "$i" -ge 120 ] && { echo "NetMaker CT sockets never appeared under $GB" >&2; exit 1; }
+    sleep 1
+done
+
+echo "container $NAME RUNNING with api.sock + broker.sock"
+/usr/local/libexec/3tched/runit-ready-signal incus-ct-netmaker
+
+while incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; do
+    sleep 5
+done
+echo "container $NAME left RUNNING"
+exit 1

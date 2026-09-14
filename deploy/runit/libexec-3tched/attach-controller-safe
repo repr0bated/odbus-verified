@@ -1,0 +1,12 @@
+#!/bin/sh
+# AttachControllerSafe — typed via openflow plugin (never ovs-vsctl/ovs-ofctl).
+# Usage: attach-controller-safe <bridge> <endpoint>
+set -eu
+BRIDGE="${1:-ovsbr0}"
+ENDPOINT="${2:-tcp:10.200.0.1:6653}"
+case "$ENDPOINT" in tcp:*) ;; *) ENDPOINT="tcp:$ENDPOINT" ;; esac
+
+/usr/local/libexec/3tched/wait-op-plugins 90
+zcall openflow attach_controller_safe -a "{\"bridge\":\"$BRIDGE\",\"endpoint\":\"$ENDPOINT\"}"
+echo "AttachControllerSafe ok bridge=$BRIDGE endpoint=$ENDPOINT"
+/usr/local/libexec/3tched/get-datapath-health "$BRIDGE" || true

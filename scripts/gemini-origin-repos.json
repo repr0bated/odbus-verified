@@ -1,0 +1,342 @@
+[
+  {
+    "link_name": "github-com-admyral-technologies-admyral",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "Admyral-Technologies/admyral",
+    "clone_uri": "https://github.com/Admyral-Technologies/admyral.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["admyral"]
+  },
+  {
+    "link_name": "github-com-awslabs-automated-security-helper",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "awslabs/automated-security-helper",
+    "clone_uri": "https://github.com/awslabs/automated-security-helper.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["automated-security-helper"]
+  },
+  {
+    "link_name": "github-com-repr0bated-branch-bestie-sync",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "repr0bated/branch-bestie-sync",
+    "clone_uri": "https://github.com/repr0bated/branch-bestie-sync.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["branch-bestie-sync"]
+  },
+  {
+    "link_name": "github-com-cloud-custodian-cloud-custodian",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "cloud-custodian/cloud-custodian",
+    "clone_uri": "https://github.com/cloud-custodian/cloud-custodian.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["cloud-custodian"]
+  },
+  {
+    "link_name": "github-com-complianceascode-content",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "ComplianceAsCode/content",
+    "clone_uri": "https://github.com/ComplianceAsCode/content.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["content"]
+  },
+  {
+    "link_name": "github-com-theopenlane-core",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "theopenlane/core",
+    "clone_uri": "https://github.com/theopenlane/core.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["core"]
+  },
+  {
+    "link_name": "github-com-chimera-linux-cports",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "chimera-linux/cports",
+    "clone_uri": "https://github.com/chimera-linux/cports.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["cports"]
+  },
+  {
+    "link_name": "github-com-datahub-project-datahub",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "datahub-project/datahub",
+    "clone_uri": "https://github.com/datahub-project/datahub.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["datahub"]
+  },
+  {
+    "link_name": "github-com-ethyca-fides",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "ethyca/fides",
+    "clone_uri": "https://github.com/ethyca/fides.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["fides"]
+  },
+  {
+    "link_name": "github-com-ethyca-fideslang",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "ethyca/fideslang",
+    "clone_uri": "https://github.com/ethyca/fideslang.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["fideslang"]
+  },
+  {
+    "link_name": "github-com-firecracker-microvm-firecracker",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "firecracker-microvm/firecracker",
+    "clone_uri": "https://github.com/firecracker-microvm/firecracker.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["firecracker"]
+  },
+  {
+    "link_name": "gitlab-com-freedesktop-sdk-freedesktop-sdk",
+    "source_kind": "gitlab",
+    "source_host": "gitlab.com",
+    "owner_repo": "freedesktop-sdk/freedesktop-sdk",
+    "clone_uri": "https://gitlab.com/freedesktop-sdk/freedesktop-sdk.git",
+    "indexable_with_current_connection": false,
+    "indexing_notes": "Not indexable with the current GitHub-only Developer Connect connection.",
+    "local_sources": ["freedesktop-sdk"]
+  },
+  {
+    "link_name": "github-com-freeipa-freeipa",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "freeipa/freeipa",
+    "clone_uri": "https://github.com/freeipa/freeipa.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["freeipa"]
+  },
+  {
+    "link_name": "github-com-repr0bated-operation-dbus",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "repr0bated/operation-dbus",
+    "clone_uri": "https://github.com/repr0bated/operation-dbus.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["gemini-work", "operation-dbus"]
+  },
+  {
+    "link_name": "github-com-theopenlane-iam",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "theopenlane/iam",
+    "clone_uri": "https://github.com/theopenlane/iam.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["iam"]
+  },
+  {
+    "link_name": "github-com-jsontypedef-json-typedef-spec",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "jsontypedef/json-typedef-spec",
+    "clone_uri": "https://github.com/jsontypedef/json-typedef-spec.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["json-typedef-spec"]
+  },
+  {
+    "link_name": "github-com-vishvananda-novnc",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "vishvananda/novnc",
+    "clone_uri": "https://github.com/vishvananda/novnc.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["novnc"]
+  },
+  {
+    "link_name": "github-com-open-policy-agent-opa",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "open-policy-agent/opa",
+    "clone_uri": "https://github.com/open-policy-agent/opa.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["opa"]
+  },
+  {
+    "link_name": "github-com-microsoft-presidio",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "microsoft/presidio",
+    "clone_uri": "https://github.com/microsoft/presidio.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["presidio"]
+  },
+  {
+    "link_name": "github-com-cmsgov-price-transparency-guide",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "CMSgov/price-transparency-guide",
+    "clone_uri": "https://github.com/CMSgov/price-transparency-guide.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["price-transparency-guide"]
+  },
+  {
+    "link_name": "github-com-rust-netlink-rtnetlink",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "rust-netlink/rtnetlink",
+    "clone_uri": "https://github.com/rust-netlink/rtnetlink.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["rtnetlink"]
+  },
+  {
+    "link_name": "github-com-rust-lang-rust",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "rust-lang/rust",
+    "clone_uri": "https://github.com/rust-lang/rust.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["rust"]
+  },
+  {
+    "link_name": "github-com-confluentinc-schema-registry",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "confluentinc/schema-registry",
+    "clone_uri": "https://github.com/confluentinc/schema-registry.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["schema-registry"]
+  },
+  {
+    "link_name": "github-com-schema-repo-schema-repo",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "schema-repo/schema-repo",
+    "clone_uri": "https://github.com/schema-repo/schema-repo.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["schema-repo"]
+  },
+  {
+    "link_name": "community-opengroup-org-osdu-platform-system-schema-service",
+    "source_kind": "gitlab-self-hosted",
+    "source_host": "community.opengroup.org",
+    "owner_repo": "osdu/platform/system/schema-service",
+    "clone_uri": "https://community.opengroup.org/osdu/platform/system/schema-service.git",
+    "indexable_with_current_connection": false,
+    "indexing_notes": "Not indexable with the current GitHub-only Developer Connect connection.",
+    "local_sources": ["schema-service"]
+  },
+  {
+    "link_name": "github-com-modelcontextprotocol-servers",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "modelcontextprotocol/servers",
+    "clone_uri": "https://github.com/modelcontextprotocol/servers.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["servers"]
+  },
+  {
+    "link_name": "github-com-goldfiglabs-sgcheckup",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "goldfiglabs/sgCheckup",
+    "clone_uri": "https://github.com/goldfiglabs/sgCheckup.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["sgCheckup"]
+  },
+  {
+    "link_name": "github-com-modelcontextprotocol-specification",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "modelcontextprotocol/specification",
+    "clone_uri": "https://github.com/modelcontextprotocol/specification.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["specification"]
+  },
+  {
+    "link_name": "github-com-temporalio-temporal",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "temporalio/temporal",
+    "clone_uri": "https://github.com/temporalio/temporal.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["temporal"]
+  },
+  {
+    "link_name": "github-com-titan-systems-titan",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "Titan-Systems/titan",
+    "clone_uri": "https://github.com/Titan-Systems/titan.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["titan"]
+  },
+  {
+    "link_name": "github-com-tokio-rs-tokio",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "tokio-rs/tokio",
+    "clone_uri": "https://github.com/tokio-rs/tokio.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["tokio"]
+  },
+  {
+    "link_name": "github-com-knowall-ai-turbo-whisper",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "knowall-ai/turbo-whisper",
+    "clone_uri": "https://github.com/knowall-ai/turbo-whisper.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["turbo-whisper"]
+  },
+  {
+    "link_name": "github-com-oxidecomputer-typify",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "oxidecomputer/typify",
+    "clone_uri": "https://github.com/oxidecomputer/typify.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["typify"]
+  },
+  {
+    "link_name": "github-com-zeroclaw-labs-zeroclaw",
+    "source_kind": "github",
+    "source_host": "github.com",
+    "owner_repo": "zeroclaw-labs/zeroclaw",
+    "clone_uri": "https://github.com/zeroclaw-labs/zeroclaw.git",
+    "indexable_with_current_connection": true,
+    "indexing_notes": "Indexable with the current GitHub Developer Connect connection.",
+    "local_sources": ["zeroclaw"]
+  }
+]

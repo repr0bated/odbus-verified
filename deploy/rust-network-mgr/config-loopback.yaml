@@ -1,0 +1,7 @@
+interfaces:
+  # Identity containers intentionally have no NIC. Loopback gives the manager
+  # a stable netlink subject without inventing an eth0 device.
+  - name: lo
+    dhcp: false
+
+socket_path: /run/rust-network-manager/rust-network-manager.sock

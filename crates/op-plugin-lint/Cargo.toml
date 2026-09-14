@@ -1,0 +1,29 @@
+[package]
+name = "op-plugin-lint"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Static audit of plugin .rs files against PLUGIN-RENDER-CONTRACT.md"
+
+[[bin]]
+name = "op-plugin-lint"
+path = "src/main.rs"
+
+[features]
+default = []
+# Optional: call live op_inspector::IntrospectiveGadget (needs workspace zbus).
+inspector-gadget = ["dep:op-inspector", "dep:tokio"]
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+syn = { version = "2", features = ["full", "parsing", "extra-traits"] }
+thiserror = { workspace = true }
+toml = { workspace = true }
+op-inspector = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }

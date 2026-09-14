@@ -1,0 +1,26 @@
+[package]
+name = "op-dbus-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "CLI tool for introspecting the org.opdbus.v1.plugins D-Bus tree"
+
+[[bin]]
+name = "dbus-plugin-cli"
+path = "src/main.rs"
+
+[dependencies]
+op-core = { workspace = true }
+op-identity = { path = "../op-identity" }
+op-introspection = { path = "../op-introspection" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+zbus = { workspace = true }
+quick-xml = { workspace = true }
+hex = "0.4"

@@ -1,0 +1,38 @@
+//! Built-in Tools Module
+//!
+//! This file should wire all builtin tool modules together.
+//! ENSURE these lines exist:
+
+// Declare modules (add if missing)
+pub mod dbus;
+pub mod file;
+pub mod network;
+pub mod procfs;
+pub mod response_tools;
+pub mod self_tools;  // <-- MUST BE HERE
+pub mod shell;
+pub mod system;
+// ... other modules
+
+// In your registration function (e.g., register_builtin_tools):
+// Add this block:
+
+use self_tools::create_self_tools;
+use tracing::info;
+
+/// Register all built-in tools
+pub async fn register_builtin_tools(registry: &mut ToolRegistry) {
+    // ... existing tool registrations ...
+
+    // Register self-tools if configured
+    if std::env::var("OP_SELF_REPO_PATH").is_ok() {
+        let self_tools = create_self_tools();
+        let count = self_tools.len();
+        for tool in self_tools {
+            registry.register(tool).await;
+        }
+        info!("✅ Registered {} self-repository tools", count);
+    } else {
+        info!("ℹ️ OP_SELF_REPO_PATH not set - self-tools disabled");
+    }
+}

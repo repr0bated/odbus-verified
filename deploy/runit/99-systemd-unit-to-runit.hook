@@ -1,0 +1,25 @@
+# Auto-convert systemd units installed by packages into runit services.
+#
+# Artix ships without systemd, but plenty of packages still install
+# /usr/lib/systemd/system/*.service. Left alone those units are inert and the
+# service silently never runs. This hook converts each newly installed unit into
+# /etc/runit/sv/<name>/run so the service is at least available to `sv`.
+#
+# Conversion does NOT enable the service: enabling is an operator decision, and
+# a package install should not start daemons on its own. Run
+# `sudo sv start <name>` (or `systemctl enable <name>` via the shim) afterwards.
+#
+# Install to /etc/pacman.d/hooks/99-systemd-unit-to-runit.hook
+
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Target = usr/lib/systemd/system/*.service
+Target = usr/local/lib/systemd/system/*.service
+
+[Action]
+Description = Converting installed systemd units to runit services...
+When = PostTransaction
+Exec = /usr/local/sbin/op-convert-systemd-units
+NeedsTargets

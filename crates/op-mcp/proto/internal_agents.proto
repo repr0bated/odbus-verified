@@ -1,0 +1,351 @@
+// Internal Agent Communication Protocol
+//
+// This is for INTERNAL use between MCP gateway and agents.
+// External clients still use HTTP/SSE/stdio.
+
+syntax = "proto3";
+
+package op_agents;
+
+// Agent Lifecycle Service
+// Used by MCP server to manage run-on-connection agents
+service AgentLifecycle {
+    // Start an agent (called on client connect)
+    rpc Start(StartRequest) returns (StartResponse);
+    
+    // Stop an agent (called on client disconnect)
+    rpc Stop(StopRequest) returns (StopResponse);
+    
+    // Health check
+    rpc Health(HealthRequest) returns (HealthResponse);
+    
+    // Watch agent status (bidirectional streaming)
+    rpc WatchStatus(WatchRequest) returns (stream AgentStatus);
+}
+
+// Agent Execution Service
+// High-performance tool execution
+service AgentExecution {
+    // Execute single operation
+    rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+    
+    // Batch execute multiple operations
+    rpc BatchExecute(stream ExecuteRequest) returns (stream ExecuteResponse);
+    
+    // Streaming execution (for long-running operations)
+    rpc StreamExecute(ExecuteRequest) returns (stream ExecuteChunk);
+}
+
+// Memory Service
+// Dedicated service for memory agent (high frequency)
+service MemoryService {
+    rpc Remember(RememberRequest) returns (RememberResponse);
+    rpc Recall(RecallRequest) returns (RecallResponse);
+    rpc Forget(ForgetRequest) returns (ForgetResponse);
+    rpc List(ListRequest) returns (ListResponse);
+    rpc Search(SearchRequest) returns (SearchResponse);
+    
+    // Bulk operations
+    rpc BulkRemember(stream RememberRequest) returns (BulkResponse);
+}
+
+// Sequential Thinking Service
+// Dedicated for cognitive chain operations
+service SequentialThinkingService {
+    // Start a thinking chain
+    rpc StartChain(ChainRequest) returns (ChainResponse);
+    
+    // Add thought to chain
+    rpc AddThought(ThoughtRequest) returns (ThoughtResponse);
+    
+    // Stream thinking process
+    rpc StreamThinking(ChainRequest) returns (stream ThoughtResponse);
+    
+    // Conclude chain
+    rpc Conclude(ConcludeRequest) returns (ConcludeResponse);
+}
+
+// Context Manager Service
+service ContextManagerService {
+    rpc Save(SaveContextRequest) returns (SaveContextResponse);
+    rpc Load(LoadContextRequest) returns (LoadContextResponse);
+    rpc List(ListContextRequest) returns (ListContextResponse);
+    rpc Delete(DeleteContextRequest) returns (DeleteContextResponse);
+    rpc Export(ExportRequest) returns (stream ExportChunk);
+    rpc Import(stream ImportChunk) returns (ImportResponse);
+}
+
+// Rust Pro Service
+// Dedicated for cargo operations
+service RustProService {
+    rpc Check(CargoRequest) returns (CargoResponse);
+    rpc Build(CargoRequest) returns (stream CargoOutput);
+    rpc Test(CargoRequest) returns (stream CargoOutput);
+    rpc Clippy(CargoRequest) returns (stream CargoOutput);
+    rpc Format(CargoRequest) returns (CargoResponse);
+    rpc Doc(CargoRequest) returns (stream CargoOutput);
+}
+
+// ============ Messages ============
+
+message StartRequest {
+    string agent_id = 1;
+    map<string, string> config = 2;
+}
+
+message StartResponse {
+    bool success = 1;
+    string message = 2;
+    int64 started_at = 3;
+}
+
+message StopRequest {
+    string agent_id = 1;
+    bool force = 2;
+}
+
+message StopResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message HealthRequest {
+    string agent_id = 1;
+}
+
+message HealthResponse {
+    bool healthy = 1;
+    string status = 2;
+    int64 uptime_secs = 3;
+    map<string, string> metrics = 4;
+}
+
+message WatchRequest {
+    repeated string agent_ids = 1;
+}
+
+message AgentStatus {
+    string agent_id = 1;
+    string status = 2;  // starting, running, stopping, stopped, error
+    int64 timestamp = 3;
+    map<string, string> metadata = 4;
+}
+
+message ExecuteRequest {
+    string agent_id = 1;
+    string operation = 2;
+    string arguments_json = 3;
+    int64 timeout_ms = 4;
+    string correlation_id = 5;
+}
+
+message ExecuteResponse {
+    bool success = 1;
+    string result_json = 2;
+    string error = 3;
+    int64 execution_time_ms = 4;
+    string correlation_id = 5;
+}
+
+message ExecuteChunk {
+    string correlation_id = 1;
+    string chunk = 2;
+    bool is_final = 3;
+    bool is_error = 4;
+}
+
+// Memory messages
+message RememberRequest {
+    string key = 1;
+    string value = 2;
+    int64 ttl_secs = 3;  // 0 = no expiry
+    repeated string tags = 4;
+}
+
+message RememberResponse {
+    bool success = 1;
+    string key = 2;
+}
+
+message RecallRequest {
+    string key = 1;
+}
+
+message RecallResponse {
+    bool found = 1;
+    string key = 2;
+    string value = 3;
+    int64 created_at = 4;
+    int64 accessed_at = 5;
+}
+
+message ForgetRequest {
+    string key = 1;
+}
+
+message ForgetResponse {
+    bool success = 1;
+}
+
+message ListRequest {
+    string pattern = 1;  // glob pattern
+    int32 limit = 2;
+}
+
+message ListResponse {
+    repeated string keys = 1;
+    int32 total = 2;
+}
+
+message SearchRequest {
+    string query = 1;
+    int32 limit = 2;
+}
+
+message SearchResponse {
+    repeated MemoryEntry entries = 1;
+}
+
+message MemoryEntry {
+    string key = 1;
+    string value = 2;
+    float score = 3;
+}
+
+message BulkResponse {
+    int32 success_count = 1;
+    int32 failure_count = 2;
+    repeated string errors = 3;
+}
+
+// Sequential thinking messages
+message ChainRequest {
+    string problem = 1;
+    int32 max_steps = 2;
+    string context = 3;
+}
+
+message ChainResponse {
+    string chain_id = 1;
+    bool started = 2;
+}
+
+message ThoughtRequest {
+    string chain_id = 1;
+    string thought = 2;
+    int32 step = 3;
+}
+
+message ThoughtResponse {
+    string chain_id = 1;
+    int32 step = 2;
+    string thought = 3;
+    string status = 4;  // thinking, analyzing, concluding, complete
+    bool is_final = 5;
+}
+
+message ConcludeRequest {
+    string chain_id = 1;
+}
+
+message ConcludeResponse {
+    string chain_id = 1;
+    string conclusion = 2;
+    repeated string steps = 3;
+    int32 total_steps = 4;
+}
+
+// Context messages
+message SaveContextRequest {
+    string name = 1;
+    string content = 2;
+    repeated string tags = 3;
+}
+
+message SaveContextResponse {
+    bool success = 1;
+    string name = 2;
+    int64 size_bytes = 3;
+}
+
+message LoadContextRequest {
+    string name = 1;
+}
+
+message LoadContextResponse {
+    bool found = 1;
+    string name = 2;
+    string content = 3;
+    repeated string tags = 4;
+    int64 created_at = 5;
+    int64 updated_at = 6;
+}
+
+message ListContextRequest {
+    string tag_filter = 1;
+}
+
+message ListContextResponse {
+    repeated ContextInfo contexts = 1;
+}
+
+message ContextInfo {
+    string name = 1;
+    int64 size_bytes = 2;
+    repeated string tags = 3;
+    int64 updated_at = 4;
+}
+
+message DeleteContextRequest {
+    string name = 1;
+}
+
+message DeleteContextResponse {
+    bool success = 1;
+}
+
+message ExportRequest {
+    repeated string names = 1;  // empty = all
+    string format = 2;  // json, yaml
+}
+
+message ExportChunk {
+    bytes data = 1;
+    bool is_final = 2;
+}
+
+message ImportChunk {
+    bytes data = 1;
+    bool is_final = 2;
+    string format = 3;
+}
+
+message ImportResponse {
+    int32 imported_count = 1;
+    repeated string errors = 2;
+}
+
+// Cargo/Rust messages
+message CargoRequest {
+    string path = 1;
+    bool release = 2;
+    repeated string features = 3;
+    string filter = 4;  // for tests
+    bool fix = 5;  // for clippy/fmt
+    int64 timeout_secs = 6;
+}
+
+message CargoResponse {
+    bool success = 1;
+    string stdout = 2;
+    string stderr = 3;
+    int32 exit_code = 4;
+    int64 duration_ms = 5;
+}
+
+message CargoOutput {
+    string line = 1;
+    string stream = 2;  // stdout, stderr
+    bool is_final = 3;
+    int32 exit_code = 4;  // only set when is_final
+}

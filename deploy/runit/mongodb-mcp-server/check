@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+curl -fsS --max-time 2 http://127.0.0.1:3103/health >/dev/null
+ss -H -ltn | awk '$4 == "127.0.0.1:3102" { found = 1 } END { exit(found ? 0 : 1) }'
+! ss -H -ltn | awk '$4 == "0.0.0.0:3102" || $4 == "[::]:3102" { found = 1 } END { exit(found ? 0 : 1) }'
+install -d -m 0755 /run/opdbus/runit-ready
+touch /run/opdbus/runit-ready/mongodb-mcp-server

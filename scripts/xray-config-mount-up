@@ -1,0 +1,79 @@
+#!/bin/sh
+# xray-config-mount-up — keep xray CT config in sync via /var/lib/opdbus-runtime.
+#
+# /dev/shm file binds break: systemd remounts /dev/shm as tmpfs inside the CT and
+# hides the Incus disk device. The xray CT already bind-mounts /var/lib/opdbus-runtime,
+# so we publish the host SHM bootstrap there and reload xray when content changes.
+#
+# Env (optional):
+#   XRAY_CT=xray
+#   XRAY_CONF_HOST=/dev/shm/xray_config.json
+#   XRAY_CONF_RUNTIME=/var/lib/opdbus-runtime/xray_config.json
+#   XRAY_RELOAD=1
+set -eu
+
+CT="${XRAY_CT:-xray}"
+HOST_PATH="${XRAY_CONF_HOST:-/dev/shm/xray_config.json}"
+RUNTIME_PATH="${XRAY_CONF_RUNTIME:-/var/lib/opdbus-runtime/xray_config.json}"
+RELOAD="${XRAY_RELOAD:-1}"
+FALLBACK_PATH="${XRAY_CONF_FALLBACK:-/usr/local/share/op-dbus/xray_config.default.json}"
+
+log() { echo "xray-config-mount: $*"; }
+
+ensure_host_file() {
+    # /dev/shm is tmpfs and does not survive a reboot, so the generated config
+    # vanishes on every boot. Seed from the static fallback so xray can route
+    # before anything regenerates a fresh one; a later generator write simply
+    # overwrites this. Without it, boot leaves the public edge dark.
+    if [ ! -f "$HOST_PATH" ] && [ -f "$FALLBACK_PATH" ]; then
+        log "seeding $HOST_PATH from fallback $FALLBACK_PATH"
+        install -m 0640 "$FALLBACK_PATH" "$HOST_PATH" || return 1
+    fi
+    if [ ! -f "$HOST_PATH" ]; then
+        log "missing $HOST_PATH and no fallback at $FALLBACK_PATH — cannot sync"
+        return 1
+    fi
+    install -d -m 0755 "$(dirname "$RUNTIME_PATH")"
+}
+
+ct_running() {
+    incus list "$CT" -c s --format csv 2>/dev/null | grep -qx RUNNING
+}
+
+host_md5() {
+    md5sum "$HOST_PATH" 2>/dev/null | awk '{print $1}'
+}
+
+runtime_md5() {
+    md5sum "$RUNTIME_PATH" 2>/dev/null | awk '{print $1}' || true
+}
+
+reload_xray() {
+    [ "$RELOAD" = "1" ] || return 0
+    if ! ct_running; then
+        return 0
+    fi
+    log "restart xray in $CT (config synced)"
+    incus exec "$CT" -- systemctl restart xray 2>/dev/null || true
+}
+
+ensure_once() {
+    ensure_host_file || return 1
+    h=$(host_md5)
+    r=$(runtime_md5)
+    if [ -z "$r" ] || [ "$h" != "$r" ]; then
+        log "sync $HOST_PATH → $RUNTIME_PATH (host=$h runtime=${r:-none})"
+        cp -a "$HOST_PATH" "$RUNTIME_PATH"
+        chmod 0644 "$RUNTIME_PATH"
+        reload_xray
+        return 0
+    fi
+    return 0
+}
+
+if [ "${1:-}" = "once" ]; then
+    ensure_once
+    exit 0
+fi
+
+ensure_once

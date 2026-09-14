@@ -1,0 +1,71 @@
+[package]
+name = "op-network"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Native networking: OpenFlow (all versions, pure Rust), OVSDB JSON-RPC, rtnetlink, Proxmox API, container networking"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = "1"
+sha2 = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+futures = "0.3"
+rtnetlink = { workspace = true }
+log = { workspace = true }
+uuid = { version = "1", features = ["v4"] }
+
+# HTTP client for Proxmox API
+reqwest = { workspace = true }
+
+# Netlink (Generic Netlink for OVS)
+netlink-sys = "0.8"
+netlink-packet-core = "0.7"
+netlink-packet-generic = "0.3"
+netlink-packet-utils = "0.5"
+netlink-packet-route = "0.19"
+byteorder = "1.5"
+
+# Internal
+op-core = { path = "../op-core" }
+
+# Root privilege checking
+libc = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# OVSDB and OpenFlow via rovs crate family
+rovs-ovsdb = "0.2"
+rovs-openflow = "0.2"
+rovs-jsonrpc = "0.2"
+rovs-types = "0.2"
+rovs-transport = "0.2"
+
+# Bytes for wire-protocol encoding in controller.rs
+bytes = "1"
+
+# D-Bus proxy for the OVSDB JSON-RPC passthrough interface
+zbus = { workspace = true, features = ["p2p"] }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
+tokio-rustls = { workspace = true }
+wireguard-control = "=1.7.1"
+
+# simd-json — for the transact_simd compatibility shim in ovsdb.rs
+simd-json = { workspace = true }
+
+[dev-dependencies]
+rcgen = "0.13"
+tempfile = { workspace = true }
+
+[[bin]]
+name = "op-of-controller"
+path = "src/bin/op-of-controller.rs"
+
+[[bin]]
+name = "op-ovsbr0-setup"
+path = "src/bin/op-ovsbr0-setup.rs"

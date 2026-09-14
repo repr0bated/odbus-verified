@@ -1,0 +1,128 @@
+#!/bin/sh
+set -eu
+exec 2>&1
+
+READY_DIR=/run/opdbus/runit-ready
+READY_FILE="$READY_DIR/mongodb-mcp-server"
+AUTH_READY_FILE="$READY_DIR/mongodb-mcp-server-authenticated"
+PROVIDER_ROOT=/opt/op-mcp-providers/mongodb-mcp-server
+PROVIDER_ENTRY="$PROVIDER_ROOT/node_modules/mongodb-mcp-server/dist/esm/index.js"
+SECRET_ENV=/etc/opdbus/secrets/mongodb-mcp-server.env
+
+install -d -m 0755 "$READY_DIR"
+rm -f -- "$READY_FILE" "$AUTH_READY_FILE"
+[ -f "$PROVIDER_ENTRY" ] || {
+    echo "mongodb-mcp-server: pinned provider is missing: $PROVIDER_ENTRY" >&2
+    exit 1
+}
+id jeremy >/dev/null 2>&1 || {
+    echo "mongodb-mcp-server: runtime user jeremy is missing" >&2
+    exit 1
+}
+
+if [ -e "$SECRET_ENV" ]; then
+    [ "$(stat -c %u "$SECRET_ENV")" = 0 ] || {
+        echo "mongodb-mcp-server: secret environment must be root-owned" >&2
+        exit 1
+    }
+    case "$(stat -c %a "$SECRET_ENV")" in
+        400|440|600|640) ;;
+        *)
+            echo "mongodb-mcp-server: secret environment must have mode 0400, 0440, 0600, or 0640" >&2
+            exit 1
+            ;;
+    esac
+    set -a
+    # shellcheck disable=SC1090 -- fixed protected deployment path.
+    . "$SECRET_ENV"
+    set +a
+fi
+
+export MDB_MCP_READ_ONLY=true
+export MDB_MCP_DISABLE_SERVER_SIDE_JS=true
+export MDB_MCP_ALLOW_REQUEST_OVERRIDES=false
+export MDB_MCP_TELEMETRY=disabled
+export MDB_MCP_TRANSPORT=http
+export MDB_MCP_HTTP_HOST=127.0.0.1
+export MDB_MCP_HTTP_PORT=3102
+export MDB_MCP_HTTP_RESPONSE_TYPE=json
+export MDB_MCP_MONITORING_SERVER_HOST=127.0.0.1
+export MDB_MCP_MONITORING_SERVER_PORT=3103
+export MDB_MCP_MONITORING_SERVER_FEATURES=health-check
+
+credential_configured=0
+if [ -n "${MDB_MCP_CONNECTION_STRING:-}" ]; then
+    credential_configured=1
+fi
+
+provider_pid=0
+auth_probe_pid=0
+cleanup() {
+    rm -f -- "$READY_FILE" "$AUTH_READY_FILE"
+    if [ "$auth_probe_pid" -gt 0 ]; then
+        kill -TERM "$auth_probe_pid" 2>/dev/null || true
+    fi
+    if [ "$provider_pid" -gt 0 ]; then
+        kill -TERM "$provider_pid" 2>/dev/null || true
+    fi
+}
+trap cleanup HUP INT TERM EXIT
+
+chpst -u jeremy:jeremy env HOME=/home/jeremy USER=jeremy \
+    /usr/bin/node "$PROVIDER_ENTRY" --transport http --httpHost=127.0.0.1 \
+    --httpPort=3102 --readOnly --loggers 'stderr,mcp' &
+provider_pid=$!
+
+attempt=0
+until curl -fsS --max-time 2 http://127.0.0.1:3103/health >/dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    if ! kill -0 "$provider_pid" 2>/dev/null; then
+        status=0
+        wait "$provider_pid" || status=$?
+        provider_pid=0
+        exit "$status"
+    fi
+    [ "$attempt" -lt 60 ] || {
+        echo "mongodb-mcp-server: health endpoint not ready after 60s" >&2
+        exit 1
+    }
+    sleep 1
+done
+touch "$READY_FILE"
+chmod 0644 "$READY_FILE"
+probe_authentication() {
+    if chpst -u jeremy:jeremy \
+        /usr/local/libexec/3tched/mcp-provider-probe \
+        http://127.0.0.1:3102/mcp list-databases \
+        '{"connectionId":"preconfigured"}' success >/dev/null 2>&1; then
+        touch "$AUTH_READY_FILE"
+        chmod 0644 "$AUTH_READY_FILE"
+    else
+        rm -f -- "$AUTH_READY_FILE"
+    fi
+}
+if [ "$credential_configured" = 1 ]; then
+    probe_authentication
+    [ -f "$AUTH_READY_FILE" ] ||
+        echo "mongodb-mcp-server: configured database credentials did not authenticate" >&2
+    (
+        while kill -0 "$provider_pid" 2>/dev/null; do
+            sleep 30
+            probe_authentication
+        done
+    ) &
+    auth_probe_pid=$!
+fi
+echo "mongodb-mcp-server: ready read-only on loopback :3102"
+
+status=0
+wait "$provider_pid" || status=$?
+provider_pid=0
+if [ "$auth_probe_pid" -gt 0 ]; then
+    kill -TERM "$auth_probe_pid" 2>/dev/null || true
+    wait "$auth_probe_pid" 2>/dev/null || true
+    auth_probe_pid=0
+fi
+trap - HUP INT TERM EXIT
+rm -f -- "$READY_FILE" "$AUTH_READY_FILE"
+exit "$status"

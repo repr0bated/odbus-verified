@@ -1,0 +1,11 @@
+offline-mail-regression source=1b82c594acd8d17a7e1b64b1b6ba52a21e5d9e97
+artifact sha256=26185dde113cb7163376d767d9d357b5498a67eaf473c7f8939201ba004cc1d1 files=21
+mail-3tched rootfs: target must contain exactly one vmail account
+PASS negative missing-vmail rejected with target byte/metadata fingerprint unchanged
+mail-3tched rootfs: vmail passwd and group primary IDs differ
+PASS negative passwd/group mismatch rejected with target byte/metadata fingerprint unchanged
+PASS positive owner=1001:1001:700 env=OP_MAIL_VMAIL_UID=1001,OP_MAIL_VMAIL_GID=1001,OP_MAIL_DOVECOT_GID=1001 template=numeric unrelated-config=preserved
+PASS full offline preparation regression work=/tmp/op-mail-offline-120.m5tDff log=/var/tmp/odbus-mail-offline-120.log
+COMMAND negative-missing: OP_MAIL_OFFLINE_ROOTFS=1 deploy/mail-3tched/prepare-offline-rootfs.sh /tmp/op-mail-offline-120.m5tDff/negative-missing-vmail /tmp/op-mail-offline-120.m5tDff/mail-fixture.tar 26185dde113cb7163376d767d9d357b5498a67eaf473c7f8939201ba004cc1d1
+COMMAND negative-mismatch: OP_MAIL_OFFLINE_ROOTFS=1 deploy/mail-3tched/prepare-offline-rootfs.sh /tmp/op-mail-offline-120.m5tDff/negative-group-mismatch /tmp/op-mail-offline-120.m5tDff/mail-fixture.tar 26185dde113cb7163376d767d9d357b5498a67eaf473c7f8939201ba004cc1d1
+COMMAND positive: OP_MAIL_OFFLINE_ROOTFS=1 deploy/mail-3tched/prepare-offline-rootfs.sh /tmp/op-mail-offline-120.m5tDff/positive /tmp/op-mail-offline-120.m5tDff/mail-fixture.tar 26185dde113cb7163376d767d9d357b5498a67eaf473c7f8939201ba004cc1d1

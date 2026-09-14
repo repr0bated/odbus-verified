@@ -1,0 +1,13 @@
+[Unit]
+Description=WireGuard-only SSH access to the main host
+Requires=wg-quick@wg0.service
+After=wg-quick@wg0.service
+
+[Socket]
+ListenStream=10.0.0.1:2222
+BindToDevice=wg0
+NoDelay=true
+KeepAlive=true
+
+[Install]
+WantedBy=sockets.target

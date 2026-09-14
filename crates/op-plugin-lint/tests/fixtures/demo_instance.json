@@ -1,0 +1,13 @@
+{
+  "status": "ok",
+  "widgets": [
+    {
+      "id": "w1",
+      "port": 8080,
+      "extra_sdk_field": true
+    }
+  ],
+  "sdk_only_surface": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,37 @@
+// In process.rs, after line ~95 where forbidden commands are detected,
+// ADD this retry logic:
+
+// === ADD THIS IMPORT at top of file ===
+use super::anti_hallucination::{check_for_forbidden_commands, ForbiddenCommandCheck};
+
+// === REPLACE the forbidden command check section (around line 95) with: ===
+
+// Check for forbidden CLI commands with enforcement
+let forbidden_check = check_for_forbidden_commands(&response.message.content);
+
+if forbidden_check.should_reject {
+    warn!(
+        "🚫 Anti-hallucination triggered: {:?}",
+        forbidden_check.detected.iter().map(|d| &d.pattern).collect::<Vec<_>>()
+    );
+    
+    // Don't accept this response - add correction and continue loop
+    if let Some(correction) = &forbidden_check.correction_message {
+        messages.push(ChatMessage::user(correction));
+        
+        // Emit event about rejection
+        if let Some(tx) = &event_tx {
+            let _ = tx.send(OrchestratorEvent::Thinking).await;
+        }
+        
+        info!("🔄 Retrying after anti-hallucination correction");
+        continue; // Go to next turn with correction
+    }
+}
+
+// If we get here, response is acceptable (or only has warnings)
+if !forbidden_check.detected.is_empty() {
+    all_forbidden.extend(
+        forbidden_check.detected.iter().map(|d| d.pattern.clone())
+    );
+}

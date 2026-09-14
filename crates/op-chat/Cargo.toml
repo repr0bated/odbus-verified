@@ -1,0 +1,54 @@
+[package]
+name = "op-chat"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Chat functionality and LLM integration for op-dbus-v2"
+
+[features]
+default = []
+backtrace = []
+
+[dependencies]
+# Workspace dependencies
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+simd-json = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+uuid = { workspace = true, features = ["v4", "serde"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+futures = { workspace = true }
+
+# D-Bus support
+zbus = { workspace = true }
+
+# Internal dependencies
+op-core = { path = "../op-core" }
+op-tools = { path = "../op-tools" }
+op-introspection = { path = "../op-introspection" }
+op-llm = { path = "../op-llm" }
+op-execution-tracker = { path = "../op-execution-tracker" }
+regex = { workspace = true }
+libc = { workspace = true }
+op-agents = { path = "../op-agents" }
+op-cognitive-mcp = { path = "../op-cognitive-mcp" }
+tonic = { workspace = true }
+tonic-web = { workspace = true }
+tonic-reflection = { workspace = true }
+tokio-stream = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+op-grpc-bridge = { path = "../op-grpc-bridge" }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+qdrant-client = { workspace = true }
+
+[build-dependencies]
+tonic-build = "0.11"
+prost-build = "0.12"

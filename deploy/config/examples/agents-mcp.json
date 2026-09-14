@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "op-dbus-unified": {
+      "serverUrl": "https://10.0.0.3:8090/mcp",
+      "transport": "http",
+      "description": "Unified authenticated MCP, including cognitive agents and memory"
+    }
+  }
+}

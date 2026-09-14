@@ -1,0 +1,4 @@
+#!/bin/sh
+[ -d /sys/class/net/mkdrt ] || exit 1
+wg show mkdrt latest-handshakes 2>/dev/null |
+  awk '{ if ($2 > 0) ok=1 } END { exit ok?0:1 }'

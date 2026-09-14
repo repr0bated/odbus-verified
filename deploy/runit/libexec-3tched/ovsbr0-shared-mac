@@ -1,0 +1,11 @@
+#!/bin/sh
+# Export SHARED_MAC from UPLINK_PHYS while leaving the physical uplink outside
+# OVS until ovsbr0-eth0 performs the late capture.
+set -eu
+set -a; [ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf; set +a
+PHYS="${UPLINK_PHYS:-eth0}"
+if [ -z "${SHARED_MAC:-}" ] && [ -r "/sys/class/net/$PHYS/address" ]; then
+    SHARED_MAC=$(cat "/sys/class/net/$PHYS/address")
+fi
+export UPLINK=
+export SHARED_MAC

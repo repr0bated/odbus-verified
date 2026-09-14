@@ -1,0 +1,8 @@
+#!/bin/sh
+ss -H -lnt 2>/dev/null | awk '
+    $4 == "127.0.0.1:1883" { mqtt = 1 }
+    $4 == "127.0.0.1:18083" { api = 1 }
+    END { exit(mqtt && api ? 0 : 1) }
+'
+install -d -m 0755 /run/opdbus/runit-ready
+touch /run/opdbus/runit-ready/emqx

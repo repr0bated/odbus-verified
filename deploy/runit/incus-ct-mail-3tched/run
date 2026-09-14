@@ -1,0 +1,75 @@
+#!/bin/sh
+# runit longrun for Incus container: mail-3tched
+exec 2>&1
+
+wait_dep() {
+    dep="$1"
+    sv start "$dep" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$dep" >/dev/null 2>&1; do
+        i=$((i + 1))
+        if [ "$i" -ge 90 ]; then
+            echo "dependency $dep not ready after 90s" >&2
+            exit 1
+        fi
+        sleep 1
+    done
+}
+
+wait_dep incusd
+if [ "mail-3tched" = "xray" ] && [ -d /etc/runit/sv/xray-config-mount ]; then
+    wait_dep xray-config-mount || true
+fi
+
+NAME='mail-3tched'
+
+i=0
+until incus info >/dev/null 2>&1; do
+    i=$((i + 1))
+    if [ "$i" -ge 60 ]; then
+        echo "incusd API not ready" >&2
+        exit 1
+    fi
+    sleep 1
+done
+
+# runit owns lifecycle
+incus config set "$NAME" boot.autostart=false 2>/dev/null || true
+
+if ! incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; then
+    echo "starting container $NAME"
+    if ! incus start "$NAME"; then
+        echo "incus start failed for $NAME" >&2
+        incus info "$NAME" --show-log 2>&1 | tail -n 40 || true
+        exit 1
+    fi
+fi
+
+i=0
+until incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; do
+    i=$((i + 1))
+    if [ "$i" -ge 60 ]; then
+        echo "container $NAME failed to reach RUNNING" >&2
+        incus info "$NAME" --show-log 2>&1 | tail -n 40 || true
+        exit 1
+    fi
+    sleep 1
+done
+echo "container $NAME is RUNNING"
+/usr/local/libexec/3tched/runit-ready-signal incus-ct-mail-3tched
+
+# one-shot console log snapshot into the runit log (non-blocking)
+incus console "$NAME" --show-log 2>/dev/null | tail -n 80 || true
+
+cleanup() {
+    echo "stopping container $NAME (runit down)"
+    incus stop "$NAME" --timeout 30 2>/dev/null || incus stop "$NAME" --force 2>/dev/null || true
+}
+trap cleanup TERM INT HUP
+
+# stay up while CT is RUNNING; exit 1 so runit restarts if CT dies under us
+while incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; do
+    sleep 5
+done
+echo "container $NAME left RUNNING — exiting for restart"
+exit 1

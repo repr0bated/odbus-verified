@@ -1,0 +1,3 @@
+#!/bin/sh
+# Bring the WARP egress tunnel down when the service stops.
+wg-quick down wgcf-egress 2>/dev/null || true

@@ -1,0 +1,4 @@
+// Add to crates/op-core/src/lib.rs:
+
+pub mod self_identity;
+pub use self_identity::{get_self_repo_path, is_self_repo_configured, SelfRepositoryInfo};

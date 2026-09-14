@@ -1,0 +1,64 @@
+#!/bin/sh
+# Xray starts after its host service address is ready. Egress is provided by
+# the fabric; this service must not create or depend on a host WireGuard link.
+exec 2>&1
+set -eu
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:/usr/lib/incus:${PATH:-}"
+
+wait_dep() {
+    dep="$1"
+    sv start "$dep" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$dep" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 180 ] && { echo "dependency $dep not ready after 180s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+wait_dep incusd
+wait_dep ovsbr0-svc-addr
+
+NAME=xray
+START_PID=
+
+cleanup() {
+    if [ -n "$START_PID" ]; then
+        kill "$START_PID" 2>/dev/null || true
+        wait "$START_PID" 2>/dev/null || true
+    fi
+    if incus list -f csv -c ns 2>/dev/null | rg -q "^${NAME},RUNNING$"; then
+        echo "stopping container $NAME"
+        incus stop "$NAME" --timeout 30 2>/dev/null \
+            || incus stop "$NAME" --force 2>/dev/null || true
+    fi
+}
+trap cleanup TERM INT HUP
+
+if ! incus list -f csv -c ns 2>/dev/null | rg -q "^${NAME},RUNNING$"; then
+    echo "starting container $NAME after egress"
+    incus start "$NAME" &
+    START_PID=$!
+    wait "$START_PID"
+    START_PID=
+fi
+
+i=0
+until incus list -f csv -c ns 2>/dev/null | rg -q "^${NAME},RUNNING$"; do
+    i=$((i + 1))
+    [ "$i" -ge 60 ] && { echo "container $NAME did not reach RUNNING" >&2; exit 1; }
+    sleep 1
+done
+
+# The sole live path is inside the container. Refuse readiness if the baked
+# bootstrap is missing or invalid; never copy from /dev/shm or a host runtime
+# path and never reload Xray directly.
+incus exec "$NAME" -- test -s /etc/xray/xray_config.json
+incus exec "$NAME" -- /usr/local/bin/xray run -test -config /etc/xray/xray_config.json
+
+/usr/local/libexec/3tched/runit-ready-signal incus-ct-xray
+
+while incus list -f csv -c ns 2>/dev/null | rg -q "^${NAME},RUNNING$"; do
+    sleep 5
+done
+exit 1

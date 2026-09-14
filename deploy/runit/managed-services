@@ -1,0 +1,15 @@
+# Release-owned definitions changed by the Netmaker removal.
+mail-port-fabric
+op-grpc-bridge
+op-runit-systemctl
+emqx
+mongodb-mcp-server
+op-web
+op-of-controller
+sshd
+xray-config-mount
+incus-ct-xray
+decoy-admin-reverse-ssh
+mkdrt
+fwd-443
+opdbus-grants

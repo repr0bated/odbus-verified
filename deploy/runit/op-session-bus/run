@@ -1,0 +1,26 @@
+#!/bin/sh
+exec 2>&1
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+wait_dep dbus
+wait_dep opdbus-rundirs
+# 3tched SESSION bus — the identity-gated plugin surface. EARLY by design.
+set -a; [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment; set +a
+: "${DBUS_SESSION_BUS_ADDRESS:=unix:path=/run/opdbus/session-bus.sock}"
+SOCKET_PATH="${DBUS_SESSION_BUS_ADDRESS#unix:path=}"
+install -d -m 0755 "$(dirname "$SOCKET_PATH")"
+rm -f "$SOCKET_PATH"
+umask 000
+if command -v busd >/dev/null 2>&1; then
+    /usr/local/libexec/3tched/runit-ready-signal op-session-bus
+    exec busd -a "$DBUS_SESSION_BUS_ADDRESS"
+fi
+/usr/local/libexec/3tched/runit-ready-signal op-session-bus
+exec dbus-daemon --session --nofork --nopidfile --address="$DBUS_SESSION_BUS_ADDRESS"

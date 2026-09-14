@@ -1,0 +1,31 @@
+#!/bin/sh
+# ovs-vswitchd — start the datapath. It does NOT build the topology.
+#
+# ovsbr0, its internal ports, and the enslaved physical uplink live in the
+# persistent OVSDB (/etc/openvswitch/conf.db). vswitchd materializes all of it
+# natively at startup, on every boot, with nothing else running. That is the
+# whole point: there is no seed step in the boot path, so boot networking has
+# no dependency on the plugin tree, so op-grpc-bridge is free to start last.
+#
+# Topology changes are a deliberate operator action against a booted system
+# (setup-ovsbr0-atomic.sh — one OVSDB transaction), not something re-derived
+# from shell on every boot. If the topology is wrong here, fix conf.db; do not
+# add a repair step to this script.
+exec 2>&1
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+wait_dep ovsdb-server
+
+modprobe openvswitch 2>/dev/null || true
+set -a; [ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf; set +a
+export OVSDB_SOCKET="${OVSDB_SOCKET:-/run/openvswitch/db.sock}"
+
+/usr/local/libexec/3tched/runit-ready-signal ovs-vswitchd
+exec ovs-vswitchd "unix:${OVSDB_SOCKET}"

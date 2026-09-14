@@ -1,0 +1,19 @@
+#!/bin/sh
+# Host runit longrun for the Xray process inside the NIC-less xray container.
+# The container itself is lifecycle-managed by incus-ct-xray; this service owns
+# only the application process and uses the container's canonical live config.
+exec 2>&1
+
+NAME=xray
+CONFIG=/etc/xray/xray_config.json
+
+until incus list -f csv -c ns 2>/dev/null | grep -q '^xray,RUNNING$'; do
+    sleep 1
+done
+
+until incus exec "$NAME" -- test -r "$CONFIG" >/dev/null 2>&1; do
+    sleep 1
+done
+
+echo "starting Xray in $NAME with $CONFIG"
+exec incus exec "$NAME" -- /usr/local/bin/xray run -config "$CONFIG"

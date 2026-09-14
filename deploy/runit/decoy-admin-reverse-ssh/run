@@ -1,0 +1,17 @@
+#!/bin/sh
+# Internal reverse endpoint:
+# decoy 127.0.0.1:2222 -> this host 127.0.0.1:22.
+# The decoy's op-main-ssh-wg.socket publishes that endpoint only on
+# 10.0.0.1%wg0:2222. It replaces Netmaker for administration and never
+# establishes OIA1 application identity.
+exec 2>&1
+
+exec chpst -u jeremy:jeremy /usr/bin/ssh -NT \
+  -i /home/jeremy/.ssh/vps_key \
+  -o BatchMode=yes \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=15 \
+  -o ServerAliveCountMax=3 \
+  -o StrictHostKeyChecking=yes \
+  -R 127.0.0.1:2222:127.0.0.1:22 \
+  ubuntu@129.153.134.63

@@ -1,0 +1,124 @@
+{
+  "status": "passed",
+  "captured_at": "2026-09-14T23:00:15Z",
+  "verified_checkpoint": 122,
+  "source_manifest_sha256": "57e67b197ee090128b5f267dbd5b20cfa09078896d8d37fc4b04617c66e8135c",
+  "gate_input_files": 1995,
+  "admitted_files_before_this_audit": 2018,
+  "unchanged_gate_input_files": 1992,
+  "removed": [],
+  "changed": [
+    {
+      "path": "./SIGNALS.md",
+      "before_sha256": "0d17568c55b9e0acfa3e41d890a6103f283409443f1db5125078724dcfe63eea",
+      "after_sha256": "6a5b75d4a2d130c1693cb7a1f4312e0b4e785af8e6efe898668f2fc99047407f"
+    },
+    {
+      "path": "./WISHLIST.md",
+      "before_sha256": "206f914388eeb5c1d8b8723bc81640c32118e5bb2cb5b4259e4c8591b5139caa",
+      "after_sha256": "7f348e14f0ec75f305c91dc700b679835d39d493ef6b92af9d85a583705366e2"
+    },
+    {
+      "path": "./docs/src/architecture/plugin-baseline-revision.json",
+      "before_sha256": "4a5fdf6d7ccd1475a02bd458cf4acc6c9dcd751d3cc6affb74a361050570a2e3",
+      "after_sha256": "fbfa110061c3b0b84793eee01e7fe6aee00e587ff2d70ed309d6aa2c10cf11c2"
+    }
+  ],
+  "added": [
+    {
+      "path": "./docs/src/architecture/verification/methods-122/decoy-debug-bundle-receipt.txt",
+      "sha256": "fed63e755a6693d9482f7962fdda4dcd469b911d1351863f717656d13834fbc9"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/decoy-debug-bundle.log",
+      "sha256": "1144eb05c99a51f20dcefaf5f570ec664590d13c9fbc041b7a358738ab1ca575"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/fresh-preflight.log",
+      "sha256": "4d272fa06d3cfe6d24523d4ecbd8f4bf0d69e2b0cee8b7bdf58681983b1cd791"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/fresh-source-export.log",
+      "sha256": "fd2edf68aaa810d2fa96bc36b98a4722ea086c6c327c7dd542d807a32cec5721"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/mail-debug-bundle.log",
+      "sha256": "5a8922365fe581a7bbef93ea7dd00f7a35e43006d8346b9ef365671922d0cbdf"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/mail-native.log",
+      "sha256": "151484d36e571e8bcca377d4a015d6d204e4de2b4c1403b0737ccfdf8ae889ba"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/mail-offline.log",
+      "sha256": "c10f964ee4fff5af4ffa9a0117c92740a9551cc60d661e66b32c562fc1b38630"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/native-build.log",
+      "sha256": "9e1ceaf2a60618f7a625e61a31a894c7009fa5387e3b784717a11bd476285922"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/native-clippy.log",
+      "sha256": "5db3394346527fec6ea080f81c8814bc302f0e41004a007780bbccdb2dc8c978"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/native-eof-test.log",
+      "sha256": "a2f64fbec5af41ccd5f3ecf12def38e30b828fb04e40ec95728da162bb46e3c1"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/native-generation-tests.log",
+      "sha256": "c5f2631ba4d9f02a07663b555adaf39fc6adb9581d50536b143da30a16560fb0"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/native-lag-tests.log",
+      "sha256": "a1e71f602426270cd3c6d56524ce2a8ce86e2abbe55f1d36aa6bfb22f37d9076"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/native-manifest.json",
+      "sha256": "13e5d5b3e2965dfadf6f371062ecf1df08fc12d777982db632d02d8d6e09487a"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/native-schema-parity.json",
+      "sha256": "4697bea5c865016dc3bfd9f90c3fed9e1a6d51b07e14ac180bc9934e5cb60e5c"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/native-source-regression.log",
+      "sha256": "a6bd7e38b3d76abaecd7f7d2c5c9f1a508428ab6e38422fd9540a5be42839585"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/openflow-native.log",
+      "sha256": "0e804ff2a913c743c0adf55925722ee394324d5cbe7af80296e9998917f749e1"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/source-export.log",
+      "sha256": "8f85d0829d8b2dca5cae5a44446679c7b6aa7248fec001a9e6c73996fcb4a56e"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/source.sha256",
+      "sha256": "57e67b197ee090128b5f267dbd5b20cfa09078896d8d37fc4b04617c66e8135c"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/ui-build.log",
+      "sha256": "598e8691dfd9537f05946f863089546f8d15ae14f2ed771828835c4ef7c94e13"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/ui-manifest.json",
+      "sha256": "1f3e2a4a33c2993750dd3ba6d5f194a4f034a8b4051a9544c153a5bc256ebb4c"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/ui-source-regression.log",
+      "sha256": "3f68abc6d5410350d5c058019559792ff07d8ca1ec3d43fc33bf7c18929bd065"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/wireguard-native.log",
+      "sha256": "bec206a22e7a1981ddf632e106a75315cc9233aff357a8ebfc5612c769c92229"
+    },
+    {
+      "path": "./docs/src/architecture/verification/methods-122/workspace.log",
+      "sha256": "e4bdc21b6f72836c04a2a10ca74267e6524a1eb5574e4f3d3bd6f5c6a1e8a29e"
+    }
+  ],
+  "scope": "All implementation, schema, manifest, test, build-helper and pinned archive inputs remain byte-identical to the passing frozen gate. Changes are verification metadata only.",
+  "self_excluded": "./docs/src/architecture/verification/methods-122/admission-audit.json",
+  "git_metadata_excluded": true
+}

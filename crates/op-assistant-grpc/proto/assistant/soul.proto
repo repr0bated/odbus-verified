@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package assistant.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "assistant/common.proto";
+
+service SoulService {
+  rpc GetSoulMemory(GetSoulMemoryRequest) returns (SoulMemory);
+  rpc UpdateSoulMemory(UpdateSoulMemoryRequest) returns (SoulMemory);
+  rpc DeleteSoulMemory(DeleteSoulMemoryRequest) returns (Empty);
+  rpc ListSoulMemories(ListSoulMemoriesRequest) returns (ListSoulMemoriesResponse);
+}
+
+message SoulMemory {
+  string agent_id = 1;
+  string identity = 2;
+  string personality = 3;
+  google.protobuf.Struct traits = 4;
+  uint64 version = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message GetSoulMemoryRequest { string agent_id = 1; }
+
+message UpdateSoulMemoryRequest {
+  string agent_id = 1;
+  optional string identity = 2;
+  optional string personality = 3;
+  optional google.protobuf.Struct traits = 4;
+}
+
+message DeleteSoulMemoryRequest { string agent_id = 1; }
+
+message ListSoulMemoriesRequest {
+  Pagination pagination = 1;
+}
+message ListSoulMemoriesResponse {
+  repeated SoulMemory memories = 1;
+  uint32 total = 2;
+}

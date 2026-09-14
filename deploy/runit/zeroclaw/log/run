@@ -1,0 +1,3 @@
+#!/bin/sh
+install -d -o svlog -g svlog -m 0750 /var/log/op-dbus/zeroclaw
+exec chpst -u svlog svlogd -tt /var/log/op-dbus/zeroclaw

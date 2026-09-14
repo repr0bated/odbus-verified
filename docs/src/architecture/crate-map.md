@@ -1,0 +1,140 @@
+# Crate Map
+
+Source inventory: **2026-09-14**, base commit
+`1b82c594acd8d17a7e1b64b1b6ba52a21e5d9e97`, including the existing working-tree
+changes. The current declared workspace inventory contains **37 packages under
+`crates/` plus the root package**, **32 binary targets**, and **145 declared
+internal dependency edges**.
+Build and normal dependencies are separate edges; these numbers do not describe
+running services or a resolved feature configuration.
+
+[workspace-graph.json](workspace-graph.json) contains every package, its manifest,
+binary source paths, and internal dependency edges. See
+[Documentation Maintenance](../contributors/doc-maintenance.md) for regeneration
+and the multi-agent learning procedure. The [System Overview](overview.md) traces
+the principal runtime paths. The [Plugin Execution Baseline](plugin-baseline.md)
+records individual plugin dispatch, backing behavior, test evidence and gaps.
+
+## Product roles confirmed by the owner
+
+These corrections were supplied on 2026-09-13 and take precedence over stale
+crate names, comments, or deployment documents:
+
+- **Waypipe is retired.** Its crate, binary target and protocol have been removed
+  from the workspace and must not enter the fresh repository.
+- **Assistant is the control-plane chatbot**, not an `assistant` container.
+  The remaining `op-assistant-grpc` package name does not establish a separate
+  assistant deployment.
+- **Gemma's intended routing role is model agnostic.** The historical
+  `op-gemma` name does not restrict the system to a Gemma model.
+- **WireGuard terminates at the decoy; there is no WireGuard on this server.**
+  WARP transports identity. WireGuard-related source declarations do not imply
+  server deployment or a requirement for a local WireGuard implementation.
+- **3tched-router / tched-router is the binary-backed framework/schema/plugin
+  integration**, with plugin ID `tched_router`. The upstream executable keeps
+  the name `zeroclaw`; extraction feeds the single plugin schema. The system uses
+  that plugin and its binary backing. See the
+  [binary-backed plugin path](overview.md#binary-backed-tched_router).
+- **The plugin IS the schema; its sealed blob IS the plugin.** There must be
+  no parallel plugin sources under `schemas/`. No such plugin schema directory
+  exists in the current tree; historical references to one must not recreate
+  it. Generic OOXML schema resources in tool bundles are unrelated.
+
+A Cargo graph cannot express this last relationship by itself: the external
+executable and the plugin inside `op-plugins` are not separate workspace crates.
+
+## Coverage and reading order
+
+All 41 crate manifest directories were inventoried: 37 workspace members and
+four excluded manifests (`op-ml`, `op-gallery-gen`, `op-uds-relay`, and
+`zeroclaw-gui`). Three independent source readers
+examined plugin/runtime flow, identity/state, and build/deployment; the coordinator
+checked their integration claims and the code retrieval surface. This is an
+architecture onboarding pass, not an exhaustive function-level review. Vendor
+internals, archived snapshots, every individual plugin, and live service health
+were not exhaustively inspected.
+
+Start with `op-state-store` → `op-plugins` → `op-blob` → `op-grpc-bridge` for the
+schema and execution path. Read `op-identity` and `op-cozo-store` alongside the
+bridge to understand authority and durability. Then follow `op-web` and
+`op-cognitive-mcp` for user-facing and retrieval behavior.
+
+## Package inventory
+
+Roles below describe source organization. A package's presence does not establish
+that its binary is deployed or that its advertised operations are implemented.
+
+| Package / manifest | Role and useful starting point |
+|---|---|
+| [op-dbus](../../../Cargo.toml) | Root dependency aggregate and example target; no application binary. |
+| [op-core](../../../crates/op-core/Cargo.toml) | Shared types, configuration, projection helpers, and service abstractions. |
+| [op-state-store](../../../crates/op-state-store/Cargo.toml) | Canonical `PluginSchema` / `MethodDecl`, state and execution-ledger types. |
+| [op-plugins](../../../crates/op-plugins/Cargo.toml) | Plugin schemas and implementations and registry; owns `opblob`, the tched_router contract generator, and the mail administration candidate binary. |
+| [op-blob](../../../crates/op-blob/Cargo.toml) | Blob creation, sealing, catalog persistence, and read views; a library package. |
+| [op-grpc-bridge](../../../crates/op-grpc-bridge/Cargo.toml) | Generated routes, native gRPC, schema-backed D-Bus objects, MCP frontend and authenticated dispatch; also contains the decoy-network service candidate. |
+| [op-identity](../../../crates/op-identity/Cargo.toml) | SID1 envelope, projected identity, transport checks and capability policy; owns the decoy issuer candidate. |
+| [op-cozo-store](../../../crates/op-cozo-store/Cargo.toml) | Cozo storage API and relations for identities, projects, grants and memory. |
+| [op-state](../../../crates/op-state/Cargo.toml) | State management, schema validation and plugin infrastructure. |
+| [op-dbus-model](../../../crates/op-dbus-model/Cargo.toml) | D-Bus model/schema types shared by state and plugins. |
+| [op-snowball](../../../crates/op-snowball/Cargo.toml) | Event-chain storage, footprints, retention and replication helpers. |
+| [op-cache](../../../crates/op-cache/Cargo.toml) | Memory/disk caches, NUMA and snapshot helpers. `btrfs_cache.rs` already uses a Cozo index; other cache modules still use SQLite. |
+| [op-execution-tracker](../../../crates/op-execution-tracker/Cargo.toml) | Execution records and instrumentation shared across tools and workflows. |
+| [op-network](../../../crates/op-network/Cargo.toml) | Native OpenFlow, OVSDB, rtnetlink and container/network helpers; bootstrap binaries. |
+| [op-introspection](../../../crates/op-introspection/Cargo.toml) | D-Bus discovery, introspection and schema extraction. |
+| [op-inspector](../../../crates/op-inspector/Cargo.toml) | Object inspection and introspection consumers. |
+| [op-jsonrpc](../../../crates/op-jsonrpc/Cargo.toml) | JSON-RPC and OVSDB-related protocol support. |
+| [op-tools](../../../crates/op-tools/Cargo.toml) | Tool registry, schema validation and execution helpers. |
+| [op-dynamic-loader](../../../crates/op-dynamic-loader/Cargo.toml) | Dynamic tool discovery/loading and associated cache/tracking helpers. |
+| [op-mcp](../../../crates/op-mcp/Cargo.toml) | MCP protocol and tool/transport library; bridge owns the public frontend. |
+| [op-mcp-aggregator](../../../crates/op-mcp-aggregator/Cargo.toml) | Upstream MCP aggregation library. |
+| [op-cognitive-mcp](../../../crates/op-cognitive-mcp/Cargo.toml) | Embedded cognitive runtime, code retrieval, memory, Voyage/Qdrant and Cozo integration. Its binaries are administration/ingestion tools. |
+| [op-web](../../../crates/op-web/Cargo.toml) | `op-web-server` HTTP/static host and `opdbus` CLI; compact chatbot mode and UI handlers. |
+| [op-http](../../../crates/op-http/Cargo.toml) | Shared HTTP/TLS server infrastructure. |
+| [op-chat](../../../crates/op-chat/Cargo.toml) | Chat/tool orchestration and provider integration. |
+| [op-llm](../../../crates/op-llm/Cargo.toml) | Provider/model configuration and LLM clients. |
+| [op-agents](../../../crates/op-agents/Cargo.toml) | Agent registry, D-Bus agents and manager/generation binaries. |
+| [op-workflows](../../../crates/op-workflows/Cargo.toml) | Workflow execution with tool and plugin nodes. |
+| [op-compliance](../../../crates/op-compliance/Cargo.toml) | Compliance models and OSCAL-related support. |
+| [op-services](../../../crates/op-services/Cargo.toml) | Runit service management and `op-svctl`. |
+| [op-runit-systemctl](../../../crates/op-runit-systemctl/Cargo.toml) | D-Bus-to-runit compatibility service and `svd`; its name is not permission to invoke the host's systemctl shim. |
+| [op-deployment](../../../crates/op-deployment/Cargo.toml) | Container/image helper source. Actual deployment is btrfs send/receive of the prepared snapshot; script or crate names do not define the release mechanism. |
+| [op-xray-daemon](../../../crates/op-xray-daemon/Cargo.toml) | Xray D-Bus lifecycle service. Live config policy remains `/etc/xray/xray_config.json` inside the container. |
+| [op-gemma](../../../crates/op-gemma/Cargo.toml) | Historical package name for routing/configuration work; owner specifies a model-agnostic role. Membership alone does not prove inference is active. |
+| [op-gateway](../../../crates/op-gateway/Cargo.toml) | Gateway authentication/routing library; not a second public MCP entrypoint. |
+| [op-assistant-grpc](../../../crates/op-assistant-grpc/Cargo.toml) | Remaining transport integration package. Assistant means the control-plane chatbot; do not infer an assistant container or another public MCP endpoint. |
+| [op-dbus-cli](../../../crates/op-dbus-cli/Cargo.toml) | `dbus-plugin-cli` introspection client. |
+| [op-plugin-lint](../../../crates/op-plugin-lint/Cargo.toml) | Static plugin contract audit tooling. |
+
+## Change impact
+
+The graph has 24 distinct direct dependents of `op-core`, 12 of `op-state-store`,
+7 of `op-identity`, and 8 of `op-plugins`. These are candidates for broader
+validation when their public contracts change. Counts include declared optional,
+build and target-specific dependencies; they are not runtime call frequencies.
+
+For example, list direct consumers of the canonical schema package:
+
+```sh
+jq -r '.edges[] | select(.to == "op-state-store") | [.from, .kind] | @tsv' \
+  docs/src/architecture/workspace-graph.json
+```
+
+Follow reverse edges transitively when estimating affected crates. Then trace
+actual symbol uses: dependency edges alone cannot prove that a particular type,
+feature, method or execution path is used.
+
+## Boundaries that prevent misleading ingestion
+
+- `crates/op-projection/` is absent. Current projection/router behavior must be
+  traced through bridge and core source, rather than the historical crate name.
+- `op-ml` is commented out of workspace membership. `op-gallery-gen`,
+  `op-uds-relay` and `zeroclaw-gui` directories are also outside the declared
+  workspace in this snapshot.
+- The user-designated UI is `/srv/git/vercel-json-render-ui`, deployed as static
+  files. It is outside this graph. The conflicting path in the json-render skill
+  does not supersede the user's repository instructions.
+- `vendor/rovs-openflow` is a crates.io patch, outside this internal workspace
+  graph; `Cargo.lock` and patch configuration remain build inputs.
+- Archived conversations/snapshots and retired UI trees can contain convincing
+  copies of old code. Cargo membership independently defines this package
+  inventory.

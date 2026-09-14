@@ -1,0 +1,27 @@
+#!/bin/sh
+# wait-op-plugins — block until session bus + PluginV1 tree answer zcall list.
+# Usage: wait-op-plugins [timeout_seconds]
+set -eu
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-}"
+TIMEOUT="${1:-120}"
+SOCK="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/opdbus/session-bus.sock}"
+SOCK_PATH="${SOCK#unix:path=}"
+
+# Prefer system dbus + session bus supervisable units
+sv start dbus >/dev/null 2>&1 || true
+sv start op-session-bus >/dev/null 2>&1 || true
+sv start op-grpc-bridge >/dev/null 2>&1 || true
+
+i=0
+until [ -S "$SOCK_PATH" ]; do
+    i=$((i+1))
+    [ "$i" -ge "$TIMEOUT" ] && { echo "wait-op-plugins: session bus socket missing" >&2; exit 1; }
+    sleep 1
+done
+
+i=0
+until zcall list >/dev/null 2>&1; do
+    i=$((i+1))
+    [ "$i" -ge "$TIMEOUT" ] && { echo "wait-op-plugins: plugin tree not ready" >&2; exit 1; }
+    sleep 1
+done

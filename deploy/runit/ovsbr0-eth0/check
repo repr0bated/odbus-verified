@@ -1,0 +1,9 @@
+#!/bin/sh
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-}"
+[ -f /run/opdbus/runit-ready/ovsbr0-eth0 ] || exit 1
+set -a; [ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf; set +a
+PHYS="${UPLINK_PHYS:-eth0}"
+BRIDGE="${BRIDGE:-ovsbr0}"
+
+cur=$(/usr/local/libexec/3tched/ovsdb-port port-to-br "$PHYS" 2>/dev/null) || exit 1
+[ "$cur" = "$BRIDGE" ]

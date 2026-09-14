@@ -1,0 +1,22 @@
+# Reapply the agent command guard after runit packages are (re)installed.
+#
+# Installing or upgrading runit can restore the supervisor entry points that the
+# guard shadows, so the shims are rebuilt post-transaction. The s6 packages are
+# listed too: if s6 is ever reinstalled on this runit host, the guard must
+# immediately shadow its entry points rather than silently reopening the legacy
+# management path.
+
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = runit
+Target = runit-rc
+Target = s6
+Target = s6-rc
+Target = op-runit-systemctl
+
+[Action]
+Description = Reapplying the agent sv-only command guard
+When = PostTransaction
+Exec = /usr/local/sbin/agent-runit-guard

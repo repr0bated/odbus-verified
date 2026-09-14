@@ -1,0 +1,3 @@
+#!/bin/sh
+# Log companion for qdrant-grpc-loopback. `svlogd -tt` timestamps each line.
+exec svlogd -tt /var/log/sv/qdrant-grpc-loopback

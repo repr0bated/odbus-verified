@@ -1,0 +1,2 @@
+#!/bin/sh
+exec chpst -u s6log svlogd -tt /var/log/op-dbus/notebook-sources-sync

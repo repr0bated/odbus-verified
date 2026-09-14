@@ -1,0 +1,295 @@
+#!/usr/bin/env bash
+# or-fusion — OpenRouter Fusion CLI (openrouter/fusion)
+#
+# Each successful turn is archived under:
+#   ~/.notebooklm-sources/openrouter-fusion/or-fusion_<ts>_<id>.{md,json}
+#
+# Auth: FUSION_API_KEY (preferred) or OPENROUTER_API_KEY / OPENROUTER_KEY
+set -euo pipefail
+
+API_URL="${OPENROUTER_API_URL:-https://openrouter.ai/api/v1/chat/completions}"
+MODEL="${OR_FUSION_MODEL:-openrouter/fusion}"
+PRESET="${OR_FUSION_PRESET:-general-high}"
+STREAM=0
+JSON_OUT=0
+NO_EXPORT="${OR_FUSION_NO_EXPORT:-0}"
+SYSTEM=""
+JUDGE=""
+ANALYSIS_MODELS=""
+MAX_TOOL_CALLS=""
+MAX_TOKENS="${OR_FUSION_MAX_TOKENS:-8192}"
+FILES=()
+PROMPT_PARTS=()
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ARCHIVE_PY=""
+for cand in \
+  "${SCRIPT_DIR}/or-fusion-archive.py" \
+  "${HOME}/.local/bin/or-fusion-archive.py" \
+  "/usr/local/libexec/3tched/or-fusion-archive.py" \
+  "/usr/local/share/or-fusion/or-fusion-archive.py"
+do
+  if [[ -f "$cand" ]]; then ARCHIVE_PY="$cand"; break; fi
+done
+
+usage() {
+  cat <<'EOF'
+or-fusion — OpenRouter Fusion multi-model deliberation CLI
+
+Usage:
+  or-fusion [options] [prompt...]
+  or-fusion -f notes.md "Summarize with multi-model critique"
+  echo "prompt" | or-fusion --stream
+
+Options:
+  -p, --preset NAME       general-high|general-budget|general-fast
+  -m, --models LIST       override analysis_models (comma-separated)
+  -j, --judge MODEL       fusion plugin judge model
+  -s, --system TEXT       system message
+  -f, --file PATH         append file to user message (repeatable)
+      --max-tool-calls N  1-16
+      --mode MODE         quality|budget|fast  (maps to general-high|budget|fast)
+      --max-tokens N      completion token cap (default 8192; env OR_FUSION_MAX_TOKENS)
+      --token-cap N       alias for --max-tokens
+      --stream            SSE stream to stdout
+      --json              print full API JSON
+      --no-export         skip ~/.notebooklm-sources archive
+  -h, --help
+
+Presets / modes:
+  quality → general-high   (Claude Opus + GPT + Gemini Pro)
+  budget  → general-budget (Flash + DeepSeek + Kimi)
+  fast    → general-fast   (latency-homogeneous panel)
+
+Each reply is written to ~/.notebooklm-sources/openrouter-fusion/ for NotebookLM sync.
+Env: FUSION_API_KEY, NOTEBOOKLM_SOURCES_DIR, OR_FUSION_NO_EXPORT=1, OR_FUSION_MAX_TOKENS
+EOF
+}
+
+die() { echo "or-fusion: $*" >&2; exit 1; }
+
+normalize_preset() {
+  case "$1" in
+    general-high|high|quality) echo general-high ;;
+    general-budget|budget)     echo general-budget ;;
+    general-fast|fast)         echo general-fast ;;
+    *) die "unknown preset/mode '$1' (use quality|budget|fast or general-high|general-budget|general-fast)" ;;
+  esac
+}
+
+# --mode is a short alias for --preset
+normalize_mode() {
+  case "$1" in
+    quality|high)  echo general-high ;;
+    budget)        echo general-budget ;;
+    fast)          echo general-fast ;;
+    *) die "unknown --mode '$1' (use quality|budget|fast)" ;;
+  esac
+}
+
+archive_turn() {
+  # stdin = assistant text
+  [[ "$NO_EXPORT" == "1" || "$NO_EXPORT" == "true" || "$NO_EXPORT" == "yes" ]] && return 0
+  [[ -n "$ARCHIVE_PY" ]] || { echo "or-fusion: archive helper missing" >&2; return 0; }
+  export OR_FUSION_EXPORT_USER="$USER_CONTENT"
+  export OR_FUSION_EXPORT_SYSTEM="$SYSTEM"
+  export OR_FUSION_EXPORT_MODEL="$MODEL"
+  export OR_FUSION_EXPORT_PRESET="$PRESET"
+  export OR_FUSION_EXPORT_JUDGE="$JUDGE"
+  export OR_FUSION_EXPORT_STREAM="$STREAM"
+  python3 "$ARCHIVE_PY" || true
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    -p|--preset) PRESET=$(normalize_preset "$2"); shift 2 ;;
+    --mode)
+      [[ $# -ge 2 ]] || die "--mode needs quality|budget|fast"
+      PRESET=$(normalize_mode "$2")
+      shift 2
+      ;;
+    -m|--models) ANALYSIS_MODELS="$2"; shift 2 ;;
+    -j|--judge) JUDGE="$2"; shift 2 ;;
+    -s|--system) SYSTEM="$2"; shift 2 ;;
+    -f|--file) FILES+=("$2"); shift 2 ;;
+    --max-tool-calls) MAX_TOOL_CALLS="$2"; shift 2 ;;
+    --max-tokens|--token-cap)
+      [[ $# -ge 2 ]] || die "--max-tokens needs a number"
+      MAX_TOKENS="$2"
+      shift 2
+      ;;
+    --stream) STREAM=1; shift ;;
+    --json) JSON_OUT=1; shift ;;
+    --no-export) NO_EXPORT=1; shift ;;
+    --) shift; PROMPT_PARTS+=("$@"); break ;;
+    -*) die "unknown option: $1" ;;
+    *) PROMPT_PARTS+=("$1"); shift ;;
+  esac
+done
+
+API_KEY="${FUSION_API_KEY:-${OPENROUTER_API_KEY:-${OPENROUTER_KEY:-}}}"
+[[ -n "$API_KEY" ]] || die "FUSION_API_KEY is not set (or OPENROUTER_API_KEY)"
+
+USER_CONTENT=""
+if [[ ${#PROMPT_PARTS[@]} -gt 0 ]]; then
+  USER_CONTENT=$(printf '%s ' "${PROMPT_PARTS[@]}")
+  USER_CONTENT="${USER_CONTENT% }"
+fi
+for f in "${FILES[@]+"${FILES[@]}"}"; do
+  [[ -r "$f" ]] || die "cannot read file: $f"
+  [[ -n "$USER_CONTENT" ]] && USER_CONTENT+=$'\n\n'
+  USER_CONTENT+="----- file: $f -----"$'\n'"$(cat -- "$f")"
+done
+if [[ ! -t 0 ]]; then
+  STDIN_DATA=$(cat || true)
+  if [[ -n "$STDIN_DATA" ]]; then
+    [[ -n "$USER_CONTENT" ]] && USER_CONTENT+=$'\n\n'
+    USER_CONTENT+="$STDIN_DATA"
+  fi
+fi
+[[ -n "$USER_CONTENT" ]] || die "empty prompt"
+
+# validate token cap
+[[ "$MAX_TOKENS" =~ ^[1-9][0-9]*$ ]] || die "--max-tokens must be a positive integer (got '$MAX_TOKENS')"
+
+export OR_FUSION_ENV_MODEL="$MODEL"
+export OR_FUSION_ENV_PRESET="$PRESET"
+export OR_FUSION_ENV_JUDGE="$JUDGE"
+export OR_FUSION_ENV_MODELS="$ANALYSIS_MODELS"
+export OR_FUSION_ENV_MAX_TOOLS="$MAX_TOOL_CALLS"
+export OR_FUSION_ENV_MAX_TOKENS="$MAX_TOKENS"
+export OR_FUSION_ENV_SYSTEM="$SYSTEM"
+export OR_FUSION_ENV_USER="$USER_CONTENT"
+export OR_FUSION_ENV_STREAM="$STREAM"
+
+BODY=$(python3 - <<'PY'
+import json, os
+model = os.environ["OR_FUSION_ENV_MODEL"]
+preset = os.environ.get("OR_FUSION_ENV_PRESET") or ""
+judge = os.environ.get("OR_FUSION_ENV_JUDGE") or ""
+models_csv = os.environ.get("OR_FUSION_ENV_MODELS") or ""
+max_tools = os.environ.get("OR_FUSION_ENV_MAX_TOOLS") or ""
+system = os.environ.get("OR_FUSION_ENV_SYSTEM") or ""
+user = os.environ["OR_FUSION_ENV_USER"]
+stream = os.environ.get("OR_FUSION_ENV_STREAM") == "1"
+messages = []
+if system:
+    messages.append({"role": "system", "content": system})
+messages.append({"role": "user", "content": user})
+plugin = {"id": "fusion"}
+if models_csv.strip():
+    plugin["analysis_models"] = [m.strip() for m in models_csv.split(",") if m.strip()]
+elif preset:
+    plugin["preset"] = preset
+if judge:
+    plugin["model"] = judge
+if max_tools:
+    plugin["max_tool_calls"] = int(max_tools)
+max_tokens = int(os.environ.get("OR_FUSION_ENV_MAX_TOKENS", "8192"))
+print(json.dumps({
+    "model": model,
+    "messages": messages,
+    "plugins": [plugin],
+    "stream": stream,
+    "max_tokens": max_tokens,
+}))
+PY
+)
+
+HDRS=(-H "Authorization: Bearer ${API_KEY}" -H "Content-Type: application/json")
+[[ -n "${OR_HTTP_REFERER:-}" ]] && HDRS+=(-H "HTTP-Referer: ${OR_HTTP_REFERER}")
+[[ -n "${OR_APP_TITLE:-}" ]] && HDRS+=(-H "X-Title: ${OR_APP_TITLE}")
+
+if [[ "$STREAM" -eq 1 ]]; then
+  TMP_OUT=$(mktemp)
+  # shellcheck disable=SC2064
+  trap 'rm -f "$TMP_OUT"' EXIT
+  curl -sS -N "$API_URL" "${HDRS[@]}" -d "$BODY" | python3 -c '
+import json, sys
+out_path = sys.argv[1]
+parts = []
+for raw in sys.stdin:
+    line = raw.strip()
+    if not line or not line.startswith("data:"):
+        continue
+    data = line[5:].strip()
+    if data == "[DONE]":
+        break
+    try:
+        obj = json.loads(data)
+    except json.JSONDecodeError:
+        continue
+    for ch in obj.get("choices") or []:
+        delta = ch.get("delta") or {}
+        piece = delta.get("content")
+        if piece:
+            parts.append(piece)
+            sys.stdout.write(piece)
+            sys.stdout.flush()
+        msg = ch.get("message") or {}
+        if msg.get("content") and not piece:
+            parts.append(msg["content"])
+            sys.stdout.write(msg["content"])
+            sys.stdout.flush()
+print()
+open(out_path, "w", encoding="utf-8").write("".join(parts))
+' "$TMP_OUT"
+  archive_turn < "$TMP_OUT"
+  exit 0
+fi
+
+RESP=$(curl -sS "$API_URL" "${HDRS[@]}" -d "$BODY")
+
+if [[ "$JSON_OUT" -eq 1 ]]; then
+  echo "$RESP" | python3 -m json.tool 2>/dev/null || echo "$RESP"
+  echo "$RESP" | python3 -c '
+import json,sys
+try:
+    d=json.load(sys.stdin)
+    c=d["choices"][0]["message"]["content"]
+    sys.stdout.write(c if c else "")
+except Exception:
+    pass
+' | archive_turn
+  exit 0
+fi
+
+# Note: cannot pipe into python <<'PY' (heredoc steals stdin). Pass via env.
+ASSISTANT=$(
+  OR_FUSION_RESP="$RESP" python3 - <<'PY'
+import json
+import os
+import sys
+
+raw = os.environ.get("OR_FUSION_RESP", "")
+try:
+    obj = json.loads(raw)
+except json.JSONDecodeError:
+    print(raw)
+    sys.exit(1)
+if "error" in obj:
+    err = obj["error"]
+    msg = err.get("message", err) if isinstance(err, dict) else err
+    print(f"or-fusion: API error: {msg}", file=sys.stderr)
+    sys.exit(1)
+choices = obj.get("choices") or []
+if not choices:
+    print(raw, file=sys.stderr)
+    sys.exit(1)
+content = (choices[0].get("message") or {}).get("content")
+if content is None:
+    print(raw, file=sys.stderr)
+    sys.exit(1)
+print(content)
+usage = obj.get("usage")
+if usage:
+    pt = usage.get("prompt_tokens")
+    ct = usage.get("completion_tokens")
+    tt = usage.get("total_tokens")
+    print(f"[usage prompt={pt} completion={ct} total={tt}]", file=sys.stderr)
+PY
+)
+
+printf '%s\n' "$ASSISTANT"
+printf '%s' "$ASSISTANT" | archive_turn

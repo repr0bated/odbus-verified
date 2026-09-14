@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package assistant.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "assistant/common.proto";
+
+service MemoryService {
+  rpc ReadMemory(ReadMemoryRequest) returns (ReadMemoryResponse);
+  rpc WriteMemory(WriteMemoryRequest) returns (WriteMemoryResponse);
+  rpc DeleteMemory(DeleteMemoryRequest) returns (DeleteMemoryResponse);
+  rpc SearchMemory(SearchMemoryRequest) returns (SearchMemoryResponse);
+  rpc GetMemoryStats(GetMemoryStatsRequest) returns (MemoryStats);
+}
+
+message MemoryEntry {
+  string id = 1;
+  string namespace = 2;
+  string key = 3;
+  string value = 4;            // JSON-encoded
+  optional google.protobuf.Struct metadata = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message MemoryStats {
+  string namespace = 1;
+  uint64 entry_count = 2;
+  uint64 bytes_used = 3;
+  google.protobuf.Timestamp last_updated = 4;
+}
+
+message ReadMemoryRequest {
+  string namespace = 1;
+  repeated string keys = 2;
+  Pagination pagination = 3;
+}
+message ReadMemoryResponse {
+  repeated MemoryEntry entries = 1;
+}
+
+message WriteMemoryRequest {
+  string namespace = 1;
+  repeated MemoryEntry entries = 2;
+}
+message WriteMemoryResponse {
+  uint32 written = 1;
+}
+
+message DeleteMemoryRequest {
+  string namespace = 1;
+  repeated string keys = 2;
+}
+message DeleteMemoryResponse {
+  uint32 deleted = 1;
+}
+
+message SearchMemoryRequest {
+  repeated string namespaces = 1;
+  string query = 2;
+  uint32 limit = 3;
+}
+message SearchMemoryResponse {
+  repeated MemoryEntry entries = 1;
+}
+
+message GetMemoryStatsRequest { string namespace = 1; }

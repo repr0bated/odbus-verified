@@ -1,0 +1,4 @@
+#!/bin/sh
+# Readiness: system bus answers busctl (not dbus-send).
+[ -S /run/dbus/system_bus_socket ] || exit 1
+exec busctl --system get-property org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus Features >/dev/null 2>&1

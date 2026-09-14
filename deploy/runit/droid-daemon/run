@@ -1,0 +1,28 @@
+#!/bin/sh
+exec 2>&1
+
+RUN_USER=jeremy
+RUN_HOME=/home/jeremy
+RUN_PATH="/home/jeremy/.local/bin:/usr/local/bin:/usr/bin:/bin"
+RELAY_HOST=relay.factory.ai
+
+# Daemon aborts with "Failed to resolve relay config" if DNS is not up yet at boot.
+i=0
+until getent ahostsv4 "$RELAY_HOST" >/dev/null 2>&1; do
+    i=$((i + 1))
+    if [ "$i" -ge 120 ]; then
+        echo "droid-daemon: $RELAY_HOST unresolvable after ${i}s, starting anyway"
+        break
+    fi
+    sleep 1
+done
+if [ "$i" -gt 0 ]; then
+    echo "droid-daemon: $RELAY_HOST resolved after ${i}s"
+fi
+
+echo "droid-daemon: starting as $RUN_USER"
+
+/usr/local/libexec/3tched/runit-ready-signal droid-daemon
+exec setpriv --reuid "$RUN_USER" --regid "$RUN_USER" --init-groups \
+    env HOME="$RUN_HOME" USER="$RUN_USER" LOGNAME="$RUN_USER" PATH="$RUN_PATH" \
+    /usr/bin/droid daemon --remote-access --enable-child-ipc

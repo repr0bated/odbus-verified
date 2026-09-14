@@ -1,0 +1,89 @@
+#!/bin/sh
+#
+# Foreground launcher for the Chrome Remote Desktop host.
+# Usage: crd-launch <username>
+#
+# "--start" on its own delegates to "systemctl start chrome-remote-desktop@USER"
+# and is useless without systemd. "--child-process" tells the host not to start
+# itself via systemd and to run its loop in this process instead, so the
+# supervisor can track it and signal it directly (it handles SIGTERM/SIGHUP).
+
+# Fixed path from the chrome-remote-desktop package
+CRD_HOST="/opt/google/chrome-remote-desktop/chrome-remote-desktop"
+
+CRD_USER="$1"
+if [ -z "$CRD_USER" ]; then
+    echo "usage: ${0##*/} <username>" >&2
+    exit 1
+fi
+
+CRD_HOME="$(getent passwd "$CRD_USER" | cut -d: -f6)"
+if [ -z "$CRD_HOME" ]; then
+    echo "unknown user: $CRD_USER" >&2
+    exit 1
+fi
+CRD_UID="$(id -u "$CRD_USER")"
+CRD_GROUP="$(id -gn "$CRD_USER")"
+
+# The host exits immediately until it has been registered from
+# remotedesktop.google.com. Sleep first so a supervisor does not spin.
+set -- "$CRD_HOME/.config/chrome-remote-desktop/host#"*.json
+if [ ! -f "$1" ]; then
+    echo "no host config in $CRD_HOME/.config/chrome-remote-desktop -" \
+         "register this machine first" >&2
+    sleep 30
+    exit 1
+fi
+
+# There is no PAM session behind a supervised service, so nothing has created
+# the runtime dir that the session's dbus wants.
+XDG_RUNTIME_DIR="/run/user/$CRD_UID"
+if [ ! -d "$XDG_RUNTIME_DIR" ]; then
+    mkdir -p "$XDG_RUNTIME_DIR"
+    chown "$CRD_USER:$CRD_GROUP" "$XDG_RUNTIME_DIR"
+    chmod 700 "$XDG_RUNTIME_DIR"
+fi
+
+# Session mode. Default x11 (the historical behavior: the host starts its own
+# Xorg on a virtual display). "wayland" makes the host run startplasma-wayland
+# instead, which requires wayland-no-systemd.patch applied to the vendor script
+# — see README.md in this directory.
+#
+# Set per-invocation with CRD_SESSION=wayland, or persistently by writing the
+# mode into /etc/opt/chrome-remote-desktop/session-mode.
+CRD_SESSION="${CRD_SESSION:-$(cat /etc/opt/chrome-remote-desktop/session-mode 2>/dev/null || echo x11)}"
+
+case "$CRD_SESSION" in
+    wayland)
+        CRD_SESSION_TYPE=wayland
+        # Value selects the session class in the host script: "KDE" ->
+        # startplasma-wayland. Any other value falls back to GNOME. The var is
+        # tested for PRESENCE, so it must be omitted entirely for x11 — an
+        # empty value would still enable Wayland.
+        CRD_WAYLAND_ENV="CHROME_REMOTE_DESKTOP_USE_WAYLAND=KDE"
+        ;;
+    x11)
+        CRD_SESSION_TYPE=x11
+        CRD_WAYLAND_ENV=
+        ;;
+    *)
+        echo "unknown CRD_SESSION: $CRD_SESSION (want x11 or wayland)" >&2
+        exit 1
+        ;;
+esac
+
+# setpriv execs in place, so the host keeps this pid and stays the process the
+# supervisor is watching. env -i keeps DISPLAY unset - the host checks it to
+# choose between sudo and pkexec - and stops the supervisor's environment from
+# leaking into the desktop session.
+exec setpriv --reuid="$CRD_USER" --regid="$CRD_GROUP" --init-groups -- \
+    env -i \
+        HOME="$CRD_HOME" \
+        USER="$CRD_USER" \
+        LOGNAME="$CRD_USER" \
+        SHELL=/bin/bash \
+        PATH=/usr/local/lib/chrome-remote-desktop/no-audio:/usr/local/sbin:/usr/local/bin:/usr/bin \
+        XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+        XDG_SESSION_TYPE="$CRD_SESSION_TYPE" \
+        $CRD_WAYLAND_ENV \
+        "$CRD_HOST" --start --child-process --config="$1"

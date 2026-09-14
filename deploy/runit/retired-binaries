@@ -1,0 +1,15 @@
+# Standalone network/control-plane executables replaced by bridge-owned,
+# in-process dispatch. Their crates may remain as libraries or admin tooling,
+# but golden preparation must not stage these listener binaries.
+op-cognitive-mcp
+op-mcp-agents
+op-mcp-compact
+op-mcp-server
+op-waypipe-grpc
+op-chat
+op-mcp-shim
+zeroclaw-gui
+# Stale pre-runit build outputs: the current crate produces op-runit-systemctl
+# and svd. Scanning target/release must not resurrect earlier s6 executables.
+op-s6-systemctl
+s6d

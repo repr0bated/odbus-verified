@@ -1,0 +1,2 @@
+#!/bin/sh
+[ -S /var/lib/incus/unix.socket ]

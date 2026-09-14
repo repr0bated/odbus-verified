@@ -1,0 +1,8 @@
+#!/bin/sh
+# Compatibility entrypoint: validation only. Xray's live configuration exists
+# exclusively inside the container at /etc/xray/xray_config.json.
+set -eu
+CT="${XRAY_CT:-xray}"
+CONF="/etc/xray/xray_config.json"
+incus exec "$CT" -- test -s "$CONF"
+incus exec "$CT" -- /usr/local/bin/xray run -test -config "$CONF"

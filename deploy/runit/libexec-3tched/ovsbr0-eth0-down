@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+set -a; [ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf; set +a
+PHYS="${UPLINK_PHYS:-eth0}"
+if /usr/local/libexec/3tched/wait-op-plugins 30 2>/dev/null; then
+    zcall rovs_commands remove_port -a "{\"port_name\":\"$PHYS\",\"bridge_name\":\"${BRIDGE:-ovsbr0}\"}" >/dev/null 2>&1 || true
+else
+    /usr/local/libexec/3tched/ovsdb-port del-port "$PHYS" || true
+fi
+echo "ovsbr0-eth0-down: del-port $PHYS"

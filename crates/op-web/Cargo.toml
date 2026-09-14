@@ -1,0 +1,86 @@
+[package]
+name = "op-web"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Unified web server for op-dbus-v2 - consolidates all HTTP services"
+
+[[bin]]
+name = "op-web-server"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace crates
+op-core = { workspace = true }
+op-chat = { workspace = true }
+op-llm = { path = "../op-llm" }
+op-tools = { path = "../op-tools" }
+op-agents = { path = "../op-agents" }
+op-state = { workspace = true }
+op-network = { workspace = true }
+op-mcp-aggregator = { path = "../op-mcp-aggregator" }
+op-state-store = { path = "../op-state-store" }
+op-identity = { workspace = true }
+op-introspection = { workspace = true }
+op-grpc-bridge = { path = "../op-grpc-bridge" }
+op-cozo-store = { path = "../op-cozo-store" }
+
+# Rate limiting
+tower_governor = "0.4"
+
+# Web framework
+axum = { workspace = true, features = ["ws", "macros", "tokio"] }
+tokio = { workspace = true, features = ["full", "signal"] }
+tower = { workspace = true }
+tower-http = { workspace = true, features = ["cors", "fs", "compression-gzip", "trace", "timeout"] }
+hyper = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+op-blob = { workspace = true }
+simd-json = { workspace = true }
+toml = { workspace = true }
+
+# Async
+futures = { workspace = true }
+async-trait = { workspace = true }
+tokio-stream = { workspace = true, features = ["sync"] }
+async-stream = "0.3"
+
+# Utilities
+uuid = { workspace = true, features = ["v4", "serde"] }
+chrono = { workspace = true, features = ["serde"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# System info
+sysinfo = "0.30"
+gethostname = { workspace = true }
+lazy_static = "1.4"
+regex = { workspace = true }
+
+# Privacy router signup
+qrcode = "0.14"
+image = { version = "0.25", default-features = false, features = ["png"] }
+base64 = "0.22"
+lettre = { version = "0.11", features = ["tokio1-native-tls", "builder"] }
+hex = { workspace = true }
+blake3 = "1.5"
+zbus = { workspace = true }
+ring = "0.17"
+
+# Google OAuth
+oauth2 = "4.4"
+reqwest = { version = "0.11", features = ["json"] }
+
+# Embedded UI
+axum-embed = "0.1"
+mime_guess = "2"
+linemux = "0.3.0"
+
+[dev-dependencies]
+tempfile = { workspace = true }

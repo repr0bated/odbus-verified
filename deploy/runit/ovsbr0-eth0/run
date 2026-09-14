@@ -1,0 +1,21 @@
+#!/bin/sh
+exec 2>&1
+set -eu
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-}"
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 120 ] && { echo "dependency $1 not ready after 120s" >&2; exit 1; }
+        sleep 1
+    done
+}
+wait_dep ovs-vswitchd
+wait_dep ovsbr0-uplink
+# The cutover reads the lease eth0 just got, so DHCP must have run.
+wait_dep uplink-dhcp
+/usr/local/libexec/3tched/ovsbr0-eth0-up
+install -d -m 0755 /run/opdbus/runit-ready
+touch /run/opdbus/runit-ready/ovsbr0-eth0
+exec pause

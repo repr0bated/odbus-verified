@@ -1,0 +1,29 @@
+#!/bin/sh
+# Policy guard for Xray's one legal live configuration path.
+exec 2>&1
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 90 ] && {
+            echo "dependency $1 not ready after 90s" >&2
+            exit 1
+        }
+        sleep 1
+    done
+}
+
+wait_dep incus-ct-xray
+
+XRAY_CT="${XRAY_CT:-xray}"
+XRAY_CONF_CT="/etc/xray/xray_config.json"
+
+incus exec "$XRAY_CT" -- test -s "$XRAY_CONF_CT" || {
+    echo "missing canonical Xray config: $XRAY_CT:$XRAY_CONF_CT" >&2
+    exit 1
+}
+incus exec "$XRAY_CT" -- /usr/local/bin/xray run -test -config "$XRAY_CONF_CT"
+/usr/local/libexec/3tched/runit-ready-signal xray-config-mount
+exec pause

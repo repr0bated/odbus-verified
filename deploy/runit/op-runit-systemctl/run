@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+exec 2>&1
+
+sv start dbus >/dev/null 2>&1 || true
+i=0
+until sv check dbus >/dev/null 2>&1; do
+    i=$((i + 1))
+    [ "$i" -ge 30 ] && { echo "dbus not ready after 30s" >&2; exit 1; }
+    sleep 1
+done
+
+exec /usr/local/bin/op-runit-systemctl

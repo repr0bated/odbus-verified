@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"name": "op-dbus-v2",
+			"path": "../../../.."
+		}
+	],
+	"settings": {
+		"geminicodeassist.project": "geminidev-479406"
+	}
+}

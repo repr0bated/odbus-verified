@@ -1,0 +1,17 @@
+--- op-decoy-issuer.service
++++ op-decoy-issuer.service
+@@ -2,10 +2,8 @@
+ [Unit]
+ Description=Oracle decoy identity assertion issuer (OIA1)
+ Documentation=file:///usr/local/bin/op-decoy-issuer
+-# wg0 is brought up by netclient, which assigns mesh addresses late at boot.
+-# The issuer refuses to bind a non-inner address by design, so it may fail
+-# several times before 10.10.0.1 exists. StartLimitIntervalSec=0 disables
+-# systemd rate limiting so it retries until wg0 is ready instead of giving up.
+-After=network-online.target netclient.service
+-Wants=network-online.target netclient.service
++# wg0 is the standalone human identity terminator. The issuer refuses to bind
++# until its 10.10.0.1 inner address exists, so order directly on wg-quick.
++After=network-online.target wg-quick@wg0.service
++Wants=network-online.target wg-quick@wg0.service
+ StartLimitIntervalSec=0

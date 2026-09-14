@@ -1,0 +1,211 @@
+# 👻 GHOSTBRIDGE LIVE! — Working Wishlist / Task Board
+
+**Ghostbridge Live!** is the name of the whole effort: taking the architecture from
+deployed-but-dark to *running live* — registration → Qdrant/Gemma → accountability loop →
+routing → chatbot → demo. This board is the single source of truth for all of it.
+Replaces scattered TODO fragments across `.zenflow/tasks/`, `.kiro/specs/`, and notebook snapshots.
+
+**Owner topology correction (2026-09-13):** WireGuard terminates at the decoy;
+there is no WireGuard on this server. Identity is transported by WARP. Apply
+this correction when interpreting older task descriptions. OD-55's source
+coverage count does not mean every declared surface requires a server backend;
+determine server/decoy applicability or retirement before implementing a handler.
+
+## How to use this board
+- **Priority buckets:** Critical/Urgent → Current → Next → Future → When I Have Staff.
+- **Status:** `TODO` · `WIP` · `BLOCKED` · `DONE`.
+- **Agent:** who's assigned — an `op-agents` role (`devops`, `policy_enforcer`, `schema_as_code`)
+  or a Claude Code subagent (`Explore`, `Plan`, `general-purpose`, `claude`).
+- **Dispatch:** tell Claude *"dispatch <ID> to <agent>"* — it spawns that agent with the task
+  context and updates Status here when done.
+- **Add work:** append a row under the right bucket with a fresh `OD-##` id.
+
+---
+
+## 🔴 Critical / Urgent
+*On fire or blocking the live system.*
+
+| ID | Task | Agent | Status | Notes |
+|----|------|-------|--------|-------|
+| OD-DEMO | **Get a demo out** — minimal end-to-end path that shows the system working | `general-purpose` | TODO | top priority; scope/deadline TBD — see subtasks once defined |
+| OD-05 | Dynamic xray cutover: wire `run_schema_shuttle` → live (sled → /dev/shm config → D-Bus start) | `general-purpose` | BLOCKED | needs `/etc/ghostbridge/xray.env` secrets + op-xray-daemon running as service |
+| OD-08 | netmaker server down: resolve broker token timeout (stay on decoy `129.153.134.63` vs relocate) | `devops` | BLOCKED | egress works; server relocation decision open |
+| OD-34 | **Verify the decoy assertion issuance and client-injection path over the WARP identity transport.** WireGuard terminates only at the decoy. | `Codex + low-cost agent` | WIP | Sep 14: located the deployed issuer through read-only decoy inspection. Added an explicit source-bound OIA1 acquisition client and canonical gRPC forwarding; issuer/client/TLS fixtures pass, including denial, malformed input, redirects, address mismatch and grant checks. The client forwards the authored assertion and never mints SealedId. Production WARP delivery and first-arrival provisioning remain unverified; no live assertion or service mutation was requested. |
+| OD-35 | **Arm the fail-closed identity guardrail — it is currently inert.** `SessionIdentity.principal_kind` exists and gates the implicit fallback (`may_resolve_implicitly`), but **nothing writes it**: all 4 live sleds are unlabelled, so the pairing/service-principal refusal never fires. Add the field to the `identity_sled` plugin schema + `write_identity`, persist in Cozo, project to SHM, then label `bea37ecb-92be-197c-660f-09e806f1a34f` (chatbot) as `service` and the three human sleds as `human`. | `schema_as_code` | TODO | Schema change -> blob reseal. Also resolve the name collision: `SealedId.principal_kind` is always `wireguard-principal` (credential kind) and is a *different* axis from the sled's actor class — never seal the sled value into SID1 or `mcp_frontend` will reject the envelope. Done: `resolve_identity_session(None)` resolves a human sled and refuses the chatbot. |
+| OD-36 | **Rotate the exposed chatbot keypair (G-5).** `/var/lib/opdbus-runtime/identities/chatbot/private.key` + `mcp_token` were printed into a session transcript 2026-09-04; treat as compromised. New keypair -> new blake3 `session_id`/`principal_id` -> `OP_CONTROL_PLANE_CHATBOT_*` in `/etc/runit/sv/op-grpc-bridge/run` -> incus `user.opdbus.*` -> `capability-grants.json` -> identity dir. | `devops` | TODO | Operator action (needs console + `sv restart op-grpc-bridge`). Done: pubkey `VaRh9EUieQxA3zIoOj3qNiNIqZoPGpqztPU4muyF1zM=` is no longer accepted anywhere. |
+| OD-37 | **No run script sets `OP_IDENTITY_SESSION_ID`, so every service silently loses its identity.** `configured_identity_session()` is called by op-grpc-bridge, op-cognitive-mcp, op-llm, op-gallery-gen and op-assistant-grpc; with no selector it falls through to the implicit path and (with 4 anchored sleds) already errors `Ambiguous`. Each service must name its principal explicitly. | `devops` | TODO | Done: every `/etc/runit/sv/*/run` that hosts a `configured_identity_session()` caller exports `OP_IDENTITY_SESSION_ID`, and no caller depends on implicit resolution. Pairs with OD-35. |
+| OD-38 | **Delete the retired Argon2(PSK) session-id path.** | `Codex` | DONE | Sep 13 source audit: the derivation was already removed and `write_identity` rejects PSK input. Removed remaining PSK arguments/claims from the provisioning example and workspace script; example now strictly parses public key plus optional TTL and rejects obsolete/extra arguments without echoing their values. Four parser tests, script syntax/early PSK rejection, and the full workspace verification pass. Source changes only. |
+| OD-39 | **Kill the legacy `/api/chat` orchestrator path — it runs tools as nobody.** op-web's orchestrator executes `op_tools` with op-web's ambient bus credentials, a random UUIDv4 session and a free-text `user_id`: no principal, no `actor_id`, no audit trail. | `general-purpose` | TODO | Done: the path is removed (or refuses without a validated principal). Chat runs as the human via `ChatService.Send`. |
+| OD-40 | **Prove the chatbot cannot reach direct execution (G-3).** The chatbot principal must be denied any `tools/call` outside HOT union its selected set, and any `shell_*`/`file_*`/raw `dbus_call` regardless of selection (FR-14.6). | `Codex` | DONE | Sep 13: explicit direct-tool denial and early selected-projection rejection added at the backend call boundary. Negative tests pass using the actual audience/toolset configs, every configured selection, raw/canonical tool names, and an absent catalog to prove refusal precedes provider/catalog work. Human policy neutrality is covered. Full workspace verification passes; source changes are not deployed. |
+| OD-41 | **Reasoning episodes carry no identity (G-4).** `ctl_plane_chatbot` episodes must record `principal_id`, `session_id`, `session_genesis` and `on_behalf_of` so an episode can name whose conversation it came from and who acted. | `Codex + low-cost agents` | DONE | Sep 14 gate83: successful canonical native Chat creates an immutable episode carrying the verified principal/session/genesis and on_behalf_of. Dedicated private Cozo storage, typed content hashes, cancellation-owned commit and private SHM publication enforce those bindings. Native Chat and cross-principal stream fixtures pass, as does the full source verification gate. No live migration or deployment. |
+| OD-42 | **Repair the Jacob NotebookLM provider contract and prove real Google access.** Audit every schema method against pinned 0.11.2, replace invalid commands/options, define truthful structured results for commands without JSON, and explicitly address upstream MCP-only operations. | `general-purpose` | DONE | Sep 9 optimized/golden deployment and provider contract checks pass; pinned nlm 0.11.2 and relocatable wrapper match live/golden. Jeremy completed Firefox login and saved the default profile. Live typed MCP health now reports `authenticated:true` and 37 notebooks; research tools appear in `tools/list`, `notebook_list` returns 37 entries, and a query to the existing Operation Dbus notebook returns a nonempty answer with citation/reference fields. Full identity/MCP smoke exits successfully. No cookie/token values were exposed or identity keys changed. See Sep 9 Codex SIGNALS. |
+| OD-43 | **Enforce the same SID1 principal checks on every transport and prevent containerless sled creation.** Check registration/revocation in gRPC as MCP/D-Bus do; prove missing/revoked/expired/mismatched credentials fail; bind creation and genesis to the provisioned identity container. | `general-purpose` | WIP | Sep 9 quick deployment: human SID1 works over TLS/MCP and typed native gRPC. Missing/malformed identity and identity-less follow-ups fail; chatbot cannot reuse the human MCP session or execute identity reads. Read-only `identity_read` is selectable, returns the requested sled/history without credential fields, and grants only the existing human principal. Native gRPC additionally rejects absent capability metadata and ungranted chatbot capability. All 39 oracle integration tests pass with provisioned isolated fixtures. D-Bus bind/call/logout and the broader actor-class/revocation live matrix are not yet proven. See Sep 9 Codex SIGNALS. |
+| OD-44 | **Reconcile identity master/leaf topology and persistence with the intended container model.** Establish the master relationship, actual device attachment and full instance projection; attach identity-linked snowball/memory services and verify durable writes. | `general-purpose` | WIP | Two live UUID containers are host peers with dedicated mounted btrfs images; no master linkage. Runtime `attach_btrfs_device` still performs `device_add` despite the revised dedicated-mount template. Do not add images to the Incus pool, format persist data, or rotate the preserved chatbot identity as a shortcut. Master topology clarification pending. |
+| OD-45 | **Close golden/live/schema drift and complete repository verification for the identity/NotebookLM cutover.** Publish through build-golden, compare running/golden binaries and sealed schemas, repair relevant failures and run `/verify`. | `general-purpose` | DONE | Sep 9: requested quick copy/install completed, then optimized workspace build (9m37s), explicit fresh `opblob seal-shm`/persist, golden installer and deliberate grants/bridge restart. Running/installed/golden/release bridge SHA256 all `7b60f16c…`; protected grants/toolsets and nlm wrappers match. Runtime-matched sealing uses the service Qdrant environment; all 67 candidate/live/persisted IDs and hashes match (`fb44e07b…`). Full verification passes: fmt, Clippy all targets/features with warnings denied, 1,111 tests passed/0 failed/8 ignored, installer shell checks. Live MCP/native identity checks pass. Unrelated services were not restarted; NotebookLM Google login remains OD-42. Preinstall/preseal archives retained under `/var/tmp/op-identity-release.jSRjpo`. Transitive provider dependency pinning is outside this completed cutover verification. |
+
+
+## ▶ Current
+*Actively in flight.*
+
+| ID | Task | Agent | Status | Notes |
+|----|------|-------|--------|-------|
+| OD-58 | **Implement and verify every retained plugin method before creating the fresh repository.** Repair missing inputs/outputs, connect real backends through canonical authenticated dispatch, and exercise behavior with isolated fixtures. | `Codex + low-cost agents` | DONE | Sep 14: all 43 requested repairs plus three omitted OpenFlow methods are verified. Gate122 passes formatting, full Clippy and 1,862 tests with zero failures; nine environment-dependent tests are ignored. Native router release build123 and schema parity124 pass. Fresh local repository `/srv/git/odbus-verified` is admitted with the exact tested source, pinned source archives and hashed receipts. No golden, btrfs or live deployment is claimed. |
+| OD-54 | **Retire the Blitzy ingestion retry.** | `Codex + low-cost agent` | CANCELLED | Sep 14: owner confirmed Blitzy is no longer needed; the end goal is a fresh repository with verified code (OD-58). Removed the provider allowlist and replaced onboarding with `docs/src/getting-started/verified-workspace.md`; `scripts/check-workspace.sh` preserves the existing preflight/smoke/full verification gates. Shell syntax, help, preflight and active links pass. Historical receipts retain their original command names; no re-ingestion, branch push or provider setup remains scheduled. |
+| OD-51 | **Restore raw, resumable NotebookLM sync with model/topic grouping.** | `general-purpose` | WIP | Sep 9 Jeremy chose separate conversation/tool-use notebooks per model plus intuitive project-topic notebooks; leave personal/legal notebooks untouched. Existing sync now has native transcript/raw external conversation-DB capture, bounded content-addressed chunks, authenticated SID1 PluginService dispatch, explicit legacy-only gaps, upload receipts and processing checks before replacing owned old sources. Initial plan: 51 model groups plus 6 topics, 349 files; 305 legacy exports lack a located original transcript. Live first uploads started; Google file processing takes minutes, so upload acceptance is not completion. Config uses explicit current human session and drains pending frozen snapshots before preparing later appends. Full fmt/Clippy/workspace tests pass; offline sync regressions under cheap-agent verification. |
+| OD-52 | **Give NotebookLM plugin methods real typed response contracts.** | `Codex` | WIP | Sep 13: source implementation and offline verification complete. Replaced the flattened provider result with method-specific schema outputs for pinned nlm 0.11.2; schema version 4.0.0 wraps notebook/source/artifact arrays and parses mind-map JSON into a structured field. Generated-protobuf encode/decode tests preserve `emoji`, sources, citations, downloads, receipts and auth results. Fixed unsupported download `--json` and source-content file-output handling. Full fmt/Clippy/test gate passes (1,126 passed, 0 failed, 8 ignored), plus 23 offline sync tests. Release/golden deployment, catalog reseal/persist and authenticated live native execution remain outstanding; no grants or transport bypass changed. |
+| OD-53 | **Serve 3tched.com only from Cloudflare, preserving the existing homepage.** | `general-purpose` | DONE | Sep 10: bound apex to existing Pages project `3tched`; replaced old apex A/AAAA targets with a proxied CNAME to `3tched.pages.dev`. Apex and www bindings are active, HTTPS returns 200 with valid certificates, HTTP redirects to HTTPS, and the production deployment/homepage are unchanged. Independent DNS/content/TLS checks passed; all 36 non-target records (including mail) are preserved. Recovery evidence: `/var/tmp/3tched-cloudflare.70EW1x`. No Rust build or host deployment required. |
+| OD-46 | **Session-scoped chatbot modes and container-backed projects.** Personal, project, control_plane and accountability contexts must narrow exact grants and isolate memory. Projects own a container, persistent context/artifacts, session-ID ACL/invites and agent selection; later user profiles extend rather than replace this identity boundary. | `general-purpose` | WIP | Source adds typed project container/catalog/document/ACL/invite/agent methods and context resolution; not an end-to-end mode boundary yet. Shared upstream chat execution still lacks authenticated scoped memory/tool authority. Project image/pool and grants are deliberately not activated. UI source is separate `/srv/git/json-render-ui-vercel/`, still bootstrap-only; implement its authenticated contract and sync script after the execution boundary. Preserve service vs human identity. |
+| OD-47 | **Automatic contextual suggestions and reactive UI through the retained EMQX plugin.** Trigger code suggestions and personal-mode general knowledge automatically from authenticated activity, not optional model-selected tool calls. Reuse the existing vendor-binary-backed `emqx` D-Bus plugin for internal event distribution across mutations, project changes, knowledge delivery and json-render updates; Netmaker stays retired. | `general-purpose` | WIP | Sep 9 user clarification. Implementation must scope retrieval and delivery to verified session + mode + project ACL, including revocation. Existing cognitive pushes have no bridge subscriber and query unscoped memory; do not enable private delivery as-is. Proposed durability contract: committed mutation/outbox → broker → authorized subscribers, stable event IDs and resource revisions, duplicate suppression, bounded replay with snapshot recovery. Queue receipt is not execution authority; workers re-enter D-Bus and recheck grants. Broker remains internal; UI uses the authenticated fabric, schema-pinned SpecStream/layout patches and live state bindings. ExHook currently records a nonexistent mqtt method and plaintext publish payloads; repair before private traffic. Not implemented or end-to-end verified yet. |
+| OD-48 | **Repair deterministic `op-cache` orchestrator test failures blocking `/verify`.** | `general-purpose` | DONE | Sep 9: the fixture dropped its `TempDir` while database connections still used it. Return and retain the directory owner in all three orchestrator tests; all three now pass, as does the full op-cache test target. Error 1032 came from the existing SQLite-backed cache, not CozoDB as previously recorded. No new SQLite dependency was added; migration of that legacy cache to CozoDB remains separate. |
+| OD-49 | **Reconcile native gRPC reflection advertisements with mounted routes.** | `general-purpose` | DONE | Sep 9: reflection lists the generated mounted service table, filtered by sealed blob presence, and excludes descriptor-only `operation.method.*` services. All 8 TLS/reflection tests pass, including isolated sealed-blob discovery and actual route admission. Optimized live bridge advertises 68 mounted services including reflection, zero descriptor-only services; typed identity read returns the real human sled, and identity/capability denials remain enforced. See Sep 9 Codex SIGNALS. |
+| OD-50 | **Fix schema-validation cache-miss deadlock.** | `general-purpose` | DONE | Sep 9: release the schema-cache read guard before compilation/write acquisition, with entry-based publication for concurrent misses. Bounded concurrent cold-cache, warm-cache and invalid-input regression passes; all 33 op-tools tests and full workspace verification pass. Also repaired optional shell-warning JSON insertion panic. Optimized release published through golden; production schema rejection/security initialization semantics preserved. |
+| OD-20 | Consolidate opdbus NotebookLM cluster → `Operation Dbus (Master)` (curate, dedup) | `claude` | WIP | master `01b00e9c…`; ~10 notebooks, heavy overlap |
+| OD-23 | Knowledge pipeline: designated notebooks → semantic (Voyage→Qdrant) + learning graph (nodes/edges) | `general-purpose` | TODO | corpus in `knowledge/notebooks.manifest.json`; graph store tbd (Qdrant payload vs dedicated) |
+| OD-10 | Repoint `op-mcp-shim` endpoint for laptop (xray door, not 10.200) + TLS channel | `general-purpose` | TODO | laptop is a WG peer, can't reach 10.200 |
+| OD-09 | Restore A.N.N.A./OSCAL role cast in narrative + interceptor docs (authorizing-official = real-time approve) | `claude` | TODO | notebook `Identity-State Arbitrator` |
+| OD-24 | **Nail down registration + accountability loop** — reconcile provision script (CozoDB+Bearer+HTTP) with runtime (sled+header+gRPC); wire Netmaker peer reg | `general-purpose` | TODO | template: `deploy/scripts/provision-workspace-subscriber.sh`; see SIGNALS concerns |
+| OD-32 | **Enforce the plugin schema as the sole source sealed into blobs; eliminate the parallel `schemas/` tree.** Binary extraction must feed the one plugin definition. Migrate duplicated captures, section includes, generator/loader inputs and fixtures without changing method contracts; reconcile sealer ownership and blob consumers. | `general-purpose` | DONE | Sep 13 source repair complete: one imported tched_router_contract.rs derives 81 section contracts and 89 config methods. Removed schemas/, competing plugin JSON loaders and 34 dormant built-in schema definitions. Startup and reload consume manifest-pinned sealed blobs; staging requires persisted release inputs. Full contract/section equivalence and workspace verification pass (1,132 passed, 0 failed, 8 ignored). No live catalog or snapshot changed. |
+
+### OD-58 retained-method verification
+
+**Current frozen checkpoint (gate122, Sep 14):** formatting, the full
+workspace/all-target/all-feature Clippy gate with warnings denied, and all 109
+test suites pass: 1,862 passed, zero failed and nine ignored. All 1,995 source
+fingerprints are identical before and after verification. The gate log is
+`/var/tmp/odbus-methods-checkpoint-verify-122.log` (SHA-256
+`e4bdc21b6f72836c04a2a10ca74267e6524a1eb5574e4f3d3bd6f5c6a1e8a29e`);
+the source manifest is `/var/tmp/odbus-source-122.sha256` (SHA-256
+`57e67b197ee090128b5f267dbd5b20cfa09078896d8d37fc4b04617c66e8135c`).
+The 43 methods from the gate83 inventory and the three subsequently identified
+`openflow` omissions now have verified retained owners and bounded proof at the
+scope stated below.
+
+Native router release build123 and schema parity124 now pass. Its pinned
+archive and patches produce the required generation protocol. Comparison with
+the plugin-owned import matches every JSON value after normalizing exactly 13
+configuration-directory-dependent defaults; the source was not reimported.
+**The fresh local repository is `/srv/git/odbus-verified`.** Its admission audit
+proves that all tested implementation files are unchanged; subsequent edits
+are task-board metadata and verification receipts only. Mail and decoy GNU
+bundles have DEBUG-only packaging/linkage evidence. The UI source build,
+native mail proof121, eight-method native WireGuard proof115 and native
+OpenFlow proof105 pass. No golden image, btrfs transfer or live deployment is
+claimed.
+
+| # | Plugin | Declared method | Verified owner | Exact proof scope |
+|---:|---|---|---|---|
+| 1 | [`gemma_brain`](crates/op-plugins/src/state_plugins/gemma_brain.rs) | `classify` | [`gemma_brain_methods.rs`](crates/op-plugins/src/state_plugins/gemma_brain_methods.rs) | Gate122 executes deterministic taxonomy classification and canonical target-contract tests; results are principal/session-scoped. |
+| 2 | `gemma_brain` | `list_perspectives` | `gemma_brain_methods.rs` | Gate122 verifies typed taxonomy readback from the durable private workspace and rejects cross-owner projection. |
+| 3 | `gemma_brain` | `list_tags` | `gemma_brain_methods.rs` | Gate122 verifies typed durable taxonomy readback and stable scoped projection. |
+| 4 | `gemma_brain` | `register_tag` | `gemma_brain_methods.rs` | Gate122 verifies revision-checked durable mutation, stale/invalid rejection before mutation, and reopen recovery. |
+| 5 | `gemma_brain` | `analyze_intent` | `gemma_brain_methods.rs` | Gate122 executes deterministic intent analysis from the registered taxonomy and exact dispatch contracts. |
+| 6 | [`proxy_server`](crates/op-plugins/src/state_plugins/proxy_server.rs) | `start_proxy` | [`proxy_methods.rs`](crates/op-grpc-bridge/src/proxy_methods.rs) | Gate122 canonical admission requires SID1 and proves real loopback TCP byte forwarding plus committed SHM readback. |
+| 7 | `proxy_server` | `stop_proxy` | `proxy_methods.rs` | Gate122 proves the native listener stops, terminal state is read back, and unrelated committed state remains intact. |
+| 8 | `proxy_server` | `configure` | `proxy_methods.rs` | Gate122 proves durable CAS reconfiguration, exact retry after owner restart, and failed-bind recovery without false running state. |
+| 9 | [`antigravity`](crates/op-plugins/src/state_plugins/antigravity.rs) | `get_auth_status` | [`antigravity_dispatch.rs`](crates/op-grpc-bridge/src/antigravity_dispatch.rs), [`op-llm/antigravity.rs`](crates/op-llm/src/antigravity.rs) | Gate122 canonical admission returns sanitized Google SDK credential status; no token or provider quota claim is projected. |
+| 10 | `antigravity` | `get_usage_report` | `antigravity_dispatch.rs`, `op-llm/antigravity.rs` | Gate122 reads the durable local Cozo usage ledger, preserves complete sibling state, and proves no fabricated cost/quota fields. |
+| 11 | `antigravity` | `configure_safety` | `antigravity_dispatch.rs`, `op-llm/antigravity.rs` | Gate122 canonical mutation persists valid settings and a loopback Gemini HTTP fixture observes them in the native request. |
+| 12 | [`antigravity_chat`](crates/op-plugins/src/state_plugins/antigravity_chat.rs) | `get_bridge_status` | `antigravity_dispatch.rs`, `op-llm/antigravity.rs` | Gate122 performs bounded OpenAI-compatible `/v1/models` fixture readback without inventing a bridge version or auth state. |
+| 13 | `antigravity_chat` | `refresh_token` | `antigravity_dispatch.rs`, `op-llm/antigravity.rs` | Gate122 crosses canonical admission and exercises the Google SDK authorized-user refresh protocol against isolated native HTTP, returning sanitized metadata only. |
+| 14 | `antigravity_chat` | `configure` | `antigravity_dispatch.rs`, `op-llm/antigravity.rs` | Gate122 proves RuntimeDocument CAS, URL/credential-origin constraints, complete SHM publication, and subsequent provider-request consumption. |
+| 15 | [`wireguard`](crates/op-plugins/src/state_plugins/wireguard.rs) | `set_device` | [`wireguard_owner.rs`](crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner.rs) | Gate122 crosses canonical SID1, sealed-catalog and pinned-mTLS D-Bus admission; native proof115 applies and reads back the kernel effect in an isolated network namespace. |
+| 16 | `wireguard` | `get_device` | `wireguard_owner.rs` | Gate122 canonical decoy fixture and native proof115 return complete sanitized kernel readback through the shared owner. |
+| 17 | `wireguard` | `add_peer` | `wireguard_owner.rs` | Gate122 canonical decoy fixture plus native proof115 apply/read back the peer and reject noncanonical keys and endpoints. |
+| 18 | `wireguard` | `remove_peer` | `wireguard_owner.rs` | Gate122 canonical decoy fixture plus native proof115 verify exact peer removal and complete sibling preservation. |
+| 19 | `wireguard` | `list_peers` | `wireguard_owner.rs` | Gate122 canonical decoy fixture plus native proof115 return the exact sanitized kernel peer set. |
+| 20 | `wireguard` | `set_config` | `wireguard_owner.rs` | Gate122 canonical decoy fixture plus native proof115 verify full configuration effect/readback and rejection of ineffective updates. |
+| 21 | [`wg_opdbus`](crates/op-plugins/src/state_plugins/wg_opdbus.rs) | `create_interface` | `wireguard_owner.rs` | Gate122 crosses the same canonical pinned-mTLS decoy path; native proof115 verifies interface creation through the shared kernel owner while preserving ANNA identity. |
+| 22 | `wg_opdbus` | `get_status` | `wireguard_owner.rs` | Gate122 and native proof115 return the complete shared-owner WireGuard state without a second state authority. |
+| 23 | [`wgcf`](crates/op-plugins/src/state_plugins/wgcf.rs) | `register` | [`wgcf_owner.rs`](crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs) | Gate122 canonical pinned-mTLS fixture drives the ProductionBackend against isolated Cloudflare-compatible HTTP and verifies secret-free registration readback. |
+| 24 | `wgcf` | `update` | `wgcf_owner.rs` | Gate122 verifies native name/license effect and exact readback; mismatched provider readback fails before success. |
+| 25 | `wgcf` | `status` | `wgcf_owner.rs` | Gate122 returns typed optional complete WireGuard state from the shared owner and exposes no account token/private key. |
+| 26 | `wgcf` | `rotate_keys` | `wgcf_owner.rs` | Gate122 isolated native HTTP fixture and shared kernel owner verify rotation effect/readback and secret-free output. |
+| 27 | `wgcf` | `set_endpoint` | `wgcf_owner.rs` | Gate122 verifies bounded endpoint mutation and exact provider/shared-owner readback. |
+| 28 | `wgcf` | `generate_config` | `wgcf_owner.rs` | Gate122 verifies typed configuration generation from native readback and rejects secret disclosure in the public result. |
+| 29 | `wgcf` | `apply_config` | `wgcf_owner.rs` | Gate122 verifies application into the shared WireGuard owner and returns the same complete typed state as status. |
+| 30 | `wgcf` | `refresh` | `wgcf_owner.rs` | Gate122 verifies native profile refresh, shared-owner reconciliation and complete secret-free projection. |
+| 31 | [`web_ui`](crates/op-plugins/src/state_plugins/web_ui_methods.rs) | `handle_event` | [`web_ui_dispatch.rs`](crates/op-grpc-bridge/src/web_ui_dispatch.rs) | Gate122 canonical tests recheck the facade seal/capability, commit pinned private workspace state to SHM and reject fabricated acknowledgements; the separate UI source build passes. |
+| 32 | [`mail_server`](crates/op-plugins/src/state_plugins/mail_server.rs) | `add_domain` | [`native_owner.rs`](crates/op-plugins/src/state_plugins/mail_server/native_owner.rs) | Gate122 crosses private D-Bus and sealed typed contracts; native proof121 confirms the committed result is consumed by isolated Postfix/Dovecot inputs. |
+| 33 | `mail_server` | `remove_domain` | `native_owner.rs` | Gate122 verifies durable removal and regenerated configuration through the native owner; proof121 separately proves the Postfix/Dovecot file formats are consumed. |
+| 34 | `mail_server` | `add_mailbox` | `native_owner.rs` | Gate122 and native proof121 verify typed durable mailbox creation, maildir preservation and native configuration consumption. |
+| 35 | `mail_server` | `remove_mailbox` | `native_owner.rs` | Gate122 verifies durable removal and regenerated configuration while preserving mail data; proof121 separately proves native configuration consumption. |
+| 36 | `mail_server` | `add_alias` | `native_owner.rs` | Gate122 and native proof121 verify alias effect through D-Bus and exact native map consumption. |
+| 37 | `mail_server` | `remove_alias` | `native_owner.rs` | Gate122 verifies exact alias removal and regenerated native maps; proof121 separately proves native alias-map consumption. |
+| 38 | `mail_server` | `set_quota` | `native_owner.rs` | Gate122 and native proof121 verify typed quota mutation and native Dovecot consumption; unsafe/plaintext inputs are rejected. |
+| 39 | `mail_server` | `get_queue` | `native_owner.rs` | Gate122 parses the bounded native `showq` protocol through D-Bus without invoking a shell proxy. |
+| 40 | `mail_server` | `flush_queue` | `native_owner.rs` | Gate122 crosses the typed D-Bus owner and verifies the isolated qmgr-socket flush effect plus before/after queue readback; proof121 is limited to generated Postfix/Dovecot configuration consumption. |
+| 41 | [`mcp`](crates/op-plugins/src/state_plugins/mcp.rs) | `configure_tool_groups` | [`mcp_config_dispatch.rs`](crates/op-grpc-bridge/src/mcp_config_dispatch.rs) | Gate122 canonical fixture rechecks both queued grants and the facade seal, commits durable live gateway policy, and publishes exact member state. |
+| 42 | [`openflow_obfuscation`](crates/op-plugins/src/state_plugins/openflow_obfuscation.rs) | `obfuscate_flow` | [`obfuscation_methods.rs`](crates/op-grpc-bridge/src/obfuscation_methods.rs) | Gate122 canonical SID1 fixture commits verified child state; native-owner fixture verifies normalized exact flow effect, durable intent and post-effect restart recovery. |
+| 43 | `openflow_obfuscation` | `deobfuscate_flow` | `obfuscation_methods.rs` | Gate122 canonical fixture verifies exact removal and SHM folding; external drift is rejected instead of claiming success. |
+| 44 | [`openflow`](crates/op-plugins/src/state_plugins/openflow.rs) | `add_flow` | [`openflow_methods.rs`](crates/op-grpc-bridge/src/openflow_methods.rs) | Gate122 crosses canonical admission and exact compare/exchange; native OVS proof105 verifies add and authoritative readback on an isolated dummy switch. |
+| 45 | `openflow` | `delete_flow` | `openflow_methods.rs` | Gate122 rejects wildcard/identity fallback and preserves sibling state; native OVS proof105 verifies exact delete/readback. |
+| 46 | `openflow` | `modify_flow` | `openflow_methods.rs` | Gate122 verifies the exact request shape and child-state fold; native OVS proof105 verifies modify/recovery readback. |
+
+The count is deliberately **43 original gate83 methods + three omitted
+OpenFlow methods = 46 retained methods across 12 plugins**. The earlier
+54-method audit remains historical evidence: Gemma routing moved to the
+model-agnostic authenticated `tched_router.ResolveRoute` owner, four Xray
+declarations absent from the pinned Commander protocol were retired, and the
+Factory platform plugin was retired after its REST fixtures failed to prove the
+required CLI/SSH billing binding. Waypipe and the standalone
+`op-grpc-adapters`/Netmaker surface remain retired. Recovery archives stay
+outside the repository. The historical gate69/gate83 source-repair record
+remains in
+[`plugin-baseline-revision.json`](docs/src/architecture/plugin-baseline-revision.json).
+
+The method proofs are bounded to their stated owners and fixtures. WireGuard
+runs only in the decoy role; WARP transports identity. SID1/SealedId remains an
+identity-owned credential distinct from OPBLOB01 plugin blobs, and every
+canonical proof above uses the sealed catalog rather than a parallel schema
+tree. State publication is MutationEngine-owned SHM with complete children and
+siblings.
+
+Router generation/streaming has isolated source and SHM coverage, 13 native
+patch fixtures, a successful pinned release build and extracted-schema parity.
+The resulting candidate remains an artifact; `/usr/bin/zeroclaw` was not
+replaced. Receipts are retained under
+[`verification/methods-122`](docs/src/architecture/verification/methods-122).
+Fresh-repository admission records the tested source and subsequent receipt-only
+changes separately. Source readiness does not claim a golden snapshot, btrfs
+transfer, live activation or a deployed authenticated browser conversation.
+
+## ⏭ Next
+*Queued; start when Current clears.*
+
+| ID | Task | Agent | Status | Notes |
+|----|------|-------|--------|-------|
+| OD-55 | **Make unimplemented plugin methods explicit instead of returning argument echoes as success.** Implement intended backends or reject unavailable operations with a clear error; preserve accurate schema/transport contracts. | `general-purpose` | DONE | Sep 13 source repair complete: generic canonical dispatch and unsupported snowball/Incus methods return explicit errors while preserving audit records. Admission tests distinguish backend rejection from authentication, capability and input rejection. Full workspace verification passes. This does not implement every declared backend or require decoy/WARP roles on the server. |
+| OD-56 | **Connect tched_router model/provider selection to its upstream execution state and prove the resulting behavior.** Preserve model-agnostic routing and the single plugin schema; distinguish requested, projected and upstream-effective selection. | `general-purpose` | DONE | Sep 13 source repair complete: canonical provider/model selection writes and reads back upstream configuration before committing both projected fields and declared signals. Combined selection uses atomic JSON Patch; switching and projection commit share the chat lock. SHM publication precedes cache commit; a failed publication reports the need to retry and preserves local consistency. Isolated upstream failure/retry/chat tests and full verification pass. A2A identifies configured selection, not fallback attribution; no live provider changes. |
+| OD-57 | **Forward the identity subsystem's authored SealedId through the built-in plugin gRPC client and HTTP compatibility adapter.** Preserve caller identity, credential encoding and exact principal grants; clients must not mint or reconstruct SID1. | `general-purpose` | DONE | Sep 13 source repair complete: the native client reads explicitly selected private authored SID1; the HTTP adapter forwards exactly one caller SID1/OIA1 with no server-identity fallback. Correct binary metadata and capability reach the unchanged receiver/grants gate. Real TLS tests prove authored credential acceptance, reconstructed/dual/missing rejection and grant enforcement. Full verification passes. Remote decoy assertion acquisition remains OD-34; no live credentials or deployment changed. |
+| OD-06 | Model-agnostic routing brain: subid classification + OpenFlow tags + subdomain resolution | `general-purpose` | TODO | Sep 13 owner clarification: historical Gemma/op-gemma naming must not constrain the model or provider; design intent is model agnostic. |
+| OD-07 | Owned-domain DNS split-horizon: `*.ghostbridge.tech` carve-out → internal targets | `devops` | BLOCKED | needs Gemma map (OD-06) |
+| OD-01 | OVSDB event-driven: `monitor` (RFC 7047) in `OvsdbClient` + listener in `DbusMirror` | `devops` | TODO | replaces periodic reconciliation |
+| OD-02 | Enterprise event-driven: `inotify`/`SQLITE_UPDATE_HOOK` on `state.db` → re-projection | `devops` | TODO | |
+| OD-03 | SyncEngine: route all `op-web` tool exec through `ApplyContractMutation` + audit log | `policy_enforcer` | TODO | every mutation = enforcement point |
+
+## 🔮 Future
+*Wanted, not urgent.*
+
+| ID | Task | Agent | Status | Notes |
+|----|------|-------|--------|-------|
+| OD-33 | **User-configurable MCP tool-set preferences** — let a principal pin a default warm set / preferred ordering on top of the HOT five, so a CLI opens on the tools that person actually uses | `general-purpose` | TODO | Builds on the shipped projection in `crates/op-grpc-bridge/src/mcp_policy.rs` + `/etc/opdbus/mcp-toolsets.json` (gen 3). **Hard constraint from `.kiro/specs/standalone-emqx-identity-mcp/design.md` §9–10: a preference may only NARROW, never grant.** Visible = exact grants ∩ audience ∩ selected set ∩ provider health; a preference is one more ∩ term, never a ∪. Also per §10.2 promotion/demotion between HOT/WARM/COLD stays a reviewed manifest change with a catalog generation bump — never automatic frequency-based mutation, so "preferences" must not silently re-tier tools. Preference storage should be principal-keyed server-side (same shape as the audience policy), not client-asserted, since `clientInfo.name` is not authentication. |
+| OD-22 | Fold op-xray-daemon into mirror-projected plugin (currently standalone owning `opdbus.v1`) | `general-purpose` | TODO | path fixed; deeper fold deferred |
+| OD-21 | Fill Inception narrative `TODO(jeremy)` blocks (background, dates, lightbulb moments) | `claude` | TODO | `docs/inception-narrative-plan.md` |
+
+## 👥 When I Have Staff
+*Needs more hands / parallel effort than solo allows.*
+
+| ID | Task | Agent | Status | Notes |
+|----|------|-------|--------|-------|
+| OD-04 | Schema-driven D-Bus UI: typed view-models, dynamic inspector panes, json-render eval | `schema_as_code` | TODO | Sep 13: non-workspace op-gallery-gen still expects removed schemas/json-render exports. Reconcile its inputs with the active UI catalog before enabling or carrying it into the fresh workspace; it is excluded from the current Cargo gate. |
+| OD-30 | Lovable UI polish: React hooks → gRPC status endpoints, real-time D-Bus→SSE updates | — | TODO | |
+| OD-31 | OSCAL/compliance agent build-out (8 agents) + memory/knowledge/schema_renderer plugins | — | TODO | enterprise/EU regulatory target |
+
+---
+
+## ✅ Done
+
+| ID | Task | Agent | Notes |
+|----|------|-------|-------|
+| OD-00 | xray D-Bus path violation → `/org/opdbus/v1/plugins/xray` (daemon + caller + literal), rebuilt+deployed | `general-purpose` | 2026-06-12 |
+| OD-00b | DNS host repoint → NextDNS (`127.0.0.1`); netmaker egress verified + persisted | `devops` | 2026-06-12 |

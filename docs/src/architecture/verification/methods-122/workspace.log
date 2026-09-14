@@ -1,0 +1,2597 @@
+rustc 1.97.1 (8bab26f4f 2026-07-14)
+cargo 1.97.1 (c980f4866 2026-06-30)
+libprotoc 36.0
+Build tools and workspace manifests resolved.
+   Compiling op-cache v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-cache)
+   Compiling op-mcp v0.4.0 (/var/tmp/odbus-source-closure-check-67/crates/op-mcp)
+   Compiling op-cognitive-mcp v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-cognitive-mcp)
+   Compiling op-xray-daemon v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-xray-daemon)
+   Compiling op-web v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-web)
+   Compiling op-services v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-services)
+   Compiling op-assistant-grpc v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-assistant-grpc)
+   Compiling op-chat v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-chat)
+warning: op-mcp@0.4.0: gRPC proto compiled successfully
+    Checking op-snowball v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-snowball)
+    Checking op-introspection v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-introspection)
+    Checking op-state v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-state)
+    Checking op-inspector v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-inspector)
+    Checking op-dbus-cli v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-dbus-cli)
+    Checking op-tools v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-tools)
+    Checking op-plugin-lint v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-plugin-lint)
+    Checking op-dynamic-loader v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-dynamic-loader)
+    Checking op-plugins v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-plugins)
+    Checking op-llm v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-llm)
+    Checking op-mcp-aggregator v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-mcp-aggregator)
+    Checking op-workflows v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-workflows)
+   Compiling op-grpc-bridge v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-grpc-bridge)
+    Checking op-dbus v1.0.0 (/var/tmp/odbus-source-closure-check-67)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 39s
+   Compiling op-cache v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-cache)
+   Compiling op-mcp v0.4.0 (/var/tmp/odbus-source-closure-check-67/crates/op-mcp)
+   Compiling op-cognitive-mcp v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-cognitive-mcp)
+   Compiling op-xray-daemon v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-xray-daemon)
+   Compiling op-web v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-web)
+   Compiling op-assistant-grpc v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-assistant-grpc)
+   Compiling op-services v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-services)
+   Compiling op-chat v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-chat)
+warning: op-mcp@0.4.0: gRPC proto compiled successfully
+   Compiling op-snowball v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-snowball)
+   Compiling op-introspection v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-introspection)
+   Compiling op-state v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-state)
+   Compiling op-inspector v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-inspector)
+   Compiling op-dbus-cli v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-dbus-cli)
+   Compiling op-tools v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-tools)
+   Compiling op-plugin-lint v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-plugin-lint)
+   Compiling op-dynamic-loader v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-dynamic-loader)
+   Compiling op-plugins v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-plugins)
+   Compiling op-llm v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-llm)
+   Compiling op-mcp-aggregator v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-mcp-aggregator)
+   Compiling op-workflows v1.0.0 (/var/tmp/odbus-source-closure-check-67/crates/op-workflows)
+   Compiling op-grpc-bridge v0.1.0 (/var/tmp/odbus-source-closure-check-67/crates/op-grpc-bridge)
+   Compiling op-dbus v1.0.0 (/var/tmp/odbus-source-closure-check-67)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2m 05s
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_agents-7e9056aa53845451)
+
+running 32 tests
+test dbus_service::tests::test_service_name ... ok
+test dbus_service::tests::test_service_name_to_agent_type ... ok
+test agents::compliance::schema_as_code::tests::validate_empty_args_fails ... ok
+test dbus_service::tests::test_is_agent_service ... ok
+test dbus_service::tests::test_object_path ... ok
+test agents::compliance::schema_as_code::tests::validate_lints_schema_document ... ok
+test dbus_service::tests::test_generate_agent_id ... ok
+test agents::compliance::schema_as_code::tests::validate_prose_inputs_differ ... ok
+test dbus_service::tests::test_to_pascal_case ... ok
+test dbus_service::tests::test_to_kebab_case ... ok
+test security::validation::tests::test_validate_input ... ok
+test security::validation::tests::test_path_traversal ... ok
+test security::validation::tests::test_validate_path ... ok
+test tests::test_unknown_agent ... ok
+test security::validation::tests::test_validate_command ... ok
+test security::profiles::tests::test_path_validation ... ok
+test security::profiles::tests::test_python_pro_profile ... ok
+test tests::test_create_agent ... ok
+test unified::persona::base::tests::unknown_operation_fails ... ok
+test tests::test_create_agent_underscore_variant ... ok
+test tests::test_list_agent_types ... ok
+test unified::persona::base::tests::missing_query_fails ... ok
+test unified::persona::base::tests::consult_applies_keyword_matched_knowledge ... ok
+test tests::test_create_agent_unified_fallback ... ok
+test unified::persona::base::tests::string_args_accepted_as_query ... ok
+test security::sandbox::tests::test_sandbox_blocked_command ... ok
+test unified::registry::tests::test_get_agent ... ok
+test unified::registry::tests::test_registry_creation ... ok
+test unified::registry::tests::test_list_by_category ... ok
+test security::sandbox::tests::test_sandbox_allowed_command ... ok
+test agents::compliance::schema_as_code::tests::validate_accepts_valid_instance ... ok
+test agents::compliance::schema_as_code::tests::validate_rejects_invalid_instance ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/bin/dbus-agent.rs (/srv/git/odbus/target/debug/deps/dbus_agent-61130d4cbe313efe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/gen-agent-defs.rs (/srv/git/odbus/target/debug/deps/gen_agent_defs-c00828f5734f82fb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/dbus-agent-manager.rs (/srv/git/odbus/target/debug/deps/op_agent_manager-09aac703c08d860f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_assistant_grpc-d19d7096062baf83)
+
+running 18 tests
+test incus::tests::tags_default_invalid ... ok
+test cognitive_client::tests::default_bus_address_is_session_socket ... ok
+test transport::tests::config_defaults_use_env_overrides ... ok
+test auth::tests::should_reject_missing_identity ... ok
+test server::tests::config_defaults_populate ... ok
+test auth::tests::should_reject_empty_identity ... ok
+test auth::tests::should_reject_pubkey_without_footprint ... ok
+test client::tests::unwrap_jsonrpc_maps_not_found ... ok
+test agents::tests::parses_agent_from_json ... ok
+test cognitive_client::tests::unwraps_direct_tool_result ... ok
+test cognitive_client::tests::mcp_is_error_becomes_err ... ok
+test client::tests::unwrap_jsonrpc_returns_result ... ok
+test client::tests::unwrap_jsonrpc_returns_raw_when_no_envelope ... ok
+test cognitive_client::tests::unwraps_plugin_envelope_and_mcp_content ... ok
+test convert::tests::struct_roundtrip ... ok
+test convert::tests::ts_parses_rfc3339 ... ok
+test auth::tests::should_verify_genesis_against_identity_session ... ok
+test transport::tests::transport_initialises_with_rpc_fallback ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/bin/op-assistant-grpc.rs (/srv/git/odbus/target/debug/deps/op_assistant_grpc-5e300538677cf54e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/integration.rs (/srv/git/odbus/target/debug/deps/integration-3306cfd64a16c2f5)
+
+running 3 tests
+test namespace_binding_round_trip ... ok
+test soul_upsert_and_get ... ok
+test write_then_read_memory_entry ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_blob-81b046427d02f53d)
+
+running 13 tests
+test descriptor::tests::case_conversions ... ok
+test identity::tests::b64_matches_known_vector ... ok
+test json_schema_proto::preserves_matrix_null_and_unsigned_contracts ... ok
+test subid::tests::accepts_valid_and_rejects_invalid ... ok
+test adapter::tests::ingests_root_and_field_subids ... ok
+test adapter::tests::walks_array_of_objects_with_constraints ... ok
+test demo::tests::derived_schema_matches_declared_contract ... ok
+test demo::tests::wireguard_port_constraints_survive_derivation ... ok
+test demo::tests::all_demo_subids_are_valid_and_complete ... ok
+test identity::tests::keypair_roundtrip_and_identity ... ok
+test adapter::tests::reports_nested_mismatch ... ok
+test descriptor::tests::typed_descriptor_matches_spec_naming ... ok
+test descriptor::tests::plugin_descriptor_keeps_canonical_key_separate_from_transport_name ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/exact_field_contract.rs (/srv/git/odbus/target/debug/deps/exact_field_contract-45800220bcb17782)
+
+running 1 test
+test exact_field_original_schema_and_rebased_referenced_wire_both_survive_sealing ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/pipeline.rs (/srv/git/odbus/target/debug/deps/pipeline-423f245c3571a591)
+
+running 9 tests
+test blob_dbus_and_grpc_identity_match_plugin ... ok
+test sealed_blob_reads_back_zero_copy_and_verified ... ok
+test blob_contains_canonical_schema_bytes_and_stable_hash ... ok
+test catalog_insert_lists_service_and_remove_unlists ... ok
+test catalog_upsert_replaces_stale_hash_versions ... ok
+test blob_methods_match_plugin_schema_methods ... ok
+test reflection_descriptor_covers_every_method_with_typed_messages ... ok
+test identity_is_wireguard_keypair_with_account_persistent_session ... ok
+test seals_catalog_into_btrfs_filesystem_image ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/sealed_descriptor_contracts.rs (/srv/git/odbus/target/debug/deps/sealed_descriptor_contracts-eeca9077fbb5dac6)
+
+running 8 tests
+test public_state_policy_survives_the_actual_sealed_blob_boundary ... ok
+test dynamic_value_numeric_precision_is_explicitly_limited_to_protobuf_double ... ok
+test local_json_pointer_refs_resolve_escaped_keys_and_bound_long_alias_chains ... ok
+test matrices_higher_arrays_and_maps_of_lists_keep_json_boundaries ... ok
+test recursive_refs_alias_cycles_and_unknown_refs_are_bounded_structured_values ... ok
+test false_zero_empty_string_and_omission_have_distinct_presence ... ok
+test declared_uint64_nested_records_and_typed_maps_preserve_maximum_exactly ... ok
+test null_unions_any_and_heterogeneous_json_are_values_not_json_strings ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/typed_map_contract.rs (/srv/git/odbus/target/debug/deps/typed_map_contract-e433b0518a06b9d8)
+
+running 1 test
+test sealed_typed_map_state_keeps_children_contract_and_real_wire_keys ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_cache-8a25aa41c875f199)
+
+running 57 tests
+test agent_registry::tests::test_agent_builder ... ok
+test agent_registry::tests::test_capability_parsing ... ok
+test agent_registry::tests::test_find_by_capability ... ok
+test btrfs_cache::tests::memory_cache_clear ... ok
+test btrfs_cache::tests::memory_cache_remove ... ok
+test btrfs_cache::tests::memory_cache_put_and_get ... ok
+test btrfs_cache::tests::memory_cache_evicts_on_memory_limit ... ok
+test btrfs_cache::tests::memory_cache_evicts_lru_on_entry_limit ... ok
+test numa::tests::test_apply_cpu_affinity_multi_node ... ignored, requires multi-node NUMA hardware to test meaningfully
+test agent_registry::tests::test_agent_registration ... ok
+test numa::tests::test_apply_memory_policy_bind ... ignored, requires multi-node NUMA hardware to test meaningfully
+test numa::tests::test_apply_memory_policy_default ... ok
+test numa::tests::test_apply_memory_policy_interleave ... ignored, requires multi-node NUMA hardware to test meaningfully
+test numa::tests::test_numa_stats ... ok
+test numa::tests::test_numa_strategy_from_str ... ok
+test capability_resolver::tests::test_excluded_agent ... ok
+test capability_resolver::tests::test_missing_capability ... ok
+test capability_resolver::tests::test_agent_reuse ... ok
+test numa::tests::test_parse_cpu_range ... ok
+test capability_resolver::tests::test_multi_capability_resolution ... ok
+test capability_resolver::tests::test_preferred_agent ... ok
+test numa::tests::test_numa_optimizer ... ok
+test numa::tests::test_numa_detection ... ok
+test capability_resolver::tests::test_simple_resolution ... ok
+test numa::tests::test_apply_cpu_affinity_single_node ... ok
+test snapshot_manager::tests::test_snapshot_config_defaults ... ok
+test btrfs_cache::tests::test_text_hashing ... ok
+test btrfs_cache::tests::embedding_put_get ... ok
+test btrfs_cache::tests::kv_get_or_compute ... ok
+test btrfs_cache::tests::kv_memory_cache_serves_fast_path ... ok
+test btrfs_cache::tests::kv_overwrite_replaces_value ... ok
+test btrfs_cache::tests::kv_put_get_delete_round_trip ... ok
+test pattern_tracker::tests::test_pattern_tracker_creation ... ok
+test pattern_tracker::tests::test_record_sequence ... ok
+test workflow_cache::tests::test_cache_miss ... ok
+test pattern_tracker::tests::test_promotion ... ok
+test workflow_cache::tests::test_workflow_cache_creation ... ok
+test workflow_cache::tests::test_expiration ... ok
+test orchestrator::tests::test_single_capability_resolution ... ok
+test workflow_cache::tests::test_put_and_get ... ok
+test workflow_cache::tests::test_stats ... ok
+test workflow_cache::tests::test_invalidation ... ok
+test workstack_cache::tests::test_cache_miss ... ok
+test workstack_cache::tests::test_workstack_cache_creation ... ok
+test workflow_tracker::tests::test_stats ... ok
+test orchestrator::tests::test_multi_capability_workstack ... ok
+test workflow_tracker::tests::test_record_sequence ... ok
+test workflow_tracker::tests::test_workflow_tracker_creation ... ok
+test workflow_executor::tests::test_executor_creation ... ok
+test workflow_executor::tests::test_agent_registration ... ok
+test workflow_tracker::tests::test_pattern_promotion ... ok
+test workstack_cache::tests::test_put_and_get ... ok
+test orchestrator::tests::test_direct_agent_execution ... ok
+test workstack_cache::tests::test_invalidation ... ok
+test workflow_executor::tests::test_caching ... ok
+test workflow_executor::tests::test_sequence_execution ... ok
+test workflow_executor::tests::test_pattern_detection ... ok
+
+test result: ok. 54 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.78s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_chat-f08f314e198023c3)
+
+running 33 tests
+test orchestration::error::tests::test_error_codes ... ok
+test orchestration::grpc_pool::tests::test_circuit_breaker ... ok
+test forced_execution::tests::test_detect_raw_text ... ok
+test orchestration::error::tests::test_error_retryable ... ok
+test agent_tools::tests::test_get_default_agents ... ok
+test orchestration::skills::tests::test_skill_creation ... ok
+test forced_execution::tests::test_parse_anthropic_tool_calls ... ok
+test orchestration::error::tests::test_error_display ... ok
+test forced_execution::tests::test_parse_openai_tool_calls ... ok
+test orchestration::skills::tests::test_constraint_checking ... ok
+test orchestration::grpc_pool::tests::test_pool_creation ... ok
+test orchestration::grpc_pool::tests::test_session_not_found ... ok
+test orchestration::grpc_pool::tests::test_session_lifecycle ... ok
+test orchestration::skills::tests::test_skill_registry ... ok
+test orchestration::tests::test_error_types ... ok
+test orchestration::tests::test_builtin_workstacks ... ok
+test tool_executor::tests::test_rate_limit_config_default ... ok
+test session::tests::test_add_message ... ok
+test system_prompt::tests::test_fixed_prompt ... ok
+test orchestration::workstack_executor::tests::test_variable_interpolation ... ok
+test orchestration::workstack_executor::tests::test_executor_register_get ... ok
+test session::tests::test_session_creation ... ok
+test orchestration::workstack_executor::tests::test_workstack_builder ... ok
+test tool_executor::tests::test_session_rate_state ... ok
+test agent_tools::tests::test_agent_operation_tool ... ok
+test orchestration::workstack_executor::tests::test_cycle_detection ... ok
+test agent_tools::tests::test_list_agents_tool ... ok
+test system_prompt::tests::test_load_custom_prompt ... ok
+test system_prompt::tests::test_system_prompt_generation ... ok
+test orchestration::grpc_pool::tests::test_execute ... ok
+test orchestration::grpc_pool::tests::test_batch_execute ... ok
+test nl_admin::tests::test_forbidden_command_detection ... ok
+test nl_admin::tests::test_tool_call_parser_xml_tags ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/bin/list_tools_client.rs (/srv/git/odbus/target/debug/deps/list_tools_client-c2735113a3b5cc12)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/e2e_memory_loop_voyage_qdrant.rs (/srv/git/odbus/target/debug/deps/e2e_memory_loop_voyage_qdrant-8c84c4ba18b5fb25)
+
+running 1 test
+test post_turn_memory_is_vectorized_and_semantically_reinjected ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_cognitive_mcp-08252b156183d8e1)
+
+running 45 tests
+test chain_vectors::tests::automatic_project_path_does_not_write_qdrant ... ok
+test context_awareness::tests::should_respect_push_rate_limit ... ok
+test context_awareness::tests::should_not_detect_stuck_with_varied_queries ... ok
+test context_awareness::tests::should_detect_stuck_session ... ok
+test context_awareness::tests::should_track_error_count ... ok
+test chain_vectors::tests::projection_summary_default_reports_zero_direct_upserts ... ok
+test gemini_fallback::tests::should_extract_answer_from_response ... ok
+test gemini_fallback::tests::should_handle_empty_response ... ok
+test gemini_fallback::tests::should_extract_citations ... ok
+test activity_filter::tests::test_constraint_fail_always_signal ... ok
+test activity_filter::tests::test_non_pii_schema_not_flagged ... ok
+test activity_filter::tests::test_immutable_write_is_signal ... ok
+test activity_filter::tests::test_autonomous_always_signal ... ok
+test activity_filter::tests::test_noise_tag_suppresses ... ok
+test activity_filter::tests::test_pii_tag_detected_schema_level ... ok
+test activity_filter::tests::test_health_check_suppressed ... ok
+test qdrant_shuttle::tests::plugin_id_to_uuid_is_stable ... ok
+test chain_vectors::tests::point_namespace_is_stable_and_distinct ... ok
+test chain_vectors::tests::already_exists_detection_matches_qdrant_wording ... ok
+test quota::tests::should_allow_queries_within_limit ... ok
+test quota::tests::should_deny_queries_over_limit ... ok
+test quota::tests::should_report_status ... ok
+test notebooklm::tests::should_normalize_notebooklm_tool_names ... ok
+test activity_filter::tests::test_read_is_routine ... ok
+test session::tests::should_append_and_evict_turns ... ok
+test notebooklm::tests::should_prefix_zero_claw_notebooklm_tool_names ... ok
+test activity_filter::tests::test_pii_schema_emits_chain_only ... ok
+test session::tests::should_close_session ... ok
+test session::tests::should_reset_session ... ok
+test session::tests::should_create_session_with_generated_id ... ok
+test tool_profiles::tests::should_estimate_token_savings ... ok
+test tool_profiles::tests::should_check_tool_allowed ... ok
+test session::tests::should_reuse_existing_session ... ok
+test tool_profiles::tests::should_parse_profile_names ... ok
+test tool_profiles::tests::should_return_correct_tool_counts ... ok
+test qdrant_shuttle::tests::should_extract_embedding_from_openai_style_data_payload ... ok
+test qdrant_shuttle::tests::should_extract_embedding_from_embeddings_array_payload ... ok
+test doctor::tests::should_get_empty_query_history ... ok
+test doctor::tests::should_get_query_history_with_turns ... ok
+test grpc_service::tests::should_glob_match_exact ... ok
+test grpc_service::tests::should_glob_match_question ... ok
+test grpc_service::tests::should_glob_match_star ... ok
+test qdrant_shuttle::tests::should_render_schema_embedding_text_deterministically ... ok
+test gemini_fallback::tests::should_report_unavailable_without_key ... ok
+test memory_store::tests::query_entries_returns_active_rows_and_filters_expired_rows ... ok
+
+test result: ok. 45 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src/bin/op-chain-vectors.rs (/srv/git/odbus/target/debug/deps/op_chain_vectors-82a4eed47c3e2a3b)
+
+running 1 test
+test tests::replicate_requires_explicit_snapshot_and_preserves_optional_parent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/bin/op-cog-admin.rs (/srv/git/odbus/target/debug/deps/op_cog_admin-407311a7759bc5ec)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/rag-ingest.rs (/srv/git/odbus/target/debug/deps/rag_ingest-e2beec02d6c1ce89)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/e2e_voyage_qdrant.rs (/srv/git/odbus/target/debug/deps/e2e_voyage_qdrant-dbf043fc13180005)
+
+running 1 test
+test voyage_vectorization_lands_in_qdrant_and_is_retrievable ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_compliance-1433e3ae6cda509a)
+
+running 6 tests
+test tests::test_invalid_version_fails ... ok
+test tests::legacy_shape_rules_are_preserved_without_a_meta_schema_file ... ok
+test tests::test_gdpr_violation ... ok
+test tests::test_ai_act_violation ... ok
+test tests::test_valid_schema_passes ... ok
+test tests::typed_plugin_schema_is_reviewed_without_meta_schema_file ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_core-8f00fcbd1fc78942)
+
+running 49 tests
+test config::tests::test_parse_env_line_empty ... ok
+test config::tests::test_parse_env_line_quoted ... ok
+test config::tests::test_parse_env_line_simple ... ok
+test config::tests::test_parse_env_line_single_quoted ... ok
+test projection_shm::tests::projection_file_path_under_canonical_dir ... ok
+test projection_shm::tests::safe_filename_replaces_separators ... ok
+test execution::tests::test_execution_failure ... ok
+test projection_shm::tests::test_state_roots_keep_credentials_out_of_the_public_tree ... ok
+test execution::tests::test_execution_tracking ... ok
+test execution::tests::test_stats ... ok
+test projection_shm::tests::restricted_atomic_publish_never_uses_world_readable_mode ... ok
+test projection_shm::transactions::identity_transaction::tests::pre_intent_failure_and_generation_overflow_never_call_durable_writer ... ok
+test projection_shm::transactions::private_directory::publication::tests::rejected_operation_cleanup_failure_retains_exact_pending_gate ... ok
+test projection_shm::transactions::private_directory::publication::tests::proven_pre_effect_rejection_clears_marker_without_changing_state ... ok
+test projection_shm::transactions::private_directory::publication::tests::panic_and_document_deletion_use_the_same_gate ... ok
+test projection_shm::transactions::private_directory::publication::tests::marker_sync_failure_prevents_durable_callback ... ok
+test projection_shm::transactions::private_directory::publication::tests::post_durable_contract_rejection_retains_receipt_without_publishing ... ok
+test projection_shm::transactions::private_directory::publication::tests::complete_document_and_children_publish_after_durable_callback ... ok
+test projection_shm::transactions::private_directory::tests::private_namespace_rejects_permissive_or_redirected_paths_and_does_not_create_on_read ... ok
+test projection_shm::transactions::tests::existing_generation_manifest_is_read_without_changes_after_writer_preparation ... ok
+test projection_shm::transactions::identity_transaction::tests::panic_never_rolls_back_to_old_readable_credential_and_recovery_can_delete ... ok
+test projection_shm::transactions::private_directory::tests::held_namespace_and_owner_descriptors_survive_path_replacement ... ok
+test projection_shm::transactions::private_directory::tests::failed_private_publication_preserves_previous_committed_document ... ok
+test projection_shm::transactions::identity_transaction::tests::durable_callback_runs_after_synced_marker_and_sees_only_private_predecessor ... ok
+test projection_shm::transactions::identity_transaction::tests::concurrent_reader_waits_for_entire_durable_and_pair_boundary ... ok
+test projection_shm::transactions::identity_transaction::tests::started_owned_blocking_commit_survives_waiter_cancellation ... ok
+test projection_shm::transactions::tests::generation_overflow_rejects_before_changing_data ... ok
+test projection_shm::transactions::private_directory::publication::tests::uncertain_durable_work_blocks_stale_reads_and_requires_exact_recovery ... ok
+test projection_shm::transactions::private_directory::tests::private_owners_reuse_committed_generations_without_sharing_payloads ... ok
+test projection_shm::transactions::tests::root_owned_reader_source_does_not_grant_nonowner_writer_authority ... ok
+test projection_shm::transactions::tests::unsafe_lock_paths_links_permissions_and_plugin_paths_are_rejected ... ok
+test runit::tests::no_s6_paths ... ok
+test runit::tests::paths_match_the_verified_host_layout ... ok
+test security::tests::test_ip_detection ... ok
+test projection_shm::transactions::tests::missing_manifest_or_unselected_files_never_become_state_authority ... ok
+test projection_shm::transactions::tests::old_raw_file_modes_are_restricted_without_content_or_generation_changes ... ok
+test projection_shm::transactions::identity_transaction::tests::uncertain_callback_blocks_identity_but_preserves_unrelated_transactions ... ok
+test projection_shm::transactions::tests::interrupted_publication_is_unreadable_and_never_certified_by_next_write ... ok
+test projection_shm::transactions::private_directory::tests::private_identity_lock_order_rejects_aliases_and_finishes_concurrent_revocation ... ok
+test projection_shm::transactions::tests::raw_json_commit_update_delete_and_noop_keep_exact_generations ... ok
+test projection_shm::transactions::tests::readers_wait_until_the_entire_locked_fold_and_commit_finish ... ok
+test projection_shm::transactions::tests::file_and_manifest_failures_restore_previous_committed_bytes ... ok
+test projection_shm::transactions::tests::generic_snapshot_never_contains_credentials_and_pair_rolls_back_together ... ok
+test projection_shm::transactions::private_directory::publication::tests::write_sync_and_final_manifest_failures_never_expose_old_state_after_durability ... ok
+test projection_shm::transactions::identity_transaction::tests::directory_sync_failures_never_clear_pending_or_expose_old_credentials ... ok
+test projection_shm::transactions::identity_transaction::tests::every_post_durable_file_failure_keeps_gate_until_exact_durable_recovery ... ok
+test projection_shm::tests::concurrent_atomic_publish_never_shares_a_temp_file ... ok
+test projection_shm::transactions::private_directory::tests::independent_handles_serialize_complete_document_folds ... ok
+test projection_shm::transactions::tests::independent_handles_serialize_folds_without_lost_updates_or_mixed_reads ... ok
+
+test result: ok. 49 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.17s
+
+     Running tests/no_s6_regression.rs (/srv/git/odbus/target/debug/deps/no_s6_regression-2d2085e3ee0ca3ae)
+
+running 3 tests
+test agent_tools_are_named_sv_not_s6 ... ok
+test no_crate_hardcodes_the_s6_service_tree ... ok
+test no_crate_spawns_an_s6_binary ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.63s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_cozo_store-c7e251c9604d8bb2)
+
+running 43 tests
+test human_principal_tests::human_principal_db_path_env_override ... ok
+test identity_sled_tests::account_session_round_trip ... ok
+test identity_sled_tests::session_events_allocate_monotonic_seq ... ok
+test human_principal_tests::human_principal_round_trip ... ok
+test identity_transactions::tests::durability_boundary_pins_actual_data_directory_and_refuses_options_override ... ok
+test identity_transactions::tests::barrier_failure_leaves_committed_revision_recoverable_and_retry_idempotent ... ok
+test identity_sled_tests::identity_sled_round_trip ... ok
+test identity_transactions::tests::native_commit_errors_are_not_mistaken_for_transport_success ... ok
+test identity_transactions::tests::non_utf8_database_path_is_rejected_before_any_directory_is_created ... ok
+test identity_transactions::tests::persistent_barrier_refuses_symlink_or_nonowned_writable_directory ... ok
+test identity_transactions::tests::append_failure_and_overflow_do_not_claim_success_or_repeat_uncertain_event ... ok
+test ctl_plane_chatbot_episodes::tests::generic_cozo_store_has_no_episode_relations_and_cannot_mutate_episode_owner ... ok
+test identity_transactions::tests::concurrent_event_appends_allocate_distinct_sequences ... ok
+test identity_transactions::tests::compare_exchange_conflicts_and_delete_tombstone_prevent_stale_resurrection ... ok
+test identity_transactions::tests::bounded_recovery_events_are_strict_ordered_and_retained_after_identity_deletion ... ok
+test ctl_plane_chatbot_episodes::tests::immutable_scoped_rows_cursor_and_embedding_cas_are_atomic ... ok
+test identity_transactions::tests::actor_class_is_atomic_immutable_and_joined_without_rewriting_legacy_columns ... ok
+test identity_transactions::tests::recovery_rejects_corrupt_rows_instead_of_dropping_them ... ok
+test identity_transactions::tests::concurrent_intents_preserve_sibling_rows_and_advance_only_index ... ok
+test identity_transactions::tests::mid_transaction_errors_do_not_commit_partial_row_genesis_or_revision ... ok
+test identity_transactions::tests::row_genesis_revision_commit_together_and_anchored_fields_are_immutable ... ok
+test identity_transactions::tests::private_constructor_refuses_symlink_and_options_before_native_open ... ok
+test runtime_document_transactions::tests::drifted_document_column_rejects_without_leaking_the_bound_private_workspace ... ok
+test runtime_document_transactions::tests::explicit_recovery_barrier_failure_yields_no_durable_read_receipt ... ok
+test runtime_document_transactions::tests::native_failures_hide_diagnostics_in_all_standard_error_formats ... ok
+test identity_transactions::tests::versioned_sessions_and_tombstones_reject_every_legacy_credential_writer ... ok
+test runtime_document_transactions::tests::failure_before_commit_keeps_old_row_and_never_calls_barrier ... ok
+test runtime_document_transactions::tests::uncertain_debug_keeps_candidate_and_native_values_private ... ok
+test runtime_document_transactions::tests::independent_clones_compare_complete_expected_row_and_only_one_wins ... ok
+test runtime_document_transactions::tests::malformed_rows_and_revision_exhaustion_never_write_or_flush ... ok
+test identity_transactions::tests::generic_constructor_preserves_existing_directory_modes ... ok
+test identity_transactions::tests::private_boundary_rejects_permission_drift_before_later_identity_effects ... ok
+test runtime_document_transactions::tests::barrier_holds_shared_owner_until_persistence_finishes ... ok
+test identity_transactions::tests::private_constructor_closes_directory_traversal_before_opening_native_store ... ok
+test human_principal_tests::human_principal_persists_through_rocksdb_reopen ... ok
+test identity_sled_tests::identity_sled_persists_through_rocksdb_reopen ... ok
+test identity_sled_tests::identity_sled_reopen_keeps_overlay_sized_instance_json ... ok
+test runtime_document_transactions::tests::persistent_exact_row_returns_after_barrier_and_survives_reopen ... ok
+test identity_transactions::tests::synced_identity_rows_genesis_and_deletion_revision_survive_reopen ... ok
+test identity_sled_tests::identity_sessions_survive_reopen_when_legacy_identity_sleds_exist ... ok
+test runtime_document_transactions::tests::lost_commit_reply_and_failed_barrier_return_uncertain_not_false_rollback ... ok
+test runtime_document_transactions::tests::options_and_replaced_data_directory_fail_before_native_write ... ok
+test ctl_plane_chatbot_episodes::tests::multimegabyte_rows_are_whole_and_snapshot_pagination_is_bounded ... ok
+
+test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.50s
+
+     Running unittests src/bin/identity_sled_bind.rs (/srv/git/odbus/target/debug/deps/identity_sled_bind-28a49b113640a645)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/delete_identity_session.rs (/srv/git/odbus/target/debug/examples/delete_identity_session-5eb1ce46bcb05c24)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/ovs_native_rust.rs (/srv/git/odbus/target/debug/examples/ovs_native_rust-a22528d88f3501a6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/srv/git/odbus/target/debug/deps/dbus_plugin_cli-793bc64d951b0ac3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_dbus_model-176e03a7ce728435)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_deployment-ded0e1903635e4aa)
+
+running 1 test
+test image_manager::tests::test_image_manager_init ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_dynamic_loader-059ed341d69ee58c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_execution_tracker-d3e64efa57e729ba)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_gateway-f493bd37e221610e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/srv/git/odbus/target/debug/deps/op_gemma-390820a89b787cbb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_grpc_bridge-55d7c6ab42ad343e)
+
+running 496 tests
+test chat_service::tests::conversation_key_scopes_principal_and_session ... ok
+test chat_service::tests::non_chat_routes_fail_closed ... ok
+test chat_service::tests::undeclared_model_fails_closed ... ok
+test chat_service::tests::provider_alias_and_route_hint_resolve ... ok
+test chat_service::tests::explicit_provider_and_model_resolve_through_schema_catalog ... ok
+test chat_service::tests::selected_provider_and_model_are_the_default_route ... ok
+test chatbot_episode_state::tests::private_database_cannot_alias_or_nest_in_the_query_database ... ok
+test cron_gateway::tests::dynamic_job_id_is_one_encoded_path_segment ... ok
+test chatbot_episode_stream::tests::selectors_are_exact_and_private ... ok
+test cron_methods::tests::completed_delete_with_failed_readback_is_not_falsely_failed ... ok
+test cron_methods::tests::invalid_mutation_is_rejected_before_provider_call ... ok
+test cron_methods::tests::observed_receipts_reuse_exact_readback_and_never_invent_state ... ok
+test cron_methods::tests::provider_indeterminate_run_is_returned_without_retry ... ok
+test cron_observer::tests::driver_hydrates_once_then_reads_once_per_cron_result ... ok
+test cron_methods::tests::divergent_create_readback_is_never_confirmed ... ok
+test cron_observer::tests::explicit_gap_is_not_treated_as_a_state_event ... ok
+test cron_observer::tests::fragmented_cron_result_is_one_wakeup_and_output_is_not_returned ... ok
+test cron_observer::tests::explicit_gap_stops_before_following_frame ... ok
+test cron_observer::tests::multiple_cron_results_preserve_one_wakeup_per_real_frame ... ok
+test cron_observer::tests::unrelated_events_and_keepalives_do_not_wake_state_reads ... ok
+test cron_observer::tests::malformed_oversized_and_truncated_frames_fail_closed ... ok
+test antigravity_dispatch::tests::usage_filter_does_not_replace_the_complete_state_ledger ... ok
+test ctl_plane_chatbot_dispatch::tests::config_root_merge_preserves_unrelated_siblings ... ok
+test cron_gateway::tests::real_bounded_transport_maps_all_nine_canonical_methods ... ok
+test ctl_plane_chatbot_dispatch::tests::final_boundary_rejects_seal_replacement ... ok
+test ctl_plane_chatbot_dispatch::tests::projection_fault_preserves_durable_receipt_and_marks_recovery_pending ... ok
+test chat_service::tests::chat_approve_and_cancel_require_ghostbridge_identity ... ok
+test antigravity_dispatch::tests::configure_and_safety_preserve_the_complete_observed_state ... ok
+test chat_service::tests::cancellation_slots_are_keyed_and_duplicate_sends_do_not_replace_them ... ok
+test chat_service::tests::chat_send_requires_ghostbridge_identity ... ok
+test dbus_identity::tests::parses_proc_stat_with_spaces_and_parentheses_in_comm ... ok
+test dbus_identity::tests::pid_reuse_invalidates_bound_process_credentials ... ok
+test chat_service::tests::approval_slots_cannot_cross_principal_or_session_boundaries ... ok
+test dbus_identity::tests::revocation_parks_only_after_last_session_binding ... ok
+test ctl_plane_chatbot_dispatch::tests::committed_and_pending_durable_receipts_match_the_sealed_method_shape ... ok
+test ctl_plane_chatbot_dispatch::tests::final_boundary_derives_exact_grants_and_denies_withdrawal ... ok
+test decoy_network::tests::listener_accepts_only_private_or_tunnel_ranges ... ok
+test datastore_methods::tests::invalid_or_unbounded_requests_fail_before_read ... ok
+test datastore_methods::tests::unavailable_or_interrupted_backing_fails_closed ... ok
+test datastore_methods::tests::reseal_changes_catalog_binding_and_new_membership ... ok
+test decoy_network::tests::secondary_secret_guard_normalizes_common_spellings ... ok
+test decoy_network::tests::another_leaf_signed_by_the_same_ca_is_rejected_by_pin ... ok
+test dbus_identity::tests::private_bus_injects_current_sender_and_revokes_on_exit ... ok
+test decoy_network::tests::pinned_bridge_leaf_and_typed_sid1_metadata_cross_dbus_exactly ... ok
+test emqx_hook_provider::tests::auth_and_authorize_responses_leave_broker_decisions_unchanged ... ok
+test emqx_hook_provider::tests::broker_events_are_metadata_only_and_digest_all_external_values ... ok
+test event_chain_access::tests::bounded_pages_preserve_ledger_and_metadata_only ... ok
+test event_chain_access::tests::replay_orders_by_ledger_and_advances_across_filtered_events ... ok
+test datastore_methods::tests::all_methods_read_one_real_committed_public_snapshot ... ok
+test event_chain_access::tests::replay_rejects_lost_history_and_excessive_backlog ... ok
+test freedesktop_dispatch::tests::absent_policy_withholds_values_without_disabling_valid_target_writes ... ok
+test freedesktop_dispatch::tests::enumeration_requires_current_blob_and_filters_public_fields ... ok
+test freedesktop_dispatch::tests::credentials_are_redacted_even_from_declared_nested_fields ... ok
+test freedesktop_dispatch::tests::external_targets_and_unknown_interfaces_are_rejected ... ok
+test freedesktop_dispatch::tests::incomplete_or_missing_manifest_never_exposes_raw_projection_files ... ok
+test cron_methods::tests::all_nine_methods_return_provider_observations ... ok
+test freedesktop_dispatch::tests::introspection_reports_wrapper_abi_and_exact_escaped_sealed_metadata ... ok
+test freedesktop_dispatch::tests::missing_projection_has_no_default_or_example_state ... ok
+test decoy_network::tests::malformed_native_state_is_rejected_against_real_seal ... ok
+test decoy_network::tests::real_sealed_catalog_admits_valid_call_and_rejects_before_effect ... ok
+test freedesktop_dispatch::tests::freedesktop_reader_waits_for_committed_state_instead_of_sampling_raw_file ... ok
+test freedesktop_dispatch::tests::outer_freedesktop_grant_cannot_authorize_target_mutation ... ok
+test dynamic_reflection::tests::same_schema_and_catalog_hash_refreshes_changed_valid_descriptor_artifacts ... ok
+test freedesktop_dispatch::tests::opaque_declared_fields_are_not_public_and_invalid_exposure_fails_closed ... ok
+test freedesktop_dispatch::tests::write_plan_preserves_target_capability_and_does_not_mutate_projection ... ok
+test freedesktop_dispatch::tests::write_respects_immutable_and_current_lock_metadata ... ok
+test gemma_brain_dispatch::tests::route_plan_rejects_missing_hint ... ok
+test freedesktop_dispatch::tests::write_rejects_missing_mapping_capability_and_invalid_argument_contract ... ok
+test freedesktop_dispatch::tests::revalidation_rejects_resealed_or_relocked_target ... ok
+test freedesktop_dispatch::tests::public_read_only_metadata_does_not_disclose_hidden_lock_state ... ok
+test chat_service::tests::chat_service_binding_matches_router_schema ... ok
+test gemma_brain_dispatch::tests::route_plan_preserves_hint_and_target_contract ... ok
+test dynamic_reflection::tests::active_reflection_advertises_only_active_blob_services ... ok
+test dynamic_reflection::tests::sync_from_shm_picks_up_blobs_sealed_by_external_writer ... ok
+test generation_jobs_dispatch::tests::private_generation_state_is_typed_but_never_part_of_public_router_policy ... ok
+test chat_service::tests::chat_dispatch_reaches_the_tched_router_backend ... ok
+test chatbot_episode_state::tests::durable_episode_publication_is_private_and_recovers_after_seal_change ... ok
+test generation_jobs_dispatch::tests::ready_batch_commits_valid_prefix_before_an_over_limit_successor ... ok
+test generation_jobs_dispatch::tests::ready_batch_never_waits_and_preserves_order_across_byte_and_count_boundaries ... ok
+test generation_jobs_selection::tests::malformed_mixed_or_unbounded_selectors_fail_before_owner_lookup ... ok
+test generation_jobs_selection::tests::private_mode_requires_explicit_generation_path_and_never_a_bare_root ... ok
+test grpc_client::identity_metadata_tests::get_state_prefers_exact_value_and_falls_back_to_legacy_object ... ok
+test grpc_client::identity_metadata_tests::get_state_rejects_missing_or_malformed_payloads ... ok
+test grpc_client::identity_metadata_tests::plugin_metadata_forwards_exact_sid1_and_capability ... ok
+test grpc_client::identity_metadata_tests::plugin_metadata_rejects_missing_or_dual_credentials ... ok
+test grpc_client::identity_metadata_tests::state_metadata_accepts_explicit_sid1_with_optional_exact_capability ... ok
+test grpc_client::identity_metadata_tests::state_metadata_rejects_malformed_multiple_and_empty_capability ... ok
+test grpc_client::identity_metadata_tests::subscription_conversion_preserves_state_and_contract_generations ... ok
+test grpc_client::large_response_tests::pool_decodes_large_plugin_and_state_unary_and_stream_responses ... ok
+test grpc_server::generated_argument_tests::typed_requests_obey_sealed_constraints_and_unit_contracts ... ok
+test grpc_server::public_state_frame_tests::child_frames_are_snapshot_values_without_false_audit_correlation ... ok
+test grpc_server::public_state_frame_tests::lag_rehydrate_keeps_removed_child_tombstone ... ok
+test grpc_server::public_state_frame_tests::removed_schema_only_plugin_emits_tombstone_without_state_subscription ... ok
+test grpc_server::public_state_frame_tests::schema_and_lag_rehydrate_frames_carry_current_generation ... ok
+test chatbot_episode_stream::tests::authenticated_owner_receives_initial_and_update_then_revocation_stops ... ok
+test human_principal_dispatch::tests::capability_gate_matrix ... ok
+test chatbot_episode_stream::tests::other_session_cannot_read_owner_episode_projection ... ok
+test chatbot_episode_stream::tests::sealed_schema_drift_terminates_episode_stream ... ok
+test ctl_plane_chatbot_dispatch::tests::canonical_vectorize_executes_native_embedding_and_rechecks_both_grants ... ok
+test decoy_network::canonical_tests::all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings ... ok
+test gemma_taxonomy_dispatch_tests::all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated ... ok
+test generation_jobs_dispatch::tests::actual_handlers_require_owner_grants_and_serve_only_committed_children has been running for over 60 seconds
+test generation_jobs_dispatch::tests::actual_subscription_lag_rereads_shm_and_retains_deleted_child_tombstones has been running for over 60 seconds
+test generation_jobs_dispatch::tests::cancel_closes_native_transport_and_disconnect_is_a_real_terminal_failure has been running for over 60 seconds
+test generation_jobs_dispatch::tests::cancelling_the_caller_does_not_cancel_owned_admission_or_publication has been running for over 60 seconds
+test generation_jobs_dispatch::tests::grant_withdrawal_stops_native_and_retains_pending_until_exact_recovery has been running for over 60 seconds
+test generation_jobs_dispatch::tests::native_burst_terminal_follows_all_original_fragments_in_committed_shm has been running for over 60 seconds
+test generation_jobs_dispatch::tests::private_pending_failure_blocks_reads_and_recovery_uses_durable_state has been running for over 60 seconds
+test generation_jobs_dispatch::tests::queued_grant_withdrawal_rejects_before_any_durable_or_native_effect has been running for over 60 seconds
+test generation_jobs_dispatch::tests::queued_llm_origin_grant_and_both_original_seals_are_rechecked_before_effects has been running for over 60 seconds
+test human_principal_dispatch::tests::alias_is_never_authoritative has been running for over 60 seconds
+test human_principal_dispatch::tests::get_principal_found_unknown_and_malformed has been running for over 60 seconds
+test human_principal_dispatch::tests::list_principals_includes_revoked has been running for over 60 seconds
+test human_principal_dispatch::tests::plugin_service_input_validation has been running for over 60 seconds
+test human_principal_dispatch::tests::plugin_service_round_trip_both_touch_points has been running for over 60 seconds
+test human_principal_dispatch::tests::register_key_happy_path has been running for over 60 seconds
+test human_principal_dispatch::tests::register_key_ignores_forged_principal_id has been running for over 60 seconds
+test generation_jobs_dispatch::tests::actual_subscription_lag_rereads_shm_and_retains_deleted_child_tombstones ... ok
+test generation_jobs_dispatch::tests::actual_handlers_require_owner_grants_and_serve_only_committed_children ... ok
+test generation_jobs_dispatch::tests::cancelling_the_caller_does_not_cancel_owned_admission_or_publication ... ok
+test human_principal_dispatch::tests::register_key_rejects_duplicate_active_alias has been running for over 60 seconds
+test generation_jobs_dispatch::tests::grant_withdrawal_stops_native_and_retains_pending_until_exact_recovery ... ok
+test generation_jobs_dispatch::tests::native_burst_terminal_follows_all_original_fragments_in_committed_shm ... ok
+test human_principal_dispatch::tests::register_key_rejects_duplicate_pubkey has been running for over 60 seconds
+test generation_jobs_dispatch::tests::private_pending_failure_blocks_reads_and_recovery_uses_durable_state ... ok
+test generation_jobs_dispatch::tests::queued_grant_withdrawal_rejects_before_any_durable_or_native_effect ... ok
+test human_principal_dispatch::tests::alias_is_never_authoritative ... ok
+test human_principal_dispatch::tests::get_principal_found_unknown_and_malformed ... ok
+test human_principal_dispatch::tests::list_principals_includes_revoked ... ok
+test human_principal_dispatch::tests::plugin_service_input_validation ... ok
+test human_principal_dispatch::tests::plugin_service_round_trip_both_touch_points ... ok
+test human_principal_dispatch::tests::register_key_happy_path ... ok
+test identity_sled_dispatch::tests::caller_cannot_supply_sid1_or_legacy_psk ... ok
+test human_principal_dispatch::tests::register_key_ignores_forged_principal_id ... ok
+test human_principal_dispatch::tests::register_key_rejects_duplicate_active_alias ... ok
+test identity_sled_dispatch::tests::malformed_durable_json_fails_closed ... ok
+test human_principal_dispatch::tests::register_key_rejects_duplicate_pubkey ... ok
+test identity_sled_dispatch::tests::event_receipt_and_bounded_history_come_from_durable_ledger ... ok
+test human_principal_dispatch::tests::register_key_rejects_malformed_pubkeys has been running for over 60 seconds
+test identity_sled_dispatch::tests::exact_authored_sid1_is_stable_and_expired_term_is_rejected ... ok
+test identity_sled_dispatch::tests::genesis_sid1_and_actor_class_survive_mutation_index_advance ... ok
+test identity_sled_dispatch::tests::pending_publication_does_not_disclose_native_credential_diagnostics ... ok
+test identity_sled_dispatch::tests::provision_policy_forces_parked_non_autostart_container ... ok
+test identity_sled_dispatch::tests::recovery_preserves_siblings_tombstones_and_event_order ... ok
+test identity_sled_dispatch::tests::mutation_index_queues_behind_native_lifecycle_and_preserves_result ... ok
+test identity_sled_dispatch::tests::overlapping_activate_then_park_is_serialized_per_session ... ok
+test incus_observer::tests::observation_is_pinned_and_public_projection_is_filtered ... ok
+test interceptor::tests::registration_bootstrap_allows_magic_link_without_identity ... ok
+test interceptor::tests::registration_bootstrap_does_not_expose_admin_methods ... ok
+test interceptor::tests::test_genesis_match_succeeds ... ok
+test interceptor::tests::test_genesis_mismatch_detection ... ok
+test interceptor::tests::test_mutation_engine_unreachable_returns_internal ... ok
+test interceptor::tests::test_rejects_missing_genesis_header ... ok
+test interceptor::tests::test_rejects_missing_genesis_with_trace_only ... ok
+test interceptor::tests::test_rejects_missing_trace_header ... ok
+test interceptor_crate_tests::assertion_absent_rejects_legacy_headers ... ok
+test identity_sled_dispatch::tests::owned_lifecycle_preserves_anchor_and_starts_and_stops_once ... ok
+test interceptor_crate_tests::assertion_present_invalid_returns_unauthenticated ... ok
+test identity_sled_dispatch::tests::parked_anchored_sled_authenticates_without_treating_active_as_revocation ... ok
+test identity_sled_dispatch::tests::session_record_resolves_every_authored_handle ... ok
+test identity_sled_dispatch::tests::stop_failure_keeps_committed_inactive_policy_without_rollback ... ok
+test interceptor_crate_tests::bridge_capability_identity_prefers_human ... ok
+test interceptor_crate_tests::duplicate_assertion_metadata_values_reject_malformed ... ok
+test generation_jobs_dispatch::tests::cancel_closes_native_transport_and_disconnect_is_a_real_terminal_failure ... ok
+test human_principal_dispatch::tests::register_key_rejects_malformed_pubkeys ... ok
+test human_principal_dispatch::tests::resolve_key_unknown_is_not_found ... ok
+test interceptor_crate_tests::registration_interceptor_factory_respects_bootstrap ... ok
+test human_principal_dispatch::tests::revocation_is_permanent_tombstone ... ok
+test human_principal_dispatch::tests::revoke_key_idempotent_on_already_revoked ... ok
+test interceptor_crate_tests::sid1_and_oia1_together_rejected ... ok
+test interceptor_crate_tests::validator_per_instance_interceptor_isolation ... ok
+test human_principal_dispatch::tests::revoke_key_unknown_key_is_error ... ok
+test large_language_model_dispatch::tests::stream_targets_exact_generation_start_contract ... ok
+test human_principal_dispatch::tests::revoked_alias_reusable_and_empty_aliases_never_collide ... ok
+test human_principal_dispatch::tests::revoked_principal_resolves_with_revoked_at_visible ... ok
+test mcp_frontend::tests::argument_toolset_selector_is_stripped_before_schema_validation ... ok
+test mcp_frontend::tests::broad_outer_invoke_is_not_accepted_as_target_authority ... ok
+test mcp_frontend::tests::browser_origin_is_exact_allowlist_only ... ok
+test mcp_frontend::tests::caller_supplied_capability_header_is_rejected ... ok
+test mcp_frontend::tests::deleting_session_triggers_background_close_work ... ok
+test mcp_frontend::tests::http_assertion_requires_canonical_unpadded_base64url ... ok
+test mcp_frontend::tests::initialize_echoes_codex_official_protocol_version ... ok
+test mcp_frontend::tests::initialize_establishes_streamable_http_session ... ok
+test mcp_frontend::tests::initialize_negotiates_before_protocol_header_exists ... ok
+test mcp_frontend::tests::legacy_footprint_key_invalidates_entire_grant_document ... ok
+test mcp_frontend::tests::native_initialize_succeeds_without_a_shim ... ok
+test mcp_frontend::tests::native_initialized_notification_is_accepted_without_a_shim ... ok
+test mcp_frontend::tests::nested_tool_arguments_are_validated_before_dispatch ... ok
+test mcp_frontend::tests::notebooklm_setup_auth_alone_gets_the_interactive_request_timeout ... ok
+test mcp_frontend::tests::public_tool_projection_strips_authority_metadata ... ok
+test mcp_frontend::tests::resources_list_exposes_blob_resources ... ok
+test mcp_frontend::tests::resources_read_returns_content ... ok
+test mcp_frontend::tests::safe_read_tool_with_both_grants_passes_policy_and_schema ... ok
+test mcp_frontend::tests::schema_sanitizer_removes_embedded_identity_grants ... ok
+test mcp_frontend::tests::sealed_id_requires_an_exact_active_registry_binding ... ok
+test mcp_frontend::tests::sealed_schema_reader_returns_raw_schema_and_cross_blob_oscal_tags ... ok
+test mcp_frontend::tests::singleton_chatbot_cannot_call_outside_hot_or_selected_toolset ... ok
+test human_principal_dispatch::tests::set_alias_edge_states ... ok
+test mcp_frontend::tests::subsequent_request_accepts_codex_protocol_header ... ok
+test mcp_frontend::tests::target_capability_is_required_in_addition_to_outer_invoke ... ok
+test mcp_frontend::tests::target_tool_without_authority_metadata_is_fail_closed ... ok
+test mcp_frontend::tests::tool_list_is_filtered_by_exact_target_capability ... ok
+test mcp_frontend::tests::tools_call_dispatches_named_tool ... ok
+test mcp_frontend::tests::tools_list_uses_shared_toolset_backend ... ok
+test mcp_frontend::tests::singleton_chatbot_direct_tools_are_denied_before_catalog_or_provider_work ... ok
+test mcp_frontend::tests::typed_toolsets_are_listed_up_front_and_selection_admits_calls ... ok
+test mcp_frontend::tests::unauthenticated_request_is_rejected_before_dispatch ... ok
+test mcp_frontend::tests::unknown_protocol_version_down_negotiates_instead_of_erroring ... ok
+test mcp_frontend::tests::wildcard_grant_never_authorizes_mcp ... ok
+test mcp_policy::tests::audience_is_one_exact_principal ... ok
+test mcp_policy::tests::deployed_manifest_keeps_cognitive_and_notebooklm_toolsets_hot ... ok
+test mcp_policy::tests::exact_hot_manifest_is_accepted ... ok
+test mcp_policy::tests::frequency_or_generic_tools_cannot_change_the_surface ... ok
+test mcp_policy::tests::identity_inspection_is_read_only_and_granted_only_to_the_human ... ok
+test mcp_policy::tests::singleton_chatbot_direct_tool_guard_is_leaf_exact_and_human_neutral ... ok
+test mcp_frontend::tests::typed_methods_are_loaded_from_manifest_pinned_sealed_blob ... ok
+test mcp_policy::tests::tool_group_update_is_exact_generation_and_catalog_bound ... ok
+test method_contract_admission::tests::compiled_evidence_cannot_create_missing_or_unpinned_plugins ... ok
+test method_contract_admission::tests::current_pin_revalidates_constraints_before_effects_without_echoing_inputs ... ok
+test method_contract_admission::tests::every_method_contract_component_and_plugin_version_blocks_before_effects ... ok
+test method_contract_admission::tests::cron_mutation_rejects_read_grant_before_gateway_effect ... ok
+test method_contract_admission::tests::generated_artifact_contains_full_declarations_keyed_by_canonical_method ... ok
+test method_contract_admission::tests::matching_pinned_contract_admits_exact_declaration_once ... ok
+test method_contract_admission::tests::exercised_capability_must_match_same_current_pin_exactly ... ok
+test method_contract_admission::tests::no_capability_is_an_exact_contract_not_an_implicit_grant ... ok
+test method_contract_admission::tests::non_method_catalog_metadata_does_not_replace_compatibility_evidence ... ok
+test method_contract_admission::tests::sealed_methods_without_exact_compiled_evidence_are_not_dispatched ... ok
+test mutation_engine::cognitive_dispatch_tests::code_methods_route_to_the_real_code_tools ... ok
+test mutation_engine::cognitive_dispatch_tests::invoke_tool_uses_the_named_registry_target_and_nested_arguments ... ok
+test mutation_engine::cognitive_dispatch_tests::memory_methods_select_the_canonical_memory_operation ... ok
+test mutation_engine::cognitive_dispatch_tests::retired_standalone_management_methods_have_no_dispatch_path ... ok
+test mutation_engine::cognitive_dispatch_tests::rust_pro_routes_to_the_eager_agent_operation ... ok
+test mutation_engine::cognitive_dispatch_tests::tool_authority_is_projected_only_from_an_exact_sealed_method ... ok
+test mutation_engine::completed_effect_time_tests::completion_time_is_derived_from_monotonic_elapsed_time ... ok
+test human_principal_dispatch::tests::set_alias_updates_and_preserves_active_uniqueness ... ok
+test interceptor_crate_tests::assertion_bad_signature_does_not_insert_ghostbridge ... ok
+test mutation_engine::identity_publication::tests::cancellation_after_durable_work_keeps_callback_pair_mirror_and_wakeup_owned ... ok
+test mutation_engine::identity_publication::tests::cancellation_while_waiting_for_publication_lock_does_not_drop_submitted_intent ... ok
+test mutation_engine::identity_publication::tests::clone_shares_publication_cache_and_lazily_configured_owner_cells ... ok
+test interceptor_crate_tests::assertion_present_legacy_headers_not_consulted ... ok
+test mutation_engine::identity_publication::tests::exact_recovery_to_absence_removes_mirror_and_emits_deletion_wakeup ... ok
+test mutation_engine::identity_publication::tests::local_metadata_keeps_existing_identity_consumer_fields_and_private_tree_exact ... ok
+test mutation_engine::identity_publication::tests::pending_durable_error_changes_neither_mirror_nor_outward_notification ... ok
+test mutation_engine::identity_redaction_tests::public_identity_value_is_recursive_and_other_plugins_are_unchanged ... ok
+test mutation_engine::identity_publication::tests::recovery_contract_mismatch_neither_runs_callback_nor_clears_pending ... ok
+test mutation_engine::identity_publication::tests::reseal_after_durable_callback_keeps_identity_pending_and_old_mirror_unadvertised ... ok
+test mutation_engine::owned_method_task::tests::abandoned_failure_remains_observable_without_private_diagnostics ... ok
+test interceptor_crate_tests::assertion_present_valid_inserts_human_principal_identity ... ok
+test mutation_engine::owned_method_task::tests::nested_admitted_tasks_complete_without_a_global_execution_lock ... ok
+test mutation_engine::private_method_audit_tests::chatbot_reasoning_arguments_are_digest_only ... ok
+test mutation_engine::private_method_audit_tests::nested_embedding_text_and_mcp_credentials_are_digest_only ... ok
+test mutation_engine::private_method_audit_tests::ordinary_public_arguments_remain_auditable ... ok
+test interceptor_crate_tests::human_identity_shadows_ghostbridge_for_capability_gate ... ok
+test interceptor_crate_tests::assertion_without_connect_info_rejects_missing_connect_info ... ok
+test nlm_cli::tests::auth_status_is_read_from_nested_json ... ok
+test mutation_engine::xray_unavailable_method_tests::reload_and_trace_methods_fail_before_any_provider_io ... ok
+test nlm_cli::tests::bounded_reader_accepts_exact_limit_and_rejects_next_byte ... ok
+test nlm_cli::tests::collection_projection_preserves_items_and_source_upload_ids ... ok
+test nlm_cli::tests::cookie_strings_are_redacted_from_stderr ... ok
+test nlm_cli::tests::default_bin_is_usr_local_not_usr_bin ... ok
+test nlm_cli::tests::every_schema_method_has_an_argv_map ... ok
+test nlm_cli::tests::get_health_and_server_info_probe_real_catalog ... ok
+test nlm_cli::tests::individual_downloads_use_the_pinned_text_command_contract ... ok
+test nlm_cli::tests::mcp_only_query_lifecycle_never_maps_to_cli ... ok
+test nlm_cli::tests::mind_map_projection_decodes_json_without_scraping_or_losing_nodes ... ok
+test nlm_cli::tests::notebook_queries_use_the_wire_sized_stdout_cap ... ok
+test nlm_cli::tests::bounded_reader_is_cancellation_safe_while_pipe_remains_open ... ok
+test nlm_cli::tests::pleasepromto_names_are_rejected ... ok
+test nlm_cli::tests::save_auth_tokens_rejects_inline_cookies ... ok
+test nlm_cli::tests::selected_notebook_fills_omitted_id ... ok
+test nlm_cli::tests::setup_auth_is_interactive_login_without_cookie_env_shape ... ok
+test nlm_cli::tests::ready_marker_transitions ... ok
+test nlm_cli::tests::source_add_url_and_drive_flags ... ok
+test nlm_cli::tests::source_content_file_output_uses_a_text_receipt ... ok
+test nlm_cli::tests::structured_stdout_rejects_rich_tables ... ok
+test notebooklm_queries::tests::capacity_rejection_does_not_start_another_provider ... ok
+test notebooklm_queries::tests::pending_result_is_private_then_returns_actual_unicode_and_citations ... ok
+test obfuscation_methods::tests::normalize_remove_and_reject_external_drift ... ok
+test notebooklm_queries::tests::errors_timeouts_and_bad_responses_do_not_become_success_or_echo_secrets ... ok
+test obfuscation_methods::tests::restart_recovers_confirmed_effect_from_durable_intent ... ok
+test openflow_methods::tests::observed_member_fold_preserves_authored_config_and_unrelated_bridges ... ok
+test openflow_methods::tests::three_methods_build_exact_compare_exchange_requests ... ok
+test openflow_methods::tests::wildcard_delete_identity_change_and_fallback_are_unrepresentable ... ok
+test interceptor_crate_tests::human_principal_grant_allows_capability_gate ... ok
+test interceptor_crate_tests::human_principal_missing_grant_denies_capability_gate ... ok
+test mutation_engine::owned_method_task::tests::caller_drop_after_durable_commit_still_folds_child_into_shm_and_wakes_readers ... ok
+test oracle_assertion::tests::ordering_signature_before_expiry ... ok
+test oracle_assertion::tests::replay_cache_lazy_purge_no_background_task ... ok
+test oracle_assertion::tests::source_binding_defaults_to_trusted_decoy_not_netmaker_ip ... ok
+test mutation_engine::identity_publication::tests::absent_or_skewed_seal_rejects_before_pending_marker_and_durable_callback ... ok
+test oracle_assertion::tests::trust_store_malformed_json_fails_closed ... ok
+test oracle_assertion::tests::trust_store_missing_file_fails_closed ... ok
+test oracle_assertion::tests::trust_store_loads_valid_json ... ok
+test oracle_assertion::tests::unavailable_replay_store_fails_closed ... ok
+test interceptor_crate_tests::sid1_parked_inserts_human_principal_identity ... ok
+test interceptor_crate_tests::sid1_requires_current_principal_registration ... ok
+test oracle_assertion::tests::validate_rejects_bad_signature ... ok
+test large_language_model_dispatch::tests::facade_plan_never_weakens_the_nested_capability ... ok
+test mcp_config_dispatch::tests::canonical_tool_group_dispatch_commits_file_live_owner_and_member_projection ... ok
+test oracle_assertion::tests::validate_rejects_malformed_envelope ... ok
+test generation_jobs_dispatch::tests::queued_llm_origin_grant_and_both_original_seals_are_rechecked_before_effects ... ok
+test mcp_config_dispatch::tests::queued_mcp_configuration_rechecks_both_original_grants_and_facade_seal ... ok
+test mutation_engine::antigravity_canonical_tests::six_methods_pass_canonical_admission_native_refresh_and_shm_publication ... ok
+test mutation_engine::mail_canonical_tests::all_nine_mail_methods_cross_mutation_engine_dbus_and_commit_complete_state ... ok
+test oracle_assertion::tests::validate_rejects_unknown_decoy_key ... ok
+test mutation_engine::obfuscation_canonical_tests::flow_methods_commit_verified_children_and_reject_revoked_identity ... ok
+test mutation_engine::proxy_canonical_tests::three_proxy_methods_require_identity_and_publish_actual_committed_state ... ok
+test oracle_assertion_client::tests::acquires_one_assertion_from_exact_path_and_source ... ok
+test oracle_assertion_client::tests::rejects_http_403_denial ... ok
+test oracle_assertion_client::tests::rejects_malformed_and_oversized_responses ... ok
+test oracle_assertion_client::tests::rejects_redirects_without_following_them ... ok
+test oracle_assertion_client::tests::rejects_signed_inner_ip_mismatch ... ok
+test oracle_assertion_client::tests::rejects_slow_response_with_bounded_timeout ... ok
+test oracle_assertion_client::tests::rejects_valid_base64_with_malformed_or_trailing_wire ... ok
+test oracle_assertion_crate_tests::corrupted_store_rejects_unknown_decoy_key_at_validate ... ok
+test openflow_canonical_tests::all_three_flow_methods_cross_canonical_admission_native_cas_and_child_fold ... ok
+test oracle_assertion_crate_tests::empty_trust_store_rejects_all ... ok
+test oracle_assertion_crate_tests::inverted_lifetime_fires_at_parse_step ... ok
+test oracle_assertion::tests::durable_replay_survives_validator_reopen ... ok
+test oracle_assertion::tests::identity_fields_derived_with_correct_contexts ... ok
+test oracle_assertion_crate_tests::rejection_variants_map_to_unauthenticated_tags ... ok
+test oracle_assertion::tests::ordering_full_pipeline_multifault ... ok
+test oracle_assertion::tests::trusted_decoy_binding_accepts_proxy_source_or_missing_connect_info ... ok
+test oracle_assertion::tests::validate_accepts_fully_valid_assertion ... ok
+test oracle_assertion::tests::validate_expiry_leeway_boundary ... ok
+test oracle_assertion_crate_tests::validate_rejects_inverted_lifetime ... ok
+test oracle_assertion_crate_tests::validator_state_is_per_serving_instance ... ok
+test ovsdb_observer::tests::only_present_compatible_seals_allow_complete_topology_publication ... ok
+test per_plugin_reflection::tests::test_get_for_plugin ... ok
+test per_plugin_reflection::tests::test_list_plugins ... ok
+test per_plugin_reflection::tests::test_register_and_list ... ok
+test per_plugin_reflection::tests::test_service_name_conversion ... ok
+test per_plugin_reflection::tests::test_unregister_plugin ... ok
+test plugin_grpc_gen::tests::test_create_frozen_services ... ok
+test plugin_grpc_gen::tests::test_generate_method_proto ... ok
+test plugin_grpc_gen::tests::test_get_services_for_plugin ... ok
+test plugin_grpc_gen::tests::test_list_methods ... ok
+test plugin_grpc_gen::tests::test_remove_services_for_plugin ... ok
+test plugin_grpc_gen::tests::test_service_name_conversion ... ok
+test proto_gen::tests::test_to_pascal_case ... ok
+test proto_gen::typed_map_proto_tests::legacy_export_preserves_object_layout_and_adds_typed_map_records ... ok
+test proxy_methods::tests::configure_start_bytes_reconfigure_and_stop_have_real_effects ... ok
+test oracle_assertion::tests::validate_rejects_future_issued_at_beyond_leeway ... ok
+test proxy_methods::tests::exact_start_retry_recovers_after_owner_restart_without_consuming_revision ... ok
+test proxy_methods::tests::failed_bind_preserves_config_and_restart_does_not_claim_running ... ok
+test oracle_assertion::tests::validate_rejects_lifetime_over_900s ... ok
+test schema_integer_arguments::tests::integer_boundaries_are_checked_and_native_u64_is_never_rounded ... ok
+test schema_integer_arguments::tests::nullable_nested_and_referenced_integers_preserve_exact_integer_shape ... ok
+test schema_loader::tests::should_load_schema_from_live_catalog ... ok
+test schema_loader::tests::should_reject_blob_without_catalog_manifest ... ok
+test schema_loader::tests::should_reject_direct_plugin_schema_file ... ok
+test schema_loader::tests::should_reload_schema_on_sighup ... ok
+test schema_router::tests::absent_public_policy_withholds_state_and_dbus_denies_access ... ok
+test schema_router::tests::bridge_dispatches_to_schema_engine_mutate ... ok
+test schema_router::tests::bridge_does_not_load_per_plugin_files_when_monolith_missing ... ok
+test schema_router::tests::bridge_exposes_all_declared_methods ... ok
+test schema_router::tests::bridge_exposes_all_declared_signals ... ok
+test oracle_assertion::tests::validate_rejects_missing_connect_info ... ok
+test schema_router::tests::bridge_registers_object_per_plugin_from_shm ... ok
+test schema_router::tests::bridge_reloads_on_manifest_hash_change ... ok
+test schema_router::tests::bridge_looks_up_method_decl_before_dispatch ... ok
+test schema_router::tests::dbus_property_reads_use_the_committed_snapshot ... ok
+test schema_router::tests::declared_but_unexposed_property_is_access_denied ... ok
+test schema_router::tests::dispatch_without_sender_principal_binding_fails_closed ... ok
+test schema_router::tests::empty_methods_rejects_all_invocations ... ok
+test schema_router::tests::hash_check_on_inbound_not_timer ... ok
+test schema_router::tests::identity_state_is_redacted_at_the_public_read_boundary ... ok
+test schema_router::tests::incomplete_projection_transaction_is_a_dbus_failure ... ok
+test schema_router::tests::invalid_args_rejected_before_mutate ... ok
+test oracle_assertion::tests::validate_rejects_replayed_nonce ... ok
+test schema_router::tests::invalid_public_policy_is_a_dbus_failure ... ok
+test schema_router::tests::missing_committed_property_is_null ... ok
+test schema_router::tests::missing_committed_state_is_an_explicit_empty_object ... ok
+test schema_router::tests::malformed_or_non_object_committed_state_is_a_dbus_failure ... ok
+test schema_router::tests::mutate_appends_event_chain_record ... ok
+test schema_router::tests::mutate_error_propagated_to_caller ... ok
+test schema_router::tests::mutate_receives_verbatim_json_args ... ok
+test oracle_assertion::tests::validate_rejects_revoked_principal ... ok
+test schema_router::tests::mutation_appended_before_dispatch_error ... ok
+test schema_router::tests::public_policy_type_drift_is_a_dbus_failure ... ok
+test schema_router::tests::null_required_capability_dispatched_without_capability ... ok
+test schema_router::tests::refresh_no_manifest_does_not_reload ... ok
+test schema_router::tests::reads_only_committed_projection_updates ... ok
+test oracle_assertion::tests::validate_rejects_source_ip_mismatch ... ok
+test oracle_assertion::tests::validate_rejects_unknown_principal ... ok
+test schema_router::tests::route_extracts_methods_and_signals_from_schema ... ok
+test oracle_assertion::tests::validate_rejects_when_registry_unavailable ... ok
+test schema_router::tests::set_property_remains_rejected ... ok
+test schema_router::tests::stale_route_cannot_read_state_after_sealed_membership_removal ... ok
+test schema_router::tests::stub_success_true_removed_from_call_path ... ok
+test schema_router::tests::sealed_catalog_change_wakes_state_consumers_once ... ok
+test schema_router::tests::unknown_method_rejected_without_dispatch ... ok
+test schema_router::tests::validation_uses_loaded_route_schema_not_per_call_file_read ... ok
+test sealed_schema_reader::tests::absent_manifest_and_directory_do_not_create_existence_or_paths ... ok
+test schema_router::tests::valid_args_pass_to_mutate ... ok
+test sealed_schema_reader::tests::malformed_headers_hashes_identity_and_descriptors_fail_closed ... ok
+test sealed_schema_reader::tests::pinned_reader_ignores_orphans_and_preserves_original_sections_without_writes ... ok
+test sealed_schema_reader::tests::real_dns_schema_keeps_canonical_keys_and_explicit_transport_names ... ok
+test oracle_assertion_crate_tests::cross_principal_assertion_ip_swap_matrix ... ok
+test sealed_schema_reader::tests::registration_requires_pinned_existence_and_exact_schema_without_writing ... ok
+test sealed_schema_reader::tests::sealed_method_metadata_keeps_exact_descriptor_bytes_and_replaces_old_methods ... ok
+test sealed_schema_reader::tests::structural_parser_rejects_overflow_overlap_and_wrong_pin ... ok
+test server::tests::default_server_loads_the_canonical_router_blob ... ok
+test server::tests::emqx_exhook_defaults_to_disabled_loopback ... ok
+test server::tests::env_free_server_startup_loads_the_canonical_router_blob ... ok
+test sealed_schema_reader::tests::historical_transport_name_manifest_requires_explicit_reseal_without_reader_aliases ... ok
+test oracle_assertion_crate_tests::leeway_equality_edges_are_exact ... ok
+test shared_socket::tests::bind_listen_backlog_and_accept_use_the_actual_incoming_transport ... ok
+test shared_socket::tests::close_refuses_to_unlink_a_replacement_socket ... ok
+test shared_socket::tests::failed_bind_setup_cleans_its_owned_inode_and_checks_generation_before_bind ... ok
+test shared_socket::tests::force_close_shuts_down_real_connections_and_nonforce_refuses_them ... ok
+test shared_socket::tests::cursor_boundaries_use_real_accept_events_and_reject_expired_history ... ok
+test shared_socket::tests::lease_is_exclusive_and_restart_recovers_only_matching_owned_stale_socket ... ok
+test shared_socket::tests::matching_record_does_not_authorize_removing_a_live_listener ... ok
+test shared_socket::tests::intentional_close_keeps_incoming_pending_and_rebind_resumes_same_acceptor ... ok
+test shared_socket::tests::unknown_files_symlinks_and_live_sockets_are_never_unlinked ... ok
+test state_stream::tests::child_paths_project_objects_without_exposing_scalar_members ... ok
+test state_stream::tests::path_glob_is_anchored ... ok
+test state_stream::tests::path_patterns_must_resolve_to_a_sealed_plugin_root ... ok
+test state_stream::tests::sealed_policy_controls_real_committed_child_snapshots ... ok
+test state_tree_fold::tests::descendant_insert_replace_and_delete_preserve_other_branches ... ok
+test state_tree_fold::tests::missing_deletion_does_not_fabricate_empty_state ... ok
+test state_tree_fold::tests::ovsdb_delta_path_is_rejected_until_it_has_a_row_fold_contract ... ok
+test state_tree_fold::tests::property_delete_and_root_delete_are_distinct ... ok
+test state_tree_fold::tests::rejects_wrong_root_traversal_and_scalar_descent ... ok
+test state_tree_fold::tests::related_field_updates_preserve_siblings_at_root_and_child ... ok
+test state_tree_fold::tests::root_whole_state_and_property_updates_preserve_siblings ... ok
+test state_tree_fold::tests::schema_migration_requires_an_explicit_owner_contract ... ok
+test state_tree_fold::tests::signals_and_method_arguments_never_become_state ... ok
+test tched_config_secret_policy::tests::broken_combinator_reference_fails_closed ... ok
+test tched_config_secret_policy::tests::intermediate_reference_secret_sibling_is_retained ... ok
+test tched_config_secret_policy::tests::local_references_use_json_pointer_escaping ... ok
+test tched_config_secret_policy::tests::natural_key_arrays_preserve_item_secret_classification_and_redaction ... ok
+test tched_config_secret_policy::tests::nullable_nonapplicable_branch_does_not_hide_typed_children ... ok
+test tched_config_secret_policy::tests::redaction_preserves_literal_dynamic_key_segments ... ok
+test tched_config_secret_policy::tests::redacts_declared_and_unknown_string_values_fail_closed ... ok
+test tched_config_secret_policy::tests::reference_siblings_and_target_combinators_cannot_hide_secrets ... ok
+test tched_config_secret_policy::tests::resolves_dynamic_map_secret_from_pinned_contract ... ok
+test tched_config_secret_policy::tests::resolves_secrets_in_the_pinned_v084_contract ... ok
+test tched_config_secret_policy::tests::root_local_reference_keeps_the_exact_self_contained_contract ... ok
+test tched_config_secret_policy::tests::unknown_non_string_scalar_rejects_the_snapshot ... ok
+test oracle_assertion_crate_tests::nonce_not_consumed_when_principal_check_fails ... ok
+test sealed_schema_reader::tests::reflection_reseal_missing_manifest_and_corrupt_pin_replace_advertisements ... ok
+test oracle_assertion_crate_tests::replay_cache_keyed_by_nonce_not_wire_bytes ... ok
+test tched_router_generation_native::tests::cancellation_while_waiting_is_cooperative ... ok
+test tched_router_generation_native::tests::cancellation_while_event_channel_is_saturated_finishes_cancelled ... ok
+test tched_router_generation_native::tests::rejects_approval_without_exposing_payload ... ok
+test tched_router_generation_native::tests::rejects_old_native_without_stateless_marker_before_prompt ... ok
+test tched_router_generation_native::tests::rejects_oversized_raw_text_frame ... ok
+test tched_router_generation_native::tests::rejects_malformed_chunk_content ... ok
+test tched_router_generation_native::tests::rejects_wrong_stateless_selection_before_prompt ... ok
+test tched_router_legacy_dispatch::tests::malformed_or_duplicate_native_tools_are_rejected ... ok
+test tched_router_legacy_dispatch::tests::native_tool_mapping_preserves_parameter_and_output_schemas ... ok
+test oracle_assertion_crate_tests::replay_cache_keyed_globally_by_nonce ... ok
+test tched_router_generation_native::tests::streams_only_visible_chunks_and_checks_handshake ... ok
+test tched_router_runtime::tests::a2a_text_artifact_is_extracted ... ok
+test tched_router_legacy_dispatch::tests::tools_adapter_reads_the_real_v084_http_envelope ... ok
+test tched_router_runtime::tests::config_http_fixture::mutations_are_bounded_and_read_back_after_effect ... ok
+test tched_router_generation_native::tests::bounded_escaped_terminal_matches_committed_deltas ... ok
+test tched_router_runtime::tests::config_http_fixture::patch_init_and_migrate_return_native_receipts_after_readback ... ok
+test tched_router_runtime::tests::config_paths_are_bounded_dotted_identifiers ... ok
+test tched_router_runtime::tests::configured_provider_catalog_is_derived_from_runtime_paths ... ok
+test tched_router_runtime::tests::configured_provider_catalog_rejects_missing_or_malformed_model_entries ... ok
+test tched_router_runtime::tests::conversation_history_is_forwarded_in_order ... ok
+test tched_router_runtime::tests::defense_redaction_preserves_public_values_and_masks_secret_leaves ... ok
+test tched_router_runtime::tests::mutation_response_failures_are_never_reported_before_effect ... ok
+test tched_router_runtime::tests::config_http_fixture::actual_patch_transport_rejects_dishonest_results_without_retry ... ok
+test tched_router_runtime::tests::paired_native_config_and_selection_commit_preserves_sibling_children ... ok
+test tched_router_runtime::tests::patch_paths_are_bounded_json_pointers ... ok
+test tched_router_runtime::tests::config_http_fixture::reads_use_native_shapes_and_pinned_secret_policy ... ok
+test tched_router_runtime::tests::patch_receipt_is_bound_to_ordered_operations_and_final_readback ... ok
+test tched_router_runtime::tests::patch_receipt_rejects_value_bearing_secret_and_wrong_count ... ok
+test tched_router_runtime::tests::provider_model_path_is_exactly_profile_scoped ... ok
+test tched_router_runtime::tests::runtime_endpoint_accepts_only_literal_loopback_http_origins ... ok
+test tched_router_runtime::tests::secret_write_guards_reject_placeholders_and_empty_values ... ok
+test tched_router_runtime::tests::selection_patch_tests_both_current_values_before_replacements ... ok
+test tched_router_runtime::tests::shared_gateway_transport_accepts_only_bounded_adapter_routes ... ok
+test tched_router_runtime::tests::single_field_selection_patches_test_before_replace ... ok
+test tracing::tests::should_generate_trace_id_when_absent ... ok
+test tracing::tests::should_stamp_trace_headers_on_response ... ok
+test oracle_assertion_crate_tests::replay_purge_edge_equals_acceptance_edge ... ok
+test ui_workspace_stream::tests::exact_selection_and_wire_preserve_false_zero_null_arrays_and_deleted_descendants ... ok
+test tched_router_runtime::tests::real_http_mutation_failures_preserve_uncertain_outcomes ... ok
+test tched_router_runtime::tests::oversized_chat_request_is_rejected_before_native_io ... ok
+test oracle_assertion_crate_tests::trust_store_rotation_is_load_once ... ok
+test register_key_unwritable_cozo_fails_clean ... ok
+test ui_workspace_stream_selection::tests::malformed_mixed_or_unbounded_selectors_fail_before_owner_lookup ... ok
+test ui_workspace_stream_selection::tests::private_mode_requires_explicit_workspace_path_and_never_a_bare_root ... ok
+test registry_mutations_are_audit_recorded ... ok
+test schema_router::tests::full_dispatch_pipeline_ordering ... ok
+test schema_router::tests::null_required_capability_allows_authenticated_caller ... ok
+test shared_socket::tests::observer_waits_for_native_accept_and_reports_actual_timeout ... ok
+test xray_methods::tests::concurrent_duplicate_adds_are_serialized_before_native_effects ... ok
+test xray_methods::tests::credential_and_tls_bounds_are_enforced_before_transport ... ok
+test xray_methods::tests::invalid_inputs_and_tls_keys_have_zero_native_requests ... ok
+test xray_methods::tests::malformed_native_account_response_prevents_user_mutation ... ok
+test schema_router::tests::required_capability_check_allows_granted ... ok
+test xray_methods::tests::native_errors_are_preserved_and_deadline_cancels_wait ... ok
+test xray_methods::tests::mismatched_missing_and_duplicate_user_targets_never_mutate ... ok
+test xray_methods::tests::vless_masked_uuid_alias_is_rejected_before_new_inbound ... ok
+test xray_methods::tests::tls_material_is_validated_then_encoded_inline_without_paths ... ok
+test schema_router::tests::required_capability_check_denies_ungranted ... ok
+test xray_methods::tests::add_inbounds_encode_real_receiver_and_protocol_configs ... ok
+test schema_router::tests::required_capability_check_rejects_wildcard_operator_grant ... ok
+test xray_methods::tests::add_and_remove_each_account_use_native_alter_inbound_envelopes ... ok
+test set_alias_cross_state_collision ... ok
+test web_ui_dispatch::tests::event_uses_exact_workspace_mutation_capability ... ok
+test tched_router_object_blob::tests::tched_router_blob_couples_dbus_schema_and_grpc_identity ... ok
+test ui_workspace_dispatch::tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned ... ok
+test web_ui_dispatch::tests::facade_plan_never_weakens_workspace_capability ... ok
+test tched_router_admission::tests::queued_calls_reject_reseal_and_grant_withdrawal_before_effect ... ok
+test ui_workspace_stream::tests::gallery_facades_read_only_the_verified_owners_committed_workspace ... ok
+test ui_workspace_stream::tests::queued_web_ui_event_rechecks_original_facade_seal_before_effect ... ok
+test ui_workspace_stream::tests::real_statesync_handlers_gate_owners_read_only_committed_children_and_rehydrate_lag ... ok
+test ui_workspace_stream::tests::web_ui_handle_event_commits_pinned_set_state_to_owners_private_shm ... ok
+
+test result: ok. 496 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 290.47s
+
+     Running unittests src/bin/dump-protos.rs (/srv/git/odbus/target/debug/deps/dump_protos-5de78556f56da99d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/op-decoy-network.rs (/srv/git/odbus/target/debug/deps/op_decoy_network-282b6c30ca1e3dc7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/op-grants-materializer.rs (/srv/git/odbus/target/debug/deps/op_grants_materializer-07ee920dab30bb62)
+
+running 3 tests
+test tests::rejects_wildcard_and_legacy_footprint_keys ... ok
+test tests::accepts_exact_principal_grants ... ok
+test tests::invalid_source_publishes_empty_fail_closed_projection ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/bin/op-grpc-bridge.rs (/srv/git/odbus/target/debug/deps/op_grpc_bridge-af843247b148a36f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/accountability_audit_trail.rs (/srv/git/odbus/target/debug/deps/accountability_audit_trail-caf887967089fbaa)
+
+running 7 tests
+test audit_methods_are_declared_in_the_plugin_schema ... ok
+test undeclared_method_is_rejected_and_its_attempt_remains_auditable ... ok
+test snowball_methods_require_the_initialized_shared_backend ... ok
+test query_events_filters_and_clamps_limit ... ok
+test verify_chain_reports_integrity ... ok
+test query_events_returns_real_audit_data_not_echo ... ok
+test audit_trail_persists_and_survives_a_restart ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.86s
+
+     Running tests/chain_event_broadcast.rs (/srv/git/odbus/target/debug/deps/chain_event_broadcast-db8649ef6e2703da)
+
+running 2 tests
+test dispatched_method_call_reaches_chain_subscribers ... ok
+test authoritative_change_reaches_chain_subscribers ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.41s
+
+     Running tests/exact_state_children.rs (/srv/git/odbus/target/debug/deps/exact_state_children-0457722bfb2d715d)
+
+running 1 test
+test protected_exact_grandchild_writes_preserve_siblings_and_reject_before_shm ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+     Running tests/grpc_speed_test.rs (/srv/git/odbus/target/debug/deps/grpc_speed_test-f2b9ccb2f890a8be)
+
+running 1 test
+test grpc_agent_to_agent_speed ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.23s
+
+     Running tests/json_render_dispatch.rs (/srv/git/odbus/target/debug/deps/json_render_dispatch-94c59e687c346f5b)
+
+running 1 test
+test current_seal_drives_catalog_and_policy_survives_engine_recreation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.08s
+
+     Running tests/large_language_model_dispatch.rs (/srv/git/odbus/target/debug/deps/large_language_model_dispatch-f2e9048767df0069)
+
+running 2 tests
+test missing_grant_or_invalid_session_stops_before_http ... ok
+test nested_target_absence_or_drift_stops_before_http ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.24s
+
+     Running tests/live_reflection_probe.rs (/srv/git/odbus/target/debug/deps/live_reflection_probe-4e4351384bdb8406)
+
+running 2 tests
+test cognitive_mcp_per_method_services_are_advertised ... ignored, requires a running bridge on 127.0.0.1:50051
+test cognitive_mcp_plugin_service_is_served_over_tonic_web ... ignored, requires a running bridge on 127.0.0.1:8090
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/native_method_contracts.rs (/srv/git/odbus/target/debug/deps/native_method_contracts-dff8480d8cb581f6)
+
+running 2 tests
+test required_scalar_presence_survives_native_wire ... ok
+test native_results_survive_generated_protobuf ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/negative_topology_gates.rs (/srv/git/odbus/target/debug/deps/negative_topology_gates-2125cafa9e46f18c)
+
+running 19 tests
+test documentation_gate_token_set_consistency ... ok
+test boundary_documentation_covers_external_families ... ok
+test grpc_service_scanner_detects_new_authored_service_package ... ok
+test op_xray_daemon_contains_no_identity_logic ... ok
+test retired_waypipe_is_not_a_build_or_proto_input ... ok
+test retired_standalone_adapters_are_not_build_or_proto_inputs ... ok
+test scanner_self_test_trips_on_forbidden_token ... ok
+test proto_inventory_matches_pinned_baseline ... ok
+test scan_root_non_vacuous ... ok
+test python_inventory_matches_pinned_baseline ... ok
+test identity_path_is_xray_agnostic ... ok
+test no_command_new_in_identity_paths ... ok
+test grpc_package_set_matches_pinned_baseline ... ok
+test grpc_service_package_set_matches_pinned_baseline ... ok
+test no_background_tasks_in_identity_path ... ok
+test forbidden_token_transport_binding_index_absent ... ok
+test op_identity_shuttle_absent ... ok
+test forbidden_token_wg_lan_absent ... ok
+test no_per_peer_openflow_identity_tagging ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.71s
+
+     Running tests/notebooklm_response_contracts.rs (/srv/git/odbus/target/debug/deps/notebooklm_response_contracts-535240d62a5840f0)
+
+running 5 tests
+test every_notebook_method_has_a_typed_native_response ... ok
+test notebook_get_preserves_emoji_sources_and_generated_rust_fields ... ok
+test asynchronous_query_responses_preserve_pending_and_completed_results ... ok
+test pinned_provider_objects_and_collections_encode_without_losing_fields ... ok
+test text_receipts_and_auth_probes_have_real_native_response_fields ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.22s
+
+     Running tests/oracle_assertion_e2e.rs (/srv/git/odbus/target/debug/deps/oracle_assertion_e2e-7f12df15e1079ac0)
+
+running 47 tests
+test battery_test_count_is_pinned ... ok
+test e2e_freshness_lifecycle ... ok
+test accepts_within_leeway_expired_assertion ... ok
+test e2e_empty_trust_store_fail_closed ... ok
+test built_in_client_forwards_authored_identity_and_preserves_grant_gate ... ok
+test e2e_missing_connect_info_fails_closed ... ok
+test denies_valid_assertion_without_capability_grant ... ok
+test e2e_full_trust_chain_generated_surface ... ok
+test e2e_per_principal_grant_isolation ... ok
+test e2e_assertion_precedence_over_legacy_session_headers ... ok
+test e2e_human_grants_same_mechanism ... ok
+test e2e_container_and_human_never_cross_authenticate ... ok
+test accepts_lifetime_exactly_900s ... ok
+test e2e_human_registration_anchors_session_genesis ... ok
+test built_in_client_acquires_oia1_from_decoy ... ok
+test e2e_alias_mutation_has_no_auth_effect ... ok
+test e2e_concurrent_multi_principal_interleaving ... ok
+test e2e_replay_nonce_remains_consumed_after_server_restart ... ok
+test e2e_revocation_durable_across_restart ... ok
+test e2e_revocation_tombstone_end_to_end ... ok
+test event_chain_rpc_rejects_missing_grants_and_unbacked_private_aliases ... ok
+test event_chain_rpc_stream_uses_engine_replays_and_rechecks_revocation ... ok
+test fixture_connect_info_matches_validator ... ok
+test generated_plugin_route_authenticates_registered_human ... ok
+test generated_plugin_route_preserves_integer_arguments ... ok
+test happy_path_registered_human_gated_call_over_tls ... ok
+test legacy_batch_preserves_verified_identity_for_every_nested_request ... ok
+test legacy_mutate_preserves_verified_identity_and_ignores_spoofed_actor ... ok
+test oracle_assertion_cannot_authenticate_unguarded_ovsdb_transact ... ok
+test oracle_assertion_cannot_write_unmapped_property ... ok
+test raw_patch_and_atomic_batch_reject_before_any_effect ... ok
+test registration_bootstrap_cannot_register_another_humans_key ... ok
+test registration_bootstrap_requires_grant ... ok
+test rejects_alias_substitution ... ok
+test rejects_bad_signature ... ok
+test rejects_container_key_substitution ... ok
+test rejects_duplicate_assertion_metadata ... ok
+test rejects_expired_assertion ... ok
+test rejects_malformed_assertion_metadata ... ok
+test rejects_not_yet_valid_assertion ... ok
+test rejects_over_long_ttl ... ok
+test rejects_replayed_nonce ... ok
+test rejects_revoked_human_key ... ok
+test rejects_source_ip_substitution ... ok
+test rejects_unknown_decoy_key ... ok
+test rejects_unknown_human_key ... ok
+test writable_property_set_without_target_capability_is_denied_before_effects ... ok
+
+test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.93s
+
+     Running tests/oscal_dispatch.rs (/srv/git/odbus/target/debug/deps/oscal_dispatch-8413cc49b9a25a07)
+
+running 1 test
+test sealed_dispatch_is_typed_scoped_and_durable_across_engine_recreation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.91s
+
+     Running tests/sealed_catalog_authority.rs (/srv/git/odbus/target/debug/deps/sealed_catalog_authority-7a9be1d28ad353a8)
+
+running 1 test
+test startup_restores_observations_without_publishing_schema_examples_or_resealing ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+     Running tests/session_genesis_grep_gates.rs (/srv/git/odbus/target/debug/deps/session_genesis_grep_gates-f85b670eff89363d)
+
+running 1 test
+test grep_gates ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.07s
+
+     Running tests/shm_state_tree.rs (/srv/git/odbus/target/debug/deps/shm_state_tree-bd94e827f024fd87)
+
+running 6 tests
+test children_merge_against_shm_and_parent_notifications_contain_the_complete_tree ... ok
+test method_arguments_and_unsealed_orphan_files_are_never_present_state ... ok
+test public_reads_ignore_a_prepared_but_uncommitted_working_mirror ... ok
+test private_backend_fields_stay_in_shm_and_out_of_state_notifications_and_observation_audit ... ok
+test failed_commit_changes_neither_state_mirror_nor_state_notifications ... ok
+test generic_identity_updates_cannot_bypass_the_durable_owner ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+
+     Running tests/tched_config_proto_contract.rs (/srv/git/odbus/target/debug/deps/tched_config_proto_contract-41a68f196781f831)
+
+running 2 tests
+test config_property_kind_path_and_nullable_fields_survive_both_descriptors ... ok
+test native_config_outputs_survive_generated_and_sealed_descriptors ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.46s
+
+     Running tests/tched_router_backing.rs (/srv/git/odbus/target/debug/deps/tched_router_backing-88bb84be46c4617f)
+
+running 2 tests
+test gemma_route_uses_the_exact_tched_router_resolve_contract ... ok
+test canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure has been running for over 60 seconds
+test canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 77.93s
+
+     Running tests/tched_router_integration.rs (/srv/git/odbus/target/debug/deps/tched_router_integration-a96d67d84f1beb18)
+
+running 3 tests
+test should_serve_schema_over_grpc_web ... ok
+test should_stream_reload_on_sighup ... ok
+test list_models_uses_the_audited_tched_router_method_dispatcher ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.26s
+
+     Running tests/tonic_tls_reflection.rs (/srv/git/odbus/target/debug/deps/tonic_tls_reflection-864a05474e2d74be)
+
+running 8 tests
+test tls_handshake_rejects_unknown_ca ... ok
+test domain_rpc_get_state_over_tls ... ok
+test tls_handshake_succeeds ... ok
+test list_plugins_over_tls ... ok
+test advertised_plugin_route_is_mounted_over_tls ... ok
+test health_check_over_tls ... ok
+test reflection_list_services_over_tls ... ok
+test reflection_file_descriptor_over_tls ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.88s
+
+     Running unittests examples/get_identity.rs (/srv/git/odbus/target/debug/examples/get_identity-a6ee423d9fcec1a3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/list_dbs_test.rs (/srv/git/odbus/target/debug/examples/list_dbs_test-bc39affbed3b7661)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/provision_container.rs (/srv/git/odbus/target/debug/examples/provision_container-9b8a657d11db25c4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/provision_identity.rs (/srv/git/odbus/target/debug/examples/provision_identity-fe8a04173f0c46ab)
+
+running 2 tests
+test tests::accepts_pubkey ... ok
+test tests::rejects_extra_arguments ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/test_dbus_passthrough.rs (/srv/git/odbus/target/debug/examples/test_dbus_passthrough-35fe749a3471cd72)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/test_registration.rs (/srv/git/odbus/target/debug/examples/test_registration-bc5642df948ada8b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/test_vendor_identity.rs (/srv/git/odbus/target/debug/examples/test_vendor_identity-2684b23ca586ad8e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/test_xray_get_stats.rs (/srv/git/odbus/target/debug/examples/test_xray_get_stats-38b916fc00f3e85b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_http-ab585f42d8f41dff)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_identity-afb3ddc305ee8aef)
+
+running 62 tests
+test oracle_assertion::tests::canonical_encoding_golden_vector ... ok
+test oracle_assertion::tests::empty_string_fields_roundtrip_byte_exactly ... ok
+test oracle_assertion::tests::encoding_is_deterministic ... ok
+test oracle_assertion::tests::from_wire_rejects_corrupt_interior_no_panic ... ok
+test oracle_assertion::tests::from_wire_rejects_truncated_and_malformed ... ok
+test oracle_assertion::tests::from_wire_rejects_trailing_bytes ... ok
+test oracle_assertion::tests::from_wire_rejects_wrong_magic ... ok
+test oracle_assertion::tests::decode_does_not_verify_parse_and_verify_are_separate ... ok
+test oracle_assertion::tests::length_prefixes_prevent_field_ambiguity ... ok
+test oracle_assertion::tests::wire_roundtrip_is_identity ... ok
+test oracle_assertion::tests::issue_populates_fields ... ok
+test registration::tests::generates_magic_token_with_requested_length ... ok
+test oracle_assertion::tests::wire_roundtrip_ipv6_and_boundaries ... ok
+test oracle_assertion::tests::ttl_hard_cap_boundary ... ok
+test recovery::tests::mnemonic_is_24_words ... ok
+test recovery::tests::derivation_is_deterministic ... ok
+test registration::tests::generates_wireguard_keypair ... ok
+test oracle_assertion::tests::issue_is_total_over_string_inputs ... ok
+test recovery::tests::mnemonic_round_trip_recovers_same_key ... ok
+test oracle_assertion::tests::zero_ttl_rejected ... ok
+test sealed_id::tests::sid1_rejects_tampering_and_trailing_bytes ... ok
+test sealed_id::tests::inline_ref_rejects_plugin_blob_and_padded_base64 ... ok
+test schema_bridge::tests::parses_and_canonicalizes_subid ... ok
+test oracle_assertion::tests::ttl_above_max_lifetime_rejected ... ok
+test session::tests::derive_principal_id_context_separated_from_session_id ... ok
+test session::tests::derive_session_id_is_deterministic_and_uuid_like ... ok
+test recovery::tests::different_seeds_differ ... ok
+test sealed_id::tests::sid1_round_trips_deterministically ... ok
+test session_genesis::tests::mint_genesis_deterministic ... ok
+test session_genesis::tests::mint_genesis_all_bytes ... ok
+test session_genesis::tests::mint_genesis_uniqueness ... ok
+test session_genesis::tests::native_sixteen_byte_chain_heads_are_bound_without_zero_padding_or_substitution ... ok
+test session::tests::derive_principal_id_is_deterministic_and_uuid_like ... ok
+test session::tests::session_proof_is_bound_to_the_canonical_session_id ... ok
+test session_genesis::tests::mint_genesis_different_pubkey ... ok
+test session_projection::tests::current_is_anchored_and_unexpired_regardless_of_power ... ok
+test session_projection::tests::anchored_requires_mint_inputs ... ok
+test identity_vault::tests::round_trip_user_record ... ok
+test session_projection::tests::expired_human_is_not_adopted_implicitly ... ok
+test session_projection::tests::duplicate_exact_session_ids_fail_closed ... ok
+test session_projection::tests::human_sled_is_adopted_past_a_current_service_sled ... ok
+test session_projection::tests::lone_human_sled_is_adopted_without_a_selector ... ok
+test session_projection::tests::multiple_human_sleds_remain_ambiguous ... ok
+test session_projection::tests::named_parked_sled_resolves_for_authentication ... ok
+test session_projection::tests::no_current_sessions_still_reports_not_found ... ok
+test session_projection::tests::parked_human_is_adopted_without_a_selector ... ok
+test session_projection::tests::service_principal_is_never_adopted_without_a_selector ... ok
+test session_projection::tests::selector_matches_only_session_handles ... ok
+test session_projection::tests::service_principal_still_resolves_when_named_explicitly ... ok
+test session_projection::tests::unlabelled_sled_is_not_adopted_without_a_selector ... ok
+test session_projection::tests::mcp_header_forwards_exact_sled_sealed_id_and_rejects_projection_drift ... ok
+test session::tests::test_wireguard_user_registration ... ok
+test session::tests::identity_vault_survives_reconstruction ... ok
+test oracle_assertion::tests::issue_sign_verify_roundtrip ... ok
+test session_projection::projection_read_tests::missing_or_invalid_private_projection_never_falls_back_to_public_credentials ... ok
+test session_projection::projection_read_tests::interrupted_identity_pair_is_rejected_until_the_prior_commit_is_restored ... ok
+test oracle_assertion::tests::issuance_nonces_are_unique ... ok
+test session_projection::projection_read_tests::credential_reader_waits_for_the_locked_identity_fold_to_commit ... ok
+test oracle_assertion::tests::tampered_signature_and_wrong_key_fail ... ok
+test oracle_assertion::tests::tampered_assertion_bytes_fail_verification ... ok
+test session::tests::test_session_creation ... ok
+test session::tests::test_session_touch ... ok
+
+test result: ok. 62 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.52s
+
+     Running unittests src/bin/op-decoy-issuer.rs (/srv/git/odbus/target/debug/deps/op_decoy_issuer-13d14e990802f34c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/op-identity-headers.rs (/srv/git/odbus/target/debug/deps/op_identity_headers-58fba683404b4a69)
+
+running 1 test
+test tests::selector_is_explicit_and_bounded_to_one_value ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_inspector-d6265fd863818e83)
+
+running 12 tests
+test gcloud::tests::test_gcloud_parser_creation ... ok
+test runit::tests::descriptions_are_readable_prose ... ok
+test runit::tests::discovers_the_supervisor_binaries ... ok
+test runit::regression_tests::does_not_invent_sv_as_a_command ... ok
+test runit::regression_tests::waiting_commands_are_flagged ... ok
+test runit::tests::parses_the_real_sv_man_page ... ok
+test runit::regression_tests::command_names_are_unique ... ok
+test runit::tests::expands_the_collapsed_signalling_line_into_one_command_each ... ok
+test runit::regression_tests::cross_referenced_command_names_survive_into_descriptions ... ok
+test gcloud::tests::test_parse_commands ... ok
+test gcloud::tests::test_parse_groups ... ok
+test gcloud::tests::test_parse_flags ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_introspection-5877cf7c20e5f799)
+
+running 2 tests
+test projection::tests::test_bus_type_display ... ok
+test indexer::tests::test_indexer_creation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_jsonrpc-73bafb502aa1c325)
+
+running 7 tests
+test ovsdb::tests::extract_uuid_set_supports_singleton_atom ... ok
+test ovsdb::tests::parse_json_response_falls_back_to_last_valid_line ... ok
+test ovsdb::tests::extract_uuid_set_supports_set_encoding ... ok
+test protocol::tests::test_request_serialization ... ok
+test protocol::tests::test_response_serialization ... ok
+test ovsdb::tests::parse_json_response_accepts_plain_json ... ok
+test ovsdb::tests::rpc_call_handles_response_without_trailing_newline ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_llm-2c0d2b9d6adee951)
+
+running 24 tests
+test assistant::tests::rewrite_response_swaps_provider_field ... ok
+test openclaw::tests::derives_ghostbridge_headers_only_from_an_anchored_session ... ok
+test gemini_cli::tests::test_format_prompt ... ok
+test assistant::tests::rewrite_models_swaps_branding ... ok
+test antigravity::tests::runtime_rejects_public_plaintext_and_unknown_provider ... ok
+test antigravity::tests::gemini_credentials_are_bound_to_the_google_endpoint ... ok
+test pty_bridge::tests::test_extract_device_code ... ok
+test factory::tests::parses_model_listing_response ... ok
+test openclaw::tests::parses_model_listing_response ... ok
+test pty_bridge::tests::test_extract_url ... ok
+test antigravity::tests::local_usage_fold_never_claims_quota_or_cost ... ok
+test pty_bridge::tests::test_pty_bridge_simple_command ... ok
+test salad::tests::from_env_reads_key ... ok
+test antigravity::tests::bridge_status_reads_bounded_native_models_without_fabricated_version ... ok
+test antigravity::tests::gemini_request_applies_safety_and_parses_native_usage ... ok
+test assistant::tests::default_model_is_assistant_prefix ... ok
+test salad::tests::resolves_empty_model_to_default ... ok
+test salad::tests::declared_model_is_qwen_default ... ok
+test factory::tests::defaults_from_constants ... ok
+test openclaw::tests::chat_with_request_serializes_tools_and_parses_tool_calls ... ok
+test openclaw::tests::list_models_falls_back_to_default_when_endpoint_fails ... ok
+test openclaw::tests::list_models_falls_back_to_default_when_endpoint_returns_non_json ... ok
+test assistant::tests::env_fallback_resolution ... ok
+test antigravity::tests::google_sdk_authorized_user_refresh_is_sanitized_and_uses_native_http ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_mcp-fdb86a4d8f8317c8)
+
+running 25 tests
+test protocol::tests::test_request_serialization ... ok
+test protocol::tests::test_response_success ... ok
+test protocol::tests::test_response_error ... ok
+test server::tests::should_reject_non_lifecycle_request_before_initialize ... ok
+test agents_server::tests::test_pascal_to_snake ... ok
+test external_client::tests::streamable_http_json_response_parses ... ok
+test external_client::tests::streamable_http_sse_without_json_fails_closed ... ok
+test external_client::tests::streamable_http_sse_response_parses_first_json_data_event ... ok
+test blob_schema::tests::require_plugin_id_rejects_blank ... ok
+test protocol::tests::test_request_meta_round_trip ... ok
+test blob_schema::tests::lists_five_blob_tools ... ok
+test server::tests::should_list_resource_templates ... ok
+test protocol::tests::test_response_meta_round_trip ... ok
+test tool_registry::descriptor_tests::missing_authority_is_recorded_as_absent_for_fail_closed_projection ... ok
+test tool_registry::descriptor_tests::safe_read_descriptor_registers_and_executes ... ok
+test tool_registry::descriptor_tests::duplicate_registration_is_rejected_without_replacement ... ok
+test server::tests::should_accept_initialized_notification_after_initialize ... ok
+test transport::http::tests::should_extract_bearer_token ... ok
+test blob_schema::tests::missing_plugin_is_an_error ... ok
+test transport::http::tests::validator_with_no_entries_rejects_everything ... ok
+test transport::http::tests::shape_check_accepts_pubkey_and_uuid ... ok
+test transport::http::tests::ct_eq_matches_only_identical_inputs ... ok
+test transport::http::tests::validator_accepts_listed_token_and_rejects_others ... ok
+test blob_schema::tests::catalog_reads_manifest_without_rehash ... ok
+test external_client::tests::streamable_http_start_retries_supervised_provider_restart ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.03s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_mcp_aggregator-ebbb05f403ea45f5)
+
+running 28 tests
+test client::tests::test_mcp_request_creation ... ok
+test config::tests::test_resolve_env_var ... ok
+test compact::tests::test_compact_mode_config_default ... ok
+test config::tests::test_tool_prefix ... ok
+test client::tests::test_tool_prefix_stripping ... ok
+test config::tests::test_claude_detection ... ok
+test config::tests::test_gemini_cli_detection ... ok
+test config::tests::test_unknown_client_default ... ok
+test config::tests::test_cursor_detection ... ok
+test groups::tests::test_presets_under_limit ... ok
+test groups::tests::test_granular_groups ... ok
+test config::tests::test_upstream_server_tool_filtering ... ok
+test config::tests::test_config_builder ... ok
+test aggregator::tests::test_aggregator_empty_init ... ok
+test compact::tests::test_create_compact_tools ... ok
+test aggregator::tests::test_aggregator_creation ... ok
+test compact::tests::test_compact_mode_summary ... ok
+test client::tests::should_normalize_transport_urls ... ok
+test cache::tests::test_cache_insert_and_get ... ok
+test cache::tests::test_remove_server ... ok
+test cache::tests::test_cache_stats ... ok
+test groups::tests::test_domains ... ok
+test profile::tests::test_wildcard_matching ... ok
+test profile::tests::test_profile_filtering ... ok
+test groups::tests::test_elevated_requires_private ... ok
+test groups::tests::test_restricted_requires_localhost ... ok
+test profile::tests::test_max_tools_limit ... ok
+test cache::tests::test_cache_expiry ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_network-186a46bef32de664)
+
+running 56 tests
+test controller::native_tests::native_ovs_exact_add_modify_delete_and_recovery_readback ... ignored, runs installed OVS binaries with a private dummy datapath
+test controller::tests::test_port_desc_request_asks_for_all_ports ... ok
+test controller::tests::test_flow_mod_delete_all ... ok
+test controller::tests::test_flow_mod_add_length ... ok
+test controller::flow_verify::tests::native_description_requires_exact_cookie_match_actions_and_valid_lengths ... ok
+test btrfs::tests::dedicated_mount_verification_rejects_invalid_uuid_before_io ... ok
+test ovs_capabilities::tests::test_kernel_module_check ... ok
+test openflow_translate::tests::add_uses_the_declared_table ... ok
+test openflow_translate::tests::port_mac_resolves_from_the_discovered_hw_addr_map ... ok
+test ovs_capabilities::tests::test_counter_excuses ... ok
+test openflow_translate::tests::delete_is_strict_and_scoped_to_the_exact_flow ... ok
+test openflow_translate::tests::delete_without_cookie_does_not_filter_by_cookie ... ok
+test openflow_translate::tests::rejects_the_reserved_all_tables_sentinel ... ok
+test ovs_capabilities::tests::test_excuses_to_llm_context ... ok
+test openflow_translate::tests::packet_type_syntax_is_validated_before_it_is_refused ... ok
+test ovs_error::tests::test_needs_ovs ... ok
+test ovs_error::tests::test_netlink_error_message ... ok
+test openflow_translate::tests::unknown_port_mac_is_an_error_not_a_looser_flow ... ok
+test ovs_netlink::tests::test_dump_flows ... ignored
+test ovs_netlink::tests::test_list_datapaths ... ignored
+test ovs_netlink::tests::test_list_vports ... ignored
+test ovs_error::tests::test_error_suggestions ... ok
+test ovs_netlink::tests::test_vport_type_roundtrip ... ok
+test openflow_translate::tests::netmaker_ptap_flow_translates_to_encap_flow ... ok
+test controller::flow_verify::tests::native_rejection_is_not_success_even_after_barrier ... ok
+test ovs_netlink::tests::test_vport_type_conversion ... ok
+test ovs_error::tests::test_from_netlink_error ... ok
+test controller::flow_verify::tests::native_wire_requires_matching_barrier_and_actual_readback ... ok
+test ovsdb::tests::extract_uuid_atom_works ... ok
+test ovsdb::tests::extract_uuid_set_multiple ... ok
+test ovsdb::tests::extract_uuid_set_single ... ok
+test plugin::tests::test_default_ovsdb_config ... ok
+test ovsdb::tests::sanitize_ref_replaces_special_chars ... ok
+test proxmox::tests::test_token_auth_header ... ok
+test proxmox::tests::test_create_request_serialization ... ok
+test plugin::tests::test_parse_network_config ... ok
+test ovsdb::tests::extract_uuid_atom_named_uuid_works ... ok
+test unixctl::tests::blank_env_yields_no_entries ... ok
+test rtnetlink::tests::route_selector_handles_default_and_disambiguators ... ok
+test rtnetlink::tests::route_selector_requires_unique_match_before_delete ... ok
+test unixctl::tests::rejects_non_numeric_vlan ... ok
+test unixctl::tests::parses_bridge_port_vlan_mac ... ok
+test unixctl::tests::rejects_truncated_mac ... ok
+test unixctl::tests::rejects_non_hex_octet ... ok
+test unixctl::tests::uppercase_mac_is_normalised ... ok
+test wireguard_kernel::tests::kernel_backend_effect_and_readback_in_isolated_netns ... ok
+test rovs_proxy::monitor::tests::malformed_and_unsolicited_response_never_replace_snapshot_with_empty_data ... ok
+test rovs_proxy::monitor::tests::native_monitor_hydrates_then_coalesces_complete_rows_and_deletes ... ok
+test rovs_proxy::monitor::tests::wrong_subscription_unknown_method_and_wrong_protocol_terminate_without_state ... ok
+test ovs_capabilities::tests::test_llm_context_generation ... ok
+test ovs_capabilities::tests::test_capabilities_detect ... ok
+test rovs_proxy::monitor::tests::idle_has_no_poll_and_last_receiver_drop_closes_native_connection ... ok
+test rovs_proxy::monitor::tests::disconnect_is_terminal_unavailable_not_empty_snapshot_or_reconnect ... ok
+test dbus_tls::tests::actual_dbus_over_mutual_tls_preserves_opaque_metadata ... ok
+test dbus_tls::tests::wrong_server_name_and_untrusted_client_are_rejected ... ok
+test rovs_proxy::monitor::tests::malformed_rows_private_columns_and_size_limits_are_rejected ... ok
+
+test result: ok. 52 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 1.14s
+
+     Running unittests src/bin/op-of-controller.rs (/srv/git/odbus/target/debug/deps/op_of_controller-b8769634cb63a966)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/op-ovsbr0-setup.rs (/srv/git/odbus/target/debug/deps/op_ovsbr0_setup-12e188d82fd2c8d0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/op-rtnetlink-init.rs (/srv/git/odbus/target/debug/deps/op_rtnetlink_init-74844121e6362bed)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_plugin_lint-1a6a4ebe84fdf0ad)
+
+running 7 tests
+test introspect::tests::file_with_fields_is_sealed_schema ... ok
+test repomix::tests::extracts_struct_fields_from_repomix_xml ... ok
+test gaps::tests::antigravity_delegates_gemini_cli_paths ... ok
+test binary::tests::parses_antigravity_go_style_root_help ... ok
+test binary::tests::parses_clap_commands_and_flags ... ok
+test emit::tests::emits_methods_and_fields_from_mini_plugin ... ok
+test repomix::tests::identifies_toml_yaml_sql_proto_graphql ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running unittests src/main.rs (/srv/git/odbus/target/debug/deps/op_plugin_lint-5fbdad46648b1706)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/audit_tests.rs (/srv/git/odbus/target/debug/deps/audit_tests-5b5c0bef4d8f1920)
+
+running 5 tests
+test bad_plugin_flags_core_contract_gaps ... ok
+test bad_plugin_hints_port_range_enhancement ... ok
+test good_plugin_has_no_failures ... ok
+test coverage_noop_without_introspect ... ok
+test introspect_file_flags_sdk_elements_missing_from_plugin ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_plugins-3a45d03fb44a8e76)
+
+running 487 tests
+test canonical::tests::test_constants ... ok
+test canonical::tests::test_is_canonical_plugin_path ... ok
+test canonical::tests::test_plugin_interface ... ok
+test canonical::tests::test_sanitize_plugin_name ... ok
+test canonical::tests::test_plugin_child_path ... ok
+test canonical::tests::test_plugin_path ... ok
+test default_registry::tests::test_resolve_requested_plugin_name ... ok
+test default_registry::tests::test_alias_paths_are_resolved ... ok
+test plugin::tests::plugin_capabilities_is_reexport_from_op_state_store ... ok
+test plugin::tests::reexported_plugin_capabilities_has_four_bool_fields ... ok
+test plugin::tests::reexported_plugin_capabilities_serializes_four_keys ... ok
+test registry::tests::should_generate_only_canonical_plugin_paths ... ok
+test canonical::tests::test_normalize_plugin_path ... ok
+test canonical::tests::test_extract_plugin_name ... ok
+test plugin::tests::handle_command_is_deprecated ... ok
+test plugin::tests::dispatch_method_accepts_serde_json_value ... ok
+test default_registry::tests::test_load_plugin_from_canonical_projection_path ... ok
+test service_def::tests::generates_runit_run_script_with_chpst ... ok
+test plugin::tests::dispatch_method_default_impl_returns_error ... ok
+test state_plugins::adc::tests::compatibility_surface_rejects_input_and_propagates_provider_errors ... ok
+test plugin::tests::reexported_plugin_capabilities_has_no_access_control_fields ... ok
+test state_plugins::adc::tests::compatibility_surface_returns_the_provider_validated_contract ... ok
+test default_registry::tests::test_retired_plugins_are_not_loadable_or_advertised ... ok
+test state_plugins::adc::tests::compatibility_surface_has_a_bounded_provider_deadline ... ok
+test state_plugins::antigravity::tests::generic_lifecycle_never_returns_a_false_receipt ... ok
+test default_registry::tests::test_unknown_plugin_auto_creates_review_draft ... ok
+test state_plugins::adc::tests::method_schema_has_typed_input_and_output ... ok
+test state_plugins::adc::tests::all_subids_are_valid ... ok
+test state::tests::test_state_change_hash ... ok
+test state::tests::test_desired_state_hash ... ok
+test state_plugins::agent_config::tests::all_subids_are_valid ... ok
+test state_plugins::btrfs_plugin::tests::aggregate_byte_counts_reject_overflow ... ok
+test state_plugins::antigravity_chat::tests::generic_lifecycle_never_returns_a_false_receipt ... ok
+test state_plugins::antigravity::tests::all_subids_are_valid ... ok
+test state_plugins::btrfs_plugin::tests::delete_provider_error_is_not_misreported_as_absence ... ok
+test state_plugins::btrfs_plugin::tests::device_membership_uses_provider_identity_across_path_aliases ... ok
+test state_plugins::btrfs_plugin::tests::idle_balance_has_no_fabricated_progress ... ok
+test state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend ... ok
+test state_plugins::agent_config::tests::schema_is_schemars_seeded_and_typed ... ok
+test state_plugins::btrfs_plugin::tests::invalid_arguments_are_rejected_before_any_effect ... ok
+test default_registry::tests::test_auto_load_config_does_not_control_registration ... ok
+test state_plugins::btrfs_plugin::tests::missing_postcondition_and_backend_failures_are_errors ... ok
+test state_plugins::btrfs_plugin::tests::subvolume_limit_is_based_on_observed_whole_filesystem_count ... ok
+test state_plugins::antigravity_chat::tests::all_subids_are_valid ... ok
+test state_plugins::cognitive_mcp::tests::bridge_owned_plugin_is_available_without_a_service_definition ... ok
+test default_registry::tests::test_default_plugin_registry ... ok
+test state_plugins::common::oscal::category_alias_tests::aliases_resolve_to_their_oscal_category ... ok
+test state_plugins::common::oscal::category_alias_tests::every_alias_resolves_to_a_real_oscal_category ... ok
+test state_plugins::cognitive_mcp::tests::state_plugin_cannot_apply_service_configuration ... ok
+test state_plugins::common::oscal::category_alias_tests::non_aliased_categories_pass_through_untouched ... ok
+test state_plugins::common::oscal::tests::category_required_fields_match_agents_md ... ok
+test state_plugins::common::oscal::category_alias_tests::an_aliased_category_is_accepted_in_a_subid ... ok
+test state_plugins::common::oscal::tests::invalid_subids_fail ... ok
+test state_plugins::config::tests::all_subids_are_valid ... ok
+test state_plugins::common::oscal::tests::valid_subids_pass ... ok
+test state_plugins::config::tests::schema_is_schemars_seeded_and_typed ... ok
+test state_plugins::config::tests::should_publish_plugin_owned_config_schema ... ok
+test state_plugins::cozo::methods::tests::archive_type_parser_rejects_programs_and_validates_native_values ... ok
+test state_plugins::cognitive_mcp::tests::all_subids_are_valid ... ok
+test state_plugins::btrfs_plugin::tests::schema_and_dispatch_cover_the_same_twelve_methods ... ok
+test state_plugins::cognitive_mcp::tests::schema_excludes_retired_standalone_service_controls ... ok
+test state_plugins::config::tests::runtime_config_methods_round_trip_arbitrary_json ... ok
+test state_plugins::cozo::methods::tests::vector_codec_preserves_nested_bit_words_and_rejects_unsafe_native_tags ... ok
+test state_plugins::cron::tests::global_state_example_matches_contract ... ok
+test state_plugins::agent_config::tests::runtime_agent_methods_round_trip_and_reject_unknown ... ok
+test state_plugins::cron::tests::unknown_and_cross_variant_create_fields_fail ... ok
+test state_plugins::ctl_plane_chatbot::tests::all_subids_are_valid ... ok
+test state_plugins::cozo::methods::tests::malformed_later_relation_is_rejected_before_any_restore_write ... ok
+test state_plugins::ctl_plane_chatbot::tests::generic_lifecycle_hooks_never_claim_durable_config_effects ... ok
+test state_plugins::cozo::methods::tests::metadata_is_checked_again_inside_the_write_transaction ... ok
+test state_plugins::cron::tests::retained_methods_are_exact_and_typed ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::completed_chat_episode_binds_identity_and_content_hash ... ok
+test state_plugins::antigravity_chat::tests::schema_is_schemars_seeded_and_typed ... ok
+test state_plugins::cozo::methods::tests::archives_report_unrepresentable_metadata_and_reject_schema_drift ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::cosine_similarity_is_bounded_and_rejects_invalid_vectors ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::malformed_episode_and_unknown_input_are_rejected ... ok
+test state_plugins::antigravity::tests::state_schema_contains_only_native_or_durable_observations ... ok
+test state_plugins::antigravity::tests::schema_is_schemars_seeded_and_typed ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::significance_rule_is_exact_and_has_no_storage_side_effect ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::config_schema_rejects_unimplemented_policy_values ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::absent_config_remains_absent_then_revision_cas_is_exact ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::vectorization_completion_requires_one_exact_dimension_vector ... ok
+test state_plugins::cozo::methods::tests::archives_are_unique_immutable_confined_and_digest_verified ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::vectorization_plan_uses_typed_episode_and_redacts_pii_text ... ok
+test state_plugins::datastore::tests::lifecycle_hooks_never_fabricate_success ... ok
+test state_plugins::ctl_plane_chatbot::tests::complete_config_fields_are_a_valid_partial_root_without_fake_runtime_state ... ok
+test state_plugins::ctl_plane_chatbot::tests::v3_methods_are_typed_and_pure_classification_is_idempotent ... ok
+test state_plugins::datastore::tests::five_method_contract_is_typed_and_read_only ... ok
+test state_plugins::decoy_network::wireguard_owner::tests::aggregate_projection_preserves_siblings_and_reports_known_absence ... ok
+test state_plugins::decoy_network::wireguard_owner::tests::all_native_methods_execute_in_isolated_network_namespace ... ok
+test state_plugins::cozo::methods::tests::import_preserves_triggers_and_rolls_back_every_relation_on_native_failure ... ok
+test state_plugins::decoy_network::wireguard_owner::tests::ignored_kernel_updates_fail_exact_readback ... ok
+test state_plugins::decoy_network::wireguard_owner::tests::interface_addresses_preserve_dual_stack_host_bits ... ok
+test state_plugins::decoy_network::wireguard_owner::tests::validation_rejects_escape_names_noncanonical_keys_bad_cidrs_and_dns_endpoints ... ok
+test state_plugins::decoy_network::wireguard_owner::tests::wg_opdbus_uses_same_owner_and_preserves_anna_identity ... ok
+test state_plugins::dnsresolver::tests::manager_errors_are_propagated ... ok
+test state_plugins::decoy_network::wireguard_owner::tests::six_wireguard_methods_apply_and_return_sanitized_readback ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::unsupported_legacy_config_can_be_replaced_through_revision_cas ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::same_value_cas_advances_revision_without_claiming_content_change ... ok
+test state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::unsupported_reserved_policies_are_rejected_before_revision_cas ... ok
+test state_plugins::decoy_network::wgcf_owner::tests::rejected_registration_does_not_connect ... ok
+test state_plugins::embedding_model::methods::tests::credential_origin_and_config_validation_fail_before_persistence ... ok
+test state_plugins::cozo::methods::tests::all_seven_methods_execute_against_the_supplied_native_handle ... ok
+test state_plugins::embedding_model::methods::tests::vectors_require_exact_cardinality_dimensions_indices_and_finite_numbers ... ok
+test state_plugins::embedding_model::tests::legacy_voyage_consumer_rejects_other_protocols_and_vector_spaces ... ok
+test state_plugins::decoy_network::wgcf_owner::tests::update_rejects_name_and_license_when_native_readback_does_not_match ... ok
+test state_plugins::embedding_model::methods::tests::openai_compatible_models_and_embedding_support_optional_dimensions ... ok
+test state_plugins::embedding_model::methods::tests::ollama_uses_native_tags_and_embed_shapes ... ok
+test state_plugins::embedding_model::methods::tests::all_five_methods_use_committed_voyage_configuration_and_real_vectors ... ok
+test state_plugins::embedding_model::methods::tests::unsupported_protocol_options_and_empty_inputs_do_not_call_provider ... ok
+test state_plugins::emqx::tests::broker_event_signal_has_typed_metadata_payload_and_event_subid ... ok
+test state_plugins::emqx::tests::declared_endpoints_are_local_and_mcp_gateway_is_absent ... ok
+test state_plugins::emqx::tests::exhook_parser_accepts_only_the_pinned_authenticated_shape ... ok
+test state_plugins::emqx::tests::exhook_parser_rejects_https_without_exact_mtls_material ... ok
+test state_plugins::emqx::tests::hook_selection_rejects_partial_or_unknown_sets ... ok
+test state_plugins::emqx::tests::lifecycle_inputs_cannot_select_a_service ... ok
+test state_plugins::emqx::tests::malformed_inventory_fails_closed_instead_of_becoming_empty ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::completed_chat_episode_preserves_supported_large_chat_text ... ok
+test state_plugins::emqx::tests::method_contracts_preserve_reads_writes_subids_and_idempotence ... ok
+test state_plugins::emqx::tests::secret_files_never_enter_declared_state ... ok
+test state_plugins::emqx::tests::unknown_method_fails_without_fallback_echo ... ok
+test state_plugins::endpoint::tests::all_subids_are_valid ... ok
+test state_plugins::emqx::tests::schema_is_standalone_deterministic_and_complete ... ok
+test state_plugins::endpoint::tests::schema_is_schemars_seeded_and_typed ... ok
+test state_plugins::fail2ban::tests::methods_are_typed_and_names_match_keys ... ok
+test state_plugins::fail2ban_methods::tests::native_fixture_covers_ban_unban_status_and_explicit_reload_error ... ok
+test state_plugins::fail2ban_methods::tests::preflight_rejects_container_memo_aliases_and_cycles ... ok
+test state_plugins::fail2ban_methods::tests::preflight_rejects_excessive_nesting_without_decoding ... ok
+test state_plugins::emqx::native_tests::configure_hooks_sends_fixed_mtls_shape_and_verifies_readback ... ok
+test state_plugins::fail2ban_methods::tests::validates_jail_and_ip_before_connecting ... ok
+test state_plugins::emqx::native_tests::native_inventory_policy_violations_fail_closed ... ok
+test state_plugins::emqx::native_tests::native_auth_and_lifecycle_rejections_fail_without_false_success ... ok
+test state_plugins::endpoint::tests::registration_lookup_and_removal_use_committed_state ... ok
+test state_plugins::embedding_model::methods::tests::redirects_and_provider_errors_do_not_forward_credentials_or_echo_bodies ... ok
+test state_plugins::emqx::native_tests::lifecycle_methods_use_fixed_dbus_members_and_observe_status ... ok
+test state_plugins::freedesktop::tests::property_contract_requires_canonical_target_and_native_json_value ... ok
+test state_plugins::freedesktop::tests::test_path_normalization ... ok
+test state_plugins::full_system::tests::test_capture_system_info ... ok
+test state_plugins::freedesktop::tests::test_canonical_paths ... ok
+test state_plugins::freedesktop::tests::test_freedesktop_plugin_creation ... ok
+test state_plugins::gcloud_adc::tests::failure_classes_remain_distinct_and_unprobed ... ok
+test state_plugins::gcloud_adc::tests::input_and_provider_errors_are_reported ... ok
+test state_plugins::freedesktop::tests::test_registered_interfaces ... ok
+test state_plugins::freedesktop::tests::test_path_validation ... ok
+test state_plugins::gemma_brain::methods::tests::invalid_or_stale_registration_never_mutates_taxonomy ... ok
+test state_plugins::gcloud_adc::tests::validated_status_contains_no_credential_fields ... ok
+test state_plugins::gemma_brain::methods::tests::registered_taxonomy_drives_deterministic_classification_and_intent ... ok
+test state_plugins::gcloud_adc::tests::all_subids_are_valid ... ok
+test state_plugins::gcloud_adc::tests::method_schema_has_typed_input_and_output ... ok
+test state_plugins::gcloud_adc::tests::provider_probe_has_a_bounded_deadline ... ok
+test state_plugins::embedding_model::methods::tests::bounded_timeout_and_malformed_json_are_provider_errors ... ok
+test state_plugins::decoy_network::wgcf_owner::tests::all_eight_methods_use_native_readback_match_schema_and_never_project_secrets ... ok
+test state_plugins::emqx::native_tests::retained_read_methods_use_authenticated_native_readback ... ok
+test state_plugins::gemma_brain::workspace::production_tests::invalid_active_props_and_forged_owner_fail_before_any_domain_write ... ok
+test state_plugins::gemma_brain::workspace::production_tests::malformed_private_domain_values_do_not_escape_in_error_chains ... ok
+test state_plugins::cozo::methods::tests::archive_recreates_typed_relations_and_survives_persistent_reopen ... ok
+test state_plugins::ctl_plane_chatbot_methods::tests::singleton_config_reopens_from_the_same_durable_row ... ok
+test state_plugins::gemma_brain::workspace::production_tests::empty_rebind_checks_exact_document_revision_and_never_relabels_artifacts ... ok
+test state_plugins::gemma_brain::workspace::production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings ... ok
+test state_plugins::gemma_brain::workspace::production_tests::history_requires_explicit_terminal_deletion_before_rebind ... ok
+test state_plugins::gemma_brain::workspace::production_tests::pinned_event_binding_commits_exact_state_with_revision_cas ... ok
+test state_plugins::gemma_brain::workspace::tests::catalog_changed_failure_requires_an_actual_contract_change ... ok
+test state_plugins::gemma_brain::workspace::tests::complete_is_atomic_and_projection_omits_raw_owner_and_prompt ... ok
+test state_plugins::gemma_brain::workspace::tests::durable_recovery_returns_exact_document_revision_and_retained_projection ... ok
+test state_plugins::gemma_brain::workspace::tests::catalog_change_allows_truthful_failure_and_retained_deletion_without_rehash ... ok
+test state_plugins::gemma_brain::workspace::tests::input_bounds_fail_before_creating_a_document ... ok
+test state_plugins::gemma_brain::workspace::tests::owner_hash_is_length_prefixed_and_domain_separated ... ok
+test state_plugins::gemma_brain::workspace::tests::deletion_is_revision_checked_and_clears_job_reference ... ok
+test state_plugins::gemma_brain::workspace::tests::failed_validation_does_not_complete_job_or_insert_spec ... ok
+test state_plugins::gemma_brain::workspace::tests::interrupted_nonterminal_job_is_marked_without_reconstructing_prompt ... ok
+test state_plugins::gemma_brain::workspace::tests::ownership_is_exact_for_principal_and_session ... ok
+test state_plugins::gemma_brain::workspace::tests::successful_completion_receipt_cannot_be_rewritten_as_publication_failure ... ok
+test state_plugins::gemma_brain::workspace::tests::stale_revision_and_invalid_catalog_spec_leave_state_unchanged ... ok
+test state_plugins::ghostbridge::tests::current_state_has_defaults ... ok
+test state_plugins::ghostbridge::tests::all_subids_are_valid ... ok
+test state_plugins::ghostbridge::tests::every_declared_method_has_a_domain_dispatcher ... ok
+test state_plugins::ghostbridge::tests::undeclared_method_is_rejected ... ok
+test state_plugins::hardware::tests::all_inventory_methods_use_typed_fixture_and_filter_devices ... ok
+test state_plugins::ghostbridge::tests::public_schema_accessor_returns_ghostbridge_schema ... ok
+test state_plugins::hardware::tests::all_subids_are_valid ... ok
+test state_plugins::hardware::tests::invalid_native_inventory_is_rejected_before_publication ... ok
+test state_plugins::hardware::tests::native_byte_counts_are_converted_to_kibibytes ... ok
+test state_plugins::hardware::tests::observed_dispatch_pairs_output_with_the_same_complete_inventory ... ok
+test state_plugins::gemma_brain::workspace::tests::taxonomy_is_durable_projected_and_genesis_scoped ... ok
+test state_plugins::gemma_brain::workspace::production_tests::pure_committed_reads_ignore_newer_durable_rows_and_validate_flat_envelope ... ok
+test state_plugins::human_principal::tests::all_subids_are_valid ... ok
+test state_plugins::hardware::tests::schema_method_keys_match_declared_names ... ok
+test state_plugins::hardware::tests::default_and_actual_inventory_satisfy_the_public_policy ... ok
+test state_plugins::human_principal::tests::human_principal_subids ... ok
+test state_plugins::human_principal::tests::human_principal_discoverable_through_inventory ... ok
+test state_plugins::human_principal::tests::schema_has_method_surface ... ok
+test state_plugins::identity_sled::metadata::tests::missing_malformed_or_unknown_class_inputs_fail_instead_of_defaulting_to_empty ... ok
+test state_plugins::identity_sled::metadata::tests::only_existing_scalar_metadata_survives_opaque_fields_and_future_additions ... ok
+test state_plugins::identity_sled::metadata::tests::legacy_genesis_alias_is_normalized_without_creating_a_credential ... ok
+test state_plugins::identity_sled::tests::generic_state_hooks_cannot_claim_identity_verification_or_recovery ... ok
+test state_plugins::identity_sled::tests::record_format_is_three ... ok
+test state_plugins::identity_sled::tests::hashed_footprint_only_in_alias ... ok
+test state_plugins::identity_sled::tests::schema_content_hash_is_stable_hex ... ok
+test state_plugins::identity_sled::tests::schema_content_hash_drift ... ok
+test state_plugins::human_principal::tests::method_side_effects_and_capabilities ... ok
+test state_plugins::identity_sled::tests::v2_backward_compat ... ok
+test state_plugins::identity_sled::tests::all_subids_are_valid ... ok
+test state_plugins::identity_sled::tests::v3_fields_present ... ok
+test state_plugins::incus::tests::identity_overlay_instance_roundtrips_serde_and_simd_json ... ok
+test state_plugins::incus::tests::identity_session_power_requests_are_typed_and_path_safe ... ok
+test state_plugins::incus::tests::test_instances_equivalent_detects_config_and_device_changes ... ok
+test state_plugins::incus::tests::parse_instance_list_builds_typed_devices ... ok
+test state_plugins::incus::transport_tests::accepts_chunked_json ... ok
+test state_plugins::incus::transport_tests::closed_event_transport_does_not_replace_the_last_snapshot ... ok
+test state_plugins::incus::transport_tests::create_sends_type_restrictions_and_root_device_in_one_native_operation ... ok
+test state_plugins::incus::transport_tests::completed_mutation_with_failed_readback_is_an_honest_error ... ok
+test state_plugins::incus::transport_tests::dedicated_outputs_are_non_ack_contracts ... ok
+test state_plugins::incus::transport_tests::dispatch_rejects_unknown_and_malformed_calls_before_transport ... ok
+test state_plugins::incus::transport_tests::does_not_follow_redirects ... ok
+test state_plugins::incus::transport_tests::exec_preserves_argv_and_returns_exit_status_and_captured_output ... ok
+test state_plugins::gemma_brain::workspace::tests::active_jobs_are_never_pruned_at_capacity ... ok
+test state_plugins::incus::transport_tests::device_methods_handle_root_and_preserve_unknown_siblings ... ok
+test state_plugins::incus::transport_tests::invalid_names_and_inputs_never_reach_a_socket ... ok
+test state_plugins::incus::transport_tests::forced_delete_stops_first_and_accounts_for_ephemeral_deletion ... ok
+test state_plugins::incus::transport_tests::lifecycle_subscription_precedes_snapshot_and_events_replace_complete_root ... ok
+test state_plugins::incus::transport_tests::lifecycle_methods_send_native_actions_and_await_completion ... ok
+test state_plugins::incus::transport_tests::malformed_and_oversized_events_do_not_replace_the_last_snapshot ... ok
+test state_plugins::incus::transport_tests::modify_merges_updates_and_preserves_native_fields_with_etag ... ok
+test state_plugins::incus::transport_tests::rejects_http_500 ... ok
+test state_plugins::incus::transport_tests::rejects_oversized_content_length_before_body ... ok
+test state_plugins::incus::transport_tests::provider_operation_and_exec_log_paths_cannot_escape_the_target_api ... ok
+test state_plugins::gemma_brain::workspace::production_tests::provider_independent_record_and_revision_survive_private_store_reopen ... ok
+test state_plugins::incus::transport_tests::provider_errors_pending_operations_and_etag_conflicts_are_not_success ... ok
+test state_plugins::incus::transport_tests::represented_mutation_returns_complete_sorted_native_readback ... ok
+test state_plugins::identity_sled::tests::v2_outputs_and_bounded_inputs_match_runtime_receipts ... ok
+test state_plugins::incus::transport_tests::snapshot_and_delete_wait_for_provider_completion ... ok
+test state_plugins::incus::transport_tests::snapshot_method_does_not_fabricate_unmodeled_state ... ok
+test state_plugins::incus::transport_tests::snapshot_parser_rejects_missing_required_and_lossy_devices ... ok
+test state_plugins::incus_device::tests::nic_with_dotted_keys_round_trips ... ok
+test state_plugins::incus_device::tests::none_device_is_keyless ... ok
+test state_plugins::incus_device::tests::proxy_round_trips_through_string_map ... ok
+test state_plugins::identity_sled::tests::schema_has_method_surface ... ok
+test state_plugins::incus_device::tests::named_device_renders_device_as_oneof_union ... ok
+test state_plugins::gemma_brain::workspace::tests::committed_workspace_survives_reopen ... ok
+test state_plugins::incus::transport_tests::timeout_rejects_incomplete_response ... ok
+test state_plugins::json_render::canvas_profile::tests::actual_seal_retains_source_checked_profile_and_required_nullable_props ... ok
+test state_plugins::json_render::canvas_profile::tests::all_static_component_contracts_accept_exact_implemented_props ... ok
+test state_plugins::json_render::catalog_v019::tests::pinned_button_schema_preserves_nullable_and_required_semantics ... ok
+test state_plugins::json_render::catalog_v019::tests::pinned_import_has_exact_component_set_and_closed_required_props ... ok
+test state_plugins::json_render::canvas_profile::tests::rejects_reference_catalog_and_hidden_shell_recursion_and_runtime_features ... ok
+test state_plugins::json_render::canvas_profile::tests::set_state_event_is_resolved_from_the_pinned_binding ... ok
+test state_plugins::json_render::canvas_profile::tests::graph_and_json_limits_apply_before_unbounded_render_work ... ok
+test state_plugins::incus::transport_tests::rejects_truncated_content_length_response ... ok
+test state_plugins::incus::transport_tests::rejects_truncated_chunked_response ... ok
+test state_plugins::json_render::methods::tests::malformed_injected_snapshot_is_rejected ... ok
+test state_plugins::json_render::methods::tests::malformed_inputs_and_unsupported_renderer_fail_before_write ... ok
+test state_plugins::json_render::methods::tests::projection_state_merges_the_committed_policy ... ok
+test state_plugins::json_render::methods::tests::policy_persists_reopens_and_gates_catalog_and_prompt ... ok
+test state_plugins::gemma_brain::workspace::tests::terminal_job_retention_reuses_capacity_and_keeps_specs ... ok
+test state_plugins::json_render::tests::all_subids_are_valid ... ok
+test state_plugins::json_render::tests::schema_declares_expected_methods ... ok
+test state_plugins::json_render::validation_bounds::tests::bounds_depth_before_recursive_serialization_and_counts_bytes ... ok
+test state_plugins::json_render::validation_bounds::tests::rejects_hidden_disconnected_cycles_and_bounded_map_exponential_expansion ... ok
+test state_plugins::keypair::agent::tests::empty_inventory_is_distinct_from_failure_and_malformed_packets ... ok
+test state_plugins::keypair::agent::tests::native_agent_inventory_retains_public_key_and_fingerprint ... ok
+test state_plugins::keypair::agent::tests::oversized_frame_is_rejected_before_allocation ... ok
+test state_plugins::keypair::tests::all_subids_are_valid ... ok
+test state_plugins::keypair::tests::schema_is_schemars_seeded_and_typed ... ok
+test state_plugins::keyring::tests::secret_service_failure_is_propagated ... ok
+test state_plugins::keyring::tests::secret_service_fixture_returns_collection_and_default ... ok
+test state_plugins::keyring::tests::secret_service_missing_default_alias_is_none ... ok
+test state_plugins::keyring::tests::test_capabilities ... ok
+test state_plugins::keyring::tests::test_keyring_plugin_creation ... ok
+test state_plugins::json_render::methods::tests::sealed_projection_seed_reconstructs_the_manifest_snapshot ... ok
+test state_plugins::gemma_brain::workspace::production_tests::canonical_workspace_schema_owns_private_children_and_all_method_dtos ... ok
+test state_plugins::large_language_model::tests::stream_resolves_to_the_canonical_private_job_owner ... ok
+test state_plugins::large_language_model_methods::tests::derived_reads_use_the_target_state_without_an_llm_state_store ... ok
+test state_plugins::large_language_model_methods::tests::malformed_or_extra_inputs_never_produce_a_target_plan ... ok
+test state_plugins::large_language_model_methods::tests::malformed_target_results_fail_closed ... ok
+test state_plugins::fail2ban_methods::tests::rejects_provider_error_truncated_oversized_and_unknown_values ... ok
+test state_plugins::gemma_brain::workspace::tests::aggregate_read_limit_rejects_before_workspace_decode ... ok
+test state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire ... ok
+test state_plugins::json_render::methods::tests::exact_component_schema_and_graph_integrity_are_enforced ... ok
+test state_plugins::mail_server::native_owner::tests::committed_state_renders_exact_postfix_and_dovecot_inputs_and_preserves_maildir ... ok
+test state_plugins::mail_server::native_owner::tests::explicit_mail_owner_must_match_prepared_root_before_config_effects ... ok
+test state_plugins::mail_server::native_owner::tests::all_nine_methods_cross_dbus_and_match_the_sealed_typed_contract ... ok
+test state_plugins::mail_server::native_owner::tests::showq_protocol_is_parsed_without_invoking_postqueue ... ok
+test state_plugins::mail_server::native_owner::tests::validation_rejects_unsafe_config_tokens_and_plaintext_passwords ... ok
+test state_plugins::mcp::methods::tests::patch_count_is_bounded ... ok
+test state_plugins::json_render::methods::tests::graph_rejects_self_cycles_and_disconnected_multi_node_cycles ... ok
+test state_plugins::mcp::methods::tests::server_path_requires_exact_root_and_segments ... ok
+test state_plugins::large_language_model::tests::facade_has_no_provider_or_model_state_authority ... ok
+test state_plugins::mcp::tests::all_subids_are_valid ... ok
+test state_plugins::json_render::methods::tests::graph_bounds_expanded_dag_cost_but_allows_bounded_shared_children ... ok
+test state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema ... ok
+test state_plugins::memory_methods::tests::compaction_errors_are_not_reported_as_completion ... ok
+test state_plugins::memory_methods::tests::exact_context_is_required_and_other_sessions_cannot_read_entries ... ok
+test state_plugins::gemma_brain::workspace::production_tests::workspace_state_retains_stable_map_keys_with_exact_numeric_nullable_record_contracts ... ok
+test state_plugins::memory_methods::tests::retained_crud_methods_enforce_capacity_readonly_and_stable_ids ... ok
+test state_plugins::memory_plugin::tests::schema_has_typed_name_matched_methods ... ok
+test state_plugins::net::tests::all_subids_are_valid ... ok
+test state_plugins::net::tests::apply_executes_complete_plan_and_returns_observed_postconditions ... ok
+test state_plugins::net::tests::bridge_delete_uses_ovsdb_membership_without_name_heuristics ... ok
+test state_plugins::net::tests::ethernet_requires_an_existing_physical_link ... ok
+test state_plugins::net::tests::invalid_ipv4_is_rejected_during_pure_preflight ... ok
+test state_plugins::net::tests::partial_failure_reports_completed_native_operations ... ok
+test state_plugins::net::tests::port_owned_by_another_bridge_fails_before_mutation ... ok
+test state_plugins::net::tests::preflight_rejects_every_unsupported_field_before_backend ... ok
+test state_plugins::notebooklm::tests::all_subids_are_valid ... ok
+test state_plugins::notebooklm::tests::schema_uses_jacob_method_names ... ok
+test state_plugins::oci::tests::all_seven_methods_use_real_incus_uds_contracts ... ok
+test state_plugins::oci::tests::force_stop_reports_ephemeral_instance_deletion ... ok
+test state_plugins::oci::tests::lifecycle_rejects_non_oci_before_mutation ... ok
+test state_plugins::oci::tests::rejects_unsupported_and_invalid_inputs_before_socket_access ... ok
+test state_plugins::oci::tests::run_reports_created_instance_when_start_operation_fails ... ok
+test state_plugins::oci::tests::schema_declares_exact_seven_typed_methods_without_bundle_or_loopback ... ok
+test state_plugins::openflow_obfuscation::tests::lifecycle_rejects_without_a_canonical_backend ... ok
+test state_plugins::openflow_obfuscation::tests::test_flow_command_generation ... ok
+test state_plugins::openflow_obfuscation::tests::test_level0_no_obfuscation ... ok
+test state_plugins::openflow_obfuscation::tests::test_level1_security ... ok
+test state_plugins::openflow_obfuscation::tests::test_level2_pattern_hiding ... ok
+test state_plugins::openflow_obfuscation::tests::test_level3_advanced ... ok
+test state_plugins::oscal_subid_registry::method_contract_tests::retained_methods_have_typed_v2_contracts ... ok
+test state_plugins::memory_methods::tests::persistent_cozo_executes_real_store_compaction_without_invented_bytes ... ok
+test state_plugins::oscal_subid_registry_methods::tests::changed_catalog_and_wrong_context_reject_before_durable_write ... ok
+test default_registry::tests::test_loadable_plugins_publish_schema ... ok
+test state_plugins::oscal_subid_registry_methods::tests::read_fails_closed_when_catalog_changes_during_result_construction ... ok
+test state_plugins::large_language_model_methods::tests::stream_generate_requires_real_typed_input_and_nested_start_grant ... ok
+test state_plugins::oscal_subid_registry_methods::tests::subtree_annotations_are_distinct_bindings_and_invalid_subids_fail_closed ... ok
+test state_plugins::ovsdb_bridge::topology::tests::actual_uuid_hierarchy_preserves_bonds_optional_scalars_zero_and_false ... ok
+test state_plugins::ovsdb_bridge::topology::tests::public_policy_keeps_nested_topology_and_scrubs_opaque_configuration ... ok
+test state_plugins::ovsdb_bridge::topology::tests::unresolved_or_duplicate_refs_and_invalid_native_types_never_become_empty_topology ... ok
+test state_plugins::ovsdb_bridge::topology::tests::whole_snapshot_replacement_removes_actual_children_including_last_bridge ... ok
+test state_plugins::packagekit::tests::all_six_methods_use_u64_and_ordered_package_finished ... ok
+test state_plugins::oscal_subid_registry_methods::tests::register_is_cas_scoped_to_existing_sealed_subids_and_survives_reopen ... ok
+test state_plugins::pcidecl::tests::enumerate_applies_typed_normalized_filters_and_returns_records ... ok
+test state_plugins::pcidecl::tests::exact_lookup_distinguishes_missing_from_provider_error ... ok
+test state_plugins::pcidecl::tests::malformed_addresses_and_filters_reject_before_provider ... ok
+test state_plugins::pcidecl::tests::schema_has_only_two_typed_read_methods ... ok
+test state_plugins::plugin_scaffold_helpers::declared_category_tests::a_declared_category_beats_inference ... ok
+test state_plugins::plugin_scaffold_helpers::declared_category_tests::an_unusable_declared_category_is_ignored_not_emitted ... ok
+test state_plugins::plugin_scaffold_helpers::declared_category_tests::the_domain_terms_real_plugins_declare_are_usable ... ok
+test state_plugins::plugin_scaffold_helpers::derive_schema_subid_tests::accepts_internal_categories_not_just_oscal_ones ... ok
+test state_plugins::plugin_scaffold_helpers::derive_schema_subid_tests::is_deterministic_because_the_result_feeds_the_schema_hash ... ok
+test state_plugins::plugin_scaffold_helpers::derive_schema_subid_tests::kebab_cases_underscored_plugin_names ... ok
+test state_plugins::plugin_scaffold_helpers::derive_schema_subid_tests::takes_the_category_the_plugins_own_fields_use ... ok
+test state_plugins::plugin_scaffold_helpers::tests::materializes_seed_state_from_schema_defaults_examples_and_types ... ok
+test state_plugins::procfs::collection_field_tests::mounts_is_an_array_of_typed_rows ... ok
+test state_plugins::procfs::collection_field_tests::net_dev_counters_are_integers_not_strings ... ok
+test state_plugins::procfs::tests::actual_observed_state_projects_only_declared_public_telemetry ... ok
+test state_plugins::procfs::tests::all_seven_methods_dispatch_from_one_typed_fixture ... ok
+test state_plugins::procfs::tests::all_subids_are_valid ... ok
+test state_plugins::procfs::tests::invalid_native_snapshots_are_rejected_before_publication ... ok
+test state_plugins::procfs::tests::native_bytes_are_converted_to_kibibytes_at_the_output_boundary ... ok
+test state_plugins::procfs::tests::observed_dispatch_keeps_method_output_separate_from_plugin_state ... ok
+test state_plugins::procfs::tests::plugin_and_schema_versions_match_v2_memory_contract ... ok
+test state_plugins::oscal_subid_registry_methods::tests::sealed_lookup_resolve_and_pages_preserve_canonical_method_keys ... ok
+test state_plugins::procfs::tests::process_lookup_rejects_invalid_pid_and_represents_missing_process ... ok
+test state_plugins::mcp::methods::tests::server_property_is_allowed_and_unknown_fields_are_rejected ... ok
+test state_plugins::procfs::typed_field_tests::loadavg_exposes_its_real_subfields ... ok
+test state_plugins::procfs::typed_field_tests::retyped_fields_are_no_longer_any ... ok
+test state_plugins::project::tests::acl_does_not_infer_membership_or_elevate_reader ... ok
+test state_plugins::project::tests::invitations_are_target_bound_expiring_and_single_use ... ok
+test state_plugins::project::tests::project_ceiling_never_grants_authority ... ok
+test state_plugins::procfs::typed_field_tests::uptime_exposes_the_supported_integer_seconds ... ok
+test state_plugins::procfs::tests::schema_method_keys_match_declared_names ... ok
+test state_plugins::proxy_server::fail_closed_tests::generic_lifecycle_never_returns_a_false_receipt ... ok
+test state_plugins::project::tests::schema_classifies_reads_and_writes_with_stable_subids ... ok
+test state_plugins::project::tests::schema_has_no_public_tenant_catalog_or_generic_success_results ... ok
+test state_plugins::qdrant::tests::collection_names_cannot_escape_http_paths ... ok
+test state_plugins::qdrant::tests::endpoint_rejects_credentials_and_redirect_targets ... ok
+test state_plugins::rtnetlink::tests::invalid_route_is_rejected_before_any_netlink_call ... ok
+test state_plugins::rtnetlink::tests::route_and_link_contracts_preserve_disambiguators ... ok
+test state_plugins::rtnetlink::tests::validates_kernel_request_fields_without_touching_host ... ok
+test state_plugins::rovs_commands::tests::internal_port_method_is_typed_and_oscal_authorized ... ok
+test state_plugins::packagekit::tests::errors_failed_exit_malformed_and_missing_finished_fail ... ok
+test state_plugins::runtime_documents::tests::cancelled_waiter_keeps_writer_owned_until_exact_receipt_is_committed ... ok
+test state_plugins::mcp::tests::should_publish_plugin_owned_mcp_schema ... ok
+test state_plugins::runtime_documents::tests::concurrent_updates_preserve_every_committed_change ... ok
+test state_plugins::runtime_documents::tests::expected_revision_rejects_before_domain_closure_and_native_write ... ok
+test state_plugins::runtime_documents::tests::durable_recovery_preserves_visible_revision_without_reexecuting_update ... ok
+test state_plugins::runtime_documents::tests::uncertain_backend_receipt_cannot_become_successful_domain_result ... ok
+test state_plugins::runtime_documents::tests::independent_wrappers_cannot_overwrite_the_same_revision_or_rerun_closures ... ok
+test state_plugins::schema_contract::tests::test_aliases_resolve_from_registry ... ok
+test state_plugins::runtime_documents::tests::committed_documents_survive_reopen_and_failed_changes ... ok
+test state_plugins::schema_contract::tests::test_all_plugins_have_contract_schema ... ok
+test state_plugins::schema_contract::tests::test_contract_shape_has_required_sections ... ok
+test state_plugins::runtime_documents::tests::configured_owner_reopens_same_data_and_restricts_existing_public_directories ... ok
+test state_plugins::schema_contract::tests::test_uniform_index_paths_use_absolute_json_paths ... ok
+test state_plugins::schema_contract::tests::test_recovery_priority_is_bounded ... ok
+test state_plugins::schema_renderer_methods::tests::profile_is_the_actual_static_canvas_not_reference_catalog ... ok
+test state_plugins::qdrant::tests::all_declared_methods_use_typed_http_contracts ... ok
+test state_plugins::schema_contract::tests::test_dependency_targets_are_known_plugins ... ok
+test state_plugins::schemars_adapter::explicit_exact_record_tests::opted_in_map_record_preserves_real_schemars_format_and_nullable_children ... ok
+test state_plugins::schemars_adapter::tests::ingests_root_and_field_subids ... ok
+test state_plugins::schemars_adapter::tests::reports_nested_mismatch ... ok
+test state_plugins::schemars_adapter::tests::validate_subid_accepts_valid_and_rejects_invalid ... ok
+test state_plugins::schemars_adapter::tests::walks_array_of_objects_with_constraints ... ok
+test state_plugins::schemars_adapter::typed_map_adapter_tests::actual_schemars_maps_keep_stable_typed_children_and_match_blob_adapter ... ok
+test state_plugins::service::methods::tests::invalid_requests_never_reach_lifecycle_and_rejections_propagate ... ok
+test state_plugins::service::methods::tests::lifecycle_wire_calls_and_observed_receipts ... ok
+test state_plugins::sessdecl::tests::all_state_subids_are_valid ... ok
+test state_plugins::schemars_adapter::explicit_exact_record_tests::exact_reference_preserves_authored_definitions_beside_finite_tagged_view ... ok
+test state_plugins::sessdecl::tests::declaration_uses_verified_owner_and_is_idempotent ... ok
+test state_plugins::sessdecl::tests::invalid_or_caller_asserted_identity_inputs_are_rejected ... ok
+test state_plugins::sessdecl::tests::listing_isolated_by_exact_principal_and_session ... ok
+test state_plugins::sessdecl::tests::schema_declares_only_the_two_backed_methods ... ok
+test state_plugins::shared_unix_socket::tests::retained_methods_have_typed_outputs_and_matching_names ... ok
+test state_plugins::mcp::methods::tests::server_patch_targets_native_router_and_retains_args ... ok
+test state_plugins::shared_unix_socket_methods::tests::all_methods_return_durable_actual_metadata ... ok
+test state_plugins::snowball_methods::tests::rejects_missing_invalid_and_unsafe_requests ... ok
+test state_plugins::shared_unix_socket_methods::tests::invalid_inputs_do_not_commit ... ok
+test state_plugins::snowball_methods::tests::seven_methods_use_persistent_snapshot_state ... ok
+test state_plugins::software::tests::all_subids_are_valid ... ok
+test state_plugins::software::tests::all_four_methods_use_exact_packagekit_transactions ... ok
+test state_plugins::software::tests::ambiguous_and_malformed_candidates_never_reach_mutation ... ok
+test state_plugins::sessdecl::tests::declarations_survive_store_reopen ... ok
+test state_plugins::software::tests::backend_error_is_not_reported_as_completed_install ... ok
+test state_plugins::software::tests::package_selection_requires_one_valid_exact_candidate ... ok
+test state_plugins::tched_router::config_v3_contract_tests::patch_contract_accepts_only_supported_typed_property_operations ... ok
+test state_plugins::tched_router::config_v3_contract_tests::property_contract_has_stable_protobuf_fields_for_both_variants ... ok
+test state_plugins::software::tests::exact_version_and_architecture_select_before_install ... ok
+test state_plugins::tched_router::generation::tests::completion_cannot_replace_the_committed_incremental_text ... ok
+test state_plugins::tched_router::generation::tests::bounded_fragment_batch_is_one_revision_with_original_order_and_count ... ok
+test state_plugins::tched_router::generation::tests::forged_owner_and_corrupt_retained_rows_fail_closed ... ok
+test state_plugins::tched_router::generation::tests::invalid_batches_and_cancelled_jobs_leave_the_durable_revision_unchanged ... ok
+test state_plugins::tched_router::generation::tests::owner_scope_siblings_and_job_revisions_survive_transitions ... ok
+test state_plugins::large_language_model::tests::forwarded_capabilities_are_derived_from_target_methods ... ok
+test state_plugins::tched_router::generation::tests::selectors_are_reused_but_storage_domains_and_inputs_stay_separate ... ok
+test state_plugins::tched_router::generation::tests::stale_cancel_active_delete_and_bounds_leave_the_durable_row_unchanged ... ok
+test state_plugins::tched_router::official_schema_tests::imported_contract_is_not_a_stub ... ok
+test state_plugins::tched_router::official_schema_tests::imported_contract_records_the_binary_version ... ok
+test state_plugins::tched_router::official_schema_tests::sealed_method_schema_carries_real_section_fields ... ok
+test state_plugins::tched_router::tests::all_subids_are_valid ... ok
+test state_plugins::tched_router::tests::declared_routes_do_not_invent_factory_routing_or_availability ... ok
+test state_plugins::tched_router::generation::tests::reopen_recovery_interrupts_unfinished_work_without_replaying_prompt ... ok
+test state_plugins::mcp::tests::native_method_contracts_are_cloned_before_facade_renames ... ok
+test state_plugins::schema_renderer_methods::tests::validates_transport_names_independently_and_requires_workspace_dispatch ... ok
+test state_plugins::tched_router::generation::tests::escaped_output_aggregate_budget_fits_document_and_rejects_before_append ... ok
+test state_plugins::json_render::methods::tests::graph_rejects_excessive_depth_and_edge_count_iteratively ... ok
+test state_plugins::tched_router::tests::undeclared_method_is_rejected ... ok
+test state_plugins::tched_router_config_surface::backing_tests::all_declared_config_methods_have_one_explicit_backing ... ok
+test state_plugins::tched_router_config_surface::backing_tests::native_and_plugin_owned_sections_are_not_conflated ... ok
+test state_plugins::tched_router_contract::tests::derived_section_keeps_recursive_dependencies_without_unrelated_definitions ... ok
+test state_plugins::tched_router::tests::generated_method_docs_include_input_and_output_field_descriptions ... ok
+test state_plugins::schema_renderer_methods::tests::renders_only_components_declared_by_the_pinned_canvas_profile ... ok
+test state_plugins::tched_router_legacy_methods::tests::assignments_preserve_siblings_and_are_durable_receipts ... ok
+test state_plugins::tched_router::tests::generic_selection_writes_bind_to_existing_capability_gated_methods ... ok
+test state_plugins::tched_router_legacy_methods::tests::duplicate_hint_is_rejected_instead_of_first_match_wins ... ok
+test state_plugins::tched_router_contract::tests::every_plugin_section_is_self_contained_and_validates_without_external_files ... ok
+test default_registry::tests::test_plugins_have_capability_closure ... ok
+test state_plugins::tched_router_legacy_methods::tests::concurrent_role_writes_preserve_siblings ... ok
+test state_plugins::tched_router_legacy_methods::tests::malformed_or_ambiguous_inputs_fail_before_durable_write ... ok
+test state_plugins::unix_socket::tests::schema_is_typed_and_keeps_only_listener_inputs ... ok
+test state_plugins::tched_router_legacy_methods::tests::runtime_reads_and_state_use_the_same_observation ... ok
+test state_plugins::tched_router_legacy_methods::tests::every_declared_role_updates_only_its_owned_field ... ok
+test state_plugins::tched_router::tests::native_config_uses_exact_private_imported_contract ... ok
+test state_plugins::users::tests::schema_is_typed_and_preserves_capability_ids ... ok
+test state_plugins::users::tests::modify_noop_and_partial_failure_are_honest ... ok
+test state_plugins::web_ui::tests::generic_lifecycle_hooks_never_claim_workspace_effects ... ok
+test state_plugins::web_ui::tests::test_default_capabilities ... ok
+test state_plugins::web_ui::tests::test_default_identity ... ok
+test state_plugins::users::tests::unsupported_old_fields_and_missing_users_are_distinct ... ok
+test state_plugins::web_ui::tests::test_default_tunables ... ok
+test state_plugins::web_ui::tests::test_property_schema ... ok
+test state_plugins::web_ui::tests::test_immutable_paths ... ok
+test state_plugins::web_ui_methods::tests::completion_preserves_exact_workspace_shape_and_rejects_fake_ack ... ok
+test state_plugins::web_ui::tests::all_subids_are_valid ... ok
+test state_plugins::wg_opdbus::tests::canonical_service_persona_is_immutable ... ok
+test state_plugins::users::tests::all_four_methods_use_accountsservice_and_typed_readback ... ok
+test state_plugins::wg_opdbus::tests::retired_netmaker_and_config_path_fields_are_absent ... ok
+test state_plugins::tched_router_legacy_methods::tests::partial_assignment_document_does_not_invent_defaults ... ok
+test state_plugins::workflows_plugin::tests::all_subids_are_valid ... ok
+test state_plugins::xray::tests::all_subids_are_valid ... ok
+test state_plugins::wg_opdbus::tests::state_schema_is_an_exact_aggregate_while_method_outputs_remain_per_interface ... ok
+test state_plugins::wgcf::tests::eight_typed_methods_never_project_secrets ... ok
+test state_plugins::xray::tests::method_surface_contains_only_backed_commander_operations ... ok
+test state_plugins::tched_router::tests::public_schema_accessor_returns_tched_router_schema ... ok
+test state_plugins::xray::tests::policy_level_keys_and_null_values_keep_the_exact_derived_contract ... ok
+test state_plugins::tched_router_legacy_methods::tests::assignments_survive_durable_reopen ... ok
+test default_registry::tests::test_discovered_plugins_publish_schema ... ok
+test state_plugins::schema_renderer_methods::tests::gallery_targets_reject_foreign_owners_and_preserve_stale_artifact_admission ... ok
+test state_plugins::tched_router::config_v3_contract_tests::config_contract_break_bumps_plugin_version ... ok
+test state_plugins::tched_router::tests::every_declared_method_has_a_domain_dispatcher ... ok
+test state_plugins::mail_server::native_owner::tests::owner_outputs_are_consumed_by_native_postfix_and_dovecot ... ok
+test state_plugins::web_ui_methods::tests::facade_reuses_exact_target_contracts_and_capabilities ... ok
+test state_plugins::json_render::methods::tests::runtime_fields_share_exported_validation_and_renderer_actions ... ok
+test state_plugins::web_ui_methods::tests::plans_exact_workspace_calls_and_rejects_legacy_or_event_inputs ... ok
+test state_plugins::oscal_subid_registry_methods::tests::every_compiled_canonical_schema_builds_the_bounded_sealed_index ... ok
+test state_plugins::large_language_model_methods::tests::plans_exact_target_methods_and_nested_capabilities ... ok
+test default_registry::tests::all_plugin_subids_are_valid_and_unique ... ok
+
+test result: ok. 487 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 51.24s
+
+     Running unittests src/bin/gen_tched_router_config_surface.rs (/srv/git/odbus/target/debug/deps/gen_tched_router_config_surface-e8baed25cb90e8d3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/op-mail-admin.rs (/srv/git/odbus/target/debug/deps/op_mail_admin-0460e7d4662b03c0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/opblob.rs (/srv/git/odbus/target/debug/deps/opblob-48a9bd147716448f)
+
+running 3 tests
+test copy_catalog_tests::invalid_source_leaves_prior_destination_byte_exact ... ok
+test copy_catalog_tests::identical_and_symlink_aliased_roots_fail_without_changes ... ok
+test copy_catalog_tests::changed_catalog_and_removals_commit_exact_source_bytes ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/public_state_contracts.rs (/srv/git/odbus/target/debug/deps/public_state_contracts-e7e74ddd2653db59)
+
+running 4 tests
+test every_registered_public_policy_validates_against_its_own_schema ... ok
+test typed_seed_and_default_states_project_for_each_annotated_plugin ... ok
+test router_and_json_render_views_exclude_private_catalog_surfaces ... ok
+test net_and_incus_public_views_exclude_private_topology_fields ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.07s
+
+     Running unittests examples/dump_tched_router_schema.rs (/srv/git/odbus/target/debug/examples/dump_tched_router_schema-79d23a0c954adab0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/method_inventory.rs (/srv/git/odbus/target/debug/examples/method_inventory-0893876dd77d730f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/srv/git/odbus/target/debug/deps/op_runit_systemctl-8020c43168cf0c2c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/svd.rs (/srv/git/odbus/target/debug/deps/svd-2919a80c58310f74)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_services-4149a08841c80efa)
+
+running 1 test
+test manager::service_manager::tests::parses_sv_status_pid ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/op-services.rs (/srv/git/odbus/target/debug/deps/op_services-f4cb8bf7724462aa)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/op-svctl.rs (/srv/git/odbus/target/debug/deps/op_svctl-5f67a0ffd85d169b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_snowball-17339bf5517e94f4)
+
+running 40 tests
+test btrfs_delta::tests::query_starts_one_past_the_indexed_generation ... ok
+test footprint::tests::test_plugin_footprint_creation ... ok
+test retention::tests::test_default_policy ... ok
+test retention::tests::test_from_json ... ok
+test snapshot::tests::test_duration ... ok
+test snapshot::tests::test_from_str ... ok
+test btrfs_delta::tests::parses_find_new_with_no_changes ... ok
+test btrfs_delta::tests::keeps_paths_containing_spaces ... ok
+test btrfs_delta::tests::parses_find_new_deduped_and_sorted ... ok
+test replication::tests::arrival_hook_uses_snapshot_path_and_stream_identity_not_logical_counter ... ok
+test snowball::tests::block_ref_reads_timing_record_and_flattens_data ... ok
+test replication::tests::diagnostics_are_fully_drained_with_bounded_retention ... ok
+test replication::tests::ordinary_directory_is_rejected_before_any_transport ... ok
+test snowball::tests::long_fields_are_capped_in_embedding_text ... ok
+test snowball::tests::parses_block_and_vector_file_names ... ok
+test snowball::tests::rejects_truncated_or_empty_vector_files ... ok
+test footprint::tests::chain_event_hash_is_carried_without_hashing_the_hash ... ok
+test snowball::tests::refuses_symlinked_chain_root ... ok
+test btrfs_delta::tests::parses_generation_and_received_uuid ... ok
+test snowball::tests::embedding_text_is_deterministic_and_sorted ... ok
+test snowball::tests::snapshot_set_name_is_canonical ... ok
+test replication::tests::preflight_requires_snapshot_root_readonly_and_provenance ... ok
+test replication::tests::incremental_parent_is_distinct_readonly_snapshot_on_same_filesystem ... ok
+test replication::tests::absolute_paths_reject_traversal_controls_and_root ... ok
+test replication::tests::remote_arguments_are_one_quoted_command_and_never_ssh_options ... ok
+test snowball::tests::vector_round_trips_through_on_disk_encoding ... ok
+test snowball::tests::retention_never_prunes_the_newest_snapshot_on_a_timestamp_tie ... ok
+test snowball::tests::retention_still_prunes_beyond_the_policy ... ok
+test footprint::tests::test_block_event_creation ... ok
+test snowball::tests::resumes_block_numbering_from_disk ... ok
+test replication::tests::descriptor_walk_rejects_final_and_ancestor_symlinks ... ok
+test snowball::tests::write_state_validated_rejects_undeclared_in_strict_mode ... ok
+test snowball::tests::retention_ignores_staging_and_preserves_unknown_snapshot_names ... ok
+test snowball::tests::failed_snapshot_removes_hidden_staging_directory ... ok
+test snowball::tests::write_state_validated_allows_declared_keys ... ok
+test snowball::tests::write_state_validated_warns_but_allows_undeclared_in_non_strict ... ok
+test snowball::tests::separate_handles_allocate_distinct_block_numbers_from_disk ... ok
+test snowball::tests::concurrent_event_and_snapshot_never_split_timing_from_vector ... ok
+test snowball::tests::separate_handles_allocate_distinct_committed_snapshot_counters ... ok
+test btrfs_numa_integration::tests::test_optimized_snowball_creation_and_caching ... ok
+
+test result: ok. 40 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_state-6a565bfb6a702e06)
+
+running 9 tests
+test plugin::tests::reexported_plugin_capabilities_has_four_bool_fields ... ok
+test plugin::tests::plugin_capabilities_is_reexport_from_op_state_store ... ok
+test plugin::tests::reexported_plugin_capabilities_serializes_four_keys ... ok
+test plugtree::tests::test_extract_pluglets ... ok
+test crypto::tests::test_json_encryption ... ok
+test plugtree::tests::test_find_pluglet_by_id ... ok
+test plugin::tests::reexported_plugin_capabilities_has_no_access_control_fields ... ok
+test crypto::tests::test_encryption_roundtrip ... ok
+test crypto::tests::test_password_derivation ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.73s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_state_store-9b07345a374ff6ec)
+
+running 71 tests
+test disaster_recovery::tests::test_dependencies ... ok
+test event_chain::tests::test_merkle_root ... ok
+test event_chain::tests::test_merkle_proof ... ok
+test disaster_recovery::tests::test_plugin_state_hash ... ok
+test disaster_recovery::tests::test_dr_export_creation ... ok
+test event_chain::tests::test_snapshot ... ok
+test event_chain::tests::test_tag_immutability_proof ... ok
+test disaster_recovery::tests::test_export_json ... ok
+test event_chain::tests::test_event_chain_basic ... ok
+test plugin_schema::tests::canonical_capability_ids_are_recognized ... ok
+test event_chain::tests::test_replay_rejects_out_of_order ... ok
+test metrics::tests::test_register_metrics ... ok
+test plugin_schema::tests::capability_resolution_looks_in_three_places ... ok
+test plugin_schema::tests::derived_default_matches_side_effect ... ok
+test metrics::tests::test_record_functions ... ok
+test plugin_schema::tests::fully_declared_schema_passes_closure ... ok
+test plugin_schema::tests::method_decl_fields_complete ... ok
+test plugin_schema::tests::guarantees_has_four_bool_fields ... ok
+test plugin_schema::tests::schema_default_deserializes_without_capability_keys ... ok
+test plugin_schema::tests::side_effect_serializes_snake_case ... ok
+test plugin_schema::tests::schema_serializes_capability_keys ... ok
+test event_chain::tests::test_batch_creation ... ok
+test plugin_schema::tests::signal_decl_fields_complete ... ok
+test plugin_schema::tests::property_write_bindings_are_optional_and_round_trip_in_plugin_schema ... ok
+test event_chain::tests::method_event_carries_identity_metadata_and_hashes_direct_payload ... ok
+test plugin_schema::tests::schema_round_trip_preserves_capability_surface ... ok
+test plugin_schema::tests::test_json_schema_2026_dialect_from_registered_schema ... ok
+test plugin_schema::tests::test_json_schema_fully_immutable ... ok
+test plugin_schema::tests::test_json_schema_export_from_registered_schema ... ok
+test plugin_schema::tests::test_json_schema_immutable_paths ... ok
+test event_chain::tests::test_event_chain_integrity ... ok
+test event_chain::tests::test_replay_from_footprint_round_trip ... ok
+test plugin_schema::tests::test_fixture_validation ... ok
+test plugin_schema::tests::test_json_schema_property_dependencies ... ok
+test plugin_schema::tests::test_schema_catalog_aliases_are_canonicalized ... ok
+test plugin_schema::tests::test_schema_custom_dialect ... ok
+test plugin_schema::tests::test_template_generation_from_registered_schema ... ok
+test plugin_schema::tests::test_schema_catalog_registration ... ok
+test public_state::tests::absent_policy_exposes_no_state ... ok
+test plugin_schema::tests::test_schema_registry_compatibility_type_is_empty_by_default ... ok
+test plugin_schema::tests::wildcard_capability_grants_are_never_sealed_or_rehydrated ... ok
+test public_state::tests::array_item_rules_preserve_order_length_and_drop_unselected_fields ... ok
+test public_state::tests::configured_but_absent_fields_produce_empty_public_object ... ok
+test public_state::tests::nested_path_selects_only_that_declared_child ... ok
+test public_state::tests::nested_arrays_project_only_selected_typed_leaves ... ok
+test plugin_schema::typed_map_tests::map_roundtrip_preserves_children_grandchildren_and_object_wire_shape ... ok
+test public_state::tests::array_rule_rejects_indexes_and_type_drift_before_returning_a_view ... ok
+test public_state::tests::opaque_terminal_and_overlapping_rules_are_rejected ... ok
+test public_state::tests::optional_null_is_withheld_instead_of_causing_or_widening_projection ... ok
+test public_state::tests::rfc6901_escaped_field_names_are_supported ... ok
+test event_chain::tests::test_verify_range_subrange_and_full ... ok
+test public_state::tests::star_is_a_literal_name_when_traversing_an_object ... ok
+test public_state::tests::typed_arrays_filter_unknown_object_members ... ok
+test public_state::tests::typed_parent_drops_unknown_nested_and_top_level_fields ... ok
+test public_state::tests::runtime_type_drift_fails_closed_without_echoing_value ... ok
+test public_state::typed_map_privacy_tests::explicit_key_and_grandchild_projection_never_enumerates_private_keys ... ok
+test public_state::typed_map_privacy_tests::whole_maps_wildcards_and_opaque_values_are_not_public ... ok
+test public_state::tests::policy_is_plugin_schema_owned_and_roundtrips_canonically ... ok
+test schema_validator::tests::test_canonicalize_json ... ok
+test schema_validator::tests::test_content_hash_consistency ... ok
+test schema_validator::tests::test_expand_property_dependencies ... ok
+test state_schema_shape::tests::finite_typed_maps_allow_nested_fields_but_not_lost_constraints ... ok
+test state_schema_shape::tests::cycles_unresolved_and_reference_constraints_fail_before_expansion ... ok
+test state_schema_shape::tests::tagged_normalization_rejects_closed_intersecting_or_extra_constraints ... ok
+test metrics::tests::test_operation_timer ... ok
+test exact_schema::tests::legacy_dialect_cannot_silently_weaken_exact_contract - should panic ... ok
+test state_schema_shape::tests::tagged_object_normalization_retains_intersection_and_authored_source ... ok
+test exact_schema::tests::exact_field_preserves_nullable_maps_constraints_and_schema_equality ... ok
+test exact_schema::tests::exact_checks_reject_remote_recursive_invalid_and_private_value_errors ... ok
+test exact_schema::tests::exported_exact_fields_rebase_local_definitions_without_colliding ... ok
+test exact_schema::dialect_tests::exported_2020_keyword_remains_enforced_after_reference_relocation ... ok
+
+test result: ok. 71 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_tools-547bc5f39a70c819)
+
+running 33 tests
+test builtin::sv::tests::tool_names_are_sv_not_s6 ... ok
+test orchestration_plugin::tests::test_plugin_registration ... ok
+test builtin::response_tools::tests::test_cannot_perform ... ok
+test builtin::file::tests::test_path_traversal_blocked ... ok
+test registry::tests::test_list_definitions ... ok
+test builtin::response_tools::tests::test_respond_to_user ... ok
+test discovery::tests::test_discovery_system ... ok
+test orchestration_plugin::tests::test_event_emission ... ok
+test discovery::tests::test_builtin_source ... ok
+test security::tests::test_admin_allows_everything ... ok
+test registry::tests::test_stats ... ok
+test security::tests::test_path_traversal_blocked ... ok
+test security::tests::test_admin_gets_native_warnings ... ok
+test security::tests::test_rate_limiting ... ok
+test tool::tests::test_simple_tool ... ok
+test security::tests::test_path_validation_admin ... ok
+test builtin::shell::tests::test_shell_with_exit_code ... ok
+test builtin::shell::tests::test_shell_execute ... ok
+test builtin::shell::tests::test_admin_can_run_anything ... ok
+test security::tests::test_restricted_blocks_dangerous ... ok
+test registry::tests::test_register_and_get ... ok
+test discovery::tests::test_search_tools ... ok
+test builtin::file::tests::test_write_file ... ok
+test builtin::file::tests::test_read_file ... ok
+test builtin::shell::tests::test_native_alternative_warning ... ok
+test validation::tests::test_input_sanitization ... ok
+test validation::tests::test_trusted_session_bypass ... ok
+test validation::validation_tests::test_input_sanitization ... ok
+test validation::tests::test_path_validation ... ok
+test validation::validation_tests::test_non_trusted_restriction ... ok
+test validation::validation_tests::test_trusted_session_bypass ... ok
+test validation::tests::test_shell_command_validation ... ok
+test validation::tests::test_schema_cache_concurrent_miss_warm_hit_and_invalid_payload ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src/bin/op-packagekit-install.rs (/srv/git/odbus/target/debug/deps/op_packagekit_install-f6da715216a31ed4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_web-51daedcb256e66d6)
+
+running 50 tests
+test handlers::ui_model::tests::delete_requires_an_explicit_revision_and_rejects_extra_fields ... ok
+test handlers::ui_model::tests::list_query_is_bounded_by_canonical_method_not_a_hidden_http_default ... ok
+test handlers::tched_router::tests::schema_field_defaults_supply_boot_catalogs ... ok
+test handlers::dashboard::tests::derives_only_supported_memory_measurement ... ok
+test handlers::ui_model::tests::unavailable_catalog_is_explicit_and_not_an_empty_gallery ... ok
+test middleware::security::tests::is_trusted_proxy_accepts_loopback_and_mesh_only ... ok
+test middleware::security::tests::looks_like_ipv4_octets_strict ... ok
+test middleware::security::tests::extract_ip_accepts_bracketed_ipv6_with_port ... ok
+test middleware::security::tests::extract_ip_strips_ipv4_port_from_xff ... ok
+test middleware::security::tests::extract_ip_rejects_xff_with_commas_in_first_segment ... ok
+test middleware::security::tests::extract_ip_rejects_hostname_with_port_in_xff ... ok
+test handlers::tched_router::tests::private_workspace_metadata_requires_the_exact_request_sid1 ... ok
+test middleware::security::tests::sanitize_header_for_log_escapes_control_chars ... ok
+test middleware::security::tests::sanitize_header_for_log_truncates_long_input ... ok
+test privacy_container::tests::generates_container_name_from_uuid ... ok
+test privacy_container::tests::sanitizes_non_alnum_characters ... ok
+test privacy_container::tests::falls_back_to_default_prefix_and_suffix ... ok
+test privacy_openflow::tests::bridge_name_is_derived_from_shared_ingress_port ... ok
+test privacy_container::tests::desired_instance_omits_devices_when_bridged_nic_disabled ... ok
+test privacy_container::tests::desired_instance_publishes_route_id_in_config ... ok
+test privacy_routes::tests::test_selector_ip_strips_prefix ... ok
+test privacy_container::tests::desired_instance_attaches_bridged_nic_when_enabled ... ok
+test handlers::tched_router::tests::identity_headers_require_one_canonical_bounded_credential ... ok
+test middleware::security::tests::extract_ip_falls_back_to_unspecified_without_socket ... ok
+test privacy_routes::tests::test_route_id_is_deterministic ... ok
+test middleware::security::tests::extract_ip_accepts_unbracketed_ipv6_without_port ... ok
+test middleware::security::tests::extract_ip_ignores_xff_from_untrusted_peer ... ok
+test middleware::security::tests::extract_auth_token_accepts_bearer_only ... ok
+test middleware::security::tests::extract_ip_rejects_malformed_xff ... ok
+test middleware::security::tests::extract_ip_honours_xff_from_loopback ... ok
+test privacy_openflow::tests::merge_routes_keeps_non_privacy_flows_and_replaces_managed_ones ... ok
+test sse::tests::metadata_retains_exact_u64_and_tombstones_keep_existing_payload_fields ... ok
+test tched_router_routes::tests::model_routes_read_flattened_catalog ... ok
+test tched_router_routes::tests::model_routes_read_nested_projection ... ok
+test wireguard::tests::test_config_generation ... ok
+test wireguard::tests::test_keypair_generation ... ok
+test state_tree::tests::rejects_unsealed_plugin_even_when_it_has_committed_state ... ok
+test state_tree::tests::identity_credentials_are_recursively_redacted ... ok
+test state_tree::tests::invalid_catalog_or_incomplete_projection_is_an_error ... ok
+test sse::tests::shared_sse_cannot_forward_privileged_audit_metadata ... ok
+test state_tree::tests::malformed_committed_state_is_not_hidden_as_absent ... ok
+test state_tree::tests::configured_public_field_type_drift_is_an_error ... ok
+test sse::tests::actual_sse_hydration_reads_shm_contract_then_whole_nested_state ... ok
+test sse::tests::incomplete_publication_never_replays_old_cached_or_partial_state ... ok
+test sse::tests::reconnect_clears_removed_plugin_even_if_its_old_file_remains ... ok
+test state_tree::tests::absent_public_policy_retains_schema_and_withholds_state ... ok
+test state_tree::tests::invalid_public_policy_is_an_error ... ok
+test sse::tests::removed_public_policy_clears_prior_values_but_retains_sealed_contract ... ok
+test sse::tests::lag_rehydrates_from_current_shm_and_exposes_unreplayed_audit_gap ... ok
+test state_tree::tests::reads_committed_sealed_state_and_ignores_committed_orphans ... ok
+
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running unittests src/main.rs (/srv/git/odbus/target/debug/deps/op_web_server-c0b34df6fc6cb9f1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/opdbus.rs (/srv/git/odbus/target/debug/deps/opdbus-153840a06d816ae8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/check_and_delete_user.rs (/srv/git/odbus/target/debug/examples/check_and_delete_user-f14410f70e63becd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/check_user.rs (/srv/git/odbus/target/debug/examples/check_user-f38d3c7e82684611)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_workflows-0e8cc84c34689f00)
+
+running 3 tests
+test builtin::definitions::tests::test_builtin_workflows_valid ... ok
+test engine::tests::test_workflow_registration ... ok
+test workflows::tests::test_code_review_workflow ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (/srv/git/odbus/target/debug/deps/op_xray_daemon-66f7d56df50caa38)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/srv/git/odbus/target/debug/deps/op_xray_daemon-7fcfb44000328c9e)
+
+running 2 tests
+test dbus::tests::test_xray_status_serialization ... ok
+test dbus::tests::test_xray_service_creation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

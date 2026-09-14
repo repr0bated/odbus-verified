@@ -1,0 +1,77 @@
+[package]
+name = "op-plugins"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Plugin system with state management, domain plugins, and snowball footprints"
+
+[dependencies]
+# Plugin schemas are derived from Rust state structs via schemars.
+schemars = "1"
+nix = { version = "0.28", features = ["fs", "signal", "user", "hostname"] }
+# Distributed plugin self-registration: each plugin module submits its
+# name+constructor via inventory::submit!; the registry iterates them. This is
+# the single source of the plugin catalog — no central dispatch list.
+inventory = "0.3"
+op-core = { path = "../op-core" }
+# Sealed plugin-object blobs: the blob catalog IS the plugin surface.
+op-blob = { workspace = true }
+op-dbus-model = { workspace = true }
+op-state = { path = "../op-state" }
+op-state-store = { path = "../op-state-store" }
+op-cozo-store = { workspace = true }
+op-snowball = { path = "../op-snowball" }
+op-network = { path = "../op-network" }
+op-dynamic-loader = { path = "../op-dynamic-loader" }
+op-execution-tracker = { path = "../op-execution-tracker" }
+op-agents = { path = "../op-agents" }
+# The 3tched Router config surface is generated from the OFFICIAL zeroclaw
+# binary's imported `config schema` contract in the plugin, and validated
+# against it at runtime. There is deliberately NO zeroclaw crate dependency:
+# a linked crate pins us to a version that need not match the deployed binary.
+jsonschema = { workspace = true }
+
+tokio = { workspace = true }
+tokio-tungstenite = "=0.24.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+simd-json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+zbus = { workspace = true, features = ["p2p"] }
+chrono = { workspace = true }
+log = { workspace = true }
+reqwest = { workspace = true }
+# Incus's privileged Unix socket needs the native UDS transport added in 0.12.
+# Keep other plugin adapters on their existing workspace client.
+reqwest-unix = { package = "reqwest", version = "=0.12.28", default-features = false }
+sysinfo = "0.30"
+google-cloud-auth = "1.15"
+btrfs-uapi = "0.13"
+serde-pickle = "1.2"
+udev = "0.9.3"
+regex = { workspace = true }
+sha2 = { workspace = true }
+base64 = { workspace = true }
+md5 = { workspace = true }
+uuid = { workspace = true }
+dirs = "5.0"
+toml = { workspace = true }
+parking_lot = { workspace = true }
+tempfile = { workspace = true }
+xattr = "1.6.1"
+
+[build-dependencies]
+sha2 = { workspace = true }
+
+[dev-dependencies]
+# Isolated protocol fixtures use paired sockets, never the host's system bus.
+zbus = { workspace = true, features = ["p2p"] }
+
+[[bin]]
+name = "opblob"
+path = "src/bin/opblob.rs"

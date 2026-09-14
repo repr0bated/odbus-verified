@@ -1,0 +1,182 @@
+#!/bin/sh
+# 3tched-incus-svcgen — generate a runit service + log pipeline for one Incus CT.
+#
+# Usage:
+#   3tched-incus-svcgen <container> [--no-start] [--no-enable]
+#   3tched-incus-svcgen --all-named [--no-start]
+#
+# Service:  /etc/runit/sv/incus-ct-<name>/
+# Logs:     /var/log/op-dbus/incus-ct-<name>/  (svlogd -tt, user s6log)
+# Manage:   sv start|stop|restart|status|check incus-ct-<name>
+#
+set -eu
+
+SV_DIR=/etc/runit/sv
+RUNSVDIR=/etc/runit/runsvdir/default
+LOG_ROOT=/var/log/op-dbus
+
+name=""
+start=1
+enable=1
+all_named=0
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --no-start)  start=0; shift ;;
+        --no-enable) enable=0; start=0; shift ;;
+        --all-named) all_named=1; shift ;;
+        -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+        -*) echo "unknown option: $1" >&2; exit 2 ;;
+        *) name="$1"; shift ;;
+    esac
+done
+
+is_uuid_name() {
+    echo "$1" | grep -Eq '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+}
+
+gen_one() {
+    name="$1"
+    svc="incus-ct-${name}"
+    dir="${SV_DIR}/${svc}"
+    ldir="${dir}/log"
+    logdir="${LOG_ROOT}/${svc}"
+
+    if ! incus list -f csv -c n 2>/dev/null | grep -qx "$name"; then
+        echo "error: container '$name' not found in incus list" >&2
+        return 1
+    fi
+
+    install -d "$dir" "$ldir"
+
+    cat > "${dir}/run" <<EOF
+#!/bin/sh
+# runit longrun for Incus container: ${name}
+exec 2>&1
+
+wait_dep() {
+    dep="\$1"
+    sv start "\$dep" >/dev/null 2>&1 || true
+    i=0
+    until sv check "\$dep" >/dev/null 2>&1; do
+        i=\$((i + 1))
+        if [ "\$i" -ge 90 ]; then
+            echo "dependency \$dep not ready after 90s" >&2
+            exit 1
+        fi
+        sleep 1
+    done
+}
+
+wait_dep incusd
+if [ "${name}" = "xray" ] && [ -d /etc/runit/sv/xray-config-mount ]; then
+    wait_dep xray-config-mount || true
+fi
+
+NAME='${name}'
+
+i=0
+until incus info >/dev/null 2>&1; do
+    i=\$((i + 1))
+    if [ "\$i" -ge 60 ]; then
+        echo "incusd API not ready" >&2
+        exit 1
+    fi
+    sleep 1
+done
+
+incus config set "\$NAME" boot.autostart=false 2>/dev/null || true
+
+if ! incus list -f csv -c ns 2>/dev/null | grep -q "^\${NAME},RUNNING\$"; then
+    echo "starting container \$NAME"
+    if ! incus start "\$NAME"; then
+        echo "incus start failed for \$NAME" >&2
+        incus info "\$NAME" --show-log 2>&1 | tail -n 40 || true
+        exit 1
+    fi
+fi
+
+i=0
+until incus list -f csv -c ns 2>/dev/null | grep -q "^\${NAME},RUNNING\$"; do
+    i=\$((i + 1))
+    if [ "\$i" -ge 60 ]; then
+        echo "container \$NAME failed to reach RUNNING" >&2
+        incus info "\$NAME" --show-log 2>&1 | tail -n 40 || true
+        exit 1
+    fi
+    sleep 1
+done
+echo "container \$NAME is RUNNING"
+
+incus console "\$NAME" --show-log 2>/dev/null | tail -n 80 || true
+
+cleanup() {
+    echo "stopping container \$NAME (runit down)"
+    incus stop "\$NAME" --timeout 30 2>/dev/null || incus stop "\$NAME" --force 2>/dev/null || true
+}
+trap cleanup TERM INT HUP
+
+while incus list -f csv -c ns 2>/dev/null | grep -q "^\${NAME},RUNNING\$"; do
+    sleep 5
+done
+echo "container \$NAME left RUNNING — exiting for restart"
+exit 1
+EOF
+
+    cat > "${dir}/check" <<EOF
+#!/bin/sh
+incus list -f csv -c ns 2>/dev/null | grep -q '^${name},RUNNING\$'
+EOF
+
+    cat > "${dir}/finish" <<EOF
+#!/bin/sh
+exec 2>&1
+NAME='${name}'
+if incus list -f csv -c ns 2>/dev/null | grep -q "^\${NAME},RUNNING\$"; then
+    echo "finish: stopping leftover \$NAME"
+    incus stop "\$NAME" --timeout 20 2>/dev/null || incus stop "\$NAME" --force 2>/dev/null || true
+fi
+exit 0
+EOF
+
+    cat > "${ldir}/run" <<EOF
+#!/bin/sh
+exec 2>&1
+logdir=${logdir}
+install -d -m 755 -o s6log -g s6log "\$logdir"
+chown -R s6log:s6log "\$logdir" 2>/dev/null || true
+rm -f "\$logdir/lock"
+printf '%s\n' 's4000000' 'n10' 't86400' > "\$logdir/config"
+chown s6log:s6log "\$logdir/config"
+exec chpst -u s6log svlogd -tt "\$logdir"
+EOF
+
+    chmod 0755 "${dir}/run" "${dir}/check" "${dir}/finish" "${ldir}/run"
+
+    if [ "$enable" = 1 ]; then
+        ln -sfn "$dir" "${RUNSVDIR}/${svc}"
+        echo "enabled ${svc}"
+    fi
+    if [ "$start" = 1 ] && [ "$enable" = 1 ]; then
+        sleep 1
+        sv restart "$svc" 2>/dev/null || sv start "$svc" 2>/dev/null || true
+    fi
+    echo "generated ${svc}  logs: ${logdir}/current"
+}
+
+if [ "$all_named" = 1 ]; then
+    incus info >/dev/null 2>&1 || { echo "error: incusd not reachable" >&2; exit 1; }
+    cts="$(incus list -f csv -c n 2>/dev/null || true)"
+    [ -n "$cts" ] || { echo "no containers"; exit 0; }
+    for ct in $cts; do
+        if is_uuid_name "$ct"; then
+            echo "skip uuid identity: $ct"
+            continue
+        fi
+        gen_one "$ct" || true
+    done
+    exit 0
+fi
+
+[ -n "$name" ] || { echo "usage: 3tched-incus-svcgen <container>|--all-named [--no-start]" >&2; exit 2; }
+gen_one "$name"

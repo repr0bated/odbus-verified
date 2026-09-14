@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "description": "Unified authenticated op-dbus MCP configuration",
+  "servers": {
+    "op-dbus-unified": {
+      "name": "op-dbus-unified",
+      "transport": {
+        "type": "http",
+        "url": "https://10.0.0.3:8090/mcp"
+      },
+      "authentication": {
+        "type": "oracle_identity_assertion",
+        "metadata": "x-oracle-identity-assertion-bin",
+        "freshPerRequest": true
+      },
+      "capabilities": {
+        "tools": true,
+        "resources": true,
+        "prompts": false
+      }
+    }
+  }
+}

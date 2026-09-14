@@ -1,0 +1,13 @@
+[Unit]
+Description=Proxy WireGuard SSH connections to the main-host reverse tunnel
+Requires=op-main-ssh-wg.socket
+After=op-main-ssh-wg.socket
+
+[Service]
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd 127.0.0.1:2222
+DynamicUser=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict

@@ -1,0 +1,13 @@
+storage:
+  storage_path: /var/lib/qdrant/storage
+
+service:
+  host: 127.0.0.1
+  http_port: 6337
+  grpc_port: 6338
+  enable_cors: true
+
+cluster:
+  enabled: false
+
+telemetry_disabled: true

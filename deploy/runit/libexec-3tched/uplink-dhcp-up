@@ -1,0 +1,42 @@
+#!/bin/sh
+# uplink-dhcp: capture migration snapshot for boot graph. Static addressing
+# (network.conf) is authoritative — do not fight OVS or re-DHCP on enslaved eth0.
+set -eu
+set -a; [ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf; set +a
+UPLINK="${UPLINK:-eth0}"
+PUB="${PUBLIC_PORT:-pub0}"
+PUB_ADDR="${PUBLIC_ADDR:-188.68.58.237/22}"
+PUB_GW="${PUBLIC_GW:-188.68.56.1}"
+SNAPSHOT=/run/opdbus/uplink-migration.env
+
+# Prefer already-applied public port (post-OVS model)
+if [ -d "/sys/class/net/$PUB" ] && ip -4 -o addr show dev "$PUB" scope global | grep -q .; then
+    UPLINK_ADDRS="$(ip -4 -o addr show dev "$PUB" scope global | awk '{print $4}' | tr '\n' ' ')"
+    UPLINK_GW="$(ip -4 route show default dev "$PUB" 2>/dev/null | awk '{print $3; exit}')"
+    [ -n "$UPLINK_GW" ] || UPLINK_GW="$PUB_GW"
+    tmp="${SNAPSHOT}.new"
+    {
+        printf 'UPLINK_ADDRS="%s"\n' "$UPLINK_ADDRS"
+        printf 'UPLINK_GW="%s"\n' "$UPLINK_GW"
+    } >"$tmp"
+    chmod 0600 "$tmp"
+    mv -f "$tmp" "$SNAPSHOT"
+    echo "snapshot from $PUB: $UPLINK_ADDRS (gw ${UPLINK_GW:-none})"
+    exit 0
+fi
+
+# Already have snapshot from a previous boot
+if [ -r "$SNAPSHOT" ]; then
+    echo "using existing snapshot $SNAPSHOT"
+    exit 0
+fi
+
+# Fallback: seed snapshot from static network.conf (no DHCP)
+tmp="${SNAPSHOT}.new"
+{
+    printf 'UPLINK_ADDRS="%s"\n' "$PUB_ADDR"
+    printf 'UPLINK_GW="%s"\n' "$PUB_GW"
+} >"$tmp"
+chmod 0600 "$tmp"
+mv -f "$tmp" "$SNAPSHOT"
+echo "snapshot from network.conf: $PUB_ADDR (gw $PUB_GW) — static, no DHCP"

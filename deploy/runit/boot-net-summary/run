@@ -1,0 +1,22 @@
+#!/bin/sh
+exec 2>&1
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 180 ] && break
+        sleep 1
+    done
+}
+wait_dep ovsbr0-eth0
+wait_dep op-session-bus
+# The summary reads ports through zcall, so it needs the plugin tree — which is
+# now the last thing to come up. This wait_dep breaks on timeout rather than
+# failing, so a bridge that never started still yields a (partial) summary.
+wait_dep op-grpc-bridge
+sleep 2
+/usr/local/libexec/3tched/boot-net-summary
+install -d -m 0755 /run/opdbus/runit-ready
+touch /run/opdbus/runit-ready/boot-net-summary
+exec pause

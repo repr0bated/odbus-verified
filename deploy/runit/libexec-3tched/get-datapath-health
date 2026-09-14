@@ -1,0 +1,4 @@
+#!/bin/sh
+BRIDGE="${1:-ovsbr0}"
+/usr/local/libexec/3tched/wait-op-plugins 60
+exec zcall openflow get_datapath_health -a "{\"bridge\":\"$BRIDGE\"}"

@@ -1,0 +1,59 @@
+[package]
+name = "op-agents"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Secure agent registry and D-Bus agent implementations for op-dbus-v2"
+
+[[bin]]
+name = "dbus-agent"
+path = "src/bin/dbus-agent.rs"
+
+[[bin]]
+name = "op-agent-manager"
+path = "src/bin/dbus-agent-manager.rs"
+
+[[bin]]
+name = "gen-agent-defs"
+path = "src/bin/gen-agent-defs.rs"
+
+[dependencies]
+# Internal crates
+op-core = { workspace = true }
+op-http = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+simd-json = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+toml = { workspace = true }
+jsonschema = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# D-Bus
+zbus = { workspace = true }
+
+# Utils
+uuid = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+regex = { workspace = true }
+parking_lot = { workspace = true }
+shell-words = "1.1"
+
+axum = { workspace = true }
+reqwest = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

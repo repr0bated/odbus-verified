@@ -1,0 +1,5 @@
+#!/bin/sh
+exec 2>&1
+SOCK=/var/lib/assistant-controlplane/http.sock
+until [ -S "$SOCK" ]; do sleep 1; done
+exec /usr/local/libexec/3tched/socket-relay tcp-listen 10.200.0.2 8091 unix-connect "$SOCK"

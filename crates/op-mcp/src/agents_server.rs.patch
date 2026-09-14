@@ -1,0 +1,102 @@
+// Replace DbusAgentExecutor with TraitAgentExecutor that uses existing agent implementations
+
+// Find this section and ADD the new executor:
+
+/// Trait-based agent executor - uses AgentTrait implementations directly
+/// This works WITHOUT separate D-Bus service processes
+pub struct TraitAgentExecutor {
+    agents: std::sync::Arc<tokio::sync::RwLock<std::collections::HashMap<String, Box<dyn op_agents::agents::base::AgentTrait + Send + Sync>>>>,
+}
+
+impl TraitAgentExecutor {
+    pub fn new() -> Self {
+        use op_agents::agents::{
+            language::{RustProAgent, PythonProAgent},
+            architecture::BackendArchitectAgent,
+            infrastructure::NetworkEngineerAgent,
+            orchestration::{MemoryAgent, ContextManagerAgent, SequentialThinkingAgent},
+        };
+        
+        let mut agents: std::collections::HashMap<String, Box<dyn op_agents::agents::base::AgentTrait + Send + Sync>> = std::collections::HashMap::new();
+        
+        // Register the run-on-connection agents
+        agents.insert("rust_pro".to_string(), Box::new(RustProAgent::new("rust_pro".to_string())));
+        agents.insert("python_pro".to_string(), Box::new(PythonProAgent::new("python_pro".to_string())));
+        agents.insert("backend_architect".to_string(), Box::new(BackendArchitectAgent::new("backend_architect".to_string())));
+        agents.insert("network_engineer".to_string(), Box::new(NetworkEngineerAgent::new("network_engineer".to_string())));
+        agents.insert("memory".to_string(), Box::new(MemoryAgent::new("memory".to_string())));
+        agents.insert("context_manager".to_string(), Box::new(ContextManagerAgent::new("context_manager".to_string())));
+        agents.insert("sequential_thinking".to_string(), Box::new(SequentialThinkingAgent::new("sequential_thinking".to_string())));
+        
+        Self {
+            agents: std::sync::Arc::new(tokio::sync::RwLock::new(agents)),
+        }
+    }
+}
+
+impl Default for TraitAgentExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait::async_trait]
+impl AgentExecutor for TraitAgentExecutor {
+    async fn start_agent(&self, agent_id: &str, _dbus_service: Option<&str>) -> anyhow::Result<()> {
+        tracing::info!(agent = %agent_id, "Agent ready (trait-based, no D-Bus)");
+        Ok(())
+    }
+    
+    async fn stop_agent(&self, agent_id: &str) -> anyhow::Result<()> {
+        tracing::info!(agent = %agent_id, "Agent stopped");
+        Ok(())
+    }
+    
+    async fn execute(&self, agent_id: &str, operation: &str, args: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+        use op_agents::agents::base::AgentTask;
+        
+        let agents = self.agents.read().await;
+        let agent = agents.get(agent_id)
+            .ok_or_else(|| anyhow::anyhow!("Agent not found: {}", agent_id))?;
+        
+        let task = AgentTask {
+            task_type: agent_id.replace('_', "-"),
+            operation: operation.to_string(),
+            path: args.get("path").and_then(|p| p.as_str()).map(String::from),
+            args: Some(serde_json::to_string(&args).unwrap_or_default()),
+            config: args.as_object()
+                .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+                .unwrap_or_default(),
+        };
+        
+        match agent.execute(task).await {
+            Ok(result) => {
+                Ok(serde_json::json!({
+                    "success": result.success,
+                    "output": result.data,
+                    "operation": operation
+                }))
+            }
+            Err(e) => {
+                Err(anyhow::anyhow!("Agent execution failed: {}", e))
+            }
+        }
+    }
+    
+    async fn is_running(&self, agent_id: &str) -> bool {
+        self.agents.read().await.contains_key(agent_id)
+    }
+}
+
+// Then update AgentsServer::new() to use TraitAgentExecutor:
+impl AgentsServer {
+    pub fn new(config: AgentsServerConfig) -> Self {
+        Self {
+            config,
+            executor: std::sync::Arc::new(TraitAgentExecutor::new()),  // <-- Changed from DbusAgentExecutor
+            client_info: tokio::sync::RwLock::new(None),
+            running_agents: tokio::sync::RwLock::new(std::collections::HashMap::new()),
+        }
+    }
+    // ... rest unchanged
+}

@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "mesh": {
+    "interface": "3tched",
+    "server_pubkey": "/yBYjQkcD997wTd+e6b1rJiALMKLbLVfF2IO413lj1Y=",
+    "server_endpoint": "188.68.58.237:51821",
+    "server_address": "100.69.0.254/16",
+    "listen_port": 51821,
+    "network": "100.69.0.0/16"
+  },
+  "identities": {
+    "host": {
+      "role": "host",
+      "label": "3tched hypervisor",
+      "pubkey": "/yBYjQkcD997wTd+e6b1rJiALMKLbLVfF2IO413lj1Y=",
+      "allowed_ip": "100.69.0.254/32",
+      "sled_source": true,
+      "notes": "Host WireGuard public key; session identity is projected by identity_sled"
+    },
+    "anna-scribe": {
+      "role": "service-persona",
+      "label": "A.N.N.A. Scribe",
+      "email": "anna.scribe@3tched.com",
+      "principal_id": "did:op:service:anna-scribe",
+      "persona_id": "anna-scribe",
+      "plugin_ref": "wg_opdbus",
+      "credential_ref": "host",
+      "notes": "Persistent service persona; reuses the existing host credential by reference and owns no duplicate key"
+    },
+    "jeremy": {
+      "role": "user",
+      "label": "jeremy",
+      "email": "jeremy@3tched.com",
+      "pubkey": "GEMLT/+I81zs5HDPsOF22ntqGf71OEy6eFKMm7P7Dzk=",
+      "allowed_ip": "100.69.0.2/32",
+      "client_conf": "wireguard_clients/jeremy-3tched.conf",
+      "notes": "Existing mesh peer — keep current PrivateKey on client"
+    },
+    "chatbot": {
+      "role": "chatbot",
+      "label": "assistant chatbot",
+      "email": "chatbot@3tched.com",
+      "pubkey": "VaRh9EUieQxA3zIoOj3qNiNIqZoPGpqztPU4muyF1zM=",
+      "allowed_ip": "100.69.0.10/32",
+      "runtime_dir": "/var/lib/opdbus-runtime/identities/chatbot",
+      "notes": "Reuses existing chatbot keypair; conf re-homed onto 3tched mesh"
+    }
+  }
+}

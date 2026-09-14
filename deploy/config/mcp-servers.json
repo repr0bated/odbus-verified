@@ -1,0 +1,12 @@
+[
+  {
+    "name": "op-dbus-unified",
+    "description": "Unified authenticated MCP control plane, including cognitive memory, coding context, and blob-schema resources",
+    "serverUrl": "https://10.0.0.3:8090/mcp",
+    "transport": "http",
+    "auth_method": "oracle_identity_assertion",
+    "auth_metadata": "x-oracle-identity-assertion-bin",
+    "fresh_assertion_per_request": true,
+    "enabled": true
+  }
+]

@@ -1,0 +1,24 @@
+[Unit]
+Description=Rust Network Manager and control socket owner
+Documentation=https://github.com/sparesparrow/rust-network-mgr
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/rust-network-mgr
+Restart=on-failure
+RestartSec=5s
+User=root
+RuntimeDirectory=rust-network-manager
+RuntimeDirectoryMode=0755
+Environment=RUST_LOG=info
+Environment=RUST_NETWORK_MGR_CONFIG=/etc/rust-network-mgr/config.yaml
+# Unprivileged Incus identity containers cannot create the mount namespace
+# required by ProtectSystem/ReadWritePaths/PrivateTmp (systemd status 226).
+# Filesystem authority is already bounded by the container itself.
+ProtectSystem=no
+PrivateTmp=false
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target

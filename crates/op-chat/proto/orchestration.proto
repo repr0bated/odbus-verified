@@ -1,0 +1,954 @@
+// Orchestration Protocol Buffers
+//
+// Full gRPC service definitions for agent communication.
+// Used by the chatbot brain to orchestrate run-on-connection agents.
+//
+// Build with: tonic-build in build.rs
+
+syntax = "proto3";
+
+package op_chat.orchestration;
+
+// ============================================================================
+// AGENT LIFECYCLE SERVICE
+// ============================================================================
+
+// Manages agent lifecycle (start/stop/health)
+service AgentLifecycle {
+    // Start a session and run-on-connection agents
+    rpc StartSession(StartSessionRequest) returns (StartSessionResponse);
+    
+    // End a session and cleanup agents
+    rpc EndSession(EndSessionRequest) returns (EndSessionResponse);
+    
+    // Health check for an agent
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+    
+    // Watch agent status changes (server streaming)
+    rpc WatchAgents(WatchAgentsRequest) returns (stream AgentStatusEvent);
+    
+    // Graceful shutdown of all agents
+    rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+}
+
+message StartSessionRequest {
+    string session_id = 1;
+    string client_name = 2;
+    map<string, string> metadata = 3;
+    repeated string requested_agents = 4;  // Empty = use defaults
+    int64 timeout_ms = 5;
+}
+
+message StartSessionResponse {
+    bool success = 1;
+    string session_id = 2;
+    repeated AgentInfo started_agents = 3;
+    repeated AgentError failed_agents = 4;
+    int64 started_at_ms = 5;
+}
+
+message EndSessionRequest {
+    string session_id = 1;
+    bool force = 2;
+    int64 timeout_ms = 3;
+}
+
+message EndSessionResponse {
+    bool success = 1;
+    repeated string stopped_agents = 2;
+    int64 session_duration_ms = 3;
+}
+
+message HealthCheckRequest {
+    string agent_id = 1;
+    bool include_metrics = 2;
+}
+
+message HealthCheckResponse {
+    bool healthy = 1;
+    string agent_id = 2;
+    AgentStatus status = 3;
+    int64 uptime_ms = 4;
+    map<string, string> metrics = 5;
+    string last_error = 6;
+}
+
+message WatchAgentsRequest {
+    string session_id = 1;
+    repeated string agent_ids = 2;  // Empty = all agents
+    bool include_heartbeats = 3;
+}
+
+message AgentStatusEvent {
+    string agent_id = 1;
+    AgentStatus status = 2;
+    int64 timestamp_ms = 3;
+    string message = 4;
+    map<string, string> metadata = 5;
+}
+
+message ShutdownRequest {
+    bool force = 1;
+    int64 timeout_ms = 2;
+}
+
+message ShutdownResponse {
+    bool success = 1;
+    int32 agents_stopped = 2;
+    repeated string errors = 3;
+}
+
+message AgentInfo {
+    string agent_id = 1;
+    string agent_type = 2;
+    AgentStatus status = 3;
+    int32 priority = 4;
+    repeated string operations = 5;
+    int64 started_at_ms = 6;
+}
+
+message AgentError {
+    string agent_id = 1;
+    string error_code = 2;
+    string error_message = 3;
+    bool retryable = 4;
+}
+
+enum AgentStatus {
+    AGENT_STATUS_UNKNOWN = 0;
+    AGENT_STATUS_STARTING = 1;
+    AGENT_STATUS_RUNNING = 2;
+    AGENT_STATUS_BUSY = 3;
+    AGENT_STATUS_STOPPING = 4;
+    AGENT_STATUS_STOPPED = 5;
+    AGENT_STATUS_ERROR = 6;
+    AGENT_STATUS_UNRESPONSIVE = 7;
+}
+
+// ============================================================================
+// AGENT EXECUTION SERVICE  
+// ============================================================================
+
+// Execute operations on agents
+service AgentExecution {
+    // Execute a single operation
+    rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+    
+    // Execute with streaming response (for long-running ops)
+    rpc ExecuteStream(ExecuteRequest) returns (stream ExecuteChunk);
+    
+    // Batch execute multiple operations
+    rpc BatchExecute(BatchExecuteRequest) returns (stream ExecuteResponse);
+    
+    // Cancel a running operation
+    rpc Cancel(CancelRequest) returns (CancelResponse);
+}
+
+message ExecuteRequest {
+    string session_id = 1;
+    string agent_id = 2;
+    string operation = 3;
+    string arguments_json = 4;
+    int64 timeout_ms = 5;
+    string correlation_id = 6;
+    ExecutionOptions options = 7;
+}
+
+message ExecutionOptions {
+    bool stream_output = 1;
+    int32 max_retries = 2;
+    int64 retry_delay_ms = 3;
+    bool allow_partial_results = 4;
+    map<string, string> context = 5;
+}
+
+message ExecuteResponse {
+    string correlation_id = 1;
+    string agent_id = 2;
+    string operation = 3;
+    bool success = 4;
+    string result_json = 5;
+    ExecuteError error = 6;
+    int64 execution_time_ms = 7;
+    map<string, string> metadata = 8;
+}
+
+message ExecuteError {
+    string code = 1;
+    string message = 2;
+    string details = 3;
+    bool retryable = 4;
+    string stack_trace = 5;
+}
+
+message ExecuteChunk {
+    string correlation_id = 1;
+    ChunkType chunk_type = 2;
+    string content = 3;
+    bool is_final = 4;
+    int32 sequence = 5;
+    int64 timestamp_ms = 6;
+    ExecuteError error = 7;  // Only set if is_final and error occurred
+}
+
+enum ChunkType {
+    CHUNK_TYPE_UNKNOWN = 0;
+    CHUNK_TYPE_STDOUT = 1;
+    CHUNK_TYPE_STDERR = 2;
+    CHUNK_TYPE_PROGRESS = 3;
+    CHUNK_TYPE_RESULT = 4;
+    CHUNK_TYPE_HEARTBEAT = 5;
+}
+
+message BatchExecuteRequest {
+    string session_id = 1;
+    repeated ExecuteRequest requests = 2;
+    bool parallel = 3;
+    bool stop_on_error = 4;
+    int64 timeout_ms = 5;
+}
+
+message CancelRequest {
+    string session_id = 1;
+    string correlation_id = 2;
+    bool force = 3;
+}
+
+message CancelResponse {
+    bool success = 1;
+    string correlation_id = 2;
+    bool was_running = 3;
+}
+
+// ============================================================================
+// MEMORY SERVICE (High-frequency key-value operations)
+// ============================================================================
+
+service MemoryService {
+    rpc Remember(RememberRequest) returns (RememberResponse);
+    rpc Recall(RecallRequest) returns (RecallResponse);
+    rpc Forget(ForgetRequest) returns (ForgetResponse);
+    rpc List(ListKeysRequest) returns (ListKeysResponse);
+    rpc Search(SearchMemoryRequest) returns (SearchMemoryResponse);
+    
+    // Bulk operations for efficiency
+    rpc BulkRemember(stream RememberRequest) returns (BulkOperationResponse);
+    rpc BulkRecall(BulkRecallRequest) returns (stream RecallResponse);
+    rpc BulkForget(BulkForgetRequest) returns (BulkOperationResponse);
+}
+
+message RememberRequest {
+    string session_id = 1;
+    string key = 2;
+    string value = 3;
+    int64 ttl_secs = 4;  // 0 = no expiry
+    repeated string tags = 5;
+    bool overwrite = 6;  // If false, fail if key exists
+}
+
+message RememberResponse {
+    bool success = 1;
+    string key = 2;
+    bool was_overwrite = 3;
+    int64 expires_at_ms = 4;  // 0 if no expiry
+}
+
+message RecallRequest {
+    string session_id = 1;
+    string key = 2;
+    bool include_metadata = 3;
+}
+
+message RecallResponse {
+    bool found = 1;
+    string key = 2;
+    string value = 3;
+    repeated string tags = 4;
+    int64 created_at_ms = 5;
+    int64 accessed_at_ms = 6;
+    int32 access_count = 7;
+    int64 expires_at_ms = 8;
+}
+
+message ForgetRequest {
+    string session_id = 1;
+    string key = 2;
+}
+
+message ForgetResponse {
+    bool success = 1;
+    bool existed = 2;
+}
+
+message ListKeysRequest {
+    string session_id = 1;
+    string pattern = 2;  // Glob pattern, empty = all
+    int32 limit = 3;     // 0 = no limit
+    int32 offset = 4;
+    string tag_filter = 5;
+}
+
+message ListKeysResponse {
+    repeated string keys = 1;
+    int32 total_count = 2;
+    bool has_more = 3;
+}
+
+message SearchMemoryRequest {
+    string session_id = 1;
+    string query = 2;
+    int32 limit = 3;
+    float min_score = 4;
+}
+
+message SearchMemoryResponse {
+    repeated MemorySearchResult results = 1;
+}
+
+message MemorySearchResult {
+    string key = 1;
+    string value = 2;
+    float score = 3;
+    repeated string tags = 4;
+}
+
+message BulkRecallRequest {
+    string session_id = 1;
+    repeated string keys = 2;
+}
+
+message BulkForgetRequest {
+    string session_id = 1;
+    repeated string keys = 2;
+}
+
+message BulkOperationResponse {
+    int32 success_count = 1;
+    int32 failure_count = 2;
+    repeated BulkOperationError errors = 3;
+}
+
+message BulkOperationError {
+    string key = 1;
+    string error_code = 2;
+    string error_message = 3;
+}
+
+// ============================================================================
+// SEQUENTIAL THINKING SERVICE (Reasoning chains)
+// ============================================================================
+
+service SequentialThinkingService {
+    // Start a thinking chain
+    rpc StartChain(StartChainRequest) returns (StartChainResponse);
+    
+    // Add a thought to the chain
+    rpc AddThought(AddThoughtRequest) returns (AddThoughtResponse);
+    
+    // Stream the thinking process
+    rpc ThinkStream(StartChainRequest) returns (stream ThoughtEvent);
+    
+    // Conclude the chain
+    rpc Conclude(ConcludeRequest) returns (ConcludeResponse);
+    
+    // Get chain history
+    rpc GetChain(GetChainRequest) returns (GetChainResponse);
+    
+    // Fork a chain for alternative exploration
+    rpc ForkChain(ForkChainRequest) returns (ForkChainResponse);
+}
+
+message StartChainRequest {
+    string session_id = 1;
+    string problem = 2;
+    int32 max_steps = 3;
+    string context = 4;
+    ThinkingStyle style = 5;
+}
+
+enum ThinkingStyle {
+    THINKING_STYLE_DEFAULT = 0;
+    THINKING_STYLE_ANALYTICAL = 1;
+    THINKING_STYLE_CREATIVE = 2;
+    THINKING_STYLE_CRITICAL = 3;
+    THINKING_STYLE_SYSTEMATIC = 4;
+}
+
+message StartChainResponse {
+    bool success = 1;
+    string chain_id = 2;
+    int32 max_steps = 3;
+}
+
+message AddThoughtRequest {
+    string session_id = 1;
+    string chain_id = 2;
+    string thought = 3;
+    ThoughtType thought_type = 4;
+    float confidence = 5;  // 0.0 to 1.0
+}
+
+enum ThoughtType {
+    THOUGHT_TYPE_OBSERVATION = 0;
+    THOUGHT_TYPE_HYPOTHESIS = 1;
+    THOUGHT_TYPE_ANALYSIS = 2;
+    THOUGHT_TYPE_CONCLUSION = 3;
+    THOUGHT_TYPE_QUESTION = 4;
+    THOUGHT_TYPE_REFLECTION = 5;
+}
+
+message AddThoughtResponse {
+    bool success = 1;
+    string chain_id = 2;
+    int32 step = 3;
+    int32 remaining_steps = 4;
+}
+
+message ThoughtEvent {
+    string chain_id = 1;
+    int32 step = 2;
+    int32 total_steps = 3;
+    string thought = 4;
+    ThoughtType thought_type = 5;
+    float confidence = 6;
+    ChainStatus status = 7;
+    int64 timestamp_ms = 8;
+}
+
+enum ChainStatus {
+    CHAIN_STATUS_UNKNOWN = 0;
+    CHAIN_STATUS_THINKING = 1;
+    CHAIN_STATUS_ANALYZING = 2;
+    CHAIN_STATUS_CONCLUDING = 3;
+    CHAIN_STATUS_COMPLETE = 4;
+    CHAIN_STATUS_STUCK = 5;
+    CHAIN_STATUS_ERROR = 6;
+}
+
+message ConcludeRequest {
+    string session_id = 1;
+    string chain_id = 2;
+    bool force = 3;  // Conclude even if not all steps used
+}
+
+message ConcludeResponse {
+    bool success = 1;
+    string chain_id = 2;
+    string conclusion = 3;
+    float overall_confidence = 4;
+    int32 steps_used = 5;
+    repeated string key_insights = 6;
+}
+
+message GetChainRequest {
+    string session_id = 1;
+    string chain_id = 2;
+}
+
+message GetChainResponse {
+    bool found = 1;
+    string chain_id = 2;
+    string problem = 3;
+    repeated ThoughtEvent thoughts = 4;
+    ChainStatus status = 5;
+    string conclusion = 6;
+    int64 started_at_ms = 7;
+    int64 completed_at_ms = 8;
+}
+
+message ForkChainRequest {
+    string session_id = 1;
+    string chain_id = 2;
+    int32 fork_at_step = 3;  // Which step to fork from
+    string alternative_thought = 4;
+}
+
+message ForkChainResponse {
+    bool success = 1;
+    string new_chain_id = 2;
+    string parent_chain_id = 3;
+    int32 forked_at_step = 4;
+}
+
+// ============================================================================
+// CONTEXT MANAGER SERVICE (Persistent context across sessions)
+// ============================================================================
+
+service ContextManagerService {
+    rpc Save(SaveContextRequest) returns (SaveContextResponse);
+    rpc Load(LoadContextRequest) returns (LoadContextResponse);
+    rpc List(ListContextsRequest) returns (ListContextsResponse);
+    rpc Delete(DeleteContextRequest) returns (DeleteContextResponse);
+    rpc Export(ExportContextRequest) returns (stream ExportChunk);
+    rpc Import(stream ImportChunk) returns (ImportContextResponse);
+    rpc Merge(MergeContextsRequest) returns (MergeContextsResponse);
+}
+
+message SaveContextRequest {
+    string session_id = 1;
+    string name = 2;
+    string content = 3;
+    repeated string tags = 4;
+    bool overwrite = 5;
+    ContextType context_type = 6;
+}
+
+enum ContextType {
+    CONTEXT_TYPE_GENERIC = 0;
+    CONTEXT_TYPE_PROJECT = 1;
+    CONTEXT_TYPE_CONVERSATION = 2;
+    CONTEXT_TYPE_TASK = 3;
+    CONTEXT_TYPE_KNOWLEDGE = 4;
+}
+
+message SaveContextResponse {
+    bool success = 1;
+    string name = 2;
+    int64 size_bytes = 3;
+    string version = 4;
+}
+
+message LoadContextRequest {
+    string session_id = 1;
+    string name = 2;
+    string version = 3;  // Empty = latest
+}
+
+message LoadContextResponse {
+    bool found = 1;
+    string name = 2;
+    string content = 3;
+    repeated string tags = 4;
+    ContextType context_type = 5;
+    int64 created_at_ms = 6;
+    int64 updated_at_ms = 7;
+    string version = 8;
+}
+
+message ListContextsRequest {
+    string session_id = 1;
+    string tag_filter = 2;
+    ContextType type_filter = 3;
+    int32 limit = 4;
+    int32 offset = 5;
+}
+
+message ListContextsResponse {
+    repeated ContextInfo contexts = 1;
+    int32 total_count = 2;
+}
+
+message ContextInfo {
+    string name = 1;
+    int64 size_bytes = 2;
+    repeated string tags = 3;
+    ContextType context_type = 4;
+    int64 updated_at_ms = 5;
+    string version = 6;
+}
+
+message DeleteContextRequest {
+    string session_id = 1;
+    string name = 2;
+    bool all_versions = 3;
+}
+
+message DeleteContextResponse {
+    bool success = 1;
+    int32 versions_deleted = 2;
+}
+
+message ExportContextRequest {
+    string session_id = 1;
+    repeated string names = 2;  // Empty = all
+    string format = 3;  // json, yaml, tar
+    bool include_history = 4;
+}
+
+message ExportChunk {
+    bytes data = 1;
+    int64 offset = 2;
+    int64 total_size = 3;
+    bool is_final = 4;
+}
+
+message ImportChunk {
+    bytes data = 1;
+    bool is_final = 2;
+    string format = 3;
+    bool overwrite_existing = 4;
+}
+
+message ImportContextResponse {
+    bool success = 1;
+    int32 imported_count = 2;
+    int32 skipped_count = 3;
+    repeated string errors = 4;
+}
+
+message MergeContextsRequest {
+    string session_id = 1;
+    repeated string source_names = 2;
+    string target_name = 3;
+    MergeStrategy strategy = 4;
+}
+
+enum MergeStrategy {
+    MERGE_STRATEGY_CONCAT = 0;
+    MERGE_STRATEGY_DEDUPE = 1;
+    MERGE_STRATEGY_LATEST = 2;
+}
+
+message MergeContextsResponse {
+    bool success = 1;
+    string target_name = 2;
+    int64 merged_size_bytes = 3;
+}
+
+// ============================================================================
+// RUST PRO SERVICE (Cargo operations with streaming)
+// ============================================================================
+
+service RustProService {
+    // Quick operations (non-streaming)
+    rpc Check(CargoRequest) returns (CargoResponse);
+    rpc Fmt(CargoRequest) returns (CargoResponse);
+    rpc Version(VersionRequest) returns (VersionResponse);
+    
+    // Streaming operations
+    rpc Build(CargoRequest) returns (stream CargoOutputLine);
+    rpc Test(CargoRequest) returns (stream CargoOutputLine);
+    rpc Clippy(CargoRequest) returns (stream CargoOutputLine);
+    rpc Run(CargoRequest) returns (stream CargoOutputLine);
+    rpc Doc(CargoRequest) returns (stream CargoOutputLine);
+    rpc Bench(CargoRequest) returns (stream CargoOutputLine);
+    
+    // Analysis
+    rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse);
+}
+
+message CargoRequest {
+    string session_id = 1;
+    string path = 2;  // Project path, default "."
+    bool release = 3;
+    repeated string features = 4;
+    string package = 5;  // Specific package in workspace
+    string filter = 6;   // Test filter
+    bool fix = 7;        // For clippy/fmt --fix
+    bool all_targets = 8;
+    int64 timeout_secs = 9;
+    map<string, string> env = 10;
+}
+
+message CargoResponse {
+    bool success = 1;
+    string stdout = 2;
+    string stderr = 3;
+    int32 exit_code = 4;
+    int64 duration_ms = 5;
+    CargoMetadata metadata = 6;
+}
+
+message CargoMetadata {
+    int32 warnings = 1;
+    int32 errors = 2;
+    repeated string failed_targets = 3;
+}
+
+message CargoOutputLine {
+    string line = 1;
+    OutputStreamType stream = 2;
+    int64 timestamp_ms = 3;
+    bool is_final = 4;
+    int32 exit_code = 5;      // Only set when is_final
+    int64 duration_ms = 6;    // Only set when is_final
+    CargoMetadata metadata = 7; // Only set when is_final
+}
+
+enum OutputStreamType {
+    OUTPUT_STREAM_STDOUT = 0;
+    OUTPUT_STREAM_STDERR = 1;
+    OUTPUT_STREAM_COMPILER = 2;  // Parsed compiler messages
+}
+
+message VersionRequest {
+    string session_id = 1;
+}
+
+message VersionResponse {
+    string rustc_version = 1;
+    string cargo_version = 2;
+    string clippy_version = 3;
+    string rustfmt_version = 4;
+}
+
+message AnalyzeRequest {
+    string session_id = 1;
+    string path = 2;
+    AnalysisType analysis_type = 3;
+}
+
+enum AnalysisType {
+    ANALYSIS_TYPE_DEPENDENCIES = 0;
+    ANALYSIS_TYPE_STRUCTURE = 1;
+    ANALYSIS_TYPE_COMPLEXITY = 2;
+    ANALYSIS_TYPE_UNUSED = 3;
+}
+
+message AnalyzeResponse {
+    bool success = 1;
+    string result_json = 2;
+}
+
+// ============================================================================
+// BACKEND ARCHITECT SERVICE
+// ============================================================================
+
+service BackendArchitectService {
+    rpc Analyze(ArchitectAnalyzeRequest) returns (ArchitectAnalyzeResponse);
+    rpc Design(ArchitectDesignRequest) returns (ArchitectDesignResponse);
+    rpc Review(ArchitectReviewRequest) returns (ArchitectReviewResponse);
+    rpc Suggest(ArchitectSuggestRequest) returns (ArchitectSuggestResponse);
+    rpc Document(ArchitectDocumentRequest) returns (stream DocumentChunk);
+}
+
+message ArchitectAnalyzeRequest {
+    string session_id = 1;
+    string path = 2;
+    string scope = 3;  // file, module, crate, workspace
+    repeated string focus_areas = 4;
+}
+
+message ArchitectAnalyzeResponse {
+    bool success = 1;
+    string analysis_json = 2;
+    repeated ArchitectureFinding findings = 3;
+}
+
+message ArchitectureFinding {
+    string category = 1;  // structure, dependency, pattern, concern
+    string severity = 2;  // info, warning, critical
+    string message = 3;
+    string location = 4;
+    string suggestion = 5;
+}
+
+message ArchitectDesignRequest {
+    string session_id = 1;
+    string context = 2;
+    repeated string requirements = 3;
+    repeated string constraints = 4;
+    DesignStyle style = 5;
+}
+
+enum DesignStyle {
+    DESIGN_STYLE_MINIMAL = 0;
+    DESIGN_STYLE_COMPREHENSIVE = 1;
+    DESIGN_STYLE_ITERATIVE = 2;
+}
+
+message ArchitectDesignResponse {
+    bool success = 1;
+    string design_json = 2;
+    repeated string components = 3;
+    repeated string interfaces = 4;
+    repeated string trade_offs = 5;
+}
+
+message ArchitectReviewRequest {
+    string session_id = 1;
+    string design = 2;
+    repeated string review_criteria = 3;
+}
+
+message ArchitectReviewResponse {
+    bool success = 1;
+    string review_json = 2;
+    int32 score = 3;  // 0-100
+    repeated ReviewIssue issues = 4;
+    repeated string strengths = 5;
+}
+
+message ReviewIssue {
+    string category = 1;
+    string severity = 2;
+    string description = 3;
+    string recommendation = 4;
+}
+
+message ArchitectSuggestRequest {
+    string session_id = 1;
+    string context = 2;
+    repeated string constraints = 3;
+    int32 max_suggestions = 4;
+}
+
+message ArchitectSuggestResponse {
+    bool success = 1;
+    repeated Suggestion suggestions = 2;
+}
+
+message Suggestion {
+    string title = 1;
+    string description = 2;
+    string rationale = 3;
+    int32 effort = 4;  // 1-5 (low to high)
+    int32 impact = 5;  // 1-5 (low to high)
+}
+
+message ArchitectDocumentRequest {
+    string session_id = 1;
+    string path = 2;
+    DocumentFormat format = 3;
+    repeated string sections = 4;
+}
+
+enum DocumentFormat {
+    DOCUMENT_FORMAT_MARKDOWN = 0;
+    DOCUMENT_FORMAT_HTML = 1;
+    DOCUMENT_FORMAT_ASCIIDOC = 2;
+}
+
+message DocumentChunk {
+    string content = 1;
+    string section = 2;
+    bool is_final = 3;
+    int32 sequence = 4;
+}
+
+// ============================================================================
+// WORKSTACK EXECUTION SERVICE
+// ============================================================================
+
+service WorkstackService {
+    // Execute a workstack
+    rpc Execute(WorkstackExecuteRequest) returns (stream WorkstackEvent);
+    
+    // Get workstack status
+    rpc GetStatus(WorkstackStatusRequest) returns (WorkstackStatusResponse);
+    
+    // Cancel a running workstack
+    rpc Cancel(WorkstackCancelRequest) returns (WorkstackCancelResponse);
+    
+    // Rollback a workstack
+    rpc Rollback(WorkstackRollbackRequest) returns (WorkstackRollbackResponse);
+    
+    // List available workstacks
+    rpc List(ListWorkstacksRequest) returns (ListWorkstacksResponse);
+}
+
+message WorkstackExecuteRequest {
+    string session_id = 1;
+    string workstack_id = 2;
+    map<string, string> variables = 3;
+    bool dry_run = 4;
+    int64 timeout_secs = 5;
+}
+
+message WorkstackEvent {
+    string workstack_id = 1;
+    string execution_id = 2;
+    WorkstackEventType event_type = 3;
+    string phase_id = 4;
+    string message = 5;
+    string details_json = 6;
+    int64 timestamp_ms = 7;
+    WorkstackProgress progress = 8;
+}
+
+enum WorkstackEventType {
+    WORKSTACK_EVENT_STARTED = 0;
+    WORKSTACK_EVENT_PHASE_STARTED = 1;
+    WORKSTACK_EVENT_PHASE_PROGRESS = 2;
+    WORKSTACK_EVENT_PHASE_COMPLETED = 3;
+    WORKSTACK_EVENT_PHASE_FAILED = 4;
+    WORKSTACK_EVENT_PHASE_SKIPPED = 5;
+    WORKSTACK_EVENT_COMPLETED = 6;
+    WORKSTACK_EVENT_FAILED = 7;
+    WORKSTACK_EVENT_ROLLBACK_STARTED = 8;
+    WORKSTACK_EVENT_ROLLBACK_COMPLETED = 9;
+}
+
+message WorkstackProgress {
+    int32 current_phase = 1;
+    int32 total_phases = 2;
+    string current_phase_id = 3;
+    float percent_complete = 4;
+}
+
+message WorkstackStatusRequest {
+    string session_id = 1;
+    string execution_id = 2;
+}
+
+message WorkstackStatusResponse {
+    bool found = 1;
+    string execution_id = 2;
+    string workstack_id = 3;
+    WorkstackExecutionStatus status = 4;
+    WorkstackProgress progress = 5;
+    repeated PhaseStatus phases = 6;
+    int64 started_at_ms = 7;
+    int64 completed_at_ms = 8;
+}
+
+enum WorkstackExecutionStatus {
+    WORKSTACK_EXECUTION_PENDING = 0;
+    WORKSTACK_EXECUTION_RUNNING = 1;
+    WORKSTACK_EXECUTION_COMPLETED = 2;
+    WORKSTACK_EXECUTION_FAILED = 3;
+    WORKSTACK_EXECUTION_CANCELLED = 4;
+    WORKSTACK_EXECUTION_ROLLING_BACK = 5;
+    WORKSTACK_EXECUTION_ROLLED_BACK = 6;
+}
+
+message PhaseStatus {
+    string phase_id = 1;
+    string phase_name = 2;
+    WorkstackExecutionStatus status = 3;
+    string result_json = 4;
+    string error = 5;
+    int64 started_at_ms = 6;
+    int64 completed_at_ms = 7;
+}
+
+message WorkstackCancelRequest {
+    string session_id = 1;
+    string execution_id = 2;
+    bool rollback = 3;
+}
+
+message WorkstackCancelResponse {
+    bool success = 1;
+    bool will_rollback = 2;
+}
+
+message WorkstackRollbackRequest {
+    string session_id = 1;
+    string execution_id = 2;
+    string rollback_to_phase = 3;  // Empty = full rollback
+}
+
+message WorkstackRollbackResponse {
+    bool success = 1;
+    repeated string rolled_back_phases = 2;
+    repeated string errors = 3;
+}
+
+message ListWorkstacksRequest {
+    string session_id = 1;
+    string category = 2;
+}
+
+message ListWorkstacksResponse {
+    repeated WorkstackInfo workstacks = 1;
+}
+
+message WorkstackInfo {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    string category = 4;
+    repeated string required_agents = 5;
+    int32 phase_count = 6;
+}

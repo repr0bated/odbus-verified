@@ -1,0 +1,20 @@
+[package]
+name = "op-gemma"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Gemma routing brain — subid → tag → xray + OpenFlow rules"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+op-blob = { workspace = true }
+op-state-store = { path = "../op-state-store" }
+
+[[bin]]
+name = "op-gemma"
+path = "src/main.rs"

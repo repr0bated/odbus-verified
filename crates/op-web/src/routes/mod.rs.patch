@@ -1,0 +1,8 @@
+// Add to crates/op-web/src/routes/mod.rs:
+
+pub mod admin;
+
+// In your router setup, add:
+use admin::admin_routes;
+
+// .nest("/admin", admin_routes())

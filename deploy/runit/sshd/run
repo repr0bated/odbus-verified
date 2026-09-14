@@ -1,0 +1,14 @@
+#!/bin/sh
+exec 2>&1
+ssh-keygen -A >/dev/null 2>&1 # Will generate host keys if they don't already exist
+[ -r conf ] && . ./conf
+# Wait for pub0's public address before binding ListenAddress 188.68.58.237.
+# If sshd starts first, OpenSSH skips the unbound address and only listens on
+# 127.0.0.1, so public SSH stays Connection refused until a later restart.
+i=0
+until ip -4 addr show dev pub0 2>/dev/null | grep -q "188\\.68\\.58\\.237/"; do
+    i=$((i + 1))
+    [ "$i" -ge 90 ] && { echo "pub0 188.68.58.237 never appeared" >&2; break; }
+    sleep 1
+done
+exec /usr/bin/sshd -D -e $OPTS

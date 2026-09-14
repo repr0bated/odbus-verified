@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+exec 2>&1
+umask 077
+
+ENV_FILE=${OP_DECOY_NETWORK_ENV_FILE:-/etc/op-dbus/decoy-network.env}
+[ -r "$ENV_FILE" ] || {
+    echo "op-decoy-network: missing environment file: $ENV_FILE" >&2
+    exit 1
+}
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
+
+[ "${OP_NETWORK_ROLE:-}" = decoy ] || {
+    echo "op-decoy-network: OP_NETWORK_ROLE must be decoy" >&2
+    exit 1
+}
+: "${OP_DECOY_NETWORK_INTERFACES:?must explicitly allow decoy interfaces}"
+: "${OP_DECOY_NATIVE_LISTEN:?must be a private or tunnel socket address}"
+: "${OP_DECOY_NATIVE_CA_FILE:?must name the private transport CA bundle}"
+: "${OP_DECOY_NATIVE_CERT_FILE:?must name the decoy server certificate}"
+: "${OP_DECOY_NATIVE_KEY_FILE:?must name the decoy server private key}"
+: "${OP_DECOY_NATIVE_BRIDGE_CERT_FILE:?must name the one pinned bridge leaf certificate}"
+: "${OP_DECOY_NETWORK_COZO_PATH:?must name the decoy-local Cozo directory}"
+
+# opblob is the sole catalog materializer. The offline release installs the
+# exact persisted catalog produced by `opblob persist`; boot copies those
+# sealed bytes into tmpfs without probing backends or resealing schemas.
+[ "${OP_BLOB_CATALOG_DIR:-/dev/shm/opdbus/plugin-blobs}" = /dev/shm/opdbus/plugin-blobs ] || {
+    echo "op-decoy-network: OP_BLOB_CATALOG_DIR must use the canonical SHM catalog" >&2
+    exit 1
+}
+install -d -m 0755 /dev/shm/opdbus/plugin-blobs
+/usr/local/bin/opblob stage-shm
+
+exec /usr/local/bin/op-decoy-network

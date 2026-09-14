@@ -1,0 +1,119 @@
+// ChatService — gRPC façade for the control-plane chatbot.
+//
+// The chatbot is a delegator, not an executor. It plans, suggests, coordinates,
+// and orchestrates — but always delegates execution to agents. Forced tool
+// calling is mandatory: even user-facing responses are emitted as tool calls.
+//
+// zeroclaw owns LLM provider/model routing (OD-28). SendRequest carries
+// the provider/model selection from zeroclaw's state; the server does not
+// make routing decisions.
+//
+// Wire vocabulary mirrors AI SDK UIMessage part kinds so renderers stay
+// portable, but the producer is our own runtime — no AI SDK provider library.
+
+syntax = "proto3";
+
+package op_chat.chat;
+
+// ============================================================================
+// CHAT SERVICE
+// ============================================================================
+
+service ChatService {
+  // Stream a chat completion. Returns a stream of ChatFrame events.
+  // The chatbot delegates to agents via forced tool calls; it never executes
+  // backplane operations directly.
+  rpc Send(SendRequest) returns (stream ChatFrame);
+
+  // Approve a tool call that requires operator confirmation.
+  // The chatbot is a delegator — approval gates agent delegation, not direct
+  // execution.
+  rpc Approve(ApproveRequest) returns (ApproveResponse);
+
+  // Cancel an in-flight chat stream.
+  rpc Cancel(CancelRequest) returns (CancelResponse);
+}
+
+// ============================================================================
+// REQUESTS
+// ============================================================================
+
+message SendRequest {
+  string conversation_id = 1;   // Groups episodes into task chains (threaded)
+  bytes  ui_messages = 2;       // JSON-encoded UIMessage[] (AI SDK shape)
+  optional string persona_id = 3;
+  string provider = 4;          // zeroclaw-selected provider (OD-28)
+  string model = 5;             // zeroclaw-selected model (OD-28)
+  optional uint64 resume_cursor = 6;  // Resume from last known cursor on reconnect
+}
+
+message ApproveRequest {
+  string conversation_id = 1;
+  string tool_call_id = 2;      // The tool call to approve
+  bool approved = 3;            // true = proceed, false = reject
+  optional string operator_note = 4;  // Optional reason for rejection
+}
+
+message CancelRequest {
+  string conversation_id = 1;
+}
+
+// ============================================================================
+// STREAM FRAMES
+// ============================================================================
+
+message ChatFrame {
+  uint64 cursor = 1;            // Monotonically increasing; out-of-order = protocol error
+  oneof body {
+    UIMessagePart part = 2;     // Streamed part (text/tool-call/tool-result/reasoning)
+    StreamError   error = 3;
+    Heartbeat     heartbeat = 4;
+    StreamDone    done = 5;
+    ApprovalRequired approval = 6;  // Server requests operator approval for a tool call
+  }
+}
+
+message UIMessagePart {
+  string message_id = 1;
+  string role = 2;              // "assistant" | "tool" | "system"
+  string kind = 3;              // "text" | "tool-call" | "tool-result" | "reasoning"
+  bytes  payload = 4;           // JSON bytes matching the AI SDK part shape
+}
+
+message ApprovalRequired {
+  string tool_call_id = 1;
+  string tool_name = 2;
+  bytes  tool_input = 3;        // JSON bytes of the tool call arguments
+  string description = 4;       // Human-readable description of what the tool will do
+}
+
+message StreamError {
+  string code = 1;              // Machine-readable error code
+  string message = 2;           // Human-readable error message
+  bool retryable = 3;           // Whether the client should retry
+  optional uint32 retry_after_ms = 4;
+}
+
+message Heartbeat {
+  uint64 server_time_ms = 1;
+}
+
+message StreamDone {
+  string conversation_id = 1;
+  uint64 total_parts = 2;
+}
+
+// ============================================================================
+// RESPONSES
+// ============================================================================
+
+message ApproveResponse {
+  bool success = 1;
+  string tool_call_id = 2;
+  optional string error = 3;
+}
+
+message CancelResponse {
+  bool success = 1;
+  string conversation_id = 2;
+}

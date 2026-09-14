@@ -1,0 +1,58 @@
+DNS Records for 3tched.com Mail Server
+======================================
+
+Replace `<PUBLIC_IPV4>` with your public IPv4 address.
+
+1. A Record (Webmail Hostname)
+------------------------------
+Type: A
+Name: mail
+Value: <PUBLIC_IPV4>
+Proxy: Proxied through Cloudflare
+TTL: Auto
+
+2. MX Record (Mail Exchange)
+----------------------------
+Keep the current authoritative MX that Cloudflare is already serving for the
+zone. In the current live config that is a managed `_dc-mx...` hostname, not a
+direct `mail.3tched.com` target.
+
+3. SPF Record (Sender Policy Framework)
+----------------------------------------
+Type: TXT
+Name: @
+Value: v=spf1 ip4:<PUBLIC_IPV4> ~all
+TTL: 300
+
+4. DMARC Record
+---------------
+Type: TXT
+Name: _dmarc
+Value: v=DMARC1; p=quarantine; rua=mailto:admin@3tched.com; ruf=mailto:admin@3tched.com; fo=1
+TTL: 300
+
+5. DKIM Record
+--------------
+Preserve the live selectors already published in Cloudflare. Rotate them only
+when you are intentionally rotating mail keys.
+
+To inspect the current live selectors:
+  dig TXT default._domainkey.3tched.com
+  dig TXT neo1._domainkey.3tched.com
+  dig TXT s202602._domainkey.3tched.com
+
+Testing
+-------
+After DNS propagation (can take up to 48 hours, usually minutes):
+
+1. Test MX record:
+   dig MX 3tched.com
+
+2. Test SPF:
+   dig TXT 3tched.com
+
+3. Send test email to:
+   https://www.mail-tester.com/
+
+4. Check DKIM/SPF/DMARC:
+   https://mxtoolbox.com/

@@ -1,0 +1,42 @@
+locale = "en"
+schema_version = 3
+
+[a2a.server]
+enabled = true
+
+[skill_bundles.default]
+directory = "shared/skills/default"
+
+[gateway]
+host = "127.0.0.1"
+port = 8082
+require_pairing = true
+allow_public_bind = false
+allow_remote_admin = false
+request_timeout_secs = 30
+long_running_request_timeout_secs = 600
+
+[providers.models.opencode.go]
+model = "deepseek-v4-flash-free"
+uri = "https://opencode.ai/zen/v1"
+
+[agents.dashboard]
+enabled = true
+model_provider = "opencode.go"
+risk_profile = "dashboard"
+skill_bundles = ["default"]
+
+[agents.dashboard.a2a]
+published = true
+exposed_skills = [
+    "plugin-schema",
+    "ovs-network-triage",
+    "qdrant-collections",
+    "mutation-dispatch",
+]
+
+[risk_profiles.dashboard]
+level = "readonly"
+workspace_only = true
+require_approval_for_medium_risk = true
+block_high_risk_commands = true

@@ -1,0 +1,34 @@
+#!/bin/sh
+# Put the netclient WireGuard iface on ovsbr0. Name kept for dependency stability.
+exec 2>&1
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-}"
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 180 ] && { echo "dependency $1 not ready after 180s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+wait_dep ovs-vswitchd
+wait_dep netclient
+
+set -a; [ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf; set +a
+BRIDGE="${BRIDGE:-ovsbr0}"
+IFACE="${NETMAKER_PORT:-netmaker}"
+
+i=0
+until [ -d "/sys/class/net/$IFACE" ]; do
+    i=$((i + 1))
+    [ "$i" -ge 60 ] && { echo "netmaker-ovs-attach: $IFACE never appeared" >&2; exit 1; }
+    sleep 1
+done
+
+/usr/local/libexec/3tched/ovsdb-port add-port "$BRIDGE" "$IFACE"
+ip link set dev "$IFACE" up
+/usr/local/libexec/3tched/runit-ready-signal netmaker-ovs-attach
+echo "netmaker-ovs-attach: added $IFACE to $BRIDGE"
+exec pause

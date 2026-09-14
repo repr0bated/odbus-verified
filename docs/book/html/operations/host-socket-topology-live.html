@@ -1,0 +1,660 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Host Socket &amp; Network Topology (Live) - OP-DBUS Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-e96d0476.css">
+        <link rel="stylesheet" href="../css/chrome-d279d366.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-e83c7498.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-98244269.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">OP-DBUS Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/Factory-AI/odbus" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/Factory-AI/odbus/edit/main/docs/src/operations/host-socket-topology-live.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="host-socket--network-topology-live-snapshot"><a class="header" href="#host-socket--network-topology-live-snapshot">Host socket &amp; network topology (live snapshot)</a></h1>
+<p><strong>Host:</strong> Artix Linux, runit (not s6), post 2026-07-20/21 provider move<br><strong>Verified:</strong> 2026-07-22 against live <code>ip</code>, <code>ovs-vsctl</code>, <code>incus config device show</code>, <code>ss</code>, <code>/dev/shm/xray_config.json</code>, <code>/etc/op-dbus/network.conf</code><br><strong>Status:</strong> Read-only investigation. Tree and older docs lag; <strong>this file documents live reality</strong>, then contrasts intent.</p>
+<p>If more than a few days old, re-verify with:</p>
+<pre><code class="language-bash">ip -br addr; ip route
+sudo ovs-vsctl show
+sudo incus list -c nst4
+for c in assistant cozo mail-3tched netmaker qdrant xray; do
+  echo "=== $c ==="; sudo incus config device show "$c"
+done
+ss -ltnp; ss -lxnp | grep -E 'opdbus|ghostbridge|openvswitch|dbus'
+sudo sv status ovsbr0-uplink ovsbr0-addr ovsbr0-svc-addr uplink-dhcp op-of-controller wg-3tched op-web op-grpc-bridge
+</code></pre>
+<hr>
+<h2 id="1-mental-model-two-layers"><a class="header" href="#1-mental-model-two-layers">1. Mental model (two layers)</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Layer</th><th>Role</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>L2/L3 fabric</strong></td><td>Single OVS bridge <code>ovsbr0</code>; host L3 on internal ports <code>pub0</code> / <code>svc0</code>; physical <code>eth0</code> enslaved, unaddressed</td></tr>
+<tr><td><strong>Service attachment</strong></td><td>Hybrid: shared UDS <em>intent</em> vs live <strong>Incus <code>proxy</code> + disk mounts + mesh <code>tcpfwd</code></strong></td></tr>
+</tbody>
+</table>
+</div>
+<p>There is <strong>no</strong> uniform “every container gets only <code>/run/ghostbridge/container.sock</code>” on this host today. Only <code>assistant</code> is pure shared-mount (and that directory is currently empty). Most services use <strong>host-side TCP listeners</strong> + <strong>Incus proxy</strong> or <strong>runit tcpfwd</strong> into the mesh / xray.</p>
+<hr>
+<h2 id="2-host-l3-map-live"><a class="header" href="#2-host-l3-map-live">2. Host L3 map (live)</a></h2>
+<pre><code class="language-text">Internet
+   |
+   v
+eth0  (physical, enslaved, NO IPv4)
+   |
+ovsbr0  (OVS bridge, no host L3 on the bridge device itself)
+   |
+   +-- pub0   188.68.58.237/22   default via 188.68.56.1   (MAC = eth0 MAC)
+   +-- svc0   10.200.0.2/24      host end of service segment
+   +-- grpc   (internal port, link-local only)
+   +-- veth*  (xray container NIC peer)
+   |
+xray eth0: 10.200.0.1/24  and  10.0.0.2/24
+
+WireGuard mesh (separate L3, NOT on ovsbr0):
+   3tched  100.69.0.254/16   listen :51821
+</code></pre>
+<h3 id="routes-host"><a class="header" href="#routes-host">Routes (host)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Destination</th><th>Device</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td>default</td><td><code>pub0</code> via <code>188.68.56.1</code></td><td>Public egress</td></tr>
+<tr><td><code>10.200.0.0/24</code></td><td><code>svc0</code></td><td>Service / xray segment</td></tr>
+<tr><td><code>100.69.0.0/16</code></td><td><code>3tched</code></td><td>Mesh — <strong>must not</strong> land on <code>ovsbr0</code></td></tr>
+<tr><td><code>1.1.1.1/32</code></td><td><code>3tched</code></td><td>Mesh-pinned</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="hard-invariants-boot-helpers-enforce"><a class="header" href="#hard-invariants-boot-helpers-enforce">Hard invariants (boot helpers enforce)</a></h3>
+<ul>
+<li><strong>Never</strong> put <code>10.200.0.1</code> on the host (<code>xray</code> owns it).</li>
+<li><strong>Never</strong> install <code>100.69.0.0/16</code> on <code>ovsbr0</code> (WG owns mesh).</li>
+<li>Bridge device never holds public/service addresses; <code>pub0</code>/<code>svc0</code> do.</li>
+<li>Static addressing via <code>/etc/op-dbus/network.conf</code> (no DHCP fight on enslaved eth0).</li>
+</ul>
+<p>Canonical config: <code>/etc/op-dbus/network.conf</code><br>Helpers: <code>/usr/local/libexec/3tched/{ovsbr0-uplink-up,ovsbr0-addr-up,ovsbr0-svc-addr-up,uplink-dhcp-up}</code></p>
+<hr>
+<h2 id="3-runit-boot-graph-network--control-plane"><a class="header" href="#3-runit-boot-graph-network--control-plane">3. Runit boot graph (network + control plane)</a></h2>
+<pre><code class="language-text">opdbus-rundirs
+  -&gt; uplink-dhcp          # snapshot pub0/network.conf into /run/opdbus/uplink-migration.env
+  -&gt; ovsdb-server
+  -&gt; ovs-vswitchd         # seed bridge + internal ports
+  -&gt; ovsbr0-uplink        # bridge + eth0 up; may call op-ovsbr0-setup
+  -&gt; ovsbr0-addr          # pub0 + svc0 L3 + default route
+  -&gt; ovsbr0-svc-addr      # reaffirm; strip mesh-on-bridge mistakes
+  -&gt; op-of-controller     # OpenFlow listen 127.0.0.1:6653
+  -&gt; wg-3tched            # mesh iface after host L3
+  -&gt; op-grpc-bridge / op-web / op-cognitive-mcp  (each waits on ovsbr0-addr or rundirs)
+</code></pre>
+<p>Ready stamps: <code>/run/opdbus/runit-ready/{opdbus-rundirs,uplink-dhcp,ovsbr0-uplink,ovsbr0-addr,ovsbr0-svc-addr}</code></p>
+<h3 id="mesh-port-forwarders-fwd-"><a class="header" href="#mesh-port-forwarders-fwd-">Mesh port forwarders (<code>fwd-*</code>)</a></h3>
+<p>After <code>3tched</code> has <code>100.69.0.254</code>, each enabled <code>fwd-*</code> runs <code>tcpfwd.py</code>:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Service</th><th>Listen (mesh)</th><th>Connect</th></tr>
+</thead>
+<tbody>
+<tr><td><code>fwd-8444</code></td><td><code>100.69.0.254:8444</code></td><td><code>10.200.0.1:8444</code> (xray VLESS/xhttp)</td></tr>
+<tr><td><code>fwd-8091</code></td><td><code>100.69.0.254:8091</code></td><td><code>10.200.0.1:8091</code></td></tr>
+<tr><td><code>fwd-8090</code></td><td><em>defined under <code>/etc/runit/sv</code> but not always enabled</em></td><td><code>10.200.0.1:8090</code></td></tr>
+<tr><td><code>fwd-8081</code></td><td><code>100.69.0.254:8081</code></td><td><code>127.0.0.1:8081</code> (netmaker API via host loopback proxy)</td></tr>
+<tr><td><code>fwd-6333</code> / <code>fwd-6334</code></td><td>mesh</td><td><code>10.200.0.1:6333/6334</code> (xray dokodemo → qdrant host proxies)</td></tr>
+<tr><td><code>fwd-3003</code></td><td>mesh</td><td><code>10.200.0.1:3003</code> → cognitive MCP</td></tr>
+<tr><td><code>fwd-28082</code></td><td>mesh</td><td><code>10.200.0.1:28082</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><code>uds-assistant</code>: <code>10.200.0.2:8091</code> ← <code>udsfwd.py</code> ← <code>/var/lib/assistant-controlplane/http.sock</code></p>
+<hr>
+<h2 id="4-host-tcp--uds-listeners-what-actually-binds"><a class="header" href="#4-host-tcp--uds-listeners-what-actually-binds">4. Host TCP / UDS listeners (what actually binds)</a></h2>
+<h3 id="control-plane-host-processes"><a class="header" href="#control-plane-host-processes">Control plane (host processes)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Bind</th><th>Process</th><th>Role</th></tr>
+</thead>
+<tbody>
+<tr><td><code>0.0.0.0:8080</code></td><td><code>op-web-server</code></td><td>HTTP GUI + API (public path via xray SNI → <code>10.200.0.2:8080</code>)</td></tr>
+<tr><td><code>0.0.0.0:8090</code></td><td><code>op-grpc-bridge</code></td><td>gRPC binary + gRPC-Web</td></tr>
+<tr><td><code>127.0.0.1:6653</code></td><td><code>op-of-controller</code></td><td>OpenFlow controller</td></tr>
+<tr><td><code>10.200.0.2:3003</code></td><td><code>op-cognitive-mcp</code></td><td>MCP HTTP/SSE</td></tr>
+<tr><td><code>10.200.0.2:50052</code></td><td><code>op-cognitive-mcp</code></td><td>Cognitive gRPC</td></tr>
+<tr><td><code>/run/opdbus/grpc.sock</code></td><td><code>op-grpc-bridge</code></td><td>Unix gRPC (live path; see §6)</td></tr>
+<tr><td><code>/run/opdbus/session-bus.sock</code></td><td>session bus</td><td>SESSION D-Bus</td></tr>
+<tr><td><code>/run/dbus/system_bus_socket</code></td><td>dbus</td><td>SYSTEM bus</td></tr>
+<tr><td><code>/run/openvswitch/db.sock</code></td><td>ovsdb-server</td><td>OVSDB</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="incus-proxybacked-host-binds-see-5"><a class="header" href="#incus-proxybacked-host-binds-see-5">Incus proxy–backed host binds (see §5)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Bind</th><th>Backend container</th></tr>
+</thead>
+<tbody>
+<tr><td><code>188.68.58.237:{25,80,143,465,587,993}</code></td><td><code>mail-3tched</code></td></tr>
+<tr><td><code>127.0.0.1:18080</code></td><td><code>mail-3tched</code> web local</td></tr>
+<tr><td><code>10.200.0.2:8081</code>, <code>127.0.0.1:8081</code></td><td><code>netmaker</code> API</td></tr>
+<tr><td><code>10.200.0.2:8083</code>, <code>127.0.0.1:8083</code></td><td><code>netmaker</code> broker</td></tr>
+<tr><td><code>188.68.58.237:8081</code>, <code>188.68.58.237:8083</code></td><td>also observed on public IP (extra bind path)</td></tr>
+<tr><td><code>10.200.0.2:6333</code>, <code>10.200.0.2:6334</code></td><td><code>qdrant</code></td></tr>
+<tr><td><code>127.0.0.1:50053</code></td><td><code>cozo</code> → host <code>127.0.0.1:50052</code> (chat/cozo chain)</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="not-on-host-yet"><a class="header" href="#not-on-host-yet">Not on host (yet)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Service</th><th>Where it lives</th></tr>
+</thead>
+<tbody>
+<tr><td>Prometheus <code>:9090</code></td><td><strong>inside</strong> <code>netmaker</code> only (<code>*:9090</code>)</td></tr>
+<tr><td>Grafana <code>:3000</code></td><td><strong>inside</strong> <code>netmaker</code> only (<code>*:3000</code>)</td></tr>
+</tbody>
+</table>
+</div>
+<p>No host Incus proxy or <code>fwd-*</code> for prom/graf as of this snapshot. Do not expose until this topology doc is accepted.</p>
+<hr>
+<h2 id="5-containers-attachment-mode-live-devices"><a class="header" href="#5-containers-attachment-mode-live-devices">5. Containers: attachment mode (live devices)</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Container</th><th>NIC</th><th>Shared UDS mount</th><th>Incus TCP proxy</th><th>Notes</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>xray</strong></td><td><strong>yes</strong> — <code>eth0</code> bridged on <code>ovsbr0</code> (<code>10.200.0.1</code>, <code>10.0.0.2</code>)</td><td><code>/run/opdbus</code> disk; config bind of <code>/dev/shm/xray_config.json</code></td><td>none</td><td>Sole public SNI terminator on fabric; only container with a real NIC</td></tr>
+<tr><td><strong>assistant</strong></td><td>no</td><td><code>/run/ghostbridge</code> → host <code>/run/ghostbridge</code> (<strong>empty dir</strong>)</td><td>none</td><td>Controlplane disk + identity mounts; pure shared-socket <em>shape</em>, not active sock</td></tr>
+<tr><td><strong>qdrant</strong></td><td>no</td><td><code>/run/ghostbridge</code> (empty)</td><td><code>6333</code>/<code>6334</code> host←container loopback</td><td>Hybrid</td></tr>
+<tr><td><strong>netmaker</strong></td><td>no</td><td>none</td><td><code>8081</code>/<code>8083</code> on <code>svc0</code> + loopback; egress proxy to <code>10.0.0.2:10809</code></td><td>systemd inside CT (prom/graf too)</td></tr>
+<tr><td><strong>mail-3tched</strong></td><td>no</td><td>none</td><td>public mail/web ports on <code>pub0</code> IP; SMTP egress via mesh <code>100.69.0.1:2525</code></td><td>Host-side mail, not Oracle decoy</td></tr>
+<tr><td><strong>cozo</strong></td><td>no</td><td>none</td><td>egress via xray <code>10.200.0.1:10809</code>; host proxy <code>50053→50052</code></td><td>data volume for op-dbus</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Incus networks:</strong> only <code>ovsbr0</code> is used by an instance (<code>xray</code>). No managed Incus bridge for the app set.</p>
+<h3 id="device-detail-summary"><a class="header" href="#device-detail-summary">Device detail (summary)</a></h3>
+<p><strong>assistant</strong> — disk only: <code>ghostbridge-socket</code>, identity, controlplane runtime, wayland/x11.</p>
+<p><strong>xray</strong> — <code>nic</code> eth0/<code>ovsbr0</code>; disks: opdbus runtime, <code>/run/opdbus</code>, read-only xray conf from SHM.</p>
+<p><strong>qdrant</strong> — proxies:</p>
+<ul>
+<li>host <code>10.200.0.2:6333</code> → container <code>127.0.0.1:6333</code></li>
+<li>host <code>10.200.0.2:6334</code> → container <code>127.0.0.1:6334</code></li>
+</ul>
+<p><strong>netmaker</strong> — proxies:</p>
+<ul>
+<li>host <code>10.200.0.2:8081</code> / <code>127.0.0.1:8081</code> → container <code>127.0.0.1:8081</code></li>
+<li>host <code>10.200.0.2:8083</code> / <code>127.0.0.1:8083</code> → container <code>127.0.0.1:8083</code></li>
+<li>container egress <code>127.0.0.1:3128</code> → <code>10.0.0.2:10809</code> (xray HTTP egress)</li>
+</ul>
+<p><strong>mail-3tched</strong> — proxies on <code>188.68.58.237</code> for 25/80/143/465/587/993; local web <code>127.0.0.1:18080</code>; egress SMTP proxy to mesh.</p>
+<p><strong>cozo</strong> — egress proxy to xray; <code>op-chat-host</code> host bind <code>127.0.0.1:50053</code> → <code>127.0.0.1:50052</code>.</p>
+<hr>
+<h2 id="6-shared-socket-fixed-2026-07-22"><a class="header" href="#6-shared-socket-fixed-2026-07-22">6. Shared socket (fixed 2026-07-22)</a></h2>
+<h3 id="model"><a class="header" href="#model">Model</a></h3>
+<ul>
+<li><strong>Host-local UDS:</strong> <code>/run/opdbus/grpc.sock</code> (<code>ZEROCLAW_UNIX_SOCKET</code>) — op-web, zbusctl, host tools.</li>
+<li><strong>Shared container UDS:</strong> <code>/run/ghostbridge/container.sock</code> (<code>GHOSTBRIDGE_SOCKET_PATH</code> / <code>SHARED_CONTAINER_SOCKET</code>) — bind-mounted into NIC-less CTs (<code>assistant</code>, <code>qdrant</code>).</li>
+<li><code>op-grpc-bridge</code> serves the <strong>same</strong> gRPC route set on both paths (dual listen). <code>createunixsocket</code> registers <code>(name, ports)</code> metadata against the shared path; it does not open per-container sockets.</li>
+<li>Identity on the UDS path: peer cred + identity sled headers (same interceptor as xray-injected path).</li>
+</ul>
+<h3 id="live-after-fix"><a class="header" href="#live-after-fix">Live after fix</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Path</th><th>Role</th></tr>
+</thead>
+<tbody>
+<tr><td><code>/run/ghostbridge/container.sock</code></td><td>Shared fabric for containers</td></tr>
+<tr><td><code>/run/opdbus/grpc.sock</code></td><td>Host-local gRPC</td></tr>
+<tr><td><code>/run/opdbus/session-bus.sock</code></td><td>SESSION bus</td></tr>
+</tbody>
+</table>
+</div>
+<p>Env (canonical):</p>
+<pre><code class="language-text">ZEROCLAW_UNIX_SOCKET=/run/opdbus/grpc.sock
+GHOSTBRIDGE_SOCKET_PATH=/run/ghostbridge/container.sock
+</code></pre>
+<p><code>opdbus-rundirs</code> creates <code>/run/ghostbridge</code> at boot. Re-verify with:</p>
+<pre><code class="language-bash">ss -lxnp | grep -E 'ghostbridge|opdbus/grpc'
+sudo sv status op-grpc-bridge
+</code></pre>
+<h3 id="still-hybrid-proxies-remain--non-identity-workloads-only"><a class="header" href="#still-hybrid-proxies-remain--non-identity-workloads-only">Still hybrid (proxies remain — non-identity workloads only)</a></h3>
+<p>Incus TCP proxies and mesh <code>fwd-*</code> still exist for <strong>mail / netmaker / qdrant / cozo side channels</strong>. Those are <strong>not</strong> the identity/control-plane attachment model.</p>
+<p><strong>Do not confuse Incus <code>proxy</code> devices with identity attachment.</strong> Registration / identity_sled containers use:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mechanism</th><th>Role</th><th>Status</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Shared host UDS</strong> <code>/run/ghostbridge/container.sock</code></td><td>Single control surface (host binds; CT gets the dir bind-mounted)</td><td><strong>Listen live</strong> (op-grpc-bridge dual-bind)</td></tr>
+<tr><td><strong>Host / CT loopbacks</strong></td><td>Services bind <code>127.0.0.1</code> (loopback), not a CT NIC; not an Incus <code>proxy</code> device</td><td>Pattern for NIC-less CTs</td></tr>
+<tr><td><strong>Disk bind of identity dir</strong></td><td><code>/var/lib/opdbus-runtime/identities/&lt;role&gt;</code> → CT <code>/opt/run-mounts/identity</code></td><td>Dir layout present; not full provision</td></tr>
+<tr><td><strong>btrfs fstorage</strong></td><td>Per-identity sealed image; <code>btrfs device add</code> onto seed rootfs (preferred cleaner persistence)</td><td>Keep this model. <strong>Delete order:</strong> <code>btrfs device delete</code> fstorage from seed <strong>before</strong> <code>incus delete</code> (provision <code>--recreate</code> does this). Deleting the CT while the loop is still in the array is how the host D-states.</td></tr>
+<tr><td><strong>No NIC</strong></td><td>Only <strong>xray</strong> has a real NIC on <code>ovsbr0</code></td><td>Live</td></tr>
+<tr><td><strong>No Incus proxy for identity</strong></td><td>Proxy devices remain hybrid hangover for mail/netmaker/qdrant/cozo only</td><td>Live hybrid</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="terminology-heartbeat-do-not-over-claim"><a class="header" href="#terminology-heartbeat-do-not-over-claim">Terminology: Heartbeat (do not over-claim)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>What it means</th><th>Status</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>ComponentRegistry <code>Heartbeat</code></strong></td><td>gRPC RPC on <code>operation.registry.v1</code> (<code>registry.proto</code>): lease token + liveness; server marks <strong>stale</strong> after missed windows; can demand re-register</td><td><strong>Spec + server handler in tree</strong> (<code>op-grpc-bridge</code> <code>ComponentRegistry.Heartbeat</code>). <strong>Not</strong> an identity-CT client loop, <strong>not</strong> a runit service, <strong>not</strong> deployed as the live identity control path</td></tr>
+<tr><td><strong>Chat stream heartbeat</strong></td><td>Unrelated <code>ChatFrame</code> keepalive on chat streams</td><td>Separate concept — do not conflate with registry Heartbeat</td></tr>
+<tr><td><strong>identity_sled <code>last_seen_at</code> / <code>touch_session</code></strong></td><td>Sled bookkeeping when a session is touched</td><td>Different from ComponentRegistry Heartbeat</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Intended (not implemented/deployed):</strong> NIC-less identity CT (or host-side agent) would periodically call ComponentRegistry <strong><code>Heartbeat</code></strong> over the <strong>shared UDS / host gRPC</strong>, presenting its lease. Host is the lease authority. Until that client path exists, say <strong>“Heartbeat (registry lease RPC — planned)”</strong>, not “host runs heartbeat for containers” as live fact.</p>
+<h3 id="identity-containers-registration--identity_sled"><a class="header" href="#identity-containers-registration--identity_sled">Identity containers (registration / identity_sled)</a></h3>
+<p>Correct provision (existing WG keys preferred) — <strong>target sequence</strong>, not all live:</p>
+<ol>
+<li><code>session_id = derive_session_id(wg_pubkey)</code> (or PSK-aware Argon2 form) — <strong>container name IS the UUID</strong>.</li>
+<li><code>identity_sled.provision_container</code> with that pubkey → Incus create on <strong>btrfs seed</strong> (default pool), profiles without NIC, register sled.</li>
+<li>Create per-session <strong>fstorage</strong> image under <code>/var/lib/opdbus-runtime/identities/&lt;role&gt;/fstorage.img</code>; <code>attach_btrfs_device</code> → <code>btrfs device add</code> onto seed mount.</li>
+<li>Register on shared socket: <code>createunixsocket</code> / <code>shared_unix_socket</code> with <code>name = session_id</code> (metadata only; host already owns <code>container.sock</code>).</li>
+<li><strong>Later:</strong> ComponentRegistry <strong>Register</strong> + <strong>Heartbeat</strong> over shared UDS (lease / stale) — API present; <strong>CT client not implemented/deployed</strong>.</li>
+</ol>
+<p><strong>Two identities on this host (existing keys, not rotated):</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Role</th><th>WG pubkey (existing)</th><th>Mesh IP</th><th>session_id (blake3 derive)</th></tr>
+</thead>
+<tbody>
+<tr><td>jeremy</td><td><code>GEMLT/+I…</code></td><td><code>100.69.0.2</code></td><td><code>f036f8d8-aabb-c5f2-49c9-18dac19f41ea</code></td></tr>
+<tr><td>chatbot</td><td><code>VaRh9EU…</code></td><td><code>100.69.0.10</code></td><td><code>bea37ecb-92be-197c-660f-09e806f1a34f</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>When provisioned correctly, <code>incus list</code> shows those <strong>two UUID names</strong> (plus infra CTs). <strong>Live today:</strong> only named infra CTs (<code>assistant</code>, <code>cozo</code>, …) — UUID identity CTs <strong>not</strong> created yet.</p>
+<p><strong>Memory leaf:</strong> one Cozo-backed store owns durable memory (Cozo <code>:put</code> leaf ops / cognitive memory). Identity CTs do <strong>not</strong> each run a separate memory server — they use the shared control plane toward that single memory leaf.</p>
+<p><strong>Registration surface:</strong> <code>op-identity</code> registration helpers + gRPC <code>RegistrationService</code> / privacy verify should end in <code>identity_sled.provision_container</code> + shared-socket register — not vault JSON alone and not Incus proxy plumbing.</p>
+<hr>
+<h2 id="7-public--identity-path-oracle-decoy--host"><a class="header" href="#7-public--identity-path-oracle-decoy--host">7. Public / identity path (Oracle decoy → host)</a></h2>
+<pre><code class="language-text">Client
+  |  DNS (NextDNS profile) → Oracle decoy A 129.153.134.63
+  v
+Oracle / mesh peer (WG endpoint :443, AllowedIPs 100.69.0.0/16)
+  |
+  v  WireGuard mesh
+Host 3tched 100.69.0.254
+  |
+  v  fwd-8444: 100.69.0.254:8444 → 10.200.0.1:8444
+xray (VLESS xhttp-in on 10.200.0.1:8444)
+  |  SNI / domain route from /dev/shm/xray_config.json
+  +-- dashboard|registration.{3tched,ghostbridge}.tech → 10.200.0.2:8080  (op-web)
+  +-- assistant.*                                      → 10.200.0.2:8090  (grpc-bridge)
+  +-- api.*                                            → 10.200.0.2:8081  (netmaker API proxy)
+  +-- broker.*                                         → 10.200.0.2:8083
+  +-- qdrant.*                                         → 10.200.0.2:6333
+  +-- default                                          → blackhole
+</code></pre>
+<p><strong>Xray live config location (mandatory):</strong> <code>/dev/shm/xray_config.json</code> only (bind-mounted into the container). Never disk-backed live path under <code>/etc/xray</code>.</p>
+<p><strong>Runit supervises the mount:</strong> <code>xray-config-mount</code> (<code>/etc/runit/sv/xray-config-mount</code>, helper <code>/usr/local/libexec/3tched/xray-config-mount-up</code>). File bind mounts pin an <em>inode</em>; host <code>cp</code>/<code>mv</code> replaces leave the CT stale. The service polls (default 5s), compares host vs CT md5, re-attaches Incus device <code>xrayconf</code>, and restarts xray in the CT.</p>
+<p>Additional xray inbounds on <code>10.200.0.1</code> (dokodemo/http) feed host <code>10.200.0.2</code> ports for mesh/side channels: 8090, 8091, 6333, 6334, 8081, 3003, 8443, 10809 (HTTP egress).</p>
+<p><strong>Mail</strong> is <strong>not</strong> on the decoy path for ingress: Postfix/Dovecot ports are Incus-proxied on <strong>host public</strong> <code>188.68.58.237</code>. Registration SMTP from <code>op-web</code> uses host-reachable <code>mail.3tched.com:587</code> (env in <code>/etc/op-dbus/environment</code>).</p>
+<p><strong>BASE_URL</strong> for magic links: <code>https://dashboard.3tched.com</code> (SNI → op-web).</p>
+<hr>
+<h2 id="8-common-exit-xray--optional-warp-wgcf"><a class="header" href="#8-common-exit-xray--optional-warp-wgcf">8. Common exit (xray) + optional WARP (<code>wgcf</code>)</a></h2>
+<p><strong>Xray is the single CT internet exit.</strong> Inbound <code>egress-proxy</code> on <code>10.200.0.1:10809</code> routes to outbound <code>warp</code> (freedom + <code>sockopt.mark = 0x51820</code>). Unmarked host/mesh/SNI paths are untouched.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Tag</th><th>Role</th></tr>
+</thead>
+<tbody>
+<tr><td>inbound <code>egress-proxy</code></td><td>Common exit door for containers</td></tr>
+<tr><td>outbound <code>warp</code></td><td>Marked freedom → host policy table when <code>wgcf</code> is up</td></tr>
+<tr><td>outbound <code>direct</code></td><td>Unmarked; main table / <code>pub0</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="warp-names-role-encoded--do-not-mix"><a class="header" href="#warp-names-role-encoded--do-not-mix">WARP names (role-encoded — do not mix)</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Host</th><th>Interface</th><th>Conf</th><th>Role</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Hypervisor</strong> (this Artix box)</td><td><strong><code>wgcf-egress</code></strong></td><td><code>/etc/wireguard/wgcf-egress.conf</code></td><td>CT privacy <strong>egress</strong> (xray common exit → mark <code>0x51821</code> → table 51820)</td></tr>
+<tr><td><strong>Oracle decoy</strong></td><td><strong><code>wgcf-ingress</code></strong></td><td><code>/etc/wireguard/wgcf-ingress.conf</code></td><td>Decoy edge <strong>ingress</strong> role (public path); not the hypervisor exit</td></tr>
+</tbody>
+</table>
+</div>
+<p>Bare <code>wgcf</code> is a <strong>stub</strong> on both machines pointing at the role name — do not <code>wg-quick up wgcf</code>.</p>
+<ul>
+<li><strong>IP is not ours</strong> — Cloudflare assigns Address; conf may be shared/reused from decoy.</li>
+<li><strong>Trick:</strong> interface <code>FwMark = 0x51820</code> = tunnel <strong>underlay</strong> on main/<code>pub0</code>; payload exit mark <strong><code>0x51821</code></strong> = table 51820 → <code>wgcf-egress</code>. Different marks on purpose.</li>
+<li><strong>Do not enslave</strong> into <code>ovsbr0</code> (L3, like <code>3tched</code>).</li>
+</ul>
+<pre><code class="language-text"># hypervisor
+wg-quick up wgcf-egress
+ip rule  # fwmark 0x51821 lookup 51820
+</code></pre>
+<h2 id="9-openflow-future--tag-routing"><a class="header" href="#9-openflow-future--tag-routing">9. OpenFlow (future — tag routing)</a></h2>
+<ul>
+<li>Controller: <code>op-of-controller</code> → <code>127.0.0.1:6653</code>.</li>
+<li>Bridge <code>fail_mode: standalone</code>.</li>
+<li>Live flows today are effectively <strong><code>priority=0 actions=NORMAL</code></strong> — L2 learning only.</li>
+<li><strong>Do not treat OpenFlow as broken for the shared-socket work.</strong> OpenFlow is reserved for <strong>future identity/tag routing</strong> (governed flows keyed by registration / uid / service tag once model-generated xray + OF policy land). Socket fabric correctness does not depend on OF policy today.</li>
+</ul>
+<hr>
+<h2 id="9-wireguard-mesh-3tched"><a class="header" href="#9-wireguard-mesh-3tched">9. WireGuard mesh (<code>3tched</code>)</a></h2>
+<ul>
+<li>Host address: <code>100.69.0.254/16</code>, listen <code>51821</code>.</li>
+<li>Notable peer: endpoint <code>129.153.134.63:443</code> (Oracle decoy side), AllowedIPs <code>100.69.0.0/16</code>.</li>
+<li>Other peer example: <code>100.69.0.2/32</code> (remote endpoint observed).</li>
+<li>Service <code>wg-3tched</code> explicitly deletes any <code>100.69.0.0/16</code> route that appears on <code>ovsbr0</code>.</li>
+</ul>
+<hr>
+<h2 id="10-inside-netmaker-observability-island"><a class="header" href="#10-inside-netmaker-observability-island">10. Inside netmaker (observability island)</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Process</th><th>Listen</th><th>Host exposure</th></tr>
+</thead>
+<tbody>
+<tr><td>netmaker API</td><td><code>*:8081</code></td><td>Yes — Incus proxy + mesh fwd</td></tr>
+<tr><td>netmaker MQTT/broker stack</td><td>8083/8084/…</td><td>Partial (8083 proxied)</td></tr>
+<tr><td><strong>prometheus</strong></td><td><code>*:9090</code></td><td><strong>None on host</strong></td></tr>
+<tr><td><strong>grafana</strong></td><td><code>*:3000</code></td><td><strong>None on host</strong></td></tr>
+<tr><td>node-ish metrics</td><td><code>127.0.0.1:9100</code></td><td>none</td></tr>
+</tbody>
+</table>
+</div>
+<p>Prom/graf were installed in-rootfs under systemd <strong>inside</strong> the CT. Topology understanding is a prerequisite before adding host proxies or SNI routes.</p>
+<hr>
+<h2 id="11-intent-vs-live-checklist"><a class="header" href="#11-intent-vs-live-checklist">11. Intent vs live (checklist)</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Topic</th><th>Intent (code/docs)</th><th>Live</th></tr>
+</thead>
+<tbody>
+<tr><td>Supervisor</td><td>runit on new host</td><td>runit (<code>sv</code>) ✓</td></tr>
+<tr><td>Single OVS bridge</td><td><code>ovsbr0</code></td><td>✓</td></tr>
+<tr><td>Host L3 on internal ports</td><td>pub0/svc0</td><td>✓</td></tr>
+<tr><td>xray only NIC on fabric</td><td>yes</td><td>✓</td></tr>
+<tr><td>Shared <code>container.sock</code> for all CTs</td><td>yes</td><td><strong>listen live</strong>; identity CTs still not on it as UUID sessions</td></tr>
+<tr><td>Identity CTs = UUID session_id, no NIC</td><td>yes</td><td><strong>not provisioned yet</strong> (vault/mesh only)</td></tr>
+<tr><td>Identity attachment = UDS + loopback, not Incus proxy</td><td>yes</td><td>model; do not add proxy for registration</td></tr>
+<tr><td>ComponentRegistry <strong>Heartbeat</strong> (lease)</td><td>planned identity liveness</td><td><strong>RPC in tree</strong>; <strong>no identity client deployed</strong></td></tr>
+<tr><td>Only xray has NIC</td><td>yes</td><td>✓</td></tr>
+<tr><td>Memory = one leaf (Cozo / cognitive)</td><td>yes</td><td><code>cozo</code> CT + host cognitive path</td></tr>
+<tr><td>Incus proxy</td><td>bulk services only</td><td>mail/netmaker/qdrant/cozo still hybrid</td></tr>
+<tr><td>OpenFlow policy fabric</td><td>future tag routing</td><td>standalone + NORMAL (by design until tag routing)</td></tr>
+<tr><td>Public GUI</td><td>decoy SNI → xray → op-web</td><td>✓ (dashboard/registration)</td></tr>
+<tr><td>gRPC public</td><td>SNI assistant → 8090</td><td>✓</td></tr>
+<tr><td>Mail</td><td>host CT</td><td>✓ public IP proxies</td></tr>
+<tr><td>Prometheus/Grafana</td><td>TBD host path</td><td><strong>CT-local only</strong></td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="12-related-tree--stale-docs"><a class="header" href="#12-related-tree--stale-docs">12. Related tree / stale docs</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Path</th><th>Note</th></tr>
+</thead>
+<tbody>
+<tr><td><code>docs/operations/ghostbridge-incus-ovs-architecture.md</code></td><td>Older dinit/ens3/socket-port design; historical intent</td></tr>
+<tr><td><code>docs/network-address-table.md</code></td><td><strong>Stale</strong> (old IPs, incusbr0, 10.88.88.x) — prefer this file</td></tr>
+<tr><td><code>docs/architecture/privacy-network-architecture.md</code></td><td>Intent / privacy chain</td></tr>
+<tr><td><code>docs/src/operations/network.md</code></td><td>Book ops page — keep aligned with this snapshot</td></tr>
+<tr><td>CLAUDE.md “Transport &amp; identity”</td><td>Matches hybrid live note</td></tr>
+</tbody>
+</table>
+</div>
+<hr>
+<h2 id="13-safe-change-policy-from-this-investigation"><a class="header" href="#13-safe-change-policy-from-this-investigation">13. Safe change policy (from this investigation)</a></h2>
+<ol>
+<li><strong>Re-read live devices</strong> before adding any proxy, <code>fwd-*</code>, or SNI route.</li>
+<li>Prefer <strong>documenting + minimal</strong> exposure for prom/graf only after deciding: mesh-only vs SNI vs loopback.</li>
+<li>Do not put addresses on <code>ovsbr0</code> bridge device; do not steal mesh routes onto OVS.</li>
+<li>Do not point xray at disk config; regenerate <code>/dev/shm/xray_config.json</code> and reload via approved control path.</li>
+<li>Shared sock <strong>listen is live</strong> (<code>/run/ghostbridge/container.sock</code>). New identity registrations attach via <strong>UDS + loopback</strong>, never Incus proxy.</li>
+<li>Provision identities via <code>identity_sled.provision_container</code> (existing WG keys); expect <strong>UUID container names</strong> in <code>incus list</code>. Attach fstorage with <code>btrfs device add</code> onto the RO seed, not subvolume layers.</li>
+<li>Do not put a NIC on anything except <strong>xray</strong>.</li>
+<li><strong>Heartbeat</strong> = ComponentRegistry lease RPC (terminology + server handler in tree). Do not document it as live identity control until a client path is implemented and deployed. Do not confuse with chat-stream heartbeats.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../operations/network.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../operations/incident-response.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../operations/network.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../operations/incident-response.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-09f2665d.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

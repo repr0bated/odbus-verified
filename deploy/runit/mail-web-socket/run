@@ -1,0 +1,27 @@
+#!/bin/sh
+exec 2>&1
+set -eu
+
+SOCK=/run/ghostbridge/mail-web.sock
+TARGET=/run/ghostbridge/mail/web.sock
+
+cleanup() {
+  [ ! -L "$SOCK" ] || rm -f "$SOCK"
+}
+trap cleanup EXIT TERM INT HUP
+
+# The mail container already publishes its TLS origin at mail/web.sock. Xray's
+# sealed bootstrap contract uses the historical flat mail-web.sock path, so
+# expose a stable alias instead of spawning a second container relay through
+# the currently non-functional incus.exec_instance control-plane method.
+until [ -S "$TARGET" ]; do sleep 1; done
+[ ! -e "$SOCK" ] || [ -L "$SOCK" ] || {
+  echo "mail-web-socket: refusing to replace non-symlink $SOCK" >&2
+  exit 1
+}
+rm -f "$SOCK"
+ln -s mail/web.sock "$SOCK"
+
+/usr/local/libexec/3tched/runit-ready-signal mail-web-socket 2>/dev/null || true
+while [ -S "$TARGET" ]; do sleep 2; done
+exit 1

@@ -1,0 +1,27 @@
+{
+  "format": "opdbus.tched-router-native.v1",
+  "upstream": {
+    "url": "https://github.com/zeroclaw-labs/zeroclaw.git",
+    "tag": "v0.8.4",
+    "commit": "a56c345d51dd8ab562e9351e0d4ab83f6a741db9",
+    "source_archive_sha256": "0f1a3508b30319542fca0050998fdc45f3682df71f6baa37f65065cf00692697",
+    "vendored_source_gzip_sha256": "5e0f092f4f673422812ab3c370c71286c2dfc51119c004b45996f33b58acfd78"
+  },
+  "patches": {
+    "lagged_sse_sha256": "a65848862aa9d4746f095c8ea651a52df43da45b09b97da3bf28e49d95198ff5",
+    "stateless_generation_sha256": "ec388affbefce0b081c24159814020c592771a84cd9395532ebda5d1164b1ccb",
+    "inventory_sha256": "3e97bca910269256c1b8eee06b662ae8f74d4dcc603fea3c46f0b2cbf795c56a",
+    "base_manifest_sha256": "94dfeb6ddb9eaa116a0849773eb8c07279508c1d7d2cbc269dbecfc19301a38f",
+    "patched_cargo_lock_sha256": "b0c68c2150b4bfa81127949d063f91480f71273fdbaf4e7f263da3d9ca86b4ac"
+  },
+  "artifact": {
+    "name": "zeroclaw",
+    "sha256": "8ee2629d9fd6f63c9d1ad4bfd4f5cc7d7c911f8b782379806cc0c915e5c0da4d",
+    "bytes": 40273544,
+    "rust_target": "x86_64-unknown-linux-gnu"
+  },
+  "toolchain": {
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)"
+  }
+}

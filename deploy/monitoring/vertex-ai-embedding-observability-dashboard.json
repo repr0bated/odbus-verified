@@ -1,0 +1,232 @@
+{
+  "displayName": "Vertex AI Embedding Observability",
+  "mosaicLayout": {
+    "columns": 12,
+    "tiles": [
+      {
+        "xPos": 0,
+        "yPos": 0,
+        "width": 12,
+        "height": 4,
+        "widget": {
+          "title": "Scope And Cost Assumptions",
+          "text": {
+            "format": "MARKDOWN",
+            "content": "Monitors Vertex AI publisher embedding traffic with Cloud Monitoring metrics. Usage widgets include embedding-family model IDs matching `.*embedding.*`, plus `multilingual-e5-small`, `multilingual-e5-large`, and `multilingual-e5-large-instruct`. Estimated cost widgets use current online pricing from the Vertex AI pricing page for mapped models only: `gemini-embedding-001` at `$0.00015 / 1k input tokens`, `gemini-embedding-2-preview` at `$0.0002 / 1k input tokens`, Google text embeddings (`textembedding-gecko*`, `text-embedding-005`, `text-multilingual-embedding-002`, `text-embedding-large-exp-03-07`) at `$0.000025 / 1k input characters`, `multilingual-e5-small` at `$0.000015 / 1k input tokens`, and `multilingual-e5-large` at `$0.000025 / 1k input tokens`. Requests on unmapped models are surfaced separately so you can extend the cost math if needed."
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 4,
+        "width": 3,
+        "height": 4,
+        "widget": {
+          "title": "Estimated Cost 24h USD",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "((sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/token_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=\"gemini-embedding-001\", type=\"input\"}[24h])) * 0.00015 / 1000) + (sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/token_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=\"gemini-embedding-2-preview\", type=\"input\"}[24h])) * 0.0002 / 1000) + (sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/character_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=~\"textembedding-gecko.*|text-embedding-005|text-multilingual-embedding-002|text-embedding-large-exp-03-07\", type=\"input\"}[24h])) * 0.000025 / 1000) + (sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/token_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=\"multilingual-e5-small\", type=\"input\"}[24h])) * 0.000015 / 1000) + (sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/token_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=\"multilingual-e5-large\", type=\"input\"}[24h])) * 0.000025 / 1000)) or vector(0)"
+            },
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 3,
+        "yPos": 4,
+        "width": 3,
+        "height": 4,
+        "widget": {
+          "title": "Successful Requests 24h",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "(sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/model_invocation_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=~\".*embedding.*|multilingual-e5-small|multilingual-e5-large|multilingual-e5-large-instruct\", response_code=\"200\"}[24h])) or vector(0))"
+            },
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 4,
+        "width": 3,
+        "height": 4,
+        "widget": {
+          "title": "Failed Requests 24h",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "(sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/model_invocation_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=~\".*embedding.*|multilingual-e5-small|multilingual-e5-large|multilingual-e5-large-instruct\", response_code!=\"200\"}[24h])) or vector(0))"
+            },
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 9,
+        "yPos": 4,
+        "width": 3,
+        "height": 4,
+        "widget": {
+          "title": "Unmapped Requests 24h",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "((sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/model_invocation_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=~\".*embedding.*|multilingual-e5-small|multilingual-e5-large|multilingual-e5-large-instruct\", response_code=\"200\"}[24h])) - sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/model_invocation_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=~\"gemini-embedding-001|gemini-embedding-2-preview|textembedding-gecko.*|text-embedding-005|text-multilingual-embedding-002|text-embedding-large-exp-03-07|multilingual-e5-small|multilingual-e5-large\", response_code=\"200\"}[24h]))) or vector(0))"
+            },
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 8,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Successful Request Rate By Model",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (model_user_id) (rate({\"aiplatform.googleapis.com/publisher/online_serving/model_invocation_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=~\".*embedding.*|multilingual-e5-small|multilingual-e5-large|multilingual-e5-large-instruct\", response_code=\"200\"}[5m]))"
+                },
+                "plotType": "LINE"
+              }
+            ],
+            "yAxis": {
+              "label": "requests / second",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 8,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Non-200 Response Rate By Code",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (response_code) (rate({\"aiplatform.googleapis.com/publisher/online_serving/model_invocation_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=~\".*embedding.*|multilingual-e5-small|multilingual-e5-large|multilingual-e5-large-instruct\", response_code!=\"200\"}[5m]))"
+                },
+                "plotType": "LINE"
+              }
+            ],
+            "yAxis": {
+              "label": "requests / second",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 12,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Input Token Rate For Token-Priced Models",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (model_user_id) (rate({\"aiplatform.googleapis.com/publisher/online_serving/token_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=~\"gemini-embedding-001|gemini-embedding-2-preview|multilingual-e5-small|multilingual-e5-large\", type=\"input\"}[5m]))"
+                },
+                "plotType": "LINE"
+              }
+            ],
+            "yAxis": {
+              "label": "input tokens / second",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 12,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Input Character Rate For Character-Priced Models",
+          "xyChart": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (model_user_id) (rate({\"aiplatform.googleapis.com/publisher/online_serving/character_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=~\"textembedding-gecko.*|text-embedding-005|text-multilingual-embedding-002|text-embedding-large-exp-03-07\", type=\"input\"}[5m]))"
+                },
+                "plotType": "LINE"
+              }
+            ],
+            "yAxis": {
+              "label": "input characters / second",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 16,
+        "width": 12,
+        "height": 4,
+        "widget": {
+          "title": "Estimated Cost Per Hour By Priced Model",
+          "xyChart": {
+            "dataSets": [
+              {
+                "legendTemplate": "gemini-embedding-001",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "(sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/token_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=\"gemini-embedding-001\", type=\"input\"}[1h])) * 0.00015 / 1000) or vector(0)"
+                },
+                "plotType": "LINE"
+              },
+              {
+                "legendTemplate": "gemini-embedding-2-preview",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "(sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/token_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=\"gemini-embedding-2-preview\", type=\"input\"}[1h])) * 0.0002 / 1000) or vector(0)"
+                },
+                "plotType": "LINE"
+              },
+              {
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (model_user_id) (increase({\"aiplatform.googleapis.com/publisher/online_serving/character_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=~\"textembedding-gecko.*|text-embedding-005|text-multilingual-embedding-002|text-embedding-large-exp-03-07\", type=\"input\"}[1h])) * 0.000025 / 1000"
+                },
+                "plotType": "LINE"
+              },
+              {
+                "legendTemplate": "multilingual-e5-small",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "(sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/token_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=\"multilingual-e5-small\", type=\"input\"}[1h])) * 0.000015 / 1000) or vector(0)"
+                },
+                "plotType": "LINE"
+              },
+              {
+                "legendTemplate": "multilingual-e5-large",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "(sum(increase({\"aiplatform.googleapis.com/publisher/online_serving/token_count\", monitored_resource=\"aiplatform.googleapis.com/PublisherModel\", model_user_id=\"multilingual-e5-large\", type=\"input\"}[1h])) * 0.000025 / 1000) or vector(0)"
+                },
+                "plotType": "LINE"
+              }
+            ],
+            "yAxis": {
+              "label": "USD / hour",
+              "scale": "LINEAR"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

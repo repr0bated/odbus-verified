@@ -1,0 +1,27 @@
+[package]
+name = "op-workflows"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Workflow engine with plugin/service nodes for op-dbus-v2"
+
+[dependencies]
+op-core = { workspace = true }
+op-plugins = { path = "../op-plugins" }
+op-tools = { path = "../op-tools" }
+tokio = { workspace = true }
+serde = { workspace = true }
+simd-json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+sha2 = { workspace = true }
+hex = "0.4"
+pocketflow_rs = "0.1"
+op-execution-tracker = { path = "../op-execution-tracker" }
+log = { workspace = true }
+serde_json = { workspace = true }

@@ -1,0 +1,63 @@
+#!/bin/sh
+# Post-receive hook for the snowball vector replica.
+#
+# Invoked by the origin over ssh as `chain-replica-index <counter>` immediately
+# after `btrfs receive` lands the aligned snapshot triple
+# (SNP-timing-<counter>, SNP-vectors-<counter>, SNP-state-<counter>). The
+# arrival IS the trigger: nothing on this host polls or watches.
+#
+# It re-points the working paths at the newly received read-only subvolumes and
+# then indexes only the vectors that arrived, using the chain's own append-only
+# block numbering as the watermark.
+#
+# Layout on the replica:
+#   $CHAIN_REPLICA_BASE/incoming/SNP-<label>-<counter>   received, read-only
+#   $CHAIN_REPLICA_BASE/timing  -> incoming/SNP-timing-<counter>   (symlink)
+#   $CHAIN_REPLICA_BASE/vectors -> incoming/SNP-vectors-<counter>  (symlink)
+#   $CHAIN_REPLICA_BASE/state   -> incoming/SNP-state-<counter>    (symlink)
+#   $CHAIN_REPLICA_BASE/.vector-index-block              indexing watermark
+#
+# Symlinks (not renamed subvolumes) on purpose: the received subvolumes keep
+# their Received UUID, which is how the indexer knows it is the replica and must
+# never embed or write into the chain.
+#
+# Install: /usr/local/bin/chain-replica-index (mode 0755), with
+#   CHAIN_REPLICA_BASE and OPDBUS_QDRANT_URL set in /etc/opdbus/chain-replica.env
+
+set -eu
+
+counter="${1:?usage: chain-replica-index <counter>}"
+
+# shellcheck source=/dev/null
+[ -r /etc/opdbus/chain-replica.env ] && . /etc/opdbus/chain-replica.env
+
+# Sourced assignments are shell vars; export so `exec` passes them to the indexer.
+export CHAIN_REPLICA_BASE="${CHAIN_REPLICA_BASE:-/var/lib/opdbus/chain-replica}"
+export OP_CHAIN_VECTORS_BIN="${OP_CHAIN_VECTORS_BIN:-/usr/local/bin/op-chain-vectors}"
+export OPDBUS_QDRANT_URL="${OPDBUS_QDRANT_URL:-}"
+export OPDBUS_QDRANT_SNOWBALL_COLLECTION="${OPDBUS_QDRANT_SNOWBALL_COLLECTION:-}"
+export OPDBUS_QDRANT_SNOWBALL_DIM="${OPDBUS_QDRANT_SNOWBALL_DIM:-}"
+
+base="$CHAIN_REPLICA_BASE"
+incoming="$base/incoming"
+indexer="$OP_CHAIN_VECTORS_BIN"
+
+case "$counter" in
+    *[!0-9]*) echo "counter must be numeric: $counter" >&2; exit 64 ;;
+esac
+
+padded=$(printf '%06d' "$counter")
+
+for label in timing vectors state; do
+    received="$incoming/SNP-$label-$padded"
+    if [ ! -d "$received" ]; then
+        echo "expected received subvolume missing: $received" >&2
+        exit 65
+    fi
+    # Atomic re-point; readers either see the old or the new target.
+    ln -sfn "$received" "$base/$label.new"
+    mv -T "$base/$label.new" "$base/$label"
+done
+
+# No Voyage key here, and none needed: the vectors arrived in the stream.
+OPDBUS_SNOWBALL_PATH="$base" exec "$indexer" ingest

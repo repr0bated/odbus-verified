@@ -1,0 +1,9 @@
+format=opdbus.vercel-json-render-ui-source.v1
+source_repository=/srv/git/vercel-json-render-ui
+source_head=e8aad07bf02fc16bbb45554fbc570b66513ec019
+source_worktree=dirty
+content_manifest_sha256=477edfce25a762613cb6011b0fc1954c5afc98bdb3257effe9ce19e79ee74677
+source_archive_sha256=6b05224a1d4265d8592a27c1ebeb070da70ef60702c42afdd7bbbaab635bcef2
+archive_root=vercel-json-render-ui
+node_engine=>=22.22.2
+asset_base=/vercel-json-render/

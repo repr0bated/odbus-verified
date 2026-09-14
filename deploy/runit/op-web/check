@@ -1,0 +1,17 @@
+#!/bin/sh
+# op-web readiness — the LISTENER, not the token.
+#
+# op-web had no check at all until 2026-08-13, so `sv check op-web` fell back to
+# "runsv has a live pid", which on this host is close to meaningless (a run
+# script blocked in a wait_dep loop reports exactly the same thing). The
+# readiness token is written before `exec op-web-server`, so it cannot tell you
+# the server bound its port either. Test the port.
+[ -f /run/opdbus/runit-ready/op-web ] || exit 1
+
+set -a
+[ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
+set +a
+PORT="${PORT:-8080}"
+
+pgrep -f /usr/local/bin/op-web-server >/dev/null 2>&1 || exit 1
+ss -lnt "sport = :$PORT" 2>/dev/null | grep -q LISTEN

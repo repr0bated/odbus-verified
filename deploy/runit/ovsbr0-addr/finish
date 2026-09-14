@@ -1,0 +1,2 @@
+#!/bin/sh
+rm -f /run/opdbus/runit-ready/ovsbr0-addr

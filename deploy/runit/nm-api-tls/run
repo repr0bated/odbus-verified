@@ -1,0 +1,4 @@
+#!/bin/sh
+exec 2>&1
+/usr/local/libexec/3tched/runit-ready-signal nm-api-tls
+exec /usr/bin/python3 /usr/local/libexec/3tched/nm-api-tls.py

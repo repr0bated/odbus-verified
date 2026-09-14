@@ -1,0 +1,212 @@
+//! OpenFlow 1.3 controller for ovsbr0
+//!
+//! Listens on OF_CONTROLLER_LISTEN (default 10.200.0.1:6653) for OVS to
+//! connect, then installs bidirectional flows between the configured port pairs.
+//!
+//! Environment variables:
+//!   OF_CONTROLLER_LISTEN   listen address (default: 10.200.0.1:6653)
+//!   OF_FLOW_PAIRS          comma-separated port pairs, e.g. "grpc-bridge:ovsbr0-sock"
+//!                          defaults to "grpc-bridge:ovsbr0-sock"
+//!   OF_FLOW_PRIORITY       flow priority (default: 100)
+//!
+//! Also exposes `org.opdbus.v1.plugins.openflow` at
+//! `/org/opdbus/v1/plugins/openflow` on the system bus so the `openflow`
+//! plugin (crates/op-plugins/src/state_plugins/openflow.rs) can push
+//! schema-driven flows to whichever switch is currently connected.
+
+use std::net::SocketAddr;
+
+use anyhow::{Context, Result};
+use op_network::{
+    attach_controller_safe, del_controller, ensure_fallback_normal, get_datapath_health,
+    set_controller, set_fail_mode, OpenFlowController, OpenFlowControllerHandle,
+};
+use tracing::info;
+use tracing_subscriber::EnvFilter;
+use zbus::interface;
+
+struct OpenFlowDbusService {
+    handle: OpenFlowControllerHandle,
+}
+
+#[interface(name = "org.opdbus.v1.plugins.openflow")]
+impl OpenFlowDbusService {
+    /// Install an absent entry or replace/remove an exact live entry. Empty
+    /// expected_json means absent; native readback is required before success.
+    async fn compare_exchange_flow(
+        &self,
+        bridge: String,
+        flow_json: String,
+        expected_json: String,
+        delete: bool,
+    ) -> zbus::fdo::Result<String> {
+        let expected = if expected_json.is_empty() {
+            None
+        } else {
+            Some(expected_json)
+        };
+        self.handle
+            .compare_exchange_flow(bridge, flow_json, expected, delete)
+            .await
+            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    }
+
+    async fn verify_flow(
+        &self,
+        bridge: String,
+        flow_json: String,
+        absent: bool,
+    ) -> zbus::fdo::Result<bool> {
+        self.handle
+            .verify_flow(bridge, flow_json, absent)
+            .await
+            .map_err(|error| zbus::fdo::Error::Failed(error.to_string()))
+    }
+    /// Install a schema-driven flow (JSON-encoded `FlowEntry`).
+    async fn send_flow(&self, flow_json: String) -> zbus::fdo::Result<String> {
+        self.handle
+            .send_flow(flow_json, false)
+            .await
+            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    }
+
+    /// Delete a schema-driven flow (JSON-encoded `FlowEntry`).
+    async fn delete_flow(&self, flow_json: String) -> zbus::fdo::Result<String> {
+        self.handle
+            .send_flow(flow_json, true)
+            .await
+            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    }
+
+    /// Dump flows this controller has pushed (in-memory tracking, not a live
+    /// re-query of the switch's flow table).
+    async fn dump_flows(&self) -> Vec<String> {
+        self.handle.dump_flows()
+    }
+
+    /// Ensure priority=0 actions=NORMAL is present on `bridge`.
+    async fn ensure_fallback_normal(&self, bridge: String) -> zbus::fdo::Result<String> {
+        ensure_fallback_normal(&bridge)
+            .await
+            .map(|_| format!("ok: fallback NORMAL on {bridge}"))
+            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    }
+
+    /// Set Bridge fail_mode (`standalone` or `secure`).
+    async fn set_fail_mode(&self, bridge: String, mode: String) -> zbus::fdo::Result<String> {
+        set_fail_mode(&bridge, &mode)
+            .await
+            .map(|_| format!("ok: {bridge} fail_mode={mode}"))
+            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    }
+
+    /// Remove controllers from `bridge`.
+    async fn del_controller(&self, bridge: String) -> zbus::fdo::Result<String> {
+        del_controller(&bridge)
+            .await
+            .map(|_| format!("ok: del-controller {bridge}"))
+            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    }
+
+    /// Set controller after ensuring NORMAL fallback. Endpoint e.g. tcp:10.200.0.1:6653.
+    async fn set_controller(&self, bridge: String, endpoint: String) -> zbus::fdo::Result<String> {
+        set_controller(&bridge, &endpoint)
+            .await
+            .map(|_| format!("ok: set-controller {bridge} -> {endpoint}"))
+            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    }
+
+    /// JSON datapath health (fail_mode, controllers, fallback_normal).
+    async fn get_datapath_health(&self, bridge: String) -> zbus::fdo::Result<String> {
+        let h = get_datapath_health(&bridge)
+            .await
+            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))?;
+        serde_json::to_string(&h).map_err(|e| zbus::fdo::Error::Failed(e.to_string()))
+    }
+
+    /// Safe attach: standalone + NORMAL + set-controller + verify; rollback on failure.
+    async fn attach_controller_safe(
+        &self,
+        bridge: String,
+        endpoint: String,
+    ) -> zbus::fdo::Result<String> {
+        let h = attach_controller_safe(&bridge, &endpoint)
+            .await
+            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))?;
+        serde_json::to_string(&h).map_err(|e| zbus::fdo::Error::Failed(e.to_string()))
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive("op_network=info".parse()?))
+        .init();
+
+    let listen: SocketAddr = std::env::var("OF_CONTROLLER_LISTEN")
+        .unwrap_or_else(|_| "10.200.0.1:6653".to_string())
+        .parse()
+        .expect("OF_CONTROLLER_LISTEN must be a valid socket address");
+
+    let pairs_env =
+        std::env::var("OF_FLOW_PAIRS").unwrap_or_else(|_| "grpc-bridge:ovsbr0-sock".to_string());
+
+    let priority: u16 = std::env::var("OF_FLOW_PRIORITY")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(100);
+
+    let mut controller = OpenFlowController::new(listen);
+
+    for pair in pairs_env.split(',') {
+        let parts: Vec<&str> = pair.trim().splitn(2, ':').collect();
+        if parts.len() != 2 {
+            tracing::warn!("Ignoring malformed flow pair: {:?}", pair);
+            continue;
+        }
+        info!(
+            "Flow pair: {} ↔ {} (priority {})",
+            parts[0], parts[1], priority
+        );
+        controller = controller.add_port_pair(parts[0], parts[1], priority);
+    }
+
+    // Durable static flows: rich FlowEntry JSON reinstalled on every OVS
+    // reconnect (survives controller restarts). File is a JSON array.
+    let static_flows_path = std::env::var("OF_STATIC_FLOWS_FILE")
+        .unwrap_or_else(|_| "/etc/op-dbus/openflow-static-flows.json".to_string());
+    match std::fs::read_to_string(&static_flows_path) {
+        Ok(contents) => match serde_json::from_str::<Vec<serde_json::Value>>(&contents) {
+            Ok(entries) => {
+                for e in &entries {
+                    controller = controller.add_static_flow(&e.to_string());
+                }
+                info!(
+                    "Loaded {} static flow(s) from {}",
+                    entries.len(),
+                    static_flows_path
+                );
+            }
+            Err(e) => tracing::warn!(
+                "Failed to parse static flows {}: {:#}",
+                static_flows_path,
+                e
+            ),
+        },
+        Err(_) => info!("No static flows file at {} (skipping)", static_flows_path),
+    }
+
+    let dbus_handle = controller.handle();
+    let service = OpenFlowDbusService {
+        handle: dbus_handle,
+    };
+    let _dbus_conn = zbus::connection::Builder::system()?
+        .name("org.opdbus.v1.plugins.openflow")?
+        .serve_at("/org/opdbus/v1/plugins/openflow", service)?
+        .build()
+        .await
+        .context("registering org.opdbus.v1.plugins.openflow on the system bus")?;
+    info!("org.opdbus.v1.plugins.openflow registered on the system bus");
+
+    controller.run().await
+}

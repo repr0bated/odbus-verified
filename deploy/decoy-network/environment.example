@@ -1,0 +1,22 @@
+# Install as /etc/op-dbus/decoy-network.env on the decoy only.
+# Keep the file root-owned and mode 0600. Values shown here are examples.
+
+OP_NETWORK_ROLE=decoy
+# Deployment-owned values. Do not copy an observed address or interface name
+# from another host into the decoy release.
+OP_DECOY_NETWORK_INTERFACES=
+OP_DECOY_NATIVE_LISTEN=
+
+# Private mTLS trust and the decoy server identity.
+OP_DECOY_NATIVE_CA_FILE=/etc/op-dbus/decoy-native/ca.pem
+OP_DECOY_NATIVE_CERT_FILE=/etc/op-dbus/decoy-native/decoy.pem
+OP_DECOY_NATIVE_KEY_FILE=/etc/op-dbus/decoy-native/decoy-key.pem
+
+# Exact bridge leaf certificate used to derive the required SHA-256 pin.
+# The file must contain exactly one PEM certificate, be owned by the service
+# uid, and must not be group- or world-writable.
+OP_DECOY_NATIVE_BRIDGE_CERT_FILE=/etc/op-dbus/decoy-native/bridge.pem
+
+# Durable decoy-local intent/readback store. This is not a schema catalog.
+OP_DECOY_NETWORK_COZO_PATH=/var/lib/op-dbus/decoy-network-cozo
+OP_BLOB_CATALOG_DIR=/dev/shm/opdbus/plugin-blobs

@@ -1,0 +1,11 @@
+{
+  "mcp": {
+    "servers": {
+      "op-dbus-unified": {
+        "type": "http",
+        "url": "https://10.0.0.3:8090/mcp",
+        "description": "Unified authenticated MCP control plane"
+      }
+    }
+  }
+}

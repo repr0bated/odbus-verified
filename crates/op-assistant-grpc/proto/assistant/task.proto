@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package assistant.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "assistant/common.proto";
+
+service TaskService {
+  rpc ListTools(ListToolsRequest) returns (ListToolsResponse);
+  rpc ExecuteTask(ExecuteTaskRequest) returns (TaskResult);
+  rpc StreamTaskExecution(StreamTaskExecutionRequest) returns (stream TaskEvent);
+  rpc GetTaskResult(GetTaskResultRequest) returns (TaskResult);
+}
+
+message Tool {
+  string name = 1;
+  string description = 2;
+  string version = 3;
+  optional google.protobuf.Struct schema = 4;
+}
+
+message ListToolsRequest {
+  string filter = 1;
+}
+message ListToolsResponse {
+  repeated Tool tools = 1;
+}
+
+message ExecuteTaskRequest {
+  string tool_name = 1;
+  optional google.protobuf.Struct arguments = 2;
+  optional string session_id = 3;
+  optional string agent_id = 4;
+}
+
+message TaskResult {
+  string task_id = 1;
+  string status = 2;            // pending|running|completed|failed
+  optional google.protobuf.Struct output = 3;
+  optional string error = 4;
+  google.protobuf.Timestamp started_at = 5;
+  optional google.protobuf.Timestamp finished_at = 6;
+}
+
+message TaskEvent {
+  string task_id = 1;
+  string event_type = 2;
+  string payload_json = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+message StreamTaskExecutionRequest { string task_id = 1; }
+message GetTaskResultRequest { string task_id = 1; }

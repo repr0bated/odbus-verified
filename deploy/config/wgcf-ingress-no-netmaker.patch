@@ -1,0 +1,20 @@
+--- wgcf-ingress.conf
++++ wgcf-ingress.conf
+@@ -12 +12 @@
+-FwMark = 0x51820
++FwMark = 51820
+@@ -20,10 +20,10 @@
+ # policy routing (this wg-quick build does not install rules itself):
+-#  - mesh transport to host + inbound replies on the public IP stay on ens3
+-#  - specific main-table routes (mesh, wg0 peers, LAN) keep working
+-#  - WARP stays UP to hide WG only; unmarked traffic must NOT use table 51820.
+-PostUp = ip rule del to 188.68.58.237 lookup main priority 32762 2>/dev/null || true; ip rule add to 188.68.58.237 lookup main priority 32762; ip rule del from 10.0.1.38 lookup main priority 32763 2>/dev/null || true; ip rule add from 10.0.1.38 lookup main priority 32763; ip rule del not fwmark 0x51820 lookup 51820 priority 32765 2>/dev/null || true; ip rule del table main suppress_prefixlength 0 priority 32764 2>/dev/null || true; ip rule del fwmark 0x51821 lookup 51820 priority 32765 2>/dev/null || true; ip rule add fwmark 0x51821 lookup 51820 priority 32765; iptables -t mangle -C OUTPUT -p udp --sport 51821 -j MARK --set-mark 0x51821 2>/dev/null || iptables -t mangle -A OUTPUT -p udp --sport 51821 -j MARK --set-mark 0x51821; iptables -t mangle -C OUTPUT -p udp --dport 51821 -j MARK --set-mark 0x51821 2>/dev/null || iptables -t mangle -A OUTPUT -p udp --dport 51821 -j MARK --set-mark 0x51821; iptables -t mangle -C PREROUTING -p udp --dport 51821 -j MARK --set-mark 0x51821 2>/dev/null || iptables -t mangle -A PREROUTING -p udp --dport 51821 -j MARK --set-mark 0x51821; iptables -t nat -C POSTROUTING -o wgcf-ingress -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o wgcf-ingress -j MASQUERADE
+-PreDown = ip rule del to 188.68.58.237 lookup main priority 32762 2>/dev/null || true; ip rule del from 10.0.1.38 lookup main priority 32763 2>/dev/null || true; ip rule del not fwmark 0x51820 lookup 51820 priority 32765 2>/dev/null || true; ip rule del table main suppress_prefixlength 0 priority 32764 2>/dev/null || true; ip rule del fwmark 0x51821 lookup 51820 priority 32765 2>/dev/null || true; iptables -t mangle -D OUTPUT -p udp --sport 51821 -j MARK --set-mark 0x51821 2>/dev/null || true; iptables -t mangle -D OUTPUT -p udp --dport 51821 -j MARK --set-mark 0x51821 2>/dev/null || true; iptables -t mangle -D PREROUTING -p udp --dport 51821 -j MARK --set-mark 0x51821 2>/dev/null || true; iptables -t nat -D POSTROUTING -o wgcf-ingress -j MASQUERADE 2>/dev/null || true
++#  - replies sourced from the VPS public address stay on ens3
++#  - the decoy identity/service subnet remains exactly 10.0.0.0/24
++#  - every non-underlay flow, including Xray, exits through WARP.
++PostUp = ip route replace default dev wgcf-ingress table 51820; ip rule del from 10.0.1.38 lookup main priority 50 2>/dev/null || true; ip rule add from 10.0.1.38 lookup main priority 50; ip rule del to 10.0.0.0/8 lookup main priority 90 2>/dev/null || true; ip rule del to 10.0.0.0/24 lookup main priority 90 2>/dev/null || true; ip rule add to 10.0.0.0/24 lookup main priority 90; ip rule del not fwmark 51820 lookup 51820 priority 100 2>/dev/null || true; ip rule add not fwmark 51820 lookup 51820 priority 100; iptables -t nat -C POSTROUTING -o wgcf-ingress -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o wgcf-ingress -j MASQUERADE
++PreDown = ip rule del from 10.0.1.38 lookup main priority 50 2>/dev/null || true; ip rule del to 10.0.0.0/24 lookup main priority 90 2>/dev/null || true; ip rule del not fwmark 51820 lookup 51820 priority 100 2>/dev/null || true; iptables -t nat -D POSTROUTING -o wgcf-ingress -j MASQUERADE 2>/dev/null || true
+ 
+ [Peer]
+ PersistentKeepalive = 25

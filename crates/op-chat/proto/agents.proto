@@ -1,0 +1,459 @@
+// Chatbot Internal Agent Protocol
+//
+// This is for the CHATBOT to communicate with run-on-connection agents.
+// Used by ChatActor and TrackedToolExecutor for high-performance agent calls.
+
+syntax = "proto3";
+
+package op_chat.agents;
+
+// Main agent service - unified interface for all agents
+service AgentService {
+    // Start a session (called when user connects)
+    rpc StartSession(StartSessionRequest) returns (StartSessionResponse);
+    
+    // End a session (cleanup)
+    rpc EndSession(EndSessionRequest) returns (EndSessionResponse);
+    
+    // Execute an operation on any agent
+    rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+    
+    // Streaming execution for long-running operations
+    rpc ExecuteStream(ExecuteRequest) returns (stream ExecuteChunk);
+    
+    // Batch execution (multiple operations in one call)
+    rpc BatchExecute(BatchExecuteRequest) returns (stream ExecuteResponse);
+    
+    // Bidirectional stream for the entire session
+    rpc Session(stream SessionMessage) returns (stream SessionMessage);
+}
+
+// Memory agent - high-frequency key-value operations
+service MemoryAgent {
+    rpc Remember(RememberRequest) returns (RememberResponse);
+    rpc Recall(RecallRequest) returns (RecallResponse);
+    rpc Forget(ForgetRequest) returns (ForgetResponse);
+    rpc List(ListRequest) returns (ListResponse);
+    rpc Search(SearchRequest) returns (SearchResponse);
+    
+    // Bulk operations for efficiency
+    rpc BulkRemember(stream RememberRequest) returns (BulkResponse);
+    rpc BulkRecall(BulkRecallRequest) returns (stream RecallResponse);
+}
+
+// Sequential thinking agent - reasoning chains
+service SequentialThinkingAgent {
+    // Start a thinking chain
+    rpc StartChain(StartChainRequest) returns (StartChainResponse);
+    
+    // Add thought to chain (streaming for long reasoning)
+    rpc Think(ThinkRequest) returns (ThinkResponse);
+    
+    // Stream entire thinking process
+    rpc ThinkStream(StartChainRequest) returns (stream ThinkResponse);
+    
+    // Conclude the chain
+    rpc Conclude(ConcludeRequest) returns (ConcludeResponse);
+    
+    // Get chain history
+    rpc GetChain(GetChainRequest) returns (GetChainResponse);
+}
+
+// Context manager - persistent context across sessions
+service ContextManagerAgent {
+    rpc Save(SaveContextRequest) returns (SaveContextResponse);
+    rpc Load(LoadContextRequest) returns (LoadContextResponse);
+    rpc List(ListContextsRequest) returns (ListContextsResponse);
+    rpc Delete(DeleteContextRequest) returns (DeleteContextResponse);
+    
+    // Streaming for large context export/import
+    rpc Export(ExportRequest) returns (stream ExportChunk);
+    rpc Import(stream ImportChunk) returns (ImportResponse);
+}
+
+// Rust Pro agent - cargo operations with streaming output
+service RustProAgent {
+    // Non-streaming (quick operations)
+    rpc Check(CargoRequest) returns (CargoResponse);
+    rpc Fmt(CargoRequest) returns (CargoResponse);
+    
+    // Streaming (long operations with output)
+    rpc Build(CargoRequest) returns (stream CargoOutput);
+    rpc Test(CargoRequest) returns (stream CargoOutput);
+    rpc Clippy(CargoRequest) returns (stream CargoOutput);
+    rpc Run(CargoRequest) returns (stream CargoOutput);
+    rpc Doc(CargoRequest) returns (stream CargoOutput);
+}
+
+// Backend architect agent
+service BackendArchitectAgent {
+    rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse);
+    rpc Design(DesignRequest) returns (DesignResponse);
+    rpc Review(ReviewRequest) returns (ReviewResponse);
+    rpc Suggest(SuggestRequest) returns (SuggestResponse);
+    rpc Document(DocumentRequest) returns (stream DocumentChunk);
+}
+
+// ============ Common Messages ============
+
+message StartSessionRequest {
+    string session_id = 1;
+    string client_name = 2;
+    map<string, string> metadata = 3;
+}
+
+message StartSessionResponse {
+    bool success = 1;
+    repeated string started_agents = 2;  // Which run-on-connection agents started
+    string message = 3;
+}
+
+message EndSessionRequest {
+    string session_id = 1;
+}
+
+message EndSessionResponse {
+    bool success = 1;
+}
+
+message ExecuteRequest {
+    string session_id = 1;
+    string agent_id = 2;      // e.g., "memory", "rust_pro"
+    string operation = 3;     // e.g., "remember", "build"
+    string arguments_json = 4;
+    int64 timeout_ms = 5;
+}
+
+message ExecuteResponse {
+    string agent_id = 1;
+    string operation = 2;
+    bool success = 3;
+    string result_json = 4;
+    string error = 5;
+    int64 execution_time_ms = 6;
+}
+
+message ExecuteChunk {
+    string agent_id = 1;
+    string chunk = 2;
+    string stream_type = 3;  // "stdout", "stderr", "progress", "result"
+    bool is_final = 4;
+    int32 exit_code = 5;     // Only set when is_final=true
+}
+
+message BatchExecuteRequest {
+    string session_id = 1;
+    repeated ExecuteRequest requests = 2;
+    bool parallel = 3;        // Execute in parallel or sequential
+}
+
+message SessionMessage {
+    string session_id = 1;
+    oneof content {
+        ExecuteRequest execute = 2;
+        ExecuteResponse result = 3;
+        ExecuteChunk chunk = 4;
+        HeartbeatMessage heartbeat = 5;
+        ErrorMessage error = 6;
+    }
+}
+
+message HeartbeatMessage {
+    int64 timestamp = 1;
+}
+
+message ErrorMessage {
+    string code = 1;
+    string message = 2;
+}
+
+// ============ Memory Agent Messages ============
+
+message RememberRequest {
+    string session_id = 1;
+    string key = 2;
+    string value = 3;
+    int64 ttl_secs = 4;       // 0 = no expiry
+    repeated string tags = 5;
+}
+
+message RememberResponse {
+    bool success = 1;
+    string key = 2;
+}
+
+message RecallRequest {
+    string session_id = 1;
+    string key = 2;
+}
+
+message RecallResponse {
+    bool found = 1;
+    string key = 2;
+    string value = 3;
+    int64 created_at = 4;
+    int64 accessed_at = 5;
+    repeated string tags = 6;
+}
+
+message ForgetRequest {
+    string session_id = 1;
+    string key = 2;
+}
+
+message ForgetResponse {
+    bool success = 1;
+}
+
+message ListRequest {
+    string session_id = 1;
+    string pattern = 2;       // Glob pattern
+    int32 limit = 3;
+}
+
+message ListResponse {
+    repeated string keys = 1;
+    int32 total = 2;
+}
+
+message SearchRequest {
+    string session_id = 1;
+    string query = 2;
+    int32 limit = 3;
+}
+
+message SearchResponse {
+    repeated MemoryEntry entries = 1;
+}
+
+message MemoryEntry {
+    string key = 1;
+    string value = 2;
+    float score = 3;
+    repeated string tags = 4;
+}
+
+message BulkRecallRequest {
+    string session_id = 1;
+    repeated string keys = 2;
+}
+
+message BulkResponse {
+    int32 success_count = 1;
+    int32 failure_count = 2;
+    repeated string errors = 3;
+}
+
+// ============ Sequential Thinking Messages ============
+
+message StartChainRequest {
+    string session_id = 1;
+    string problem = 2;
+    int32 max_steps = 3;
+    string context = 4;
+}
+
+message StartChainResponse {
+    string chain_id = 1;
+    bool started = 2;
+}
+
+message ThinkRequest {
+    string session_id = 1;
+    string chain_id = 2;
+    string thought = 3;
+    int32 step = 4;
+}
+
+message ThinkResponse {
+    string chain_id = 1;
+    int32 step = 2;
+    string thought = 3;
+    string status = 4;        // "thinking", "analyzing", "concluding", "complete"
+    bool is_final = 5;
+}
+
+message ConcludeRequest {
+    string session_id = 1;
+    string chain_id = 2;
+}
+
+message ConcludeResponse {
+    string chain_id = 1;
+    string conclusion = 2;
+    repeated string steps = 3;
+    int32 total_steps = 4;
+}
+
+message GetChainRequest {
+    string session_id = 1;
+    string chain_id = 2;
+}
+
+message GetChainResponse {
+    string chain_id = 1;
+    string problem = 2;
+    repeated ThinkResponse thoughts = 3;
+    string status = 4;
+}
+
+// ============ Context Manager Messages ============
+
+message SaveContextRequest {
+    string session_id = 1;
+    string name = 2;
+    string content = 3;
+    repeated string tags = 4;
+}
+
+message SaveContextResponse {
+    bool success = 1;
+    string name = 2;
+    int64 size_bytes = 3;
+}
+
+message LoadContextRequest {
+    string session_id = 1;
+    string name = 2;
+}
+
+message LoadContextResponse {
+    bool found = 1;
+    string name = 2;
+    string content = 3;
+    repeated string tags = 4;
+    int64 created_at = 5;
+    int64 updated_at = 6;
+}
+
+message ListContextsRequest {
+    string session_id = 1;
+    string tag_filter = 2;
+}
+
+message ListContextsResponse {
+    repeated ContextInfo contexts = 1;
+}
+
+message ContextInfo {
+    string name = 1;
+    int64 size_bytes = 2;
+    repeated string tags = 3;
+    int64 updated_at = 4;
+}
+
+message DeleteContextRequest {
+    string session_id = 1;
+    string name = 2;
+}
+
+message DeleteContextResponse {
+    bool success = 1;
+}
+
+message ExportRequest {
+    string session_id = 1;
+    repeated string names = 2;  // Empty = all
+    string format = 3;          // "json", "yaml"
+}
+
+message ExportChunk {
+    bytes data = 1;
+    bool is_final = 2;
+}
+
+message ImportChunk {
+    bytes data = 1;
+    bool is_final = 2;
+    string format = 3;
+}
+
+message ImportResponse {
+    int32 imported_count = 1;
+    repeated string errors = 2;
+}
+
+// ============ Rust Pro Messages ============
+
+message CargoRequest {
+    string session_id = 1;
+    string path = 2;          // Project path, default "."
+    bool release = 3;
+    repeated string features = 4;
+    string filter = 5;        // For tests
+    bool fix = 6;             // For clippy/fmt
+    int64 timeout_secs = 7;
+}
+
+message CargoResponse {
+    bool success = 1;
+    string stdout = 2;
+    string stderr = 3;
+    int32 exit_code = 4;
+    int64 duration_ms = 5;
+}
+
+message CargoOutput {
+    string line = 1;
+    string stream = 2;        // "stdout", "stderr"
+    bool is_final = 3;
+    int32 exit_code = 4;      // Only set when is_final=true
+    int64 duration_ms = 5;    // Only set when is_final=true
+}
+
+// ============ Backend Architect Messages ============
+
+message AnalyzeRequest {
+    string session_id = 1;
+    string path = 2;
+    string scope = 3;         // "file", "module", "crate", "workspace"
+}
+
+message AnalyzeResponse {
+    bool success = 1;
+    string analysis_json = 2;
+}
+
+message DesignRequest {
+    string session_id = 1;
+    string context = 2;
+    repeated string constraints = 3;
+}
+
+message DesignResponse {
+    bool success = 1;
+    string design_json = 2;
+}
+
+message ReviewRequest {
+    string session_id = 1;
+    string design = 2;
+    repeated string criteria = 3;
+}
+
+message ReviewResponse {
+    bool success = 1;
+    string review_json = 2;
+}
+
+message SuggestRequest {
+    string session_id = 1;
+    string context = 2;
+    repeated string constraints = 3;
+}
+
+message SuggestResponse {
+    bool success = 1;
+    repeated string suggestions = 2;
+}
+
+message DocumentRequest {
+    string session_id = 1;
+    string path = 2;
+    string format = 3;        // "markdown", "html", "json"
+}
+
+message DocumentChunk {
+    string content = 1;
+    bool is_final = 2;
+}

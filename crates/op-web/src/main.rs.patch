@@ -1,0 +1,18 @@
+// Add to your router setup in main.rs:
+
+use routes::admin::admin_routes;
+
+// In the Router builder:
+Router::new()
+    // ... existing routes ...
+    .nest("/api/admin", admin_routes())  // <-- ADD THIS
+    // ... serve static files for admin page ...
+    .route("/admin", get(serve_admin_page))
+    .with_state(state)
+
+// Add handler for admin page:
+use axum::response::Html;
+
+async fn serve_admin_page() -> Html<&'static str> {
+    Html(include_str!("../../../static/admin.html"))
+}

@@ -1,0 +1,1501 @@
+{
+  "provenance_status": "historical_baseline_with_verified_retained_method_completion",
+  "provenance_note": "Original fingerprints, status, registrations, post_repair_verification and retained_methods_verification are historical evidence. source_export_verification and retained_methods_completion record frozen gate122, all 46 tracked repairs and portable build inputs. Earlier frozen gates remain in source_export_verification_history. Fresh-repository admission is recorded separately; no deployed release is claimed.",
+  "captured_at": "2026-09-13T02:52:12Z",
+  "git_head": "1b82c594acd8d17a7e1b64b1b6ba52a21e5d9e97",
+  "working_tree_diff_sha256": "627362cbf99cfa9d447408888a80efaef24b63b80cc23beaaaf0478b489fbcab",
+  "working_tree_status": [
+    " M AGENTS.md",
+    " M README.md",
+    " M SIGNALS.md",
+    " M WISHLIST.md",
+    " M crates/op-grpc-bridge/examples/provision_identity.rs",
+    " M crates/op-grpc-bridge/src/mcp_frontend.rs",
+    " M crates/op-grpc-bridge/src/mcp_policy.rs",
+    " M crates/op-grpc-bridge/src/nlm_cli.rs",
+    " M crates/op-plugins/src/state_plugins/notebooklm.rs",
+    " M deploy/scripts/provision-workspace-subscriber.sh",
+    " M docs/src/SUMMARY.md",
+    " M docs/src/architecture/crate-map.md",
+    " M docs/src/architecture/overview.md",
+    " M docs/src/contributors/doc-maintenance.md",
+    " M docs/src/getting-started/building.md",
+    " M docs/src/getting-started/workflow.md",
+    "?? .blitzyignore",
+    "?? crates/op-grpc-bridge/tests/notebooklm_response_contracts.rs",
+    "?? crates/op-plugins/src/state_plugins/notebooklm/",
+    "?? docs/src/architecture/workspace-graph.json",
+    "?? docs/src/getting-started/blitzy-environment.md",
+    "?? scripts/blitzy-check.sh",
+    "?? skills/"
+  ],
+  "fingerprints": "plugin-baseline-files.sha256",
+  "fingerprints_sha256": "092e8adabc7e9253d56c84310871aa803303b857ab39244fbef99e5df2e31d2a",
+  "fingerprinted_file_count": 1065,
+  "scope": "Rust sources/manifests, protocol and dispatch templates under crates (including residual uncompiled code; excluding UI/build/dependency output), current separate schema inputs (architectural defect), build/policy inputs and mandatory guidance. No runtime state or credential contents captured. Not an atomic filesystem snapshot; fingerprints rechecked after source reading.",
+  "source_registrations": [
+    {
+      "id": "adc",
+      "path": "crates/op-plugins/src/state_plugins/adc.rs",
+      "registration_line": 174,
+      "module": "adc",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "agent_config",
+      "path": "crates/op-plugins/src/state_plugins/agent_config.rs",
+      "registration_line": 280,
+      "module": "agent_config",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "antigravity",
+      "path": "crates/op-plugins/src/state_plugins/antigravity.rs",
+      "registration_line": 1374,
+      "module": "antigravity",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "antigravity_chat",
+      "path": "crates/op-plugins/src/state_plugins/antigravity_chat.rs",
+      "registration_line": 373,
+      "module": "antigravity_chat",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "btrfs",
+      "path": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+      "registration_line": 459,
+      "module": "btrfs_plugin",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "cognitive_mcp",
+      "path": "crates/op-plugins/src/state_plugins/cognitive_mcp.rs",
+      "registration_line": 1327,
+      "module": "cognitive_mcp",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "config",
+      "path": "crates/op-plugins/src/state_plugins/config.rs",
+      "registration_line": 372,
+      "module": "config",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "cozo",
+      "path": "crates/op-plugins/src/state_plugins/cozo.rs",
+      "registration_line": 478,
+      "module": "cozo",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "cron",
+      "path": "crates/op-plugins/src/state_plugins/cron.rs",
+      "registration_line": 406,
+      "module": "cron",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "ctl_plane_chatbot",
+      "path": "crates/op-plugins/src/state_plugins/ctl_plane_chatbot.rs",
+      "registration_line": 803,
+      "module": "ctl_plane_chatbot",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "datastore",
+      "path": "crates/op-plugins/src/state_plugins/datastore.rs",
+      "registration_line": 367,
+      "module": "datastore",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "dnsresolver",
+      "path": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+      "registration_line": 748,
+      "module": "dnsresolver",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "embedding_model",
+      "path": "crates/op-plugins/src/state_plugins/embedding_model.rs",
+      "registration_line": 523,
+      "module": "embedding_model",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "emqx",
+      "path": "crates/op-plugins/src/state_plugins/emqx.rs",
+      "registration_line": 1039,
+      "module": "emqx",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "endpoint",
+      "path": "crates/op-plugins/src/state_plugins/endpoint.rs",
+      "registration_line": 236,
+      "module": "endpoint",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "factory",
+      "path": "crates/op-plugins/src/state_plugins/factory.rs",
+      "registration_line": 507,
+      "module": "factory",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "fail2ban",
+      "path": "crates/op-plugins/src/state_plugins/fail2ban.rs",
+      "registration_line": 218,
+      "module": "fail2ban",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "freedesktop",
+      "path": "crates/op-plugins/src/state_plugins/freedesktop.rs",
+      "registration_line": 560,
+      "module": "freedesktop",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "full_system",
+      "path": "crates/op-plugins/src/state_plugins/full_system.rs",
+      "registration_line": 945,
+      "module": "full_system",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "gcloud_adc",
+      "path": "crates/op-plugins/src/state_plugins/gcloud_adc.rs",
+      "registration_line": 260,
+      "module": "gcloud_adc",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "gemma_brain",
+      "path": "crates/op-plugins/src/state_plugins/gemma_brain.rs",
+      "registration_line": 399,
+      "module": "gemma_brain",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "ghostbridge",
+      "path": "crates/op-plugins/src/state_plugins/ghostbridge.rs",
+      "registration_line": 426,
+      "module": "ghostbridge",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "hardware",
+      "path": "crates/op-plugins/src/state_plugins/hardware.rs",
+      "registration_line": 427,
+      "module": "hardware",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "host_runtime",
+      "path": "crates/op-plugins/src/state_plugins/host_runtime.rs",
+      "registration_line": 806,
+      "module": "host_runtime",
+      "module_declared": false,
+      "registration": "uncompiled"
+    },
+    {
+      "id": "human_principal",
+      "path": "crates/op-plugins/src/state_plugins/human_principal.rs",
+      "registration_line": 465,
+      "module": "human_principal",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "identity_sled",
+      "path": "crates/op-plugins/src/state_plugins/identity_sled.rs",
+      "registration_line": 683,
+      "module": "identity_sled",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "incus",
+      "path": "crates/op-plugins/src/state_plugins/incus.rs",
+      "registration_line": 1762,
+      "module": "incus",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "json_render",
+      "path": "crates/op-plugins/src/state_plugins/json_render.rs",
+      "registration_line": 1766,
+      "module": "json_render",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "keypair",
+      "path": "crates/op-plugins/src/state_plugins/keypair.rs",
+      "registration_line": 298,
+      "module": "keypair",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "keyring",
+      "path": "crates/op-plugins/src/state_plugins/keyring.rs",
+      "registration_line": 302,
+      "module": "keyring",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "large_language_model",
+      "path": "crates/op-plugins/src/state_plugins/large_language_model.rs",
+      "registration_line": 410,
+      "module": "large_language_model",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "login1",
+      "path": "crates/op-plugins/src/state_plugins/login1.rs",
+      "registration_line": 575,
+      "module": "login1",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "mail_server",
+      "path": "crates/op-plugins/src/state_plugins/mail_server.rs",
+      "registration_line": 682,
+      "module": "mail_server",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "mcp",
+      "path": "crates/op-plugins/src/state_plugins/mcp.rs",
+      "registration_line": 653,
+      "module": "mcp",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "memory",
+      "path": "crates/op-plugins/src/state_plugins/memory_plugin.rs",
+      "registration_line": 458,
+      "module": "memory_plugin",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "mongodb_mcp",
+      "path": "crates/op-plugins/src/state_plugins/mongodb_mcp.rs",
+      "registration_line": 334,
+      "module": "mongodb_mcp",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "net",
+      "path": "crates/op-plugins/src/state_plugins/net.rs",
+      "registration_line": 1066,
+      "module": "net",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "netmaker",
+      "path": "crates/op-plugins/src/state_plugins/netmaker.rs",
+      "registration_line": 906,
+      "module": "netmaker",
+      "module_declared": true,
+      "registration": "retired"
+    },
+    {
+      "id": "notebooklm",
+      "path": "crates/op-plugins/src/state_plugins/notebooklm.rs",
+      "registration_line": 1086,
+      "module": "notebooklm",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "oci",
+      "path": "crates/op-plugins/src/state_plugins/oci.rs",
+      "registration_line": 391,
+      "module": "oci",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "openflow",
+      "path": "crates/op-plugins/src/state_plugins/openflow.rs",
+      "registration_line": 1848,
+      "module": "openflow",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "openflow_obfuscation",
+      "path": "crates/op-plugins/src/state_plugins/openflow_obfuscation.rs",
+      "registration_line": 682,
+      "module": "openflow_obfuscation",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "oscal_subid_registry",
+      "path": "crates/op-plugins/src/state_plugins/oscal_subid_registry.rs",
+      "registration_line": 578,
+      "module": "oscal_subid_registry",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "ovsdb_bridge",
+      "path": "crates/op-plugins/src/state_plugins/ovsdb_bridge.rs",
+      "registration_line": 586,
+      "module": "ovsdb_bridge",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "packagekit",
+      "path": "crates/op-plugins/src/state_plugins/packagekit.rs",
+      "registration_line": 374,
+      "module": "packagekit",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "pcidecl",
+      "path": "crates/op-plugins/src/state_plugins/pcidecl.rs",
+      "registration_line": 300,
+      "module": "pcidecl",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "persona",
+      "path": "crates/op-plugins/src/state_plugins/persona.rs",
+      "registration_line": 513,
+      "module": "persona",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "privacy_router",
+      "path": "crates/op-plugins/src/state_plugins/privacy_router.rs",
+      "registration_line": 1523,
+      "module": "privacy_router",
+      "module_declared": false,
+      "registration": "uncompiled"
+    },
+    {
+      "id": "privacy_routes",
+      "path": "crates/op-plugins/src/state_plugins/privacy_routes.rs",
+      "registration_line": 519,
+      "module": "privacy_routes",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "procfs",
+      "path": "crates/op-plugins/src/state_plugins/procfs.rs",
+      "registration_line": 725,
+      "module": "procfs",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "project",
+      "path": "crates/op-plugins/src/state_plugins/project.rs",
+      "registration_line": 422,
+      "module": "project",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "proxy_server",
+      "path": "crates/op-plugins/src/state_plugins/proxy_server.rs",
+      "registration_line": 215,
+      "module": "proxy_server",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "qdrant",
+      "path": "crates/op-plugins/src/state_plugins/qdrant.rs",
+      "registration_line": 611,
+      "module": "qdrant",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "rovs_commands",
+      "path": "crates/op-plugins/src/state_plugins/rovs_commands.rs",
+      "registration_line": 374,
+      "module": "rovs_commands",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "rtnetlink",
+      "path": "crates/op-plugins/src/state_plugins/rtnetlink.rs",
+      "registration_line": 623,
+      "module": "rtnetlink",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "schema_renderer",
+      "path": "crates/op-plugins/src/state_plugins/schema_renderer.rs",
+      "registration_line": 313,
+      "module": "schema_renderer",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "service",
+      "path": "crates/op-plugins/src/state_plugins/service.rs",
+      "registration_line": 299,
+      "module": "service",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "sess_decl",
+      "path": "crates/op-plugins/src/state_plugins/sessdecl.rs",
+      "registration_line": 211,
+      "module": "sessdecl",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "shared_unix_socket",
+      "path": "crates/op-plugins/src/state_plugins/shared_unix_socket.rs",
+      "registration_line": 379,
+      "module": "shared_unix_socket",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "snowball",
+      "path": "crates/op-plugins/src/state_plugins/snowball_plugin.rs",
+      "registration_line": 545,
+      "module": "snowball_plugin",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "software",
+      "path": "crates/op-plugins/src/state_plugins/software.rs",
+      "registration_line": 304,
+      "module": "software",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "tched_router",
+      "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+      "registration_line": 2587,
+      "module": "tched_router",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "unix_socket",
+      "path": "crates/op-plugins/src/state_plugins/unix_socket.rs",
+      "registration_line": 582,
+      "module": "unix_socket",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "users",
+      "path": "crates/op-plugins/src/state_plugins/users.rs",
+      "registration_line": 238,
+      "module": "users",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "web_ui",
+      "path": "crates/op-plugins/src/state_plugins/web_ui.rs",
+      "registration_line": 717,
+      "module": "web_ui",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "wg_opdbus",
+      "path": "crates/op-plugins/src/state_plugins/wg_opdbus.rs",
+      "registration_line": 336,
+      "module": "wg_opdbus",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "wgcf",
+      "path": "crates/op-plugins/src/state_plugins/wgcf.rs",
+      "registration_line": 470,
+      "module": "wgcf",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "wireguard",
+      "path": "crates/op-plugins/src/state_plugins/wireguard.rs",
+      "registration_line": 385,
+      "module": "wireguard",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "workflows",
+      "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+      "registration_line": 416,
+      "module": "workflows_plugin",
+      "module_declared": true,
+      "registration": "registered"
+    },
+    {
+      "id": "xray",
+      "path": "crates/op-plugins/src/state_plugins/xray.rs",
+      "registration_line": 519,
+      "module": "xray",
+      "module_declared": true,
+      "registration": "registered"
+    }
+  ],
+  "initial_fingerprints_sha256": "756c4651a7cb47b63cdd587230059d657a7e21074e2bc9661e2ff4ff84663b36",
+  "fingerprint_validation": {
+    "checked_at": "2026-09-13T03:15:11Z",
+    "unchanged_source_files": 1064,
+    "guidance_amendments": [
+      {
+        "path": "AGENTS.md",
+        "before_sha256": "378f356ee337136b7bcdef65d4d6cb66a83505c8cee909f506b961d7a90032af",
+        "after_sha256": "ebb0a88599e1b843a279f88e97640b25135aa7324ee8d8223b496c24cfb07c95",
+        "reason": "Owner requested cheapest suitable subagent model/effort and available primary coordinator; guidance updated during learning, no application source change."
+      },
+      {
+        "path": "AGENTS.md",
+        "before_sha256": "ebb0a88599e1b843a279f88e97640b25135aa7324ee8d8223b496c24cfb07c95",
+        "after_sha256": "8be22f48a02195c75203b896971faf4e5c4fd74970713187804c8ed04b4a19a9",
+        "previous_manifest_sha256": "bc46890a4b7910ae3393a8c7ce6740828af3c5aebc8f532eb745685be4743dec",
+        "recorded_at": "2026-09-13T03:04:40Z",
+        "reason": "Owner clarified there is no WireGuard on server: termination is at decoy and identity is transported by WARP. Source coverage must be classified by deployment role before repair."
+      },
+      {
+        "path": "AGENTS.md",
+        "before_sha256": "8be22f48a02195c75203b896971faf4e5c4fd74970713187804c8ed04b4a19a9",
+        "after_sha256": "e0b9e8067bc878be4f03638554007a0f91c4b01e68a5bc283bc748f22d67326c",
+        "previous_manifest_sha256": "29ec2f8e6c69dd09456f47e1f40714ec7fcaadcb6c05b6a61807c727fda462d6",
+        "recorded_at": "2026-09-13T03:15:11Z",
+        "reason": "Owner reaffirmed identity-owned minting of distinct SealedId/SID1 and metadata injection; deployment is prepared snapshot btrfs send/receive with no deployment script."
+      }
+    ],
+    "result": "All 1064 other fingerprints still match initial capture. AGENTS amendments are recorded in order; revised manifest rechecked after each amendment."
+  },
+  "owner_corrections": [
+    {
+      "recorded_at": "2026-09-13T03:04:40Z",
+      "source": "owner statement in this session",
+      "claim": "WireGuard terminates at the decoy; no WireGuard on this server; identity transported by WARP.",
+      "impact": "WireGuard-related source declarations do not imply server deployment or a required local backend. Generic-dispatch coverage is not a count of required server capabilities. Runtime protocol mode and health were not independently checked."
+    },
+    {
+      "recorded_at": "2026-09-13T03:15:11Z",
+      "source": "owner statement in this session",
+      "claim": "Identity mints the identity and distinct SealedId credential and injects it into metadata. Deployment is btrfs send/receive, not a deployment script.",
+      "impact": "Trace all mint/persist/inject/validate links and distinguish SID1 from plugin blobs. Existing scripts are not deployment authority."
+    }
+  ],
+  "topology_pass": {
+    "completed_at": "2026-09-13T03:15:11Z",
+    "observation": "topology-observation.json",
+    "classification": "plugin-baseline.json",
+    "identity_trace": "identity-transport.md",
+    "validation": "All 1064 application/source/input fingerprints still match initial capture. Documentation/guidance only; existing full workspace verification remains applicable. No new repository, source implementation, remote verification or btrfs transfer performed."
+  },
+  "post_repair_verification": {
+    "completed_at": "2026-09-13T04:07:58.254Z",
+    "tasks": [
+      "OD-32",
+      "OD-55",
+      "OD-56",
+      "OD-57"
+    ],
+    "command": "sh scripts/blitzy-check.sh verify",
+    "exit_code": 0,
+    "formatting": "passed",
+    "clippy": "workspace, all targets, all features, warnings denied: passed",
+    "tests": {
+      "passed": 1132,
+      "failed": 0,
+      "ignored": 8,
+      "suites": 99
+    },
+    "log": "/var/tmp/odbus-repair-complete-verify.log",
+    "log_sha256": "f4754146782c4975377deac3794aef93505aacb1ca5500a88218e796037f1010",
+    "schema_consolidation": {
+      "full_contract_equal": true,
+      "derived_sections_equal": 81,
+      "properties": 83,
+      "definitions": 346
+    },
+    "generated_surface": {
+      "reproduces_after_rustfmt": true,
+      "sha256": "fe21c72064b71268553921bea1289a6be0f0544d1cc69a5b10f998bdc3ae86c0",
+      "stub_import_rejected_before_write": true
+    },
+    "workspace_graph": {
+      "packages": 40,
+      "binary_targets": 32,
+      "internal_dependency_edges": 146,
+      "sha256": "cd6375d044373d35a478cd7c76cb11066f0d38d4585a8a4d2f8751301ba36846"
+    },
+    "verified_changed_inputs": {
+      "captured_at": "2026-09-13T04:02:42.342Z",
+      "git_head": "1b82c594acd8d17a7e1b64b1b6ba52a21e5d9e97",
+      "scope": "Changed/untracked crate inputs plus Cargo lock/manifests in the existing working tree; includes pre-existing user work. Not a clean-checkout or full release manifest.",
+      "sources": {
+        "Cargo.lock": "7254fa296cc1339d2f249abe4bd1f3cc3cbc3c0c9cf79718b47729521ce90726",
+        "crates/op-compliance/Cargo.toml": "891467f7c34d349742b776339e762b1682c683444ebaa0e6a842267e7f2d503e",
+        "crates/op-compliance/src/lib.rs": "6117bfc53d093bc2b06d460dbcfaca7898a183cf262d2d018a7eb95156aa0102",
+        "crates/op-grpc-bridge/examples/provision_identity.rs": "9c25cd00fb8ef7d98aef70508731414c31b6d54c44df49b9d1ef65ff8d078676",
+        "crates/op-grpc-bridge/src/chat_service.rs": "fe17d3d2ff2243aa5fff4e1708c718569b81f90124b5c2f3353cdb47c22e3cd8",
+        "crates/op-grpc-bridge/src/grpc_client.rs": "1d714b7674492154337ee9f6b62178f7e16108dbc1ba371cfc7481b75f2bc3b3",
+        "crates/op-grpc-bridge/src/mcp_frontend.rs": "c8e75a41a4e1f9fb5ee32b5a543ac53b13237f7de7d6d37af3026658d5951ac1",
+        "crates/op-grpc-bridge/src/mcp_policy.rs": "4e6113e532bd808ec3d9d212bd12f2543f7dc952d956466878dd80aa1a355b8c",
+        "crates/op-grpc-bridge/src/mutation_engine.rs": "77d0ee67c373c1315a808e43cb03a57ed7398aea41daedc108cafc7fe2b1562d",
+        "crates/op-grpc-bridge/src/nlm_cli.rs": "c8b076358e713b595d42ba90580d85ddba2979135e159c24bee75f15a657ccee",
+        "crates/op-grpc-bridge/src/schema_loader.rs": "b684310c155a57d3dd39c2a599964e1cc093e376b8f1058911b7721d77b93ec5",
+        "crates/op-grpc-bridge/src/schema_router.rs": "c1ba3673f907cb5c59133097719e4c8148dc4aae635ec2d5dfd2ec9e9575b8b6",
+        "crates/op-grpc-bridge/src/tched_router_runtime.rs": "08053bbcdeebba6633ad124fa48b5f5c0058c37757d16ca41e0c6050ea36cc75",
+        "crates/op-grpc-bridge/tests/accountability_audit_trail.rs": "43ff5438be066b0d182cd767e1412e6dcee5ea5be3c6ccfb3b1b748ee7fdd780",
+        "crates/op-grpc-bridge/tests/notebooklm_response_contracts.rs": "de1bfd1015ad5ea1c85843caca8af9b5d26e70df15eb7ddcacdd8bf4e384ea38",
+        "crates/op-grpc-bridge/tests/oracle_assertion_e2e.rs": "9e85b6c4255fa439d72a712bda111aa63f3fa8b395335253bed1abf1e405ec6e",
+        "crates/op-grpc-bridge/tests/sealed_catalog_authority.rs": "817f05ebe74a34ed8f8d6ea019d0d1c111cf4df34f62bb0947696a247494072b",
+        "crates/op-grpc-bridge/tests/tched_router_backing.rs": "85938a24111d5d9b4a8ba64fd12bf73e031ffccb4b11a81b7c4fffab9e2e907c",
+        "crates/op-grpc-bridge/tests/tched_router_integration.rs": "75e6e44e2f5c438a977c8895cd25877771b2f1360cf528e766c2fdf1ec6356f1",
+        "crates/op-identity/src/session_projection.rs": "7ba21a425cae187b0a7b6cf02c5e190841be9dac3bf10508f05c3bb3497484d7",
+        "crates/op-plugins/Cargo.toml": "57e0ce0725b9a3faed0b0acd0d892688b8d0180f293c2e1fc1f4583058b609d8",
+        "crates/op-plugins/src/bin/gen_tched_router_config_surface.rs": "2f81b9a21230046e9a971c04894b68c73794fc86381494cc1107b3138e984645",
+        "crates/op-plugins/src/bin/opblob.rs": "c7d5637505fca9e0f63879e50f7c8d71262dd8f5dc954bef2ecc3cf32071b0d7",
+        "crates/op-plugins/src/bin/tched_router_config_surface.dispatch.inc": "c4b85b699e68894cf4b4cd4f8a69645ae232854cde50e22831570721550806e1",
+        "crates/op-plugins/src/canonical.rs": "db68605165086b43982b30e8931663e99844d83735e228472c54844717b51373",
+        "crates/op-plugins/src/default_registry.rs": "3b4fb86ce485c2af0ee34422a2e46d77223b539e2620b45391fe322afd5ea6a1",
+        "crates/op-plugins/src/lib.rs": "3352c233fe264c285442edce16657fa8c06b9aa089729b5de98b0ea15e7e0edc",
+        "crates/op-plugins/src/schema_loader.rs": null,
+        "crates/op-plugins/src/state_plugins/freedesktop.rs": "b3095cb38e9c7b5cf192d6d555b3b1e8442d011e10c5ee63dfb815d8aabaaa74",
+        "crates/op-plugins/src/state_plugins/mod.rs": "a5b38ae7056636eaa57d717fded87b14f9bf56182efe70057b396cc319747a24",
+        "crates/op-plugins/src/state_plugins/notebooklm.rs": "d52e424c1f117bf2f368461ba922bf2d5638935f7b22b19c9996339819a80ecb",
+        "crates/op-plugins/src/state_plugins/notebooklm/outputs.rs": "63624efb709067757f5fb0a93375d650d562593b3b47f70dc2b79f877be9f47c",
+        "crates/op-plugins/src/state_plugins/notebooklm/provider_outputs.rs": "445d4d963474906d6adecdecdfc675e8cf7f1402552a7a17f0fe6f3a2fbd8311",
+        "crates/op-plugins/src/state_plugins/schema_contract.rs": "d88b12f28361290fd04cafb1f02a42141a5eb212a5bb2ad4531d57be1b30fd8a",
+        "crates/op-plugins/src/state_plugins/tched_router.rs": "02e2ebc68f4119f066055ef91cc95b86692bfdd46cb6754045cfa3ed23d079aa",
+        "crates/op-plugins/src/state_plugins/tched_router_config_surface.rs": "fe21c72064b71268553921bea1289a6be0f0544d1cc69a5b10f998bdc3ae86c0",
+        "crates/op-plugins/src/state_plugins/tched_router_contract.rs": "44c2b57846736111218472c29a2687ff7853927246abd3a5d5b34a9e14c916b1",
+        "crates/op-state-store/src/lib.rs": "4471970a1eaea055a2209ec0bcbc07f2d402f4a3ff2b881ae42f8a6fe9c3f3e9",
+        "crates/op-state-store/src/plugin_schema.rs": "349030783728ed8e0ce83ca51ff8f3cf3b53e711d1bf3fdcce810046aa8f7a40",
+        "crates/op-web/src/handlers/tched_router.rs": "3c63b0d38e86e086fa222371758d2fbe562635bd2321bbf78525f02524940f87"
+      }
+    },
+    "limitations": [
+      "Existing working tree including pre-existing user changes; no clean repository created or independently built.",
+      "No release build, live provider mutation, live identity change, catalog reseal, service restart or btrfs send/receive performed.",
+      "Unsupported backends fail explicitly; this does not implement every declared backend.",
+      "Non-workspace op-gallery-gen requires catalog-input reconciliation before inclusion (OD-04).",
+      "Remote decoy assertion acquisition and WARP delivery remain separate OD-34 work."
+    ]
+  },
+  "retained_methods_verification": {
+    "captured_at": "2026-09-13T21:42:16Z",
+    "git_head": "1b82c594acd8d17a7e1b64b1b6ba52a21e5d9e97",
+    "command": "sh scripts/blitzy-check.sh verify",
+    "exit_code": 0,
+    "gates": {
+      "formatting": "cargo fmt --all -- --check: passed",
+      "clippy": "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings: passed",
+      "tests": "cargo test --locked --workspace --all-targets --all-features --no-fail-fast: passed"
+    },
+    "test_results": {
+      "suites": 111,
+      "passed": 1770,
+      "failed": 0,
+      "ignored": 8
+    },
+    "log": "/var/tmp/odbus-methods-checkpoint-verify-65.log",
+    "log_sha256": "bb376129425e4e091fe11e827e45170cb04b1b01cf5ab2f78d3f9e20e678f068",
+    "coverage": [
+      "Factory native computer/session methods: exact admission, bounded transport, uncertain-write handling, verified readback and protected SHM observations.",
+      "Schema Renderer gallery reads reuse the caller's canonical Gemma workspace and require both facade and nested read grants.",
+      "Six private tched_router generation methods and the LLM stream_generate facade share a MutationEngine-owned durable/SHM document.",
+      "Queued fragment batches preserve original order/counts, commit before metadata wakes, and drain before terminal publication.",
+      "Private StateSync child reads, owner isolation, lag rehydration, tombstones, cancellation, pending recovery and original facade/router admission."
+    ],
+    "generation_focused_verification": {
+      "command": "CXXFLAGS='-include cstdint' cargo test --locked --workspace --all-targets --all-features generation",
+      "passed": 50,
+      "failed": 0,
+      "ignored": 0,
+      "log": "/var/tmp/odbus-generation-coalesce-check-64.log",
+      "log_sha256": "bf4e2c973638b4d6b83e9e597877c96f4af74f835c8ac138cd2c19d0b74011e2"
+    },
+    "verified_source_fingerprints": {
+      "scope": "Factory/gallery/generation files and selected shared entry points in the existing working tree, frozen through verification. Includes uncommitted changes; this is not a complete build or release manifest.",
+      "sha256": {
+        "crates/op-grpc-bridge/src/factory_dispatch.rs": "41ce3f367fde7dccf7dc394e6632a2bd4df805b95e8029e0d5fde1c7d09d595f",
+        "crates/op-grpc-bridge/src/factory_dispatch_tests.rs": "f7f9156b873ba8f4cdf5117c7e6e164f75f6508b674564a23e9fff52dc244e85",
+        "crates/op-grpc-bridge/src/generation_admission.rs": "a39e5dfae974719126c617cb866da0dfa7b0ed27ceff1173d5c6b9733453faba",
+        "crates/op-grpc-bridge/src/generation_jobs_dispatch.rs": "8ab1dd5bf0640948352f78c83ac3598ba254025275c48288cd1fbdbefb231628",
+        "crates/op-grpc-bridge/src/generation_jobs_selection.rs": "1056864b8e5fa3b04851db2d9d40529ec9a247cac550f2f376c642c06ca1258a",
+        "crates/op-grpc-bridge/src/generation_jobs_stream.rs": "57cc8c82054bb90c18b9955cd6b4ba3973405d55a46a4559d4b531bd9303f326",
+        "crates/op-grpc-bridge/src/generation_jobs_tests.rs": "daf95f6abe19c9eb98c835fe992ba5e9766ceb583fe53ae0be124c825849f4d1",
+        "crates/op-grpc-bridge/src/generation_runtime.rs": "2babf215a6306bc93e35a48164f21c8405ce4511d47f55db5a4440665153250c",
+        "crates/op-grpc-bridge/src/grpc_server.rs": "7d3af04c03643e508551a72359630150d2c344ee20b096b46bf3cc2eba6f0f91",
+        "crates/op-grpc-bridge/src/large_language_model_dispatch.rs": "6299de955970d1c557e5e09c14f54e70d42968c025dff833fce102b7f8195bc3",
+        "crates/op-grpc-bridge/src/mutation_engine.rs": "57863f48180c4826cb47d524183bea5df87fc0d1dbbb43449cb6f77855a439a2",
+        "crates/op-grpc-bridge/src/schema_renderer_dispatch.rs": "025aa9bf742d4bddaee561812e6a153d81747445e06236ec3d0f17783382ff8f",
+        "crates/op-grpc-bridge/src/tched_router_generation_native.rs": "ba74dd8698b1805d339bd596bf2bd2082b1b7d2ec7beea0f91a99ca39cd84ba2",
+        "crates/op-grpc-bridge/src/ui_workspace_stream_tests.rs": "47585efb8eaa808620b54284273648be77ecfa5652a6011d3d8fdf2c7a98308b",
+        "crates/op-plugins/src/state_plugins/factory.rs": "bcfdd2e1d268d4472d6b03fc8c19b3085d856fe676c19e05fbedaf58e1894850",
+        "crates/op-plugins/src/state_plugins/factory_methods.rs": "e9df5ecc2fb1f2d996c92b94f5be1b72552cfba56ad9b1c574a576851f715988",
+        "crates/op-plugins/src/state_plugins/large_language_model.rs": "dddb6f7f1d6c91b2cd991852e2ce249367da663948cb881940a8c2bcaf57217d",
+        "crates/op-plugins/src/state_plugins/large_language_model_methods.rs": "95721578a5b1bc824c4f2fea440cf4c92e19d04f73b5108e66d370305d636e35",
+        "crates/op-plugins/src/state_plugins/schema_renderer.rs": "33a533c023ae5e4b441f36555891183e513bd2fe138cc9d16557218db8aa7bde",
+        "crates/op-plugins/src/state_plugins/schema_renderer_methods.rs": "42991d1ce4f22b8daf36aca740c0f135537bac9379a21c810d16c8247191b99e",
+        "crates/op-plugins/src/state_plugins/tched_router_generation.rs": "4cb34141b3def9fa41edcfa569629eb2807cf80010588c7b46a53d3f56aaf4db",
+        "crates/op-plugins/src/state_plugins/tched_router_generation_tests.rs": "c7f1ac6b7507c67da8b1e21dc17aa92a3cffc6f355cba4d15aafe21e17517584",
+        "Cargo.toml": "42f3fce3afcaa339ee140eaa74165204408d9953ff4860b82a8ba27f2fd2a93e",
+        "Cargo.lock": "ec34826647389078e8cfd8a60be8e71cb975b2d3cdf69919c21bc8a5be6ce849",
+        "crates/op-grpc-bridge/Cargo.toml": "14da984a8a6b3ccab1fdfdd5a85d1e2fa659e3c5f9ce8d0d6b0ede19a0ef0505",
+        "crates/op-grpc-bridge/src/lib.rs": "0c5dd739c99aa4df36205734b5bc55d2168b92bf652b4c5dbb6373a1a3c49053",
+        "crates/op-plugins/src/state_plugins/mod.rs": "a2d048dbdf9f7af5e5b74b91ce0c2380a44e3b39dbafadfbe5b57d6216f2091d",
+        "crates/op-plugins/src/state_plugins/tched_router.rs": "32cf7d9636ce8f466724ebecc3dade1f184500dbc0585a566ea7baeaa1ca641a"
+      }
+    },
+    "native_backing_verification": {
+      "upstream": "zeroclaw-labs/zeroclaw",
+      "release": "v0.8.4",
+      "commit": "a56c345d51dd8ab562e9351e0d4ab83f6a741db9",
+      "package": "vendor/tched-router",
+      "focused_tests": {
+        "passed": 13,
+        "failed": 0,
+        "generation": 10,
+        "anthropic_premature_eof": 1,
+        "cron_stream": 2
+      },
+      "formatting": "Full native workspace formatting passed.",
+      "clippy": "All-target Clippy passed with warnings denied for zeroclaw-api, zeroclaw-providers and zeroclaw-gateway.",
+      "source_reproduction": "Stored patches applied to a fresh pinned base and reproduced the tested native source; comparison did not dereference upstream symlinks and excluded build/cache/git output.",
+      "receipts_sha256": {
+        "/var/tmp/odbus-native-stateless-check-11.log": "c5f2631ba4d9f02a07663b555adaf39fc6adb9581d50536b143da30a16560fb0",
+        "/var/tmp/odbus-native-stateless-eof-03.log": "a2f64fbec5af41ccd5f3ecf12def38e30b828fb04e40ec95728da162bb46e3c1",
+        "/var/tmp/odbus-native-stateless-lag-05.log": "a1e71f602426270cd3c6d56524ce2a8ce86e2abbe55f1d36aa6bfb22f37d9076",
+        "/var/tmp/odbus-native-stateless-clippy-10.log": "5db3394346527fec6ea080f81c8814bc302f0e41004a007780bbccdb2dc8c978",
+        "/var/tmp/odbus-native-stateless-fmt-09.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "/var/tmp/odbus-native-package-apply-12.log": "b910a7daa94ba489c9a78bfce6ce13f2cef5ee9acc9cbbb33d64dff1aba7ab99"
+      },
+      "package_sha256": {
+        "vendor/tched-router/patches/0001-close-native-event-stream-on-lag.patch": "a65848862aa9d4746f095c8ea651a52df43da45b09b97da3bf28e49d95198ff5",
+        "vendor/tched-router/patches/0002-stateless-provider-generation.patch": "ec388affbefce0b081c24159814020c592771a84cd9395532ebda5d1164b1ccb",
+        "vendor/tched-router/base-sha256sums": "94dfeb6ddb9eaa116a0849773eb8c07279508c1d7d2cbc269dbecfc19301a38f",
+        "vendor/tched-router/patch-inventory": "3e97bca910269256c1b8eee06b662ae8f74d4dcc603fea3c46f0b2cbf795c56a",
+        "vendor/tched-router/apply-native-patches.sh": "6626a0695de0ec235aa9519131faaa6747415f0ce378512f6015a1bbfff1a31a",
+        "vendor/tched-router/regenerate-native-patches.sh": "68b65a7583bc59ee9f06729363a3b4e1bcac38cfd88ed9364df048907fafefc2"
+      }
+    },
+    "remaining_contracts": "WISHLIST.md#od-58-remaining-contract-decisions",
+    "limitations": [
+      "OD-58 remains open: missing service, credential and domain contracts are not implemented by an explicit rejection or passing tests.",
+      "Verification used the existing working tree, including prior user changes; no independent clean-checkout build or fresh repository was created.",
+      "No live provider call, identity mutation, catalog reseal, service restart, binary installation or btrfs deployment was performed.",
+      "The installed native binary must include the new protocol before it can back generation jobs. No full native workspace test run, release build or installed-binary parity is claimed.",
+      "Browser integration and clean-source/btrfs release closure remain unverified.",
+      "Native cron is unsequenced/best-effort and native router configuration PATCH has no global concurrent-writer transaction.",
+      "Per-batch catalog validation and durability costs remain; no production throughput benchmark is claimed. The native turn deadline does not bound later durable publication.",
+      "A grant-file edit alone does not wake a quiet provider call; admission is rechecked at the next operation/event boundary or deadline."
+    ],
+    "subsequent_scope_correction": "The historical Factory REST fixture receipt did not prove the intended CLI/SSH billing or Missions contract. That platform/discovery plugin was subsequently retired; its old fingerprints are preserved as historical evidence only."
+  },
+  "source_export_verification": {
+    "captured_at": "2026-09-14T22:51:30Z",
+    "checkpoint": 122,
+    "command": "OP_MAIL_NATIVE_CONTAINER_TEST=1 CARGO_TARGET_DIR=/srv/git/odbus/target sh scripts/check-workspace.sh verify",
+    "exit_code": 0,
+    "working_directory": "/var/tmp/odbus-source-closure-check-67",
+    "input_export": "/var/tmp/odbus-source-closure-check-122-input",
+    "gates": {
+      "formatting": "passed",
+      "clippy": "workspace/all-target/all-feature, warnings denied: passed",
+      "tests": "passed"
+    },
+    "test_results": {
+      "suites": 109,
+      "passed": 1862,
+      "failed": 0,
+      "ignored": 9
+    },
+    "log": "verification/methods-122/workspace.log",
+    "log_sha256": "e4bdc21b6f72836c04a2a10ca74267e6524a1eb5574e4f3d3bd6f5c6a1e8a29e",
+    "source_manifest": {
+      "path": "verification/methods-122/source.sha256",
+      "sha256": "57e67b197ee090128b5f267dbd5b20cfa09078896d8d37fc4b04617c66e8135c",
+      "files_and_symlinks": 1995,
+      "before_after_equal": true,
+      "note": "The manifest records frozen gate inputs. Subsequent changes are verification receipts and task-board metadata only; fresh-repository admission records their exact hashes separately."
+    },
+    "known_missing_methods": 0,
+    "inventory_scope": "The 43 gate83 gaps plus 3 omitted retained OpenFlow methods; see retained_methods_completion for exact names and proof scopes.",
+    "newly_implemented_methods": 46,
+    "ready_for_fresh_repository": true,
+    "ignored_scope": "Three multi-node NUMA tests, two live-bridge cognitive MCP tests, three host OVS netlink probes, and the explicit native OVS fixture. That native OVS fixture passed separately against a private dummy datapath; the other eight are not claimed executed.",
+    "limitations": [
+      "The native/container effect evidence is isolated and does not claim credentialed production-account or live-service execution.",
+      "The portable UI source builds and tests; its default local-demo conversation adapter is not proof of a deployed authenticated browser conversation.",
+      "Operator credentials, provisioned identities, runtime services and OS/Cargo/npm dependencies remain external provisioned inputs.",
+      "No release-optimized mail/decoy bundle, golden snapshot, live catalog activation, service restart or btrfs send/receive was performed."
+    ]
+  },
+  "source_export_verification_history": [
+    {
+      "captured_at": "2026-09-14T07:18:41Z",
+      "checkpoint": 69,
+      "git_head": "1b82c594acd8d17a7e1b64b1b6ba52a21e5d9e97",
+      "input_export": "/var/tmp/odbus-source-closure-check-69-input",
+      "working_directory": "/var/tmp/odbus-source-closure-check-67",
+      "directory_note": "The numbered working directory was reused for compiler-cache stability after its prior source was archived. It contained the checkpoint69 export throughout this run.",
+      "command": "CARGO_TARGET_DIR=/srv/git/odbus/target CARGO_BUILD_JOBS=2 sh scripts/check-workspace.sh verify",
+      "exit_code": 0,
+      "gates": {
+        "formatting": "cargo fmt --all -- --check: passed",
+        "clippy": "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings: passed",
+        "tests": "cargo test --locked --workspace --all-targets --all-features --no-fail-fast: passed",
+        "source_export": "Export regression checks, actual export, preflight and retirement scans passed."
+      },
+      "test_results": {
+        "suites": 107,
+        "passed": 1761,
+        "failed": 0,
+        "ignored": 8
+      },
+      "ignored_scope": "Three NUMA hardware tests, three live OVS netlink tests and two live cognitive MCP listener tests remain ignored. Other conditionally skipped native paths are not reclassified as native execution proof.",
+      "log": "/var/tmp/odbus-methods-checkpoint-verify-69.log",
+      "log_sha256": "5a0376e7a44f1954021804f106e65d8dc16adef43f915461d3ec9721e2339f3d",
+      "export_log": "/var/tmp/odbus-source-export-69.log",
+      "export_log_sha256": "cb40f9b711427613078b3296001edaa9e774a67dd66b1f529b884a26c450421e",
+      "source_manifest": {
+        "before": "/var/tmp/odbus-check-69-source.sha256",
+        "after": "/var/tmp/odbus-check-69-source-after.sha256",
+        "sha256": "685bde66b10ea612b991a1bff9711bea4b65fc622a5b1b2f3365ea94e1fe4c78",
+        "regular_files": 1944,
+        "before_after_equal": true,
+        "symlink_targets_equal_to_input_export": true,
+        "checkout_note": "All selected checkout files matched the tested manifest before recording this receipt except SIGNALS.md and WISHLIST.md, which received documentation updates while the frozen copy ran. This receipt is also a subsequent documentation-only change."
+      },
+      "workspace": {
+        "packages_including_root": 38,
+        "binaries": 30,
+        "internal_declared_dependency_edges": 145
+      },
+      "verified_changes": [
+        "Waypipe and the standalone vendor adapter crate are absent from workspace, dependency and authored protocol inputs, with passing retirement regressions and export exclusions.",
+        "The former Factory platform plugin is retired; router defaults do not invent Factory orchestration, availability or billing.",
+        "Gemma route uses the exact typed tched_router.ResolveRoute contract, authenticates both facade and target, and rejects invalid admission before HTTP effects.",
+        "Xray v4 retires four unsupported declarations; all supported native Commander fixtures pass with the current version pin.",
+        "Five EMQX D-Bus/HTTP fixtures cover eight native-backed methods and one local-policy method, validate complete schema inputs/outputs, and check authenticated readback and failure behavior.",
+        "OpenFlow obfuscation generic lifecycle methods no longer report fabricated success; its two declared methods remain unimplemented.",
+        "Private state, children, identity forwarding, router descriptor roundtrips and generation regression suites pass."
+      ],
+      "previous_attempt": {
+        "checkpoint": 68,
+        "exit_code": 101,
+        "formatting": "passed",
+        "clippy": "passed",
+        "suites": 107,
+        "passed": 1756,
+        "failed": 5,
+        "ignored": 8,
+        "log": "/var/tmp/odbus-methods-checkpoint-verify-68.log",
+        "log_sha256": "3a17bfbe7cb1f27be77de3db9082f19dba97eeebb63cf861dae8015c03799188",
+        "failure_correction": "Four Xray fixtures shared a stale 3.0.0 assertion after version4; one Gemma workspace fixture expected 2.0.0 after version3. Both assertions were corrected before checkpoint69."
+      },
+      "remaining_contracts": "WISHLIST.md#od-58-remaining-contract-decisions",
+      "known_missing_methods": 49,
+      "known_affected_plugins": 12,
+      "limitations": [
+        "Passing tests and explicit refusal do not implement the remaining declared methods or establish native evidence for every retained method.",
+        "The export includes uncommitted working-tree source and uses the existing toolchain/dependency cache. It is not a fresh Git repository, complete external-input package or secret-content certification.",
+        "Native router release/installed-binary parity, authenticated NotebookLM method coverage, browser integration and btrfs release closure remain unverified.",
+        "No fresh repository, live catalog reseal, service restart, binary installation or btrfs deployment was performed."
+      ]
+    },
+    {
+      "captured_at": "2026-09-14T20:20:23Z",
+      "checkpoint": 83,
+      "git_head": "1b82c594acd8d17a7e1b64b1b6ba52a21e5d9e97",
+      "input_export": "/var/tmp/odbus-source-closure-check-83-input",
+      "working_directory": "/var/tmp/odbus-source-closure-check-67",
+      "directory_note": "The reused working directory contained input83 throughout this run. Input83 derives from the safe exporter output78 with selected Rust corrections applied before freezing; the export log records those corrections.",
+      "command": "CARGO_TARGET_DIR=/srv/git/odbus/target sh scripts/check-workspace.sh verify",
+      "exit_code": 0,
+      "gates": {
+        "formatting": "cargo fmt --all -- --check: passed",
+        "clippy": "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings: passed",
+        "tests": "cargo test --locked --workspace --all-targets --all-features --no-fail-fast: passed",
+        "source_export": "Exporter regressions passed; actual export78 supplied the closure. Final input83 contains subsequent selected Rust corrections, all fingerprinted before verification."
+      },
+      "test_results": {
+        "suites": 107,
+        "passed": 1798,
+        "failed": 0,
+        "ignored": 8
+      },
+      "ignored_scope": "Three NUMA hardware tests, three live OVS netlink tests and two live cognitive MCP listener tests remain ignored. Protocol fixtures and conditional native paths are not reclassified as production execution proof.",
+      "log": "/var/tmp/odbus-methods-checkpoint-verify-83.log",
+      "log_sha256": "4daa6e11bc129b9bfde0e7fa65d5f3a62cb566e599a009174bbda7c277c3520a",
+      "export_log": "/var/tmp/odbus-source-export-83.log",
+      "export_log_sha256": "46182330d154fcd92f61a12e74fa1cb9162bac4761d0eac7b89c4e7d48e50c54",
+      "source_manifest": {
+        "before": "/var/tmp/odbus-check-83-source.sha256",
+        "after": "/var/tmp/odbus-check-83-source-after.sha256",
+        "sha256": "6dfbc4fc1e050d8e835a75097149834fc3f7f67f4f72a4d547326efd11de0a9c",
+        "regular_files": 1941,
+        "before_after_equal": true,
+        "symlink_targets_equal_to_input_export": true,
+        "checkout_note": "All selected checkout files matched the tested manifest before the run. SIGNALS.md and WISHLIST.md were subsequently updated with findings/results; this receipt is also a documentation-only change. No implementation files changed during verification."
+      },
+      "workspace": {
+        "packages_including_root": 38,
+        "binaries": 30,
+        "internal_declared_dependency_edges": 145
+      },
+      "newly_implemented_methods": {
+        "mcp": [
+          "get_config",
+          "configure_server"
+        ],
+        "ctl_plane_chatbot": [
+          "list_episodes",
+          "get_episode",
+          "query_context",
+          "vectorize"
+        ]
+      },
+      "verified_changes": [
+        "MCP configuration derives its complete input/output contract from native tched_router get/patch methods, preserves exact facade and target admission, uses natural server keys, and masks schema-marked secret maps. Native-style HTTP dispatch/readback fixtures pass.",
+        "Successful canonical native Chat produces an immutable episode bound to principal, session, genesis and on_behalf_of. Its accepted start plus monotonic elapsed time prevents backward wall-clock corrections from invalidating a completed receipt.",
+        "Episodes use a dedicated private Cozo database, separate from generic query tools. Scoped immutable rows, content hashes, embedding CAS, restart recovery, database alias rejection and whole-row bounded snapshots/pagination pass.",
+        "MutationEngine-owned durable commits precede private SHM publication and metadata wakes. Cancellation, pending publication, changed seals, exact children, cross-principal isolation and stream revocation fixtures pass.",
+        "Canonical list/get/vectorize/query methods operate on the verified scope and require exact grants. Document/query hints reach Voyage; providers without a native hint field omit it from their wire requests. Vector provenance compatibility and cosine retrieval fixtures pass.",
+        "Reserved unsupported chatbot configuration values are constrained by the schema and rejected before CAS. Exact field representations preserve numeric and referenced enum restrictions. Older unsupported config can be repaired through the canonical exact-revision setter.",
+        "The source-bound OIA1 client acquires one bounded assertion and forwards the exact authored wire into canonical TLS gRPC. Issuer/client/receiver, grant, malformed response, redirect, IP mismatch and timeout fixtures pass. Clients do not mint SID1.",
+        "Existing native PluginService and StateSync clients accept tested 5 MiB unary and streaming responses. HTTP compatibility chat routes forward canonical authenticated calls and preserve conversation correlation.",
+        "The exporter excludes credential-bearing historical setup artifacts and fails closed on recognized credentials and scanner failures. The Python inventory allows only the two explicitly excluded historical scripts to be absent; new paths and missing active scripts still fail.",
+        "Existing Waypipe/Factory/standalone-adapter retirement, Gemma route, supported Xray, EMQX, identity, state-tree and schema/descriptor suites continue to pass."
+      ],
+      "previous_full_attempt": {
+        "checkpoint": 77,
+        "exit_code": 101,
+        "formatting": "passed",
+        "clippy": "passed",
+        "suites": 107,
+        "passed": 1787,
+        "failed": 7,
+        "ignored": 8,
+        "log": "/var/tmp/odbus-methods-checkpoint-verify-77.log",
+        "log_sha256": "b13b85d5d018ed7d59bd15b8074421c643c4efaefbda4c21b2c1e9ea1b41e940",
+        "corrections": "Private-stream fixtures used absent expiries and invalid selector expectations; the chat fixture lacked its private episode owner; the export inventory required two excluded historical scripts; the PII fixture changed content without recomputing its required hash. These fixtures are corrected and pass in83."
+      },
+      "intermediate_attempts": [
+        {
+          "checkpoint": 78,
+          "status": "compile failed; missing enum references and test Debug requirement corrected"
+        },
+        {
+          "checkpoint": 79,
+          "status": "stopped during Clippy to include the second principal's known expiry fixture correction"
+        },
+        {
+          "checkpoint": 80,
+          "status": "schema adapter rejected numeric constants; exact representation added"
+        },
+        {
+          "checkpoint": 81,
+          "status": "schema adapter rejected reference siblings; exact representation added for constrained enums"
+        },
+        {
+          "checkpoint": 82,
+          "status": "test compile failed on inferred chrono timezone; explicit UTC type added"
+        }
+      ],
+      "remaining_contracts": "WISHLIST.md#od-58-remaining-contract-decisions",
+      "known_missing_methods": 43,
+      "known_affected_plugins": 11,
+      "ready_for_fresh_repository": false,
+      "limitations": [
+        "Passing the workspace gate does not implement the 43 remaining declarations or establish native execution evidence for every retained method.",
+        "MailV1 administration, decoy-side WireGuard/WARP administration and Antigravity bridge/credential owners are absent from the inspected source/service contracts. Gemma taxonomy/intent, proxy binding, UI actions, MCP tool-group policy and flow-obfuscation semantics remain undefined.",
+        "Chatbot vectors use private Cozo and bounded scoped cosine retrieval. No Qdrant episode index, content-merging deduplication, nested triggers, embedding queue/alerts, non-float storage or chatbot-specific model override is implemented. Reserved fields are not operational controls.",
+        "Native Chat conservatively marks text private and omits it from embeddings. No PII classification/release workflow exists; retrieval cannot search omitted text.",
+        "Production WARP assertion delivery and first-arrival provisioning, active browser authentication/StateSync integration, native installed-binary parity, authenticated NotebookLM coverage and btrfs release closure remain unverified.",
+        "The source closure uses the existing compiler/dependency cache and uncommitted checkout. The external UI repository and native upstream executable remain separate release inputs.",
+        "No fresh Git repository, live assertion, catalog reseal, service restart, binary installation or btrfs deployment was performed."
+      ]
+    }
+  ],
+  "retained_methods_completion": {
+    "checkpoint": 122,
+    "status": "verified",
+    "scope": "The original 43 missing method implementations plus three omitted retained OpenFlow methods. Verification covers the implemented contracts through canonical authenticated dispatch and isolated native effects; it is not a claim that every external production account or deployment was exercised.",
+    "captured_at": "2026-09-14T22:59:40Z",
+    "method_count": 46,
+    "plugin_count": 12,
+    "methods": {
+      "gemma_brain": [
+        "classify",
+        "list_perspectives",
+        "list_tags",
+        "register_tag",
+        "analyze_intent"
+      ],
+      "proxy_server": [
+        "start_proxy",
+        "stop_proxy",
+        "configure"
+      ],
+      "antigravity": [
+        "get_auth_status",
+        "get_usage_report",
+        "configure_safety"
+      ],
+      "antigravity_chat": [
+        "get_bridge_status",
+        "refresh_token",
+        "configure"
+      ],
+      "wireguard": [
+        "set_device",
+        "get_device",
+        "add_peer",
+        "remove_peer",
+        "list_peers",
+        "set_config"
+      ],
+      "wg_opdbus": [
+        "create_interface",
+        "get_status"
+      ],
+      "wgcf": [
+        "register",
+        "update",
+        "status",
+        "rotate_keys",
+        "set_endpoint",
+        "generate_config",
+        "apply_config",
+        "refresh"
+      ],
+      "web_ui": [
+        "handle_event"
+      ],
+      "mail_server": [
+        "add_domain",
+        "remove_domain",
+        "add_mailbox",
+        "remove_mailbox",
+        "add_alias",
+        "remove_alias",
+        "set_quota",
+        "get_queue",
+        "flush_queue"
+      ],
+      "mcp": [
+        "configure_tool_groups"
+      ],
+      "openflow_obfuscation": [
+        "obfuscate_flow",
+        "deobfuscate_flow"
+      ],
+      "openflow": [
+        "add_flow",
+        "delete_flow",
+        "modify_flow"
+      ]
+    },
+    "canonical_proofs": {
+      "gemma_brain": "gemma_taxonomy_dispatch_tests::all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+      "proxy_server": "mutation_engine::proxy_canonical_tests::three_proxy_methods_require_identity_and_publish_actual_committed_state",
+      "antigravity_and_chat": "mutation_engine::antigravity_canonical_tests::six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+      "decoy_network": "decoy_network::canonical_tests::all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+      "web_ui": "ui_workspace_stream::tests::web_ui_handle_event_commits_pinned_set_state_to_owners_private_shm",
+      "mail_server": "mutation_engine::mail_canonical_tests::all_nine_mail_methods_cross_mutation_engine_dbus_and_commit_complete_state",
+      "mcp": "mcp_config_dispatch::tests::canonical_tool_group_dispatch_commits_file_live_owner_and_member_projection",
+      "openflow_obfuscation": "mutation_engine::obfuscation_canonical_tests::flow_methods_commit_verified_children_and_reject_revoked_identity",
+      "openflow": "openflow_canonical_tests::all_three_flow_methods_cross_canonical_admission_native_cas_and_child_fold"
+    },
+    "workspace_gate": {
+      "command": "OP_MAIL_NATIVE_CONTAINER_TEST=1 CARGO_TARGET_DIR=/srv/git/odbus/target sh scripts/check-workspace.sh verify",
+      "working_directory": "/var/tmp/odbus-source-closure-check-67",
+      "input_export": "/var/tmp/odbus-source-closure-check-122-input",
+      "exit_code": 0,
+      "formatting": "passed",
+      "clippy": "workspace, all targets, all features, warnings denied: passed",
+      "tests": {
+        "suites": 109,
+        "passed": 1862,
+        "failed": 0,
+        "ignored": 9
+      },
+      "log": "verification/methods-122/workspace.log",
+      "log_sha256": "e4bdc21b6f72836c04a2a10ca74267e6524a1eb5574e4f3d3bd6f5c6a1e8a29e",
+      "ignored_scope": "Three multi-node NUMA tests, two live-bridge cognitive MCP tests, three host OVS netlink probes, and the explicit native OVS fixture. That native OVS fixture passed separately against a private dummy datapath; the other eight are not claimed executed."
+    },
+    "source_manifest": {
+      "path": "verification/methods-122/source.sha256",
+      "sha256": "57e67b197ee090128b5f267dbd5b20cfa09078896d8d37fc4b04617c66e8135c",
+      "files_and_symlinks": 1995,
+      "before_after_equal": true,
+      "note": "The manifest records frozen gate inputs. Subsequent changes are verification receipts and task-board metadata only; fresh-repository admission records their exact hashes separately."
+    },
+    "native_effect_scope": {
+      "wireguard": "All eight WireGuard/wg_opdbus methods execute in an isolated Linux network namespace; interface CIDRs retain host bits. No server WireGuard interface or role was introduced.",
+      "decoy_transport": "All sixteen decoy methods cross the pinned mTLS D-Bus owner with identity-owner SID1 and full committed sibling SHM state. WARP remains the identity transport.",
+      "wgcf": "Production HTTP/profile owners are exercised against bounded native-protocol fixtures, including durable registration/rotation recovery. No external Cloudflare account was registered or changed.",
+      "mail": "All nine methods cross canonical dispatch and the native D-Bus owner. Real Postfix maps and isolated Dovecot authentication/userdb/quota execute inside Alpine; queue requests use private protocol fixtures and do not deliver production mail.",
+      "openflow": "Actual installed OVS executes exact add/modify/delete and recovery readback in a private dummy datapath. Canonical tests prove identity admission and complete child-state folding.",
+      "provider": "The actual Google SDK and provider adapter consume bounded loopback HTTP fixtures for refresh, safety and configuration. No live provider credentials or billing changes are claimed.",
+      "proxy": "Real bounded TCP forwarding, reconfiguration, stop/drain, failed-bind rejection and exact retry are exercised.",
+      "ui": "Pinned Canvas events, scoped taxonomy and complete committed private SHM are exercised. Proven rejection preserves the prior generation; post-durable contract mismatch retains pending state until exact recovery."
+    },
+    "container_packaging": {
+      "profile": "debug",
+      "scope": "Actual GNU executables and recursive runtime-library bundles; not release-optimization or live-deployment proof.",
+      "mail": {
+        "binary_sha256": "f5c802ddda161617e3e573d0ef86735458410be924b7a45b05b1a602e58c9b31",
+        "artifact_sha256": "284f0559491141009190452a0ba8aedadf78f3364b325d0e88c016d66457726a",
+        "result": "Packaged loader executed --check-runtime in isolated Alpine /tmp. Offline image preparation resolved numeric owners and rejected invalid account layouts before changes."
+      },
+      "decoy": {
+        "artifact_sha256": "abec9890e7ac4421e328a79884aa189a73db597a8d2b9f4c5c5cf0a42c1025d5",
+        "catalog_plugins": 66,
+        "catalog_hash": "f0715eb44e8e6a3965cb7fe7a7c129fb1fc3e3d80a40da02faee3337555cfd37",
+        "result": "Fresh isolated seal and explicit two-path persist produced identical catalogs. Every blob, required plugin pin, artifact member and both GNU dependency graphs passed; no daemon was started."
+      }
+    },
+    "limitations": [
+      "The native/container effect evidence is isolated and does not claim credentialed production-account or live-service execution.",
+      "The portable UI source builds and tests; its default local-demo conversation adapter is not proof of a deployed authenticated browser conversation.",
+      "Operator credentials, provisioned identities, runtime services and OS/Cargo/npm dependencies remain external provisioned inputs.",
+      "No release-optimized mail/decoy bundle, golden snapshot, live catalog activation, service restart or btrfs send/receive was performed."
+    ],
+    "evidence_files": [
+      {
+        "sha256": "fed63e755a6693d9482f7962fdda4dcd469b911d1351863f717656d13834fbc9",
+        "path": "verification/methods-122/decoy-debug-bundle-receipt.txt"
+      },
+      {
+        "sha256": "1144eb05c99a51f20dcefaf5f570ec664590d13c9fbc041b7a358738ab1ca575",
+        "path": "verification/methods-122/decoy-debug-bundle.log"
+      },
+      {
+        "sha256": "4d272fa06d3cfe6d24523d4ecbd8f4bf0d69e2b0cee8b7bdf58681983b1cd791",
+        "path": "verification/methods-122/fresh-preflight.log"
+      },
+      {
+        "sha256": "fd2edf68aaa810d2fa96bc36b98a4722ea086c6c327c7dd542d807a32cec5721",
+        "path": "verification/methods-122/fresh-source-export.log"
+      },
+      {
+        "sha256": "5a8922365fe581a7bbef93ea7dd00f7a35e43006d8346b9ef365671922d0cbdf",
+        "path": "verification/methods-122/mail-debug-bundle.log"
+      },
+      {
+        "sha256": "151484d36e571e8bcca377d4a015d6d204e4de2b4c1403b0737ccfdf8ae889ba",
+        "path": "verification/methods-122/mail-native.log"
+      },
+      {
+        "sha256": "c10f964ee4fff5af4ffa9a0117c92740a9551cc60d661e66b32c562fc1b38630",
+        "path": "verification/methods-122/mail-offline.log"
+      },
+      {
+        "sha256": "9e1ceaf2a60618f7a625e61a31a894c7009fa5387e3b784717a11bd476285922",
+        "path": "verification/methods-122/native-build.log"
+      },
+      {
+        "sha256": "5db3394346527fec6ea080f81c8814bc302f0e41004a007780bbccdb2dc8c978",
+        "path": "verification/methods-122/native-clippy.log"
+      },
+      {
+        "sha256": "a2f64fbec5af41ccd5f3ecf12def38e30b828fb04e40ec95728da162bb46e3c1",
+        "path": "verification/methods-122/native-eof-test.log"
+      },
+      {
+        "sha256": "c5f2631ba4d9f02a07663b555adaf39fc6adb9581d50536b143da30a16560fb0",
+        "path": "verification/methods-122/native-generation-tests.log"
+      },
+      {
+        "sha256": "a1e71f602426270cd3c6d56524ce2a8ce86e2abbe55f1d36aa6bfb22f37d9076",
+        "path": "verification/methods-122/native-lag-tests.log"
+      },
+      {
+        "sha256": "13e5d5b3e2965dfadf6f371062ecf1df08fc12d777982db632d02d8d6e09487a",
+        "path": "verification/methods-122/native-manifest.json"
+      },
+      {
+        "sha256": "4697bea5c865016dc3bfd9f90c3fed9e1a6d51b07e14ac180bc9934e5cb60e5c",
+        "path": "verification/methods-122/native-schema-parity.json"
+      },
+      {
+        "sha256": "a6bd7e38b3d76abaecd7f7d2c5c9f1a508428ab6e38422fd9540a5be42839585",
+        "path": "verification/methods-122/native-source-regression.log"
+      },
+      {
+        "sha256": "0e804ff2a913c743c0adf55925722ee394324d5cbe7af80296e9998917f749e1",
+        "path": "verification/methods-122/openflow-native.log"
+      },
+      {
+        "sha256": "8f85d0829d8b2dca5cae5a44446679c7b6aa7248fec001a9e6c73996fcb4a56e",
+        "path": "verification/methods-122/source-export.log"
+      },
+      {
+        "sha256": "57e67b197ee090128b5f267dbd5b20cfa09078896d8d37fc4b04617c66e8135c",
+        "path": "verification/methods-122/source.sha256"
+      },
+      {
+        "sha256": "598e8691dfd9537f05946f863089546f8d15ae14f2ed771828835c4ef7c94e13",
+        "path": "verification/methods-122/ui-build.log"
+      },
+      {
+        "sha256": "1f3e2a4a33c2993750dd3ba6d5f194a4f034a8b4051a9544c153a5bc256ebb4c",
+        "path": "verification/methods-122/ui-manifest.json"
+      },
+      {
+        "sha256": "3f68abc6d5410350d5c058019559792ff07d8ca1ec3d43fc33bf7c18929bd065",
+        "path": "verification/methods-122/ui-source-regression.log"
+      },
+      {
+        "sha256": "bec206a22e7a1981ddf632e106a75315cc9233aff357a8ebfc5612c769c92229",
+        "path": "verification/methods-122/wireguard-native.log"
+      },
+      {
+        "sha256": "e4bdc21b6f72836c04a2a10ca74267e6524a1eb5574e4f3d3bd6f5c6a1e8a29e",
+        "path": "verification/methods-122/workspace.log"
+      }
+    ],
+    "portable_source_closure": {
+      "router_release_build": {
+        "status": "passed",
+        "command": "CARGO_BUILD_JOBS=2 CXXFLAGS='-include cstdint' vendor/tched-router/build-native.sh --cache-dir /srv/git/odbus/target/native-cache --output-dir /srv/git/odbus/target/native-artifacts/tched-router",
+        "manifest": {
+          "format": "opdbus.tched-router-native.v1",
+          "upstream": {
+            "url": "https://github.com/zeroclaw-labs/zeroclaw.git",
+            "tag": "v0.8.4",
+            "commit": "a56c345d51dd8ab562e9351e0d4ab83f6a741db9",
+            "source_archive_sha256": "0f1a3508b30319542fca0050998fdc45f3682df71f6baa37f65065cf00692697",
+            "vendored_source_gzip_sha256": "5e0f092f4f673422812ab3c370c71286c2dfc51119c004b45996f33b58acfd78"
+          },
+          "patches": {
+            "lagged_sse_sha256": "a65848862aa9d4746f095c8ea651a52df43da45b09b97da3bf28e49d95198ff5",
+            "stateless_generation_sha256": "ec388affbefce0b081c24159814020c592771a84cd9395532ebda5d1164b1ccb",
+            "inventory_sha256": "3e97bca910269256c1b8eee06b662ae8f74d4dcc603fea3c46f0b2cbf795c56a",
+            "base_manifest_sha256": "94dfeb6ddb9eaa116a0849773eb8c07279508c1d7d2cbc269dbecfc19301a38f",
+            "patched_cargo_lock_sha256": "b0c68c2150b4bfa81127949d063f91480f71273fdbaf4e7f263da3d9ca86b4ac"
+          },
+          "artifact": {
+            "name": "zeroclaw",
+            "sha256": "8ee2629d9fd6f63c9d1ad4bfd4f5cc7d7c911f8b782379806cc0c915e5c0da4d",
+            "bytes": 40273544,
+            "rust_target": "x86_64-unknown-linux-gnu"
+          },
+          "toolchain": {
+            "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+            "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)"
+          }
+        },
+        "schema_parity": {
+          "status": "passed",
+          "command": "/srv/git/odbus/target/native-artifacts/tched-router/zeroclaw --config-dir /var/tmp/odbus-native-schema-124/config config schema",
+          "binary_sha256": "8ee2629d9fd6f63c9d1ad4bfd4f5cc7d7c911f8b782379806cc0c915e5c0da4d",
+          "normalized_schema_sha256": "b1da7f77c4110c1505bdd6c6dc3293611cf05b436feb14c5e999569c0edabd74",
+          "normalization": "Only the isolated config-root prefix and the imported config-root prefix were replaced by <CONFIG_DIR>/; every replacement is within a JSON Schema default. All remaining JSON values, constraints and metadata match exactly.",
+          "normalized_default_count": 13,
+          "normalized_default_paths": [
+            [
+              "$defs",
+              "EstopConfig",
+              "properties",
+              "state_file",
+              "default"
+            ],
+            [
+              "$defs",
+              "KnowledgeConfig",
+              "properties",
+              "db_path",
+              "default"
+            ],
+            [
+              "$defs",
+              "PluginsConfig",
+              "properties",
+              "plugins_dir",
+              "default"
+            ],
+            [
+              "$defs",
+              "ProjectIntelConfig",
+              "properties",
+              "report_output_dir",
+              "default"
+            ],
+            [
+              "$defs",
+              "SecurityConfig",
+              "properties",
+              "estop",
+              "default",
+              "state_file"
+            ],
+            [
+              "$defs",
+              "SecurityOpsConfig",
+              "properties",
+              "playbooks_dir",
+              "default"
+            ],
+            [
+              "$defs",
+              "SecurityOpsConfig",
+              "properties",
+              "report_output_dir",
+              "default"
+            ],
+            [
+              "properties",
+              "knowledge",
+              "default",
+              "db_path"
+            ],
+            [
+              "properties",
+              "plugins",
+              "default",
+              "plugins_dir"
+            ],
+            [
+              "properties",
+              "project_intel",
+              "default",
+              "report_output_dir"
+            ],
+            [
+              "properties",
+              "security",
+              "default",
+              "estop",
+              "state_file"
+            ],
+            [
+              "properties",
+              "security_ops",
+              "default",
+              "playbooks_dir"
+            ],
+            [
+              "properties",
+              "security_ops",
+              "default",
+              "report_output_dir"
+            ]
+          ],
+          "native_runtime_config": "isolated temporary directory",
+          "plugin_source": "crates/op-plugins/src/state_plugins/tched_router_contract.rs",
+          "source_reimported": false
+        }
+      },
+      "ui_build": {
+        "status": "passed",
+        "checks": [
+          "npm ci",
+          "type-check",
+          "lint",
+          "tests",
+          "Vite build"
+        ],
+        "manifest": {
+          "format": "opdbus.vercel-json-render-ui-assets.v1",
+          "source": {
+            "head": "e8aad07bf02fc16bbb45554fbc570b66513ec019",
+            "worktree": "dirty",
+            "archive_sha256": "6b05224a1d4265d8592a27c1ebeb070da70ef60702c42afdd7bbbaab635bcef2",
+            "content_manifest_sha256": "477edfce25a762613cb6011b0fc1954c5afc98bdb3257effe9ce19e79ee74677",
+            "package_lock_sha256": "851a6ec0f398cc13300e375aa31dec7d07150de5961dba60eb859d9995412201"
+          },
+          "build": {
+            "node_version": "26.8.1",
+            "npm_version": "12.0.2",
+            "base": "/vercel-json-render/"
+          },
+          "artifact": {
+            "name": "assets.tar.gz",
+            "sha256": "f13740cfac002831f787e2ce2bdce33e7ea91e888d9e50316ce3d0773542264d",
+            "bytes": 117387
+          }
+        }
+      },
+      "archive_review": "The decompressed router archive was inspected separately. Credential-shaped matches are upstream public test/detector fixtures, including an AMQP test key; no host credential was imported. Both source archives are digest-pinned and included in the source export.",
+      "release_activation": false
+    }
+  },
+  "fresh_repository_admission": {
+    "status": "admitted",
+    "path": "/srv/git/odbus-verified",
+    "scope": "Verified source plus pinned native/UI source archives, build helpers and verification receipts; build outputs, credentials and live state are excluded.",
+    "verified_checkpoint": 122,
+    "metadata_audit": "verification/methods-122/admission-audit.json",
+    "deployed": false,
+    "initialized": true,
+    "branch": "main",
+    "preflight": "passed from the fresh repository path",
+    "allowed_post_gate_changes": [
+      "SIGNALS.md",
+      "WISHLIST.md",
+      "docs/src/architecture/plugin-baseline-revision.json",
+      "docs/src/architecture/verification/methods-122/*"
+    ],
+    "code_inputs_unchanged": true
+  }
+}

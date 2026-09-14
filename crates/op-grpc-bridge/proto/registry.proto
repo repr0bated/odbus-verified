@@ -1,0 +1,218 @@
+syntax = "proto3";
+
+package operation.registry.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// COMPONENT REGISTRY SERVICE
+//
+// Central registry for runtime-discoverable components: agents, plugins,
+// MCP servers, capability providers, and any future additions.
+//
+// Design principle: component_type is a plain string, not an enum, so new
+// component types can be introduced without proto changes. The Watch stream
+// lets consumers (e.g. MCP tool layer) react immediately to new registrations.
+// =============================================================================
+
+service ComponentRegistry {
+  // Register a component. Idempotent — re-registering with the same
+  // component_id updates the existing entry.
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // Deregister a component by ID.
+  rpc Deregister(DeregisterRequest) returns (DeregisterResponse);
+
+  // Query registered components, optionally filtered by type or capability.
+  rpc Discover(DiscoverRequest) returns (DiscoverResponse);
+
+  // Get a single component by ID.
+  rpc GetComponent(GetComponentRequest) returns (GetComponentResponse);
+
+  // Stream registry change events. Consumers (e.g. MCP tool layer) call this
+  // once and receive a RegistryEvent for every subsequent Register/Deregister.
+  rpc Watch(WatchRequest) returns (stream RegistryEvent);
+
+  // Heartbeat — components call this periodically to signal liveness.
+  // Registry marks components stale after missing N heartbeats.
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+// =============================================================================
+// REGISTRATION
+// =============================================================================
+
+message RegisterRequest {
+  // Unique stable identifier for this component (e.g. "agent.rust_pro",
+  // "plugin.net", "mcp.filesystem"). Must not change across restarts.
+  string component_id = 1;
+
+  // Free-form type string. Known values: "agent", "plugin", "mcp_server",
+  // "capability", "tool". New types require no proto change.
+  string component_type = 2;
+
+  // Human- and LLM-readable display name.
+  string name = 3;
+
+  // Description used verbatim as the MCP tool description. Should explain
+  // what this component does and when an LLM should invoke it.
+  string description = 4;
+
+  // JSON Schema (draft-07 compatible) describing the input accepted by this
+  // component's primary operation. Used to auto-generate MCP tool schemas.
+  string schema_json = 5;
+
+  // Arbitrary metadata for component-specific needs.
+  map<string, string> metadata = 6;
+
+  // Capabilities declared by this component (e.g. "cargo_build",
+  // "memory_recall", "dns_resolve"). Used for capability-based discovery.
+  repeated string capabilities = 7;
+
+  // gRPC endpoint if this component is a remote service. Empty for
+  // in-process components.
+  string endpoint = 8;
+
+  // Semantic version string.
+  string version = 9;
+
+  // Heartbeat interval this component will use (seconds). Registry uses
+  // this to compute the stale threshold (3× interval).
+  uint32 heartbeat_interval_seconds = 10;
+}
+
+message RegisterResponse {
+  bool success = 1;
+  string message = 2;
+  // Server-assigned lease token — must be presented in Heartbeat and Deregister.
+  string lease_token = 3;
+  google.protobuf.Timestamp registered_at = 4;
+}
+
+// =============================================================================
+// DEREGISTRATION
+// =============================================================================
+
+message DeregisterRequest {
+  string component_id = 1;
+  string lease_token = 2;
+}
+
+message DeregisterResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// =============================================================================
+// DISCOVERY
+// =============================================================================
+
+message DiscoverRequest {
+  // Filter by component type (empty = all types).
+  string component_type = 1;
+  // Filter by capability — returns components declaring this capability.
+  string capability = 2;
+  // Filter by metadata key/value pair.
+  string metadata_key = 3;
+  string metadata_value = 4;
+  // Include stale (missed heartbeat) components in results.
+  bool include_stale = 5;
+}
+
+message DiscoverResponse {
+  repeated ComponentInfo components = 1;
+  uint32 total_count = 2;
+}
+
+message GetComponentRequest {
+  string component_id = 1;
+}
+
+message GetComponentResponse {
+  ComponentInfo component = 1;
+  bool found = 2;
+}
+
+// =============================================================================
+// COMPONENT INFO (returned in discovery and watch events)
+// =============================================================================
+
+message ComponentInfo {
+  string component_id = 1;
+  string component_type = 2;
+  string name = 3;
+  string description = 4;
+  string schema_json = 5;
+  map<string, string> metadata = 6;
+  repeated string capabilities = 7;
+  string endpoint = 8;
+  string version = 9;
+  ComponentStatus status = 10;
+  google.protobuf.Timestamp registered_at = 11;
+  google.protobuf.Timestamp last_heartbeat = 12;
+}
+
+enum ComponentStatus {
+  COMPONENT_STATUS_UNSPECIFIED = 0;
+  COMPONENT_STATUS_ACTIVE = 1;
+  COMPONENT_STATUS_STALE = 2;      // missed heartbeat window
+  COMPONENT_STATUS_DEREGISTERED = 3;
+}
+
+// =============================================================================
+// WATCH STREAM
+// =============================================================================
+
+message WatchRequest {
+  // Only deliver events for these component types (empty = all).
+  repeated string component_types = 1;
+  // Replay existing registrations as REGISTERED events on connect.
+  bool include_existing = 2;
+}
+
+message RegistryEvent {
+  RegistryEventType event_type = 1;
+  ComponentInfo component = 2;
+  google.protobuf.Timestamp timestamp = 3;
+}
+
+enum RegistryEventType {
+  REGISTRY_EVENT_UNSPECIFIED = 0;
+  REGISTRY_EVENT_REGISTERED = 1;
+  REGISTRY_EVENT_DEREGISTERED = 2;
+  REGISTRY_EVENT_UPDATED = 3;   // re-registration with changed fields
+  REGISTRY_EVENT_STALE = 4;     // missed heartbeat threshold
+  REGISTRY_EVENT_RECOVERED = 5; // heartbeat resumed after stale
+}
+
+// =============================================================================
+// HEARTBEAT
+// =============================================================================
+
+message HeartbeatRequest {
+  string component_id = 1;
+  string lease_token = 2;
+  // Optional live status payload (e.g. current load, queue depth).
+  optional google.protobuf.Struct status_payload = 3;
+}
+
+message HeartbeatResponse {
+  bool acknowledged = 1;
+  // Server signals the component should re-register (e.g. after server restart).
+  bool reregister_required = 2;
+  google.protobuf.Timestamp server_time = 3;
+}
+
+// =============================================================================
+// ERROR HANDLING
+// =============================================================================
+
+enum RegistryErrorCode {
+  REGISTRY_ERROR_UNSPECIFIED = 0;
+  REGISTRY_ERROR_COMPONENT_NOT_FOUND = 1;
+  REGISTRY_ERROR_INVALID_LEASE_TOKEN = 2;
+  REGISTRY_ERROR_DUPLICATE_ID = 3;
+  REGISTRY_ERROR_INVALID_SCHEMA = 4;
+  REGISTRY_ERROR_HEARTBEAT_EXPIRED = 5;
+}

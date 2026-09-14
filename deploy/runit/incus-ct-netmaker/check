@@ -1,0 +1,5 @@
+#!/bin/sh
+export PATH="/usr/bin:/usr/sbin:/usr/lib/incus:${PATH:-}"
+incus list -f csv -c ns 2>/dev/null | grep -q '^NetMaker,RUNNING$' || exit 1
+[ -S /run/ghostbridge/NetMaker/api.sock ] || exit 1
+[ -S /run/ghostbridge/NetMaker/broker.sock ]

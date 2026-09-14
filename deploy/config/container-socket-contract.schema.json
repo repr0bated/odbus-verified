@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ghostbridge.tech/schema/container-socket-contract-v1.json",
+  "title": "Container socket ownership and readiness contract",
+  "type": "object",
+  "required": ["schema_version", "artifacts", "containers", "host_listeners"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema_version": { "const": 1 },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/artifact" }
+    },
+    "containers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/container" }
+    },
+    "host_listeners": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/host_listener" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "dependency": {
+      "type": "string",
+      "pattern": "^(artifact|container|mount|process|service|socket|workload):.+$"
+    },
+    "artifact": {
+      "oneOf": [
+        { "$ref": "#/$defs/cargo_git_artifact" },
+        { "$ref": "#/$defs/workspace_bundle_artifact" }
+      ]
+    },
+    "workspace_bundle_artifact": {
+      "type": "object",
+      "required": ["installer", "package", "target", "runtime", "archive", "binary"],
+      "properties": {
+        "installer": { "const": "workspace_bundle" },
+        "package": { "const": "op-plugins" },
+        "target": { "const": "x86_64-unknown-linux-gnu" },
+        "runtime": { "const": "private-glibc-loader-bundle" },
+        "archive": { "const": "mail-3tched-x86_64-linux-gnu-bundle.tar" },
+        "binary": { "const": "/usr/local/bin/op-mail-admin" }
+      },
+      "additionalProperties": false
+    },
+    "cargo_git_artifact": {
+      "type": "object",
+      "required": ["installer", "git", "rev", "target", "binary"],
+      "properties": {
+        "installer": { "const": "cargo_git" },
+        "git": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "rev": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "target": { "const": "x86_64-unknown-linux-musl" },
+        "binary": { "type": "string", "pattern": "^/" }
+      },
+      "additionalProperties": false
+    },
+    "container": {
+      "type": "object",
+      "required": ["name", "role", "depends_on", "services", "unix_sockets", "tcp_ports"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "depends_on": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dependency" },
+          "uniqueItems": true
+        },
+        "services": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "unix_sockets": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^/" },
+          "uniqueItems": true
+        },
+        "tcp_ports": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1, "maximum": 65535 },
+          "uniqueItems": true
+        },
+        "require_endpoint": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": false
+    },
+    "host_listener": {
+      "type": "object",
+      "required": ["name", "depends_on", "address", "port"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "depends_on": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dependency" },
+          "uniqueItems": true
+        },
+        "address": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

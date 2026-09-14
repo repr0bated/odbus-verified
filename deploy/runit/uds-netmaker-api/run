@@ -1,0 +1,11 @@
+#!/bin/sh
+# NIC-less publication: host TCP -> ghostbridge UDS -> container loopback.
+# Replaces the Incus proxy device that used to bind 127.0.0.1:8081. Same listen
+# address, so consumers are unaffected; only the mechanism changed.
+exec 2>&1
+until [ -S "/run/ghostbridge/NetMaker/api.sock" ]; do
+    echo "uds-netmaker-api: waiting for CT socket /run/ghostbridge/NetMaker/api.sock"
+    sleep 1
+done
+/usr/local/libexec/3tched/runit-ready-signal uds-netmaker-api 2>/dev/null || true
+exec /usr/local/libexec/3tched/op-uds-relay --tcp-to-unix "127.0.0.1:8081=/run/ghostbridge/NetMaker/api.sock"

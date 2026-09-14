@@ -1,0 +1,5 @@
+# jacob-bd notebooklm-mcp-cli (nlm). Not the PleasePrompto Node notebooklm-mcp tree.
+# Installs to /usr/local/bin/nlm — never overwrite /usr/bin/nlm (unrelated Node tool).
+NOTEBOOKLM_MCP_VERSION=0.11.2
+NOTEBOOKLM_MCP_ARTIFACT=notebooklm_mcp_cli-0.11.2-py3-none-any.whl
+NOTEBOOKLM_MCP_SHA256=86f23f282d04e632a10d5612e29b3a0d4f8166320c74337bd9f2e0a5cd0dac12

@@ -1,0 +1,6 @@
+#!/bin/sh
+# Ready = the interface exists AND has completed a handshake with Cloudflare.
+# `wg-quick up` succeeding only means the link was created; a wrong or duplicate
+# key still yields an interface that never handshakes.
+[ -d /sys/class/net/wgcf-egress ] || exit 1
+wg show wgcf-egress latest-handshakes 2>/dev/null | awk '{ if ($2 > 0) ok=1 } END { exit ok?0:1 }'

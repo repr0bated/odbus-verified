@@ -1,0 +1,39 @@
+#!/bin/sh
+/usr/local/libexec/3tched/runit-ready-signal notebook-sources-sync
+exec 2>&1
+
+/usr/local/libexec/3tched/wait-ready opdbus-rundirs 90 || { echo "dependency opdbus-rundirs not ready after 90s" >&2; exit 1; }
+# Depend on the BRIDGE, never on the standalone op-cognitive-mcp service.
+# cognitive_mcp is reached through the bridge's socket (PluginV1.Call on
+# /org/opdbus/v1/plugins/cognitive_mcp), which is both the single-writer path
+# to CozoDB and the identity gate. Starting op-cognitive-mcp opens the store
+# in-process, racing the bridge for the RocksDB LOCK and bypassing auth.
+# wait-ready never runs `sv start`, so it can no longer resurrect a
+# down-flagged service the way the old wait_dep did.
+/usr/local/libexec/3tched/wait-ready op-grpc-bridge 90 || { echo "dependency op-grpc-bridge not ready after 90s" >&2; exit 1; }
+
+export HOME=/home/jeremy
+export USER=jeremy
+export OP_DBUS_ROOT=/srv/git/odbus
+export NOTEBOOKLM_SOURCES_DIR=/home/jeremy/.notebooklm-sources
+export PATH="/home/jeremy/.local/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin"
+# 5 minutes default; override with env file if needed
+INTERVAL="${NOTEBOOK_SYNC_INTERVAL_SEC:-300}"
+HELPER=/usr/local/libexec/3tched/notebook-sources-sync-up
+
+echo "notebook-sources-sync: starting (interval=${INTERVAL}s) as $USER"
+
+if command -v chpst >/dev/null 2>&1 && id jeremy >/dev/null 2>&1; then
+    RUN="chpst -u jeremy:jeremy:secrets"
+else
+    RUN=""
+fi
+
+while true; do
+    if [ -x "$HELPER" ]; then
+        $RUN "$HELPER" || echo "notebook-sources-sync: cycle error"
+    else
+        echo "notebook-sources-sync: missing $HELPER"
+    fi
+    sleep "$INTERVAL"
+done

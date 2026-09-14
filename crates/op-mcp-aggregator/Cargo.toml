@@ -1,0 +1,46 @@
+[package]
+name = "op-mcp-aggregator"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "MCP Server Aggregator - proxies and aggregates multiple MCP servers behind a single endpoint"
+
+[dependencies]
+# Workspace crates
+op-core = { workspace = true }
+op-tools = { workspace = true }
+op-plugins = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true, features = ["full", "sync"] }
+futures = { workspace = true }
+async-trait = { workspace = true }
+
+# Serialization
+serde = { workspace = true, features = ["derive"] }
+simd-json = { workspace = true }
+serde_yaml = { workspace = true }
+
+# HTTP client for upstream MCP servers
+reqwest = { workspace = true, features = ["json"] }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Utils
+uuid = { workspace = true, features = ["v4"] }
+chrono = { workspace = true }
+
+# Caching
+lru = { workspace = true }
+
+# Base64 for auth
+base64 = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"

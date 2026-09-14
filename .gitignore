@@ -1,0 +1,89 @@
+# Build artifacts
+target/
+target-cache/
+target_custom/
+grpc-gateway/
+dist/
+build/
+.cache/
+*.log
+*.tmp
+tmp/
+coverage/
+Cargo.lock.bak
+
+# Dependencies / package managers
+node_modules/
+__pycache__/
+.venv/
+
+# Archive — historical files no longer in active use
+archive/
+
+# Data / runtime state
+storage/
+*.pid
+nohup.out
+deploy/s6/**/supervise/
+
+# Nested git repos (whole directories)
+branch-bestie-sync/
+
+# Local SDK payloads accidentally copied into the repo
+google-cloud-sdk/
+**/google-cloud-sdk/
+
+# Local built artifacts
+deploy/bin/
+*.tar.gz
+!vendor/tched-router/source.tar.gz
+!vendor/vercel-json-render-ui/source.tar.gz
+backup.tar.gz
+
+# Local WARP premium credentials
+wgcf-profile.conf
+client_secret*.json
+.env*
+/odbus.env
+
+# Operation Dashboard UI submodule (if excluded)
+operation-dashboard-ui/
+
+# Chroma / AI embeddings
+crates/.aye/
+.aye/chroma_db/
+
+# Clutter
+clippy_batch*.json
+clippy_*.err
+clippy_*.json
+clippy_*.log
+op_core_clippy.log
+my_clippy.*
+filesystem.out
+*.out
+*.png
+*.csv
+conversation.jsonl
+code-dbus.jsonl
+codex-projection.jsonl
+.claude/
+axon-trace-ui-79812482/
+archive/ui/axon-trace-ui/
+.claude/worktrees/agent-a30c7efd250a92894/
+.claude/worktrees/agent-a778a615e1548c419/
+rego-cns/
+security-policy-templates/
+techops/
+**/node_modules/
+**/target/
+.aider*
+
+# secrets (session credential dumps - never commit)
+/mashterid.txt
+/nmenv.txt
+/sso.txt
+/tenantid.txt
+/token.txt
+# agent/editor scratch backups
+*.bak-*

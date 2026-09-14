@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+# rust-network-mgr — socket-owning Rust network manager, OpenRC variant.
+# Mirrors deploy/rust-network-mgr/rust-network-mgr.service (systemd unit):
+# Type=simple, Restart=on-failure, RuntimeDirectory=rust-network-manager.
+
+name="rust-network-mgr"
+description="Rust Network Manager and control socket owner"
+command="/usr/local/bin/rust-network-mgr"
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/${RC_SVCNAME}.log"
+error_log="/var/log/${RC_SVCNAME}.log"
+
+export RUST_LOG=info
+export RUST_NETWORK_MGR_CONFIG=/etc/rust-network-mgr/config.yaml
+
+depend() {
+    need localmount
+}
+
+start_pre() {
+    checkpath -d -m 0755 -o root:root /run/rust-network-manager
+}

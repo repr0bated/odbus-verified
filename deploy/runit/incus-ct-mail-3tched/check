@@ -1,0 +1,3 @@
+#!/bin/sh
+# success only when Incus reports RUNNING
+incus list -f csv -c ns 2>/dev/null | grep -q '^mail-3tched,RUNNING$'

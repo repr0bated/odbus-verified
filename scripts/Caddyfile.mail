@@ -1,0 +1,31 @@
+# Caddyfile for SnappyMail webmail
+
+# Listen on port 80 (you can add SSL/domain later)
+:80 {
+    root * /var/www/snappymail
+
+    # PHP-FPM for SnappyMail
+    php_fastcgi unix//run/php-fpm83/php-fpm.sock
+
+    file_server
+
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "no-referrer-when-downgrade"
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+
+# If you want to use a domain name with SSL:
+# mail.3tched.com {
+#     root * /var/www/snappymail
+#     php_fastcgi unix//run/php-fpm83/php-fpm.sock
+#     file_server
+# }

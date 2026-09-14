@@ -1,0 +1,10 @@
+#!/bin/sh
+exec 2>&1
+until [ -d /run/ghostbridge ]; do sleep 1; done
+/usr/local/libexec/3tched/runit-ready-signal xsock-web
+rm -f /run/ghostbridge/fwd-web.sock
+# Optional metadata registration (non-blocking best-effort before exec)
+if [ -S /run/opdbus/session-bus.sock ]; then
+  zcall shared_unix_socket create_unix_socket -a '{"name":"xsock-web","ports":[8080]}' >/dev/null 2>&1 || true
+fi
+exec /usr/local/libexec/3tched/socket-relay unix-listen /run/ghostbridge/fwd-web.sock tcp-connect 127.0.0.1 8080

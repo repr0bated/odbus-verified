@@ -1,0 +1,17 @@
+#!/bin/sh
+exec 2>&1
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+wait_dep opdbus-rundirs
+
+# Containers are socket/proxy-only identities, so Incus does not wait for OVS.
+export PATH="/usr/lib/incus:${PATH:-/usr/bin:/usr/sbin}"
+/usr/local/libexec/3tched/runit-ready-signal incusd
+exec incusd --group incus-admin

@@ -1,0 +1,6 @@
+# Runtime commands used by the durable timing and NUMA-aware Btrfs cache.
+# build-golden.sh verifies this list while preparing and stages it into the
+# golden image, so a target cannot silently lose these host dependencies.
+btrfs-progs
+numactl
+util-linux

@@ -1,0 +1,34 @@
+{
+  "_comment": "Factory/Droid uses the single bridge-owned MCP ingress. A broker must attach a fresh x-oracle-identity-assertion-bin value to every request.",
+  "version": "2.0.0",
+  "mcpServers": {
+    "op-dbus-unified": {
+      "name": "op-dbus-unified",
+      "description": "Unified authenticated MCP, cognitive, coding-context, and blob-schema control plane",
+      "url": "https://10.0.0.3:8090/mcp",
+      "transport": "http",
+      "enabled": true,
+      "auth": {
+        "type": "oracle_identity_assertion",
+        "metadata": "x-oracle-identity-assertion-bin",
+        "freshPerRequest": true,
+        "selfAssertedIdentityHeadersAccepted": false
+      },
+      "timeouts": {
+        "requestMs": 30000,
+        "connectMs": 10000
+      },
+      "capabilities": {
+        "tools": true,
+        "resources": true,
+        "prompts": false
+      }
+    }
+  },
+  "clientMetadata": {
+    "clientType": "droid",
+    "clientId": "droid-factory-${SESSION_ID}",
+    "source": "factory.ai",
+    "canonicalEndpoint": "https://10.0.0.3:8090/mcp"
+  }
+}

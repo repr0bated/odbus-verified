@@ -1,0 +1,32 @@
+[package]
+name = "op-snowball"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Streaming snowball with BTRFS subvolumes for op-dbus-v2"
+
+[dependencies]
+op-core = { workspace = true }
+op-cache = { path = "../op-cache" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+simd-json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true, features = ["v5"] }
+sha2 = { workspace = true }
+gethostname = { workspace = true }
+qdrant-client = { workspace = true }
+tonic = { workspace = true }
+btrfs-uapi = "0.13.0"
+nix = { version = "0.31", features = ["fs"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[features]
+default = []

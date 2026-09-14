@@ -1,0 +1,48 @@
+#!/bin/sh
+# MANUAL restore of a SHM present-state snapshot. Nothing calls this at boot.
+#
+# The companion /etc/local.d/opdbus-shm-snapshot.stop captures /dev/shm/opdbus
+# at shutdown. That capture is a safety net — something to reach for if a boot
+# comes up wrong — not a restore path. Boot deliberately reseeds every plugin
+# from the freshly built schema, because nothing here holds present state that
+# cannot be rederived (identity_sled → cozo, tched_router → config.toml, net →
+# OVS conf.db, cognitive_mcp → memory.db) and the durability that matters is
+# historical: the mutation chain, covered independently.
+#
+# That default is also a feature. An automatic restore would make a projection
+# sticky across reboots, which is exactly how a plugin's stale declared values
+# survived for days: the bridge finds an existing projection and skips reseeding
+# from schema. With no restore at boot, a reboot is a free correction.
+#
+# Usage:  opdbus-shm-restore            # restore into an empty state tree
+#         opdbus-shm-restore --force    # overwrite a populated one
+#
+# Stop op-grpc-bridge first: it caches the projection it read at startup, so a
+# restore underneath a running bridge yields two disagreeing views.
+set -u
+
+SHM_DIR=/dev/shm/opdbus
+SNAP_DIR=/var/lib/opdbus/shm-snapshot
+FORCE=0
+[ "${1:-}" = "--force" ] && FORCE=1
+
+if [ ! -d "$SNAP_DIR/state" ]; then
+    echo "opdbus-shm-restore: no snapshot at $SNAP_DIR/state" >&2
+    exit 1
+fi
+
+if [ "$FORCE" -eq 0 ] && [ -n "$(ls -A "$SHM_DIR/state" 2>/dev/null)" ]; then
+    echo "opdbus-shm-restore: $SHM_DIR/state is populated; pass --force to overwrite" >&2
+    exit 1
+fi
+
+command -v rsync >/dev/null 2>&1 || { echo "opdbus-shm-restore: rsync not found" >&2; exit 1; }
+install -d -m 0755 "$SHM_DIR/state"
+
+# .manifest.json carries the monotonic generation and is the commit point, so it
+# lands LAST — the same ordering the writer uses.
+rsync -a --exclude '.manifest.json' "$SNAP_DIR/state/" "$SHM_DIR/state/" || exit 1
+[ -f "$SNAP_DIR/state/.manifest.json" ] \
+    && cp -a "$SNAP_DIR/state/.manifest.json" "$SHM_DIR/state/.manifest.json"
+
+echo "opdbus-shm-restore: restored $(ls -1 "$SHM_DIR/state"/*.json 2>/dev/null | wc -l) projections from $(cat "$SNAP_DIR/.taken-at" 2>/dev/null || echo unknown)"

@@ -1,0 +1,16 @@
+[Unit]
+Description=Xray router (3tched/op-dbus)
+After=network-pre.target
+Before=network.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/ip link set eth0 up
+ExecStartPre=/usr/bin/ip addr replace 10.0.0.2/24 dev eth0
+ExecStartPre=/usr/bin/ip addr replace 10.200.0.1/24 dev eth0
+ExecStart=/usr/local/bin/xray run -config /dev/shm/xray_config.json
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

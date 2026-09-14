@@ -1,0 +1,10 @@
+{
+  "$schema": "https://spec.modelcontextprotocol.io/schemas/mcp-config.json",
+  "mcpServers": {
+    "op-dbus-unified": {
+      "url": "https://10.0.0.3:8090/mcp",
+      "transport": "http",
+      "description": "Unified authenticated MCP; attach a fresh Oracle identity assertion to every request"
+    }
+  }
+}

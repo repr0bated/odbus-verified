@@ -1,0 +1,178 @@
+syntax = "proto3";
+
+package operation.registration.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// REGISTRATION SERVICE - Magic Link + WireGuard Identity Management
+// Similar to how tools and agents have their own proto definitions
+// =============================================================================
+
+service RegistrationService {
+  // Send magic link for user registration (like tool registration)
+  rpc SendMagicLink(SendMagicLinkRequest) returns (SendMagicLinkResponse);
+  
+  // Verify magic link and provision WireGuard identity
+  rpc VerifyMagicLink(VerifyMagicLinkRequest) returns (VerifyMagicLinkResponse);
+  
+  // Register user with WireGuard public key (registry pattern)
+  rpc RegisterUser(RegisterUserRequest) returns (RegisterUserResponse);
+  
+  // Get registration status for a user
+  rpc GetUserStatus(GetUserStatusRequest) returns (GetUserStatusResponse);
+  
+  // List all registered users (like ListTools/ListAgents)
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  
+  // Get WireGuard configuration for a registered user
+  rpc GetWireGuardConfig(GetWireGuardConfigRequest) returns (GetWireGuardConfigResponse);
+  
+  // Admin function to manage user registrations
+  rpc AdminUserAction(AdminUserActionRequest) returns (AdminUserActionResponse);
+}
+
+// =============================================================================
+// REGISTRATION SERVICE MESSAGES
+// =============================================================================
+
+message SendMagicLinkRequest {
+  string email = 1;
+  string domain = 2; // "3tched.com"
+  bool is_admin = 3; // true for admin@3tched.com, false for jeremy@3tched.com
+  optional string custom_message = 4;
+}
+
+message SendMagicLinkResponse {
+  bool success = 1;
+  string message = 2;
+  optional string token = 3; // for testing/debug
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message VerifyMagicLinkRequest {
+  string token = 1;
+  string domain = 2;
+}
+
+message VerifyMagicLinkResponse {
+  bool success = 1;
+  string user_id = 2;
+  string email = 3;
+  string wireguard_public_key = 4;
+  string assigned_ip = 5;
+  string wireguard_config = 6;
+  string message = 7;
+  bool is_admin = 8;
+  google.protobuf.Timestamp verified_at = 9;
+}
+
+message RegisterUserRequest {
+  string email = 1;
+  string wireguard_public_key = 2;
+  string domain = 3;
+  bool is_admin = 4;
+  optional google.protobuf.Struct metadata = 5;
+}
+
+message RegisterUserResponse {
+  bool success = 1;
+  string user_id = 2;
+  string message = 3;
+  string assigned_ip = 4;
+  string wireguard_config = 5;
+  google.protobuf.Timestamp registered_at = 6;
+}
+
+message GetUserStatusRequest {
+  string email = 1;
+  string user_id = 2;
+  string domain = 3;
+}
+
+message GetUserStatusResponse {
+  bool registered = 1;
+  string user_id = 2;
+  string email = 3;
+  bool email_verified = 4;
+  string wireguard_public_key = 5;
+  string assigned_ip = 6;
+  bool is_admin = 7;
+  google.protobuf.Timestamp registered_at = 8;
+  google.protobuf.Timestamp last_active = 9;
+}
+
+message ListUsersRequest {
+  uint32 limit = 1;
+  uint32 offset = 2;
+  bool include_admins_only = 3;
+  string domain_filter = 4;
+}
+
+message ListUsersResponse {
+  repeated UserInfo users = 1;
+  uint32 total_count = 2;
+  uint32 filtered_count = 3;
+}
+
+message UserInfo {
+  string user_id = 1;
+  string email = 2;
+  bool email_verified = 3;
+  string wireguard_public_key = 4;
+  string assigned_ip = 5;
+  bool is_admin = 6;
+  google.protobuf.Timestamp registered_at = 7;
+  google.protobuf.Timestamp last_active = 8;
+  optional google.protobuf.Struct metadata = 9;
+}
+
+message GetWireGuardConfigRequest {
+  string email = 1;
+  string user_id = 2;
+  string domain = 3;
+}
+
+message GetWireGuardConfigResponse {
+  bool success = 1;
+  string wireguard_config = 2;
+  string public_key = 3;
+  string assigned_ip = 4;
+  string message = 5;
+  google.protobuf.Timestamp generated_at = 6;
+}
+
+message AdminUserActionRequest {
+  string action = 1; // "suspend", "unsuspend", "delete", "reset_password"
+  string user_id = 2;
+  string email = 3;
+  optional google.protobuf.Struct parameters = 4;
+}
+
+message AdminUserActionResponse {
+  bool success = 1;
+  string message = 2;
+  string user_id = 3;
+  google.protobuf.Timestamp action_timestamp = 4;
+}
+
+// =============================================================================
+// ERROR HANDLING
+// =============================================================================
+
+message RegistrationError {
+  int32 code = 1;
+  string message = 2;
+  optional google.protobuf.Struct details = 3;
+}
+
+enum RegistrationErrorCode {
+  REGISTRATION_ERROR_UNSPECIFIED = 0;
+  REGISTRATION_ERROR_INVALID_EMAIL = 1;
+  REGISTRATION_ERROR_INVALID_TOKEN = 2;
+  REGISTRATION_ERROR_USER_EXISTS = 3;
+  REGISTRATION_ERROR_WIREGUARD_KEY_INVALID = 4;
+  REGISTRATION_ERROR_NETWORK_UNAVAILABLE = 5;
+  REGISTRATION_ERROR_ADMIN_REQUIRED = 6;
+}

@@ -1,0 +1,103 @@
+#!/bin/sh
+# Idempotently prepare standalone EMQX identity, credentials, and mTLS files.
+set -eu
+
+[ "$(id -u)" -eq 0 ] || {
+    echo "emqx-prepare must run as root" >&2
+    exit 1
+}
+
+if ! getent group emqx >/dev/null 2>&1; then
+    groupadd --system emqx
+fi
+if ! getent passwd emqx >/dev/null 2>&1; then
+    useradd --system --gid emqx --home-dir /var/lib/emqx --shell /usr/bin/nologin emqx
+fi
+
+install -d -m 0750 -o root -g emqx /etc/emqx /etc/emqx/certs
+install -d -m 0750 -o root -g root /etc/opdbus/secrets
+install -d -m 0750 -o emqx -g emqx \
+    /var/lib/emqx /var/lib/emqx/bootstrap /var/log/emqx
+
+ensure_secret() {
+    secret_path=$1
+    secret_bytes=$2
+    if [ ! -s "$secret_path" ]; then
+        secret_tmp=$(mktemp "${secret_path}.XXXXXX")
+        openssl rand -hex "$secret_bytes" > "$secret_tmp"
+        chmod 0600 "$secret_tmp"
+        chown root:root "$secret_tmp"
+        mv -f "$secret_tmp" "$secret_path"
+    fi
+}
+
+ensure_secret /etc/opdbus/secrets/emqx-dashboard-password 24
+ensure_secret /etc/opdbus/secrets/emqx-mqtt-password 24
+ensure_secret /etc/opdbus/secrets/emqx-api-key 12
+ensure_secret /etc/opdbus/secrets/emqx-api-secret 24
+ensure_secret /etc/opdbus/secrets/emqx-node-cookie 24
+
+mqtt_password=$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-mqtt-password)
+auth_tmp=$(mktemp /var/lib/emqx/bootstrap/.auth.XXXXXX)
+printf 'user_id,password,is_superuser\nopdbus,%s,true\n' "$mqtt_password" > "$auth_tmp"
+chmod 0600 "$auth_tmp"
+chown emqx:emqx "$auth_tmp"
+mv -f "$auth_tmp" /var/lib/emqx/bootstrap/auth-built-in-db-bootstrap.csv
+unset mqtt_password
+
+api_key=$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-api-key)
+api_secret=$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-api-secret)
+api_tmp=$(mktemp /var/lib/emqx/bootstrap/.api.XXXXXX)
+printf '%s:%s:administrator\n' "$api_key" "$api_secret" > "$api_tmp"
+chmod 0600 "$api_tmp"
+chown emqx:emqx "$api_tmp"
+mv -f "$api_tmp" /var/lib/emqx/bootstrap/api-keys.txt
+unset api_key api_secret
+
+ca_cert=/etc/op-dbus/tls/tonic-svc0-ca.crt
+ca_key=/etc/op-dbus/tls/tonic-svc0-ca.key
+[ -r "$ca_cert" ] || { echo "missing OP-DBUS CA certificate: $ca_cert" >&2; exit 1; }
+[ -r "$ca_key" ] || { echo "missing OP-DBUS CA key: $ca_key" >&2; exit 1; }
+install -m 0644 -o root -g emqx "$ca_cert" /etc/emqx/certs/opdbus-ca.crt
+
+client_cert=/etc/emqx/certs/emqx-exhook-client.crt
+client_key=/etc/emqx/certs/emqx-exhook-client.key
+renew=0
+[ -s "$client_key" ] && [ -s "$client_cert" ] || renew=1
+if [ "$renew" = 0 ] && ! openssl x509 -checkend 604800 -noout -in "$client_cert" >/dev/null 2>&1; then
+    renew=1
+fi
+if [ "$renew" = 1 ]; then
+    cert_tmp_dir=$(mktemp -d /etc/emqx/certs/.issue.XXXXXX)
+    trap 'rm -rf -- "$cert_tmp_dir"' EXIT HUP INT TERM
+    openssl req -new -newkey rsa:3072 -nodes -sha256 \
+        -subj /CN=emqx-exhook \
+        -addext 'subjectAltName=URI:spiffe://opdbus/emqx-exhook' \
+        -addext 'extendedKeyUsage=clientAuth' \
+        -keyout "$cert_tmp_dir/client.key" \
+        -out "$cert_tmp_dir/client.csr" >/dev/null 2>&1
+    openssl x509 -req -sha256 -days 825 -copy_extensions copy \
+        -in "$cert_tmp_dir/client.csr" \
+        -CA "$ca_cert" -CAkey "$ca_key" -CAserial /etc/op-dbus/tls/tonic-svc0-ca.srl \
+        -out "$cert_tmp_dir/client.crt" >/dev/null 2>&1
+    openssl verify -CAfile "$ca_cert" -purpose sslclient "$cert_tmp_dir/client.crt" >/dev/null
+    install -m 0640 -o root -g emqx "$cert_tmp_dir/client.key" "$client_key"
+    install -m 0644 -o root -g emqx "$cert_tmp_dir/client.crt" "$client_cert"
+    rm -rf -- "$cert_tmp_dir"
+    trap - EXIT HUP INT TERM
+fi
+
+openssl verify -CAfile "$ca_cert" -purpose sslclient "$client_cert" >/dev/null
+chown -R emqx:emqx /var/lib/emqx /var/log/emqx
+
+if [ "${1:-}" = "--check-config" ]; then
+    [ -x /opt/emqx/bin/emqx ] || { echo "standalone EMQX artifact is not installed" >&2; exit 1; }
+    export EMQX_NODE__COOKIE="$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-node-cookie)"
+    export EMQX_DASHBOARD__DEFAULT_USERNAME=admin
+    export EMQX_DASHBOARD__DEFAULT_PASSWORD="$(tr -d '\r\n' < /etc/opdbus/secrets/emqx-dashboard-password)"
+    export EMQX_LOG_DIR=/var/log/emqx
+    chpst -u emqx:emqx /opt/emqx/bin/emqx check_config
+elif [ "$#" -ne 0 ]; then
+    echo "usage: emqx-prepare [--check-config]" >&2
+    exit 2
+fi

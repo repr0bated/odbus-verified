@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Consolidate /home/jeremy/.notebooklm-sources into ≤300 bundle files (append-only).
+set -euo pipefail
+ROOT="${OP_DBUS_ROOT:-/srv/git/odbus}"
+SCRIPT="$ROOT/scripts/notebook-sources-cleanup.py"
+[[ -f "$SCRIPT" ]] || SCRIPT="$(cd "$(dirname "$0")" && pwd)/notebook-sources-cleanup.py"
+exec python3 "$SCRIPT" "$@"

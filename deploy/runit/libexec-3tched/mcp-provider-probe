@@ -1,0 +1,99 @@
+#!/usr/bin/node
+
+// Minimal Streamable HTTP MCP probe used by runit readiness checks. It never
+// prints response bodies because provider errors may contain source metadata.
+const [url, tool, argsJson = "{}", mode = "success"] = process.argv.slice(2);
+if (!url || !tool || !["success", "notebook-auth"].includes(mode)) {
+  process.stderr.write("usage: mcp-provider-probe URL TOOL ARGS_JSON [success|notebook-auth]\n");
+  process.exit(2);
+}
+
+const headers = {
+  "content-type": "application/json",
+  accept: "application/json, text/event-stream",
+  "mcp-protocol-version": "2025-03-26",
+};
+let sessionId;
+
+function parseBody(text, contentType) {
+  if (contentType.includes("text/event-stream")) {
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (data && data !== "[DONE]") return JSON.parse(data);
+    }
+    throw new Error("empty SSE response");
+  }
+  return JSON.parse(text);
+}
+
+async function send(payload, expectResponse = true) {
+  const requestHeaders = { ...headers };
+  if (sessionId) requestHeaders["mcp-session-id"] = sessionId;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: requestHeaders,
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(20000),
+  });
+  sessionId = response.headers.get("mcp-session-id") || sessionId;
+  const text = await response.text();
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!expectResponse || !text) return undefined;
+  return parseBody(text, response.headers.get("content-type") || "");
+}
+
+function containsAuthenticated(value) {
+  if (!value || typeof value !== "object") return false;
+  if (value.authenticated === true) return true;
+  return Object.values(value).some(containsAuthenticated);
+}
+
+let exitCode = 0;
+try {
+  const initialize = await send({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion: "2025-03-26",
+      capabilities: {},
+      clientInfo: { name: "op-dbus-runit-probe", version: "1" },
+    },
+  });
+  if (initialize?.error) throw new Error("initialize rejected");
+  await send({ jsonrpc: "2.0", method: "notifications/initialized", params: {} }, false);
+  const result = await send({
+    jsonrpc: "2.0",
+    id: 2,
+    method: "tools/call",
+    params: { name: tool, arguments: JSON.parse(argsJson) },
+  });
+  if (result?.error || result?.result?.isError === true || !result?.result) {
+    throw new Error("tool probe failed");
+  }
+  if (mode === "notebook-auth") {
+    let authenticated = containsAuthenticated(result.result.structuredContent);
+    for (const item of result.result.content || []) {
+      if (authenticated || item?.type !== "text") continue;
+      try {
+        authenticated = containsAuthenticated(JSON.parse(item.text));
+      } catch {
+        // Non-JSON text cannot establish authentication.
+      }
+    }
+    if (!authenticated) throw new Error("provider reports unauthenticated");
+  }
+} catch (error) {
+  process.stderr.write(`MCP provider probe failed: ${error.message}\n`);
+  exitCode = 1;
+} finally {
+  if (sessionId) {
+    await fetch(url, {
+      method: "DELETE",
+      headers: { "mcp-session-id": sessionId },
+      signal: AbortSignal.timeout(3000),
+    }).catch(() => undefined);
+  }
+}
+process.exit(exitCode);

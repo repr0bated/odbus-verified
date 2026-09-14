@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package assistant.v1;
+
+import "google/protobuf/timestamp.proto";
+import "assistant/common.proto";
+
+service NamespaceMemoryService {
+  rpc GetMemoryNamespace(GetMemoryNamespaceRequest) returns (MemoryNamespace);
+  rpc SetMemoryNamespace(SetMemoryNamespaceRequest) returns (MemoryNamespace);
+  rpc ClearMemoryNamespace(ClearMemoryNamespaceRequest) returns (Empty);
+  rpc ListMemoryNamespaces(ListMemoryNamespacesRequest) returns (ListMemoryNamespacesResponse);
+}
+
+message MemoryNamespace {
+  string agent_id = 1;
+  string namespace = 2;
+  uint64 entry_count = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message GetMemoryNamespaceRequest { string agent_id = 1; }
+
+message SetMemoryNamespaceRequest {
+  string agent_id = 1;
+  string namespace = 2;
+}
+
+message ClearMemoryNamespaceRequest { string agent_id = 1; }
+
+message ListMemoryNamespacesRequest {
+  Pagination pagination = 1;
+}
+
+message ListMemoryNamespacesResponse {
+  repeated MemoryNamespace namespaces = 1;
+  uint32 total = 2;
+}

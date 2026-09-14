@@ -1,0 +1,17 @@
+listeners.ws.default.bind = "0.0.0.0:8090"
+
+# EMQX ExHook only accepts http(s) TCP URLs. Keep the adapter private to this
+# NIC-less container; op-uds-relay carries its HTTP/2 stream over the shared
+# Ghostbridge UDS where the bridge injects canonical identity.
+exhook {
+  servers = [
+    {
+      name = ghostbridge
+      url = "http://127.0.0.1:9091"
+      failed_action = ignore
+      request_timeout = "5s"
+      auto_reconnect = "5s"
+      pool_size = 4
+    }
+  ]
+}

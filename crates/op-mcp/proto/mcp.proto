@@ -1,0 +1,232 @@
+syntax = "proto3";
+
+package op.mcp.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/empty.proto";
+
+// MCP Service - Structured gRPC
+service McpService {
+  // Unary request/response (standard MCP calls)
+  rpc Call(McpRequest) returns (McpResponse);
+  
+  // Server streaming for SSE-like behavior
+  rpc Subscribe(SubscribeRequest) returns (stream McpEvent);
+  
+  // Bidirectional streaming for full duplex
+  rpc Stream(stream McpRequest) returns (stream McpResponse);
+  
+  // Health check
+  rpc Health(google.protobuf.Empty) returns (HealthResponse);
+  
+  // Initialize session (run-on-connection agents)
+  rpc Initialize(InitializeRequest) returns (InitializeResponse);
+  
+  // Tool operations
+  rpc ListTools(ListToolsRequest) returns (ListToolsResponse);
+  rpc GetToolSchema(GetToolSchemaRequest) returns (GetToolSchemaResponse);
+  rpc CallTool(CallToolRequest) returns (CallToolResponse);
+  rpc CallToolStreaming(CallToolRequest) returns (stream ToolOutput);
+}
+
+// Generic MCP request with structured params
+message McpRequest {
+  string jsonrpc = 1;  // Always "2.0"
+  optional string id = 2;
+  string method = 3;
+  optional google.protobuf.Struct params = 4;  // Structured params
+}
+
+// Generic MCP response with structured result
+message McpResponse {
+  string jsonrpc = 1;
+  optional string id = 2;
+  optional google.protobuf.Struct result = 3;  // Structured result
+  optional McpError error = 4;
+}
+
+message McpError {
+  int32 code = 1;
+  string message = 2;
+  optional google.protobuf.Struct data = 3;  // Structured error data
+}
+
+// Subscribe to server events
+message SubscribeRequest {
+  repeated string event_types = 1;  // "tools", "agents", "resources"
+  optional string session_id = 2;
+}
+
+message McpEvent {
+  string event_type = 1;
+  string data_json = 2;
+  int64 timestamp = 3;
+  uint32 sequence = 4;
+}
+
+// Health check
+
+message HealthResponse {
+  bool healthy = 1;
+  string version = 2;
+  string server_name = 3;
+  ServerMode mode = 4;
+  repeated string connected_agents = 5;
+  uint64 uptime_secs = 6;
+}
+
+enum ServerMode {
+  SERVER_MODE_UNKNOWN = 0;
+  SERVER_MODE_COMPACT = 1;
+  SERVER_MODE_AGENTS = 2;
+  SERVER_MODE_FULL = 3;
+}
+
+// Initialize session
+message InitializeRequest {
+  string client_name = 1;
+  optional string client_version = 2;
+  optional string session_id = 3;
+  repeated string capabilities = 4;
+}
+
+message InitializeResponse {
+  string protocol_version = 1;
+  string server_name = 2;
+  string server_version = 3;
+  repeated string capabilities = 4;
+  repeated string started_agents = 5;  // Run-on-connection agents
+  string session_id = 6;
+}
+
+// Tool operations with structured arguments
+message ListToolsRequest {
+  optional string category = 1;
+  optional string query = 2;
+  uint32 limit = 3;
+  uint32 offset = 4;
+}
+
+message ListToolsResponse {
+  repeated ToolInfo tools = 1;
+  uint32 total = 2;
+  bool has_more = 3;
+}
+
+message ToolInfo {
+  string name = 1;
+  string description = 2;
+  ToolSchema input_schema = 3;  // Structured schema
+  optional string category = 4;
+  repeated string tags = 5;
+}
+
+message ToolSchema {
+  repeated ToolParameter parameters = 1;
+  repeated string required = 2;
+}
+
+message ToolParameter {
+  string name = 1;
+  ParameterType type = 2;
+  string description = 3;
+  optional google.protobuf.Value default_value = 4;
+  repeated string enum_values = 5;
+}
+
+enum ParameterType {
+  PARAMETER_TYPE_STRING = 0;
+  PARAMETER_TYPE_INTEGER = 1;
+  PARAMETER_TYPE_NUMBER = 2;
+  PARAMETER_TYPE_BOOLEAN = 3;
+  PARAMETER_TYPE_ARRAY = 4;
+  PARAMETER_TYPE_OBJECT = 5;
+}
+
+message GetToolSchemaRequest {
+  string tool_name = 1;
+}
+
+message GetToolSchemaResponse {
+  ToolSchema schema = 1;
+}
+
+// Tool execution with structured arguments
+message CallToolRequest {
+  string tool_name = 1;
+  ToolArguments arguments = 2;  // Structured arguments
+  optional string session_id = 3;
+  optional uint32 timeout_ms = 4;
+}
+
+message ToolArguments {
+  oneof args {
+    FileSystemArgs filesystem = 1;
+    NetworkArgs network = 2;
+    DatabaseArgs database = 3;
+    ShellArgs shell = 4;
+    google.protobuf.Struct generic = 99;  // Fallback for unknown tools
+  }
+}
+
+message FileSystemArgs {
+  string path = 1;
+  optional string content = 2;
+  FileOperation operation = 3;
+  optional FileMode mode = 4;
+}
+
+enum FileOperation {
+  FILE_OPERATION_READ = 0;
+  FILE_OPERATION_WRITE = 1;
+  FILE_OPERATION_DELETE = 2;
+  FILE_OPERATION_LIST = 3;
+}
+
+message FileMode {
+  uint32 mode = 1;
+}
+
+message NetworkArgs {
+  string url = 1;
+  string method = 2;
+  map<string, string> headers = 3;
+  optional bytes body = 4;
+}
+
+message DatabaseArgs {
+  string query = 1;
+  map<string, string> parameters = 2;
+}
+
+message ShellArgs {
+  string command = 1;
+  repeated string args = 2;
+  map<string, string> env = 3;
+  optional string working_dir = 4;
+}
+
+message CallToolResponse {
+  bool success = 1;
+  google.protobuf.Struct result = 2;  // Structured result
+  optional string error = 3;
+  uint64 duration_ms = 4;
+}
+
+// Streaming tool output
+message ToolOutput {
+  OutputType output_type = 1;
+  string content = 2;
+  uint32 sequence = 3;
+  bool is_final = 4;
+  optional int32 exit_code = 5;
+}
+
+enum OutputType {
+  OUTPUT_TYPE_UNKNOWN = 0;
+  OUTPUT_TYPE_STDOUT = 1;
+  OUTPUT_TYPE_STDERR = 2;
+  OUTPUT_TYPE_PROGRESS = 3;
+  OUTPUT_TYPE_RESULT = 4;
+  OUTPUT_TYPE_ERROR = 5;
+}

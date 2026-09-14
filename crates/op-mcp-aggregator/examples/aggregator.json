@@ -1,0 +1,102 @@
+{
+  "_comment": "MCP Aggregator Configuration",
+  "_docs": "See README.md for full documentation",
+  
+  "servers": [
+    {
+      "id": "local",
+      "name": "Local op-dbus",
+      "url": "http://localhost:3001",
+      "transport": "sse",
+      "enabled": true,
+      "priority": 100
+    },
+    {
+      "id": "github",
+      "name": "GitHub MCP",
+      "url": "http://localhost:3002",
+      "transport": "sse",
+      "enabled": false,
+      "tool_prefix": "github",
+      "include_tools": [
+        "search_repositories",
+        "get_file_contents",
+        "search_code",
+        "list_commits"
+      ],
+      "priority": 50,
+      "auth": {
+        "type": "bearer",
+        "token": "${GITHUB_TOKEN}"
+      }
+    }
+  ],
+  
+  "profiles": {
+    "default": {
+      "description": "Default profile with local tools",
+      "servers": ["local"],
+      "max_tools": 40
+    },
+    "sysadmin": {
+      "description": "System administration - D-Bus, systemd, network",
+      "servers": ["local"],
+      "include_namespaces": ["system", "systemd", "network", "dbus"],
+      "max_tools": 35
+    },
+    "dev": {
+      "description": "Development - GitHub, filesystem, shell",
+      "servers": ["local", "github"],
+      "include_categories": ["filesystem", "shell", "git"],
+      "include_tools": ["github_*"],
+      "max_tools": 35
+    }
+  },
+  
+  "tool_groups": {
+    "_comment": "Toggle tool groups to stay under limits",
+    "enabled": ["core", "shell", "systemd", "network"],
+    "presets": {
+      "minimal": ["core"],
+      "sysadmin": ["core", "shell", "systemd", "network", "monitoring"],
+      "developer": ["core", "shell", "filesystem", "git"],
+      "network-admin": ["core", "shell", "network", "ovs", "dbus"]
+    }
+  },
+  
+  "compact_mode": {
+    "_comment": "Reduces 750+ tools to 4 meta-tools for LLM efficiency",
+    "enabled": true,
+    "include_list": true,
+    "include_execute": true,
+    "include_schema": true,
+    "include_search": true,
+    "include_batch": false,
+    "max_list_results": 50
+  },
+  
+  "client_detection": {
+    "_comment": "Auto-detect client type and select optimal mode",
+    "enabled": true,
+    "compact_mode_clients": [
+      "gemini", "gemini-cli", "@google/gemini",
+      "claude", "anthropic",
+      "chatgpt", "openai", "gpt",
+      "chatbot", "op-chat", "llm"
+    ],
+    "full_mode_clients": [
+      "cursor", "vscode", "api", "direct"
+    ],
+    "default_mode": "compact"
+  },
+  
+  "cache": {
+    "schema_ttl_secs": 300,
+    "max_entries": 1000,
+    "background_refresh": true
+  },
+  
+  "default_profile": "default",
+  "default_mode": "compact",
+  "max_tools_per_profile": 40
+}

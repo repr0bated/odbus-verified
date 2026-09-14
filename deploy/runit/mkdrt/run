@@ -1,0 +1,13 @@
+#!/bin/sh
+# Runit: VPS peer on the existing decoy WireGuard overlay.
+#
+# The decoy owns the user-facing 10.0.0.1 VIP and maps every packet for that
+# address to the VPS's existing 10.0.0.2 service address.  This interface is
+# the return path for the router/tablet/phone source addresses; it deliberately
+# has no additional local address and therefore creates no competing service IP.
+exec 2>&1
+
+wg-quick down mkdrt 2>/dev/null || true
+wg-quick up mkdrt || exit 1
+echo "mkdrt: up (decoy WireGuard service-VIP transit), supervising"
+exec sleep 2147483647

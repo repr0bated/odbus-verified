@@ -1,0 +1,15 @@
+{
+  "$schema": "https://spec.modelcontextprotocol.io/schemas/mcp-config.json",
+  "name": "op-dbus-unified",
+  "description": "Unified authenticated MCP control plane",
+  "version": "3.0.0",
+  "endpoint": {
+    "url": "https://10.0.0.3:8090/mcp",
+    "transport": "http"
+  },
+  "authentication": {
+    "type": "oracle_identity_assertion",
+    "metadata": "x-oracle-identity-assertion-bin",
+    "freshPerRequest": true
+  }
+}

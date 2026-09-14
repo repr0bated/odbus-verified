@@ -1,0 +1,18 @@
+#!/bin/sh
+exec 2>&1
+set -eu
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-}"
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 120 ] && { echo "dependency $1 not ready after 120s" >&2; exit 1; }
+        sleep 1
+    done
+}
+wait_dep ovsbr0-eth0
+/usr/local/libexec/3tched/ovsbr0-svc-addr-up
+install -d -m 0755 /run/opdbus/runit-ready
+touch /run/opdbus/runit-ready/ovsbr0-svc-addr
+exec pause

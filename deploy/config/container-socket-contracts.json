@@ -1,0 +1,207 @@
+{
+  "$schema": "./container-socket-contract.schema.json",
+  "schema_version": 1,
+  "artifacts": {
+    "op-mail-admin": {
+      "installer": "workspace_bundle",
+      "package": "op-plugins",
+      "target": "x86_64-unknown-linux-gnu",
+      "runtime": "private-glibc-loader-bundle",
+      "archive": "mail-3tched-x86_64-linux-gnu-bundle.tar",
+      "binary": "/usr/local/bin/op-mail-admin"
+    },
+    "rust-network-mgr": {
+      "installer": "cargo_git",
+      "git": "https://github.com/sparesparrow/rust-network-mgr",
+      "rev": "117087cb1bf99cb55ba3e8e40b9e27752cd08f46",
+      "target": "x86_64-unknown-linux-musl",
+      "binary": "/usr/local/bin/rust-network-mgr"
+    }
+  },
+  "containers": [
+    {
+      "name": "88629c76-33f4-8ae8-f682-b3fd2d432092",
+      "role": "user",
+      "depends_on": [
+        "artifact:rust-network-mgr",
+        "service:rust-network-mgr.service"
+      ],
+      "services": [
+        "rust-network-mgr.service"
+      ],
+      "unix_sockets": [
+        "/run/rust-network-manager/rust-network-manager.sock"
+      ],
+      "tcp_ports": []
+    },
+    {
+      "name": "assistant",
+      "role": "legacy-assistant-rollback",
+      "depends_on": [
+        "artifact:rust-network-mgr",
+        "service:rust-network-mgr.service",
+        "socket:rust_service.socket",
+        "service:rust_service.service"
+      ],
+      "services": [
+        "rust-network-mgr.service",
+        "rust_service.socket",
+        "rust_service.service"
+      ],
+      "unix_sockets": [
+        "/run/rust-network-manager/rust-network-manager.sock",
+        "/tmp/rust_service.sock"
+      ],
+      "tcp_ports": []
+    },
+    {
+      "name": "fa2f0210-926a-7cf4-4044-16186cb8085a",
+      "role": "control-plane-chatbot",
+      "depends_on": [
+        "artifact:rust-network-mgr",
+        "service:rust-network-mgr.service",
+        "mount:controlplane-runtime",
+        "service:controlplane-ui.service"
+      ],
+      "services": [
+        "rust-network-mgr.service",
+        "controlplane-ui.service"
+      ],
+      "unix_sockets": [
+        "/run/rust-network-manager/rust-network-manager.sock",
+        "/run/assistant-controlplane/http.sock",
+        "/run/assistant-controlplane/http1.sock"
+      ],
+      "tcp_ports": [
+        3003
+      ]
+    },
+    {
+      "name": "netmaker",
+      "role": "network-control",
+      "depends_on": [
+        "artifact:rust-network-mgr",
+        "service:rust-network-mgr.service",
+        "mount:netmaker-runtime"
+      ],
+      "services": [
+        "rust-network-mgr.service",
+        "netmaker.service",
+        "netmaker-exporter.service"
+      ],
+      "unix_sockets": [
+        "/run/rust-network-manager/rust-network-manager.sock",
+        "/var/lib/netmaker-runtime/netmaker.sock"
+      ],
+      "tcp_ports": [
+        8081,
+        50051
+      ]
+    },
+    {
+      "name": "qdrant",
+      "role": "semantic-store",
+      "depends_on": [
+        "artifact:rust-network-mgr",
+        "service:rust-network-mgr.service",
+        "service:qdrant.service",
+        "service:qdrant-socat-grpc.service"
+      ],
+      "services": [
+        "rust-network-mgr.service",
+        "qdrant.service",
+        "qdrant-socat-grpc.service"
+      ],
+      "unix_sockets": [
+        "/run/rust-network-manager/rust-network-manager.sock",
+        "/var/lib/opdbus-runtime/qdrant/qdrant-grpc.sock"
+      ],
+      "tcp_ports": [
+        6333,
+        6334
+      ]
+    },
+    {
+      "name": "mail-3tched",
+      "role": "mail",
+      "depends_on": [
+        "artifact:op-mail-admin",
+        "service:op-mail-admin",
+        "artifact:rust-network-mgr",
+        "service:rust-network-mgr.service",
+        "process:postfix",
+        "process:dovecot"
+      ],
+      "services": [
+        "op-mail-admin",
+        "rust-network-mgr.service"
+      ],
+      "unix_sockets": [
+        "/opt/run-mounts/ghostbridge/mail/admin.sock",
+        "/run/rust-network-manager/rust-network-manager.sock"
+      ],
+      "tcp_ports": [
+        25,
+        143,
+        443,
+        465,
+        587,
+        993
+      ]
+    },
+    {
+      "name": "cozo",
+      "role": "identity-store",
+      "depends_on": [
+        "artifact:rust-network-mgr",
+        "service:rust-network-mgr.service",
+        "workload:cozo"
+      ],
+      "services": [
+        "rust-network-mgr.service"
+      ],
+      "unix_sockets": [
+        "/run/rust-network-manager/rust-network-manager.sock"
+      ],
+      "tcp_ports": [],
+      "require_endpoint": true
+    }
+  ],
+  "host_listeners": [
+    {
+      "name": "netmaker-api-loopback",
+      "depends_on": [
+        "container:netmaker",
+        "socket:/var/lib/netmaker-runtime/netmaker.sock"
+      ],
+      "address": "127.0.0.1",
+      "port": 8081
+    },
+    {
+      "name": "qdrant-grpc-loopback",
+      "depends_on": [
+        "container:qdrant",
+        "socket:/var/lib/opdbus-runtime/qdrant/qdrant-grpc.sock"
+      ],
+      "address": "127.0.0.1",
+      "port": 6334
+    },
+    {
+      "name": "assistant-direct",
+      "depends_on": [
+        "container:fa2f0210-926a-7cf4-4044-16186cb8085a",
+        "socket:/var/lib/assistant-controlplane/http1.sock"
+      ],
+      "address": "10.0.0.2",
+      "port": 8090
+    },
+    {
+      "name": "control-plane-grpc",
+      "depends_on": [
+        "service:op-grpc-bridge-zeroclaw"
+      ],
+      "address": "10.200.0.2",
+      "port": 8090
+    }
+  ]
+}

@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+package operation.mail.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// =============================================================================
+// MAIL SERVICE - Email and Webmail Operations
+// Similar to registration.proto but focused on email functionality
+// =============================================================================
+
+service MailService {
+  // Send email (used for magic links, notifications)
+  rpc SendEmail(SendEmailRequest) returns (SendEmailResponse);
+  
+  // Get email inbox for a user (webmail functionality)
+  rpc GetInbox(GetInboxRequest) returns (GetInboxResponse);
+  
+  // Get specific email message
+  rpc GetMessage(GetMessageRequest) returns (GetMessageResponse);
+  
+  // Get mail server status
+  rpc GetMailStatus(GetMailStatusRequest) returns (GetMailStatusResponse);
+  
+  // List all mail accounts
+  rpc ListMailAccounts(ListMailAccountsRequest) returns (ListMailAccountsResponse);
+  
+  // Admin operations for mail management
+  rpc AdminMailAction(AdminMailActionRequest) returns (AdminMailActionResponse);
+  
+  // Check if mail server is configured and working
+  rpc CheckMailServer(CheckMailServerRequest) returns (CheckMailServerResponse);
+}
+
+// =============================================================================
+// MAIL SERVICE MESSAGES
+// =============================================================================
+
+message SendEmailRequest {
+  string from_email = 1;
+  string to_email = 2;
+  string subject = 3;
+  string body = 4;
+  bool is_html = 5;
+  string domain = 6; // "3tched.com"
+  optional google.protobuf.Struct attachments = 7;
+}
+
+message SendEmailResponse {
+  bool success = 1;
+  string message = 2;
+  string message_id = 3;
+  google.protobuf.Timestamp sent_at = 4;
+}
+
+message GetInboxRequest {
+  string email = 1;
+  string domain = 2;
+  uint32 limit = 3;
+  uint32 offset = 4;
+  string folder = 5; // "inbox", "sent", "drafts", "trash"
+}
+
+message GetInboxResponse {
+  repeated EmailMessage messages = 1;
+  uint32 total_count = 2;
+  uint32 unread_count = 3;
+  string folder = 4;
+}
+
+message EmailMessage {
+  string message_id = 1;
+  string from = 2;
+  string to = 3;
+  string subject = 4;
+  string preview = 5;
+  bool is_read = 6;
+  bool has_attachments = 7;
+  google.protobuf.Timestamp received_at = 8;
+  int32 size_bytes = 9;
+  string folder = 10;
+}
+
+message GetMessageRequest {
+  string message_id = 1;
+  string email = 2;
+  string domain = 3;
+}
+
+message GetMessageResponse {
+  bool success = 1;
+  EmailMessage header = 2;
+  string body = 3;
+  bool is_html = 4;
+  repeated EmailAttachment attachments = 5;
+  string raw_content = 6;
+}
+
+message EmailAttachment {
+  string filename = 1;
+  string content_type = 2;
+  uint32 size_bytes = 3;
+  string content_id = 4; // for inline images
+}
+
+message GetMailStatusRequest {
+  string domain = 1;
+}
+
+message GetMailStatusResponse {
+  bool is_configured = 1;
+  bool is_running = 2;
+  string mail_server_type = 3; // "maddy", "postfix", etc
+  string webmail_url = 4;
+  string smtp_status = 5;
+  string imap_status = 6;
+  uint32 total_accounts = 7;
+  uint32 total_messages = 8;
+  google.protobuf.Timestamp last_checked = 9;
+  string message = 10;
+}
+
+message ListMailAccountsRequest {
+  string domain = 1;
+  bool include_inactive = 2;
+}
+
+message ListMailAccountsResponse {
+  repeated MailAccount accounts = 1;
+  uint32 total_count = 2;
+}
+
+message MailAccount {
+  string email = 1;
+  string user_id = 2;
+  bool is_admin = 3;
+  bool is_active = 4;
+  google.protobuf.Timestamp created_at = 5;
+  uint32 message_count = 6;
+  uint32 unread_count = 7;
+  string last_login = 8;
+}
+
+message AdminMailActionRequest {
+  string action = 1; // "send_test", "restart_server", "create_account", "suspend_account", "get_logs"
+  string email = 2;
+  string domain = 3;
+  optional google.protobuf.Struct parameters = 4;
+}
+
+message AdminMailActionResponse {
+  bool success = 1;
+  string message = 2;
+  string action_id = 3;
+  google.protobuf.Timestamp timestamp = 4;
+  optional google.protobuf.Struct result = 5;
+}
+
+message CheckMailServerRequest {
+  string domain = 1;
+  bool check_smtp = 2;
+  bool check_imap = 3;
+  bool check_webmail = 4;
+}
+
+message CheckMailServerResponse {
+  bool all_healthy = 1;
+  bool smtp_healthy = 2;
+  bool imap_healthy = 3;
+  bool webmail_healthy = 4;
+  string smtp_status = 5;
+  string imap_status = 6;
+  string webmail_status = 7;
+  string message = 8;
+  repeated string issues = 9;
+}
+
+// =============================================================================
+// ERROR HANDLING
+// =============================================================================
+
+message MailError {
+  int32 code = 1;
+  string message = 2;
+  optional google.protobuf.Struct details = 3;
+}
+
+enum MailErrorCode {
+  MAIL_ERROR_UNSPECIFIED = 0;
+  MAIL_ERROR_INVALID_EMAIL = 1;
+  MAIL_ERROR_SERVER_UNAVAILABLE = 2;
+  MAIL_ERROR_AUTHENTICATION_FAILED = 3;
+  MAIL_ERROR_MESSAGE_NOT_FOUND = 4;
+  MAIL_ERROR_SEND_FAILED = 5;
+  MAIL_ERROR_CONFIG_MISSING = 6;
+}

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Fabric door for Qdrant gRPC only. Qdrant natively also binds HTTP :6333
+# inside the CT; that port is not published. Host clients use tonic/gRPC
+# on 6334, same one-door pattern as the other containers.
+exec 2>&1
+until [ -d /run/ghostbridge ]; do sleep 1; done
+until ss -lnt | grep -q "10.200.0.2:6334"; do sleep 1; done
+/usr/local/libexec/3tched/runit-ready-signal xsock-qdrant
+rm -f /run/ghostbridge/fwd-qdrant.sock
+if [ -S /run/opdbus/session-bus.sock ]; then
+  zcall shared_unix_socket create_unix_socket -a '{"name":"xsock-qdrant","ports":[6334]}' >/dev/null 2>&1 || true
+fi
+exec /usr/local/libexec/3tched/socket-relay unix-listen /run/ghostbridge/fwd-qdrant.sock tcp-connect 10.200.0.2 6334
