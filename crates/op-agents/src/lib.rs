@@ -8,6 +8,8 @@ pub mod agent_registry;
 pub mod agent_schema;
 pub mod agents;
 pub mod dbus_service;
+pub mod dynamic;
+pub mod generator;
 pub mod router;
 pub mod security;
 pub mod unified;
