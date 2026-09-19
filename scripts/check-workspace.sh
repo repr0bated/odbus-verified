@@ -71,6 +71,9 @@ case "$mode" in
         fi
         # Stop at the first failed gate. In particular, do not repeat test
         # compilation after Clippy has already found a compile error.
+        # The gate builds every test binary once; incremental caches only
+        # grow (155G on 2026-09-19) and have filled the disk mid-gate twice.
+        export CARGO_INCREMENTAL=0
         cargo fmt --all -- --check
         cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
         # Keep collecting independent target failures after one fixture fails.
