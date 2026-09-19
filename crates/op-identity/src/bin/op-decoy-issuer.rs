@@ -20,7 +20,11 @@
 //!
 //! The listener MUST be bound to a WireGuard inner address so that reaching it
 //! already implies a completed handshake. Binding it to a public address would
-//! let anyone mint an assertion for any inner IP they can name.
+//! let anyone mint an assertion for any inner IP they can name. On the decoy
+//! that interface is `wg-opdbus` (`10.0.0.1/24`): the identity WireGuard that
+//! human devices terminate on. The host is never a peer of it (the former
+//! `mkdrt` link is retired); the decoy's `10.0.0.1` VIP reaches the host over
+//! the WARP/Xray leg.
 
 use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
@@ -34,8 +38,8 @@ use op_identity::oracle_assertion::DecoyIssuer;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
-const DEFAULT_LISTEN: &str = "10.10.0.1:51888";
-const DEFAULT_IFACE: &str = "wg0";
+const DEFAULT_LISTEN: &str = "10.0.0.1:51888";
+const DEFAULT_IFACE: &str = "wg-opdbus";
 const DEFAULT_KEY_PATH: &str = "/etc/opdbus/decoy-signing-key";
 const DEFAULT_KEY_ID_PATH: &str = "/etc/opdbus/decoy-key-id";
 const DEFAULT_TTL_SECS: u64 = 300;
@@ -334,8 +338,8 @@ mod tests {
 
     fn cfg(origins: &[&str]) -> Config {
         Config {
-            listen: "10.10.0.1:51888".parse().unwrap(),
-            iface: "wg0".into(),
+            listen: "10.0.0.1:51888".parse().unwrap(),
+            iface: "wg-opdbus".into(),
             ttl: Duration::from_secs(300),
             allowed_origins: origins.iter().map(|s| s.to_string()).collect(),
             door: "https://10.0.0.3:8090".into(),

@@ -10,6 +10,5 @@ sshd
 xray-config-mount
 incus-ct-xray
 decoy-admin-reverse-ssh
-mkdrt
 fwd-443
 opdbus-grants

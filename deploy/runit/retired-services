@@ -38,3 +38,10 @@ op-web-tls
 netmaker-op-grpc-adapters.retired-netns
 nm-ovs-nic.retired
 notebooklm-mcp
+
+# Host-side WireGuard peer link into the decoy's identity WireGuard (wg-opdbus),
+# tunnelled inside WARP. Retired 2026-09-19: the host is never a WireGuard
+# peer of the decoy. Humans terminate WireGuard at the decoy, the decoy mints
+# the OIA1 there, and the client carries it over WARP to the :8090 door; the
+# decoy's user-facing 10.0.0.1 VIP reaches the host through the WARP/Xray leg.
+mkdrt

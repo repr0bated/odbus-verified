@@ -710,6 +710,33 @@ fn retired_waypipe_is_not_a_build_or_proto_input() {
 }
 
 #[test]
+fn host_is_never_a_wireguard_peer_of_the_decoy() {
+    // The former `mkdrt` runit service made this host a peer on the decoy's
+    // identity WireGuard (inside WARP). Identity is minted at the human's
+    // WireGuard ingress on the decoy and carried by the client over WARP;
+    // the host only validates. No host-side WireGuard peer link may return.
+    let root = workspace_root();
+    assert!(
+        !root.join("deploy/runit/mkdrt").exists(),
+        "deploy/runit/mkdrt must stay retired"
+    );
+    let enabled = fs::read_to_string(root.join("deploy/runit/enabled-services")).unwrap();
+    assert!(
+        !enabled.lines().any(|line| line.trim() == "mkdrt"),
+        "mkdrt must not be an enabled service"
+    );
+    let retired = fs::read_to_string(root.join("deploy/runit/retired-services")).unwrap();
+    assert!(
+        retired.lines().any(|line| line.trim() == "mkdrt"),
+        "mkdrt must be listed in retired-services"
+    );
+    for run in ["deploy/runit/op-grpc-bridge/run", "deploy/runit/op-web/run"] {
+        let text = fs::read_to_string(root.join(run)).unwrap();
+        assert!(!text.contains("mkdrt"), "{run} still references mkdrt");
+    }
+}
+
+#[test]
 fn retired_standalone_adapters_are_not_build_or_proto_inputs() {
     let root = workspace_root().canonicalize().unwrap();
     assert!(!root.join("crates/op-grpc-adapters/Cargo.toml").exists());

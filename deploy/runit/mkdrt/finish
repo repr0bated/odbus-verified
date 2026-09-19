@@ -1,2 +1,0 @@
-#!/bin/sh
-wg-quick down mkdrt 2>/dev/null || true

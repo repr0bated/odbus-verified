@@ -66,7 +66,9 @@ stand-ins.
 
 ### 3.1 Oracle decoy (EXTERNAL)
 
-- Terminates the human's WireGuard tunnel; the kernel verifies the peer.
+- Terminates the human's WireGuard tunnel on `wg-opdbus` (`10.0.0.1/24`);
+  the kernel verifies the peer. The issuer listens on that inner address
+  (`10.0.0.1:51888`).
 - Issues the signed assertion for the exact `/32` peer selected by the kernel
   (decoy Ed25519 key identified by
   `decoy_key_id`) with TTL ≤ 900 s.
@@ -92,7 +94,12 @@ stand-ins.
 
 ### 3.2 Assertion transport (EXTERNAL)
 
-- Exactly one WARP tunnel carries decoy→host Xray traffic.
+- Exactly one WARP tunnel carries decoy→host Xray traffic. The decoy's
+  FwMark rule steers that traffic into `wgcf-ingress`; the decoy's user-facing
+  `10.0.0.1` VIP reaches the host over that leg. **The host is never a
+  WireGuard peer of the decoy** — the former `mkdrt` link (host peer on
+  `wg-opdbus`, tunnelled inside WARP) is retired (2026-09-19) and gated by
+  `host_is_never_a_wireguard_peer_of_the_decoy`.
 - WARP and Xray replace the human WireGuard inner source address. Deployments
   therefore set `OP_ORACLE_ASSERTION_SOURCE_BINDING=trusted-decoy-signature`:
   the bridge binds identity to the provisioned decoy Ed25519 key, short
