@@ -2061,6 +2061,24 @@ impl MutationEngine {
             payload
         };
 
+        // Every recorded mutation carries the verified session identity of
+        // its actor: the SID1-backed session id and its genesis, resolved from
+        // the same projection the interceptor authenticated against. Owner
+        // rule (2026-09-19): identity is transported in metadata and must be
+        // embedded in every mutation's metadata, not only authenticated at the
+        // door. Resolved before the chain lock so the lookup cannot hold it.
+        let session_stamp = self
+            .session_context_for_actor(&actor_id)
+            .await
+            .map(|context| (context.session_id, context.genesis_hex));
+        if session_stamp.is_none() && actor_id != ANONYMOUS_ACTOR {
+            tracing::warn!(
+                actor_id = %actor_id,
+                plugin_id = %plugin_id,
+                "mutation recorded without a resolvable session identity"
+            );
+        }
+
         let event = {
             let mut chain = self.event_chain.write().await;
             let op = match change_type {
@@ -2068,34 +2086,28 @@ impl MutationEngine {
                 ChangeType::ObjectRemoved => OperationType::Custom("delete".to_string()),
                 _ => OperationType::EmitSignal,
             };
-            if let Some(capability) = capability_id {
-                let event = ChainEvent::new(
-                    chain.next_event_id(),
-                    chain.last_hash().to_string(),
-                    actor_id.clone(),
-                    plugin_id.clone(),
-                    "1.0.0".to_string(),
-                    op,
-                    object_path.clone(),
-                    tags.clone(),
-                    Decision::Allow,
-                    &public_new_value,
-                )
-                .with_capability(capability);
-                chain.append(event).clone()
-            } else {
-                let event = chain.record(
-                    actor_id.clone(),
-                    plugin_id.clone(),
-                    "1.0.0".to_string(),
-                    op,
-                    object_path.clone(),
-                    tags.clone(),
-                    Decision::Allow,
-                    &public_new_value,
-                );
-                event.clone()
+            let mut event = ChainEvent::new(
+                chain.next_event_id(),
+                chain.last_hash().to_string(),
+                actor_id.clone(),
+                plugin_id.clone(),
+                "1.0.0".to_string(),
+                op,
+                object_path.clone(),
+                tags.clone(),
+                Decision::Allow,
+                &public_new_value,
+            );
+            if let Some((session_id, session_genesis)) = session_stamp {
+                event.session_id = Some(session_id);
+                event.session_genesis = Some(session_genesis);
             }
+            if let Some(capability) = capability_id {
+                event.capability_id = Some(capability);
+            }
+            // Hash covers the identity and capability fields set above.
+            event.event_hash = event.compute_hash();
+            chain.append(event).clone()
         };
 
         // Durability: mirror the event into the timing_subvol so it survives a

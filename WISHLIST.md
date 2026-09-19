@@ -182,6 +182,8 @@ transfer, live activation or a deployed authenticated browser conversation.
 | OD-01 | OVSDB event-driven: `monitor` (RFC 7047) in `OvsdbClient` + listener in `DbusMirror` | `devops` | TODO | replaces periodic reconciliation |
 | OD-02 | Enterprise event-driven: `inotify`/`SQLITE_UPDATE_HOOK` on `state.db` → re-projection | `devops` | TODO | |
 | OD-03 | SyncEngine: route all `op-web` tool exec through `ApplyContractMutation` + audit log | `policy_enforcer` | TODO | every mutation = enforcement point |
+| OD-59 | **Give the snowball a ledger id.** Seed `genesis_hash` from a per-ledger random nonce persisted in `<base>/state/ledger.id` (inherited by replicas via send/receive), carry it in every footprint's metadata and fold it into `session_genesis`; keep a `legacy` marker so existing chains still verify against the old constant. Fixes replica ambiguity at block 0, cross-host prefix splicing, and non-unique activity-run ids. | `general-purpose` | TODO | parked 2026-09-19 by owner; design in session notes / SIGNALS |
+| OD-60 | **Rename the identity sled's `session_id` to a principal/sled id.** It is the account-lifetime identity (only the cached OAuth token expires), while the genesis-anchored activity run (`GenesisStamp`/`session_genesis`) is the traditional session. Mechanical rename across op-identity, op-cozo-store relations, bridge dispatch and SID1 sled records. | `general-purpose` | TODO | parked 2026-09-19 by owner; do after OD-59 |
 
 ## 🔮 Future
 *Wanted, not urgent.*
