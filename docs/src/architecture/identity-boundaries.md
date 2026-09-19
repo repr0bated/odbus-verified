@@ -73,6 +73,19 @@ stand-ins.
 - The client that requested the assertion carries the returned OIA1 envelope
   as `x-oracle-identity-assertion-bin` on its inner tonic request. Neither
   WGCF nor Xray creates or injects that metadata.
+- **Client pickup (2026-09-19).** The handoff is atomic at WG ingress and the
+  client, not the transport, carries it: the issuer serves the same envelope
+  two ways — `GET /assertion` (base64 text, the bridge's Rust acquisition
+  client) and `GET /identity/self` (JSON `{door, identity:{kind:"oia1",
+  assertion}, expires_at}` with CORS for the configured UI origins,
+  `--allow-origin` / `OP_DECOY_ISSUER_ALLOWED_ORIGINS`, door from `--door` /
+  `OP_DECOY_ISSUER_DOOR`). The 3tched UI resolves identity in order: injected
+  by the host page → same-origin `/api/identity/self` (local SID1) →
+  `<issuer>/identity/self` over the human's tunnel (`__3TCHED_CONFIG__.issuer`
+  / `VITE_OPDBUS_ISSUER`) → pasted at the connect gate. It keeps the assertion
+  in memory only, forwards it unchanged over WARP to the `:8090` door, and
+  re-fetches it `RENEW_LEAD_SECONDS` before `expires_at`, swapping the
+  credential on the live door client without reconnecting.
 - The decoy's verifying keys are provisioned to the bridge's trust store
   (`OP_DECOY_TRUST_STORE`, default `/etc/opdbus/decoy-trust.json`) by an
   operational process outside this mission.

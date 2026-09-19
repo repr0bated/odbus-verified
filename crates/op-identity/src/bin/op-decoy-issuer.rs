@@ -8,6 +8,16 @@
 //!
 //! Arrival-triggered: peer state is read when a request lands, never polled.
 //!
+//! Two doors for the same kernel-verified fact:
+//! - `GET /assertion` — the base64 OIA1 envelope as `text/plain`, consumed by
+//!   the bridge's Rust acquisition client.
+//! - `GET /identity/self` — the same envelope as JSON in the shape the 3tched
+//!   UI already parses from op-web (`{door, identity:{kind:"oia1",
+//!   assertion}, expires_at}`), with CORS for the configured UI origin. This
+//!   is the client pickup: the browser fetches it over the human's tunnel on
+//!   page load and before expiry, and forwards it unchanged as
+//!   `x-oracle-identity-assertion-bin` over WARP to the `:8090` door.
+//!
 //! The listener MUST be bound to a WireGuard inner address so that reaching it
 //! already implies a completed handshake. Binding it to a public address would
 //! let anyone mint an assertion for any inner IP they can name.
@@ -34,6 +44,11 @@ struct Config {
     listen: SocketAddr,
     iface: String,
     ttl: Duration,
+    /// Exact browser origins allowed to fetch `/identity/self` cross-origin
+    /// (the 3tched UI pages). Empty means no CORS headers are emitted.
+    allowed_origins: Vec<String>,
+    /// The `:8090` door the UI should dial with the issued assertion.
+    door: String,
 }
 
 fn arg(name: &str) -> Option<String> {
@@ -113,13 +128,42 @@ fn pubkey_for_ip(iface: &str, peer_ip: IpAddr) -> Result<String> {
 }
 
 async fn respond(stream: &mut TcpStream, status: &str, body: &str) -> Result<()> {
+    respond_with(stream, status, "text/plain", None, body).await
+}
+
+async fn respond_with(
+    stream: &mut TcpStream,
+    status: &str,
+    content_type: &str,
+    cors_origin: Option<&str>,
+    body: &str,
+) -> Result<()> {
+    let cors = cors_origin
+        .map(|origin| {
+            format!("Access-Control-Allow-Origin: {origin}\r\nVary: Origin\r\nCache-Control: no-store\r\n")
+        })
+        .unwrap_or_default();
     let msg = format!(
-        "HTTP/1.1 {status}\r\nContent-Type: text/plain\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\n{cors}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
     );
     stream.write_all(msg.as_bytes()).await?;
     stream.flush().await?;
     Ok(())
+}
+
+/// The request's `Origin` header when it is one of the configured UI origins.
+/// Exact string match; an unlisted origin gets no CORS header and the browser
+/// refuses the response.
+fn allowed_origin<'a>(req: &str, cfg: &'a Config) -> Option<&'a str> {
+    let origin = req.lines().find_map(|line| {
+        let (name, value) = line.split_once(':')?;
+        name.eq_ignore_ascii_case("origin").then(|| value.trim())
+    })?;
+    cfg.allowed_origins
+        .iter()
+        .find(|allowed| allowed.as_str() == origin)
+        .map(String::as_str)
 }
 
 async fn handle(mut stream: TcpStream, peer: SocketAddr, issuer: &DecoyIssuer, cfg: &Config) {
@@ -142,10 +186,12 @@ async fn handle(mut stream: TcpStream, peer: SocketAddr, issuer: &DecoyIssuer, c
         let _ = respond(&mut stream, "200 OK", "ok\n").await;
         return;
     }
-    if !path.starts_with("/assertion") {
+    let json_pickup = path.starts_with("/identity/self");
+    if !path.starts_with("/assertion") && !json_pickup {
         let _ = respond(&mut stream, "404 Not Found", "not found\n").await;
         return;
     }
+    let cors_origin = json_pickup.then(|| allowed_origin(&req, cfg)).flatten();
 
     // The source address of a connection that arrived on the WG inner address
     // is the kernel's own verdict about which peer this is.
@@ -168,17 +214,46 @@ async fn handle(mut stream: TcpStream, peer: SocketAddr, issuer: &DecoyIssuer, c
         Ok(signed) => {
             let wire = base64::engine::general_purpose::STANDARD.encode(signed.to_wire());
             println!(
-                "issued: ip={inner_ip} pubkey={pubkey} ttl={}s key_id={}",
+                "issued: ip={inner_ip} pubkey={pubkey} ttl={}s key_id={} pickup={}",
                 cfg.ttl.as_secs(),
-                issuer.key_id()
+                issuer.key_id(),
+                if json_pickup {
+                    "identity/self"
+                } else {
+                    "assertion"
+                }
             );
-            let _ = respond(&mut stream, "200 OK", &wire).await;
+            if json_pickup {
+                let body = pickup_json(&cfg.door, &wire, signed.assertion.expires_at);
+                let _ = respond_with(
+                    &mut stream,
+                    "200 OK",
+                    "application/json",
+                    cors_origin,
+                    &body,
+                )
+                .await;
+            } else {
+                let _ = respond(&mut stream, "200 OK", &wire).await;
+            }
         }
         Err(e) => {
             eprintln!("issue failed for {inner_ip}: {e}");
             let _ = respond(&mut stream, "500 Internal Server Error", "issue failed\n").await;
         }
     }
+}
+
+/// The `/identity/self` body: the shape `3tched.com` `door-config.ts` parses
+/// from op-web's same-origin endpoint, so one client path serves both the
+/// local SID1 and the remote OIA1 pickup.
+fn pickup_json(door: &str, assertion_b64: &str, expires_at: i64) -> String {
+    serde_json::json!({
+        "door": door,
+        "identity": { "kind": "oia1", "assertion": assertion_b64 },
+        "expires_at": expires_at,
+    })
+    .to_string()
 }
 
 #[tokio::main]
@@ -196,6 +271,17 @@ async fn main() -> Result<()> {
                 .context("parsing --ttl")?
                 .unwrap_or(DEFAULT_TTL_SECS),
         ),
+        allowed_origins: arg("--allow-origin")
+            .or_else(|| std::env::var("OP_DECOY_ISSUER_ALLOWED_ORIGINS").ok())
+            .unwrap_or_default()
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .collect(),
+        door: arg("--door")
+            .or_else(|| std::env::var("OP_DECOY_ISSUER_DOOR").ok())
+            .unwrap_or_else(|| "https://10.0.0.3:8090".to_string()),
     };
 
     if cfg.listen.ip().is_unspecified() {
@@ -224,11 +310,13 @@ async fn main() -> Result<()> {
         .await
         .with_context(|| format!("binding {}", cfg.listen))?;
     println!(
-        "op-decoy-issuer listening on {} iface={} key_id={} ttl={}s",
+        "op-decoy-issuer listening on {} iface={} key_id={} ttl={}s door={} pickup_origins={:?}",
         cfg.listen,
         cfg.iface,
         issuer.key_id(),
-        cfg.ttl.as_secs()
+        cfg.ttl.as_secs(),
+        cfg.door,
+        cfg.allowed_origins
     );
     println!("verifying key (for the bridge trust store): {verifying}");
 
@@ -237,5 +325,42 @@ async fn main() -> Result<()> {
             Ok((stream, peer)) => handle(stream, peer, &issuer, &cfg).await,
             Err(e) => eprintln!("accept error: {e}"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cfg(origins: &[&str]) -> Config {
+        Config {
+            listen: "10.10.0.1:51888".parse().unwrap(),
+            iface: "wg0".into(),
+            ttl: Duration::from_secs(300),
+            allowed_origins: origins.iter().map(|s| s.to_string()).collect(),
+            door: "https://10.0.0.3:8090".into(),
+        }
+    }
+
+    #[test]
+    fn pickup_json_matches_the_ui_identity_shape() {
+        let body = pickup_json("https://10.0.0.3:8090", "QUJDRA==", 1_700_000_000);
+        let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(parsed["door"], "https://10.0.0.3:8090");
+        assert_eq!(parsed["identity"]["kind"], "oia1");
+        assert_eq!(parsed["identity"]["assertion"], "QUJDRA==");
+        assert_eq!(parsed["expires_at"], 1_700_000_000);
+    }
+
+    #[test]
+    fn cors_origin_is_exact_match_only() {
+        let config = cfg(&["https://3tched.com", "http://localhost:5173"]);
+        let req = "GET /identity/self HTTP/1.1\r\nHost: x\r\nOrigin: https://3tched.com\r\n\r\n";
+        assert_eq!(allowed_origin(req, &config), Some("https://3tched.com"));
+        let evil = "GET /identity/self HTTP/1.1\r\nOrigin: https://3tched.com.evil\r\n\r\n";
+        assert_eq!(allowed_origin(evil, &config), None);
+        let none = "GET /identity/self HTTP/1.1\r\nHost: x\r\n\r\n";
+        assert_eq!(allowed_origin(none, &config), None);
+        assert_eq!(allowed_origin(req, &cfg(&[])), None);
     }
 }
