@@ -15,6 +15,33 @@
 //! Ignored by default: requires a running bridge.
 //!   cargo test -p op-grpc-bridge --test live_reflection_probe -- --nocapture --ignored
 
+/// The `:8090` door is TLS-only. Trust it the way op-web does: the PEM at
+/// `OP_DBUS_GRPC_CA_FILE` (default: the fabric CA on this host), and the
+/// door cert's `localhost` SAN for name verification.
+fn install_crypto_provider() {
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+}
+
+fn door_ca_pem() -> Vec<u8> {
+    let path = std::env::var("OP_DBUS_GRPC_CA_FILE")
+        .ok()
+        .filter(|p| !p.trim().is_empty())
+        .unwrap_or_else(|| "/etc/op-dbus/tls/tonic-svc0-ca.crt".to_string());
+    std::fs::read(path.trim()).unwrap_or_else(|e| {
+        panic!(
+            "read door CA {}: {e} (set OP_DBUS_GRPC_CA_FILE)",
+            path.trim()
+        )
+    })
+}
+
+fn door_domain() -> String {
+    std::env::var("OP_DBUS_GRPC_TLS_DOMAIN")
+        .ok()
+        .filter(|d| !d.trim().is_empty())
+        .unwrap_or_else(|| "localhost".to_string())
+}
+
 #[tokio::test]
 #[ignore = "requires a running bridge on 127.0.0.1:8090"]
 async fn cognitive_mcp_per_method_services_are_advertised() {
@@ -24,7 +51,13 @@ async fn cognitive_mcp_per_method_services_are_advertised() {
         ServerReflectionRequest,
     };
 
+    install_crypto_provider();
+    let tls = tonic::transport::ClientTlsConfig::new()
+        .ca_certificate(tonic::transport::Certificate::from_pem(door_ca_pem()))
+        .domain_name(door_domain());
     let channel = tonic::transport::Channel::from_static("https://127.0.0.1:8090")
+        .tls_config(tls)
+        .expect("door TLS config")
         .connect()
         .await
         .expect("connect to live bridge :8090");
@@ -57,7 +90,11 @@ async fn cognitive_mcp_per_method_services_are_advertised() {
 
     let cognitive: Vec<&String> = names
         .iter()
-        .filter(|n| n.contains("cognitive_mcp"))
+        // Reflection lists the generated per-plugin service
+        // (`operation.plugin.v1.CognitiveMcpPluginMethods`); the descriptor-only
+        // `operation.method.cognitive_mcp.*` names are deliberately not
+        // advertised (OD-49).
+        .filter(|n| n.to_ascii_lowercase().contains("cognitivemcp"))
         .collect();
 
     println!("total services: {}", names.len());
@@ -73,11 +110,19 @@ async fn cognitive_mcp_per_method_services_are_advertised() {
          are built, and is the plugin reported available?)"
     );
 
+    // The mounted, callable surface is the generated per-plugin service; the
+    // per-method `operation.method.<plugin>.<method>.*Service` descriptors are
+    // sealed in the blob for typed clients but are not advertised as mounted
+    // services (OD-49: reflection lists only what is routable).
     assert!(
         names
             .iter()
-            .any(|n| n == "operation.method.cognitive_mcp.invoke_tool.InvokeToolService"),
-        "invoke_tool's typed service is not advertised; found: {cognitive:?}"
+            .any(|n| n == "operation.plugin.v1.CognitiveMcpPluginMethods"),
+        "cognitive_mcp's generated plugin service is not advertised; found: {cognitive:?}"
+    );
+    assert!(
+        !names.iter().any(|n| n.starts_with("operation.method.")),
+        "descriptor-only operation.method.* services must not be advertised as mounted"
     );
 }
 
@@ -117,8 +162,14 @@ async fn cognitive_mcp_plugin_service_is_served_over_tonic_web() {
     body.extend_from_slice(&(msg.len() as u32).to_be_bytes());
     body.extend_from_slice(&msg);
 
-    let resp = reqwest::Client::new()
-        .post("http://127.0.0.1:8090/operation.plugin.v1.CognitiveMcpPluginMethods/InvokeTool")
+    install_crypto_provider();
+    let ca = reqwest::Certificate::from_pem(&door_ca_pem()).expect("door CA PEM");
+    let resp = reqwest::Client::builder()
+        .add_root_certificate(ca)
+        .resolve("localhost", "127.0.0.1:8090".parse().unwrap())
+        .build()
+        .expect("tls client")
+        .post("https://localhost:8090/operation.plugin.v1.CognitiveMcpPluginMethods/InvokeTool")
         .header("Content-Type", "application/grpc-web+proto")
         .body(body)
         .send()
@@ -144,11 +195,13 @@ async fn cognitive_mcp_plugin_service_is_served_over_tonic_web() {
          plugin service is not mounted (grpc-message: {message})"
     );
 
-    // Reaching the capability gate proves routing, protobuf decode and dispatch ran.
-    // The gRPC path requires the caller to *declare* capability_id, not merely hold
-    // the grant, so an undeclared call is expected to be denied here.
+    // Reaching a gate proves the route is mounted and the request was decoded.
+    // Without credentials the identity interceptor answers UNAUTHENTICATED (16,
+    // "Missing Oracle identity assertion"); with a credential but no declared
+    // capability_id the capability gate answers PERMISSION_DENIED (7). Either is
+    // "served"; only UNIMPLEMENTED (12, asserted above) means "not mounted".
     assert!(
-        status == "7" || status == "0",
+        status == "16" || status == "7" || status == "0",
         "unexpected grpc-status {status} (grpc-message: {message})"
     );
 }
