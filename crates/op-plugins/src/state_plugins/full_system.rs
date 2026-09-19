@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
 use simd_json::{json, OwnedValue as Value};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::process::Command;
 use tokio::sync::RwLock;
@@ -173,15 +174,7 @@ pub struct ContainerInfo {
     pub instance_type: String,
 }
 
-/// Set the hostname natively: the running kernel value via `sethostname(2)`,
-/// and `/etc/hostname` so it survives a boot.
-///
-/// Deliberately not `hostnamectl`: that is systemd tooling, it is not installed
-/// on this host, and neither `org.freedesktop.hostname1` nor
-/// `org.freedesktop.systemd1` is on this bus -- so the previous subprocess call
-/// could only ever fail. `host_runtime` already reads the hostname from
-/// `/etc/hostname`, so this is the write side of the same contract.
-async fn set_hostname_native(hostname: &str) -> Result<()> {
+fn validate_hostname(hostname: &str) -> Result<String> {
     let trimmed = hostname.trim();
     if trimmed.is_empty()
         || trimmed.len() > 253
@@ -191,11 +184,51 @@ async fn set_hostname_native(hostname: &str) -> Result<()> {
     {
         anyhow::bail!("invalid hostname: {hostname:?}");
     }
-    nix::unistd::sethostname(trimmed).with_context(|| format!("sethostname({trimmed})"))?;
-    tokio::fs::write("/etc/hostname", format!("{trimmed}\n"))
-        .await
-        .context("write /etc/hostname")?;
-    Ok(())
+    Ok(trimmed.to_owned())
+}
+
+/// Owner of the hostname write side. Tests inject an isolated owner so they
+/// can prove the method's effect and readback without changing the host UTS
+/// namespace or `/etc/hostname`.
+#[async_trait]
+trait HostnameOwner: Send + Sync {
+    async fn set_hostname(&self, hostname: &str) -> Result<()>;
+}
+
+struct NativeHostnameOwner {
+    hostname_path: PathBuf,
+}
+
+impl NativeHostnameOwner {
+    fn system() -> Self {
+        Self {
+            hostname_path: PathBuf::from("/etc/hostname"),
+        }
+    }
+
+    #[cfg(test)]
+    fn with_hostname_path(path: impl Into<PathBuf>) -> Self {
+        Self {
+            hostname_path: path.into(),
+        }
+    }
+
+    /// Shared native effect implementation. The caller must already be in
+    /// the intended UTS and mount namespaces before invoking this method.
+    fn set_hostname_native(&self, hostname: &str) -> Result<()> {
+        let trimmed = validate_hostname(hostname)?;
+        nix::unistd::sethostname(&trimmed).with_context(|| format!("sethostname({trimmed})"))?;
+        std::fs::write(&self.hostname_path, format!("{trimmed}\n"))
+            .with_context(|| format!("write {}", self.hostname_path.display()))?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl HostnameOwner for NativeHostnameOwner {
+    async fn set_hostname(&self, hostname: &str) -> Result<()> {
+        self.set_hostname_native(hostname)
+    }
 }
 
 /// The Full System State Plugin
@@ -846,7 +879,7 @@ impl StatePlugin for FullSystemPlugin {
             match action {
                 StateAction::Modify { resource, changes } if resource == "hostname" => {
                     if let Some(hostname) = changes.get("to").and_then(|v| v.as_str()) {
-                        match set_hostname_native(hostname).await {
+                        match NativeHostnameOwner::system().set_hostname(hostname).await {
                             Ok(()) => {
                                 changes_applied.push(format!("Set hostname to {}", hostname));
                             }
@@ -907,6 +940,15 @@ pub async fn dispatch_full_system_method(
     method: &str,
     args: &serde_json::Value,
 ) -> Result<serde_json::Value> {
+    let owner = NativeHostnameOwner::system();
+    dispatch_full_system_method_with_owner(&owner, method, args).await
+}
+
+async fn dispatch_full_system_method_with_owner<O: HostnameOwner>(
+    owner: &O,
+    method: &str,
+    args: &serde_json::Value,
+) -> Result<serde_json::Value> {
     match method {
         "capture_state" => {
             let plugin = FullSystemPlugin::new();
@@ -918,7 +960,7 @@ pub async fn dispatch_full_system_method(
                 .get("hostname")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow::anyhow!("hostname is required"))?;
-            set_hostname_native(hostname).await?;
+            owner.set_hostname(hostname).await?;
             Ok(serde_json::json!({ "success": true }))
         }
         other => Err(anyhow::anyhow!("unknown full_system method: {}", other)),
@@ -928,6 +970,52 @@ pub async fn dispatch_full_system_method(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ffi::OsString;
+    use std::process::Stdio;
+    use std::sync::Mutex;
+    use std::time::Duration;
+    use tokio::io::{AsyncBufReadExt, BufReader};
+
+    struct HostnameService {
+        hostname: Mutex<String>,
+    }
+
+    #[zbus::interface(name = "org.freedesktop.hostname1")]
+    impl HostnameService {
+        async fn set_hostname(&self, hostname: &str, _interactive: bool) -> zbus::fdo::Result<()> {
+            let hostname = validate_hostname(hostname)
+                .map_err(|error| zbus::fdo::Error::Failed(error.to_string()))?;
+            *self.hostname.lock().unwrap() = hostname;
+            Ok(())
+        }
+
+        #[zbus(property)]
+        fn hostname(&self) -> String {
+            self.hostname.lock().unwrap().clone()
+        }
+    }
+
+    struct DbusHostnameOwner {
+        connection: zbus::Connection,
+    }
+
+    #[async_trait]
+    impl HostnameOwner for DbusHostnameOwner {
+        async fn set_hostname(&self, hostname: &str) -> Result<()> {
+            let hostname = validate_hostname(hostname)?;
+            let proxy = zbus::Proxy::new(
+                &self.connection,
+                "org.freedesktop.hostname1",
+                "/org/freedesktop/hostname1",
+                "org.freedesktop.hostname1",
+            )
+            .await?;
+            proxy
+                .call::<_, _, ()>("SetHostname", &(hostname, false))
+                .await?;
+            Ok(())
+        }
+    }
 
     #[tokio::test]
     async fn test_capture_system_info() {
@@ -936,6 +1024,132 @@ mod tests {
         assert!(info.is_ok());
         let info = info.unwrap();
         assert!(!info.kernel_version.is_empty());
+    }
+
+    #[tokio::test]
+    async fn capture_state_dispatch_returns_complete_read_only_snapshot() {
+        let captured = dispatch_full_system_method("capture_state", &serde_json::json!({}))
+            .await
+            .expect("capture_state dispatch");
+        assert_eq!(captured["version"], 1);
+        assert!(!captured["captured_at"].as_str().unwrap().is_empty());
+        assert!(!captured["hostname"].as_str().unwrap().is_empty());
+        assert!(captured["system"].is_object());
+        assert!(captured["network"].is_object());
+        assert!(captured["storage"].is_object());
+        assert!(captured["containers"].is_object());
+    }
+
+    #[tokio::test]
+    async fn set_hostname_dispatch_applies_private_dbus_owner_and_reads_back() {
+        let mut command = tokio::process::Command::new("dbus-daemon");
+        command
+            .args(["--session", "--nofork", "--nopidfile", "--print-address=1"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+        let mut daemon = command.spawn().expect("spawn private dbus-daemon");
+        let stdout = daemon.stdout.take().expect("private bus stdout");
+        let mut lines = BufReader::new(stdout).lines();
+        let address = tokio::time::timeout(Duration::from_secs(3), lines.next_line())
+            .await
+            .expect("private bus address timeout")
+            .expect("read private bus address")
+            .expect("private bus printed no address");
+        let service = zbus::connection::Builder::address(address.as_str())
+            .expect("service bus address")
+            .build()
+            .await
+            .expect("connect hostname service");
+        service
+            .object_server()
+            .at(
+                "/org/freedesktop/hostname1",
+                HostnameService {
+                    hostname: Mutex::new("before".into()),
+                },
+            )
+            .await
+            .expect("mount hostname fixture");
+        service
+            .request_name("org.freedesktop.hostname1")
+            .await
+            .expect("request hostname service name");
+        let client = zbus::connection::Builder::address(address.as_str())
+            .expect("client bus address")
+            .build()
+            .await
+            .expect("connect hostname client");
+        let owner = DbusHostnameOwner {
+            connection: client.clone(),
+        };
+
+        let result = dispatch_full_system_method_with_owner(
+            &owner,
+            "set_hostname",
+            &serde_json::json!({"hostname":" fixture.local "}),
+        )
+        .await
+        .expect("set_hostname dispatch");
+        assert_eq!(result["success"], true);
+        let proxy = zbus::Proxy::new(
+            &client,
+            "org.freedesktop.hostname1",
+            "/org/freedesktop/hostname1",
+            "org.freedesktop.hostname1",
+        )
+        .await
+        .expect("hostname readback proxy");
+        let readback: String = proxy.get_property("Hostname").await.unwrap();
+        assert_eq!(readback, "fixture.local");
+
+        assert!(dispatch_full_system_method_with_owner(
+            &owner,
+            "set_hostname",
+            &serde_json::json!({"hostname":"bad/name"}),
+        )
+        .await
+        .is_err());
+        let unchanged: String = proxy.get_property("Hostname").await.unwrap();
+        assert_eq!(unchanged, "fixture.local");
+        assert!(dispatch_full_system_method_with_owner(
+            &owner,
+            "set_hostname",
+            &serde_json::json!({}),
+        )
+        .await
+        .is_err());
+        daemon.kill().await.expect("stop private dbus-daemon");
+    }
+
+    #[test]
+    #[ignore = "requires CAP_SYS_ADMIN for CLONE_NEWUTS; run explicitly as an isolated privileged test"]
+    fn native_hostname_owner_effect_isolated_to_uts_namespace_and_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let hostname_path = directory.path().join("hostname");
+        let parent_before = nix::unistd::gethostname().unwrap();
+        let thread_path = hostname_path.clone();
+        std::thread::spawn(move || -> Result<(OsString, OsString, String)> {
+            let result = unsafe { nix::libc::unshare(nix::libc::CLONE_NEWUTS) };
+            if result != 0 {
+                anyhow::bail!("unshare(CLONE_NEWUTS): {}", std::io::Error::last_os_error());
+            }
+            let before = nix::unistd::gethostname()?;
+            let owner = NativeHostnameOwner::with_hostname_path(thread_path);
+            owner.set_hostname_native("opdbus-native-fixture")?;
+            let after = nix::unistd::gethostname()?;
+            let file = std::fs::read_to_string(&owner.hostname_path)?;
+            Ok((before, after, file))
+        })
+        .join()
+        .expect("native hostname thread panicked")
+        .map(|(before, after, file)| {
+            assert_ne!(before, after);
+            assert_eq!(after, OsString::from("opdbus-native-fixture"));
+            assert_eq!(file, "opdbus-native-fixture\n");
+        })
+        .unwrap();
+        assert_eq!(nix::unistd::gethostname().unwrap(), parent_before);
     }
 }
 

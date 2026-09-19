@@ -136,6 +136,8 @@ impl IdentityContainerLifecycle for IncusIdentityContainerLifecycle {
 }
 
 type SledCacheState = IdentitySledState;
+type BtrfsMountVerifier =
+    Arc<dyn Fn(&std::path::Path, &std::path::Path, &str) -> anyhow::Result<()> + Send + Sync>;
 
 fn parse_json<T: serde::de::DeserializeOwned>(
     label: &str,
@@ -1105,6 +1107,29 @@ async fn dispatch_identity_sled_method_owned(
     method: &str,
     args: &JsonValue,
 ) -> anyhow::Result<JsonValue> {
+    dispatch_identity_sled_method_owned_with_fixtures(
+        engine,
+        store,
+        operation_id,
+        method,
+        args,
+        Arc::new(IncusIdentityContainerLifecycle),
+        Arc::new(|device, mount, uuid| {
+            op_network::btrfs::verify_dedicated_mount(device, mount, uuid)
+        }),
+    )
+    .await
+}
+
+async fn dispatch_identity_sled_method_owned_with_fixtures(
+    engine: &MutationEngine,
+    store: &IdentitySledStore,
+    operation_id: String,
+    method: &str,
+    args: &JsonValue,
+    lifecycle: Arc<dyn IdentityContainerLifecycle>,
+    btrfs_mount_verifier: BtrfsMountVerifier,
+) -> anyhow::Result<JsonValue> {
     match method {
         "get_identity" => {
             let mut session_id = arg_str(args, "session_id");
@@ -1206,11 +1231,10 @@ async fn dispatch_identity_sled_method_owned(
                 .map(serde_json::from_value)
                 .transpose()?;
             let expires_at = None;
-            let lifecycle: Arc<dyn IdentityContainerLifecycle> =
-                Arc::new(IncusIdentityContainerLifecycle);
             let owned_engine = engine.clone();
             let owned_store = store.clone();
             let owned_instance = instance.clone();
+            let owned_lifecycle = lifecycle.clone();
             let task = tokio::spawn(async move {
                 let lifecycle_lock = owned_store.lifecycle_lock(&session_id).await;
                 let _lifecycle_guard = lifecycle_lock.lock_owned().await;
@@ -1220,7 +1244,7 @@ async fn dispatch_identity_sled_method_owned(
                     .mint_identity_genesis_stamp(&session_id, &public_key, 0)
                     .await?;
                 preflight_native_identity_effect().await?;
-                lifecycle.create(&owned_instance).await?;
+                owned_lifecycle.create(&owned_instance).await?;
                 let timestamp = now();
                 let mut sled = ContainerIdentitySled {
                     session_id: session_id.clone(),
@@ -1278,10 +1302,9 @@ async fn dispatch_identity_sled_method_owned(
             let path = PathBuf::from(&device.device_path);
             let mount = PathBuf::from(&device.mount_point);
             let uuid = device.btrfs_uuid.clone();
-            tokio::task::spawn_blocking(move || {
-                op_network::btrfs::verify_dedicated_mount(&path, &mount, &uuid)
-            })
-            .await??;
+            let btrfs_mount_verifier = btrfs_mount_verifier.clone();
+            tokio::task::spawn_blocking(move || btrfs_mount_verifier(&path, &mount, &uuid))
+                .await??;
             sled.btrfs_device.as_mut().expect("checked").attached = true;
             sled.last_seen_at = now();
             sled.mutation_index = sled
@@ -1295,7 +1318,14 @@ async fn dispatch_identity_sled_method_owned(
         }
         "touch_session" => {
             let session_id = arg_str(args, "session_id");
-            let identity = activate_session(engine, &session_id).await?;
+            let identity = set_session_active_owned(
+                engine.clone(),
+                store.clone(),
+                lifecycle,
+                session_id,
+                true,
+            )
+            .await?;
             Ok(serde_json::json!({"identity": identity}))
         }
         "record_session_event" => {
@@ -1538,6 +1568,63 @@ pub(crate) mod tests {
             vec![format!("stop:{session_id}")]
         );
         Ok(parked)
+    }
+
+    async fn dispatch_with_fixtures(
+        engine: &Arc<MutationEngine>,
+        lifecycle: Arc<dyn IdentityContainerLifecycle>,
+        btrfs_mount_verifier: BtrfsMountVerifier,
+        method: &str,
+        args: JsonValue,
+    ) -> anyhow::Result<JsonValue> {
+        let store = engine.identity_sled_store()?.clone();
+        dispatch_identity_sled_method_owned_with_fixtures(
+            engine,
+            &store,
+            opid(method),
+            method,
+            &args,
+            lifecycle,
+            btrfs_mount_verifier,
+        )
+        .await
+    }
+
+    fn no_btrfs_mount_verifier() -> BtrfsMountVerifier {
+        Arc::new(|_device, _mount, _uuid| Ok(()))
+    }
+
+    async fn assert_sibling_unchanged(engine: &MutationEngine, expected: &ContainerIdentitySled) {
+        assert!(
+            expected.is_anchored(),
+            "sibling must come from the identity owner"
+        );
+        let store = engine
+            .identity_sled_store()
+            .expect("identity owner configured");
+        let durable = revision_sled(
+            &load_revision(store, &expected.session_id)
+                .await
+                .expect("read durable sibling"),
+        )
+        .expect("parse durable sibling")
+        .expect("durable sibling exists");
+        assert_eq!(
+            serde_json::to_value(&durable).unwrap(),
+            serde_json::to_value(expected).unwrap(),
+            "unrelated durable sibling changed"
+        );
+        let private = strict_private_state().expect("read committed private SHM");
+        let projected = private
+            .sleds
+            .iter()
+            .find(|sled| sled.session_id == expected.session_id)
+            .expect("committed private-SHM sibling exists");
+        assert_eq!(
+            serde_json::to_value(projected).unwrap(),
+            serde_json::to_value(expected).unwrap(),
+            "unrelated private-SHM sibling changed"
+        );
     }
 
     async fn write_identity_term(
@@ -1864,6 +1951,222 @@ pub(crate) mod tests {
         assert_eq!(current.instance.as_ref().unwrap().status, "Running");
         assert_eq!(current.mutation_index, 700);
         assert_eq!(current.sealed_id, identity.sealed_id);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn provision_container_dispatches_lifecycle_and_commits_anchor_to_cozo_and_shm() {
+        let (engine, _shm) = sled_engine();
+        let public_key = pk(0x7a);
+        let sibling = write_identity(&engine, &pk(0x79)).await.unwrap();
+        assert_sibling_unchanged(&engine, &sibling).await;
+        let session_id = op_identity::session::derive_session_id(&public_key);
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let output = dispatch_with_fixtures(
+            &engine,
+            lifecycle.clone(),
+            no_btrfs_mount_verifier(),
+            "provision_container",
+            serde_json::json!({
+                "wireguard_pubkey": public_key,
+                "btrfs_device": {
+                    "device_path": "/tmp/identity-fstorage.img",
+                    "mount_point": "/tmp/identity-fstorage",
+                    "btrfs_uuid": "00000000-0000-0000-0000-000000000001",
+                    "cozo_id": "cozo-device-7",
+                    "attached": false
+                },
+                "instance": {
+                    "name": "caller-selected",
+                    "status": "Running",
+                    "type": "virtual-machine",
+                    "profiles": ["identity-custom"],
+                    "config": {"boot.autostart": "true", "limits.cpu": "2"}
+                }
+            }),
+        )
+        .await
+        .unwrap();
+        let identity: ContainerIdentitySled =
+            serde_json::from_value(output["identity"].clone()).expect("typed provision output");
+        assert_eq!(identity.session_id, session_id);
+        assert_eq!(identity.wireguard_pubkey, public_key);
+        assert!(identity.is_anchored());
+        assert!(!identity.sealed_id.as_deref().unwrap().is_empty());
+        assert!(!identity.active);
+        let instance = identity.instance.as_ref().unwrap();
+        assert_eq!(instance.name, session_id);
+        assert_eq!(instance.instance_type, "container");
+        assert_eq!(instance.status, "Stopped");
+        assert_eq!(instance.profiles, ["identity-custom"]);
+        assert_eq!(instance.config.as_ref().unwrap()["boot.autostart"], "false");
+        assert_eq!(instance.config.as_ref().unwrap()["limits.cpu"], "2");
+        assert_eq!(
+            identity.btrfs_device.as_ref().unwrap().cozo_id,
+            "cozo-device-7"
+        );
+        assert!(!identity.btrfs_device.as_ref().unwrap().attached);
+        assert_eq!(
+            *lifecycle.calls.lock().unwrap(),
+            vec![format!("create:{session_id}")]
+        );
+
+        let store = engine.identity_sled_store().unwrap();
+        let durable = load_revision(store, &session_id).await.unwrap();
+        let durable_identity = revision_sled(&durable).unwrap().unwrap();
+        assert_eq!(durable_identity.sealed_id, identity.sealed_id);
+        assert_eq!(durable_identity.genesis, identity.genesis);
+        assert_eq!(
+            serde_json::to_value(&durable_identity.instance).unwrap(),
+            serde_json::to_value(&identity.instance).unwrap()
+        );
+        assert_eq!(durable_identity.btrfs_device, identity.btrfs_device);
+
+        let private = strict_private_state().unwrap();
+        let shm_identity = private
+            .sleds
+            .into_iter()
+            .find(|sled| sled.session_id == session_id)
+            .expect("provisioned identity in private SHM");
+        assert_eq!(shm_identity.sealed_id, identity.sealed_id);
+        assert_eq!(shm_identity.genesis, identity.genesis);
+        assert_eq!(
+            serde_json::to_value(&shm_identity.instance).unwrap(),
+            serde_json::to_value(&identity.instance).unwrap()
+        );
+        assert_sibling_unchanged(&engine, &sibling).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn attach_btrfs_device_verifies_isolated_mount_and_commits_readback() {
+        let (engine, _shm) = sled_engine();
+        let public_key = pk(0x7b);
+        let sibling = write_identity(&engine, &pk(0x7d)).await.unwrap();
+        assert_sibling_unchanged(&engine, &sibling).await;
+        let session_id = op_identity::session::derive_session_id(&public_key);
+        let provisioned = dispatch_with_fixtures(
+            &engine,
+            Arc::new(RecordingLifecycle::default()),
+            no_btrfs_mount_verifier(),
+            "provision_container",
+            serde_json::json!({
+                "wireguard_pubkey": public_key,
+                "btrfs_device": {
+                    "device_path": "/tmp/identity-fstorage.img",
+                    "mount_point": "/tmp/identity-fstorage",
+                    "btrfs_uuid": "00000000-0000-0000-0000-000000000002",
+                    "cozo_id": "cozo-device-8",
+                    "attached": false
+                }
+            }),
+        )
+        .await
+        .unwrap();
+        let before: ContainerIdentitySled =
+            serde_json::from_value(provisioned["identity"].clone()).unwrap();
+        let calls = Arc::new(Mutex::new(Vec::<(String, String, String)>::new()));
+        let observed_calls = calls.clone();
+        let verifier: BtrfsMountVerifier = Arc::new(move |device, mount, uuid| {
+            observed_calls.lock().unwrap().push((
+                device.display().to_string(),
+                mount.display().to_string(),
+                uuid.to_string(),
+            ));
+            anyhow::ensure!(device == std::path::Path::new("/tmp/identity-fstorage.img"));
+            anyhow::ensure!(mount == std::path::Path::new("/tmp/identity-fstorage"));
+            anyhow::ensure!(uuid == "00000000-0000-0000-0000-000000000002");
+            Ok(())
+        });
+        let output = dispatch_with_fixtures(
+            &engine,
+            Arc::new(RecordingLifecycle::default()),
+            verifier,
+            "attach_btrfs_device",
+            serde_json::json!({"session_id": session_id}),
+        )
+        .await
+        .unwrap();
+        let attached: ContainerIdentitySled =
+            serde_json::from_value(output["identity"].clone()).unwrap();
+        assert_eq!(attached.session_id, before.session_id);
+        assert_eq!(attached.mutation_index, before.mutation_index + 1);
+        assert_eq!(attached.genesis, before.genesis);
+        assert_eq!(attached.sealed_id, before.sealed_id);
+        assert!(attached.btrfs_device.as_ref().unwrap().attached);
+        assert_eq!(
+            *calls.lock().unwrap(),
+            vec![(
+                "/tmp/identity-fstorage.img".into(),
+                "/tmp/identity-fstorage".into(),
+                "00000000-0000-0000-0000-000000000002".into(),
+            )]
+        );
+
+        let store = engine.identity_sled_store().unwrap();
+        let durable = revision_sled(&load_revision(store, &session_id).await.unwrap())
+            .unwrap()
+            .unwrap();
+        assert!(durable.btrfs_device.as_ref().unwrap().attached);
+        assert_eq!(durable.sealed_id, before.sealed_id);
+        let private = strict_private_state().unwrap();
+        let shm_identity = private
+            .sleds
+            .into_iter()
+            .find(|sled| sled.session_id == session_id)
+            .unwrap();
+        assert!(shm_identity.btrfs_device.as_ref().unwrap().attached);
+        assert_eq!(shm_identity.genesis, before.genesis);
+        assert_sibling_unchanged(&engine, &sibling).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn touch_session_starts_parked_container_and_preserves_identity_metadata() {
+        let (engine, _shm) = sled_engine();
+        let sibling = write_identity(&engine, &pk(0x7e)).await.unwrap();
+        assert_sibling_unchanged(&engine, &sibling).await;
+        let identity = write_identity(&engine, &pk(0x7c)).await.unwrap();
+        assert_sibling_unchanged(&engine, &sibling).await;
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let touched = dispatch_with_fixtures(
+            &engine,
+            lifecycle.clone(),
+            no_btrfs_mount_verifier(),
+            "touch_session",
+            serde_json::json!({"session_id": identity.session_id}),
+        )
+        .await
+        .unwrap();
+        let touched: ContainerIdentitySled =
+            serde_json::from_value(touched["identity"].clone()).unwrap();
+        assert!(touched.active);
+        assert_eq!(touched.instance.as_ref().unwrap().status, "Running");
+        assert_eq!(touched.principal_kind.as_deref(), Some("human"));
+        assert_eq!(touched.genesis, identity.genesis);
+        assert_eq!(touched.sealed_id, identity.sealed_id);
+        assert!(touched.last_seen_at >= identity.last_seen_at);
+        assert_eq!(
+            *lifecycle.calls.lock().unwrap(),
+            vec![format!("start:{}", identity.session_id)]
+        );
+
+        let store = engine.identity_sled_store().unwrap();
+        let durable = revision_sled(&load_revision(store, &identity.session_id).await.unwrap())
+            .unwrap()
+            .unwrap();
+        assert!(durable.active);
+        assert_eq!(durable.principal_kind.as_deref(), Some("human"));
+        assert_eq!(durable.genesis, identity.genesis);
+        assert_eq!(durable.sealed_id, identity.sealed_id);
+        let private = strict_private_state().unwrap();
+        let shm_identity = private
+            .sleds
+            .into_iter()
+            .find(|sled| sled.session_id == identity.session_id)
+            .unwrap();
+        assert!(shm_identity.active);
+        assert_eq!(shm_identity.instance.as_ref().unwrap().status, "Running");
+        assert_eq!(shm_identity.principal_kind.as_deref(), Some("human"));
+        assert_eq!(shm_identity.sealed_id, identity.sealed_id);
+        assert_sibling_unchanged(&engine, &sibling).await;
     }
 
     #[tokio::test(flavor = "multi_thread")]

@@ -8,9 +8,10 @@ use serde::{Deserialize, Serialize};
 use simd_json::json;
 use simd_json::OwnedValue as Value;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const DEFAULT_PRIVACY_ROUTES_PATH: &str = "/var/lib/op-dbus/privacy-routes.json";
+static STORE_WRITER: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PrivacyRoutesState {
@@ -61,22 +62,31 @@ impl PrivacyRoutesPlugin {
                 state.routes.sort_by(|a, b| a.route_id.cmp(&b.route_id));
                 Ok(state)
             }
-            Err(_) => Ok(PrivacyRoutesState { routes: Vec::new() }),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                Ok(PrivacyRoutesState { routes: Vec::new() })
+            }
+            Err(error) => Err(error)
+                .with_context(|| format!("read privacy route store {}", self.store_path.display())),
         }
     }
 
     async fn save_store(&self, state: &PrivacyRoutesState) -> Result<()> {
-        if let Some(parent) = self.store_path.parent() {
-            tokio::fs::create_dir_all(parent)
-                .await
-                .context("failed to create privacy route directory")?;
-        }
-
-        let content = simd_json::to_string_pretty(state).context("serialize privacy routes")?;
-        tokio::fs::write(&self.store_path, content)
-            .await
-            .context("write privacy routes")?;
-        Ok(())
+        let path = self.store_path.clone();
+        let content = serde_json::to_vec_pretty(state).context("serialize privacy routes")?;
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            use std::io::Write;
+            let parent = path.parent().context("privacy route store has no parent")?;
+            std::fs::create_dir_all(parent)?;
+            let mut temporary = tempfile::NamedTempFile::new_in(parent)?;
+            temporary.write_all(&content)?;
+            temporary.as_file().sync_all()?;
+            temporary
+                .persist(&path)
+                .context("replace privacy route store")?;
+            std::fs::File::open(parent)?.sync_all()?;
+            Ok(())
+        })
+        .await?
     }
 }
 
@@ -149,6 +159,7 @@ impl StatePlugin for PrivacyRoutesPlugin {
     }
 
     async fn apply_state(&self, diff: &StateDiff) -> Result<ApplyResult> {
+        let _writer = STORE_WRITER.lock().await;
         let mut state = self.load_store().await?;
         let mut routes_by_id: HashMap<String, PrivacyRoute> = state
             .routes
@@ -174,7 +185,10 @@ impl StatePlugin for PrivacyRoutesPlugin {
                     changes_applied.push(format!("updated privacy route {}", resource));
                 }
                 StateAction::Delete { resource } => {
-                    routes_by_id.remove(resource);
+                    if routes_by_id.remove(resource).is_none() {
+                        errors.push(format!("privacy route {} does not exist", resource));
+                        continue;
+                    }
                     changes_applied.push(format!("deleted privacy route {}", resource));
                 }
                 StateAction::NoOp { .. } => {}
@@ -196,12 +210,14 @@ impl StatePlugin for PrivacyRoutesPlugin {
         })
     }
 
-    async fn verify_state(&self, _desired: &Value) -> Result<bool> {
-        Ok(true)
+    async fn verify_state(&self, desired: &Value) -> Result<bool> {
+        let mut desired: PrivacyRoutesState = simd_json::serde::from_owned_value(desired.clone())?;
+        desired.routes.sort_by(|a, b| a.route_id.cmp(&b.route_id));
+        Ok(self.load_store().await? == desired)
     }
 
     async fn create_checkpoint(&self) -> Result<Checkpoint> {
-        let current = simd_json::json!(null);
+        let current = simd_json::serde::to_owned_value(self.load_store().await?)?;
         Ok(Checkpoint {
             id: format!("privacy-routes-{}", chrono::Utc::now().timestamp()),
             plugin: self.name().to_string(),
@@ -212,6 +228,11 @@ impl StatePlugin for PrivacyRoutesPlugin {
     }
 
     async fn rollback(&self, checkpoint: &Checkpoint) -> Result<()> {
+        anyhow::ensure!(
+            checkpoint.plugin == self.name(),
+            "checkpoint belongs to another plugin"
+        );
+        let _writer = STORE_WRITER.lock().await;
         let state: PrivacyRoutesState =
             simd_json::serde::from_owned_value(checkpoint.state_snapshot.clone())?;
         self.save_store(&state).await
@@ -493,7 +514,19 @@ pub async fn dispatch_privacy_routes_method(
     method: &str,
     args: &serde_json::Value,
 ) -> Result<serde_json::Value> {
-    let plugin = PrivacyRoutesPlugin::default();
+    dispatch_privacy_routes_method_at(DEFAULT_PRIVACY_ROUTES_PATH, method, args).await
+}
+
+/// Isolated-owner seam used by tests and migration tooling. Production callers
+/// use `dispatch_privacy_routes_method`, which remains bound to the configured
+/// canonical store path.
+pub async fn dispatch_privacy_routes_method_at(
+    store_path: impl AsRef<Path>,
+    method: &str,
+    args: &serde_json::Value,
+) -> Result<serde_json::Value> {
+    let plugin = PrivacyRoutesPlugin::new(store_path.as_ref().to_owned());
+    let _writer = STORE_WRITER.lock().await;
     match method {
         "list_routes" => {
             let state = plugin.load_store().await?;
@@ -505,11 +538,151 @@ pub async fn dispatch_privacy_routes_method(
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow::anyhow!("route_id is required"))?;
             let mut state = plugin.load_store().await?;
+            let before = state.routes.len();
             state.routes.retain(|r| r.route_id != route_id);
+            anyhow::ensure!(
+                state.routes.len() != before,
+                "privacy route {route_id} does not exist"
+            );
             plugin.save_store(&state).await?;
             Ok(serde_json::json!({ "routes": state.routes }))
         }
         other => Err(anyhow::anyhow!("unknown privacy_routes method: {}", other)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn route(route_id: &str, name: &str) -> PrivacyRoute {
+        PrivacyRoute {
+            name: name.to_owned(),
+            route_id: route_id.to_owned(),
+            user_id: format!("user-{name}"),
+            email: format!("{name}@example.test"),
+            wireguard_public_key: format!("key-{name}"),
+            assigned_ip: format!("10.100.0.{name}/32"),
+            selector_ip: format!("10.100.0.{name}"),
+            container_name: Some(format!("privacy-{name}")),
+            ingress_port: format!("port-{name}"),
+            next_hop: "gbr_wg".to_owned(),
+            enabled: true,
+            created_at: "2026-01-01T00:00:00Z".to_owned(),
+            updated_at: "2026-01-01T00:00:00Z".to_owned(),
+        }
+    }
+
+    #[tokio::test]
+    async fn list_and_delete_routes_use_isolated_owner_and_read_back_siblings() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = directory.path().join("privacy-routes.json");
+        let initial = PrivacyRoutesState {
+            routes: vec![route("route-b", "2"), route("route-a", "1")],
+        };
+        tokio::fs::write(&store, serde_json::to_vec(&initial).unwrap())
+            .await
+            .unwrap();
+
+        let listed = dispatch_privacy_routes_method_at(&store, "list_routes", &json!({}))
+            .await
+            .unwrap();
+        assert_eq!(listed["routes"][0]["route_id"], "route-a");
+        assert_eq!(listed["routes"][1]["route_id"], "route-b");
+
+        let deleted = dispatch_privacy_routes_method_at(
+            &store,
+            "delete_route",
+            &json!({"route_id":"route-a"}),
+        )
+        .await
+        .unwrap();
+        assert_eq!(deleted["routes"].as_array().unwrap().len(), 1);
+        assert_eq!(deleted["routes"][0]["route_id"], "route-b");
+
+        let readback = dispatch_privacy_routes_method_at(&store, "list_routes", &json!({}))
+            .await
+            .unwrap();
+        assert_eq!(readback["routes"], deleted["routes"]);
+        assert!(readback["routes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|entry| entry["route_id"] != "route-a"));
+
+        assert!(dispatch_privacy_routes_method_at(
+            &store,
+            "delete_route",
+            &json!({"route_id":"route-a"}),
+        )
+        .await
+        .is_err());
+        assert!(
+            dispatch_privacy_routes_method_at(&store, "delete_route", &json!({}))
+                .await
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn list_routes_distinguishes_missing_store_from_invalid_or_unreadable_store() {
+        let directory = tempfile::tempdir().unwrap();
+        let missing = directory.path().join("missing.json");
+        let empty = dispatch_privacy_routes_method_at(&missing, "list_routes", &json!({}))
+            .await
+            .unwrap();
+        assert_eq!(empty["routes"], json!([]));
+
+        let invalid = directory.path().join("invalid.json");
+        tokio::fs::write(&invalid, b"not-json").await.unwrap();
+        assert!(
+            dispatch_privacy_routes_method_at(&invalid, "list_routes", &json!({}))
+                .await
+                .is_err()
+        );
+
+        let unreadable = directory.path().join("directory");
+        tokio::fs::create_dir(&unreadable).await.unwrap();
+        assert!(
+            dispatch_privacy_routes_method_at(&unreadable, "list_routes", &json!({}))
+                .await
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn concurrent_deletes_do_not_restore_removed_routes_and_checkpoint_has_real_state() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = directory.path().join("privacy-routes.json");
+        let plugin = PrivacyRoutesPlugin::new(&store);
+        let initial = PrivacyRoutesState {
+            routes: vec![route("a", "1"), route("b", "2"), route("c", "3")],
+        };
+        plugin.save_store(&initial).await.unwrap();
+        let checkpoint = plugin.create_checkpoint().await.unwrap();
+        let expected = simd_json::serde::to_owned_value(&initial).unwrap();
+        assert_eq!(checkpoint.state_snapshot, expected);
+        let a = json!({"route_id":"a"});
+        let b = json!({"route_id":"b"});
+        let (a, b) = tokio::join!(
+            dispatch_privacy_routes_method_at(&store, "delete_route", &a),
+            dispatch_privacy_routes_method_at(&store, "delete_route", &b),
+        );
+        a.unwrap();
+        b.unwrap();
+        assert_eq!(
+            plugin.load_store().await.unwrap().routes,
+            vec![route("c", "3")]
+        );
+        assert!(!plugin.verify_state(&expected).await.unwrap());
+        plugin.rollback(&checkpoint).await.unwrap();
+        assert!(plugin.verify_state(&expected).await.unwrap());
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            std::fs::metadata(&store).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
     }
 }
 

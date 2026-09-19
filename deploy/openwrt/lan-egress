@@ -1,0 +1,54 @@
+#!/bin/sh
+# lan-egress {decoy|local|status} — route this router's LAN internet through the
+# Oracle decoy (presented IP follows `decoy-egress` on the decoy) instead of the
+# T-Mobile WAN.
+#
+# The wgdecoy tunnel is IPv4-only, so decoy mode also REJECTs LAN IPv6 egress:
+# otherwise dual-stack clients prefer IPv6 and leak the real T-Mobile v6 address.
+# Clients fall back to IPv4 (through the tunnel). Reboot leaves the safe 'local'
+# state. The router's own traffic and the WG underlay always stay on WAN.
+set -eu
+PEER=iwE+oLsuCXTLafhOUSQEl7aOj+QEKUUYYjlha+0iF1Q=
+IF=wgdecoy
+LAN=br-lan
+TABLE=100
+PREF=100
+FABRIC=10.0.0.0/24
+
+v6block_on() {
+    ip6tables -C FORWARD -i "$LAN" -o wan -j REJECT 2>/dev/null || \
+        ip6tables -I FORWARD 1 -i "$LAN" -o wan -j REJECT
+}
+v6block_off() {
+    while ip6tables -C FORWARD -i "$LAN" -o wan -j REJECT 2>/dev/null; do
+        ip6tables -D FORWARD -i "$LAN" -o wan -j REJECT
+    done
+}
+
+mode() {
+    if ip rule show pref "$PREF" 2>/dev/null | grep -q "iif $LAN"; then echo decoy; else echo local; fi
+}
+
+case "${1:-status}" in
+  decoy)
+    wg set "$IF" peer "$PEER" allowed-ips 0.0.0.0/0
+    ip route replace default dev "$IF" table "$TABLE"
+    ip rule show pref "$PREF" | grep -q "iif $LAN" || ip rule add iif "$LAN" lookup "$TABLE" pref "$PREF"
+    v6block_on
+    echo "lan-egress: decoy (LAN IPv4 -> decoy egress; LAN IPv6 egress blocked)"
+    ;;
+  local)
+    while ip rule show pref "$PREF" 2>/dev/null | grep -q "iif $LAN"; do ip rule del pref "$PREF"; done
+    ip route flush table "$TABLE" 2>/dev/null || true
+    v6block_off
+    wg set "$IF" peer "$PEER" allowed-ips "$FABRIC"
+    echo "lan-egress: local (LAN internet -> WAN)"
+    ;;
+  status)
+    echo "mode: $(mode)"
+    echo "wgdecoy allowed-ips: $(wg show "$IF" allowed-ips | awk '{$1=""; print}' | xargs)"
+    echo "policy rule: $(ip rule show pref "$PREF" | xargs || echo none)"
+    echo "IPv6 LAN egress: $(ip6tables -C FORWARD -i "$LAN" -o wan -j REJECT 2>/dev/null && echo blocked || echo allowed)"
+    ;;
+  *) echo "usage: lan-egress {decoy|local|status}" >&2; exit 1 ;;
+esac

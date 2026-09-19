@@ -6,6 +6,7 @@ pub mod chat;
 pub mod dashboard;
 pub mod health;
 pub mod identity;
+pub mod identity_self;
 pub mod llm;
 pub mod logs;
 pub mod mail;

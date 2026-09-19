@@ -226,6 +226,37 @@ impl Fixture {
         )
         .unwrap()
     }
+
+    async fn web_ui(
+        &self,
+        identity: &HumanPrincipalIdentity,
+        method: &str,
+        args: Value,
+    ) -> anyhow::Result<Value> {
+        let schema = WebUiPlugin::new().schema().unwrap();
+        let declaration = &schema.methods[method];
+        let capability = schema.resolve_method_capability(declaration);
+        let response = self
+            .engine
+            .dispatch_method_call_with_identity(
+                "web_ui",
+                method,
+                &args.to_string(),
+                Some(capability.capability()),
+                &identity.principal_id,
+                Some(&identity.session_id),
+                Some(&identity.session_genesis),
+            )
+            .await?;
+        let result = response["result"].clone();
+        jsonschema::Validator::new(&serde_json::to_value(
+            declaration.returns.as_ref().unwrap(),
+        )?)
+        .map_err(|error| anyhow::anyhow!("invalid web_ui output schema: {error}"))?
+        .validate(&result)
+        .map_err(|error| anyhow::anyhow!("invalid web_ui result: {error}"))?;
+        Ok(result)
+    }
 }
 
 fn path(suffix: &str) -> String {
@@ -332,6 +363,120 @@ async fn gallery_facades_read_only_the_verified_owners_committed_workspace() {
 }
 fn canvas(text: &str) -> Value {
     json!({"root":"root", "elements":{"root":{"type":"text","props":{"text":text,"className":null},"children":[]}}})
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn web_ui_render_and_update_use_committed_owner_state_and_preserve_siblings() {
+    let fixture = Fixture::new().await;
+    fixture.activate(&fixture.first).await;
+    fixture.activate(&fixture.second).await;
+    let created = fixture
+        .mutation(
+            &fixture.first,
+            "create_ui_spec",
+            json!({"spec":canvas("first"),"tags":[]}),
+        )
+        .await;
+    let sibling = fixture
+        .mutation(
+            &fixture.first,
+            "create_ui_spec",
+            json!({"spec":canvas("sibling stays"),"tags":[]}),
+        )
+        .await;
+    let other = fixture
+        .mutation(
+            &fixture.second,
+            "create_ui_spec",
+            json!({"spec":canvas("other owner"),"tags":[]}),
+        )
+        .await;
+    let id = created["spec"]["id"].as_str().unwrap();
+    let sibling_id = sibling["spec"]["id"].as_str().unwrap();
+    let other_id = other["spec"]["id"].as_str().unwrap();
+    let rendered = fixture
+        .web_ui(&fixture.first, "render_page", json!({"spec_id":id}))
+        .await
+        .unwrap();
+    assert_eq!(rendered["spec"], created["spec"]);
+    assert_eq!(rendered["render_admitted"], true);
+    let hidden = fixture
+        .web_ui(&fixture.second, "render_page", json!({"spec_id":id}))
+        .await
+        .unwrap();
+    assert_eq!(hidden, json!({"spec":null,"render_admitted":false}));
+
+    let args = json!({"spec_id":id,"expected_revision":1,"element_id":"root",
+        "properties":{"text":"changed","className":null}});
+    let updated = fixture
+        .web_ui(&fixture.first, "update_component", args.clone())
+        .await
+        .unwrap();
+    assert_eq!(updated["spec"]["revision"], 2);
+    assert_eq!(updated["spec"]["spec"], canvas("changed"));
+    let readback = fixture
+        .web_ui(&fixture.first, "render_page", json!({"spec_id":id}))
+        .await
+        .unwrap();
+    assert_eq!(readback["spec"], updated["spec"]);
+    assert_eq!(
+        fixture
+            .web_ui(&fixture.first, "render_page", json!({"spec_id":sibling_id}))
+            .await
+            .unwrap()["spec"],
+        sibling["spec"]
+    );
+    assert_eq!(
+        fixture
+            .web_ui(&fixture.second, "render_page", json!({"spec_id":other_id}))
+            .await
+            .unwrap()["spec"],
+        other["spec"]
+    );
+    let committed = fixture.get(&fixture.first, &path("specs")).await.unwrap();
+    let before = json_value(committed.value.as_ref().unwrap());
+    assert_eq!(before[id]["spec"], canvas("changed"));
+    assert_eq!(before[sibling_id]["spec"], canvas("sibling stays"));
+    assert_eq!(before.as_object().unwrap().len(), 2);
+    assert!(fixture
+        .web_ui(&fixture.first, "update_component", args.clone())
+        .await
+        .is_err());
+    assert!(fixture
+        .web_ui(&fixture.second, "update_component", args)
+        .await
+        .is_err());
+    let after = fixture.get(&fixture.first, &path("specs")).await.unwrap();
+    assert_eq!(json_value(after.value.as_ref().unwrap()), before);
+
+    // A durable owner write alone is insufficient: render_page must continue
+    // to return the last MutationEngine publication, including its revision.
+    fixture
+        .durable_methods()
+        .dispatch_mutation(
+            &UiAccessContext {
+                principal_id: fixture.first.principal_id.clone(),
+                session_id: fixture.first.session_id.clone(),
+                session_genesis: Some(fixture.first.session_genesis.clone()),
+            },
+            "update_ui_spec",
+            &json!({"spec_id":id,"expected_revision":2,"element_id":"root",
+            "properties":{"text":"durable but unpublished","className":null}}),
+            None,
+        )
+        .await
+        .unwrap();
+    let still_committed = fixture
+        .web_ui(&fixture.first, "render_page", json!({"spec_id":id}))
+        .await
+        .unwrap();
+    assert_eq!(still_committed, readback);
+    fixture.grant_first(false);
+    assert!(fixture
+        .web_ui(&fixture.first, "render_page", json!({"spec_id":id}))
+        .await
+        .is_err());
+    assert!(fixture.engine.get_state("gemma_brain").await.is_none());
 }
 fn event_canvas() -> Value {
     json!({

@@ -17,7 +17,7 @@ use std::{
     net::SocketAddr,
     sync::{
         atomic::{AtomicUsize, Ordering},
-        Arc,
+        Arc, OnceLock,
     },
 };
 use tokio::sync::Mutex as AsyncMutex;
@@ -44,6 +44,7 @@ struct FixtureState {
     patch_redirect: Option<String>,
     projection_block_after_patch: Option<std::path::PathBuf>,
     mcp_url: String,
+    complete_native_config: bool,
 }
 
 async fn fixture() -> (String, Fixture, tokio::task::JoinHandle<()>) {
@@ -69,6 +70,7 @@ async fn fixture() -> (String, Fixture, tokio::task::JoinHandle<()>) {
             patch_redirect: None,
             projection_block_after_patch: None,
             mcp_url: "https://docs.example.test/mcp".into(),
+            complete_native_config: false,
         })),
     };
     let app = Router::new()
@@ -77,6 +79,7 @@ async fn fixture() -> (String, Fixture, tokio::task::JoinHandle<()>) {
         .route("/api/config/list", get(config_list))
         .route("/api/config/prop", get(config_prop))
         .route("/api/config/catalog/models", get(catalog_models))
+        .route("/api/tools", get(tools_fixture))
         .route("/a2a/:alias", post(chat_fixture))
         .with_state(fixture.clone())
         .layer(axum::middleware::from_fn_with_state(
@@ -116,14 +119,55 @@ async fn full_config(State(f): State<Fixture>) -> Json<Value> {
             .expect("fixture provider family is an object")
             .insert(alias.to_string(), json!({"model": model}));
     }
-    Json(json!({
-        "agents": {"dashboard": {"model_provider": state.provider}},
-        "providers": {"models": Value::Object(families)},
-        "mcp": {"enabled":true,"servers":[{
-            "name":"docs","transport":"http","url":state.mcp_url,
-            "env":{}, "headers":{"Authorization":"fixture-private-mcp-token"}
-        }]}
-    }))
+    let mut config = if state.complete_native_config {
+        native_config_defaults()
+    } else {
+        json!({})
+    };
+    config.as_object_mut().unwrap().extend(
+        json!({
+            "agents": {"dashboard": {"model_provider": state.provider}},
+            "providers": {"models": Value::Object(families)},
+            "mcp": {"enabled":true,"servers":[{
+                "name":"docs","transport":"http","url":state.mcp_url,
+                "env":{}, "headers":{"Authorization":"fixture-private-mcp-token"}
+            }]}
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    );
+    Json(config)
+}
+
+// Fixture data comes from the one imported native contract. It is served by
+// the private HTTP owner; no schema or runtime catalog is materialized here.
+fn native_config_defaults() -> Value {
+    use op_plugins::state_plugins::tched_router_contract::document;
+    static DEFAULTS: OnceLock<Value> = OnceLock::new();
+    DEFAULTS
+        .get_or_init(|| {
+            let fields = document()["properties"].as_object().unwrap();
+            let config = Value::Object(
+                fields
+                    .iter()
+                    .map(|(name, field)| {
+                        let value = field.get("default").cloned().unwrap_or_else(|| {
+                            if field["type"] == "array" {
+                                json!([])
+                            } else {
+                                json!({})
+                            }
+                        });
+                        (name.clone(), value)
+                    })
+                    .collect(),
+            );
+            jsonschema::validate(document(), &config)
+                .expect("native default fixture satisfies the import");
+            config
+        })
+        .clone()
 }
 
 async fn config_list(State(f): State<Fixture>) -> Json<Value> {
@@ -140,6 +184,13 @@ async fn config_list(State(f): State<Fixture>) -> Json<Value> {
 }
 async fn health_fixture() -> Json<Value> {
     Json(json!({"status":"ok"}))
+}
+
+async fn tools_fixture() -> Json<Value> {
+    Json(json!({"tools":[{
+        "name":"fixture_lookup", "description":"Look up a fixture record",
+        "parameters":{"type":"object","required":["id"],"properties":{"id":{"type":"string"}}}
+    }]}))
 }
 #[derive(Deserialize)]
 struct PropQuery {
@@ -363,6 +414,29 @@ async fn dispatch_mcp(
         .await
 }
 
+async fn dispatch_llm(
+    engine: &MutationEngine,
+    caller: &op_grpc_bridge::mutation_engine::SessionContext,
+    method: &str,
+    args: Value,
+) -> anyhow::Result<Value> {
+    use op_state::StatePlugin;
+    let schema = op_plugins::state_plugins::large_language_model::LargeLanguageModelPlugin::new()
+        .schema()
+        .unwrap();
+    engine
+        .dispatch_method_call_with_identity(
+            "large_language_model",
+            method,
+            &args.to_string(),
+            schema.methods[method].required_capability.as_deref(),
+            &op_identity::session::derive_principal_id(&caller.wireguard_pubkey),
+            Some(&caller.session_id),
+            Some(&caller.genesis_hex),
+        )
+        .await
+}
+
 #[test]
 fn gemma_route_uses_the_exact_tched_router_resolve_contract() {
     use op_state::StatePlugin;
@@ -434,6 +508,9 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .unwrap(),
         schema.clone(),
         gemma_schema.clone(),
+        op_plugins::state_plugins::large_language_model::LargeLanguageModelPlugin::new()
+            .schema()
+            .unwrap(),
         op_plugins::state_plugins::ctl_plane_chatbot::CtlPlaneChatbotPlugin::new()
             .schema()
             .unwrap(),
@@ -1136,6 +1213,53 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         engine.get_state("tched_router").await.unwrap()["selected_provider"],
         "openai"
     );
+    for (method, field, model) in [
+        ("SetObfuscationModel", "obfuscation", "new-model"),
+        ("SetQdrantRetrievalModel", "qdrant_retrieval", "old-alt"),
+        ("SetCozoRetrievalModel", "cozo_retrieval", "old-model"),
+    ] {
+        let before: Value = serde_json::from_slice(
+            &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        )
+        .unwrap();
+        let output = dispatch(&engine, &caller, method, json!({"model_id":model}))
+            .await
+            .unwrap();
+        assert_eq!(output["result"][field], model);
+        let after: Value = serde_json::from_slice(
+            &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        )
+        .unwrap();
+        assert_eq!(after["model_assignments"][field], model);
+        for (key, value) in before["model_assignments"].as_object().unwrap() {
+            if key != field {
+                assert_eq!(&after["model_assignments"][key], value);
+            }
+        }
+    }
+    let routes = dispatch(&engine, &caller, "GetModelRoutes", json!({}))
+        .await
+        .unwrap();
+    assert!(routes["result"]["model_routes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|route| route["provider"] == "openai" && route["model"] == "new-model"));
+    let providers = dispatch(&engine, &caller, "GetProviderCatalog", json!({}))
+        .await
+        .unwrap();
+    assert!(providers["result"]["providers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|provider| provider["id"] == "ollama"));
+    let tools = dispatch(&engine, &caller, "GetTools", json!({}))
+        .await
+        .unwrap();
+    let tool = &tools["result"]["tools"][0];
+    assert_eq!(tool["name"], "fixture_lookup");
+    assert_eq!(tool["description"], "Look up a fixture record");
+    assert_eq!(tool["parameters"]["required"], json!(["id"]));
     let reconciled_shm: Value = serde_json::from_slice(
         &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
     )
@@ -1149,4 +1273,218 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         reconciled_shm["model_assignments"]["vectorization"],
         "old-alt"
     );
+
+    // Every unary LLM facade must execute the native router owner. Check
+    // selection effects and their canonical SHM readback as well as the reads.
+    let selected = dispatch_llm(
+        &engine,
+        &caller,
+        "set_provider",
+        json!({"provider_id":"ollama"}),
+    )
+    .await
+    .unwrap();
+    assert_eq!(selected["result"]["selected_provider"], "ollama");
+    assert_eq!(fixture.inner.lock().await.provider, "ollama.main");
+    let selection = dispatch_llm(
+        &engine,
+        &caller,
+        "update_config",
+        json!({"provider_id":"openai","model_id":"new-model"}),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        selection["result"],
+        json!({"selected_provider":"openai","selected_model":"new-model"})
+    );
+    let providers = dispatch_llm(&engine, &caller, "list_providers", json!({}))
+        .await
+        .unwrap();
+    assert_eq!(
+        providers["result"],
+        dispatch(&engine, &caller, "ListProviders", json!({}))
+            .await
+            .unwrap()["result"]
+    );
+    assert!(providers["result"]["providers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|p| p["id"] == "openai"));
+    let provider = dispatch_llm(&engine, &caller, "get_provider", json!({}))
+        .await
+        .unwrap();
+    assert_eq!(provider["result"]["selected_provider"], "openai");
+    assert_eq!(provider["result"]["provider"]["id"], "openai");
+    let models = dispatch_llm(
+        &engine,
+        &caller,
+        "list_models",
+        json!({"provider":"openai"}),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        models["result"],
+        dispatch(&engine, &caller, "ListModels", json!({"provider":"openai"}))
+            .await
+            .unwrap()["result"]
+    );
+    assert!(models["result"]["model_routes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|m| m["model"] == "new-model"));
+    let config = dispatch_llm(&engine, &caller, "get_config", json!({}))
+        .await
+        .unwrap();
+    assert_eq!(config["result"]["config"], selection["result"]);
+    let chats = fixture.inner.lock().await.chats;
+    let generated = dispatch_llm(
+        &engine,
+        &caller,
+        "generate",
+        json!({"message":"facade fixture request"}),
+    )
+    .await
+    .unwrap();
+    assert_eq!(generated["result"]["content"], "fixture");
+    assert_eq!(generated["result"]["provider"], "openai");
+    assert_eq!(generated["result"]["model"], "new-model");
+    assert_eq!(fixture.inner.lock().await.chats, chats + 1);
+    let after_facades: Value = serde_json::from_slice(
+        &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+    )
+    .unwrap();
+    assert_eq!(after_facades["selected_provider"], "openai");
+    assert_eq!(after_facades["selected_model"], "new-model");
+    assert_eq!(
+        after_facades["model_assignments"],
+        reconciled_shm["model_assignments"]
+    );
+
+    // Exercise EVERY generated native getter through authenticated canonical
+    // dispatch, native HTTP observation, MutationEngine commit and SHM readback.
+    // Declaring/mapping a method is not counted as execution.
+    fixture.inner.lock().await.complete_native_config = true;
+    let complete = dispatch(&engine, &caller, "GetConfig", json!({}))
+        .await
+        .unwrap();
+    let native = complete["result"]["config"].clone();
+    assert_eq!(
+        native["mcp"]["servers"][0]["headers"]["Authorization"],
+        "***MASKED***"
+    );
+    assert!(!native.to_string().contains("fixture-private-mcp-token"));
+    use op_plugins::state_plugins::tched_router_config_surface::{
+        config_method_backing, ConfigMethodBacking,
+    };
+    let mut tested = std::collections::BTreeSet::new();
+    for method in schema.methods.keys() {
+        let expected = match config_method_backing(method) {
+            Some(ConfigMethodBacking::WholeNativeConfig) => native.clone(),
+            Some(ConfigMethodBacking::NativeSection(section)) => native
+                .get(section)
+                .unwrap_or_else(|| panic!("native fixture lacks {section} for {method}"))
+                .clone(),
+            _ => continue,
+        };
+        let requests = fixture.requests.load(Ordering::SeqCst);
+        let response = dispatch(&engine, &caller, method, json!({}))
+            .await
+            .unwrap_or_else(|error| panic!("{method} failed canonical execution: {error:#}"));
+        assert_eq!(response["result"], json!({"config":expected}), "{method}");
+        assert!(
+            fixture.requests.load(Ordering::SeqCst) > requests,
+            "{method} never reached native HTTP"
+        );
+        let committed: Value = serde_json::from_slice(
+            &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            committed["native_config"], native,
+            "{method} did not commit complete native state"
+        );
+        assert_eq!(
+            committed["model_assignments"], reconciled_shm["model_assignments"],
+            "{method} lost sibling state"
+        );
+        assert!(tested.insert(method.clone()));
+    }
+    assert_eq!(
+        tested.len(),
+        82,
+        "the native getter inventory changed; review coverage"
+    );
+    let contract = dispatch(&engine, &caller, "GetConfigSchema", json!({}))
+        .await
+        .unwrap();
+    assert_eq!(
+        contract["result"]["config_schema"],
+        *op_plugins::state_plugins::tched_router_contract::document()
+    );
+
+    // Local descriptors have a distinct committed-state backing. Seed a
+    // typed fixture observation through MutationEngine, then require each
+    // reader to use those SHM values without fabricating native observations.
+    // This tests configured reads; it does not establish a production producer
+    // for every local descriptor.
+    let mut local = serde_json::to_value(
+        op_plugins::state_plugins::tched_router::TchedRouterPlugin::current_state(),
+    )
+    .unwrap();
+    let observed: Value = serde_json::from_slice(
+        &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+    )
+    .unwrap();
+    local
+        .as_object_mut()
+        .unwrap()
+        .extend(observed.as_object().unwrap().clone());
+    engine
+        .process_authoritative_change(
+            "tched_router".into(),
+            "/org/opdbus/v1/plugins/tched_router".into(),
+            op_grpc_bridge::mutation_engine::ChangeType::ObjectAdded,
+            None,
+            None,
+            simd_json::serde::to_owned_value(&local).unwrap(),
+            vec!["fixture-descriptors".into()],
+            "fixture-observation-owner".into(),
+            None,
+            op_grpc_bridge::mutation_engine::ChangeSource::Internal,
+        )
+        .await
+        .unwrap();
+    let committed: Value = serde_json::from_slice(
+        &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
+    )
+    .unwrap();
+    let requests = fixture.requests.load(Ordering::SeqCst);
+    let mut local_count = 0;
+    for method in schema.methods.keys() {
+        if let Some(ConfigMethodBacking::CommittedPluginStateSection(field)) =
+            config_method_backing(method)
+        {
+            let output = dispatch(&engine, &caller, method, json!({})).await.unwrap();
+            assert_eq!(
+                output["result"],
+                json!({"config":committed[field]}),
+                "{method}"
+            );
+            local_count += 1;
+        }
+    }
+    assert_eq!(local_count, 6);
+    for (method, field) in [
+        ("GetRouter", "router"),
+        ("ListUiSurfaces", "ui_surfaces"),
+        ("GetStructuredOutput", "structured_output"),
+    ] {
+        let output = dispatch(&engine, &caller, method, json!({})).await.unwrap();
+        assert_eq!(output["result"][field], committed[field], "{method}");
+    }
+    assert_eq!(fixture.requests.load(Ordering::SeqCst), requests);
 }

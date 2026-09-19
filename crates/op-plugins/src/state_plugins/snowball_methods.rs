@@ -202,6 +202,76 @@ mod tests {
         (dir, chain, methods)
     }
 
+    async fn snapshot_readback(methods: &SnowballMethods, names: &[String]) -> Value {
+        let empty = serde_json::json!({});
+        let mut records = Vec::new();
+        for name in names {
+            records.push(
+                methods
+                    .dispatch("get_snapshot", &serde_json::json!({"snapshot_name": name}))
+                    .await
+                    .unwrap(),
+            );
+        }
+        serde_json::json!({
+            "current": methods.dispatch("get_current_state", &empty).await.unwrap(),
+            "list": methods.dispatch("list_snapshots", &empty).await.unwrap(),
+            "records": records,
+        })
+    }
+
+    #[tokio::test]
+    async fn failed_unknown_rollback_preserves_state_and_retained_snapshots_after_reopen() {
+        let (dir, chain, methods) = fixture().await;
+        chain
+            .set_retention_policy(RetentionPolicy::new(10, 0, 0, 0))
+            .await
+            .unwrap();
+        let mut names = Vec::new();
+        for generation in 1..=2 {
+            chain
+                .write_current_state(&simd_json::json!({
+                    "generation": generation,
+                    "unrelated": format!("state-{generation}"),
+                }))
+                .await
+                .unwrap();
+            let created = methods
+                .dispatch("create_snapshot", &serde_json::json!({}))
+                .await
+                .unwrap();
+            assert_eq!(created["snapshot"]["state"]["generation"], generation);
+            names.push(created["snapshot"]["name"].as_str().unwrap().to_owned());
+        }
+        assert_ne!(names[0], names[1]);
+        let before = snapshot_readback(&methods, &names).await;
+        assert_eq!(before["current"]["state"]["generation"], 2);
+        assert_eq!(before["list"]["snapshots"].as_array().unwrap().len(), 2);
+        assert!(methods
+            .dispatch(
+                "rollback",
+                &serde_json::json!({"snapshot_name": "SNP-999999"})
+            )
+            .await
+            .is_err());
+        assert!(
+            !tokio::fs::try_exists(dir.path().join("snowball/snapshots/SNP-999999"))
+                .await
+                .unwrap()
+        );
+        assert_eq!(snapshot_readback(&methods, &names).await, before);
+
+        drop(methods);
+        drop(chain);
+        let reopened = Arc::new(
+            StreamingSnowball::new(dir.path().join("snowball"))
+                .await
+                .unwrap(),
+        );
+        let reopened_methods = SnowballMethods::from_shared(reopened);
+        assert_eq!(snapshot_readback(&reopened_methods, &names).await, before);
+    }
+
     #[tokio::test]
     async fn seven_methods_use_persistent_snapshot_state() {
         let (dir, chain, methods) = fixture().await;

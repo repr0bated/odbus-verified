@@ -1,0 +1,1003 @@
+[
+  {
+    "plugin": "tched_router",
+    "method": "Chat",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.Chat",
+        "filter": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetA2aConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetAcpConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetAgentsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetBackupConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetBrowserConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetBrowserDelegateConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetChannelsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetClaudeCodeConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetClaudeCodeRunnerConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetCloudOpsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetCodexCliConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetComposioConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetConfigSchema",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Only schema contract assertions exist; no successful canonical method behavior."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetConversationalAiConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetCostConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetCronConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetDataRetentionConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetDelegateConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetEmbeddingRoutesConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetEscalationConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetEvalConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetFileDownloadConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetFileUploadBundleConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetFileUploadConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetGatewayConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetGeminiCliConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetGoogleWorkspaceConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetHardwareConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetHeartbeatConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetHooksConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetHttpRequestConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetIdentityChainConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetImageGenConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetJiraConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetKnowledgeBundlesConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetKnowledgeConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetLinkEnricherConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetLinkedinConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetMcpBundlesConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetMcpConfig",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.GetMcpConfig",
+        "filter": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetMediaPipelineConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetMemoryConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetMemoryNamespacesConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetMicrosoft365Config",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetModelAssignmentsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetModelRoutes",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful canonical invocation for this exact method; existing dispatcher/contract tests are insufficient."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetModelRoutesConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetMultimodalConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetNodeTransportConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetNodesConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetNotionConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetObservabilityConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetOnboardStateConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetOpencodeCliConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetPacingConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetPeerGroupsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetPeripheralsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetPipelineConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetPluginsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetPrivacyPolicyConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetProjectIntelConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetProviderCatalog",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful canonical invocation for this exact method; existing dispatcher/contract tests are insufficient."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetProvidersConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetProxyConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetQueryClassificationConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetRegistrationServiceConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetReliabilityConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetRiskProfilesConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetRouter",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful canonical invocation for this exact method; existing dispatcher/contract tests are insufficient."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetRuntimeConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetRuntimeProfilesConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetSchedulerConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetSecretsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetSecurityConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetSecurityOpsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetShellToolConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetSkillBundlesConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetSkillsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetSopConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetState",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.GetState",
+        "filter": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetStorageConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetStructuredOutput",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful canonical invocation for this exact method; existing dispatcher/contract tests are insufficient."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetTextBrowserConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetTodotrackerConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetTools",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful canonical invocation for this exact method; existing dispatcher/contract tests are insufficient."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetTranscriptionConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetTrustConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetTtsConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetTunnelConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetUserContainerConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetVerifiableIntentConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetWebFetchConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetWebSearchConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "GetWssConfig",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful invocation of this exact native section getter; schema/proto roundtrips are not behavioral proof."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "ListModels",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.ListModels",
+        "filter": "list_models_uses_the_audited_tched_router_method_dispatcher",
+        "path": "crates/op-grpc-bridge/tests/tched_router_integration.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "ListProviders",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful canonical invocation for this exact method; existing dispatcher/contract tests are insufficient."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "ListUiSurfaces",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful canonical invocation for this exact method; existing dispatcher/contract tests are insufficient."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "PatchConfig",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.PatchConfig",
+        "filter": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "ResolveRoute",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.ResolveRoute",
+        "filter": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "SetCozoRetrievalModel",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful canonical invocation for this exact setter."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "SetModel",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.SetModel",
+        "filter": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "SetObfuscationModel",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful canonical invocation for this exact setter."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "SetOvsRoutingModel",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.SetOvsRoutingModel",
+        "filter": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "SetProvider",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.SetProvider",
+        "filter": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "SetQdrantRetrievalModel",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No executed successful canonical invocation for this exact setter."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "SetSelection",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.SetSelection",
+        "filter": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "SetVectorizationModel",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.SetVectorizationModel",
+        "filter": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + private native HTTP fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "cancel_generation",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.cancel_generation",
+        "filter": "cancel_closes_native_transport_and_disconnect_is_a_real_terminal_failure",
+        "path": "crates/op-grpc-bridge/src/generation_jobs_tests.rs",
+        "scope": "canonical authenticated dispatch + private native generation fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "config_get",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.config_get",
+        "filter": "reads_use_native_shapes_and_pinned_secret_policy",
+        "path": "crates/op-grpc-bridge/src/tched_router_runtime.rs",
+        "scope": "native owner HTTP fixture (direct runtime client; canonical method wrapper not exercised)"
+      }
+    ],
+    "notes": "Positive owner behavior only; does not establish canonical method admission."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "config_init",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.config_init",
+        "filter": "patch_init_and_migrate_return_native_receipts_after_readback",
+        "path": "crates/op-grpc-bridge/src/tched_router_runtime.rs",
+        "scope": "native owner HTTP fixture (direct runtime client; canonical method wrapper not exercised)"
+      }
+    ],
+    "notes": "Positive owner behavior only; does not establish canonical method admission."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "config_list",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.config_list",
+        "filter": "reads_use_native_shapes_and_pinned_secret_policy",
+        "path": "crates/op-grpc-bridge/src/tched_router_runtime.rs",
+        "scope": "native owner HTTP fixture (direct runtime client; canonical method wrapper not exercised)"
+      }
+    ],
+    "notes": "Positive owner behavior only; does not establish canonical method admission."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "config_migrate",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.config_migrate",
+        "filter": "patch_init_and_migrate_return_native_receipts_after_readback",
+        "path": "crates/op-grpc-bridge/src/tched_router_runtime.rs",
+        "scope": "native owner HTTP fixture (direct runtime client; canonical method wrapper not exercised)"
+      }
+    ],
+    "notes": "Positive owner behavior only; does not establish canonical method admission."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "config_patch",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.config_patch",
+        "filter": "patch_init_and_migrate_return_native_receipts_after_readback",
+        "path": "crates/op-grpc-bridge/src/tched_router_runtime.rs",
+        "scope": "native owner HTTP fixture (direct runtime client; canonical method wrapper not exercised)"
+      }
+    ],
+    "notes": "Positive owner behavior only; does not establish canonical method admission."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "config_set",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.config_set",
+        "filter": "mutations_are_bounded_and_read_back_after_effect",
+        "path": "crates/op-grpc-bridge/src/tched_router_runtime.rs",
+        "scope": "native owner HTTP fixture (direct runtime client; canonical method wrapper not exercised)"
+      }
+    ],
+    "notes": "Positive owner behavior only; does not establish canonical method admission."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "delete_generation_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.delete_generation_job",
+        "filter": "actual_handlers_require_owner_grants_and_serve_only_committed_children",
+        "path": "crates/op-grpc-bridge/src/generation_jobs_tests.rs",
+        "scope": "canonical authenticated dispatch + private native generation fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "get_generation_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.get_generation_job",
+        "filter": "grant_withdrawal_stops_native_and_retains_pending_until_exact_recovery",
+        "path": "crates/op-grpc-bridge/src/generation_jobs_tests.rs",
+        "scope": "canonical authenticated dispatch + private native generation fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "get_generation_jobs",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful invocation of this exact declared method; child get/read tests do not establish list-method behavior."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "recover_generation_jobs",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.recover_generation_jobs",
+        "filter": "private_pending_failure_blocks_reads_and_recovery_uses_durable_state",
+        "path": "crates/op-grpc-bridge/src/generation_jobs_tests.rs",
+        "scope": "canonical authenticated dispatch + private native generation fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  },
+  {
+    "plugin": "tched_router",
+    "method": "start_generation",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "tched_router.start_generation",
+        "filter": "actual_handlers_require_owner_grants_and_serve_only_committed_children",
+        "path": "crates/op-grpc-bridge/src/generation_jobs_tests.rs",
+        "scope": "canonical authenticated dispatch + private native generation fixture"
+      }
+    ],
+    "notes": "Executed success/effect assertions present."
+  }
+]

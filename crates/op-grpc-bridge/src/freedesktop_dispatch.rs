@@ -623,6 +623,39 @@ fn xml_escape(value: &str) -> String {
 mod tests {
     use super::*;
     use op_state_store::{CapabilityDecl, FieldSchema, MethodDecl, ReadOnlyCondition};
+    use std::process::Stdio;
+    use std::sync::{Arc, Mutex};
+    use tokio::io::{AsyncBufReadExt, BufReader};
+
+    struct PeerFixture;
+
+    // zbus installs the real org.freedesktop.DBus.Peer implementation when an
+    // application interface is mounted. Do not replace it with a mock Peer.
+    #[zbus::interface(name = "org.opdbus.PeerFixture")]
+    impl PeerFixture {
+        fn fixture_name(&self) -> &str {
+            "fixture_control"
+        }
+    }
+
+    struct SelectionOwner {
+        selected: Mutex<String>,
+    }
+
+    impl SelectionOwner {
+        fn apply(&self, plan: &FieldWritePlan) -> Value {
+            let selected = plan.args["selection"].as_str().unwrap().to_owned();
+            *self.selected.lock().unwrap() = selected.clone();
+            json!({
+                "success": true,
+                "plugin_id": plan.target_plugin,
+                "method": plan.method,
+                "event_id": 7,
+                "event_hash": "fixture-selection-event",
+                "result": {"selected": selected}
+            })
+        }
+    }
 
     fn fixture_schema() -> PluginSchema {
         PluginSchema::builder("fixture_control")
@@ -716,6 +749,17 @@ mod tests {
         assert_eq!(objects[0]["plugin_id"], "fixture_control");
         assert_eq!(objects[0]["properties"], json!({"selected":"old"}));
         assert_eq!(objects[0]["projection_available"], true);
+        let object = reply(
+            prepare_local(
+                catalog.path(),
+                state.path(),
+                "GetAll",
+                &json!({"plugin_id":"fixture_control"}),
+            )
+            .unwrap(),
+        );
+        assert_eq!(object["object"]["plugin_id"], "fixture_control");
+        assert_eq!(object["object"]["properties"], json!({"selected":"old"}));
         assert!(prepare_local(
             catalog.path(),
             state.path(),
@@ -838,6 +882,54 @@ mod tests {
         assert_eq!(result["result"], receipt);
         assert_eq!(result["event_id"], 42);
         assert!(finish_write(&plan, json!({"success":true,"plugin_id":"other","method":"Select","event_id":42,"event_hash":"abc"})).is_err());
+    }
+
+    #[test]
+    fn set_facade_applies_injected_owner_effect_and_reads_back_committed_state() {
+        let (catalog, state) = fixture();
+        let plan = match prepare_local(
+            catalog.path(),
+            state.path(),
+            "Set",
+            &json!({
+                "plugin_id":"fixture_control",
+                "property_name":"selected",
+                "value":"new"
+            }),
+        )
+        .unwrap()
+        {
+            DispatchOutcome::Write(plan) => plan,
+            DispatchOutcome::Reply(_) => panic!("expected a write plan"),
+        };
+        revalidate_write_in(catalog.path(), state.path(), &plan).unwrap();
+        authorize_write(
+            &plan,
+            "fixture-principal",
+            &HashSet::from(["fixture_control.select".to_owned()]),
+        )
+        .unwrap();
+
+        let owner = SelectionOwner {
+            selected: Mutex::new("old".into()),
+        };
+        let receipt = owner.apply(&plan);
+        assert_eq!(*owner.selected.lock().unwrap(), "new");
+        commit(
+            state.path(),
+            br#"{"selected":"new","locked":false,"undeclared":"hidden"}"#,
+        );
+        let readback = read_present_plugin(catalog.path(), state.path(), "fixture_control")
+            .unwrap()
+            .object
+            .properties["selected"]
+            .clone();
+        assert_eq!(readback, "new");
+
+        let finished = finish_write(&plan, receipt).unwrap();
+        assert_eq!(finished["property_name"], "selected");
+        assert_eq!(finished["result"]["result"]["selected"], "new");
+        assert_eq!(finished["event_id"], 7);
     }
 
     #[test]
@@ -1143,5 +1235,117 @@ mod tests {
         assert_eq!(read_rx.recv_timeout(Duration::from_secs(3)).unwrap(), "new");
         writer.join().unwrap();
         reader.join().unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn peer_methods_cross_private_dbus_and_read_sealed_identity() {
+        // This test changes the process catalog/state environment, just like
+        // the identity and generation tests. Use their same serialization
+        // guard and retain it until the private environment is restored.
+        let _shm_guard = crate::human_principal_dispatch::tests::temp_shm_with_schemas(&[]);
+        let (catalog, state) = fixture();
+        let mut command = tokio::process::Command::new("dbus-daemon");
+        command
+            .args(["--session", "--nofork", "--nopidfile", "--print-address=1"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .kill_on_drop(true);
+        let mut daemon = command.spawn().expect("spawn private dbus-daemon");
+        let stdout = daemon.stdout.take().expect("private bus stdout");
+        let mut lines = BufReader::new(stdout).lines();
+        let address = tokio::time::timeout(Duration::from_secs(3), lines.next_line())
+            .await
+            .expect("private bus address timeout")
+            .expect("read private bus address")
+            .expect("private bus printed no address");
+
+        let service = zbus::connection::Builder::address(address.as_str())
+            .expect("service bus address")
+            .build()
+            .await
+            .expect("connect service to private bus");
+        assert!(service
+            .object_server()
+            .at(canonical::plugin_path("fixture_control"), PeerFixture)
+            .await
+            .expect("mount peer fixture"));
+        service
+            .request_name(canonical::BASE_SERVICE_NAME)
+            .await
+            .expect("request canonical plugin name");
+        let reference_client = zbus::connection::Builder::address(address.as_str())
+            .unwrap()
+            .build()
+            .await
+            .unwrap();
+        let reference_path = canonical::plugin_path("fixture_control");
+        let reference_peer = zbus::fdo::PeerProxy::builder(&reference_client)
+            .destination(canonical::BASE_SERVICE_NAME)
+            .unwrap()
+            .path(reference_path.as_str())
+            .unwrap()
+            .build()
+            .await
+            .unwrap();
+        let expected_machine_id = reference_peer.get_machine_id().await.unwrap();
+
+        struct Restore(Vec<(&'static str, Option<std::ffi::OsString>)>);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                for (key, value) in &self.0 {
+                    match value {
+                        Some(value) => std::env::set_var(key, value),
+                        None => std::env::remove_var(key),
+                    }
+                }
+            }
+        }
+        let _restore = Restore(
+            [
+                "OP_BLOB_CATALOG_DIR",
+                "OP_SHM_STATE_DIR",
+                "DBUS_SESSION_BUS_ADDRESS",
+            ]
+            .into_iter()
+            .map(|key| (key, std::env::var_os(key)))
+            .collect(),
+        );
+        std::env::set_var("OP_BLOB_CATALOG_DIR", catalog.path());
+        std::env::set_var("OP_SHM_STATE_DIR", state.path());
+        std::env::set_var("DBUS_SESSION_BUS_ADDRESS", address);
+
+        let engine = MutationEngine::new(
+            Arc::new(tokio::sync::RwLock::new(op_state_store::EventChain::new(
+                op_state_store::ChainConfig::default(),
+            ))),
+            Arc::new(op_network::rovs_proxy::OvsdbDbusClient::new()),
+        );
+        let ping = reply(
+            prepare(&engine, "Ping", &json!({"plugin_id":"fixture_control"}))
+                .await
+                .expect("peer ping"),
+        );
+        assert_eq!(ping["plugin_id"], "fixture_control");
+        assert_eq!(
+            ping["object_path"],
+            canonical::plugin_path("fixture_control")
+        );
+        assert!(!ping["schema_hash"].as_str().unwrap().is_empty());
+
+        let machine = reply(
+            prepare(
+                &engine,
+                "GetMachineId",
+                &json!({"plugin_id":"fixture_control"}),
+            )
+            .await
+            .expect("peer machine id"),
+        );
+        assert_eq!(machine["plugin_id"], "fixture_control");
+        assert_eq!(machine["machine_id"], expected_machine_id);
+        assert_eq!(expected_machine_id.len(), 32);
+        assert!(expected_machine_id
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit()));
     }
 }

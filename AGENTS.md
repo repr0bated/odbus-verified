@@ -15,6 +15,12 @@ Mandatory even when the task does not mention these domains. Every subagent and 
 
 ## Host-service policy (runit)
 
+This server runs **Artix Linux with glibc**, not Chimera or a musl-based host.
+Build and test the server for `x86_64-unknown-linux-gnu`. An installed musl
+cross target or the Codex executable's own musl packaging does not change the
+repository's native target. Any separate container portability test must name
+its target and must not substitute for the Artix/glibc verification gate.
+
 This host runs **runit** as PID 1. Manage services with `sudo sv <command> <service>` (e.g., `sudo sv restart op-grpc-bridge`). `sv` needs root to read `supervise/ok`.
 
 - `/etc/runit/sv/<service>/run` is the service definition.
@@ -71,9 +77,8 @@ binary. Binary targets live in members: for example `op-grpc-bridge` and
 not proof that it is deployed; reconcile it with `enabled-services` and
 `retired-services`. There is no `op-projection` crate. `[patch.crates-io]`
 patches only `rovs-openflow` (vendored fork for OF1.5 `packet_type` match at
-`vendor/rovs-openflow`). `op-ml`, `op-gallery-gen`, `op-uds-relay`, and
-`zeroclaw-gui` have manifests under `crates/` but are outside workspace
-membership; `op-ml` remains disabled for the ort API breakage (`#ml-fixme`).
+`vendor/rovs-openflow`). `op-ml`, `op-gallery-gen`, and `op-uds-relay` have manifests under `crates/`
+but are outside workspace membership; `op-ml` remains disabled for the ort API breakage (`#ml-fixme`).
 
 **Rust-first: no new Python.** New automation, probes, and helpers go in Rust (`cargo run --bin <name> -p <crate> -- <args>`, a small binary in the relevant crate, or a `cargo-script`-style one-shot) or in shell + POSIX tools (`jq`, `curl`, `busctl`, `sv`). Do not add new `.py` files to the repo. Pre-existing scripts under `scripts/` (`export-llm-sessions-to-notebooklm-sources.py`, `or-fusion-archive.py`, `notebook-sources-cleanup.py`, etc.) are grandfathered — maintain them in place, don't propagate the pattern.
 
@@ -93,17 +98,17 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 **Frontend — single Vite app, external repo**:
 
-The active UI lives in **`/srv/git/vercel-json-render-ui`** (not in this repo). It is a Vite + React app that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/vercel-json-render/` at `http://10.0.0.1:8080/vercel-json-render/`.
+The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a Vite + React Json Render chat app that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`. `/srv/git/vercel-json-render-ui` is its scratch workbench, not a deploy target.
 
 ```bash
-# Build and deploy (from the UI repo)
-cd /srv/git/vercel-json-render-ui && ./scripts/deploy-op-web.sh
+# Build and deploy at op-web's root (from the UI repo)
+cd /srv/git/3tched.com && URL_PREFIX=/ VITE_OPDBUS_DOOR=https://10.0.0.3:8090 npm run publish:op-web
 
 # Dev server
-cd /srv/git/vercel-json-render-ui && npm run dev
+cd /srv/git/3tched.com && npm run dev
 ```
 
-The script runs `npm run build -- --base /vercel-json-render/`, then rsyncs `dist/` into the static directory. op-web does **not** embed the UI via RustEmbed — it serves the deployed static files.
+At the root mount the script replaces only `assets/` and `index.html`; a non-root `URL_PREFIX` publishes a separate mount under the static root. op-web does **not** embed the UI via RustEmbed — it serves the deployed static files. The browser's credential comes from `GET /api/identity/self` (op-web, `OP_WEB_HUMAN_PEERS`), from an injecting host page, or from the connect gate; there is no pairing.
 
 Fresh source exports also include the pinned UI source archive and verifier at
 `vendor/vercel-json-render-ui/build-assets.sh`. That helper builds and checks the
@@ -111,8 +116,8 @@ captured UI without the sibling checkout or live rsync; golden preparation
 stages only its validated asset archive and provenance manifest.
 
 **Deprecated** (do not use for new work):
-- `crates/op-web/ui/` (`zeroclaw-gui-repo`) — old RustEmbed path, no longer the active UI.
-- `/srv/git/operation-dashboard-ui-07` — old operator console, superseded by `vercel-json-render-ui`.
+- `crates/op-web/ui/` and `crates/zeroclaw-gui/` — deleted 2026-09-18 together with the device-pairing path they existed to call (`/pair`, `/admin/paircode/new`, removed 2026-09-04). Do not resurrect either.
+- `/srv/git/operation-dashboard-ui-07` — old operator console, superseded by `/srv/git/3tched.com`.
 - `crates/` dev dashboard (`crates/src/`) — legacy dev tooling.
 
 **CI does NOT gate `cargo test` or `cargo clippy`** — never assume "CI green" means tests pass. The only CI code review is the Codex full-repo-review action (best-effort LLM pass, not a deterministic check).
@@ -153,7 +158,7 @@ Run `/verify` before reporting work complete. CI won't catch fmt drift, clippy w
 - Many older deploy scripts and HANDOFF docs still reference s6 — treat them as archival; runit/`sv` is current.
 - Anything mentioning `/dev/shm/plugin_schema.dat`, `live-schema.json`, or `/dev/shm/opdbus/schemas` is describing a retired design.
 - Anything mentioning `OIB1`, `oib1:`, `blob_ref`, `SessionIdentityBlob`, or `x-opdbus-identity-blob-bin` is pre-2026-09-01 and stale; the session-identity envelope is now `SID1` / `SealedId`.
-- Anything referencing `crates/op-web/ui/` as the active UI, or `operation-dashboard-ui-07` as the operator console — the active UI is `/srv/git/vercel-json-render-ui`, deployed via its `scripts/deploy-op-web.sh`.
+- Anything referencing `crates/op-web/ui/`, `zeroclaw-gui`, pairing codes, or `operation-dashboard-ui-07` — the production UI is `/srv/git/3tched.com` (github.com/repr0bated/3tched.com), deployed at op-web's root via its `scripts/publish-op-web.sh` (`URL_PREFIX=/`); `/srv/git/vercel-json-render-ui` is its scratch workbench.
 - Older deployment-script and backup/restore hierarchy descriptions are not current deployment authority. Deployment is btrfs send/receive of the prepared snapshot — see architecture invariants above.
 
 ## Subagent and model selection

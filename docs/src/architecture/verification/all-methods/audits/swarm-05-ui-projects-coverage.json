@@ -1,0 +1,331 @@
+[
+  {
+    "plugin": "json_render",
+    "method": "build_prompt_surface",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_methods_dispatch_and_tools_derive_from_schema dispatches this successfully but does not assert its prompt output; malformed_inputs_and_unsupported_renderer_fail_before_write only covers rejection. No substantive successful prompt assertion found."
+  },
+  {
+    "plugin": "json_render",
+    "method": "export_json_schema",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_methods_dispatch_and_tools_derive_from_schema dispatches this successfully but does not inspect the exported schema. No substantive successful export assertion found."
+  },
+  {
+    "plugin": "json_render",
+    "method": "get_component_schema",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_methods_dispatch_and_tools_derive_from_schema dispatches this successfully but does not assert the component payload; malformed lookup rejection is covered separately. No substantive successful lookup assertion found."
+  },
+  {
+    "plugin": "json_render",
+    "method": "get_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge integration test",
+        "filter": "current_seal_drives_catalog_and_policy_survives_engine_recreation",
+        "path": "crates/op-grpc-bridge/tests/json_render_dispatch.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Authenticated MutationEngine dispatch validates the returned config and revision, then verifies the same policy after engine recreation and projection seeding."
+  },
+  {
+    "plugin": "json_render",
+    "method": "get_health",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_methods_dispatch_and_tools_derive_from_schema dispatches this successfully but does not assert health fields. No substantive successful health assertion found."
+  },
+  {
+    "plugin": "json_render",
+    "method": "get_package",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_methods_dispatch_and_tools_derive_from_schema dispatches the @json-render/core lookup successfully but does not inspect the package result."
+  },
+  {
+    "plugin": "json_render",
+    "method": "get_spec_schema",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_methods_dispatch_and_tools_derive_from_schema dispatches this successfully but does not inspect schema mode or schema content. No substantive successful assertion found."
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_actions",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_methods_dispatch_and_tools_derive_from_schema dispatches this successfully but does not inspect actions; runtime validation tests exercise action names indirectly, not this method's returned list."
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_components",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge integration test",
+        "filter": "current_seal_drives_catalog_and_policy_survives_engine_recreation",
+        "path": "crates/op-grpc-bridge/tests/json_render_dispatch.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Canonical dispatch asserts the full component result, mutates a sealed component description, confirms the live reseal is observed, and confirms the committed projection survives engine recreation."
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_core_exports",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_methods_dispatch_and_tools_derive_from_schema dispatches this successfully but does not inspect exports. No substantive successful assertion found."
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_packages",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_methods_dispatch_and_tools_derive_from_schema dispatches this successfully but does not inspect package entries. No substantive successful assertion found."
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_renderers",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_methods_dispatch_and_tools_derive_from_schema dispatches this successfully but does not inspect renderer entries. No substantive successful assertion found."
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_tools",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins state plugin unit test",
+        "filter": "all_methods_dispatch_and_tools_derive_from_schema",
+        "path": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "The successful dispatch result is substantively checked: returned tool names are collected and required to equal the complete declared schema method set."
+  },
+  {
+    "plugin": "json_render",
+    "method": "set_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge integration test",
+        "filter": "current_seal_drives_catalog_and_policy_survives_engine_recreation",
+        "path": "crates/op-grpc-bridge/tests/json_render_dispatch.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Canonical dispatch asserts the returned committed policy, then observes the catalog gate and projected policy after the mutation."
+  },
+  {
+    "plugin": "json_render",
+    "method": "validate_spec",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins state plugin unit test",
+        "filter": "runtime_fields_share_exported_validation_and_renderer_actions",
+        "path": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Successful dispatch asserts a valid flat spec with runtime fields, state visibility, setState and validateForm actions; the same test also asserts invalid action/visibility forms are rejected and a native renderer variant remains valid."
+  },
+  {
+    "plugin": "project",
+    "method": "accept_invite",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Project ACL unit tests cover invitation properties but no authenticated dispatch success. No canonical project method integration test found."
+  },
+  {
+    "plugin": "project",
+    "method": "create",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful project provisioning dispatch test found; source requires Incus and configured image/storage environment."
+  },
+  {
+    "plugin": "project",
+    "method": "get",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Project ACL/schema unit tests do not execute authenticated get dispatch. No substantive canonical read test found."
+  },
+  {
+    "plugin": "project",
+    "method": "invite",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Invitation unit tests exercise model rules only; no authenticated bridge dispatch that commits and reads back an invitation was found."
+  },
+  {
+    "plugin": "project",
+    "method": "list",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No authenticated project catalog list dispatch test found, including membership-scoped result assertions."
+  },
+  {
+    "plugin": "project",
+    "method": "list_documents",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful project document list dispatch test found; source requires a ready Incus-backed project store."
+  },
+  {
+    "plugin": "project",
+    "method": "put_document",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful project document write dispatch test found; source requires ready-container verification and Cozo persistence."
+  },
+  {
+    "plugin": "project",
+    "method": "resolve_context",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Project model ACL helpers are tested, but no authenticated resolve_context dispatch with project/personal/control-plane result assertions was found."
+  },
+  {
+    "plugin": "project",
+    "method": "revoke_member",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No authenticated revoke_member dispatch that commits membership removal and verifies subsequent access was found."
+  },
+  {
+    "plugin": "project",
+    "method": "select_agent",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No authenticated select_agent dispatch with committed selected-agent readback was found."
+  },
+  {
+    "plugin": "schema_renderer",
+    "method": "get_rendering",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge UI workspace integration test",
+        "filter": "gallery_facades_read_only_the_verified_owners_committed_workspace",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_stream_tests.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Authenticated canonical gallery dispatch returns the owner's committed spec and render_admitted=true, returns null/false to another owner, and verifies private authorization and committed-view behavior."
+  },
+  {
+    "plugin": "schema_renderer",
+    "method": "list_galleries",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge UI workspace integration test",
+        "filter": "gallery_facades_read_only_the_verified_owners_committed_workspace",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_stream_tests.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Authenticated canonical gallery list reports one workspace and rendering_count=1 for the owner, while another verified owner receives an empty list."
+  },
+  {
+    "plugin": "schema_renderer",
+    "method": "render_schema",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins state plugin unit test",
+        "filter": "renders_only_components_declared_by_the_pinned_canvas_profile",
+        "path": "crates/op-plugins/src/state_plugins/schema_renderer_methods.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Direct owner dispatch succeeds for a pinned Gemma schema and asserts every generated element uses an allowed Canvas component plus exact target and renderer schema hashes."
+  },
+  {
+    "plugin": "schema_renderer",
+    "method": "validate_schema",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins state plugin unit test",
+        "filter": "validates_transport_names_independently_and_requires_workspace_dispatch",
+        "path": "crates/op-plugins/src/state_plugins/schema_renderer_methods.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Direct owner dispatch returns a substantive validation result for a target with an invalid transport name and asserts valid=false plus the specific transport-method error; the same test confirms gallery methods are routed to authenticated workspace dispatch."
+  },
+  {
+    "plugin": "web_ui",
+    "method": "handle_event",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge UI workspace integration test",
+        "filter": "web_ui_handle_event_commits_pinned_set_state_to_owners_private_shm",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_stream_tests.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Authenticated canonical web_ui.handle_event executes a pinned setState event, asserts revision/state/action output, then verifies committed private SHM, sibling isolation and stale-revision denial."
+  },
+  {
+    "plugin": "web_ui",
+    "method": "render_page",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "web_ui facade plan/completion unit tests are contract/roundtrip checks only. Existing workspace tests call the underlying Gemma or schema_renderer methods directly; no successful web_ui.render_page dispatch was found."
+  },
+  {
+    "plugin": "web_ui",
+    "method": "update_component",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "web_ui facade plan/completion unit tests are contract/roundtrip checks only. No successful web_ui.update_component dispatch with committed SHM readback was found."
+  },
+  {
+    "plugin": "workflows",
+    "method": "cancel_workflow",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The dispatcher explicitly rejects this transition because no local executor owns it; no positive execution test exists."
+  },
+  {
+    "plugin": "workflows",
+    "method": "pause_workflow",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The dispatcher explicitly rejects this transition because no local executor owns it; no positive execution test exists."
+  },
+  {
+    "plugin": "workflows",
+    "method": "query_workflows",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Source has a static-template dispatcher branch, but no substantive successful query_workflows test asserting returned summaries/count was found."
+  },
+  {
+    "plugin": "workflows",
+    "method": "resume_workflow",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The dispatcher explicitly rejects this transition because no local executor owns it; no positive execution test exists."
+  },
+  {
+    "plugin": "workflows",
+    "method": "start_workflow",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Source validates known workflow IDs and appends a durable journal record, but no substantive successful start_workflow test asserting the output and journal was found."
+  }
+]

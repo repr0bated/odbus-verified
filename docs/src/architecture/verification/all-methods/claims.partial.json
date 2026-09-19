@@ -1,0 +1,869 @@
+[
+  {
+    "plugin": "json_render",
+    "method": "build_prompt_surface",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "export_json_schema",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "get_component_schema",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "get_config",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "get_health",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "get_package",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "get_spec_schema",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_actions",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_components",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_core_exports",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_packages",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_renderers",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "list_tools",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "set_config",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "json_render",
+    "method": "validate_spec",
+    "schema_hash": "d20200e87666f0fd8d208f11e13c76469385da8ed7d0ceea792e4f28d5a47a5e",
+    "positive_tests": [
+      {
+        "test": "state_plugins::json_render::methods::tests::all_methods_dispatch_and_tools_derive_from_schema",
+        "behavior": "All 15 owner methods return consistent package/component/action/render catalogs, meaningful health/prompt data and valid exported schemas; invalid component props are rejected and config updates survive owner readback.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/json_render_methods.rs",
+        "source_sha256": "a1a1e78838033107fc3039c380d523c581dc6120c2a871b291f3d52e3a872794",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "flush_caches",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "get_link",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "register_service",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "reset_server_features",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "reset_statistics",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "resolve_address",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "resolve_hostname",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "resolve_record",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "resolve_service",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "revert_link",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "set_link_default_route",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "set_link_dns",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "set_link_dns_ex",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "set_link_dns_over_tls",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "set_link_dnssec",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "set_link_dnssec_nta",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "set_link_domains",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "set_link_llmnr",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "set_link_multicast_dns",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "dnsresolver",
+    "method": "unregister_service",
+    "schema_hash": "fd48bbb027d3b745622c8195d6e049895f91f0fbce280b6f404738472a45caae",
+    "positive_tests": [
+      {
+        "test": "state_plugins::dnsresolver::tests::manager_reads_and_link_mutations_use_typed_outputs",
+        "behavior": "All 20 typed resolver methods traverse a private resolve1 D-Bus fixture. Tests assert native method selection, response values and mutation acceptance; native resolver effects and production state publication remain separate verification requirements.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
+        "source_sha256": "e9d9132771e1c69e7a4cdad48358b7f56a6c810fdf73f67c05e1ef03580364c3",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "ghostbridge",
+    "method": "GetGhostrunner",
+    "schema_hash": "bfa55c3e93348b81cdeeb7aa133b2d97fe5a571fa99bc29db69eec7b41c05346",
+    "positive_tests": [
+      {
+        "test": "state_plugins::ghostbridge::tests::every_declared_method_returns_concrete_state_values",
+        "behavior": "All four owner reads return the injected bridge identity, endpoint address/status/uptime and ghostrunner values; this is a state-reader fixture, not production identity transport proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/ghostbridge.rs",
+        "source_sha256": "416f301fc88f8d5a3c1ba3680474c762d21630fcd0d84d8cf6675658b52c034e",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "ghostbridge",
+    "method": "GetIdentity",
+    "schema_hash": "bfa55c3e93348b81cdeeb7aa133b2d97fe5a571fa99bc29db69eec7b41c05346",
+    "positive_tests": [
+      {
+        "test": "state_plugins::ghostbridge::tests::every_declared_method_returns_concrete_state_values",
+        "behavior": "All four owner reads return the injected bridge identity, endpoint address/status/uptime and ghostrunner values; this is a state-reader fixture, not production identity transport proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/ghostbridge.rs",
+        "source_sha256": "416f301fc88f8d5a3c1ba3680474c762d21630fcd0d84d8cf6675658b52c034e",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "ghostbridge",
+    "method": "GetState",
+    "schema_hash": "bfa55c3e93348b81cdeeb7aa133b2d97fe5a571fa99bc29db69eec7b41c05346",
+    "positive_tests": [
+      {
+        "test": "state_plugins::ghostbridge::tests::every_declared_method_returns_concrete_state_values",
+        "behavior": "All four owner reads return the injected bridge identity, endpoint address/status/uptime and ghostrunner values; this is a state-reader fixture, not production identity transport proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/ghostbridge.rs",
+        "source_sha256": "416f301fc88f8d5a3c1ba3680474c762d21630fcd0d84d8cf6675658b52c034e",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "ghostbridge",
+    "method": "ListEndpoints",
+    "schema_hash": "bfa55c3e93348b81cdeeb7aa133b2d97fe5a571fa99bc29db69eec7b41c05346",
+    "positive_tests": [
+      {
+        "test": "state_plugins::ghostbridge::tests::every_declared_method_returns_concrete_state_values",
+        "behavior": "All four owner reads return the injected bridge identity, endpoint address/status/uptime and ghostrunner values; this is a state-reader fixture, not production identity transport proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/ghostbridge.rs",
+        "source_sha256": "416f301fc88f8d5a3c1ba3680474c762d21630fcd0d84d8cf6675658b52c034e",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "balance_start",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "balance_status",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "create_subvolume",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "delete_subvolume",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "device_add",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "device_remove",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "filesystem_df",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "filesystem_usage",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "list_subvolumes",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "scrub_start",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "scrub_status",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  },
+  {
+    "plugin": "btrfs",
+    "method": "snapshot",
+    "schema_hash": "79b38e8ee3a09e4bebdc1e78d2c80f1253d0927feaabdb3b5b235341d41a0ef5",
+    "positive_tests": [
+      {
+        "test": "state_plugins::btrfs_plugin::tests::all_twelve_declared_methods_execute_against_injected_backend",
+        "behavior": "All 12 owner methods assert exact injected-backend subvolume, snapshot, device, scrub/balance and filesystem aggregate behavior, with mutation readback and failed-create absence; this is not kernel or deployment proof.",
+        "scope": "owner",
+        "source": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+        "source_sha256": "109df51fa8d6394fd5a001b0e7b601ad4a4405cb9cdab0fcce419037e8e709f9",
+        "log": "docs/src/architecture/verification/all-methods/logs/plugins-lib-01.log",
+        "log_sha256": "bc5cf8e6087ea36320bfe9d386bb9b8bac090016f5eee232940d8a66cde14157",
+        "exit_code": 0
+      }
+    ]
+  }
+]

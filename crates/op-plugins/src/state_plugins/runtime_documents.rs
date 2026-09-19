@@ -131,7 +131,14 @@ impl RuntimeDocuments {
     pub async fn read(&self, plugin_id: &str) -> Result<Option<RuntimeDocument>> {
         let store = self.store.clone();
         let id = plugin_id.to_string();
-        tokio::task::spawn_blocking(move || Self::read_sync(&store, &id)).await?
+        tokio::task::spawn_blocking(move || {
+            let result = Self::read_sync(&store, &id);
+            // Release the captured native handle before Tokio publishes the
+            // task result. A caller may drop its owner and reopen immediately.
+            drop(store);
+            result
+        })
+        .await?
     }
 
     fn read_sync(store: &CozoGraphShuttle, id: &str) -> Result<Option<RuntimeDocument>> {
@@ -145,7 +152,9 @@ impl RuntimeDocuments {
         let store = self.store.clone();
         let id = plugin_id.to_string();
         tokio::task::spawn_blocking(move || {
-            Ok::<_, anyhow::Error>(store.read_runtime_document_durable(&id)?.map(Into::into))
+            let result = store.read_runtime_document_durable(&id);
+            drop(store);
+            Ok::<_, anyhow::Error>(result?.map(Into::into))
         })
         .await?
     }
@@ -212,25 +221,30 @@ impl RuntimeDocuments {
         // future must not let another writer read before this commit finishes.
         tokio::task::spawn_blocking(move || {
             let _guard = guard;
-            let previous = Self::read_sync(&store, &id).map_err(RuntimeDocumentRejected::new)?;
-            if let Some(expected_revision) = expected_revision {
-                if previous.as_ref().map_or(0, |row| row.revision) != expected_revision {
-                    return Err(RuntimeDocumentRejected::new(anyhow::anyhow!(
-                        "runtime_document_revision_conflict"
-                    ))
-                    .into());
+            let result = (|| {
+                let previous =
+                    Self::read_sync(&store, &id).map_err(RuntimeDocumentRejected::new)?;
+                if let Some(expected_revision) = expected_revision {
+                    if previous.as_ref().map_or(0, |row| row.revision) != expected_revision {
+                        return Err(RuntimeDocumentRejected::new(anyhow::anyhow!(
+                            "runtime_document_revision_conflict"
+                        ))
+                        .into());
+                    }
                 }
-            }
-            let expected = previous.as_ref().map(|row| RuntimeDocumentRecord {
-                revision: row.revision,
-                document: row.document.clone(),
-            });
-            let (document, receipt) =
-                change(previous.map(|row| row.document)).map_err(RuntimeDocumentRejected::new)?;
-            let result = store
-                .compare_exchange_runtime_document(&id, expected.as_ref(), document)
-                .map_err(RuntimeDocumentRejected::new)?;
-            committed_result(result, receipt)
+                let expected = previous.as_ref().map(|row| RuntimeDocumentRecord {
+                    revision: row.revision,
+                    document: row.document.clone(),
+                });
+                let (document, receipt) = change(previous.map(|row| row.document))
+                    .map_err(RuntimeDocumentRejected::new)?;
+                let result = store
+                    .compare_exchange_runtime_document(&id, expected.as_ref(), document)
+                    .map_err(RuntimeDocumentRejected::new)?;
+                committed_result(result, receipt)
+            })();
+            drop(store);
+            result
         })
         .await?
     }
@@ -315,6 +329,11 @@ mod tests {
                 3
             );
             assert!(store.read("endpoint").await.unwrap().is_none());
+            assert_eq!(
+                Arc::strong_count(&store.store),
+                1,
+                "completed operations must release their native handles before returning"
+            );
         }
         let store = RuntimeDocuments::new(CozoGraphShuttle::new_persistent(path).unwrap());
         let row = store.read("config").await.unwrap().unwrap();

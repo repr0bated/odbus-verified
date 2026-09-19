@@ -106,7 +106,10 @@ pub fn project_topology(snapshot: &OvsdbSnapshot) -> Result<OvsBridgeState> {
     }
     result.sort_by(|left, right| left.name.cmp(&right.name));
     unique_names(result.iter().map(|bridge| bridge.name.as_str()))?;
-    Ok(OvsBridgeState { bridges: result })
+    Ok(OvsBridgeState {
+        bridges: result,
+        monitors: Default::default(),
+    })
 }
 
 fn table<'a>(snapshot: &'a OvsdbSnapshot, name: &str) -> Result<&'a BTreeMap<Uuid, OvsdbRow>> {

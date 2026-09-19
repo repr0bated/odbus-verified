@@ -1,0 +1,11 @@
+{
+  "log": { "loglevel": "warning" },
+  "inbounds": [ {
+    "tag": "redir-in", "listen": "0.0.0.0", "port": 12345, "protocol": "dokodemo-door",
+    "settings": { "network": "tcp", "followRedirect": true },
+    "sniffing": { "enabled": true, "destOverride": ["http","tls","quic"], "routeOnly": false }
+  } ],
+  "outbounds": [ { "tag": "egress-proxy", "protocol": "http",
+    "settings": { "servers": [ { "address": "geo.iproyal.com", "port": 12321,
+      "users": [ { "user": "PLACEHOLDER", "pass": "PLACEHOLDER" } ] } ] } } ]
+}

@@ -1,0 +1,860 @@
+[
+  {
+    "plugin": "agent_config",
+    "method": "get_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "runtime_agent_methods_round_trip_and_reject_unknown",
+        "filter": "agent_config::tests::runtime_agent_methods_round_trip_and_reject_unknown",
+        "path": "crates/op-plugins/src/state_plugins/agent_config.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/agent_config.f4cdb64fb6118b70.blob; RuntimeDocuments update/list/register/reset/get success with durable readback; unknown-agent rejection is auxiliary"
+      }
+    ],
+    "notes": "All five methods execute against an isolated Cozo-backed RuntimeDocuments owner and assert committed values. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "agent_config",
+    "method": "list_tools",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "runtime_agent_methods_round_trip_and_reject_unknown",
+        "filter": "agent_config::tests::runtime_agent_methods_round_trip_and_reject_unknown",
+        "path": "crates/op-plugins/src/state_plugins/agent_config.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/agent_config.f4cdb64fb6118b70.blob; RuntimeDocuments update/list/register/reset/get success with durable readback; unknown-agent rejection is auxiliary"
+      }
+    ],
+    "notes": "All five methods execute against an isolated Cozo-backed RuntimeDocuments owner and assert committed values. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "agent_config",
+    "method": "register_tool",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "runtime_agent_methods_round_trip_and_reject_unknown",
+        "filter": "agent_config::tests::runtime_agent_methods_round_trip_and_reject_unknown",
+        "path": "crates/op-plugins/src/state_plugins/agent_config.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/agent_config.f4cdb64fb6118b70.blob; RuntimeDocuments update/list/register/reset/get success with durable readback; unknown-agent rejection is auxiliary"
+      }
+    ],
+    "notes": "All five methods execute against an isolated Cozo-backed RuntimeDocuments owner and assert committed values. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "agent_config",
+    "method": "reset_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "runtime_agent_methods_round_trip_and_reject_unknown",
+        "filter": "agent_config::tests::runtime_agent_methods_round_trip_and_reject_unknown",
+        "path": "crates/op-plugins/src/state_plugins/agent_config.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/agent_config.f4cdb64fb6118b70.blob; RuntimeDocuments update/list/register/reset/get success with durable readback; unknown-agent rejection is auxiliary"
+      }
+    ],
+    "notes": "All five methods execute against an isolated Cozo-backed RuntimeDocuments owner and assert committed values. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "agent_config",
+    "method": "update_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "runtime_agent_methods_round_trip_and_reject_unknown",
+        "filter": "agent_config::tests::runtime_agent_methods_round_trip_and_reject_unknown",
+        "path": "crates/op-plugins/src/state_plugins/agent_config.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/agent_config.f4cdb64fb6118b70.blob; RuntimeDocuments update/list/register/reset/get success with durable readback; unknown-agent rejection is auxiliary"
+      }
+    ],
+    "notes": "All five methods execute against an isolated Cozo-backed RuntimeDocuments owner and assert committed values. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "antigravity",
+    "method": "configure_safety",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "filter": "antigravity_canonical_tests::six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "path": "crates/op-grpc-bridge/src/antigravity_canonical_tests.rs",
+        "scope": "canonical authenticated dispatch + native token fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/antigravity.a603465416c28bcd.blob; configure_safety, auth readback and local usage ledger are asserted in SHM/documents"
+      }
+    ],
+    "notes": "Positive canonical fixture covers all three antigravity methods. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "antigravity",
+    "method": "get_auth_status",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "filter": "antigravity_canonical_tests::six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "path": "crates/op-grpc-bridge/src/antigravity_canonical_tests.rs",
+        "scope": "canonical authenticated dispatch + native token fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/antigravity.a603465416c28bcd.blob; configure_safety, auth readback and local usage ledger are asserted in SHM/documents"
+      }
+    ],
+    "notes": "Positive canonical fixture covers all three antigravity methods. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "antigravity",
+    "method": "get_usage_report",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "filter": "antigravity_canonical_tests::six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "path": "crates/op-grpc-bridge/src/antigravity_canonical_tests.rs",
+        "scope": "canonical authenticated dispatch + native token fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/antigravity.a603465416c28bcd.blob; configure_safety, auth readback and local usage ledger are asserted in SHM/documents"
+      }
+    ],
+    "notes": "Positive canonical fixture covers all three antigravity methods. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "antigravity_chat",
+    "method": "configure",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "filter": "antigravity_canonical_tests::six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "path": "crates/op-grpc-bridge/src/antigravity_canonical_tests.rs",
+        "scope": "canonical authenticated dispatch + native token/bridge fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/antigravity_chat.5a5e698385bbacee.blob; configure revision, token refresh native request, bridge status and sanitized SHM readback are asserted"
+      }
+    ],
+    "notes": "Positive canonical fixture covers all three antigravity_chat methods. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "antigravity_chat",
+    "method": "get_bridge_status",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "filter": "antigravity_canonical_tests::six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "path": "crates/op-grpc-bridge/src/antigravity_canonical_tests.rs",
+        "scope": "canonical authenticated dispatch + native token/bridge fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/antigravity_chat.5a5e698385bbacee.blob; configure revision, token refresh native request, bridge status and sanitized SHM readback are asserted"
+      }
+    ],
+    "notes": "Positive canonical fixture covers all three antigravity_chat methods. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "antigravity_chat",
+    "method": "refresh_token",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "filter": "antigravity_canonical_tests::six_methods_pass_canonical_admission_native_refresh_and_shm_publication",
+        "path": "crates/op-grpc-bridge/src/antigravity_canonical_tests.rs",
+        "scope": "canonical authenticated dispatch + native token/bridge fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/antigravity_chat.5a5e698385bbacee.blob; configure revision, token refresh native request, bridge status and sanitized SHM readback are asserted"
+      }
+    ],
+    "notes": "Positive canonical fixture covers all three antigravity_chat methods. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "code_context",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "code_index",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "code_search",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "gemini_query",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "get_health",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "invoke_tool",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "list_tools",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "memory_delete",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "memory_list_namespaces",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "memory_query",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "memory_recall",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "memory_retrieve",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "memory_store",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "oscal_subids",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "register_tool",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "rust_pro",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "schema_read",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "toolsets",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "workflow_query",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "cognitive_mcp",
+    "method": "workflow_run",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful canonical registry execution/readback fixture found; current tests cover mapping, admission, descriptors, or refusal only."
+  },
+  {
+    "plugin": "ctl_plane_chatbot",
+    "method": "classify_significance",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "significance_rule_is_exact_and_has_no_storage_side_effect",
+        "filter": "ctl_plane_chatbot_methods::tests::significance_rule_is_exact_and_has_no_storage_side_effect",
+        "path": "crates/op-plugins/src/state_plugins/ctl_plane_chatbot_methods.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/ctl_plane_chatbot.e87b51b6f899e0de.blob; classification output is asserted for supported episode values and durable store remains untouched"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "ctl_plane_chatbot",
+    "method": "get_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "absent_config_remains_absent_then_revision_cas_is_exact",
+        "filter": "ctl_plane_chatbot_methods::tests::absent_config_remains_absent_then_revision_cas_is_exact",
+        "path": "crates/op-plugins/src/state_plugins/ctl_plane_chatbot_methods.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/ctl_plane_chatbot.e87b51b6f899e0de.blob; Cozo-backed config get/set success, revision CAS and readback are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "ctl_plane_chatbot",
+    "method": "get_episode",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "durable_episode_publication_is_private_and_recovers_after_seal_change",
+        "filter": "chatbot_episode_state::tests::durable_episode_publication_is_private_and_recovers_after_seal_change",
+        "path": "crates/op-grpc-bridge/src/chatbot_episode_state.rs",
+        "scope": "owner fixture + private Cozo/SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/ctl_plane_chatbot.e87b51b6f899e0de.blob; durable episode publication/readback and exact recovery are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "ctl_plane_chatbot",
+    "method": "list_episodes",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "durable_episode_publication_is_private_and_recovers_after_seal_change",
+        "filter": "chatbot_episode_state::tests::durable_episode_publication_is_private_and_recovers_after_seal_change",
+        "path": "crates/op-grpc-bridge/src/chatbot_episode_state.rs",
+        "scope": "owner fixture + private Cozo/SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/ctl_plane_chatbot.e87b51b6f899e0de.blob; durable episode publication/readback and exact recovery are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "ctl_plane_chatbot",
+    "method": "query_context",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "durable_episode_publication_is_private_and_recovers_after_seal_change",
+        "filter": "chatbot_episode_state::tests::durable_episode_publication_is_private_and_recovers_after_seal_change",
+        "path": "crates/op-grpc-bridge/src/chatbot_episode_state.rs",
+        "scope": "owner fixture + private Cozo/SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/ctl_plane_chatbot.e87b51b6f899e0de.blob; durable episode publication/readback and exact recovery are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "ctl_plane_chatbot",
+    "method": "set_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "absent_config_remains_absent_then_revision_cas_is_exact",
+        "filter": "ctl_plane_chatbot_methods::tests::absent_config_remains_absent_then_revision_cas_is_exact",
+        "path": "crates/op-plugins/src/state_plugins/ctl_plane_chatbot_methods.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/ctl_plane_chatbot.e87b51b6f899e0de.blob; Cozo-backed config get/set success, revision CAS and readback are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "ctl_plane_chatbot",
+    "method": "vectorize",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "canonical_vectorize_executes_native_embedding_and_rechecks_both_grants",
+        "filter": "ctl_plane_chatbot_dispatch::tests::canonical_vectorize_executes_native_embedding_and_rechecks_both_grants",
+        "path": "crates/op-grpc-bridge/src/ctl_plane_chatbot_dispatch.rs",
+        "scope": "canonical authenticated dispatch + native embedding fixture + private Cozo/SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/ctl_plane_chatbot.e87b51b6f899e0de.blob; vectorize sends native request and persists embedding; list/get/query read the same committed episode and query score"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "embedding_model",
+    "method": "embed",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_five_methods_use_committed_voyage_configuration_and_real_vectors",
+        "filter": "embedding_model::methods::tests::all_five_methods_use_committed_voyage_configuration_and_real_vectors",
+        "path": "crates/op-plugins/src/state_plugins/embedding_model_methods.rs",
+        "scope": "owner fixture + native HTTP fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/embedding_model.786787db90befc0e.blob; provider requests, vector cardinality, model/config revisions, and persisted readback are asserted"
+      }
+    ],
+    "notes": "All five methods have positive native HTTP fixture coverage, including config mutations and vector output. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "embedding_model",
+    "method": "get_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_five_methods_use_committed_voyage_configuration_and_real_vectors",
+        "filter": "embedding_model::methods::tests::all_five_methods_use_committed_voyage_configuration_and_real_vectors",
+        "path": "crates/op-plugins/src/state_plugins/embedding_model_methods.rs",
+        "scope": "owner fixture + native HTTP fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/embedding_model.786787db90befc0e.blob; provider requests, vector cardinality, model/config revisions, and persisted readback are asserted"
+      }
+    ],
+    "notes": "All five methods have positive native HTTP fixture coverage, including config mutations and vector output. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "embedding_model",
+    "method": "list_models",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_five_methods_use_committed_voyage_configuration_and_real_vectors",
+        "filter": "embedding_model::methods::tests::all_five_methods_use_committed_voyage_configuration_and_real_vectors",
+        "path": "crates/op-plugins/src/state_plugins/embedding_model_methods.rs",
+        "scope": "owner fixture + native HTTP fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/embedding_model.786787db90befc0e.blob; provider requests, vector cardinality, model/config revisions, and persisted readback are asserted"
+      }
+    ],
+    "notes": "All five methods have positive native HTTP fixture coverage, including config mutations and vector output. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "embedding_model",
+    "method": "set_model",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_five_methods_use_committed_voyage_configuration_and_real_vectors",
+        "filter": "embedding_model::methods::tests::all_five_methods_use_committed_voyage_configuration_and_real_vectors",
+        "path": "crates/op-plugins/src/state_plugins/embedding_model_methods.rs",
+        "scope": "owner fixture + native HTTP fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/embedding_model.786787db90befc0e.blob; provider requests, vector cardinality, model/config revisions, and persisted readback are asserted"
+      }
+    ],
+    "notes": "All five methods have positive native HTTP fixture coverage, including config mutations and vector output. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "embedding_model",
+    "method": "update_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_five_methods_use_committed_voyage_configuration_and_real_vectors",
+        "filter": "embedding_model::methods::tests::all_five_methods_use_committed_voyage_configuration_and_real_vectors",
+        "path": "crates/op-plugins/src/state_plugins/embedding_model_methods.rs",
+        "scope": "owner fixture + native HTTP fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/embedding_model.786787db90befc0e.blob; provider requests, vector cardinality, model/config revisions, and persisted readback are asserted"
+      }
+    ],
+    "notes": "All five methods have positive native HTTP fixture coverage, including config mutations and vector output. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "analyze_intent",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+        "filter": "gemma_taxonomy_dispatch_tests::all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+        "path": "crates/op-grpc-bridge/src/gemma_taxonomy_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; register/list/classify/analyze successful outputs, committed taxonomy and scope isolation are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "classify",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+        "filter": "gemma_taxonomy_dispatch_tests::all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+        "path": "crates/op-grpc-bridge/src/gemma_taxonomy_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; register/list/classify/analyze successful outputs, committed taxonomy and scope isolation are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "create_ui_spec",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "filter": "ui_workspace_production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; private RuntimeDocuments CRUD, pagination, deletion and sibling isolation are asserted"
+      },
+      {
+        "target": "private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "filter": "ui_workspace_dispatch_tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; create/update/recover/get workspace/spec and publication readback are asserted; sibling scope and contract recovery are checked"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "delete_ui_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "filter": "ui_workspace_production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; private RuntimeDocuments CRUD, pagination, deletion and sibling isolation are asserted"
+      },
+      {
+        "target": "private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "filter": "ui_workspace_dispatch_tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; create/update/recover/get workspace/spec and publication readback are asserted; sibling scope and contract recovery are checked"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "delete_ui_spec",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "filter": "ui_workspace_production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; private RuntimeDocuments CRUD, pagination, deletion and sibling isolation are asserted"
+      },
+      {
+        "target": "private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "filter": "ui_workspace_dispatch_tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; create/update/recover/get workspace/spec and publication readback are asserted; sibling scope and contract recovery are checked"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "get_ui_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "filter": "ui_workspace_production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; private RuntimeDocuments CRUD, pagination, deletion and sibling isolation are asserted"
+      },
+      {
+        "target": "private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "filter": "ui_workspace_dispatch_tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; create/update/recover/get workspace/spec and publication readback are asserted; sibling scope and contract recovery are checked"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "get_ui_spec",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "filter": "ui_workspace_production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; private RuntimeDocuments CRUD, pagination, deletion and sibling isolation are asserted"
+      },
+      {
+        "target": "private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "filter": "ui_workspace_dispatch_tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; create/update/recover/get workspace/spec and publication readback are asserted; sibling scope and contract recovery are checked"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "get_ui_workspace",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "filter": "ui_workspace_production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; private RuntimeDocuments CRUD, pagination, deletion and sibling isolation are asserted"
+      },
+      {
+        "target": "private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "filter": "ui_workspace_dispatch_tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; create/update/recover/get workspace/spec and publication readback are asserted; sibling scope and contract recovery are checked"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "handle_ui_event",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "pinned_event_binding_commits_exact_state_with_revision_cas",
+        "filter": "ui_workspace_production_tests::pinned_event_binding_commits_exact_state_with_revision_cas",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; event action executes and committed spec state/revision are read back"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "list_perspectives",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+        "filter": "gemma_taxonomy_dispatch_tests::all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+        "path": "crates/op-grpc-bridge/src/gemma_taxonomy_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; register/list/classify/analyze successful outputs, committed taxonomy and scope isolation are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "list_tags",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+        "filter": "gemma_taxonomy_dispatch_tests::all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+        "path": "crates/op-grpc-bridge/src/gemma_taxonomy_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; register/list/classify/analyze successful outputs, committed taxonomy and scope isolation are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "list_ui_specs",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "filter": "ui_workspace_production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; private RuntimeDocuments CRUD, pagination, deletion and sibling isolation are asserted"
+      },
+      {
+        "target": "private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "filter": "ui_workspace_dispatch_tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; create/update/recover/get workspace/spec and publication readback are asserted; sibling scope and contract recovery are checked"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "rebind_ui_renderer",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "filter": "ui_workspace_production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; private RuntimeDocuments CRUD, pagination, deletion and sibling isolation are asserted"
+      },
+      {
+        "target": "private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "filter": "ui_workspace_dispatch_tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; create/update/recover/get workspace/spec and publication readback are asserted; sibling scope and contract recovery are checked"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "recover_ui_workspace",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "filter": "ui_workspace_production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; private RuntimeDocuments CRUD, pagination, deletion and sibling isolation are asserted"
+      },
+      {
+        "target": "private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "filter": "ui_workspace_dispatch_tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; create/update/recover/get workspace/spec and publication readback are asserted; sibling scope and contract recovery are checked"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "register_tag",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+        "filter": "gemma_taxonomy_dispatch_tests::all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated",
+        "path": "crates/op-grpc-bridge/src/gemma_taxonomy_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; register/list/classify/analyze successful outputs, committed taxonomy and scope isolation are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "route",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "filter": "tched_router_backing::canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + native tched_router HTTP fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; gemma route output is compared with ResolveRoute output and provider/model readback"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "gemma_brain",
+    "method": "update_ui_spec",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "filter": "ui_workspace_production_tests::production_profile_crud_is_revision_checked_and_does_not_return_siblings",
+        "path": "crates/op-plugins/src/state_plugins/ui_workspace_production_tests.rs",
+        "scope": "owner fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; private RuntimeDocuments CRUD, pagination, deletion and sibling isolation are asserted"
+      },
+      {
+        "target": "private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "filter": "ui_workspace_dispatch_tests::private_workspace_publication_is_complete_scoped_recoverable_and_cancellation_owned",
+        "path": "crates/op-grpc-bridge/src/ui_workspace_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + private SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/gemma_brain.bb2cf945dffef746.blob; create/update/recover/get workspace/spec and publication readback are asserted; sibling scope and contract recovery are checked"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "large_language_model",
+    "method": "generate",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful facade execution/readback fixture found; current tests cover target planning, admission, denial, or owner internals only."
+  },
+  {
+    "plugin": "large_language_model",
+    "method": "get_config",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful facade execution/readback fixture found; current tests cover target planning, admission, denial, or owner internals only."
+  },
+  {
+    "plugin": "large_language_model",
+    "method": "get_provider",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful facade execution/readback fixture found; current tests cover target planning, admission, denial, or owner internals only."
+  },
+  {
+    "plugin": "large_language_model",
+    "method": "list_models",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful facade execution/readback fixture found; current tests cover target planning, admission, denial, or owner internals only."
+  },
+  {
+    "plugin": "large_language_model",
+    "method": "list_providers",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful facade execution/readback fixture found; current tests cover target planning, admission, denial, or owner internals only."
+  },
+  {
+    "plugin": "large_language_model",
+    "method": "set_provider",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful facade execution/readback fixture found; current tests cover target planning, admission, denial, or owner internals only."
+  },
+  {
+    "plugin": "large_language_model",
+    "method": "stream_generate",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful facade execution/readback fixture found; native generation owner coverage invokes start_generation directly and does not prove large_language_model.stream_generate dispatch."
+  },
+  {
+    "plugin": "large_language_model",
+    "method": "update_config",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful facade execution/readback fixture found; current tests cover target planning, admission, denial, or owner internals only."
+  },
+  {
+    "plugin": "mcp",
+    "method": "configure_server",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "filter": "tched_router_backing::canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + native tched_router HTTP fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/mcp.1da3cf843c30070b.blob; MCP get/configure success, masked secret readback and native URL readback are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "mcp",
+    "method": "configure_tool_groups",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "canonical_tool_group_dispatch_commits_file_live_owner_and_member_projection",
+        "filter": "mcp_config_dispatch_tests::canonical_tool_group_dispatch_commits_file_live_owner_and_member_projection",
+        "path": "crates/op-grpc-bridge/src/mcp_config_dispatch_tests.rs",
+        "scope": "canonical authenticated dispatch + policy owner + SHM; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/mcp.1da3cf843c30070b.blob; toolset mutation, durable manifest, live owner and projection readback are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  },
+  {
+    "plugin": "mcp",
+    "method": "get_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "filter": "tched_router_backing::canonical_selection_commits_verified_upstream_and_preserves_projection_on_failure",
+        "path": "crates/op-grpc-bridge/tests/tched_router_backing.rs",
+        "scope": "canonical authenticated dispatch + native tched_router HTTP fixture; sealed=/var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/mcp.1da3cf843c30070b.blob; MCP get/configure success, masked secret readback and native URL readback are asserted"
+      }
+    ],
+    "notes": "Positive test evidence is recorded above; actual behavior and readback are asserted. Audit mapping only; execute this target before treating coverage as passing."
+  }
+]

@@ -1,0 +1,408 @@
+[
+  {
+    "plugin": "human_principal",
+    "method": "get_principal",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "get_principal_found_unknown_and_malformed",
+        "filter": "human_principal_dispatch::tests::get_principal_found_unknown_and_malformed",
+        "path": "crates/op-grpc-bridge/src/human_principal_dispatch.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Registers a Cozo-backed principal, then get_principal is exercised by the found/unknown/malformed assertions in get_principal_found_unknown_and_malformed; full record fields and revoked visibility are asserted. Scope correction: these tests call the owner helper directly; they do not exercise canonical transport admission."
+  },
+  {
+    "plugin": "human_principal",
+    "method": "list_principals",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "list_principals_includes_revoked",
+        "filter": "human_principal_dispatch::tests::list_principals_includes_revoked",
+        "path": "crates/op-grpc-bridge/src/human_principal_dispatch.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive list_principals dispatch asserts empty state, active and revoked records, count, and revoked_at visibility. Scope correction: these tests call the owner helper directly; they do not exercise canonical transport admission."
+  },
+  {
+    "plugin": "human_principal",
+    "method": "register_key",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "register_key_happy_path",
+        "filter": "human_principal_dispatch::tests::register_key_happy_path",
+        "path": "crates/op-grpc-bridge/src/human_principal_dispatch.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive register_key dispatch asserts derived principal_id, pubkey, alias, timestamp, and active revoked_at; duplicate/forged/tombstone cases are auxiliary. Scope correction: these tests call the owner helper directly; they do not exercise canonical transport admission."
+  },
+  {
+    "plugin": "human_principal",
+    "method": "resolve_key",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "register_key_happy_path",
+        "filter": "human_principal_dispatch::tests::register_key_happy_path",
+        "path": "crates/op-grpc-bridge/src/human_principal_dispatch.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive resolve_key dispatch asserts the complete registered record field by field; revoked and unknown behavior is additionally asserted. Scope correction: these tests call the owner helper directly; they do not exercise canonical transport admission."
+  },
+  {
+    "plugin": "human_principal",
+    "method": "revoke_key",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "revoke_key_idempotent_on_already_revoked",
+        "filter": "human_principal_dispatch::tests::revoke_key_idempotent_on_already_revoked",
+        "path": "crates/op-grpc-bridge/src/human_principal_dispatch.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive revoke_key dispatch asserts first success, revoked_at, idempotent repeat, and durable get_principal readback. Scope correction: these tests call the owner helper directly; they do not exercise canonical transport admission."
+  },
+  {
+    "plugin": "human_principal",
+    "method": "set_alias",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "set_alias_updates_and_preserves_active_uniqueness",
+        "filter": "human_principal_dispatch::tests::set_alias_updates_and_preserves_active_uniqueness",
+        "path": "crates/op-grpc-bridge/src/human_principal_dispatch.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive set_alias dispatch asserts alias update, unchanged identity fields, resolve visibility, collision protection, and reuse after revocation. Scope correction: these tests call the owner helper directly; they do not exercise canonical transport admission."
+  },
+  {
+    "plugin": "identity_sled",
+    "method": "attach_btrfs_device",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "attach_btrfs_device_verifies_isolated_mount_and_commits_readback",
+        "filter": "identity_sled_dispatch::tests::attach_btrfs_device_verifies_isolated_mount_and_commits_readback",
+        "path": "crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
+        "scope": "owner fixture + private SHM/Cozo"
+      }
+    ],
+    "notes": "Provisioned state carries a dedicated fixture device; the owner dispatch invokes an injected mount verifier with exact device/mount/UUID, advances mutation_index, sets attached=true, and asserts Cozo/private-SHM readback while preserving genesis/SID1. No live mount or host btrfs is touched. The test uses the owner fixture seam rather than external transport admission; production dispatch retains native verifier."
+  },
+  {
+    "plugin": "identity_sled",
+    "method": "get_identity",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "e2e_container_and_human_never_cross_authenticate",
+        "filter": "oracle_assertion_e2e::e2e_container_and_human_never_cross_authenticate",
+        "path": "crates/op-grpc-bridge/tests/oracle_assertion_e2e.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "TestEnv::provision_identity successfully dispatches get_identity after genesis publication and deserializes the returned identity; the same helper checks an existing identity before seeding."
+  },
+  {
+    "plugin": "identity_sled",
+    "method": "get_session_history",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "event_receipt_and_bounded_history_come_from_durable_ledger",
+        "filter": "identity_sled_dispatch::tests::event_receipt_and_bounded_history_come_from_durable_ledger",
+        "path": "crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Positive get_session_history dispatch follows two successful record_session_event calls and asserts newest-first durable events and bounded default limit."
+  },
+  {
+    "plugin": "identity_sled",
+    "method": "provision_container",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "provision_container_dispatches_lifecycle_and_commits_anchor_to_cozo_and_shm",
+        "filter": "identity_sled_dispatch::tests::provision_container_dispatches_lifecycle_and_commits_anchor_to_cozo_and_shm",
+        "path": "crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
+        "scope": "owner fixture + private SHM/Cozo"
+      }
+    ],
+    "notes": "Injected IdentityContainerLifecycle create succeeds for an isolated instance; the owner dispatch asserts derived session/container identity, parked policy, SID1 genesis publication, and exact Cozo/private-SHM readback. The test uses the owner fixture seam rather than external transport admission; production dispatch retains native Incus lifecycle."
+  },
+  {
+    "plugin": "identity_sled",
+    "method": "record_session_event",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "event_receipt_and_bounded_history_come_from_durable_ledger",
+        "filter": "identity_sled_dispatch::tests::event_receipt_and_bounded_history_come_from_durable_ledger",
+        "path": "crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Positive record_session_event dispatch is invoked twice with an existing identity and asserts session_id plus sequence receipts; history then confirms durable persistence."
+  },
+  {
+    "plugin": "identity_sled",
+    "method": "touch_session",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "touch_session_starts_parked_container_and_preserves_identity_metadata",
+        "filter": "identity_sled_dispatch::tests::touch_session_starts_parked_container_and_preserves_identity_metadata",
+        "path": "crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
+        "scope": "owner fixture + private SHM/Cozo"
+      }
+    ],
+    "notes": "The owner dispatch starts an injected isolated lifecycle for an anchored parked container, renews last_seen/active and Running state, preserves actor class plus genesis/SID1, and asserts durable Cozo/private-SHM readback. The test uses the owner fixture seam rather than external transport admission; production dispatch retains native Incus lifecycle."
+  },
+  {
+    "plugin": "identity_sled",
+    "method": "write_identity",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "e2e_container_and_human_never_cross_authenticate",
+        "filter": "oracle_assertion_e2e::e2e_container_and_human_never_cross_authenticate",
+        "path": "crates/op-grpc-bridge/tests/oracle_assertion_e2e.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "provision_container_identity helper makes a successful authenticated write_identity gRPC call, assert_ok checks success, and returned genesis/trace_id are read; callers use this identity in subsequent auth assertions."
+  },
+  {
+    "plugin": "keypair",
+    "method": "list_keypairs",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "native_agent_inventory_retains_public_key_and_fingerprint",
+        "filter": "keypair::agent::tests::native_agent_inventory_retains_public_key_and_fingerprint",
+        "path": "crates/op-plugins/src/state_plugins/keypair/agent.rs",
+        "scope": "native"
+      }
+    ],
+    "notes": "UnixStream SSH-agent fixture receives the request, returns one identity, and assertions verify source, name, algorithm, fingerprint, public key, and schema validation. The fixture exercises the native query owner beneath dispatch_keypair_method."
+  },
+  {
+    "plugin": "keyring",
+    "method": "get_default_collection",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "secret_service_fixture_returns_collection_and_default",
+        "filter": "keyring::tests::secret_service_fixture_returns_collection_and_default",
+        "path": "crates/op-plugins/src/state_plugins/keyring.rs",
+        "scope": "native"
+      }
+    ],
+    "notes": "Secret Service p2p fixture successfully resolves the default alias and asserts the exact collection object path; missing-alias and transport-failure behavior are also covered."
+  },
+  {
+    "plugin": "keyring",
+    "method": "list_collections",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "secret_service_fixture_returns_collection_and_default",
+        "filter": "keyring::tests::secret_service_fixture_returns_collection_and_default",
+        "path": "crates/op-plugins/src/state_plugins/keyring.rs",
+        "scope": "native"
+      }
+    ],
+    "notes": "Secret Service fixture successfully reads collection metadata and asserts label and lock state through the owner operation used by dispatch_keyring_method."
+  },
+  {
+    "plugin": "oscal_subid_registry",
+    "method": "export",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "sealed_lookup_resolve_and_pages_preserve_canonical_method_keys",
+        "filter": "oscal_subid_registry_methods::tests::sealed_lookup_resolve_and_pages_preserve_canonical_method_keys",
+        "path": "crates/op-plugins/src/state_plugins/oscal_subid_registry_methods.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive export owner call asserts page size, sorted entries, cursor continuation, and terminal page against a sealed catalog snapshot."
+  },
+  {
+    "plugin": "oscal_subid_registry",
+    "method": "list_by_category",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "sealed_lookup_resolve_and_pages_preserve_canonical_method_keys",
+        "filter": "oscal_subid_registry_methods::tests::sealed_lookup_resolve_and_pages_preserve_canonical_method_keys",
+        "path": "crates/op-plugins/src/state_plugins/oscal_subid_registry_methods.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive list_by_category owner call asserts observation category filtering and returned entry count from the sealed snapshot."
+  },
+  {
+    "plugin": "oscal_subid_registry",
+    "method": "lookup",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "register_is_cas_scoped_to_existing_sealed_subids_and_survives_reopen",
+        "filter": "oscal_subid_registry_methods::tests::register_is_cas_scoped_to_existing_sealed_subids_and_survives_reopen",
+        "path": "crates/op-plugins/src/state_plugins/oscal_subid_registry_methods.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive lookup owner call after reopen asserts annotation revision, deduplicated control refs, and absence of private actor/capability fields."
+  },
+  {
+    "plugin": "oscal_subid_registry",
+    "method": "register",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "register_is_cas_scoped_to_existing_sealed_subids_and_survives_reopen",
+        "filter": "oscal_subid_registry_methods::tests::register_is_cas_scoped_to_existing_sealed_subids_and_survives_reopen",
+        "path": "crates/op-plugins/src/state_plugins/oscal_subid_registry_methods.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive register owner call asserts revision 1 and later durable reopen/readback; duplicate and unsealed-subid rejection are auxiliary."
+  },
+  {
+    "plugin": "oscal_subid_registry",
+    "method": "resolve",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "sealed_lookup_resolve_and_pages_preserve_canonical_method_keys",
+        "filter": "oscal_subid_registry_methods::tests::sealed_lookup_resolve_and_pages_preserve_canonical_method_keys",
+        "path": "crates/op-plugins/src/state_plugins/oscal_subid_registry_methods.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive resolve owner call asserts canonical schema key, transport name, and expected OSCAL subid binding."
+  },
+  {
+    "plugin": "persona",
+    "method": "authenticate",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No positive authenticate dispatch test was found. Add an isolated persona owner test invoking the exact method and assert the successful typed response (currently authenticated=false, token=null) or implement a real credential fixture if the contract intends success."
+  },
+  {
+    "plugin": "persona",
+    "method": "execute",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No positive execute dispatch test was found. Add an isolated built-in-agent fixture invoking a supported operation and assert success, agent_type, operation, data, and metadata; avoid treating unknown-agent errors as coverage."
+  },
+  {
+    "plugin": "persona",
+    "method": "get_identity",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No positive get_identity dispatch test was found. Add an owner fixture call for a known builtin_agent_descriptors entry and assert the returned persona fields plus the unknown-agent null result as auxiliary behavior."
+  },
+  {
+    "plugin": "persona",
+    "method": "set_identity",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful behavior exists: dispatch intentionally returns persona catalog is read-only. Either retire this retained schema method or provide a real mutable persona owner, then add a successful set_identity assertion with durable/readback semantics."
+  },
+  {
+    "plugin": "sess_decl",
+    "method": "declare_session",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "declaration_uses_verified_owner_and_is_idempotent",
+        "filter": "sessdecl::tests::declaration_uses_verified_owner_and_is_idempotent",
+        "path": "crates/op-plugins/src/state_plugins/sessdecl.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive dispatch asserts verified principal/session ownership, declaration fields, created=true, and idempotent repeat created=false."
+  },
+  {
+    "plugin": "sess_decl",
+    "method": "list_sessions",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "listing_isolated_by_exact_principal_and_session",
+        "filter": "sessdecl::tests::listing_isolated_by_exact_principal_and_session",
+        "path": "crates/op-plugins/src/state_plugins/sessdecl.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Positive dispatch asserts current-session scope and one returned declaration; cross-principal/session calls confirm isolation."
+  },
+  {
+    "plugin": "users",
+    "method": "create_user",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_four_methods_use_accountsservice_and_typed_readback",
+        "filter": "users::tests::all_four_methods_use_accountsservice_and_typed_readback",
+        "path": "crates/op-plugins/src/state_plugins/users.rs",
+        "scope": "native"
+      }
+    ],
+    "notes": "AccountsService zbus fixture receives successful create_user and typed uid readback; provider call sequence is asserted."
+  },
+  {
+    "plugin": "users",
+    "method": "delete_user",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_four_methods_use_accountsservice_and_typed_readback",
+        "filter": "users::tests::all_four_methods_use_accountsservice_and_typed_readback",
+        "path": "crates/op-plugins/src/state_plugins/users.rs",
+        "scope": "native"
+      }
+    ],
+    "notes": "AccountsService zbus fixture receives successful delete_user and asserts deleted=true plus DeleteUser call."
+  },
+  {
+    "plugin": "users",
+    "method": "list_users",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_four_methods_use_accountsservice_and_typed_readback",
+        "filter": "users::tests::all_four_methods_use_accountsservice_and_typed_readback",
+        "path": "crates/op-plugins/src/state_plugins/users.rs",
+        "scope": "native"
+      }
+    ],
+    "notes": "AccountsService provider dispatch successfully lists cached users and asserts scope, exhaustive flag, and total."
+  },
+  {
+    "plugin": "users",
+    "method": "modify_user",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "all_four_methods_use_accountsservice_and_typed_readback",
+        "filter": "users::tests::all_four_methods_use_accountsservice_and_typed_readback",
+        "path": "crates/op-plugins/src/state_plugins/users.rs",
+        "scope": "native"
+      }
+    ],
+    "notes": "AccountsService provider dispatch successfully modifies a user and asserts typed shell readback; no-op and partial-failure semantics are separately covered."
+  }
+]

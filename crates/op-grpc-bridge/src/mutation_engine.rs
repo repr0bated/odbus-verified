@@ -22,6 +22,9 @@ mod antigravity_canonical_tests;
 #[path = "mail_canonical_tests.rs"]
 mod mail_canonical_tests;
 #[cfg(test)]
+#[path = "mongodb_native_tests.rs"]
+mod mongodb_native_tests;
+#[cfg(test)]
 #[path = "obfuscation_canonical_tests.rs"]
 mod obfuscation_canonical_tests;
 
@@ -93,6 +96,18 @@ struct SupervisedMcpProvider {
     name: String,
     url: String,
     client: Mutex<Option<ExternalMcpClient>>,
+}
+
+/// The MongoDB plugin schema uses Rust snake_case names while the pinned MCP
+/// provider advertises hyphenated upstream tool names. Keep this owner mapping
+/// in one place so normal dispatch and native coverage exercise the same route.
+async fn dispatch_mongodb_mcp_owner(
+    provider: &SupervisedMcpProvider,
+    method: &str,
+    arguments: serde_json::Value,
+) -> anyhow::Result<serde_json::Value> {
+    let upstream_name = method.replace('_', "-");
+    provider.call_tool(&upstream_name, arguments).await
 }
 
 impl SupervisedMcpProvider {
@@ -355,6 +370,10 @@ pub struct MutationEngine {
 
     /// Authoritative RCP stores
     pub ovsdb: Arc<OvsdbDbusClient>,
+    /// Forwarders from caller-selected native monitor sessions into protected
+    /// SHM children, keyed by an opaque caller/monitor digest.
+    ovsdb_monitor_tasks: Arc<Mutex<HashMap<String, tokio::task::JoinHandle<()>>>>,
+    ovsdb_monitor_state: Arc<Mutex<()>>,
     /// Provider runtime used only after ZeroClaw resolves a schema-declared route.
     #[allow(dead_code)] // wired for chat dispatch; not yet called from dispatch loop
     chat_manager: Arc<ChatManager>,
@@ -1145,6 +1164,8 @@ impl MutationEngine {
             dbus_call_limiter: Arc::new(Semaphore::new(32)),
             audit_sink: Arc::new(OnceCell::new()),
             ovsdb,
+            ovsdb_monitor_tasks: Arc::new(Mutex::new(HashMap::new())),
+            ovsdb_monitor_state: Arc::new(Mutex::new(())),
             chat_manager: Arc::new(ChatManager::new()),
             cognitive_mcp: Arc::new(OnceCell::new()),
             chatbot_episode_cozo: Arc::new(OnceCell::new()),
@@ -1993,6 +2014,260 @@ impl MutationEngine {
             Some(expected_schema_hash),
         )
         .await
+    }
+
+    pub(crate) async fn process_observed_child(
+        &self,
+        plugin_id: &str,
+        object_path: String,
+        value: simd_json::OwnedValue,
+        expected_schema_hash: String,
+    ) -> Result<StateChange, String> {
+        self.process_authoritative_change_inner(
+            plugin_id.to_string(),
+            object_path,
+            ChangeType::PropertySet,
+            None,
+            None,
+            value,
+            Vec::new(),
+            "backend-observer".to_string(),
+            None,
+            ChangeSource::Internal,
+            Some(expected_schema_hash),
+        )
+        .await
+    }
+
+    fn ovsdb_owner_scope(
+        actor_id: &str,
+        session_id: Option<&str>,
+        session_genesis: Option<&str>,
+    ) -> String {
+        format!(
+            "{actor_id}\0{}\0{}",
+            session_id.unwrap_or_default(),
+            session_genesis.unwrap_or_default()
+        )
+    }
+
+    fn ovsdb_monitor_projection_key(owner: &str, monitor_id: &str) -> String {
+        let mut material = String::with_capacity(owner.len() + monitor_id.len() + 1);
+        material.push_str(owner);
+        material.push('\0');
+        material.push_str(monitor_id);
+        blake3::hash(material.as_bytes()).to_hex()[..32].to_owned()
+    }
+
+    async fn publish_ovsdb_topology(&self, expected_schema_hash: &str) -> anyhow::Result<()> {
+        let state = op_plugins::state_plugins::ovsdb_bridge::OvsBridgePlugin::new()
+            .query_bridges()
+            .await?;
+        self.process_observed_child(
+            "ovsdb_bridge",
+            format!(
+                "{}/bridges",
+                op_plugins::canonical::plugin_path("ovsdb_bridge")
+            ),
+            simd_json::serde::to_owned_value(state.bridges)?,
+            expected_schema_hash.to_owned(),
+        )
+        .await
+        .map(|_| ())
+        .map_err(anyhow::Error::msg)
+    }
+
+    async fn publish_ovsdb_monitor_snapshot(
+        &self,
+        projection_key: &str,
+        snapshot: &op_network::rovs_proxy::monitor::ProtocolSnapshot,
+        active: bool,
+        error: Option<String>,
+        expected_schema_hash: &str,
+    ) -> anyhow::Result<()> {
+        let state = op_plugins::state_plugins::ovsdb_bridge::OvsdbMonitorState {
+            projection_key: projection_key.to_owned(),
+            monitor_id: snapshot.monitor_id.clone(),
+            method: snapshot.method.clone(),
+            sequence: snapshot.sequence,
+            active,
+            error,
+            tables: op_plugins::state_plugins::ovsdb_bridge::materialize_monitor_tables(
+                &snapshot.tables,
+            ),
+        };
+        self.publish_ovsdb_monitor_states(projection_key, Some(state), expected_schema_hash)
+            .await
+    }
+
+    async fn publish_ovsdb_monitor_states(
+        &self,
+        projection_key: &str,
+        replacement: Option<op_plugins::state_plugins::ovsdb_bridge::OvsdbMonitorState>,
+        expected_schema_hash: &str,
+    ) -> anyhow::Result<()> {
+        let _state = self.ovsdb_monitor_state.lock().await;
+        let mut monitors = match op_core::projection_shm::read_projection_bytes("ovsdb_bridge") {
+            Some(bytes) => serde_json::from_slice::<serde_json::Value>(&bytes)?
+                .get("monitors")
+                .cloned()
+                .map(serde_json::from_value)
+                .transpose()?
+                .unwrap_or_default(),
+            None => Vec::new(),
+        };
+        monitors.retain(
+            |monitor: &op_plugins::state_plugins::ovsdb_bridge::OvsdbMonitorState| {
+                monitor.projection_key != projection_key
+            },
+        );
+        if let Some(replacement) = replacement {
+            monitors.push(replacement);
+            monitors.sort_by(|left, right| left.projection_key.cmp(&right.projection_key));
+        }
+        self.process_observed_child(
+            "ovsdb_bridge",
+            format!(
+                "{}/monitors",
+                op_plugins::canonical::plugin_path("ovsdb_bridge")
+            ),
+            simd_json::serde::to_owned_value(monitors)?,
+            expected_schema_hash.to_owned(),
+        )
+        .await
+        .map(|_| ())
+        .map_err(anyhow::Error::msg)
+    }
+
+    async fn start_ovsdb_protocol_monitor(
+        &self,
+        owner: &str,
+        database: &str,
+        monitor_id: &str,
+        method: &str,
+        requests: serde_json::Value,
+        expected_schema_hash: &str,
+    ) -> anyhow::Result<serde_json::Value> {
+        let projection_key = Self::ovsdb_monitor_projection_key(owner, monitor_id);
+        {
+            let mut tasks = self.ovsdb_monitor_tasks.lock().await;
+            tasks.retain(|_, task| !task.is_finished());
+            anyhow::ensure!(
+                !tasks.contains_key(&projection_key),
+                "OVSDB monitor projection is still draining for this caller and ID"
+            );
+        }
+        let start = self
+            .ovsdb
+            .start_protocol_monitor(owner, database, monitor_id, method, requests)
+            .await?;
+        // Establish the required root before adding a protected monitor child.
+        // A filtered result never becomes the canonical topology authority.
+        if let Err(error) = self.publish_ovsdb_topology(expected_schema_hash).await {
+            let _ = self.ovsdb.cancel_monitor(owner, monitor_id).await;
+            return Err(error.context("publish canonical OVSDB topology before monitor state"));
+        }
+        if let Err(error) = self
+            .publish_ovsdb_monitor_snapshot(
+                &projection_key,
+                &start.initial,
+                true,
+                None,
+                expected_schema_hash,
+            )
+            .await
+        {
+            let _ = self.ovsdb.cancel_monitor(owner, monitor_id).await;
+            return Err(error.context("publish initial OVSDB monitor state"));
+        }
+        let output = serde_json::json!({
+            "monitor_id": start.initial.monitor_id.clone(),
+            "method": start.initial.method.clone(),
+            "sequence": start.initial.sequence,
+            "tables": op_plugins::state_plugins::ovsdb_bridge::materialize_monitor_tables(
+                &start.initial.tables,
+            ),
+        });
+
+        let mut receiver = start.receiver;
+        receiver.borrow_and_update();
+        let mut last_snapshot = start.initial.clone();
+        let engine = self.clone();
+        let task_key = projection_key.clone();
+        let task_owner = owner.to_owned();
+        let task_monitor_id = monitor_id.to_owned();
+        let task_schema_hash = expected_schema_hash.to_owned();
+        let handle = tokio::spawn(async move {
+            loop {
+                if receiver.changed().await.is_err() {
+                    return;
+                }
+                let observation = receiver.borrow_and_update().clone();
+                match observation {
+                    op_network::rovs_proxy::monitor::ProtocolObservation::Snapshot(snapshot) => {
+                        last_snapshot = snapshot.clone();
+                        if let Err(error) = engine
+                            .publish_ovsdb_monitor_snapshot(
+                                &task_key,
+                                &snapshot,
+                                true,
+                                None,
+                                &task_schema_hash,
+                            )
+                            .await
+                        {
+                            tracing::warn!(%error, "OVSDB monitor SHM publication failed");
+                            let _ = engine
+                                .ovsdb
+                                .cancel_monitor(&task_owner, &task_monitor_id)
+                                .await;
+                            return;
+                        }
+                    }
+                    op_network::rovs_proxy::monitor::ProtocolObservation::Unavailable(reason) => {
+                        let _ = engine
+                            .publish_ovsdb_monitor_snapshot(
+                                &task_key,
+                                &last_snapshot,
+                                false,
+                                Some(reason.to_string()),
+                                &task_schema_hash,
+                            )
+                            .await;
+                        return;
+                    }
+                }
+            }
+        });
+        let mut tasks = self.ovsdb_monitor_tasks.lock().await;
+        anyhow::ensure!(
+            tasks.insert(projection_key, handle).is_none(),
+            "OVSDB monitor projection task already exists"
+        );
+        Ok(output)
+    }
+
+    async fn cancel_ovsdb_protocol_monitor(
+        &self,
+        owner: &str,
+        monitor_id: &str,
+        expected_schema_hash: &str,
+    ) -> anyhow::Result<serde_json::Value> {
+        self.ovsdb.cancel_monitor(owner, monitor_id).await?;
+        let projection_key = Self::ovsdb_monitor_projection_key(owner, monitor_id);
+        if let Some(handle) = self
+            .ovsdb_monitor_tasks
+            .lock()
+            .await
+            .remove(&projection_key)
+        {
+            handle
+                .await
+                .context("OVSDB monitor projection task failed")?;
+        }
+        self.publish_ovsdb_monitor_states(&projection_key, None, expected_schema_hash)
+            .await?;
+        Ok(serde_json::json!({"monitor_id": monitor_id, "canceled": true}))
     }
 
     pub(crate) async fn lock_host_observation(&self) -> tokio::sync::MutexGuard<'_, ()> {
@@ -2860,7 +3135,79 @@ impl MutationEngine {
                 dispatch_rovs_commands_method(&self.ovsdb, method, &parsed_value).await?
             }
             "ovsdb_bridge" => {
-                dispatch_ovsdb_bridge_method(&self.ovsdb, method, &parsed_value).await?
+                static OVSDB_PROJECTION_LOCK: tokio::sync::Mutex<()> =
+                    tokio::sync::Mutex::const_new(());
+                let _operation = OVSDB_PROJECTION_LOCK.lock().await;
+                let caller = crate::tched_router_admission::RouterCaller {
+                    actor: actor_id.into(),
+                    capability: capability_id.map(str::to_owned),
+                    session: session_id.map(str::to_owned),
+                    genesis: session_genesis.map(str::to_owned),
+                };
+                let pinned = crate::tched_router_admission::readmit_call(
+                    self,
+                    &admitted_schema,
+                    "ovsdb_bridge",
+                    method,
+                    &caller,
+                )
+                .await?;
+                let owner = Self::ovsdb_owner_scope(actor_id, session_id, session_genesis);
+                let result = match method {
+                    "monitor" => {
+                        let input: op_plugins::state_plugins::ovsdb_bridge::MonitorInput =
+                            serde_json::from_value(serde_json::to_value(&parsed_value)?)?;
+                        anyhow::ensure!(
+                            input.db_name == "Open_vSwitch",
+                            "unsupported OVSDB database"
+                        );
+                        self.start_ovsdb_protocol_monitor(
+                            &owner,
+                            &input.db_name,
+                            &input.monitor_id,
+                            "monitor",
+                            serde_json::to_value(input.monitor_requests)?,
+                            &pinned.schema_hash,
+                        )
+                        .await?
+                    }
+                    "monitor_cond" => {
+                        let input: op_plugins::state_plugins::ovsdb_bridge::MonitorCondInput =
+                            serde_json::from_value(serde_json::to_value(&parsed_value)?)?;
+                        anyhow::ensure!(
+                            input.db_name == "Open_vSwitch",
+                            "unsupported OVSDB database"
+                        );
+                        self.start_ovsdb_protocol_monitor(
+                            &owner,
+                            &input.db_name,
+                            &input.monitor_id,
+                            "monitor_cond",
+                            serde_json::to_value(input.monitor_cond_requests)?,
+                            &pinned.schema_hash,
+                        )
+                        .await?
+                    }
+                    "cancel" => {
+                        let input: op_plugins::state_plugins::ovsdb_bridge::CancelInput =
+                            serde_json::from_value(serde_json::to_value(&parsed_value)?)?;
+                        self.cancel_ovsdb_protocol_monitor(&owner, &input.id, &pinned.schema_hash)
+                            .await?
+                    }
+                    _ => {
+                        dispatch_ovsdb_bridge_method(&self.ovsdb, &owner, method, &parsed_value)
+                            .await?
+                    }
+                };
+                if matches!(
+                    method,
+                    "create_bridge" | "delete_bridge" | "add_port" | "remove_port" | "transact"
+                ) {
+                    self.publish_ovsdb_topology(&pinned.schema_hash).await.context(
+                        "OVSDB operation completed but topology publication failed; reconcile before retry",
+                    )?;
+                }
+                result
             }
             "xray" => {
                 let args = serde_json::to_value(&parsed_value)?;
@@ -3472,7 +3819,25 @@ impl MutationEngine {
             }
             "openflow" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                if matches!(method, "add_flow" | "delete_flow" | "modify_flow") {
+                if !matches!(method, "add_flow" | "delete_flow" | "modify_flow") {
+                    let _operation = self.openflow_projection.lock().await;
+                    let caller = crate::tched_router_admission::RouterCaller {
+                        actor: actor_id.into(),
+                        capability: capability_id.map(str::to_owned),
+                        session: session_id.map(str::to_owned),
+                        genesis: session_genesis.map(str::to_owned),
+                    };
+                    let _pinned = crate::tched_router_admission::readmit_call(
+                        self,
+                        &admitted_schema,
+                        "openflow",
+                        method,
+                        &caller,
+                    )
+                    .await?;
+                    op_plugins::state_plugins::openflow::dispatch_openflow_method(method, &args)
+                        .await?
+                } else {
                     let _operation = self.openflow_projection.lock().await;
                     let existing = tokio::task::spawn_blocking(|| {
                         op_core::projection_shm::read_projection_bytes("openflow")
@@ -3535,9 +3900,6 @@ impl MutationEngine {
                         "OpenFlow native operation completed but SHM publication failed; reconcile the exact member before retry",
                     )?;
                     receipt.output
-                } else {
-                    op_plugins::state_plugins::openflow::dispatch_openflow_method(method, &args)
-                        .await?
                 }
             }
             "incus" => {
@@ -3545,11 +3907,38 @@ impl MutationEngine {
                 crate::incus_observer::dispatch_method(self, method, &args).await?
             }
             "privacy_routes" => {
-                let args = serde_json::to_value(&parsed_value)?;
-                op_plugins::state_plugins::privacy_routes::dispatch_privacy_routes_method(
-                    method, &args,
+                // Keep effect and publication in the same order. Otherwise a
+                // slower earlier delete could republish a removed sibling.
+                static CALLS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+                let _owner = CALLS.lock().await;
+                let caller = crate::tched_router_admission::RouterCaller {
+                    actor: actor_id.into(),
+                    capability: capability_id.map(str::to_owned),
+                    session: session_id.map(str::to_owned),
+                    genesis: session_genesis.map(str::to_owned),
+                };
+                let pinned = crate::tched_router_admission::readmit_call(
+                    self,
+                    &admitted_schema,
+                    "privacy_routes",
+                    method,
+                    &caller,
                 )
-                .await?
+                .await?;
+                let args = serde_json::to_value(&parsed_value)?;
+                let result =
+                    op_plugins::state_plugins::privacy_routes::dispatch_privacy_routes_method(
+                        method, &args,
+                    )
+                    .await?;
+                let state = simd_json::serde::to_owned_value(result.clone())?;
+                self.process_observed_state("privacy_routes", state, pinned.schema_hash)
+                    .await
+                    .map_err(anyhow::Error::msg)
+                    .context(
+                        "privacy_routes operation completed but authoritative SHM publication failed; reconcile before retry",
+                    )?;
+                result
             }
             "web_ui" => {
                 let args = serde_json::to_value(&parsed_value)?;
@@ -3689,8 +4078,7 @@ impl MutationEngine {
             }
             "mongodb_mcp" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                let upstream = method.replace('_', "-");
-                self.mongodb_mcp.call_tool(&upstream, args).await?
+                dispatch_mongodb_mcp_owner(&self.mongodb_mcp, method, args).await?
             }
             // The same initialized chain owns both audit persistence and the
             // Snowball data snapshots. Never open an empty replacement store.
@@ -5009,22 +5397,127 @@ async fn dispatch_rovs_commands_method(
 /// `org.opdbus.v1.plugins` compatibility clients.
 async fn dispatch_ovsdb_bridge_method(
     ovsdb: &op_network::rovs_proxy::OvsdbDbusClient,
+    owner: &str,
     method: &str,
     args: &simd_json::OwnedValue,
 ) -> anyhow::Result<serde_json::Value> {
+    let args = serde_json::to_value(args)?;
     match method {
-        "list_dbs" => Ok(serde_json::json!(ovsdb.list_dbs().await?)),
-        "get_schema" => Ok(ovsdb.get_schema().await?),
-        "transact" => {
-            let operations = args
-                .get("operations")
-                .ok_or_else(|| anyhow::anyhow!("operations required"))?
-                .clone();
-            Ok(ovsdb.transact_simd(operations).await?)
+        "list_dbs" => Ok(serde_json::json!({"databases": ovsdb.list_dbs().await?})),
+        "get_schema" => {
+            let input: op_plugins::state_plugins::ovsdb_bridge::GetSchemaInput =
+                serde_json::from_value(args)?;
+            anyhow::ensure!(
+                input.db_name == "Open_vSwitch",
+                "unsupported OVSDB database"
+            );
+            Ok(serde_json::json!({"schema": ovsdb.get_schema().await?}))
         }
-        _ => Err(anyhow::anyhow!(
-            "ovsdb_bridge.{method} is schema-declared but has no runtime dispatcher"
-        )),
+        "transact" => {
+            let input: op_plugins::state_plugins::ovsdb_bridge::TransactInput =
+                serde_json::from_value(args)?;
+            anyhow::ensure!(
+                input.db_name == "Open_vSwitch",
+                "unsupported OVSDB database"
+            );
+            let operations = simd_json::serde::to_owned_value(input.operations)?;
+            let results = ovsdb.transact_simd(operations).await?;
+            anyhow::ensure!(
+                results.is_array(),
+                "OVSDB transact returned a non-array result"
+            );
+            Ok(serde_json::json!({"results": results}))
+        }
+        "create_bridge" => {
+            let input: op_plugins::state_plugins::ovsdb_bridge::CreateBridgeInput =
+                serde_json::from_value(args)?;
+            ovsdb.create_bridge(&input.name).await?;
+            if let Some(value) = input.datapath_type {
+                ovsdb
+                    .set_bridge_property(&input.name, "datapath_type", &value)
+                    .await?;
+            }
+            if let Some(value) = input.fail_mode {
+                ovsdb
+                    .set_bridge_property(&input.name, "fail_mode", &value)
+                    .await?;
+            }
+            if let Some(value) = input.stp_enable {
+                ovsdb.set_bridge_stp(&input.name, value).await?;
+            }
+            Ok(serde_json::json!({"bridge": input.name, "changed": true}))
+        }
+        "delete_bridge" => {
+            let input: op_plugins::state_plugins::ovsdb_bridge::DeleteBridgeInput =
+                serde_json::from_value(args)?;
+            ovsdb.delete_bridge(&input.name).await?;
+            Ok(serde_json::json!({"bridge": input.name, "changed": true}))
+        }
+        "add_port" => {
+            let input: op_plugins::state_plugins::ovsdb_bridge::AddPortInput =
+                serde_json::from_value(args)?;
+            ovsdb
+                .add_port_with_options(
+                    &input.bridge,
+                    &input.port,
+                    input.interface.as_deref(),
+                    input.tag,
+                )
+                .await?;
+            Ok(serde_json::json!({"bridge": input.bridge, "port": input.port, "changed": true}))
+        }
+        "remove_port" => {
+            let input: op_plugins::state_plugins::ovsdb_bridge::RemovePortInput =
+                serde_json::from_value(args)?;
+            ovsdb.delete_port(&input.bridge, &input.port).await?;
+            Ok(serde_json::json!({"bridge": input.bridge, "port": input.port, "changed": true}))
+        }
+        "echo" => {
+            let input: op_plugins::state_plugins::ovsdb_bridge::EchoInput =
+                serde_json::from_value(args)?;
+            let echoed = ovsdb
+                .native_rpc("echo", serde_json::json!(input.params))
+                .await?;
+            let params = echoed
+                .as_array()
+                .context("OVSDB echo returned a non-array result")?;
+            Ok(serde_json::json!({"params": params}))
+        }
+        "lock" => {
+            let input: op_plugins::state_plugins::ovsdb_bridge::LockInput =
+                serde_json::from_value(args)?;
+            let receipt = ovsdb.lock(owner, &input.lock_id).await?;
+            Ok(serde_json::json!({
+                "lock_id": receipt.lock_id,
+                "locked": receipt.locked,
+                "queued": receipt.queued,
+            }))
+        }
+        "steal" => {
+            let input: op_plugins::state_plugins::ovsdb_bridge::StealInput =
+                serde_json::from_value(args)?;
+            let receipt = ovsdb.steal(owner, &input.lock_id).await?;
+            Ok(serde_json::json!({
+                "lock_id": receipt.lock_id,
+                "locked": receipt.locked,
+                "queued": receipt.queued,
+            }))
+        }
+        "unlock" => {
+            let input: op_plugins::state_plugins::ovsdb_bridge::UnlockInput =
+                serde_json::from_value(args)?;
+            let receipt = ovsdb.unlock(owner, &input.lock_id).await?;
+            Ok(serde_json::json!({
+                "lock_id": receipt.lock_id,
+                "unlocked": receipt.unlocked,
+                "acquired_while_queued": receipt.acquired_while_queued,
+                "stolen_before_unlock": receipt.stolen_before_unlock,
+            }))
+        }
+        "monitor" | "monitor_cond" | "cancel" => {
+            anyhow::bail!("OVSDB monitor lifecycle must use the MutationEngine SHM owner")
+        }
+        _ => Err(anyhow::anyhow!("unknown ovsdb_bridge method: {method}")),
     }
 }
 
@@ -5037,27 +5530,7 @@ async fn dispatch_xray_method(
 ) -> anyhow::Result<serde_json::Value> {
     match method {
         "get_stats" => {
-            let name = args
-                .get("name")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| anyhow::anyhow!("name required"))?;
-            let mut client = op_xray_daemon::commander_client::stats_client(
-                op_xray_daemon::commander_client::DEFAULT_API_SOCKET,
-            )
-            .await
-            .context("connecting to xray commander API socket")?;
-            let resp = client
-                .get_stats(op_xray_daemon::commander_client::stats::GetStatsRequest {
-                    name: name.to_string(),
-                    reset: false,
-                })
-                .await
-                .context("xray StatsService.GetStats")?
-                .into_inner();
-            let stat = resp
-                .stat
-                .ok_or_else(|| anyhow::anyhow!("no such stat counter: {name}"))?;
-            Ok(serde_json::json!({ "name": stat.name, "value": stat.value }))
+            crate::xray_methods::dispatch_stats_method(args).await
         }
         "add_user" | "remove_user" | "add_inbound" => {
             crate::xray_methods::dispatch_handler_method(method, args).await

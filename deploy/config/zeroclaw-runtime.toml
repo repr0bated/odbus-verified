@@ -20,9 +20,21 @@ long_running_request_timeout_secs = 600
 model = "deepseek-v4-flash-free"
 uri = "https://opencode.ai/zen/v1"
 
+# Salad AI Gateway (OpenAI-compatible). The dashboard agent routes here; the
+# api_key is supplied by the runit run script from /etc/op-dbus/secrets/salad-api-key.
+# Qwen thinking is disabled: with it on, a one-line prompt burns ~6k reasoning
+# chars, takes 3-60s, and can exhaust max_tokens with empty content.
+[providers.models.custom.salad]
+model = "qwen3.6-35b-a3b"
+uri = "https://ai.salad.cloud/v1"
+wire_api = "chat_completions"
+native_tools = true
+merge_system_into_user = false
+provider_extra = { chat_template_kwargs = { enable_thinking = false } }
+
 [agents.dashboard]
 enabled = true
-model_provider = "opencode.go"
+model_provider = "custom.salad"
 risk_profile = "dashboard"
 skill_bundles = ["default"]
 
@@ -40,3 +52,9 @@ level = "readonly"
 workspace_only = true
 require_approval_for_medium_risk = true
 block_high_risk_commands = true
+
+# Do not fold the open-skills corpus (40 SKILL.md files, ~90k tokens) into every
+# agent turn; it alone exceeded the model context budget and made each chat turn
+# take 10-300s.
+[skills]
+open_skills_enabled = false

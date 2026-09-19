@@ -22,7 +22,7 @@ use std::time::Duration;
 // =============================================================================
 
 const PLUGIN_NAME: &str = "qdrant";
-const PLUGIN_VERSION: &str = "1.1.0";
+const PLUGIN_VERSION: &str = "2.0.0";
 const PLUGIN_CATEGORY: &str = "data";
 const PLUGIN_DESCRIPTION: &str =
     "Qdrant vector search engine — collections, vector config, HNSW, optimizers";
@@ -240,7 +240,9 @@ pub struct OperationMutationOutput {
 pub struct SnapshotDescription {
     pub name: String,
     pub size: u64,
-    pub creation_time: String,
+    /// Preserve provider absence; do not synthesize a timestamp.
+    #[serde(default)]
+    pub creation_time: Option<String>,
     #[serde(default)]
     pub checksum: Option<String>,
 }
@@ -971,10 +973,79 @@ inventory::submit! {
 }
 
 #[cfg(test)]
+#[path = "qdrant_native_tests.rs"]
+mod native_qdrant_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
+
+    #[test]
+    fn snapshot_creation_time_preserves_null_missing_and_strings() {
+        for creation_time in [
+            None,
+            Some(serde_json::Value::Null),
+            Some(serde_json::json!("2026-09-15T00:00:00Z")),
+            Some(serde_json::json!("")),
+        ] {
+            let mut provider = serde_json::json!({"name": "fixture", "size": 8});
+            if let Some(value) = &creation_time {
+                provider["creation_time"] = value.clone();
+            }
+            let snapshot: SnapshotDescription = serde_json::from_value(provider).unwrap();
+            let output = serde_json::to_value(snapshot).unwrap();
+            assert_eq!(
+                output.get("creation_time"),
+                Some(&creation_time.unwrap_or(serde_json::Value::Null))
+            );
+            assert_eq!(output["name"], "fixture");
+            assert_eq!(output["size"], 8);
+        }
+    }
+
+    #[test]
+    fn snapshot_creation_time_matches_the_plugin_method_schema() {
+        let schema = qdrant_schema();
+        assert_eq!(schema.version, PLUGIN_VERSION);
+        let returns =
+            serde_json::to_value(schema.methods["create_snapshot"].returns.as_ref().unwrap())
+                .unwrap();
+        let validator = jsonschema::validator_for(&returns).unwrap();
+        for creation_time in [serde_json::Value::Null, serde_json::json!("provider-time")] {
+            let output = serde_json::json!({
+                "status": "ok",
+                "snapshot": {"name": "fixture", "size": 8, "creation_time": creation_time}
+            });
+            assert!(validator.is_valid(&output));
+            serde_json::from_value::<CreateSnapshotOutput>(output).unwrap();
+        }
+        let malformed = serde_json::json!({
+            "status": "ok",
+            "snapshot": {"name": "fixture", "size": 8, "creation_time": 42}
+        });
+        assert!(!validator.is_valid(&malformed));
+        assert!(serde_json::from_value::<CreateSnapshotOutput>(malformed).is_err());
+    }
+
+    #[test]
+    fn snapshot_list_contract_remains_a_list_of_names() {
+        let schema = qdrant_schema();
+        let returns =
+            serde_json::to_value(schema.methods["list_snapshots"].returns.as_ref().unwrap())
+                .unwrap();
+        let validator = jsonschema::validator_for(&returns).unwrap();
+        let output = serde_json::to_value(ListSnapshotsOutput {
+            snapshots: vec!["fixture".to_string()],
+        })
+        .unwrap();
+        assert!(validator.is_valid(&output));
+        assert_eq!(output, serde_json::json!({"snapshots": ["fixture"]}));
+        assert!(!validator.is_valid(&serde_json::json!({
+            "snapshots": [{"name": "fixture", "size": 8, "creation_time": null}]
+        })));
+    }
 
     async fn invoke(method: &str, args: serde_json::Value) -> Result<serde_json::Value> {
         let listener = TcpListener::bind(("127.0.0.1", 0)).await?;

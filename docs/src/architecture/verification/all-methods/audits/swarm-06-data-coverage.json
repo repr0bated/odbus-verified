@@ -1,0 +1,352 @@
+[
+  {
+    "plugin": "memory",
+    "method": "clear_namespace",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::memory_methods::tests::retained_crud_methods_enforce_capacity_readonly_and_stable_ids","path":"crates/op-plugins/src/state_plugins/memory_methods.rs","scope":"canonical"}],
+    "notes": "The retained CRUD test invokes clear_namespace successfully and asserts its deleted_entries receipt plus the surrounding private namespace state."
+  },
+  {
+    "plugin": "memory",
+    "method": "compact",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::memory_methods::tests::persistent_cozo_executes_real_store_compaction_without_invented_bytes","path":"crates/op-plugins/src/state_plugins/memory_methods.rs","scope":"native"}],
+    "notes": "The test invokes compact on a persistent Cozo handle, asserts the compaction receipt, reopens the store, and reads the entry back."
+  },
+  {
+    "plugin": "memory",
+    "method": "create_namespace",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::memory_methods::tests::retained_crud_methods_enforce_capacity_readonly_and_stable_ids","path":"crates/op-plugins/src/state_plugins/memory_methods.rs","scope":"canonical"}],
+    "notes": "The retained CRUD test creates a namespace, asserts settings and stable id, then queries it after entry operations."
+  },
+  {
+    "plugin": "memory",
+    "method": "delete_entry",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::memory_methods::tests::retained_crud_methods_enforce_capacity_readonly_and_stable_ids","path":"crates/op-plugins/src/state_plugins/memory_methods.rs","scope":"canonical"}],
+    "notes": "The test deletes the inserted entry and asserts the returned deleted_entry_id equals the persisted entry id."
+  },
+  {
+    "plugin": "memory",
+    "method": "delete_namespace",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::memory_methods::tests::retained_crud_methods_enforce_capacity_readonly_and_stable_ids","path":"crates/op-plugins/src/state_plugins/memory_methods.rs","scope":"canonical"}],
+    "notes": "The retained CRUD test invokes delete_namespace and asserts deleted=true, after using the namespace through the canonical service."
+  },
+  {
+    "plugin": "memory",
+    "method": "get_entry",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::memory_methods::tests::retained_crud_methods_enforce_capacity_readonly_and_stable_ids","path":"crates/op-plugins/src/state_plugins/memory_methods.rs","scope":"canonical"}],
+    "notes": "The test reads the updated entry back and asserts its value and stable id."
+  },
+  {
+    "plugin": "memory",
+    "method": "get_stats",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::memory_methods::tests::retained_crud_methods_enforce_capacity_readonly_and_stable_ids","path":"crates/op-plugins/src/state_plugins/memory_methods.rs","scope":"canonical"}],
+    "notes": "The retained CRUD test invokes get_stats after insertion and asserts total_entries=1."
+  },
+  {
+    "plugin": "memory",
+    "method": "insert_entry",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::memory_methods::tests::retained_crud_methods_enforce_capacity_readonly_and_stable_ids","path":"crates/op-plugins/src/state_plugins/memory_methods.rs","scope":"canonical"}],
+    "notes": "The test inserts a private value, records its returned id, and later reads and updates the same entry."
+  },
+  {
+    "plugin": "memory",
+    "method": "query_namespace",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::memory_methods::tests::retained_crud_methods_enforce_capacity_readonly_and_stable_ids","path":"crates/op-plugins/src/state_plugins/memory_methods.rs","scope":"canonical"}],
+    "notes": "The test queries the namespace after insertion and asserts entry_count=1."
+  },
+  {
+    "plugin": "memory",
+    "method": "update_entry",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::memory_methods::tests::retained_crud_methods_enforce_capacity_readonly_and_stable_ids","path":"crates/op-plugins/src/state_plugins/memory_methods.rs","scope":"canonical"}],
+    "notes": "The test updates the inserted entry, asserts the id is stable and previous_value is returned, then verifies the new value with get_entry."
+  },
+  {
+    "plugin": "cozo",
+    "method": "backup",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::cozo::methods::tests::all_seven_methods_execute_against_the_supplied_native_handle","path":"crates/op-plugins/src/state_plugins/cozo_methods_tests.rs","scope":"native"}],
+    "notes": "The native Cozo test creates a relation, invokes backup, and asserts the immutable archive receipt/file mode before restoring it."
+  },
+  {
+    "plugin": "cozo",
+    "method": "describe_relation",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::cozo::methods::tests::all_seven_methods_execute_against_the_supplied_native_handle","path":"crates/op-plugins/src/state_plugins/cozo_methods_tests.rs","scope":"native"}],
+    "notes": "The test invokes describe_relation on the relation created by run_query and asserts both typed columns."
+  },
+  {
+    "plugin": "cozo",
+    "method": "export_relations",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::cozo::methods::tests::all_seven_methods_execute_against_the_supplied_native_handle","path":"crates/op-plugins/src/state_plugins/cozo_methods_tests.rs","scope":"native"}],
+    "notes": "The test exports the created/imported relation and asserts exact headers and rows, including the restored state."
+  },
+  {
+    "plugin": "cozo",
+    "method": "import_relations",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::cozo::methods::tests::all_seven_methods_execute_against_the_supplied_native_handle","path":"crates/op-plugins/src/state_plugins/cozo_methods_tests.rs","scope":"native"}],
+    "notes": "The test imports typed rows, asserts committed=true/rows=2, and reads them back through export_relations."
+  },
+  {
+    "plugin": "cozo",
+    "method": "list_relations",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::cozo::methods::tests::all_seven_methods_execute_against_the_supplied_native_handle","path":"crates/op-plugins/src/state_plugins/cozo_methods_tests.rs","scope":"native"}],
+    "notes": "The test lists relations after a real run_query create and asserts portable_items is present."
+  },
+  {
+    "plugin": "cozo",
+    "method": "restore",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::cozo::methods::tests::all_seven_methods_execute_against_the_supplied_native_handle","path":"crates/op-plugins/src/state_plugins/cozo_methods_tests.rs","scope":"native"}],
+    "notes": "The test mutates a relation, invokes restore from the backup receipt, asserts committed/atomic, and verifies exact exported rows and index behavior."
+  },
+  {
+    "plugin": "cozo",
+    "method": "run_query",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::cozo::methods::tests::all_seven_methods_execute_against_the_supplied_native_handle","path":"crates/op-plugins/src/state_plugins/cozo_methods_tests.rs","scope":"native"}],
+    "notes": "The test invokes run_query against the supplied native Cozo handle to create and later mutate a relation, with downstream list/describe/export assertions."
+  },
+  {
+    "plugin": "datastore",
+    "method": "export",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-grpc-bridge/lib","filter":"datastore_methods::tests::all_methods_read_one_real_committed_public_snapshot","path":"crates/op-grpc-bridge/src/datastore_methods.rs","scope":"canonical"}],
+    "notes": "The test exports the present committed object and asserts one object plus the same generation binding as get_object."
+  },
+  {
+    "plugin": "datastore",
+    "method": "get_object",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-grpc-bridge/lib","filter":"datastore_methods::tests::all_methods_read_one_real_committed_public_snapshot","path":"crates/op-grpc-bridge/src/datastore_methods.rs","scope":"canonical"}],
+    "notes": "The test reads a real sealed/projection fixture and asserts policy-filtered child state while secret and hidden fields are absent."
+  },
+  {
+    "plugin": "datastore",
+    "method": "get_stats",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-grpc-bridge/lib","filter":"datastore_methods::tests::all_methods_read_one_real_committed_public_snapshot","path":"crates/op-grpc-bridge/src/datastore_methods.rs","scope":"canonical"}],
+    "notes": "The test invokes get_stats over the same committed snapshot and asserts present, withheld, unobserved counts and nonzero state bytes."
+  },
+  {
+    "plugin": "datastore",
+    "method": "list_objects",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-grpc-bridge/lib","filter":"datastore_methods::tests::all_methods_read_one_real_committed_public_snapshot","path":"crates/op-grpc-bridge/src/datastore_methods.rs","scope":"canonical"}],
+    "notes": "The test invokes list_objects against a real sealed catalog and committed projection fixture and asserts all three exposure classes."
+  },
+  {
+    "plugin": "datastore",
+    "method": "query",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-grpc-bridge/lib","filter":"datastore_methods::tests::all_methods_read_one_real_committed_public_snapshot","path":"crates/op-grpc-bridge/src/datastore_methods.rs","scope":"canonical"}],
+    "notes": "The test filters query by withheld exposure and asserts exactly one result with null state."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "aggregate",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No repository test invokes the canonical mutation_engine Mongo provider route or asserts aggregate results. Add a stateful MCP fixture with seeded collection documents and a grouping pipeline. Live provider readiness is present but authenticated readiness is absent."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "aggregate_db",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful aggregate_db invocation/readback exists. Add an external MCP protocol fixture through SupervisedMcpProvider and assert a database-level pipeline result; live authenticated Mongo marker is absent."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "collection_indexes",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Only schema declarations and provider tool policy are present. Add a provider fixture that creates/seeds a collection index and assert collection_indexes returns that index."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "collection_schema",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No canonical collection_schema call is tested. Add a provider fixture with heterogeneous sample documents and assert inferred schema fields through the external MCP response."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "collection_storage_size",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful storage-size invocation/readback exists. Add a seeded collection fixture and assert a nonzero provider-reported storage size through the canonical route."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "count",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No count call reaches a real or stateful provider fixture. Add seeded documents, invoke count with a filter, and assert the exact count."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "db_stats",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No db_stats invocation/readback exists. Add a provider fixture with a database and collections and assert returned database statistics."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "find",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No canonical find call is tested. Add seeded documents to a stateful MCP fixture, invoke filter/projection/limit, and assert the returned documents."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "list_collections",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful list_collections provider invocation/readback exists. Add a fixture with known collections and assert their names through SupervisedMcpProvider."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "list_connections",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No test exercises the provider connection listing. Add an MCP fixture that advertises a known connection and assert list_connections returns it; live authenticated marker is absent."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "list_databases",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No successful list_databases call/readback exists. Add a fixture with a known connection and databases and assert the returned database names."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "list_knowledge_sources",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No provider invocation asserts knowledge-source discovery. Add a deterministic Mongo MCP knowledge fixture and assert source names/metadata."
+  },
+  {
+    "plugin": "mongodb_mcp",
+    "method": "search_knowledge",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No provider invocation asserts knowledge search results. Add a deterministic knowledge fixture, invoke a query, and assert matching result content/source metadata."
+  },
+  {
+    "plugin": "qdrant",
+    "method": "create_collection",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "all_declared_methods_use_typed_http_contracts invokes a one-response mock but only checks that output is not AckOutput; it does not assert collection state/readback. Add a stateful HTTP fixture and follow with list_collections. No Qdrant HTTP endpoint was reachable during this audit."
+  },
+  {
+    "plugin": "qdrant",
+    "method": "create_payload_index",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The existing typed HTTP bundle has no index readback. Add a stateful fixture that records the field schema and assert the resulting collection/index metadata. Qdrant HTTP was unreachable on tested local/host endpoints."
+  },
+  {
+    "plugin": "qdrant",
+    "method": "create_snapshot",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The existing mock returns a snapshot-shaped payload but the test asserts no domain fields. Add a stateful snapshot fixture and follow with list_snapshots/readback. Qdrant HTTP was unreachable on tested endpoints."
+  },
+  {
+    "plugin": "qdrant",
+    "method": "delete_collection",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The existing invocation uses a stateless success mock and has no post-delete list/readback. Add create then delete against a stateful fixture and assert collection absence. Qdrant HTTP was unreachable on tested endpoints."
+  },
+  {
+    "plugin": "qdrant",
+    "method": "delete_points",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The existing mock does not retain points and the test does not assert operation fields. Add upsert, delete, and scroll/search readback in a stateful fixture. Qdrant HTTP was unreachable on tested endpoints."
+  },
+  {
+    "plugin": "qdrant",
+    "method": "list_collections",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The typed mock returns demo but the test never asserts the collections output. Add a stateful fixture with create/readback and assert the exact collection names. Qdrant HTTP was unreachable on tested endpoints."
+  },
+  {
+    "plugin": "qdrant",
+    "method": "list_snapshots",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The typed mock returns an empty array without assertions. Add create_snapshot followed by list_snapshots and assert the created snapshot name. Qdrant HTTP was unreachable on tested endpoints."
+  },
+  {
+    "plugin": "qdrant",
+    "method": "scroll_points",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The existing mock returns no points and the test only checks no AckOutput. Add upsert_points then scroll_points and assert point ids/payloads and pagination. Qdrant HTTP was unreachable on tested endpoints."
+  },
+  {
+    "plugin": "qdrant",
+    "method": "search_points",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The existing mock returns an empty search result with no assertions. Add seeded vectors and assert returned ids/scores from search_points. Qdrant HTTP was unreachable on tested endpoints."
+  },
+  {
+    "plugin": "qdrant",
+    "method": "upsert_points",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "The existing invocation sends an empty point list to a stateless mock. Add nonempty upsert then scroll/search readback asserting point identity and payload. Qdrant HTTP was unreachable on tested endpoints."
+  },
+  {
+    "plugin": "config",
+    "method": "delete_key",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::config::tests::runtime_config_methods_round_trip_arbitrary_json","path":"crates/op-plugins/src/state_plugins/config.rs","scope":"canonical"}],
+    "notes": "The runtime round-trip test invokes delete_key after set/get/export and asserts deleted=true."
+  },
+  {
+    "plugin": "config",
+    "method": "export_config",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::config::tests::runtime_config_methods_round_trip_arbitrary_json","path":"crates/op-plugins/src/state_plugins/config.rs","scope":"canonical"}],
+    "notes": "The test exports the committed arbitrary JSON value and asserts the exact config map."
+  },
+  {
+    "plugin": "config",
+    "method": "get_value",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::config::tests::runtime_config_methods_round_trip_arbitrary_json","path":"crates/op-plugins/src/state_plugins/config.rs","scope":"canonical"}],
+    "notes": "The test reads the value set through the runtime document store and asserts value plus found=true."
+  },
+  {
+    "plugin": "config",
+    "method": "list_keys",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::config::tests::runtime_config_methods_round_trip_arbitrary_json","path":"crates/op-plugins/src/state_plugins/config.rs","scope":"canonical"}],
+    "notes": "The test invokes list_keys on an empty store and asserts the initial empty key set before the write/read round trip."
+  },
+  {
+    "plugin": "config",
+    "method": "set_value",
+    "status": "mapped",
+    "positive_tests": [{"target":"op-plugins/lib","filter":"state_plugins::config::tests::runtime_config_methods_round_trip_arbitrary_json","path":"crates/op-plugins/src/state_plugins/config.rs","scope":"canonical"}],
+    "notes": "The test sets nested arbitrary JSON, then asserts it through get_value and export_config."
+  }
+]

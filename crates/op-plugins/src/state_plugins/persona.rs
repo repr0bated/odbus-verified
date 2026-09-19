@@ -512,3 +512,74 @@ pub fn persona_schema() -> PluginSchema {
 inventory::submit! {
     crate::default_registry::PluginReg::new(PLUGIN_NAME, |_ctx| std::sync::Arc::new(PersonaPlugin::new()))
 }
+
+#[cfg(test)]
+mod methods_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[tokio::test]
+    async fn identity_lookup_and_execute_use_registered_persona_operations() {
+        let identity = dispatch_persona_method("get_identity", &json!({"agent_type":"rust-pro"}))
+            .await
+            .unwrap();
+        assert_eq!(identity["persona"]["agent_type"], "rust-pro");
+        assert!(identity["persona"]["name"]
+            .as_str()
+            .unwrap()
+            .contains("Rust"));
+        assert!(identity["persona"]["operations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|operation| operation == "check"));
+        assert!(!identity["persona"]["operation_schemas"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+        let expert =
+            dispatch_persona_method("get_identity", &json!({"agent_type":"backend-architect"}))
+                .await
+                .unwrap();
+        assert!(expert["persona"]["operations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|operation| operation == "consult"));
+        let query = "How should API design handle retries?";
+        let executed = dispatch_persona_method(
+            "execute",
+            &json!({
+                "agent_type":"backend-architect", "operation":"consult", "query":query
+            }),
+        )
+        .await
+        .unwrap();
+        assert_eq!(executed["success"], true);
+        assert_eq!(executed["agent_type"], "backend-architect");
+        assert_eq!(executed["operation"], "consult");
+        assert_eq!(executed["data"]["query"], query);
+        assert_eq!(executed["data"]["source"], "embedded_knowledge");
+        assert!(!executed["data"]["recommendations"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+        assert!(executed["data"]["answer"]
+            .as_str()
+            .unwrap()
+            .contains("API design"));
+        let unknown =
+            dispatch_persona_method("get_identity", &json!({"agent_type":"absent-persona"}))
+                .await
+                .unwrap();
+        assert_eq!(unknown["persona"], serde_json::Value::Null);
+        assert!(dispatch_persona_method(
+            "execute",
+            &json!({
+                "agent_type":"absent-persona", "operation":"consult", "query":query
+            })
+        )
+        .await
+        .is_err());
+    }
+}

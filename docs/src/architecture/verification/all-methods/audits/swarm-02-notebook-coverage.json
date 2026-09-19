@@ -1,0 +1,345 @@
+[
+  {
+    "plugin": "notebooklm",
+    "method": "batch",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "chat_configure",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "chat_export",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "chat_get",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "chat_list",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "cross_notebook_query",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "download_all_artifacts",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "download_artifact",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "export_artifact",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "get_health",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "label",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "note",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_create",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_delete",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_describe",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_get",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_list",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_query",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_query_start",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge unit tests",
+        "filter": "pending_result_is_private_then_returns_actual_unicode_and_citations",
+        "path": "crates/op-grpc-bridge/src/notebooklm_queries.rs",
+        "scope": "owner-fixture"
+      }
+    ],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. Owner-owned async start lifecycle proves publication, private ownership and completion handling; it does not prove authenticated provider execution. Test execution not claimed until parent build slot."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_query_status",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge unit tests",
+        "filter": "pending_result_is_private_then_returns_actual_unicode_and_citations",
+        "path": "crates/op-grpc-bridge/src/notebooklm_queries.rs",
+        "scope": "owner-fixture"
+      }
+    ],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. Owner-owned async status lifecycle proves pending/completed/failed/expiry and principal/session isolation; it does not prove authenticated provider execution. Test execution not claimed until parent build slot."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_rename",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_share_batch",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_share_invite",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_share_public",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "notebook_share_status",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "pipeline",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "reauth",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "refresh_auth",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "research_import",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "research_start",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "research_status",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "save_auth_tokens",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "select_notebook",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "server_info",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "setup_auth",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "source_add",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "source_delete",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "source_describe",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "source_get_content",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "source_list_drive",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "source_rename",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "source_sync_drive",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "studio_create",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "studio_delete",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "studio_revise",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "studio_status",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  },
+  {
+    "plugin": "notebooklm",
+    "method": "tag",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Sealed blob /var/tmp/odbus-decoy-package-proof.cLuFA9/sealed/notebooklm.96ff688d41be7874.blob. No existing successful owner/native provider behavior test found. Existing nlm_cli argv tests and notebooklm_response_contracts schema/normalization/protobuf round trips are insufficient to claim success behavior; authenticated Google execution is intentionally unrun. Explicit missing case."
+  }
+]

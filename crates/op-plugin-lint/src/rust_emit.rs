@@ -441,7 +441,11 @@ mod tests {
         let before = keys.len();
         keys.sort();
         keys.dedup();
-        assert_eq!(keys.len(), before, "emitted fields must have unique json names");
+        assert_eq!(
+            keys.len(),
+            before,
+            "emitted fields must have unique json names"
+        );
     }
 
     #[test]

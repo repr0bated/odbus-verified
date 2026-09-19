@@ -483,15 +483,45 @@ mod tests {
     }
 
     #[test]
-    fn every_declared_method_has_a_domain_dispatcher() {
-        let schema = ghostbridge_plugin_schema();
-        let state = GhostbridgePlugin::current_state();
+    fn every_declared_method_returns_concrete_state_values() {
+        let mut state = GhostbridgePlugin::current_state();
+        state.bridge_identity.wireguard_pubkey = "warp-decoy-pubkey".to_string();
+        state.bridge_identity.tls_expires = "2026-12-31T00:00:00Z".to_string();
+        state.endpoints.push(BridgeEndpoint {
+            id: "endpoint-1".to_string(),
+            address: "198.51.100.10:443".to_string(),
+            status: "active".to_string(),
+            peer_pubkey: "peer-key".to_string(),
+            uptime_secs: 42,
+        });
 
-        for method in schema.methods.keys() {
-            let result = dispatch_ghostbridge_method(method, &state)
-                .unwrap_or_else(|error| panic!("{method} is not executable: {error}"));
-            assert!(result.is_object(), "{method} must return an object");
-        }
+        let get_state = dispatch_ghostbridge_method("GetState", &state).unwrap();
+        assert_eq!(get_state["state"]["status"], "declared");
+        assert_eq!(
+            get_state["state"]["bridge_identity"]["wireguard_pubkey"],
+            "warp-decoy-pubkey"
+        );
+        assert_eq!(get_state["state"]["endpoints"][0]["id"], "endpoint-1");
+
+        let identity = dispatch_ghostbridge_method("GetIdentity", &state).unwrap();
+        assert_eq!(
+            identity["identity"]["wireguard_pubkey"],
+            "warp-decoy-pubkey"
+        );
+        assert_eq!(identity["identity"]["tls_subject"], "ghostbridge.tech");
+        assert_eq!(identity["identity"]["tls_expires"], "2026-12-31T00:00:00Z");
+
+        let endpoints = dispatch_ghostbridge_method("ListEndpoints", &state).unwrap();
+        assert_eq!(endpoints["endpoints"].as_array().unwrap().len(), 1);
+        assert_eq!(endpoints["endpoints"][0]["address"], "198.51.100.10:443");
+        assert_eq!(endpoints["endpoints"][0]["status"], "active");
+        assert_eq!(endpoints["endpoints"][0]["uptime_secs"], 42);
+
+        let ghostrunner = dispatch_ghostbridge_method("GetGhostrunner", &state).unwrap();
+        assert_eq!(ghostrunner["ghostrunner"]["port"], 8091);
+        assert_eq!(ghostrunner["ghostrunner"]["bind_addr"], "127.0.0.1");
+        assert_eq!(ghostrunner["ghostrunner"]["path"], "/ghostrunner");
+        assert_eq!(ghostrunner["ghostrunner"]["enabled"], true);
     }
 
     #[test]
