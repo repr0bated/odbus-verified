@@ -71,7 +71,19 @@ impl CognitiveMcpServer {
             return Err("a durable CognitiveMcpServer requires a persistent Cozo path".into());
         }
         let cozo_shuttle = Arc::new(CozoGraphShuttle::new_persistent(PathBuf::from(db_path))?);
-        Self::new_with_shuttle(cozo_shuttle).await
+        let server = Self::new_with_shuttle(cozo_shuttle).await?;
+        // Owner decision 2026-09-19: the semantic shuttle is not optional on
+        // the durable path. Every Cozo write is vectorized; a runtime that
+        // could write memory it cannot embed would silently split the truth.
+        // Fail closed here — the bridge reports Unavailable for cognitive
+        // methods until Qdrant and the embedder are reachable.
+        if server.qdrant_shuttle.is_none() {
+            return Err(
+                "durable CognitiveMcpServer requires the Qdrant semantic shuttle (COGNITIVE_MCP_QDRANT_URL reachable and a Voyage key); refusing to serve memory without vectors"
+                    .into(),
+            );
+        }
+        Ok(server)
     }
 
     /// Create a Cognitive MCP server with a pre-configured CozoGraphShuttle.

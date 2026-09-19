@@ -813,6 +813,26 @@ pub(crate) fn ctl_plane_chatbot_schema() -> PluginSchema {
     )
     .expect("knowledge snapshot schema is self-contained");
 
+    // Durable writes are announced as signals so the chain (and the vector
+    // projection, OD-64) records the committed document under its own
+    // schema — the schema is the noise filter for what gets embedded.
+    schema.signals.push(op_state_store::SignalDecl {
+        name: "episode_committed".to_string(),
+        payload: Some(
+            simd_json::serde::to_owned_value(schemars::schema_for!(ReasoningEpisode))
+                .expect("episode schema serializes"),
+        ),
+        subid: "evt.service.ctl-plane-chatbot.episode.committed@v1".to_string(),
+    });
+    schema.signals.push(op_state_store::SignalDecl {
+        name: "knowledge_committed".to_string(),
+        payload: Some(
+            simd_json::serde::to_owned_value(schemars::schema_for!(KnowledgePush))
+                .expect("knowledge schema serializes"),
+        ),
+        subid: "evt.service.ctl-plane-chatbot.knowledge.committed@v1".to_string(),
+    });
+
     // Add methods
     use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
     use op_state_store::SideEffect;

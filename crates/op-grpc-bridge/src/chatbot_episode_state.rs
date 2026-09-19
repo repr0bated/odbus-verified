@@ -462,8 +462,10 @@ impl EpisodePublisher {
     ) -> Result<EpisodeSnapshot> {
         let store = engine.ctl_plane_chatbot_episode_cozo().await?;
         let effect = self.admit_effect(engine, scope.clone()).await?;
-        self.commit_effect(effect, move || {
-            let (_, snapshot) = store.insert_scoped_knowledge_and_snapshot(
+        let announce_scope = scope.clone();
+        let snapshot = self
+            .commit_effect(effect, move || {
+                let (_, snapshot) = store.insert_scoped_knowledge_and_snapshot(
                 &scope,
                 &push,
                 &|document| {
@@ -480,9 +482,16 @@ impl EpisodePublisher {
                 },
                 SNAPSHOT_LIMIT,
             )?;
-            Ok(snapshot)
-        })
-        .await
+                Ok(snapshot)
+            })
+            .await?;
+        // Newest first: the row this commit produced.
+        if let Some(row) = snapshot.knowledge.first() {
+            engine
+                .announce_chatbot_write("knowledge_committed", &announce_scope, &row.push)
+                .await;
+        }
+        Ok(snapshot)
     }
 
     pub(crate) fn subscribe(&self) -> broadcast::Receiver<String> {
@@ -778,6 +787,38 @@ mod tests {
                 .unwrap()
                 .is_none(),
             "no sled, no delivery"
+        );
+
+        // Every durable chatbot write is announced into the chain under the
+        // principal, through its declared signal, so it is vectorized (OD-64).
+        let chain = engine.event_chain.read().await;
+        let announced: Vec<_> = chain
+            .events()
+            .iter()
+            .filter(|e| e.plugin_id == PLUGIN)
+            .collect();
+        let episodes = announced
+            .iter()
+            .filter(|e| e.method_name.as_deref() == Some("episode_committed"))
+            .count();
+        let knowledge: Vec<_> = announced
+            .iter()
+            .filter(|e| e.method_name.as_deref() == Some("knowledge_committed"))
+            .collect();
+        // Only the engine path announces; the test-only publisher.commit bypasses it.
+        assert_eq!(episodes, 1, "chat episodes announced: {episodes}");
+        assert_eq!(knowledge.len(), 1);
+        let event = knowledge[0];
+        assert_eq!(event.actor_id, scope.principal_id);
+        assert_eq!(event.session_id.as_deref(), Some(scope.session_id.as_str()));
+        assert!(
+            event.sealed_id_digest.is_some(),
+            "identity digest on the announcement"
+        );
+        assert_eq!(
+            event.input_payload.as_ref().unwrap()["source_id"],
+            "push-1",
+            "the committed document is the payload"
         );
     }
 }

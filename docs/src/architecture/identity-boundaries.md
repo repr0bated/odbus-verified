@@ -179,6 +179,40 @@ hosted here and inside the identity model. Spec:
 - Operator steps: mint the agent's sled like any principal (register its key,
   anchor a genesis), materialize its grants, then `set_trigger`.
 
+### 3.2c Vectorize on mutation (OD-64, 2026-09-19)
+
+Owner decisions: the semantic shuttle is **not optional**; every Cozo write
+path is vectorized; a mutation with a gRPC payload is vectorized on mutation;
+the noise filter is **the sealed plugin schema that created the data**.
+
+- Every chain event is already a Snowball timing block. `ChainVectorProjector`
+  (bridge) wakes on each audit write and runs `ChainVectorIndex::project_pending`
+  chain-first: embedding → `vectors/` subvolume (+ `vec-N.bin.meta.json`
+  sidecar: host load from `/proc/loadavg` + PSI, `queued_ms`, `embed_ms`,
+  policy) → `btrfs send/receive` → Qdrant on the replica (`ingest_received`).
+  Origin upsert only under `OPDBUS_CHAIN_VECTORS_UPSERT_ORIGIN=1`. A block is
+  durable before its vector exists: an embedder/Qdrant outage delays the
+  index, never the control plane; the loop retries loudly and drains backlog.
+- `SchemaProjectionPolicy`: the embedding text is the method's (or signal's)
+  schema-described arguments — declared fields with the descriptions the
+  schema author wrote, `x-secret` subtrees dropped, undeclared keys ignored
+  (`op_state_store::schema_projection`). Hashes, event ids, raw timestamps
+  and identity metadata never enter the text; they go to the Qdrant payload
+  as allow-listed filters (`actor_id`, `session_id`, `sealed_id_digest`,
+  `capability_id`, `decision`, `subid`, `schema_version`, `vector_meta`).
+  Unsealed/retired plugins embed only the block header.
+- Durable chatbot writes are announced into the chain under the principal
+  through declared signals (`ctl_plane_chatbot.episode_committed`,
+  `knowledge_committed`, payload = the committed document's schema), so
+  episodes (chat and agent runs) and knowledge pushes are vectorized on
+  commit through the same projector. `memory_store` already upserts
+  `user_memory`; with the mandatory shuttle it always does.
+- `CognitiveMcpServer::new_durable` fails closed without Qdrant + a Voyage
+  key: cognitive methods report Unavailable until they are reachable.
+- Retrieval from the chain collection is cross-principal at the collection
+  level; readers **must** filter by `actor_id`/`sealed_id_digest` payload
+  fields (retrieval stays principal-scoped — §OD-47).
+
 ### 3.3 Xray container (EXTERNAL, unchanged)
 
 - Passthrough only: SNI/protocol sniffing, no TLS termination for this

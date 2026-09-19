@@ -555,6 +555,10 @@ pub(crate) async fn session_record_for_actor(
     Ok(read_private_state().await?.sleds.into_iter().find(|sled| {
         sled.session_id == actor_id
             || sled.wireguard_pubkey == actor_id
+            // The principal id is the canonical actor of every dispatched
+            // method; authoritative changes announced under it must stamp
+            // the same session identity as the method call did.
+            || op_identity::session::derive_principal_id(&sled.wireguard_pubkey) == actor_id
             || (!sled.trace_id.is_empty() && sled.trace_id == actor_id)
             || sled.genesis.as_deref() == Some(actor_id)
     }))

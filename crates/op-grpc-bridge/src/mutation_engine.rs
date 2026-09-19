@@ -367,6 +367,8 @@ pub struct MutationEngine {
     /// Empty until [`MutationEngine::init_audit_durability`] runs; a missing
     /// sink degrades to RAM-only recording rather than failing dispatches.
     audit_sink: Arc<OnceCell<AuditSink>>,
+    /// Vectorize on mutation (OD-64): woken after every audit write.
+    vector_projector: Arc<OnceCell<crate::chain_vector_projector::ChainVectorProjector>>,
 
     /// Authoritative RCP stores
     pub ovsdb: Arc<OvsdbDbusClient>,
@@ -1172,6 +1174,7 @@ impl MutationEngine {
             chat_manager: Arc::new(ChatManager::new()),
             cognitive_mcp: Arc::new(OnceCell::new()),
             knowledge_inbox: crate::knowledge_inbox::KnowledgeInbox::default(),
+            vector_projector: Arc::new(OnceCell::new()),
             chatbot_episode_cozo: Arc::new(OnceCell::new()),
             memory_methods: Arc::new(OnceCell::new()),
             sess_decl_methods: Arc::new(OnceCell::new()),
@@ -1334,7 +1337,9 @@ impl MutationEngine {
             "episode document differs from durable identity key"
         );
         let store = self.ctl_plane_chatbot_episode_cozo().await?;
-        self.chatbot_episode_publisher()?
+        let announced = row.clone();
+        let snapshot = self
+            .chatbot_episode_publisher()?
             .commit_effect(effect, move || {
                 store
                     .insert_scoped_episode_and_snapshot(
@@ -1343,7 +1348,47 @@ impl MutationEngine {
                     )
                     .map_err(Into::into)
             })
+            .await?;
+        self.announce_chatbot_write("episode_committed", &announced.scope, &announced.episode)
+            .await;
+        Ok(snapshot)
+    }
+
+    /// Record a durable chatbot write as a chain event under the scope's
+    /// principal, so the audit trail and the vector projection (OD-64) see
+    /// the committed document through its declared signal schema. Best
+    /// effort: the Cozo row and the private SHM document are already
+    /// committed; a failed announcement is logged, never unwound.
+    pub(crate) async fn announce_chatbot_write(
+        &self,
+        signal: &str,
+        scope: &op_cozo_store::EpisodeScope,
+        document: &serde_json::Value,
+    ) {
+        let value = match simd_json::serde::to_owned_value(document) {
+            Ok(value) => value,
+            Err(error) => {
+                tracing::warn!(%error, signal, "chatbot write not announced");
+                return;
+            }
+        };
+        if let Err(error) = self
+            .process_authoritative_change(
+                crate::chatbot_episode_state::PLUGIN.to_string(),
+                crate::state_stream::plugin_object_path(crate::chatbot_episode_state::PLUGIN),
+                ChangeType::Signal,
+                Some(signal.to_string()),
+                None,
+                value,
+                vec!["state".into(), crate::chatbot_episode_state::PLUGIN.into()],
+                scope.principal_id.clone(),
+                None,
+                ChangeSource::Internal,
+            )
             .await
+        {
+            tracing::warn!(%error, signal, "chatbot write not announced");
+        }
     }
 
     pub(crate) async fn commit_chatbot_episode_embedding(
@@ -1587,6 +1632,8 @@ impl MutationEngine {
         let timing_dir = std::path::Path::new(base_path).join("timing");
         let replayed = self.rebuild_chain_from_disk(&timing_dir).await;
         let _ = self.audit_sink.set(chain_store);
+        // The trail is durable; from here every block gets its vector.
+        self.start_vector_projection();
         replayed
     }
 
@@ -1734,13 +1781,35 @@ impl MutationEngine {
         let Some(sink) = self.audit_sink.get() else {
             return;
         };
-        if let Err(error) = sink.add_footprint(event_to_footprint(event)).await {
-            tracing::warn!(
-                %error,
-                event_id = event.event_id,
-                "audit durability write failed; event retained in memory only"
-            );
+        match sink.add_footprint(event_to_footprint(event)).await {
+            Ok(_) => {
+                if let Some(projector) = self.vector_projector.get() {
+                    projector.notify();
+                }
+            }
+            Err(error) => {
+                tracing::warn!(
+                    %error,
+                    event_id = event.event_id,
+                    "audit durability write failed; event retained in memory only"
+                );
+            }
         }
+    }
+
+    /// Start vectorizing chain blocks as they land (OD-64). Idempotent.
+    pub fn start_vector_projection(&self) {
+        if self.vector_projector.get().is_some() {
+            return;
+        }
+        let policy = Arc::new(crate::chain_vector_projector::SchemaProjectionPolicy::new(
+            crate::sealed_schema_reader::blob_catalog_dir_from_env(),
+        ));
+        let _ =
+            self.vector_projector
+                .set(crate::chain_vector_projector::ChainVectorProjector::spawn(
+                    policy,
+                ));
     }
 
     /// Store the session bus connection used for `Updated` signal emission.
@@ -2429,6 +2498,12 @@ impl MutationEngine {
             }
             if let Some(capability) = capability_id {
                 event.capability_id = Some(capability);
+            }
+            // The member (signal or method name) is the event's operation; the
+            // audit footprint and the vector projection key on it to find the
+            // declaring schema (OD-64).
+            if matches!(change_type, ChangeType::Signal | ChangeType::MethodCall) {
+                event.method_name = member_name.clone();
             }
             // Hash covers the identity and capability fields set above.
             event.event_hash = event.compute_hash();

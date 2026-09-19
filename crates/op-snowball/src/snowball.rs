@@ -384,6 +384,50 @@ impl StreamingSnowball {
         self.vector_subvol.join(vector_file_name(block_num))
     }
 
+    /// Sidecar next to a vector: what the projector observed when it embedded
+    /// (host load, latencies). Travels with the vector through send/receive;
+    /// never part of the hashed timing record.
+    pub fn vector_meta_path(&self, block_num: u64) -> PathBuf {
+        self.vector_subvol
+            .join(format!("{}.meta.json", vector_file_name(block_num)))
+    }
+
+    /// Write the vector's sidecar metadata (see [`Self::vector_meta_path`]).
+    pub async fn attach_vector_meta(
+        &self,
+        block_num: u64,
+        meta: &simd_json::OwnedValue,
+    ) -> Result<PathBuf> {
+        let vector_file = self.vector_path(block_num);
+        let vector_dir = self.vector_subvol.clone();
+        let meta_file = self.vector_meta_path(block_num);
+        let committed = meta_file.clone();
+        let bytes = simd_json::to_vec(meta)?;
+        self.writer_transaction(move || {
+            ensure!(
+                vector_file.is_file(),
+                "no vector for block {block_num}; attach the vector before its metadata"
+            );
+            atomic_write_sync(
+                &vector_dir,
+                &committed,
+                &format!(".vector-meta-{block_num:012}"),
+                &bytes,
+            )
+        })
+        .await?;
+        Ok(meta_file)
+    }
+
+    /// Read a vector's sidecar metadata, if any.
+    pub async fn read_vector_meta(&self, block_num: u64) -> Result<Option<simd_json::OwnedValue>> {
+        match tokio::fs::read(self.vector_meta_path(block_num)).await {
+            Ok(mut bytes) => Ok(Some(simd_json::to_owned_value(&mut bytes)?)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(error.into()),
+        }
+    }
+
     /// Write (or replace) the vector projection for an existing block.
     ///
     /// Rejects a block that has no timing record, so a vector can never
@@ -885,7 +929,7 @@ fn system_time_to_utc(ts: SystemTime) -> Option<DateTime<Utc>> {
 /// `data_fields` is the block's payload flattened to sorted dotted paths, which
 /// is what makes [`Self::embedding_text`] deterministic — the on-disk JSON
 /// object order is not.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ChainBlockRef {
     pub block_num: u64,
     pub hash: String,
@@ -896,6 +940,9 @@ pub struct ChainBlockRef {
     pub timestamp: u64,
     pub data_fields: Vec<(String, String)>,
     pub has_vector: bool,
+    /// The record's `data` object as written (footprint payload + metadata),
+    /// for schema-described projections that need the structured value.
+    pub data: simd_json::OwnedValue,
 }
 
 impl ChainBlockRef {
@@ -904,9 +951,10 @@ impl ChainBlockRef {
             .map_err(|e| anyhow::anyhow!("invalid JSON in timing record: {e}"))?;
 
         let mut data_fields = Vec::new();
-        if let Some(data) = owned_get(&value, "data") {
-            flatten_sorted(data, "data", &mut data_fields);
-        }
+        let data = owned_get(&value, "data")
+            .cloned()
+            .unwrap_or(simd_json::OwnedValue::Static(simd_json::StaticNode::Null));
+        flatten_sorted(&data, "data", &mut data_fields);
 
         Ok(Self {
             block_num,
@@ -916,7 +964,24 @@ impl ChainBlockRef {
             timestamp: owned_u64(&value, "timestamp").unwrap_or_default(),
             data_fields,
             has_vector,
+            data,
         })
+    }
+
+    /// Render retrieval text from caller-selected `(label, value)` lines under
+    /// the same deterministic header as [`Self::embedding_text`]. Used by the
+    /// schema-described projection, which decides what is signal and what is
+    /// noise; the header keeps block identity stable across policies.
+    pub fn embedding_text_from(&self, lines: &[(String, String)]) -> String {
+        let mut out = vec![
+            format!("block: {}", self.block_num),
+            format!("plugin: {}", self.category),
+            format!("action: {}", self.action),
+        ];
+        for (label, value) in lines {
+            out.push(format!("{label}: {value}"));
+        }
+        out.join("\n")
     }
 
     /// Value of one flattened field, e.g. `data.metadata.event_hash`.

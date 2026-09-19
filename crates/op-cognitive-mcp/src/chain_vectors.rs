@@ -54,6 +54,93 @@ const BLOCK_POINT_NAMESPACE: uuid::Uuid =
 /// File holding the highest block number whose vector has been indexed.
 const INDEXED_BLOCK_FILE: &str = ".vector-index-block";
 
+/// Decides what of a block is signal. The bridge supplies the sealed plugin
+/// schema of the mutation (OD-64: "filter out noise with the original
+/// schema that created the snowball data"); the default is the lossless
+/// flatten, kept for replicas without a catalog.
+pub trait ProjectionPolicy: Send + Sync {
+    /// `(label, value)` lines to embed for this block, or `None` to fall back
+    /// to [`ChainBlockRef::embedding_text`].
+    fn embedding_lines(&self, block: &ChainBlockRef) -> Option<Vec<(String, String)>>;
+    /// Payload fields to attach to the point beside the allow-listed
+    /// identity/provenance fields (e.g. `method_subid`, `schema_hash`).
+    fn payload_fields(&self, _block: &ChainBlockRef) -> serde_json::Map<String, serde_json::Value> {
+        serde_json::Map::new()
+    }
+}
+
+/// Lossless flatten: every `data.*` scalar, as before.
+pub struct FlattenAll;
+impl ProjectionPolicy for FlattenAll {
+    fn embedding_lines(&self, _block: &ChainBlockRef) -> Option<Vec<(String, String)>> {
+        None
+    }
+}
+
+/// Retrieval text for a block under `policy`.
+pub fn embedding_text_under(policy: &dyn ProjectionPolicy, block: &ChainBlockRef) -> String {
+    match policy.embedding_lines(block) {
+        Some(lines) => block.embedding_text_from(&lines),
+        None => block.embedding_text(),
+    }
+}
+
+/// Host load as seen by the projector when it embedded a block. Payload
+/// metadata only — never part of the text, never part of the hashed chain.
+#[derive(Debug, Clone, Default, Serialize, serde::Deserialize, PartialEq)]
+pub struct HostLoad {
+    pub load1: f64,
+    pub load5: f64,
+    pub load15: f64,
+    pub running: u64,
+    pub total: u64,
+    pub psi_cpu_some_avg10: Option<f64>,
+    pub psi_memory_some_avg10: Option<f64>,
+    pub psi_io_some_avg10: Option<f64>,
+}
+
+impl HostLoad {
+    /// Read `/proc/loadavg` and `/proc/pressure/*` (absent PSI → `None`).
+    pub fn sample() -> Self {
+        let mut load = Self::default();
+        if let Ok(text) = std::fs::read_to_string("/proc/loadavg") {
+            let mut parts = text.split_whitespace();
+            load.load1 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0.0);
+            load.load5 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0.0);
+            load.load15 = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0.0);
+            if let Some((running, total)) = parts.next().and_then(|v| v.split_once('/')) {
+                load.running = running.parse().unwrap_or(0);
+                load.total = total.parse().unwrap_or(0);
+            }
+        }
+        let psi = |resource: &str| -> Option<f64> {
+            let text = std::fs::read_to_string(format!("/proc/pressure/{resource}")).ok()?;
+            let some = text.lines().find(|l| l.starts_with("some "))?;
+            some.split_whitespace()
+                .find_map(|kv| kv.strip_prefix("avg10="))
+                .and_then(|v| v.parse().ok())
+        };
+        load.psi_cpu_some_avg10 = psi("cpu");
+        load.psi_memory_some_avg10 = psi("memory");
+        load.psi_io_some_avg10 = psi("io");
+        load
+    }
+}
+
+/// What the projector records beside a vector (the sidecar).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, PartialEq)]
+pub struct VectorMeta {
+    /// Unix ms when the embedding was produced.
+    pub embedded_at_ms: u64,
+    /// Block timestamp → embed: how long the mutation waited for its vector.
+    pub queued_ms: u64,
+    /// Embedder round trip.
+    pub embed_ms: u64,
+    pub host_load: HostLoad,
+    /// Which policy rendered the text (`schema` or `flatten`).
+    pub policy: String,
+}
+
 pub struct ChainVectorIndex {
     chain: StreamingSnowball,
     chain_path: PathBuf,
@@ -62,6 +149,7 @@ pub struct ChainVectorIndex {
     dims: u64,
     /// `None` on a replica: ingesting received vectors needs no embedder.
     voyage: Option<VoyageClient>,
+    policy: std::sync::Arc<dyn ProjectionPolicy>,
 }
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -147,9 +235,20 @@ impl ChainVectorIndex {
             collection,
             dims,
             voyage,
+            policy: std::sync::Arc::new(FlattenAll),
         };
         index.ensure_collection().await?;
         Ok(index)
+    }
+
+    /// Install the noise filter (the bridge's schema-described policy).
+    pub fn with_policy(mut self, policy: std::sync::Arc<dyn ProjectionPolicy>) -> Self {
+        self.policy = policy;
+        self
+    }
+
+    pub fn policy(&self) -> &dyn ProjectionPolicy {
+        self.policy.as_ref()
     }
 
     /// Create the collection on first use. Idempotent, and tolerant of a
@@ -222,15 +321,42 @@ impl ChainVectorIndex {
         let mut embedded = 0usize;
         let mut upserted_to_qdrant = 0usize;
         for block in &pending {
+            let lines = self.policy.embedding_lines(block);
+            let text = match &lines {
+                Some(lines) => block.embedding_text_from(lines),
+                None => block.embedding_text(),
+            };
+            let started = std::time::Instant::now();
             let vector = voyage
-                .embed(&block.embedding_text(), Some("document"))
+                .embed(&text, Some("document"))
                 .await
                 .with_context(|| format!("failed to embed block {}", block.block_num))?;
+            let embed_ms = started.elapsed().as_millis() as u64;
             let vector = self.fit_dims(vector, block.block_num)?;
 
             // Chain first: the vector is durable state; automatic Qdrant is
             // derived only after receive → ingest on the replica.
             self.chain.attach_vector(block.block_num, &vector).await?;
+            let now_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            let meta = VectorMeta {
+                embedded_at_ms: now_ms,
+                queued_ms: now_ms.saturating_sub(block.timestamp),
+                embed_ms,
+                host_load: HostLoad::sample(),
+                policy: if lines.is_some() { "schema" } else { "flatten" }.into(),
+            };
+            if let Ok(meta_value) = simd_json::serde::to_owned_value(&meta) {
+                if let Err(error) = self
+                    .chain
+                    .attach_vector_meta(block.block_num, &meta_value)
+                    .await
+                {
+                    tracing::warn!(%error, block = block.block_num, "vector sidecar not written");
+                }
+            }
             if write_qdrant {
                 self.upsert_block(block, vector).await?;
                 upserted_to_qdrant += 1;
@@ -500,22 +626,48 @@ impl ChainVectorIndex {
     }
 
     async fn upsert_block(&self, block: &ChainBlockRef, vector: Vec<f32>) -> Result<()> {
-        let payload: Payload = serde_json::json!({
-            "block_num": block.block_num,
-            // Snowball carries the authoritative ChainEvent hash verbatim.
-            // The compatibility input digest is provenance copied from the
-            // payload; neither value is re-hashed by the vector projection.
-            "event_hash": block.hash,
-            "input_patch_hash": block
+        // Allow-listed provenance only: identity digests and hashes for
+        // filtering, never raw arguments and never the session genesis.
+        let mut payload_map = serde_json::Map::new();
+        payload_map.insert("block_num".into(), block.block_num.into());
+        // Snowball carries the authoritative ChainEvent hash verbatim.
+        // The compatibility input digest is provenance copied from the
+        // payload; neither value is re-hashed by the vector projection.
+        payload_map.insert("event_hash".into(), block.hash.clone().into());
+        payload_map.insert(
+            "input_patch_hash".into(),
+            block
                 .field("data.payload.input_patch_hash")
-                .unwrap_or_default(),
-            "plugin_id": block.category,
-            "action": block.action,
-            "timestamp": block.timestamp,
-            "text": block.embedding_text(),
-        })
-        .try_into()
-        .context("failed to build snowball vector payload")?;
+                .unwrap_or_default()
+                .into(),
+        );
+        payload_map.insert("plugin_id".into(), block.category.clone().into());
+        payload_map.insert("action".into(), block.action.clone().into());
+        payload_map.insert("timestamp".into(), block.timestamp.into());
+        for (key, path) in [
+            ("actor_id", "data.metadata.actor_id"),
+            ("session_id", "data.metadata.session_id"),
+            ("sealed_id_digest", "data.metadata.sealed_id_digest"),
+            ("capability_id", "data.metadata.capability_id"),
+            ("decision", "data.metadata.decision"),
+        ] {
+            if let Some(value) = block.field(path) {
+                payload_map.insert(key.into(), value.into());
+            }
+        }
+        payload_map.insert(
+            "text".into(),
+            embedding_text_under(self.policy.as_ref(), block).into(),
+        );
+        payload_map.extend(self.policy.payload_fields(block));
+        if let Ok(Some(meta)) = self.chain.read_vector_meta(block.block_num).await {
+            let meta: serde_json::Value =
+                simd_json::serde::from_owned_value(meta).unwrap_or(serde_json::Value::Null);
+            payload_map.insert("vector_meta".into(), meta);
+        }
+        let payload: Payload = serde_json::Value::Object(payload_map)
+            .try_into()
+            .context("failed to build snowball vector payload")?;
 
         let point = PointStruct::new(point_id(block.block_num).to_string(), vector, payload);
         self.qdrant

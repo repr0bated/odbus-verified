@@ -24,6 +24,7 @@
 mod agent_runs;
 mod agent_triggers;
 mod antigravity_dispatch;
+mod chain_vector_projector;
 pub mod chat_service;
 mod chatbot_episode_state;
 mod chatbot_episode_stream;
