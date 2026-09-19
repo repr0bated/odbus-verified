@@ -14,9 +14,9 @@ use std::fs::{File as StdFile, OpenOptions as StdOpenOptions};
 use std::io::Write as _;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{mpsc, Arc};
 use std::time::SystemTime;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{oneshot, Mutex, RwLock};
 use tokio::time::Instant;
 use tracing::{debug, info, warn};
 
@@ -116,6 +116,72 @@ fn retain_snapshots(
     keep
 }
 
+/// Runs once on the dedicated writer thread before it accepts work. This is
+/// where `OptimizedSnowball` applies CPU affinity and the NUMA memory policy,
+/// so the pin lands on the thread that actually performs timing, vector and
+/// cache writes — never on a tokio worker.
+pub type WriterPlacement = Box<dyn FnOnce() -> Result<()> + Send + 'static>;
+
+type WriterJob = Box<dyn FnOnce() + Send + 'static>;
+
+/// The single thread that owns every durable write of a snowball.
+///
+/// Timing blocks, vector files and Btrfs cache blocks for one event are
+/// produced by the same pinned thread, so the embedding buffer, the page-cache
+/// pages and the block file stay on one NUMA node for the whole stream. The
+/// thread is also the serialization point that the writer flock assumes.
+struct SnowballWriter {
+    jobs: std::sync::Mutex<mpsc::Sender<WriterJob>>,
+}
+
+impl SnowballWriter {
+    fn spawn(name: String, placement: Option<WriterPlacement>) -> Result<Self> {
+        let (tx, rx) = mpsc::channel::<WriterJob>();
+        let thread_name = name.clone();
+        std::thread::Builder::new()
+            .name(name)
+            .spawn(move || {
+                if let Some(place) = placement {
+                    if let Err(error) = place() {
+                        warn!(
+                            "{thread_name}: writer placement failed, continuing unpinned: {error}"
+                        );
+                    }
+                }
+                for job in rx {
+                    // A panicking job must not take the writer down with it;
+                    // the caller sees a dropped oneshot and reports an error.
+                    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(job));
+                }
+                debug!("{thread_name}: writer thread exiting");
+            })
+            .context("spawn snowball writer thread")?;
+        Ok(Self {
+            jobs: std::sync::Mutex::new(tx),
+        })
+    }
+
+    /// Run `f` on the writer thread and await its result.
+    async fn run<T, F>(&self, f: F) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce() -> Result<T> + Send + 'static,
+    {
+        let (reply_tx, reply_rx) = oneshot::channel();
+        let job: WriterJob = Box::new(move || {
+            let _ = reply_tx.send(f());
+        });
+        self.jobs
+            .lock()
+            .map_err(|_| anyhow::anyhow!("snowball writer queue poisoned"))?
+            .send(job)
+            .map_err(|_| anyhow::anyhow!("snowball writer thread is gone"))?;
+        reply_rx
+            .await
+            .context("snowball writer job did not complete")?
+    }
+}
+
 /// Streaming snowball with data directories for timing, vectors, and state
 pub struct StreamingSnowball {
     base_path: PathBuf,
@@ -128,6 +194,7 @@ pub struct StreamingSnowball {
     writer_lock_path: PathBuf,
     last_snapshot_time: Arc<RwLock<Instant>>,
     block_counter: Arc<RwLock<u64>>,
+    writer: SnowballWriter,
 }
 
 impl StreamingSnowball {
@@ -140,6 +207,16 @@ impl StreamingSnowball {
     pub async fn new_with_interval(
         base_path: impl AsRef<Path>,
         snapshot_interval: SnapshotInterval,
+    ) -> Result<Self> {
+        Self::new_with_placement(base_path, snapshot_interval, None).await
+    }
+
+    /// Create with a specific snapshot interval and a writer-thread placement
+    /// hook (see [`WriterPlacement`]). `None` runs the writer unpinned.
+    pub async fn new_with_placement(
+        base_path: impl AsRef<Path>,
+        snapshot_interval: SnapshotInterval,
+        placement: Option<WriterPlacement>,
     ) -> Result<Self> {
         let base_path = base_path.as_ref().to_path_buf();
         let timing_subvol = base_path.join("timing");
@@ -177,6 +254,8 @@ impl StreamingSnowball {
         let writer_lock_path = base_path.join(".writer.lock");
         open_writer_lock(&writer_lock_path)?;
 
+        let writer = SnowballWriter::spawn("snowball-writer".to_string(), placement)?;
+
         Ok(Self {
             base_path,
             timing_subvol,
@@ -188,7 +267,19 @@ impl StreamingSnowball {
             writer_lock_path,
             last_snapshot_time: Arc::new(RwLock::new(Instant::now())),
             block_counter: Arc::new(RwLock::new(resumed_from)),
+            writer,
         })
+    }
+
+    /// Run a blocking closure on the snowball's pinned writer thread without
+    /// taking the timing writer lock. Used for side files that must stay on the
+    /// same NUMA node as the stream (the Btrfs cache block for an event).
+    pub async fn run_on_writer<T, F>(&self, f: F) -> Result<T>
+    where
+        T: Send + 'static,
+        F: FnOnce() -> Result<T> + Send + 'static,
+    {
+        self.writer.run(f).await
     }
 
     /// Ensure a data directory exists.
@@ -212,15 +303,16 @@ impl StreamingSnowball {
     {
         let local = Arc::clone(&self.snapshot_lock).lock_owned().await;
         let path = self.writer_lock_path.clone();
-        tokio::task::spawn_blocking(move || {
-            let _local = local;
-            let file = open_writer_lock(&path)?;
-            let _file = Flock::lock(file, FlockArg::LockExclusive)
-                .map_err(|(_, error)| anyhow::anyhow!("lock {}: {error}", path.display()))?;
-            transaction()
-        })
-        .await
-        .context("Snowball writer transaction failed")?
+        self.writer
+            .run(move || {
+                let _local = local;
+                let file = open_writer_lock(&path)?;
+                let _file = Flock::lock(file, FlockArg::LockExclusive)
+                    .map_err(|(_, error)| anyhow::anyhow!("lock {}: {error}", path.display()))?;
+                transaction()
+            })
+            .await
+            .context("Snowball writer transaction failed")
     }
 
     /// Add a plugin footprint to the snowball

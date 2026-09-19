@@ -597,11 +597,22 @@ impl NumaOptimizer {
             return Ok(());
         }
 
+        Self::apply_cpu_affinity_to(&cpu_list, &format!("NUMA node {node_id}"))
+    }
+
+    /// Bind the calling thread to exactly the given CPUs.
+    ///
+    /// A single-element list pins a dedicated streaming thread to one core so
+    /// its L1/L2 working set stays warm; `apply_cpu_affinity` uses the same
+    /// primitive with a whole node's CPU list.
+    pub fn apply_cpu_affinity_to(cpu_list: &[u32], label: &str) -> Result<()> {
+        anyhow::ensure!(!cpu_list.is_empty(), "empty CPU list for {label}");
+
         #[cfg(target_os = "linux")]
         {
             // SAFETY: cpu_set_t is a POD type; zeroing produces a valid empty set.
             let mut cpuset: libc::cpu_set_t = unsafe { std::mem::zeroed() };
-            for &cpu in &cpu_list {
+            for &cpu in cpu_list {
                 unsafe { libc::CPU_SET(cpu as usize, &mut cpuset) };
             }
 
@@ -615,8 +626,8 @@ impl NumaOptimizer {
             if ret != 0 {
                 let err = std::io::Error::last_os_error();
                 anyhow::bail!(
-                    "sched_setaffinity failed for NUMA node {} (CPUs {:?}): {}",
-                    node_id,
+                    "sched_setaffinity failed for {} (CPUs {:?}): {}",
+                    label,
                     cpu_list,
                     err
                 );
@@ -636,8 +647,8 @@ impl NumaOptimizer {
             }
 
             info!(
-                "CPU affinity set to NUMA node {} ({} CPUs: {:?})",
-                node_id,
+                "CPU affinity set to {} ({} CPUs: {:?})",
+                label,
                 cpu_list.len(),
                 cpu_list
             );
@@ -646,12 +657,40 @@ impl NumaOptimizer {
         #[cfg(not(target_os = "linux"))]
         {
             info!(
-                "CPU affinity for NUMA node {} is a no-op on non-Linux (CPUs: {:?})",
-                node_id, cpu_list
+                "CPU affinity for {} is a no-op on non-Linux (CPUs: {:?})",
+                label, cpu_list
             );
         }
 
         Ok(())
+    }
+
+    /// CPUs the calling thread is currently allowed to run on
+    /// (`sched_getaffinity(2)`); `None` on non-Linux.
+    pub fn current_cpu_affinity() -> Option<Vec<u32>> {
+        #[cfg(target_os = "linux")]
+        {
+            // SAFETY: cpu_set_t is a POD type; zeroing produces a valid empty set.
+            let mut set: libc::cpu_set_t = unsafe { std::mem::zeroed() };
+            let ret = unsafe {
+                libc::sched_getaffinity(0, std::mem::size_of::<libc::cpu_set_t>(), &mut set)
+            };
+            if ret != 0 {
+                return None;
+            }
+            let count = unsafe { libc::CPU_COUNT(&set) } as usize;
+            let mut cpus = Vec::with_capacity(count);
+            for cpu in 0..(std::mem::size_of::<libc::cpu_set_t>() * 8) {
+                if unsafe { libc::CPU_ISSET(cpu, &set) } {
+                    cpus.push(cpu as u32);
+                }
+            }
+            Some(cpus)
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            None
+        }
     }
 
     /// Apply a NUMA memory policy using `set_mempolicy(2)`.

@@ -11,7 +11,8 @@
 //! - Unified snapshot management
 //! - Shared compression and deduplication
 
-use crate::snowball::StreamingSnowball;
+use crate::snapshot::SnapshotInterval;
+use crate::snowball::{StreamingSnowball, WriterPlacement};
 use crate::PluginFootprint;
 use anyhow::{Context, Result};
 use op_cache::{BtrfsCache, NumaMemoryPolicy, NumaOptimizer, NumaTopology};
@@ -19,7 +20,6 @@ use simd_json::prelude::*;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
@@ -32,16 +32,83 @@ pub struct OptimizedSnowball {
 }
 
 impl OptimizedSnowball {
-    /// Create optimized snowball with BTRFS cache and NUMA support
+    /// Create optimized snowball with BTRFS cache and NUMA support.
+    ///
+    /// NUMA topology is detected first so the snowball's dedicated writer
+    /// thread can be pinned (CPU affinity + preferred memory policy) before it
+    /// accepts work. Everything durable — timing block, vector file, cache
+    /// block — is then written by that one pinned thread, keeping the whole
+    /// stream node-local. Tokio workers are never pinned.
     pub async fn new(
         snowball_path: impl AsRef<Path>,
         cache_path: impl AsRef<Path>,
     ) -> Result<Self> {
-        // Initialize snowball
+        // Detect NUMA topology (best-effort)
+        let detected = match NumaTopology::detect() {
+            Ok(topology) => {
+                info!("NUMA topology detected: {} nodes", topology.node_count());
+                Some(topology)
+            }
+            Err(e) => {
+                warn!(
+                    "NUMA topology detection failed: {} (continuing without NUMA)",
+                    e
+                );
+                None
+            }
+        };
+
+        // Placement hook executed once on the writer thread: one node, one
+        // core. The streaming writer is a single thread, so pinning it to a
+        // single CPU of the optimal node keeps its L1/L2 working set warm as
+        // well as its memory local. `OPDBUS_SNOWBALL_WRITER_CPU` overrides the
+        // core (must belong to the chosen node); by default the highest CPU of
+        // the node is used, leaving CPU 0 to interrupts.
+        let placement: Option<WriterPlacement> = detected.as_ref().and_then(|topology| {
+            let mut optimizer = NumaOptimizer::from_env();
+            let node = optimizer
+                .get_optimal_node()
+                .unwrap_or_else(|| topology.optimal_node());
+            let node_cpus = topology.cpus_for_node(node);
+            if node_cpus.is_empty() {
+                warn!("NUMA node {node} lists no CPUs; snowball writer runs unpinned");
+                return None;
+            }
+            let cpu = match std::env::var("OPDBUS_SNOWBALL_WRITER_CPU")
+                .ok()
+                .and_then(|v| v.trim().parse::<u32>().ok())
+            {
+                Some(requested) if node_cpus.contains(&requested) => requested,
+                Some(requested) => {
+                    warn!(
+                        "OPDBUS_SNOWBALL_WRITER_CPU={requested} is not on NUMA node {node} \
+                         (CPUs {node_cpus:?}); using the node's last CPU instead"
+                    );
+                    *node_cpus.iter().max().expect("non-empty")
+                }
+                None => *node_cpus.iter().max().expect("non-empty"),
+            };
+            Some(Box::new(move || -> Result<()> {
+                debug!("snowball writer: pinning to CPU {cpu} on NUMA node {node}");
+                NumaOptimizer::apply_cpu_affinity_to(
+                    &[cpu],
+                    &format!("snowball writer CPU {cpu}"),
+                )?;
+                NumaOptimizer::apply_memory_policy(&NumaMemoryPolicy::Preferred(node))
+                    .with_context(|| format!("memory policy for NUMA node {node}"))?;
+                Ok(())
+            }) as WriterPlacement)
+        });
+
+        // Initialize snowball with the pinned writer
         let snowball = Arc::new(
-            StreamingSnowball::new(snowball_path)
-                .await
-                .context("Failed to initialize streaming snowball")?,
+            StreamingSnowball::new_with_placement(
+                snowball_path,
+                SnapshotInterval::from_env(),
+                placement,
+            )
+            .await
+            .context("Failed to initialize streaming snowball")?,
         );
 
         // Initialize BTRFS cache
@@ -51,23 +118,7 @@ impl OptimizedSnowball {
                 .context("Failed to initialize BTRFS cache")?,
         );
 
-        // Detect NUMA topology (best-effort, non-blocking)
-        let numa_topology = Arc::new(RwLock::new(None));
-        {
-            match NumaTopology::detect() {
-                Ok(topology) => {
-                    info!("NUMA topology detected: {} nodes", topology.node_count());
-                    *numa_topology.write().await = Some(topology);
-                }
-                Err(e) => {
-                    warn!(
-                        "NUMA topology detection failed: {} (continuing without NUMA)",
-                        e
-                    );
-                }
-            }
-        }
-
+        let numa_topology = Arc::new(RwLock::new(detected));
         let cache_enabled = true;
 
         Ok(Self {
@@ -78,11 +129,9 @@ impl OptimizedSnowball {
         })
     }
 
-    /// Add footprint with NUMA-aware caching
+    /// Add footprint; the timing block, vector file and cache block are all
+    /// written by the snowball's pinned writer thread.
     pub async fn add_footprint(&self, footprint: PluginFootprint) -> Result<String> {
-        // Apply NUMA affinity for write operations
-        self.apply_numa_affinity("snowball_write").await?;
-
         // Store in snowball (primary storage)
         let block_hash = self
             .snowball
@@ -113,44 +162,45 @@ impl OptimizedSnowball {
             "vector_features": footprint.vector_features,
         });
 
-        // Use cache's embedding storage for block data
-        // (blocks are stored as JSON, not vectors, but we use the same infrastructure)
-        // Store as JSON in cache (BTRFS will compress it)
-        let cache_dir = self.cache.cache_dir();
-        let blocks_dir = cache_dir.join("blocks").join("by-hash");
-        tokio::fs::create_dir_all(&blocks_dir).await?;
-
-        let block_file = blocks_dir.join(format!("{}.json", block_hash));
-        let write_nonce = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .context("system clock is before the Unix epoch")?
-            .as_nanos();
-        let block_tmp = blocks_dir.join(format!(
-            ".{}-{}-{}.tmp",
-            block_hash,
-            std::process::id(),
-            write_nonce
-        ));
+        // Written by the same pinned thread that wrote the timing block, so the
+        // cache pages for this event stay on the stream's NUMA node.
+        let blocks_dir = self.cache.cache_dir().join("blocks").join("by-hash");
         let block_json = simd_json::to_string_pretty(&block_data)?;
-        let write_result: Result<()> = async {
-            let mut file = tokio::fs::OpenOptions::new()
-                .create_new(true)
-                .write(true)
-                .open(&block_tmp)
-                .await?;
-            file.write_all(block_json.as_bytes()).await?;
-            file.sync_all().await?;
-            tokio::fs::rename(&block_tmp, &block_file)
-                .await
-                .context("Failed to commit block to cache")?;
-            tokio::fs::File::open(&blocks_dir).await?.sync_all().await?;
-            Ok(())
-        }
-        .await;
-        if let Err(error) = write_result {
-            let _ = tokio::fs::remove_file(&block_tmp).await;
-            return Err(error);
-        }
+        let hash_for_write = block_hash.clone();
+        self.snowball
+            .run_on_writer(move || -> Result<()> {
+                use std::io::Write as _;
+                std::fs::create_dir_all(&blocks_dir)?;
+                let block_file = blocks_dir.join(format!("{}.json", hash_for_write));
+                let write_nonce = SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .context("system clock is before the Unix epoch")?
+                    .as_nanos();
+                let block_tmp = blocks_dir.join(format!(
+                    ".{}-{}-{}.tmp",
+                    hash_for_write,
+                    std::process::id(),
+                    write_nonce
+                ));
+                let write_result: Result<()> = (|| {
+                    let mut file = std::fs::OpenOptions::new()
+                        .create_new(true)
+                        .write(true)
+                        .open(&block_tmp)?;
+                    file.write_all(block_json.as_bytes())?;
+                    file.sync_all()?;
+                    std::fs::rename(&block_tmp, &block_file)
+                        .context("Failed to commit block to cache")?;
+                    std::fs::File::open(&blocks_dir)?.sync_all()?;
+                    Ok(())
+                })();
+                if let Err(error) = write_result {
+                    let _ = std::fs::remove_file(&block_tmp);
+                    return Err(error);
+                }
+                Ok(())
+            })
+            .await?;
 
         debug!("Cached snowball block {} in BTRFS cache", block_hash);
         Ok(())
@@ -200,44 +250,6 @@ impl OptimizedSnowball {
         };
 
         Ok(Some(footprint))
-    }
-
-    /// Apply NUMA affinity for snowball operations
-    async fn apply_numa_affinity(&self, operation: &str) -> Result<()> {
-        let numa = self.numa_topology.read().await;
-        if let Some(ref topology) = *numa {
-            // Get optimal NUMA node
-            let optimal_node = topology.optimal_node();
-
-            if let Some(node) = topology.get_node(optimal_node) {
-                debug!(
-                    "Applying NUMA affinity: node {} ({} CPUs, {} MB free) for {}",
-                    node.node_id,
-                    node.cpu_list.len(),
-                    node.memory_free_kb / 1024,
-                    operation
-                );
-            }
-
-            // Apply real CPU affinity via sched_setaffinity
-            let optimizer = NumaOptimizer::from_env();
-            if let Err(e) = optimizer.apply_cpu_affinity(optimal_node) {
-                warn!(
-                    "Failed to set CPU affinity for node {} ({}): {}",
-                    optimal_node, operation, e
-                );
-            }
-
-            // Apply default memory policy (preferred on the optimal node)
-            let mem_policy = NumaMemoryPolicy::Preferred(optimal_node);
-            if let Err(e) = NumaOptimizer::apply_memory_policy(&mem_policy) {
-                warn!(
-                    "Failed to set memory policy {:?} for {}: {}",
-                    mem_policy, operation, e
-                );
-            }
-        }
-        Ok(())
     }
 
     /// Get snowball instance (for direct access if needed)
@@ -326,6 +338,65 @@ impl OptimizedSnowball {
 
 #[cfg(test)]
 mod tests {
+    /// The placement hook must run on the writer thread and its pin must
+    /// still be in effect when writes execute there — while the caller's
+    /// (tokio) thread is left untouched.
+    #[tokio::test]
+    async fn writer_thread_carries_the_pin_and_tokio_workers_do_not() {
+        use crate::snowball::{StreamingSnowball, WriterPlacement};
+        use op_cache::NumaOptimizer;
+
+        let Some(before) = NumaOptimizer::current_cpu_affinity() else {
+            return; // non-Linux
+        };
+        let target = *before.first().expect("at least one runnable CPU");
+        let dir = tempfile::tempdir().unwrap();
+        let placement: WriterPlacement =
+            Box::new(move || NumaOptimizer::apply_cpu_affinity_to(&[target], "test writer"));
+        let snowball = StreamingSnowball::new_with_placement(
+            dir.path(),
+            crate::snapshot::SnapshotInterval::from_env(),
+            Some(placement),
+        )
+        .await
+        .unwrap();
+
+        let (on_writer, name) = snowball
+            .run_on_writer(|| {
+                Ok((
+                    NumaOptimizer::current_cpu_affinity(),
+                    std::thread::current().name().map(str::to_owned),
+                ))
+            })
+            .await
+            .unwrap();
+        assert_eq!(
+            on_writer,
+            Some(vec![target]),
+            "writer thread is pinned to one CPU"
+        );
+        assert_eq!(name.as_deref(), Some("snowball-writer"));
+
+        // A real write goes through the same thread and stays pinned.
+        let hash = snowball
+            .add_footprint(crate::PluginFootprint::new(
+                "test",
+                "write",
+                &simd_json::json!({"k": "v"}),
+            ))
+            .await
+            .unwrap();
+        assert!(!hash.is_empty());
+        let after_write = snowball
+            .run_on_writer(|| Ok(NumaOptimizer::current_cpu_affinity()))
+            .await
+            .unwrap();
+        assert_eq!(after_write, Some(vec![target]));
+
+        // The calling thread's mask is unchanged.
+        assert_eq!(NumaOptimizer::current_cpu_affinity(), Some(before));
+    }
+
     use super::*;
     use tempfile::tempdir;
 
