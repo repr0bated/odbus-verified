@@ -75,8 +75,8 @@ pub struct OracleIdentityAssertion {
     pub expires_at: i64,
     /// Random per-assertion nonce; the replay-cache key.
     pub nonce: [u8; NONCE_LEN],
-    /// The human's NetMaker inner IP.
-    pub netmaker_inner_ip: IpAddr,
+    /// The human's tunnel-inner IP as seen by the decoy (positional in the wire format).
+    pub tunnel_inner_ip: IpAddr,
     /// Identifies which decoy signing key produced the signature.
     pub decoy_key_id: String,
 }
@@ -97,7 +97,7 @@ impl OracleIdentityAssertion {
         out.extend_from_slice(&self.issued_at.to_le_bytes());
         out.extend_from_slice(&self.expires_at.to_le_bytes());
         out.extend_from_slice(&self.nonce);
-        match self.netmaker_inner_ip {
+        match self.tunnel_inner_ip {
             IpAddr::V4(v4) => {
                 out.push(4);
                 out.extend_from_slice(&v4.octets());
@@ -148,7 +148,7 @@ impl SignedAssertion {
             issued_at: r.read_i64()?,
             expires_at: r.read_i64()?,
             nonce: r.read_array::<NONCE_LEN>()?,
-            netmaker_inner_ip: r.read_ip()?,
+            tunnel_inner_ip: r.read_ip()?,
             decoy_key_id: r.read_string()?,
         };
         let signature = r.read_array::<SIGNATURE_LEN>()?;
@@ -280,7 +280,7 @@ impl DecoyIssuer {
             issued_at,
             expires_at,
             nonce,
-            netmaker_inner_ip: inner_ip,
+            tunnel_inner_ip: inner_ip,
             decoy_key_id: self.key_id.clone(),
         };
         let signature = self.signing_key.sign(&assertion.signing_bytes()).to_bytes();
@@ -343,7 +343,7 @@ mod tests {
             issued_at: 1_700_000_000,
             expires_at: 1_700_000_900,
             nonce: [0xA5; 16],
-            netmaker_inner_ip: test_ip(),
+            tunnel_inner_ip: test_ip(),
             decoy_key_id: "decoy-key-1".to_string(),
         }
     }
@@ -370,7 +370,7 @@ mod tests {
         // IPv6 branch: 1-byte family + 16-byte address.
         let v6 = SignedAssertion {
             assertion: OracleIdentityAssertion {
-                netmaker_inner_ip: IpAddr::V6(Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1)),
+                tunnel_inner_ip: IpAddr::V6(Ipv6Addr::new(0x2001, 0x0db8, 0, 0, 0, 0, 0, 1)),
                 ..sample_assertion()
             },
             ..signed_sample()
@@ -414,7 +414,7 @@ mod tests {
                 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD,
                 0xAE, 0xAF,
             ],
-            netmaker_inner_ip: IpAddr::V4(Ipv4Addr::new(10, 200, 0, 7)),
+            tunnel_inner_ip: IpAddr::V4(Ipv4Addr::new(10, 200, 0, 7)),
             decoy_key_id: "dk1".to_string(),
         };
         let signed = SignedAssertion {
@@ -610,7 +610,7 @@ mod tests {
                 .map(|b| b.to_string())
                 .collect::<Vec<_>>()
                 .join(","),
-            a.netmaker_inner_ip,
+            a.tunnel_inner_ip,
             a.decoy_key_id
         );
         let alt_sig: [u8; 64] = test_signing_key()
@@ -667,7 +667,7 @@ mod tests {
         let after = chrono::Utc::now().timestamp();
         let a = &signed.assertion;
         assert_eq!(a.human_pubkey, SAMPLE_PUBKEY);
-        assert_eq!(a.netmaker_inner_ip, ip);
+        assert_eq!(a.tunnel_inner_ip, ip);
         assert_eq!(a.decoy_key_id, issuer.key_id());
         assert!(
             a.issued_at >= before - 1 && a.issued_at <= after + 1,

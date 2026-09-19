@@ -1,9 +1,9 @@
 //! Host-level privacy network provisioning — OVS switching fabric only.
 //
-// Current architecture (Artix Linux + s6 + Incus + rovs):
+// Current architecture (Artix Linux + runit + Incus + rovs):
 // - Host runs ovsbr0 via OVSDB (datapath=system)
 // - All privacy services (Xray, mail) run on the HOST (xray via the
-//   `gbr-xray` s6 service); the deprecated `wg-xray` Incus container is
+//   `gbr-xray` runit service); the deprecated `wg-xray` Incus container is
 //   stopped and no longer referenced.
 // - Containers have NO host interface — they communicate via Unix sockets
 //   through OVS internal ports using OpenFlow routing
@@ -123,7 +123,7 @@ async fn ensure_host_privacy_network_with_config(cfg: &PrivacyNetworkHostConfig)
         .await
         .context("Failed to list bridge ports")?;
 
-    // NOTE: wgcf/Xray now run on the host (gbr-xray s6 service), not as
+    // NOTE: wgcf/Xray now run on the host (gbr-xray runit service), not as
     // container interfaces. The deprecated wg-xray container is no longer
     // referenced. Host traffic reaches the bridge via OVS internal ports.
 
@@ -154,7 +154,7 @@ async fn ensure_host_privacy_network_with_config(cfg: &PrivacyNetworkHostConfig)
     }
 
     // Verify Xray ingress is available on the management IP
-    // NOTE: Xray now runs on the host via the gbr-xray s6 service (the
+    // NOTE: Xray now runs on the host via the gbr-xray runit service (the
     // deprecated wg-xray container is gone). The management IP is reachable
     // through OVS internal ports + OpenFlow.
     // TODO(host-xray): confirm the on-host xray ingress management IP.

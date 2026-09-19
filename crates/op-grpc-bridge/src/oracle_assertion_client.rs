@@ -125,10 +125,10 @@ impl DecoyAssertionClient {
         }
         let signed = op_identity::oracle_assertion::SignedAssertion::from_wire(&wire)
             .map_err(|error| anyhow::anyhow!("invalid OIA1 assertion envelope: {error}"))?;
-        if signed.assertion.netmaker_inner_ip != self.source {
+        if signed.assertion.tunnel_inner_ip != self.source {
             bail!(
                 "OIA1 assertion inner IP {} does not match bound source {}",
-                signed.assertion.netmaker_inner_ip,
+                signed.assertion.tunnel_inner_ip,
                 self.source
             );
         }

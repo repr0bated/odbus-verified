@@ -29,7 +29,6 @@ pub(crate) use super::keypair::keypair_schema as keypair_plugin_schema;
 pub(crate) use super::mail_server::mail_server_schema as mail_server_plugin_schema;
 pub(crate) use super::memory_plugin::memory_schema as memory_plugin_schema;
 pub(crate) use super::net::net_schema as net_plugin_schema;
-pub(crate) use super::netmaker::netmaker_schema as netmaker_plugin_schema;
 pub(crate) use super::oci::oci_schema;
 pub(crate) use super::openflow::openflow_schema as openflow_plugin_schema;
 pub(crate) use super::oscal_subid_registry::oscal_subid_registry_schema;

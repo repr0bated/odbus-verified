@@ -16,7 +16,7 @@
 //!   cargo test -p op-grpc-bridge --test live_reflection_probe -- --nocapture --ignored
 
 #[tokio::test]
-#[ignore = "requires a running bridge on 127.0.0.1:50051"]
+#[ignore = "requires a running bridge on 127.0.0.1:8090"]
 async fn cognitive_mcp_per_method_services_are_advertised() {
     use tonic_reflection::pb::v1::{
         server_reflection_client::ServerReflectionClient,
@@ -24,10 +24,10 @@ async fn cognitive_mcp_per_method_services_are_advertised() {
         ServerReflectionRequest,
     };
 
-    let channel = tonic::transport::Channel::from_static("http://127.0.0.1:50051")
+    let channel = tonic::transport::Channel::from_static("https://127.0.0.1:8090")
         .connect()
         .await
-        .expect("connect to live bridge :50051");
+        .expect("connect to live bridge :8090");
 
     let mut client = ServerReflectionClient::new(channel);
     let (tx, rx) = tokio::sync::mpsc::channel(16);

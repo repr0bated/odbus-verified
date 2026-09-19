@@ -96,12 +96,12 @@ pub mod prelude {
         CognitiveMcpPlugin, ConfigPlugin, CronPlugin, CtlPlaneChatbotPlugin, DnsResolverPlugin,
         EndpointPlugin, ExecutionResult, Fail2banPlugin, FreeDesktopPlugin, FullSystemPlugin,
         GcloudAdcPlugin, HardwarePlugin, IncusPlugin, KeypairPlugin, KeyringPlugin, Login1Plugin,
-        MailServerPlugin, McpStatePlugin, MemoryPlugin, NetStatePlugin, NetmakerConfig,
-        NetmakerPlugin, OpenFlowObfuscationPlugin, OpenFlowPlugin, OvsBridgePlugin,
-        PackageKitPlugin, PciDeclPlugin, ProcfsPlugin, ProxyServerPlugin, RovsCommandsPlugin,
-        RtnetlinkPlugin, SchemaRendererPlugin, ServicePlugin, SessDeclPlugin, SoftwarePlugin,
-        TchedRouterPlugin, ToolDefinition, UnixSocketPlugin, UsersPlugin, WebUiPlugin,
-        WgOpdbusPlugin, WireGuardPlugin, WorkflowsPlugin,
+        MailServerPlugin, McpStatePlugin, MemoryPlugin, NetStatePlugin, OpenFlowObfuscationPlugin,
+        OpenFlowPlugin, OvsBridgePlugin, PackageKitPlugin, PciDeclPlugin, ProcfsPlugin,
+        ProxyServerPlugin, RovsCommandsPlugin, RtnetlinkPlugin, SchemaRendererPlugin,
+        ServicePlugin, SessDeclPlugin, SoftwarePlugin, TchedRouterPlugin, ToolDefinition,
+        UnixSocketPlugin, UsersPlugin, WebUiPlugin, WgOpdbusPlugin, WireGuardPlugin,
+        WorkflowsPlugin,
     };
 }
 pub mod state_publisher;

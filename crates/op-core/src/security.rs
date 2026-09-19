@@ -200,10 +200,6 @@ pub struct NetworkConfig {
     #[serde(default)]
     pub trusted_ips: Vec<String>,
 
-    /// Auto-detect Netmaker networks
-    #[serde(default = "default_true")]
-    pub auto_netmaker: bool,
-
     /// Auto-detect Tailscale networks  
     #[serde(default = "default_true")]
     pub auto_tailscale: bool,
@@ -235,7 +231,6 @@ impl Default for NetworkConfig {
             trusted_cidrs: env_trusted,
             trusted_prefixes: vec![],
             trusted_ips: vec![],
-            auto_netmaker: true,
             auto_tailscale: true,
             auto_zerotier: true,
             auto_wireguard: true,
@@ -264,12 +259,6 @@ impl NetworkConfig {
     /// Add a trusted IP
     pub fn trust_ip(mut self, ip: &str) -> Self {
         self.trusted_ips.push(ip.to_string());
-        self
-    }
-
-    /// Add your Netmaker network range
-    pub fn trust_netmaker(mut self, cidr: &str) -> Self {
-        self.trusted_cidrs.push(cidr.to_string());
         self
     }
 

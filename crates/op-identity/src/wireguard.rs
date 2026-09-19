@@ -198,7 +198,7 @@ impl WireGuardIdentity {
         for line in stdout.lines() {
             let trimmed = line.trim();
             if let Some(rest) = trimmed.strip_prefix("inet ") {
-                // rest is e.g. "100.90.37.254/32 scope global netmaker"
+                // rest is e.g. "100.90.37.254/32 scope global wg0"
                 let ip = rest.split('/').next()?.trim();
                 if !ip.is_empty() {
                     return Some(ip.to_string());

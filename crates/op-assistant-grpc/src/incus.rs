@@ -4,11 +4,11 @@
 //!
 //! - The `wg-xray` Incus container is DEPRECATED and STOPPED. Do not
 //!   reference it.
-//! - Xray runs on the HOST via the `gbr-xray` s6 service
+//! - Xray runs on the HOST via the `gbr-xray` runit service
 //!   (canonical live config: `/dev/shm/xray_config.json`).
-//! - The operation.v1 gRPC server (StateSync, etc., port 50051) runs on the
-//!   HOST served by `op-dbus` at `10.200.0.2:50051` (the `grpc-uplink` veth
-//!   IP). The old `10.200.0.1:50051` lived inside the wg-xray container and
+//! - The operation.v1 gRPC server (StateSync, etc.) is the op-grpc-bridge door
+//!   on `:8090` (TLS). The old `10.200.0.x:50051` listeners are retired; the
+//!   `10.200.0.1:50051` one lived inside the wg-xray container and
 //!   is dead.
 //! - Xray applies OpenFlow + PluginSchema tags to route traffic to WireGuard
 //!   peers / wgcf egress.
@@ -17,11 +17,11 @@
 //! directly and carry the explicitly selected session's genesis and trace id.
 
 /// Default on-host operation.v1 gRPC endpoint served by `op-dbus` at the
-/// `grpc-uplink` veth IP `10.200.0.2:50051`.
+/// op-grpc-bridge door `https://127.0.0.1:8090` (TLS-only; the retired `:50051` listeners are gone).
 ///
 /// (Renamed from `DEFAULT_WG_XRAY_ENDPOINT`; the wg-xray container is
 /// deprecated. The alias is preserved for downstream callers.)
-pub const DEFAULT_GRPC_ENDPOINT: &str = "http://10.200.0.2:50051";
+pub const DEFAULT_GRPC_ENDPOINT: &str = "https://127.0.0.1:8090";
 /// Backwards-compatible alias for callers that still reference the old
 /// `DEFAULT_WG_XRAY_ENDPOINT` name.
 pub const DEFAULT_WG_XRAY_ENDPOINT: &str = DEFAULT_GRPC_ENDPOINT;

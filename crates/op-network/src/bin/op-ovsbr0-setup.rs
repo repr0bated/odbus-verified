@@ -24,15 +24,14 @@
 //!                  only when there's no UPLINK to match). The bridge device
 //!                  itself NEVER gets this MAC — it keeps a random one.
 //!   OVSDB_SOCKET   Path to OVSDB socket     (default: auto-detect)
-//!   VSWITCHD_SVC   s6 service NAME          (default: ovs-vswitchd; lifecycle
-//!                  goes through the sanctioned `service6` wrapper only —
-//!                  never raw s6-svc/s6-svstat)
+//!   VSWITCHD_SVC   runit service NAME       (default: ovs-vswitchd; lifecycle
+//!                  goes through `sv` only — never a foreign service manager)
 //!   VSWITCHD_CTL   Glob for vswitchd unixctl socket
 //!                  (default: /usr/local/var/run/openvswitch/ovs-vswitchd.*.ctl)
 //!
 //! Modes:
 //!   --seed-only     Write OVSDB system bridge/port rows and exit.  This is
-//!                   for the s6 ovs-vswitchd run script before vswitchd starts.
+//!                   for the runit ovs-vswitchd run script before vswitchd starts.
 
 use anyhow::{bail, Context, Result};
 use rovs_jsonrpc::Connection;
@@ -241,7 +240,7 @@ async fn vswitchd_send_exit(ctl_path: &str) -> Result<()> {
 }
 
 /// Stop vswitchd:
-///   1. `service6 stop <name>` — the only sanctioned host service-manager
+///   1. `sv down <name>` — the only sanctioned host service-manager
 ///      entry point (raw `runsv`/`runsvdir` are policy violations outside boot
 ///      supervisors and human console recovery)
 ///   2. Fall back to a graceful `exit` via unixctl if the wrapper failed
@@ -777,7 +776,7 @@ fn print_help() {
     println!(
         "Usage: op-ovsbr0-setup [--seed-only]\n\n\
          Ensures ovsbr0 exists with datapath_type=system, using rovs for OVSDB \
-         changes and the service6 wrapper for ovs-vswitchd control.\n\n\
+         changes and runit `sv` for ovs-vswitchd control.\n\n\
          Modes:\n\
            --seed-only Write OVSDB system rows and exit without starting vswitchd\n\n\
          Environment:\n\
@@ -791,6 +790,6 @@ fn print_help() {
             INTERNAL_PORTS extra internal ports (default: \"svc0 grpc\")\n\
             SHARED_MAC   PUBLIC_PORT MAC override (default: UPLINK's own MAC)\n\
             OVSDB_SOCKET OVSDB socket path\n\
-            VSWITCHD_SVC s6 service name for service6 (default: ovs-vswitchd)"
+            VSWITCHD_SVC runit service name for sv (default: ovs-vswitchd)"
     );
 }

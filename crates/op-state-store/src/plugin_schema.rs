@@ -1432,7 +1432,7 @@ impl SchemaRegistry {
             "incus_xray_reality_client" => "incus-xray-reality-client",
             "incus_xray_reality_server" => "incus-xray-reality-server",
             "network" => "net",
-            "systemd" | "dinit" => "s6",
+            "systemd" | "dinit" | "s6" | "runit" => "service",
             "web-ui" => "web_ui",
             other => other,
         }

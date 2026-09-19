@@ -105,14 +105,6 @@
       }
     },
     {
-      "id": "bin:op-gemma",
-      "label": "bin",
-      "props": {
-        "crate": "op-gemma",
-        "src": "crates/op-gemma/src/main.rs"
-      }
-    },
-    {
       "id": "bin:op-grants-materializer",
       "label": "bin",
       "props": {
@@ -337,7 +329,7 @@
         ],
         "has_lib": true,
         "rs_files": 44,
-        "loc": 29056,
+        "loc": 29049,
         "tests": 59,
         "unsafe_refs": 1,
         "todo": 11,
@@ -389,7 +381,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 21,
-        "loc": 5365,
+        "loc": 5354,
         "tests": 53,
         "unsafe_refs": 4,
         "todo": 0,
@@ -407,7 +399,7 @@
         ],
         "has_lib": true,
         "rs_files": 9,
-        "loc": 5936,
+        "loc": 5940,
         "tests": 43,
         "unsafe_refs": 1,
         "todo": 0,
@@ -526,24 +518,6 @@
         "unsafe_refs": 0,
         "todo": 0,
         "unwrap_expect": 2
-      }
-    },
-    {
-      "id": "crate:op-gemma",
-      "label": "crate",
-      "props": {
-        "path": "crates/op-gemma",
-        "description": "Gemma routing brain — subid → tag → xray + OpenFlow rules",
-        "bins": [
-          "op-gemma"
-        ],
-        "has_lib": false,
-        "rs_files": 2,
-        "loc": 2254,
-        "tests": 0,
-        "unsafe_refs": 0,
-        "todo": 0,
-        "unwrap_expect": 0
       }
     },
     {
@@ -711,7 +685,7 @@
         ],
         "has_lib": true,
         "rs_files": 24,
-        "loc": 10889,
+        "loc": 10888,
         "tests": 56,
         "unsafe_refs": 8,
         "todo": 5,
@@ -748,12 +722,12 @@
           "opblob"
         ],
         "has_lib": true,
-        "rs_files": 148,
-        "loc": 114922,
+        "rs_files": 147,
+        "loc": 114007,
         "tests": 510,
         "unsafe_refs": 14,
-        "todo": 3,
-        "unwrap_expect": 1089
+        "todo": 2,
+        "unwrap_expect": 1088
       }
     },
     {
@@ -819,7 +793,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 11,
-        "loc": 2143,
+        "loc": 2140,
         "tests": 9,
         "unsafe_refs": 5,
         "todo": 1,
@@ -835,7 +809,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 14,
-        "loc": 7904,
+        "loc": 7903,
         "tests": 74,
         "unsafe_refs": 2,
         "todo": 0,
@@ -853,7 +827,7 @@
         ],
         "has_lib": true,
         "rs_files": 50,
-        "loc": 20606,
+        "loc": 20605,
         "tests": 50,
         "unsafe_refs": 0,
         "todo": 0,
@@ -1904,8 +1878,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-19T01:18:52Z",
-        "commit": "8d01947e497be9ab66e7bdd15717494c60b031d1",
+        "generated_at": "2026-09-19T02:50:48Z",
+        "commit": "dba77ffa0a6fe4a4c60d318382f96bee8f31de9f",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -4070,7 +4044,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 564
+        "loc": 557
       }
     },
     {
@@ -4556,7 +4530,7 @@
       "props": {
         "crate": "op-core",
         "kind": "src",
-        "loc": 399
+        "loc": 388
       }
     },
     {
@@ -4610,7 +4584,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "example",
-        "loc": 82
+        "loc": 86
       }
     },
     {
@@ -4890,24 +4864,6 @@
         "crate": "op-gateway",
         "kind": "src",
         "loc": 814
-      }
-    },
-    {
-      "id": "mod:crates/op-gemma/src/main.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-gemma",
-        "kind": "src",
-        "loc": 260
-      }
-    },
-    {
-      "id": "mod:crates/op-gemma/src/ui_gallery.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-gemma",
-        "kind": "src",
-        "loc": 1994
       }
     },
     {
@@ -7139,7 +7095,7 @@
       "props": {
         "crate": "op-network",
         "kind": "bin",
-        "loc": 796
+        "loc": 795
       }
     },
     {
@@ -8228,7 +8184,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 159
+        "loc": 157
       }
     },
     {
@@ -8246,16 +8202,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1789
-      }
-    },
-    {
-      "id": "mod:crates/op-plugins/src/state_plugins/netmaker.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-plugins",
-        "kind": "src",
-        "loc": 907
+        "loc": 1784
       }
     },
     {
@@ -8390,7 +8337,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 551
+        "loc": 550
       }
     },
     {
@@ -9002,7 +8949,7 @@
       "props": {
         "crate": "op-state-store",
         "kind": "src",
-        "loc": 597
+        "loc": 596
       }
     },
     {
@@ -9200,7 +9147,7 @@
       "props": {
         "crate": "op-state",
         "kind": "src",
-        "loc": 436
+        "loc": 434
       }
     },
     {
@@ -9218,7 +9165,7 @@
       "props": {
         "crate": "op-state",
         "kind": "src",
-        "loc": 323
+        "loc": 322
       }
     },
     {
@@ -9569,7 +9516,7 @@
       "props": {
         "crate": "op-tools",
         "kind": "src",
-        "loc": 141
+        "loc": 140
       }
     },
     {
@@ -10926,19 +10873,9 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/net.rs",
-        "line": 1788,
+        "line": 1783,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/net"
-      }
-    },
-    {
-      "id": "plugin:netmaker",
-      "label": "plugin",
-      "props": {
-        "file": "crates/op-plugins/src/state_plugins/netmaker.rs",
-        "line": 906,
-        "declared": true,
-        "dbus_path": "/org/opdbus/v1/plugins/netmaker"
       }
     },
     {
@@ -11472,12 +11409,6 @@
       "src": "bin:op-decoy-network",
       "rel": "bin_entry",
       "dst": "mod:crates/op-grpc-bridge/src/bin/op-decoy-network.rs",
-      "props": {}
-    },
-    {
-      "src": "bin:op-gemma",
-      "rel": "bin_entry",
-      "dst": "mod:crates/op-gemma/src/main.rs",
       "props": {}
     },
     {
@@ -16558,85 +16489,6 @@
       }
     },
     {
-      "src": "crate:op-gemma",
-      "rel": "contains",
-      "dst": "mod:crates/op-gemma/src/main.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-gemma",
-      "rel": "contains",
-      "dst": "mod:crates/op-gemma/src/ui_gallery.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-gemma",
-      "rel": "depends_on",
-      "dst": "crate:op-blob",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-gemma",
-      "rel": "depends_on",
-      "dst": "crate:op-state-store",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-gemma",
-      "rel": "provides_bin",
-      "dst": "bin:op-gemma",
-      "props": {}
-    },
-    {
-      "src": "crate:op-gemma",
-      "rel": "uses_ext",
-      "dst": "ext:anyhow",
-      "props": {
-        "kind": "normal",
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-gemma",
-      "rel": "uses_ext",
-      "dst": "ext:serde",
-      "props": {
-        "kind": "normal",
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-gemma",
-      "rel": "uses_ext",
-      "dst": "ext:serde_json",
-      "props": {
-        "kind": "normal",
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-gemma",
-      "rel": "uses_ext",
-      "dst": "ext:tracing",
-      "props": {
-        "kind": "normal",
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-gemma",
-      "rel": "uses_ext",
-      "dst": "ext:tracing-subscriber",
-      "props": {
-        "kind": "normal",
-        "optional": false
-      }
-    },
-    {
       "src": "crate:op-grpc-bridge",
       "rel": "build_depends_on",
       "dst": "crate:op-blob",
@@ -21425,12 +21277,6 @@
     {
       "src": "crate:op-plugins",
       "rel": "contains",
-      "dst": "mod:crates/op-plugins/src/state_plugins/netmaker.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/notebooklm.rs",
       "props": {}
     },
@@ -22114,12 +21960,6 @@
       "src": "crate:op-plugins",
       "rel": "registers_plugin",
       "dst": "plugin:net",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "registers_plugin",
-      "dst": "plugin:netmaker",
       "props": {}
     },
     {
@@ -26396,22 +26236,6 @@
       "src": "mod:crates/op-dynamic-loader/src/loading_strategy.rs",
       "rel": "imports",
       "dst": "crate:op-execution-tracker",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-gemma/src/ui_gallery.rs",
-      "rel": "imports",
-      "dst": "crate:op-blob",
-      "props": {
-        "refs": 2
-      }
-    },
-    {
-      "src": "mod:crates/op-gemma/src/ui_gallery.rs",
-      "rel": "imports",
-      "dst": "crate:op-state-store",
       "props": {
         "refs": 1
       }
@@ -30798,36 +30622,6 @@
       "dst": "crate:op-state-store",
       "props": {
         "refs": 4
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/netmaker.rs",
-      "rel": "defines_plugin",
-      "dst": "plugin:netmaker",
-      "props": {}
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/netmaker.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 2
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/netmaker.rs",
-      "rel": "imports",
-      "dst": "crate:op-state",
-      "props": {
-        "refs": 6
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/netmaker.rs",
-      "rel": "imports",
-      "dst": "crate:op-state-store",
-      "props": {
-        "refs": 8
       }
     },
     {

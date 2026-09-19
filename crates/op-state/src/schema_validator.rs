@@ -221,16 +221,12 @@ impl SchemaValidator {
             // Container Mesh Use Case
             UseCaseTemplate {
                 name: "container_mesh".to_string(),
-                description: "Incus containers with Netmaker mesh networking".to_string(),
-                required_plugins: vec![
-                    "incus".to_string(),
-                    "netmaker".to_string(),
-                    "openflow".to_string(),
-                ],
+                description: "Incus containers with OpenFlow-routed networking".to_string(),
+                required_plugins: vec!["incus".to_string(), "openflow".to_string()],
                 required_fields: HashMap::new(),
                 valid_combinations: vec![],
                 dependencies: vec![Dependency {
-                    requires: "netmaker".to_string(),
+                    requires: "openflow".to_string(),
                     required: "net".to_string(),
                     condition: None,
                 }],

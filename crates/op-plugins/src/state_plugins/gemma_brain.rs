@@ -46,7 +46,7 @@ pub struct GemmaRouting {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(extend("x-oscal-subid" = "sch.software.gemma-brain.gallery.schema@v1"))]
 pub struct GemmaGallery {
-    /// Tmpfs path of the gallery JSON produced by `op-gemma`.
+    /// Tmpfs path of the gallery JSON (formerly produced by the retired `op-gemma` binary).
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "exp.service.gemma-brain.gallery-path@v1"))]
     pub specs_path: String,
@@ -79,8 +79,8 @@ pub struct GemmaBrainState {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(extend("x-oscal-subid" = "obs.service.gemma.ui-workspace.specs@v2"))]
     pub specs: Option<std::collections::BTreeMap<String, workspace::UiSpecRecord>>,
-    /// Derived operational status (observed): `unavailable` (op-gemma binary
-    /// missing), `empty`, `partial`, or `ready`.
+    /// Derived operational status (observed): `unavailable` (no gallery
+    /// producer present), `empty`, `partial`, or `ready`.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "obs.software.gemma-brain.status@v1"))]
     pub status: String,

@@ -4502,19 +4502,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "op-gemma"
-version = "1.0.0"
-dependencies = [
- "anyhow",
- "op-blob",
- "op-state-store",
- "serde",
- "serde_json",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "op-grpc-bridge"
 version = "0.1.0"
 dependencies = [

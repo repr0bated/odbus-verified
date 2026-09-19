@@ -19,7 +19,7 @@ use zbus::{proxy, Connection};
 
 use crate::{Tool, ToolRegistry};
 
-/// The daemon's real bus name and object path (see `op-s6-systemctl/src/main.rs`).
+/// The daemon's real bus name and object path (see `op-runit-systemctl/src/main.rs`).
 #[proxy(
     interface = "org.opdbus.v1.Runit.Systemctl",
     default_service = "org.opdbus.v1.Runit.Systemctl",

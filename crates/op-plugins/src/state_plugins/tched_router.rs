@@ -853,7 +853,7 @@ impl TchedRouterPlugin {
         let selected_model = Self::env_or("LLM_MODEL", Self::DEFAULT_CHAT_MODEL);
         let chat_model = selected_model.clone();
         let router_endpoint = Self::env_or("TCHED_ROUTER_ENDPOINT", "http://localhost:11434");
-        let grpc_target = Self::env_or("TCHED_ROUTER_GRPC_TARGET", "http://10.200.0.2:50051");
+        let grpc_target = Self::env_or("TCHED_ROUTER_GRPC_TARGET", "https://127.0.0.1:8090");
         let grpc_target_for_provider = grpc_target.clone();
 
         let co = Self::configurable_options();

@@ -353,24 +353,22 @@ impl PluginWorkflowManager {
         // 1. Privacy plugin coordinates system services (WireGuard, WARP)
         // 2. LXC plugin creates XRay container with socket networking
         // 3. OpenFlow plugin sets up traffic routing through vmbr0
-        // 4. Netmaker mesh also uses same bridge for container networking
+        // 4. Container networking shares the same bridge
 
         Ok(())
     }
 
-    /// Create a container networking workflow (includes Netmaker mesh)
+    /// Create a container networking workflow
     pub fn create_container_networking_workflow(&mut self) -> Result<()> {
         log::info!("🏗️  Creating container networking workflow");
-        log::info!("   Netmaker Server → LXC Containers → Socket Networking → vmbr0 Bridge");
+        log::info!("   LXC Containers → Socket Networking → vmbr0 Bridge");
         log::info!("   ↓");
-        log::info!("   Full mesh networking for all containers on single bridge");
+        log::info!("   Container networking on a single bridge");
 
         // This workflow handles container networking on single bridge:
-        // 1. Netmaker plugin manages system-wide mesh server
-        // 2. LXC plugin creates containers with socket networking
-        // 3. Containers auto-join Netmaker mesh via first-boot hooks
-        // 4. All interfaces (privacy + mesh) connect to vmbr0
-        // 5. OpenFlow rules route traffic between all components
+        // 1. LXC plugin creates containers with socket networking
+        // 2. All interfaces (privacy + container) connect to vmbr0
+        // 3. OpenFlow rules route traffic between all components
 
         Ok(())
     }

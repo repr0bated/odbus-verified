@@ -83,7 +83,7 @@ flowchart TB
         COZO["op-cozo-store<br/>CozoDB graph-vector"]
         SNOWBALL["op-snowball<br/>Btrfs footprint ledger"]
         IDENTITY["op-identity<br/>WireGuard identity, magic link"]
-        XRAY["op-xray-daemon / op-gemma<br/>privacy routing"]
+        XRAY["op-xray-daemon<br/>privacy routing"]
     end
 
     clients --> gateway
@@ -102,7 +102,7 @@ The layers, top to bottom:
 | Agent / chat | Reasoning, orchestration, tool execution | `op-chat`, `op-cache`, `op-agents`, `op-workflows`, `op-llm` |
 | Bridge | Bidirectional D-Bus ↔ gRPC, schema engine, projection | `op-grpc-bridge`, `op-grpc-adapters`, `op-dbus-mirror`, `op-assistant-grpc` |
 | Schema / plugin core | Source of truth, plugin trait, validation | `op-plugins`, `op-state`, `op-state-store`, `op-projection`, `op-dbus-model` |
-| Data / system | Native protocol drivers and stores | `op-network`, `op-services`, `op-s6-systemctl`, `op-cozo-store`, `op-snowball`, `op-identity`, `op-xray-daemon`, `op-gemma`, `op-cache` |
+| Data / system | Native protocol drivers and stores | `op-network`, `op-services`, `op-runit-systemctl`, `op-cozo-store`, `op-snowball`, `op-identity`, `op-xray-daemon`, `op-gemma`, `op-cache` |
 | Support | Cross-cutting utilities | `op-core`, `op-http`, `op-jsonrpc`, `op-tools`, `op-introspection`, `op-inspector`, `op-execution-tracker`, `op-dynamic-loader`, `op-deployment`, `op-compliance` |
 
 ## 4. Crate map
@@ -155,7 +155,6 @@ Descriptions are taken from each crate's `Cargo.toml` and current source.
 - **op-services** — Service metadata and lifecycle integration.
 - **op-s6-systemctl** — D-Bus service facade mapping systemctl verbs onto runit/`sv`.
 - **op-xray-daemon** — D-Bus service managing the Xray proxy daemon lifecycle.
-- **op-gemma** — Gemma routing brain: maps `subid → tag → xray + OpenFlow` rules.
 - **op-cozo-store** — Embedded CozoDB graph-relational-vector database.
 - **op-snowball** — Streaming snowball over Btrfs subvolumes (footprint
   transport).

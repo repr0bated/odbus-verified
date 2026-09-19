@@ -59,7 +59,7 @@ struct FlowRequest {
 /// Wire version used for every message this controller emits.
 ///
 /// OF1.5 is required, not cosmetic: `packet_type` matches and the
-/// `encap(ethernet)` action that give the L3-only `netmaker` WireGuard port an
+/// `encap(ethernet)` action that give an L3-only WireGuard port an
 /// Ethernet header exist only from OF1.5 onwards. It is deliberately a single
 /// constant so the whole controller can be moved back to `Version::Of13` with
 /// one edit if a bridge is pinned to an older protocol set.
@@ -444,8 +444,8 @@ async fn handle_connection(
     // reconnect, after delete_managed so the fallback/managed set is clean.
     //
     // A flow that cannot be translated (typically an `in_port` naming a port
-    // that is not currently attached to the bridge — `netmaker` while
-    // netmaker-ovs-attach is broken) is skipped, not fatal: the plugin declares
+    // that is not currently attached to the bridge, e.g. a WireGuard port that
+    // has not been attached yet) is skipped, not fatal: the plugin declares
     // `atomic_operations: false`, so one unresolvable flow must not tear down
     // the connection and take every other flow, the NORMAL fallback and the FDB
     // pins with it.

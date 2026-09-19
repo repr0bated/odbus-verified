@@ -32,7 +32,6 @@ fn default_plugins() -> Vec<String> {
         "openflow".to_string(),
         "systemd_networkd".to_string(),
         "dnsresolver".to_string(),
-        "netmaker".to_string(),
         "pcidecl".to_string(),
         "sessdecl".to_string(),
     ]

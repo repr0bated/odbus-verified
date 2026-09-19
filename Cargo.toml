@@ -37,7 +37,6 @@ members = [
     "crates/op-assistant-grpc",
     "crates/op-runit-systemctl",
     "crates/op-xray-daemon",
-    "crates/op-gemma",
     "crates/op-dbus-cli",
 ]
 
@@ -79,7 +78,6 @@ op-jsonrpc = { path = "crates/op-jsonrpc" }
 op-cozo-store = { path = "crates/op-cozo-store" }
 op-runit-systemctl = { path = "crates/op-runit-systemctl" }
 op-xray-daemon = { path = "crates/op-xray-daemon" }
-op-gemma = { path = "crates/op-gemma" }
 
 # Async
 tokio = { version = "1", features = ["full"] }

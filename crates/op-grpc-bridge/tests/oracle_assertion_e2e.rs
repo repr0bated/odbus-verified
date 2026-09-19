@@ -206,7 +206,7 @@ fn signed_with_fields(
         issued_at,
         expires_at,
         nonce,
-        netmaker_inner_ip: inner_ip,
+        tunnel_inner_ip: inner_ip,
         decoy_key_id: decoy_key_id.unwrap_or(issuer.key_id()).to_string(),
     };
     let signature = test_signing_key()

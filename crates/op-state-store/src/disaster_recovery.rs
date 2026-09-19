@@ -278,7 +278,6 @@ pub fn get_plugin_dependencies(plugin_name: &str) -> Vec<SystemDependency> {
         "lxc" => vec![
             // Proxmox provides pct, no extra deps on Proxmox hosts
         ],
-        "netmaker" => vec![SystemDependency::optional("netclient")],
         "btrfs" => vec![SystemDependency::required("btrfs-progs")],
         "numa" => vec![SystemDependency::optional("numactl")],
         "packagekit" => vec![SystemDependency::required("packagekit")],

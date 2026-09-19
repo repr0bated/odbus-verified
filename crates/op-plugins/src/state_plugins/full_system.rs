@@ -407,7 +407,7 @@ impl FullSystemPlugin {
             .await
             .context("Failed to connect to system D-Bus")?;
 
-        // On non-systemd hosts (e.g. Artix s6-rc), org.freedesktop.systemd1 is
+        // On non-systemd hosts (e.g. Artix runit), org.freedesktop.systemd1 is
         // not owned. Skip silently instead of hanging on a method call that
         // will never be answered.
         let dbus_proxy = Proxy::new(

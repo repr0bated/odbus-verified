@@ -218,7 +218,7 @@ impl ToolGroups {
         self
     }
 
-    /// Add trusted network prefix (e.g., "10.50." for Netmaker)
+    /// Add trusted network prefix (e.g., "10.50.")
     pub fn trust_network(mut self, prefix: &str) -> Self {
         self.network_config = self.network_config.trust_prefix(prefix);
         self
@@ -1019,7 +1019,7 @@ pub fn builtin_presets() -> Vec<GroupPreset> {
         GroupPreset {
             id: "full-admin".into(),
             name: "Full Admin".into(),
-            description: "Full admin - localhost or Netmaker/Tailscale only".into(),
+            description: "Full admin - localhost or Tailscale only".into(),
             groups: vec![
                 "respond".into(),
                 "info".into(),

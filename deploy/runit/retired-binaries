@@ -2,6 +2,7 @@
 # in-process dispatch. Their crates may remain as libraries or admin tooling,
 # but golden preparation must not stage these listener binaries.
 op-cognitive-mcp
+op-gemma
 op-mcp-agents
 op-mcp-compact
 op-mcp-server

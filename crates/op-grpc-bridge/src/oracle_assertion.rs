@@ -657,9 +657,9 @@ impl AssertionValidator {
                 Some(addr) => addr,
                 None => return Err(AssertionRejection::MissingConnectInfo),
             };
-            if peer.ip() != assertion.netmaker_inner_ip {
+            if peer.ip() != assertion.tunnel_inner_ip {
                 return Err(AssertionRejection::SourceIpMismatch {
-                    expected: assertion.netmaker_inner_ip,
+                    expected: assertion.tunnel_inner_ip,
                     actual: peer.ip(),
                 });
             }
@@ -887,7 +887,7 @@ pub mod tests {
             issued_at,
             expires_at,
             nonce,
-            netmaker_inner_ip: inner_ip,
+            tunnel_inner_ip: inner_ip,
             decoy_key_id: decoy_key_id.unwrap_or(issuer.key_id()).to_string(),
         };
         let signature = test_signing_key()

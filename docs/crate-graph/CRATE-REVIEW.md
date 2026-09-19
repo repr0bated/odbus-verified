@@ -399,6 +399,22 @@ those files removes them.
 Per-slice worker reports are preserved in the session scratchpad; the consolidated
 list above is the deliverable.
 
+**Applied 2026-09-19 (owner decisions: op-gemma retired, s6 is runit/sv, Netmaker
+gone, 50051 is `:8090`):** `crates/op-gemma` deleted and listed in
+`retired-binaries` (36 member crates now); `state_plugins/netmaker.rs` deleted with
+its re-exports, `auto_netmaker`/`trust_netmaker` removed from `op-core`, netmaker
+dropped from default plugin lists / dependency map / `container_mesh` template /
+`net.rs` port roles, `netmaker_inner_ip` → `tunnel_inner_ip` (positional wire
+format, unchanged on the wire); op-web compact prompt now names `sv_*` tools,
+`canonical_name()` maps `systemd|dinit|s6|runit` → `service`, remaining s6 wording
+rewritten; `tched_router` default target, `op-assistant-grpc`
+`DEFAULT_GRPC_ENDPOINT`, `live_reflection_probe` and the op-chat `FIXED_BASE_PROMPT`
+topology now say `:8090`. Gate after the change: 109 suites · 1,862 passed · 0
+failed · 9 ignored, clippy and fmt clean. Left as-is on purpose: each component's
+*own* listener port (`op-assistant-grpc` `DEFAULT_GRPC_PORT`, `op-mcp`/`op-cache`
+gRPC defaults, `op-web/bin/opdbus.rs`, `op-chat` `AGENT_PORTS`) — retiring those
+means retiring those listeners.
+
 ---
 
 ## 3. Crate-by-crate

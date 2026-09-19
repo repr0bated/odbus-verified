@@ -26,7 +26,7 @@ crate names, comments, or deployment documents:
   The remaining `op-assistant-grpc` package name does not establish a separate
   assistant deployment.
 - **Gemma's intended routing role is model agnostic.** The historical
-  `op-gemma` name does not restrict the system to a Gemma model.
+  `op-gemma` crate is retired (2026-09-19); the `gemma_brain` plugin carries the role.
 - **WireGuard terminates at the decoy; there is no WireGuard on this server.**
   WARP transports identity. WireGuard-related source declarations do not imply
   server deployment or a requirement for a local WireGuard implementation.
@@ -99,7 +99,6 @@ that its binary is deployed or that its advertised operations are implemented.
 | [op-runit-systemctl](../../../crates/op-runit-systemctl/Cargo.toml) | D-Bus-to-runit compatibility service and `svd`; its name is not permission to invoke the host's systemctl shim. |
 | [op-deployment](../../../crates/op-deployment/Cargo.toml) | Container/image helper source. Actual deployment is btrfs send/receive of the prepared snapshot; script or crate names do not define the release mechanism. |
 | [op-xray-daemon](../../../crates/op-xray-daemon/Cargo.toml) | Xray D-Bus lifecycle service. Live config policy remains `/etc/xray/xray_config.json` inside the container. |
-| [op-gemma](../../../crates/op-gemma/Cargo.toml) | Historical package name for routing/configuration work; owner specifies a model-agnostic role. Membership alone does not prove inference is active. |
 | [op-gateway](../../../crates/op-gateway/Cargo.toml) | Gateway authentication/routing library; not a second public MCP entrypoint. |
 | [op-assistant-grpc](../../../crates/op-assistant-grpc/Cargo.toml) | Remaining transport integration package. Assistant means the control-plane chatbot; do not infer an assistant container or another public MCP endpoint. |
 | [op-dbus-cli](../../../crates/op-dbus-cli/Cargo.toml) | `dbus-plugin-cli` introspection client. |

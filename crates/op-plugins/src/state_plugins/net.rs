@@ -396,8 +396,6 @@ impl NetStatePlugin {
                     } else if p.starts_with("vi") {
                         // vi{VMID}
                         "container"
-                    } else if p.starts_with("nm") {
-                        "netmaker"
                     } else if p.starts_with("eth") || p.starts_with("en") {
                         "uplink"
                     } else if p == &bridge_name {
@@ -451,7 +449,7 @@ impl NetStatePlugin {
         }
 
         // Add ports to bridge if specified via D-Bus daemon
-        // Skip netmaker interfaces (nm-*) - they are managed by netclient
+        // Skip WireGuard interfaces - their lifecycle is owned by the decoy tunnel
         if let Some(ref ports) = config.tunable.ports {
             let current_ports = client
                 .list_bridge_ports(&config.name)
@@ -459,12 +457,9 @@ impl NetStatePlugin {
                 .context("Failed to list ports via D-Bus daemon")?;
 
             for port in ports {
-                // Skip netmaker/wireguard interfaces - netclient manages them
-                if port.starts_with("nm-") || port.starts_with("wg") {
-                    log::info!(
-                        "Skipping netmaker interface {} (managed by netclient)",
-                        port
-                    );
+                // Skip WireGuard interfaces - the tunnel owner manages them
+                if port.starts_with("wg") {
+                    log::info!("Skipping WireGuard interface {} (tunnel-owned)", port);
                     continue;
                 }
 

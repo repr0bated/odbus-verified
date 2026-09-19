@@ -272,7 +272,7 @@ fn parse_match(fields: &HashMap<String, String>, port_map: &HashMap<String, u32>
                     .with_context(|| format!("invalid dl_vlan '{v}'"))?,
             ),
             "dl_src" => m.eth_src(parse_mac(v)?),
-            // OF1.5 PTAP match: gives the L3-only `netmaker` port a usable
+            // OF1.5 PTAP match: gives an L3-only WireGuard port a usable
             // flow. Encoded as OXM_OF_PACKET_TYPE (class 0x8000, field 44).
             "packet_type" => {
                 let (ns, ptype) = parse_packet_type(v)?;
@@ -540,12 +540,12 @@ mod tests {
         HashMap::from([("ovsbr0".to_string(), [0x02, 0x00, 0x64, 0x45, 0x00, 0x0a])])
     }
 
-    /// The prio-200 netmaker flow from openflow-static-flows.json.
-    fn netmaker_ptap_flow() -> String {
+    /// The prio-200 L3-only WireGuard-port flow from openflow-static-flows.json.
+    fn wg_ptap_flow() -> String {
         serde_json::json!({
             "table": 0,
             "priority": 200,
-            "match_fields": { "in_port": "netmaker", "packet_type": "(1,0x800)" },
+            "match_fields": { "in_port": "wgtun", "packet_type": "(1,0x800)" },
             "actions": [
                 {"type": "encap", "header": "ethernet"},
                 {"type": "set_field", "field": "eth_src", "value": "02:00:64:45:00:01"},
@@ -646,11 +646,11 @@ mod tests {
     /// OXM_OF_PACKET_TYPE and OFPAT_ENCAP: the exact shape the watchdog
     /// stopgap used to install by hand must come out of the translator.
     #[test]
-    fn netmaker_ptap_flow_translates_to_encap_flow() {
-        // netmaker must resolve, or the in_port error masks the real result.
+    fn wg_ptap_flow_translates_to_encap_flow() {
+        // wgtun must resolve, or the in_port error masks the real result.
         let mut ports = ports();
-        ports.insert("netmaker".to_string(), 4);
-        let flow = json_flow_to_add(&netmaker_ptap_flow(), &ports, &port_macs()).unwrap();
+        ports.insert("wgtun".to_string(), 4);
+        let flow = json_flow_to_add(&wg_ptap_flow(), &ports, &port_macs()).unwrap();
 
         assert_eq!(flow.match_fields.packet_type, Some((1, 0x0800)));
         assert_eq!(flow.match_fields.in_port, Some(4));
