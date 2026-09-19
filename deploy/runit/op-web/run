@@ -28,6 +28,13 @@ export PORT="${PORT:-8080}"
 export OP_WEB_STATIC_DIR="${OP_WEB_STATIC_DIR:-/usr/local/share/op-dbus/dashboard}"
 export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://10.0.0.3:8090}"
 export OP_DBUS_GRPC_CA_FILE="${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
+# GET /api/identity/self: which TCP source addresses may receive their own SID1
+# for the 3tched UI. Loopback = the workstation's own browser; 10.0.0.5 is the
+# remote identity host (IDENTITY_HOST in network.conf), i.e. the human arriving
+# through the decoy's WireGuard. Bare ip = the single current human session;
+# ip=<session_id> pins one session. Unlisted sources get 404 and the UI's gate.
+export OP_WEB_HUMAN_PEERS="${OP_WEB_HUMAN_PEERS:-127.0.0.1,::1,10.0.0.5}"
+export OP_WEB_DOOR_URL="${OP_WEB_DOOR_URL:-https://10.0.0.3:8090}"
 export COGNITIVE_MCP_CONTEXT_HTTP_DISABLED=1
 export RUST_LOG="${RUST_LOG:-op_web=info,info}"
 

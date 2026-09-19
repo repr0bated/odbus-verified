@@ -33,10 +33,12 @@ pub(crate) async fn observe(engine: Arc<MutationEngine>, client: OvsdbDbusClient
                         // Root replacement preserves the schema's array tree;
                         // raw table deltas and legacy /ovsdb paths never enter
                         // SHM. Audit carries only these selected topology data.
+                        let bridges = prepared.state["bridges"].clone();
                         if let Err(error) = engine
-                            .process_observed_state(
+                            .process_observed_child(
                                 PLUGIN,
-                                prepared.state,
+                                format!("{}/bridges", op_plugins::canonical::plugin_path(PLUGIN)),
+                                bridges,
                                 prepared.expected_schema_hash,
                             )
                             .await

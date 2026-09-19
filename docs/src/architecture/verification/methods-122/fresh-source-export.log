@@ -1,7 +1,0 @@
-exported source closure to /var/tmp/odbus-fresh-source-125
-pinned active UI source artifact: vendor/vercel-json-render-ui/source.tar.gz
-UI source/build verifier: vendor/vercel-json-render-ui/build-assets.sh
-UI build output is separate until its manifest is admitted to the golden snapshot
-pinned tched_router source and patch recipe: vendor/tched-router/build-native.sh
-native build output is separate until its manifest is admitted to the golden snapshot
-this export is source input, not a verified build or deployment

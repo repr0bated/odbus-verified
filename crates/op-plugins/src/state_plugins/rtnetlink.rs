@@ -849,6 +849,7 @@ inventory::submit! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::process::Command;
 
     #[test]
     fn validates_kernel_request_fields_without_touching_host() {
@@ -889,5 +890,147 @@ mod tests {
         }))
         .unwrap();
         assert_eq!(veth.peer_name.as_deref(), Some("veth1"));
+    }
+
+    /// Native proof for every declared method. The test enters a fresh network
+    /// namespace before opening any netlink handle, then reads back links,
+    /// addresses, routes and policy rules from that namespace.
+    #[test]
+    #[ignore = "requires root and an isolated network namespace"]
+    fn all_declared_methods_apply_and_readback_in_isolated_network_namespace() {
+        assert_eq!(unsafe { nix::libc::geteuid() }, 0);
+        assert_eq!(
+            unsafe { nix::libc::unshare(nix::libc::CLONE_NEWNET) },
+            0,
+            "unshare(CLONE_NEWNET) failed"
+        );
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let call = |method: &'static str, args: serde_json::Value| async move {
+                let output = dispatch_rtnetlink_method(method, &args).await.unwrap();
+                assert_eq!(output["disposition"], "accepted");
+                output
+            };
+
+            call(
+                "add_link",
+                serde_json::json!({"name":"rt-a","link_type":"veth","peer_name":"rt-b"}),
+            )
+            .await;
+            let interfaces = op_network::rtnetlink::list_interfaces().await.unwrap();
+            assert!(interfaces.iter().any(|i| i.name == "rt-a"));
+            assert!(interfaces.iter().any(|i| i.name == "rt-b"));
+
+            call(
+                "set_link_state",
+                serde_json::json!({"name":"rt-a","state":"up"}),
+            )
+            .await;
+            let interfaces = op_network::rtnetlink::list_interfaces().await.unwrap();
+            assert_eq!(
+                interfaces.iter().find(|i| i.name == "rt-a").unwrap().state,
+                "up"
+            );
+
+            call(
+                "set_mac_address",
+                serde_json::json!({"name":"rt-a","mac":"02:00:00:00:00:0a"}),
+            )
+            .await;
+            let interfaces = op_network::rtnetlink::list_interfaces().await.unwrap();
+            assert_eq!(
+                interfaces
+                    .iter()
+                    .find(|i| i.name == "rt-a")
+                    .unwrap()
+                    .mac_address
+                    .as_deref(),
+                Some("02:00:00:00:00:0a")
+            );
+
+            call(
+                "add_ipv4_address",
+                serde_json::json!({"name":"rt-a","address":"192.0.2.1/24"}),
+            )
+            .await;
+            let interfaces = op_network::rtnetlink::list_interfaces().await.unwrap();
+            assert!(interfaces
+                .iter()
+                .find(|i| i.name == "rt-a")
+                .unwrap()
+                .addresses
+                .iter()
+                .any(|a| a.address == "192.0.2.1" && a.prefix_len == 24));
+
+            call(
+                "add_route",
+                serde_json::json!({"destination":"198.51.100.0/24","gateway":"192.0.2.254","interface":"rt-a","table":100}),
+            )
+            .await;
+            let routes = op_network::rtnetlink::list_routes_for_interface("rt-a")
+                .await
+                .unwrap();
+            assert!(routes.iter().any(|route| {
+                route["destination"] == "198.51.100.0/24"
+                    && route["gateway"] == "192.0.2.254"
+                    && route["table"] == 100
+            }));
+
+            call(
+                "set_default_route",
+                serde_json::json!({"name":"rt-a","gateway":"192.0.2.254"}),
+            )
+            .await;
+            let default_route = op_network::rtnetlink::get_default_route()
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(default_route["interface_name"], "rt-a");
+            assert_eq!(default_route["gateway"], "192.0.2.254");
+
+            call(
+                "add_rule",
+                serde_json::json!({"destination":"203.0.113.0/24","table":100,"priority":1000}),
+            )
+            .await;
+            let rule_output = Command::new("/usr/bin/ip")
+                .args(["-N", "-j", "rule", "show"])
+                .output()
+                .unwrap();
+            assert!(
+                rule_output.status.success(),
+                "ip rule readback failed: {}",
+                String::from_utf8_lossy(&rule_output.stderr)
+            );
+            let rules: serde_json::Value = serde_json::from_slice(&rule_output.stdout).unwrap();
+            // ip emits table identifiers as JSON strings, including with -N.
+            assert!(
+                rules.as_array().unwrap().iter().any(|rule| {
+                    rule["priority"] == 1000
+                        && rule["table"] == "100"
+                        && rule["dst"] == "203.0.113.0/24"
+                }),
+                "expected destination/priority/table rule was absent: {rules}"
+            );
+
+            call(
+                "del_route",
+                serde_json::json!({"destination":"198.51.100.0/24","gateway":"192.0.2.254","interface":"rt-a","table":100}),
+            )
+            .await;
+            let routes = op_network::rtnetlink::list_routes_for_interface("rt-a")
+                .await
+                .unwrap();
+            assert!(!routes
+                .iter()
+                .any(|route| route["destination"] == "198.51.100.0/24"));
+
+            call("del_link", serde_json::json!({"name":"rt-a"})).await;
+            let interfaces = op_network::rtnetlink::list_interfaces().await.unwrap();
+            assert!(!interfaces.iter().any(|i| i.name == "rt-a" || i.name == "rt-b"));
+        });
     }
 }

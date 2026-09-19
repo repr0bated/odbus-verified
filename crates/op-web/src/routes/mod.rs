@@ -50,6 +50,12 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/identity/sled",
             get(handlers::identity::identity_sled_handler),
         )
+        // SID1-aware client injection: a WireGuard arrival's own credential,
+        // resolved by TCP source address (OP_WEB_HUMAN_PEERS), for the 3tched UI
+        .route(
+            "/identity/self",
+            get(handlers::identity_self::identity_self_handler),
+        )
         // Dashboard
         .route(
             "/dashboard/metrics",

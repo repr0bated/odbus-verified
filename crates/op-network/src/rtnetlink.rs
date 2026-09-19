@@ -140,6 +140,26 @@ async fn get_interface_addresses(
     Ok(addresses)
 }
 
+/// Extract a canonical IP gateway without exposing enum Debug formatting.
+fn route_gateway(route: &RouteMessage) -> Result<Option<String>> {
+    let mut gateway = None;
+    for attribute in &route.attributes {
+        match attribute {
+            RouteAttribute::Gateway(RouteAddress::Inet(address)) => {
+                gateway = Some(address.to_string());
+            }
+            RouteAttribute::Gateway(RouteAddress::Inet6(address)) => {
+                gateway = Some(address.to_string());
+            }
+            RouteAttribute::Gateway(_) => {
+                anyhow::bail!("unsupported route gateway address family");
+            }
+            _ => {}
+        }
+    }
+    Ok(gateway)
+}
+
 /// Get default route information
 pub async fn get_default_route() -> Result<Option<serde_json::Value>> {
     use netlink_packet_route::route::RouteAttribute;
@@ -152,18 +172,12 @@ pub async fn get_default_route() -> Result<Option<serde_json::Value>> {
     while let Some(route) = routes.try_next().await? {
         // Check if this is a default route (destination 0.0.0.0/0)
         if route.header.destination_prefix_length == 0 {
-            let mut gateway = None;
+            let gateway = route_gateway(&route)?;
             let mut oif_index = None;
 
             for attr in &route.attributes {
-                match attr {
-                    RouteAttribute::Gateway(gw) => {
-                        gateway = Some(format!("{:?}", gw));
-                    }
-                    RouteAttribute::Oif(idx) => {
-                        oif_index = Some(idx);
-                    }
-                    _ => {}
+                if let RouteAttribute::Oif(idx) = attr {
+                    oif_index = Some(idx);
                 }
             }
 
@@ -885,6 +899,44 @@ pub async fn add_rule(destination: &str, table: u32, priority: Option<u32>) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn route_gateway_serializes_typed_ipv4_and_ipv6() {
+        let cases = [
+            (
+                RouteAddress::Inet(Ipv4Addr::new(192, 0, 2, 254)),
+                "192.0.2.254",
+            ),
+            (
+                RouteAddress::Inet6("2001:db8::1".parse().unwrap()),
+                "2001:db8::1",
+            ),
+        ];
+        for (gateway, expected) in cases {
+            let mut route = RouteMessage::default();
+            route.attributes.push(RouteAttribute::Gateway(gateway));
+            assert_eq!(route_gateway(&route).unwrap().as_deref(), Some(expected));
+        }
+    }
+
+    #[test]
+    fn route_gateway_preserves_missing_gateway() {
+        let mut route = RouteMessage::default();
+        route.attributes.push(RouteAttribute::Oif(4));
+        assert_eq!(route_gateway(&route).unwrap(), None);
+    }
+
+    #[test]
+    fn route_gateway_rejects_unsupported_family() {
+        let mut route = RouteMessage::default();
+        route
+            .attributes
+            .push(RouteAttribute::Gateway(RouteAddress::Other(vec![0x42])));
+        assert_eq!(
+            route_gateway(&route).unwrap_err().to_string(),
+            "unsupported route gateway address family"
+        );
+    }
 
     #[test]
     fn route_selector_handles_default_and_disambiguators() {

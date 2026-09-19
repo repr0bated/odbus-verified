@@ -1,0 +1,19 @@
+{
+  "purpose": "Offline test provenance; never runtime schema authority",
+  "host": "Artix Linux",
+  "odbus_test_target": "x86_64-unknown-linux-gnu",
+  "odbus_elf_interpreter": "/lib64/ld-linux-x86-64.so.2",
+  "providers": [
+    {
+      "provider": "qdrant",
+      "source": "stopped Qdrant container upstream executable",
+      "sha256": "a8e6b18430f2f4c43156c0992464648b989caf3f2b15d201456364f5656dd598",
+      "elf": "x86-64 static PIE",
+      "upstream_target": "x86_64-unknown-linux-musl",
+      "target_evidence": "embedded prost-wkt-types and raft-proto build paths",
+      "test": "state_plugins::qdrant::native_qdrant_tests::native_qdrant_round_trips_all_declared_methods",
+      "execution_status": "pending",
+      "isolation": "private executable copy; temporary storage and snapshots; loopback endpoints; no live configuration or collection data"
+    }
+  ]
+}

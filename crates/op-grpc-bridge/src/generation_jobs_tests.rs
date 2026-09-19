@@ -336,6 +336,86 @@ fn string_value(response: crate::proto::GetStateResponse) -> String {
 }
 
 #[tokio::test]
+async fn llm_stream_facade_and_job_listing_use_private_committed_state() {
+    let mut native = NativeFixture::new().await;
+    let fixture = Fixture::new(native.endpoint.clone()).await;
+    fixture.activate(&fixture.first).await;
+    fixture.activate(&fixture.second).await;
+    let schema = LargeLanguageModelPlugin::new().schema().unwrap();
+    let started = fixture
+        .engine
+        .dispatch_method_call_with_identity(
+            "large_language_model",
+            "stream_generate",
+            &json!({"agent_alias":"fixture","prompt":"PRIVATE_FACADE_PROMPT"}).to_string(),
+            schema.methods["stream_generate"]
+                .required_capability
+                .as_deref(),
+            &fixture.first.principal_id,
+            Some(&fixture.first.session_id),
+            Some(&fixture.first.session_genesis),
+        )
+        .await
+        .unwrap();
+    let id = started["result"]["job"]["job_id"].as_str().unwrap();
+    let prompt = tokio::time::timeout(LIMIT, &mut native.prompt)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(prompt.to_string().contains("PRIVATE_FACADE_PROMPT"));
+    native.chunk("facade output").await;
+    let running = fixture.wait_committed_chunks(id, 1).await;
+    assert_eq!(running.output, "facade output");
+    assert_eq!(
+        string_value(
+            fixture
+                .get(&fixture.first, &format!("generation_jobs/{id}/output"))
+                .await
+                .unwrap()
+        ),
+        "facade output"
+    );
+    native.done("facade output").await;
+    let completed = fixture.wait_status(id, GenerationStatus::Completed).await;
+    assert_eq!(completed.output, "facade output");
+    let listed = fixture
+        .call(&fixture.first, "get_generation_jobs", json!({}))
+        .await
+        .unwrap();
+    let jobs = listed["state"]["generation_jobs"].as_object().unwrap();
+    assert_eq!(jobs.len(), 1);
+    assert_eq!(jobs[id], serde_json::to_value(&completed).unwrap());
+    let other = fixture
+        .call(&fixture.second, "get_generation_jobs", json!({}))
+        .await
+        .unwrap();
+    let other_workspace: GenerationWorkspaceOutput = serde_json::from_value(other.clone()).unwrap();
+    assert!(other_workspace
+        .state
+        .is_none_or(|state| state.generation_jobs.is_empty()));
+    assert!(!other.to_string().contains("PRIVATE_FACADE_PROMPT"));
+    assert!(!other.to_string().contains("facade output"));
+    fixture
+        .call(
+            &fixture.first,
+            "delete_generation_job",
+            json!({
+                "job_id":id,"expected_revision":completed.revision
+            }),
+        )
+        .await
+        .unwrap();
+    let deleted = fixture
+        .call(&fixture.first, "get_generation_jobs", json!({}))
+        .await
+        .unwrap();
+    assert!(deleted["state"]["generation_jobs"]
+        .as_object()
+        .unwrap()
+        .is_empty());
+}
+
+#[tokio::test]
 async fn actual_handlers_require_owner_grants_and_serve_only_committed_children() {
     let mut native = NativeFixture::new().await;
     let fixture = Fixture::new(native.endpoint.clone()).await;

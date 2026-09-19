@@ -14,10 +14,14 @@
 //! `crates/op-network/src/controller.rs` — the same pattern OVSDB now follows.
 
 use anyhow::{Context, Result};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 #[path = "ovsdb_monitor.rs"]
 pub mod monitor;
+
+#[cfg(test)]
+#[path = "rovs_proxy_native_tests.rs"]
+mod native_tests;
 
 // ── OvsdbDbusClient ─────────────────────────────────────────────────────────
 
@@ -35,6 +39,57 @@ const DEFAULT_OVSDB_ADDR: &str = "unix:/var/run/openvswitch/db.sock";
 #[derive(Clone, Default)]
 pub struct OvsdbDbusClient {
     client: Arc<tokio::sync::Mutex<Option<rovs_ovsdb::Client>>>,
+    locks: Arc<tokio::sync::Mutex<HashMap<(String, String), LockSession>>>,
+    monitors: Arc<tokio::sync::Mutex<HashMap<(String, String), monitor::MonitorSubscription>>>,
+}
+
+struct LockSession {
+    connection: rovs_jsonrpc::Connection,
+    initially_locked: bool,
+}
+
+pub struct ProtocolMonitorStart {
+    pub initial: Arc<monitor::ProtocolSnapshot>,
+    pub receiver: tokio::sync::watch::Receiver<monitor::ProtocolObservation>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LockReceipt {
+    pub lock_id: String,
+    pub locked: bool,
+    pub queued: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct UnlockReceipt {
+    pub lock_id: String,
+    pub unlocked: bool,
+    pub acquired_while_queued: bool,
+    pub stolen_before_unlock: bool,
+}
+
+const RPC_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
+const MAX_RETAINED_LOCKS: usize = 64;
+const MAX_RETAINED_MONITORS: usize = 64;
+
+fn validate_session_key(owner: &str, id: &str) -> Result<()> {
+    anyhow::ensure!(
+        !owner.is_empty() && owner.len() <= 256,
+        "invalid OVSDB caller scope"
+    );
+    anyhow::ensure!(
+        !id.is_empty()
+            && id.len() <= 128
+            && id
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.')),
+        "invalid OVSDB session identifier"
+    );
+    Ok(())
+}
+
+fn retained_key(owner: &str, id: &str) -> (String, String) {
+    (owner.to_owned(), id.to_owned())
 }
 
 impl OvsdbDbusClient {
@@ -43,6 +98,8 @@ impl OvsdbDbusClient {
     pub fn new() -> Self {
         Self {
             client: Arc::new(tokio::sync::Mutex::new(None)),
+            locks: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            monitors: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         }
     }
 
@@ -604,6 +661,63 @@ impl OvsdbDbusClient {
         Ok(())
     }
 
+    /// Add a port while preserving the schema's distinct port/interface names
+    /// and optional VLAN tag.
+    pub async fn add_port_with_options(
+        &self,
+        bridge_name: &str,
+        port_name: &str,
+        interface_name: Option<&str>,
+        tag: Option<i32>,
+    ) -> Result<()> {
+        let interface_name = interface_name.unwrap_or(port_name);
+        let mut port_row = serde_json::json!({
+            "name": port_name,
+            "interfaces": ["set", [["named-uuid", "new_iface"]]]
+        });
+        if let Some(tag) = tag {
+            anyhow::ensure!((0..=4095).contains(&tag), "OVS VLAN tag must be 0..=4095");
+            port_row["tag"] = serde_json::json!(tag);
+        }
+        let result = self
+            .transact_many(vec![
+                serde_json::json!({
+                    "op": "insert",
+                    "table": "Interface",
+                    "row": { "name": interface_name, "type": "system" },
+                    "uuid-name": "new_iface"
+                }),
+                serde_json::json!({
+                    "op": "insert",
+                    "table": "Port",
+                    "row": port_row,
+                    "uuid-name": "new_port"
+                }),
+                serde_json::json!({
+                    "op": "mutate",
+                    "table": "Bridge",
+                    "where": [["name", "==", bridge_name]],
+                    "mutations": [["ports", "insert", ["named-uuid", "new_port"]]]
+                }),
+            ])
+            .await?;
+        Self::check_errors(&result)?;
+        Ok(())
+    }
+
+    /// Set the boolean STP column on a bridge through a checked transaction.
+    pub async fn set_bridge_stp(&self, bridge_name: &str, enabled: bool) -> Result<()> {
+        let result = self
+            .transact_many(vec![serde_json::json!({
+                "op": "update",
+                "table": "Bridge",
+                "where": [["name", "==", bridge_name]],
+                "row": { "stp_enable": enabled }
+            })])
+            .await?;
+        Self::check_errors(&result)
+    }
+
     /// Ensure an OVS internal Port/Interface pair exists on `bridge_name`.
     ///
     /// Existing ports are repaired to `type=internal`; new rows and their
@@ -690,6 +804,262 @@ impl OvsdbDbusClient {
         let address =
             std::env::var("OVSDB_SOCKET_ADDR").unwrap_or_else(|_| DEFAULT_OVSDB_ADDR.to_owned());
         monitor::subscribe(&address, database).await
+    }
+
+    /// Issue one native OVSDB JSON-RPC request on a short-lived connection.
+    /// This is reserved for RFC 7047 methods which are not transactions.
+    pub async fn native_rpc(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let address =
+            std::env::var("OVSDB_SOCKET_ADDR").unwrap_or_else(|_| DEFAULT_OVSDB_ADDR.to_owned());
+        let address: rovs_transport::Address = address.parse().context("invalid OVSDB address")?;
+        let stream = rovs_transport::Stream::connect(&address)
+            .await
+            .context("connect to OVSDB native RPC endpoint")?;
+        let mut connection = rovs_jsonrpc::Connection::new(stream);
+        tokio::time::timeout(RPC_TIMEOUT, connection.transact(method, params))
+            .await
+            .context("OVSDB native RPC timed out")?
+            .map_err(anyhow::Error::from)
+            .with_context(|| format!("OVSDB {method} request failed"))
+    }
+
+    /// Acquire and retain an RFC 7047 lock on a dedicated connection.
+    pub async fn lock(&self, owner: &str, lock_id: &str) -> Result<LockReceipt> {
+        validate_session_key(owner, lock_id)?;
+        let key = retained_key(owner, lock_id);
+        {
+            let locks = self.locks.lock().await;
+            anyhow::ensure!(
+                !locks.contains_key(&key),
+                "OVSDB lock/steal must alternate with unlock"
+            );
+            anyhow::ensure!(
+                locks.len() < MAX_RETAINED_LOCKS,
+                "OVSDB retained lock limit reached"
+            );
+        }
+        let address =
+            std::env::var("OVSDB_SOCKET_ADDR").unwrap_or_else(|_| DEFAULT_OVSDB_ADDR.to_owned());
+        let address: rovs_transport::Address = address.parse().context("invalid OVSDB address")?;
+        let stream = tokio::time::timeout(RPC_TIMEOUT, rovs_transport::Stream::connect(&address))
+            .await
+            .context("connect to OVSDB lock endpoint timed out")?
+            .context("connect to OVSDB lock endpoint")?;
+        let mut connection = rovs_jsonrpc::Connection::new(stream);
+        let result = tokio::time::timeout(
+            RPC_TIMEOUT,
+            connection.transact("lock", serde_json::json!([lock_id])),
+        )
+        .await
+        .context("OVSDB lock request timed out")?
+        .map_err(anyhow::Error::from)
+        .context("OVSDB lock request failed")?;
+        let locked = result
+            .get("locked")
+            .and_then(serde_json::Value::as_bool)
+            .context("OVSDB lock response omitted locked")?;
+        let mut locks = self.locks.lock().await;
+        anyhow::ensure!(
+            !locks.contains_key(&key),
+            "concurrent OVSDB lock request used the same owner and ID"
+        );
+        anyhow::ensure!(
+            locks.len() < MAX_RETAINED_LOCKS,
+            "OVSDB retained lock limit reached"
+        );
+        locks.insert(
+            key,
+            LockSession {
+                connection,
+                initially_locked: locked,
+            },
+        );
+        Ok(LockReceipt {
+            lock_id: lock_id.to_owned(),
+            locked,
+            queued: !locked,
+        })
+    }
+
+    /// Steal a lock and retain the new owner connection.
+    pub async fn steal(&self, owner: &str, lock_id: &str) -> Result<LockReceipt> {
+        validate_session_key(owner, lock_id)?;
+        let key = retained_key(owner, lock_id);
+        {
+            let locks = self.locks.lock().await;
+            anyhow::ensure!(
+                !locks.contains_key(&key),
+                "OVSDB lock/steal must alternate with unlock"
+            );
+            anyhow::ensure!(
+                locks.len() < MAX_RETAINED_LOCKS,
+                "OVSDB retained lock limit reached"
+            );
+        }
+        let address =
+            std::env::var("OVSDB_SOCKET_ADDR").unwrap_or_else(|_| DEFAULT_OVSDB_ADDR.to_owned());
+        let address: rovs_transport::Address = address.parse().context("invalid OVSDB address")?;
+        let stream = tokio::time::timeout(RPC_TIMEOUT, rovs_transport::Stream::connect(&address))
+            .await
+            .context("connect to OVSDB steal endpoint timed out")?
+            .context("connect to OVSDB steal endpoint")?;
+        let mut connection = rovs_jsonrpc::Connection::new(stream);
+        let result = tokio::time::timeout(
+            RPC_TIMEOUT,
+            connection.transact("steal", serde_json::json!([lock_id])),
+        )
+        .await
+        .context("OVSDB steal request timed out")?
+        .map_err(anyhow::Error::from)
+        .context("OVSDB steal request failed")?;
+        anyhow::ensure!(
+            result.get("locked").and_then(serde_json::Value::as_bool) == Some(true),
+            "OVSDB steal did not grant the lock"
+        );
+        let mut locks = self.locks.lock().await;
+        anyhow::ensure!(
+            !locks.contains_key(&key),
+            "concurrent OVSDB steal used the same owner and ID"
+        );
+        anyhow::ensure!(
+            locks.len() < MAX_RETAINED_LOCKS,
+            "OVSDB retained lock limit reached"
+        );
+        locks.insert(
+            key,
+            LockSession {
+                connection,
+                initially_locked: true,
+            },
+        );
+        Ok(LockReceipt {
+            lock_id: lock_id.to_owned(),
+            locked: true,
+            queued: false,
+        })
+    }
+
+    /// Release a retained RFC 7047 lock connection.
+    pub async fn unlock(&self, owner: &str, lock_id: &str) -> Result<UnlockReceipt> {
+        validate_session_key(owner, lock_id)?;
+        let key = retained_key(owner, lock_id);
+        let mut session = self
+            .locks
+            .lock()
+            .await
+            .remove(&key)
+            .ok_or_else(|| anyhow::anyhow!("OVSDB lock '{lock_id}' is not held"))?;
+        let result = tokio::time::timeout(
+            RPC_TIMEOUT,
+            session
+                .connection
+                .transact("unlock", serde_json::json!([lock_id])),
+        )
+        .await
+        .context("OVSDB unlock request timed out")?
+        .map_err(anyhow::Error::from)
+        .context("OVSDB unlock request failed")?;
+        anyhow::ensure!(
+            result.as_object().is_some_and(serde_json::Map::is_empty),
+            "OVSDB unlock returned an invalid result"
+        );
+        let notifications = session.connection.drain_notifications().collect::<Vec<_>>();
+        anyhow::ensure!(
+            notifications.len() <= 8,
+            "too many OVSDB lock notifications"
+        );
+        let mut acquired_while_queued = false;
+        let mut stolen_before_unlock = false;
+        for notification in notifications {
+            anyhow::ensure!(
+                notification.id.is_none(),
+                "OVSDB lock notification unexpectedly had an ID"
+            );
+            anyhow::ensure!(
+                notification.params == serde_json::json!([lock_id]),
+                "OVSDB lock notification named a different lock"
+            );
+            match notification.method.as_str() {
+                "locked" => acquired_while_queued = true,
+                "stolen" => stolen_before_unlock = true,
+                _ => anyhow::bail!("unexpected OVSDB lock notification"),
+            }
+        }
+        // A queued lock may be unlocked before it is granted; RFC 7047 defines
+        // that as cancellation of the pending request. If it was granted, the
+        // server must send `locked` before this unlock reply and we report it.
+        let _owned_before_unlock = session.initially_locked || acquired_while_queued;
+        Ok(UnlockReceipt {
+            lock_id: lock_id.to_owned(),
+            unlocked: true,
+            acquired_while_queued,
+            stolen_before_unlock,
+        })
+    }
+
+    /// Start a caller-selected protocol monitor and retain the native session.
+    pub async fn start_protocol_monitor(
+        &self,
+        owner: &str,
+        database: &str,
+        monitor_id: &str,
+        method: &str,
+        requests: serde_json::Value,
+    ) -> Result<ProtocolMonitorStart> {
+        validate_session_key(owner, monitor_id)?;
+        let key = retained_key(owner, monitor_id);
+        {
+            let mut monitors = self.monitors.lock().await;
+            monitors.retain(|_, subscription| subscription.is_active());
+            anyhow::ensure!(
+                !monitors.contains_key(&key),
+                "OVSDB monitor ID is already active for this caller"
+            );
+            anyhow::ensure!(
+                monitors.len() < MAX_RETAINED_MONITORS,
+                "OVSDB retained monitor limit reached"
+            );
+        }
+        let address =
+            std::env::var("OVSDB_SOCKET_ADDR").unwrap_or_else(|_| DEFAULT_OVSDB_ADDR.to_owned());
+        let subscription =
+            monitor::subscribe_protocol(&address, database, monitor_id, method, requests).await?;
+        let initial = match subscription.receiver.borrow().clone() {
+            monitor::ProtocolObservation::Snapshot(snapshot) => snapshot,
+            monitor::ProtocolObservation::Unavailable(reason) => {
+                return Err(anyhow::anyhow!("OVSDB monitor unavailable: {reason}"));
+            }
+        };
+        let receiver = subscription.receiver.clone();
+        let mut monitors = self.monitors.lock().await;
+        anyhow::ensure!(
+            !monitors.contains_key(&key),
+            "concurrent OVSDB monitor used the same caller and ID"
+        );
+        anyhow::ensure!(
+            monitors.len() < MAX_RETAINED_MONITORS,
+            "OVSDB retained monitor limit reached"
+        );
+        monitors.insert(key, subscription);
+        Ok(ProtocolMonitorStart { initial, receiver })
+    }
+
+    /// Cancel a retained monitor through monitor_cancel on its owning session.
+    pub async fn cancel_monitor(&self, owner: &str, monitor_id: &str) -> Result<serde_json::Value> {
+        validate_session_key(owner, monitor_id)?;
+        let subscription = self
+            .monitors
+            .lock()
+            .await
+            .remove(&retained_key(owner, monitor_id))
+            .ok_or_else(|| {
+                anyhow::anyhow!("OVSDB monitor '{monitor_id}' is not active for this caller")
+            })?;
+        subscription.cancel().await
     }
 
     /// Compatibility shim for plugins that pass `simd_json::OwnedValue`.

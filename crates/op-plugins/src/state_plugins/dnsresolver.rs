@@ -1012,22 +1012,40 @@ inventory::submit! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Arc, Mutex};
     use tokio::net::UnixStream;
     use zbus::connection;
     use zbus::zvariant::OwnedObjectPath;
 
-    struct ResolveFixture;
+    type CallLog = Arc<Mutex<Vec<(String, serde_json::Value)>>>;
+
+    struct ResolveFixture {
+        calls: CallLog,
+    }
+
+    impl ResolveFixture {
+        fn record(&self, method: &str, arguments: serde_json::Value) {
+            self.calls
+                .lock()
+                .unwrap()
+                .push((method.to_string(), arguments));
+        }
+    }
 
     #[zbus::interface(name = "org.freedesktop.resolve1.Manager")]
     impl ResolveFixture {
         #[zbus(name = "ResolveHostname")]
         async fn resolve_hostname(
             &self,
-            _fixture_arg_4: i32,
-            _fixture_arg_5: String,
-            _fixture_arg_6: i32,
-            _fixture_arg_7: u64,
+            ifindex: i32,
+            name: String,
+            family: i32,
+            flags: u64,
         ) -> (Vec<DnsAddress>, String, u64) {
+            self.record(
+                "ResolveHostname",
+                serde_json::json!([ifindex, name, family, flags]),
+            );
             (
                 vec![DnsAddress {
                     ifindex: 2,
@@ -1041,11 +1059,15 @@ mod tests {
         #[zbus(name = "ResolveAddress")]
         async fn resolve_address(
             &self,
-            _fixture_arg_8: i32,
-            _fixture_arg_9: i32,
-            _fixture_arg_10: Vec<u8>,
-            _fixture_arg_11: u64,
+            ifindex: i32,
+            family: i32,
+            address: Vec<u8>,
+            flags: u64,
         ) -> (Vec<DnsName>, u64) {
+            self.record(
+                "ResolveAddress",
+                serde_json::json!([ifindex, family, address, flags]),
+            );
             (
                 vec![DnsName {
                     ifindex: 2,
@@ -1057,12 +1079,16 @@ mod tests {
         #[zbus(name = "ResolveRecord")]
         async fn resolve_record(
             &self,
-            _fixture_arg_12: i32,
-            _fixture_arg_13: String,
-            _fixture_arg_14: u16,
-            _fixture_arg_15: u16,
-            _fixture_arg_16: u64,
+            ifindex: i32,
+            name: String,
+            class: u16,
+            record_type: u16,
+            flags: u64,
         ) -> (Vec<DnsRecord>, u64) {
+            self.record(
+                "ResolveRecord",
+                serde_json::json!([ifindex, name, class, record_type, flags]),
+            );
             (
                 vec![DnsRecord {
                     ifindex: 2,
@@ -1076,12 +1102,12 @@ mod tests {
         #[zbus(name = "ResolveService")]
         async fn resolve_service(
             &self,
-            _fixture_arg_17: i32,
-            _fixture_arg_18: String,
-            _fixture_arg_19: String,
-            _fixture_arg_20: String,
-            _fixture_arg_21: i32,
-            _fixture_arg_22: u64,
+            ifindex: i32,
+            name: String,
+            service_type: String,
+            domain: String,
+            family: i32,
+            flags: u64,
         ) -> (
             Vec<DnsServiceRecord>,
             Vec<Vec<u8>>,
@@ -1090,6 +1116,10 @@ mod tests {
             String,
             u64,
         ) {
+            self.record(
+                "ResolveService",
+                serde_json::json!([ifindex, name, service_type, domain, family, flags]),
+            );
             (
                 vec![DnsServiceRecord {
                     priority: 1,
@@ -1107,67 +1137,94 @@ mod tests {
             )
         }
         #[zbus(name = "GetLink")]
-        async fn get_link(&self, _ifindex: i32) -> OwnedObjectPath {
+        async fn get_link(&self, ifindex: i32) -> OwnedObjectPath {
+            self.record("GetLink", serde_json::json!([ifindex]));
             OwnedObjectPath::try_from("/org/freedesktop/resolve1/link/_2f2").unwrap()
         }
 
         #[zbus(name = "SetLinkDNSEx")]
-        async fn set_link_dns_ex(
-            &self,
-            _fixture_arg_23: i32,
-            _fixture_arg_24: Vec<(i32, Vec<u8>, u16, String)>,
-        ) {
+        async fn set_link_dns_ex(&self, ifindex: i32, addresses: Vec<(i32, Vec<u8>, u16, String)>) {
+            self.record("SetLinkDNSEx", serde_json::json!([ifindex, addresses]));
         }
         #[zbus(name = "SetLinkDomains")]
-        async fn set_link_domains(
-            &self,
-            _fixture_arg_25: i32,
-            _fixture_arg_26: Vec<(String, bool)>,
-        ) {
+        async fn set_link_domains(&self, ifindex: i32, domains: Vec<(String, bool)>) {
+            self.record("SetLinkDomains", serde_json::json!([ifindex, domains]));
         }
         #[zbus(name = "SetLinkDefaultRoute")]
-        async fn set_link_default_route(&self, _fixture_arg_27: i32, _fixture_arg_28: bool) {}
+        async fn set_link_default_route(&self, ifindex: i32, enable: bool) {
+            self.record("SetLinkDefaultRoute", serde_json::json!([ifindex, enable]));
+        }
         #[zbus(name = "SetLinkLLMNR")]
-        async fn set_link_llmnr(&self, _fixture_arg_29: i32, _fixture_arg_30: String) {}
+        async fn set_link_llmnr(&self, ifindex: i32, mode: String) {
+            self.record("SetLinkLLMNR", serde_json::json!([ifindex, mode]));
+        }
         #[zbus(name = "SetLinkMulticastDNS")]
-        async fn set_link_multicast_dns(&self, _fixture_arg_31: i32, _fixture_arg_32: String) {}
+        async fn set_link_multicast_dns(&self, ifindex: i32, mode: String) {
+            self.record("SetLinkMulticastDNS", serde_json::json!([ifindex, mode]));
+        }
         #[zbus(name = "SetLinkDNSOverTLS")]
-        async fn set_link_dns_over_tls(&self, _fixture_arg_33: i32, _fixture_arg_34: String) {}
+        async fn set_link_dns_over_tls(&self, ifindex: i32, mode: String) {
+            self.record("SetLinkDNSOverTLS", serde_json::json!([ifindex, mode]));
+        }
         #[zbus(name = "SetLinkDNSSEC")]
-        async fn set_link_dnssec(&self, _fixture_arg_35: i32, _fixture_arg_36: String) {}
+        async fn set_link_dnssec(&self, ifindex: i32, mode: String) {
+            self.record("SetLinkDNSSEC", serde_json::json!([ifindex, mode]));
+        }
         #[zbus(name = "SetLinkDNSSECNegativeTrustAnchors")]
-        async fn set_link_dnssec_nta(&self, _fixture_arg_37: i32, _fixture_arg_38: Vec<String>) {}
+        async fn set_link_dnssec_nta(&self, ifindex: i32, names: Vec<String>) {
+            self.record(
+                "SetLinkDNSSECNegativeTrustAnchors",
+                serde_json::json!([ifindex, names]),
+            );
+        }
         #[zbus(name = "RevertLink")]
-        async fn revert_link(&self, _fixture_arg_39: i32) {}
+        async fn revert_link(&self, ifindex: i32) {
+            self.record("RevertLink", serde_json::json!([ifindex]));
+        }
         #[zbus(name = "RegisterService")]
         // The fixture must implement the native D-Bus method's exact ABI.
         #[allow(clippy::too_many_arguments)]
         async fn register_service(
             &self,
-            _fixture_arg_40: String,
-            _fixture_arg_41: String,
-            _fixture_arg_42: String,
-            _fixture_arg_43: u16,
-            _fixture_arg_44: u16,
-            _fixture_arg_45: u16,
-            _fixture_arg_46: Vec<std::collections::BTreeMap<String, Vec<u8>>>,
+            id: String,
+            name_template: String,
+            service_type: String,
+            port: u16,
+            priority: u16,
+            weight: u16,
+            txt: Vec<std::collections::BTreeMap<String, Vec<u8>>>,
         ) -> OwnedObjectPath {
+            self.record(
+                "RegisterService",
+                serde_json::json!([id, name_template, service_type, port, priority, weight, txt]),
+            );
             OwnedObjectPath::try_from("/org/freedesktop/resolve1/service/1").unwrap()
         }
         #[zbus(name = "UnregisterService")]
-        async fn unregister_service(&self, _fixture_arg_47: OwnedObjectPath) {}
+        async fn unregister_service(&self, service: OwnedObjectPath) {
+            self.record("UnregisterService", serde_json::json!([service.as_str()]));
+        }
         #[zbus(name = "ResetStatistics")]
-        async fn reset_statistics(&self) {}
+        async fn reset_statistics(&self) {
+            self.record("ResetStatistics", serde_json::json!([]));
+        }
         #[zbus(name = "FlushCaches")]
-        async fn flush_caches(&self) {}
+        async fn flush_caches(&self) {
+            self.record("FlushCaches", serde_json::json!([]));
+        }
         #[zbus(name = "ResetServerFeatures")]
-        async fn reset_server_features(&self) {}
+        async fn reset_server_features(&self) {
+            self.record("ResetServerFeatures", serde_json::json!([]));
+        }
 
         #[zbus(name = "SetLinkDNS")]
-        async fn set_link_dns(&self, _ifindex: i32, _addresses: Vec<(i32, Vec<u8>)>) {}
+        async fn set_link_dns(&self, ifindex: i32, addresses: Vec<(i32, Vec<u8>)>) {
+            self.record("SetLinkDNS", serde_json::json!([ifindex, addresses]));
+        }
     }
 
-    async fn fixture_connection() -> (zbus::Connection, zbus::Connection) {
+    async fn fixture_connection() -> (zbus::Connection, zbus::Connection, CallLog) {
+        let calls = Arc::new(Mutex::new(Vec::new()));
         let (server_stream, client_stream) = UnixStream::pair().unwrap();
         let server_builder = connection::Builder::unix_stream(server_stream)
             .server(zbus::Guid::generate())
@@ -1178,15 +1235,20 @@ mod tests {
             tokio::try_join!(server_builder.build(), client_builder.build()).unwrap();
         server
             .object_server()
-            .at(RESOLVE1_PATH, ResolveFixture)
+            .at(
+                RESOLVE1_PATH,
+                ResolveFixture {
+                    calls: calls.clone(),
+                },
+            )
             .await
             .unwrap();
-        (server, client)
+        (server, client, calls)
     }
 
     #[tokio::test]
     async fn manager_reads_and_link_mutations_use_typed_outputs() -> anyhow::Result<()> {
-        let (_server, client) = fixture_connection().await;
+        let (_server, client, call_log) = fixture_connection().await;
         let link =
             dispatch_dnsresolver_method_on(&client, "get_link", &serde_json::json!({"ifindex": 2}))
                 .await
@@ -1267,17 +1329,127 @@ mod tests {
         ];
         for (method, args) in calls {
             let output = dispatch_dnsresolver_method_on(&client, method, &args).await?;
-            assert!(
-                output.get("success").is_none(),
-                "{method} must have a typed output"
-            );
+            match method {
+                "resolve_hostname" => {
+                    assert_eq!(output["canonical"], "example");
+                    assert_eq!(output["flags"], 1);
+                    assert_eq!(output["addresses"][0]["ifindex"], 2);
+                    assert_eq!(output["addresses"][0]["family"], 2);
+                    assert_eq!(
+                        output["addresses"][0]["address"],
+                        serde_json::json!([127, 0, 0, 1])
+                    );
+                }
+                "resolve_address" => {
+                    assert_eq!(output["flags"], 1);
+                    assert_eq!(output["names"][0]["ifindex"], 2);
+                    assert_eq!(output["names"][0]["name"], "example");
+                }
+                "resolve_record" => {
+                    assert_eq!(output["flags"], 1);
+                    assert_eq!(output["records"][0]["ifindex"], 2);
+                    assert_eq!(output["records"][0]["class"], 1);
+                    assert_eq!(output["records"][0]["record_type"], 1);
+                    assert_eq!(
+                        output["records"][0]["data"],
+                        serde_json::json!([127, 0, 0, 1])
+                    );
+                }
+                "resolve_service" => {
+                    assert_eq!(output["flags"], 1);
+                    assert_eq!(output["canonical_name"], "name");
+                    assert_eq!(output["canonical_type"], "type");
+                    assert_eq!(output["canonical_domain"], "domain");
+                    assert_eq!(output["txt_data"], serde_json::json!([[1, 2]]));
+                    assert_eq!(output["srv_data"][0]["priority"], 1);
+                    assert_eq!(output["srv_data"][0]["weight"], 2);
+                    assert_eq!(output["srv_data"][0]["port"], 80);
+                    assert_eq!(output["srv_data"][0]["hostname"], "host");
+                }
+                "register_service" => {
+                    assert_eq!(
+                        output["service_path"],
+                        "/org/freedesktop/resolve1/service/1"
+                    );
+                }
+                _ => {
+                    assert_eq!(
+                        output["disposition"], "accepted",
+                        "{method} must report acceptance"
+                    );
+                    assert!(
+                        output.get("success").is_none(),
+                        "{method} must have a typed output"
+                    );
+                }
+            }
+        }
+        let expected_calls = [
+            "GetLink",
+            "SetLinkDNS",
+            "ResolveHostname",
+            "ResolveAddress",
+            "ResolveRecord",
+            "ResolveService",
+            "SetLinkDNSEx",
+            "SetLinkDomains",
+            "SetLinkDefaultRoute",
+            "SetLinkLLMNR",
+            "SetLinkMulticastDNS",
+            "SetLinkDNSOverTLS",
+            "SetLinkDNSSEC",
+            "SetLinkDNSSECNegativeTrustAnchors",
+            "RevertLink",
+            "RegisterService",
+            "UnregisterService",
+            "ResetStatistics",
+            "FlushCaches",
+            "ResetServerFeatures",
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+        // Verify the native wire arguments as well as method names. A fixture
+        // that acknowledges everything cannot detect omitted flags, swapped
+        // indices or a mutation accidentally sent with empty configuration.
+        let expected_arguments = serde_json::json!([
+            [2],
+            [2, [[2, [127, 0, 0, 1]]]],
+            [2, "example", 0, 0],
+            [2, 2, [127, 0, 0, 1], 0],
+            [2, "example", 1, 1, 0],
+            [2, "svc", "_http._tcp", "local", 0, 0],
+            [2, [[2, [127, 0, 0, 1], 853, "dns.example"]]],
+            [2, [["example", true]]],
+            [2, true],
+            [2, "yes"],
+            [2, "yes"],
+            [2, "yes"],
+            [2, "yes"],
+            [2, ["example"]],
+            [2],
+            ["test", "Test", "_http._tcp", 80, 1, 1, []],
+            ["/org/freedesktop/resolve1/service/1"],
+            [],
+            [],
+            []
+        ]);
+        let observed = call_log.lock().unwrap().clone();
+        assert_eq!(observed.len(), expected_calls.len());
+        for ((method, arguments), (expected_method, expected_arguments)) in observed.iter().zip(
+            expected_calls
+                .iter()
+                .zip(expected_arguments.as_array().unwrap()),
+        ) {
+            assert_eq!(method, expected_method);
+            assert_eq!(arguments, expected_arguments, "{method} native arguments");
         }
         Ok(())
     }
 
     #[tokio::test]
     async fn manager_errors_are_propagated() {
-        let (server, client) = fixture_connection().await;
+        let (server, client, _calls) = fixture_connection().await;
         drop(server);
         assert!(dispatch_dnsresolver_method_on(
             &client,

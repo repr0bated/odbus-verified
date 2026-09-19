@@ -1,0 +1,132 @@
+#!/bin/sh
+# decoy-egress {status|warp|direct|proxy [country] [city]|test} — choose how the
+# decoy sends traffic to the internet. Controls BOTH:
+#   - the router's forwarded LAN traffic (wg-opdbus 10.0.0.0/24)
+#   - the REALITY egress service (xray-egress, :9443)
+#
+#   warp   : ride WARP (wgcf-ingress, mark 0x51820) -> Cloudflare exit IP
+#   direct : the decoy's own public IP
+#   proxy  : residential proxy; country/city select the geo. LAN TCP is
+#            transparently redirected into it; QUIC (UDP 443) is blocked so
+#            browsers fall back to TCP; other LAN UDP still rides WARP (no leak).
+#
+# Residential creds in /etc/xray/egress-proxy.env (root 0600): PROXY_HOST,
+# PROXY_PORT, PROXY_USER, PROXY_PASS, PROXY_COUNTRY, PROXY_CITY. The geo is
+# appended to the PASSWORD: <pass>_country-<cc>[_city-<name>].
+set -eu
+
+REALITY_CONF=/etc/xray/egress-server.json
+REDIR_CONF=/etc/xray/fabric-redir.json
+ENV=/etc/xray/egress-proxy.env
+MARK=0x51820
+FAB_IF=wg-opdbus
+REDIR_PORT=12345
+PRIV="10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16"
+
+need_root() { [ "$(id -u)" -eq 0 ] || { echo "run as root" >&2; exit 1; }; }
+load_proxy() {
+    [ -r "$ENV" ] || { echo "missing $ENV" >&2; exit 2; }
+    # shellcheck disable=SC1090
+    . "$ENV"
+    : "${PROXY_HOST:?}" "${PROXY_PORT:?}" "${PROXY_USER:?}" "${PROXY_PASS:?}"
+}
+proxy_pass() {
+    _c="${1:-${PROXY_COUNTRY:-us}}"; _city="${2:-${PROXY_CITY:-}}"
+    _p="${PROXY_PASS}_country-${_c}"; [ -n "$_city" ] && _p="${_p}_city-${_city}"
+    printf '%s' "$_p"
+}
+proxy_url() { printf 'http://%s:%s@%s:%s' "$PROXY_USER" "$(proxy_pass "$1" "$2")" "$PROXY_HOST" "$PROXY_PORT"; }
+
+# ---- iptables helpers (idempotent) ----------------------------------------
+fabric_clear() {
+    sysctl -qw net.ipv4.ip_forward=1
+    iptables -t mangle -D PREROUTING -i "$FAB_IF" -j FABRIC_EGRESS 2>/dev/null || true
+    iptables -t mangle -F FABRIC_EGRESS 2>/dev/null || true
+    iptables -t mangle -N FABRIC_EGRESS 2>/dev/null || true
+    iptables -t nat -D PREROUTING -i "$FAB_IF" -j FABRIC_REDIR 2>/dev/null || true
+    iptables -t nat -F FABRIC_REDIR 2>/dev/null || true
+    iptables -t nat -N FABRIC_REDIR 2>/dev/null || true
+    while iptables -C INPUT -i "$FAB_IF" -p tcp --dport "$REDIR_PORT" -j ACCEPT 2>/dev/null; do
+        iptables -D INPUT -i "$FAB_IF" -p tcp --dport "$REDIR_PORT" -j ACCEPT; done
+    while iptables -C FORWARD -i "$FAB_IF" -p udp --dport 443 -j REJECT 2>/dev/null; do
+        iptables -D FORWARD -i "$FAB_IF" -p udp --dport 443 -j REJECT; done
+    iptables -t mangle -C FORWARD -i "$FAB_IF" -o wgcf-ingress -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || \
+        iptables -t mangle -A FORWARD -i "$FAB_IF" -o wgcf-ingress -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+}
+mark_all_warp() {
+    for n in $PRIV; do iptables -t mangle -A FABRIC_EGRESS -d "$n" -j RETURN; done
+    iptables -t mangle -A FABRIC_EGRESS -j MARK --set-mark "$MARK"
+    iptables -t mangle -A PREROUTING -i "$FAB_IF" -j FABRIC_EGRESS
+}
+mark_udp_warp() {  # proxy mode: UDP still rides WARP so nothing leaks the real IP
+    for n in $PRIV; do iptables -t mangle -A FABRIC_EGRESS -d "$n" -j RETURN; done
+    iptables -t mangle -A FABRIC_EGRESS -p udp -j MARK --set-mark "$MARK"
+    iptables -t mangle -A PREROUTING -i "$FAB_IF" -j FABRIC_EGRESS
+}
+redirect_tcp() {   # proxy mode: LAN TCP -> local xray -> residential
+    for n in $PRIV; do iptables -t nat -A FABRIC_REDIR -d "$n" -j RETURN; done
+    iptables -t nat -A FABRIC_REDIR -p tcp -j REDIRECT --to-ports "$REDIR_PORT"
+    iptables -t nat -A PREROUTING -i "$FAB_IF" -j FABRIC_REDIR
+    iptables -I INPUT 1 -i "$FAB_IF" -p tcp --dport "$REDIR_PORT" -j ACCEPT
+    iptables -I FORWARD 1 -i "$FAB_IF" -p udp --dport 443 -j REJECT   # kill QUIC -> TCP fallback
+}
+
+set_reality() {    # $1 mode ; $2 url (proxy only)
+    python3 - "$REALITY_CONF" "$1" "$MARK" "${2:-}" <<'PY'
+import json,sys,urllib.parse
+path,mode,mark,url=sys.argv[1],sys.argv[2],int(sys.argv[3],16),sys.argv[4]
+d=json.load(open(path)); outs=d["outbounds"]
+outs[:]=[o for o in outs if o.get("tag")!="egress-proxy"]
+direct=next(o for o in outs if o.get("tag")=="direct")
+direct.setdefault("streamSettings",{}).setdefault("sockopt",{})
+if mode=="warp": direct["streamSettings"]["sockopt"]["mark"]=mark; d["routing"]={}
+elif mode=="direct": direct["streamSettings"]["sockopt"].pop("mark",None); d["routing"]={}
+else:
+    direct["streamSettings"]["sockopt"].pop("mark",None)
+    u=urllib.parse.urlsplit(url)
+    outs.insert(0,{"tag":"egress-proxy","protocol":"http","settings":{"servers":[{"address":u.hostname,"port":u.port,"users":[{"user":urllib.parse.unquote(u.username),"pass":urllib.parse.unquote(u.password or "")}]}]}})
+    d["routing"]={"rules":[{"type":"field","inboundTag":["egress-reality"],"outboundTag":"egress-proxy"}]}
+json.dump(d,open(path,"w"),indent=2); open(path,"a").write("\n")
+PY
+    chmod 600 "$REALITY_CONF"; /usr/local/bin/xray run -test -c "$REALITY_CONF" >/dev/null
+    systemctl restart xray-egress
+}
+set_redir_creds() {  # $1 url
+    python3 - "$REDIR_CONF" "$1" <<'PY'
+import json,sys,urllib.parse
+path,url=sys.argv[1],sys.argv[2]; u=urllib.parse.urlsplit(url)
+d=json.load(open(path)); s=d["outbounds"][0]["settings"]["servers"][0]
+s["address"]=u.hostname; s["port"]=u.port
+s["users"][0]["user"]=urllib.parse.unquote(u.username); s["users"][0]["pass"]=urllib.parse.unquote(u.password or "")
+json.dump(d,open(path,"w"),indent=2); open(path,"a").write("\n")
+PY
+    chmod 600 "$REDIR_CONF"; /usr/local/bin/xray run -test -c "$REDIR_CONF" >/dev/null
+}
+
+current_mode() {
+    if iptables -t nat -C PREROUTING -i "$FAB_IF" -j FABRIC_REDIR 2>/dev/null; then echo proxy
+    elif iptables -t mangle -S FABRIC_EGRESS 2>/dev/null | grep -q -- "-j MARK"; then echo warp
+    else echo direct; fi
+}
+
+case "${1:-status}" in
+  warp) need_root; fabric_clear; mark_all_warp; systemctl stop xray-fabric-redir 2>/dev/null || true
+        set_reality warp; echo "egress: warp" ;;
+  direct) need_root; fabric_clear; systemctl stop xray-fabric-redir 2>/dev/null || true
+        set_reality direct; echo "egress: direct" ;;
+  proxy) need_root; load_proxy; URL="$(proxy_url "${2:-}" "${3:-}")"
+        set_redir_creds "$URL"; systemctl restart xray-fabric-redir
+        fabric_clear; mark_udp_warp; redirect_tcp
+        set_reality proxy "$URL"
+        echo "egress: proxy ($(proxy_pass "${2:-}" "${3:-}" | sed "s/^${PROXY_PASS}//"))" ;;
+  status)
+        echo "mode: $(current_mode)"
+        systemctl is-active xray-egress >/dev/null 2>&1 && echo "xray-egress: active" || echo "xray-egress: down"
+        [ "$(current_mode)" = proxy ] && { systemctl is-active xray-fabric-redir >/dev/null 2>&1 && echo "xray-fabric-redir: active" || echo "xray-fabric-redir: down"; } ;;
+  test) need_root; load_proxy
+        printf 'direct: '; curl -s -m 10 https://ipv4.icanhazip.com || echo fail
+        printf 'warp:   '; curl -s -m 10 --interface wgcf-ingress https://ipv4.icanhazip.com || echo fail
+        printf 'proxy:  '; curl -s -m 20 -x "$(proxy_url "${2:-}" "${3:-}")" -L https://ipv4.icanhazip.com || echo fail
+        echo "geo:    $(proxy_pass "${2:-}" "${3:-}" | sed "s/^${PROXY_PASS}//")" ;;
+  *) sed -n 2,14p "$0"; exit 1 ;;
+esac

@@ -6,6 +6,124 @@ use std::{collections::HashMap, sync::Mutex};
 use tokio::task::JoinHandle;
 use tonic::{Response, Status};
 
+use commander_client::stats;
+use stats::stats_service_server::{StatsService, StatsServiceServer};
+
+#[derive(Clone, Default)]
+struct MockStats(Arc<Mutex<Vec<stats::GetStatsRequest>>>);
+
+#[tonic::async_trait]
+impl StatsService for MockStats {
+    async fn get_stats(
+        &self,
+        request: Request<stats::GetStatsRequest>,
+    ) -> std::result::Result<Response<stats::GetStatsResponse>, Status> {
+        assert!(request.metadata().contains_key("grpc-timeout"));
+        let input = request.into_inner();
+        assert!(!input.reset, "reads must never reset a native counter");
+        self.0.lock().unwrap().push(input.clone());
+        let stat = match input.name.as_str() {
+            "inbound>>>fixture>>>traffic>>>uplink" => Some(stats::Stat {
+                name: input.name,
+                value: 8192,
+            }),
+            "wrong-counter" => Some(stats::Stat {
+                name: "another-counter".into(),
+                value: 0,
+            }),
+            "unavailable" => return Err(Status::unavailable("fixture unavailable")),
+            "slow" => {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                None
+            }
+            _ => None,
+        };
+        Ok(Response::new(stats::GetStatsResponse { stat }))
+    }
+    async fn get_stats_online(
+        &self,
+        _: Request<stats::GetStatsRequest>,
+    ) -> std::result::Result<Response<stats::GetStatsResponse>, Status> {
+        Err(Status::unimplemented("outside fixture"))
+    }
+    async fn query_stats(
+        &self,
+        _: Request<stats::QueryStatsRequest>,
+    ) -> std::result::Result<Response<stats::QueryStatsResponse>, Status> {
+        Err(Status::unimplemented("outside fixture"))
+    }
+    async fn get_sys_stats(
+        &self,
+        _: Request<stats::SysStatsRequest>,
+    ) -> std::result::Result<Response<stats::SysStatsResponse>, Status> {
+        Err(Status::unimplemented("outside fixture"))
+    }
+    async fn get_stats_online_ip_list(
+        &self,
+        _: Request<stats::GetStatsRequest>,
+    ) -> std::result::Result<Response<stats::GetStatsOnlineIpListResponse>, Status> {
+        Err(Status::unimplemented("outside fixture"))
+    }
+    async fn get_all_online_users(
+        &self,
+        _: Request<stats::GetAllOnlineUsersRequest>,
+    ) -> std::result::Result<Response<stats::GetAllOnlineUsersResponse>, Status> {
+        Err(Status::unimplemented("outside fixture"))
+    }
+}
+
+#[tokio::test]
+async fn stats_read_exact_native_counter_without_reset_and_bound_failures() {
+    let directory = tempfile::tempdir().unwrap();
+    let socket = directory.path().join("stats.sock");
+    let listener = tokio::net::UnixListener::bind(&socket).unwrap();
+    let stats = MockStats::default();
+    let service = stats.clone();
+    let server = tokio::spawn(async move {
+        tonic::transport::Server::builder()
+            .add_service(StatsServiceServer::new(service))
+            .serve_with_incoming(tokio_stream::wrappers::UnixListenerStream::new(listener))
+            .await
+            .unwrap();
+    });
+    let socket = socket.to_str().unwrap();
+    let name = "inbound>>>fixture>>>traffic>>>uplink";
+    for _ in 0..2 {
+        let output = dispatch_stats_at(socket, &json!({"name":name}), CALL_TIMEOUT)
+            .await
+            .unwrap();
+        assert_eq!(output, json!({"name":name,"value":8192}));
+    }
+    assert_eq!(stats.0.lock().unwrap().len(), 2);
+    for (name, expected) in [
+        ("missing", "no such stat counter"),
+        ("wrong-counter", "different stat counter"),
+        ("unavailable", "fixture unavailable"),
+    ] {
+        let error = dispatch_stats_at(socket, &json!({"name":name}), CALL_TIMEOUT)
+            .await
+            .unwrap_err();
+        assert!(format!("{error:#}").contains(expected));
+    }
+    let before = stats.0.lock().unwrap().len();
+    for input in [
+        json!({}),
+        json!({"name":""}),
+        json!({"name":"bad\ncounter"}),
+    ] {
+        assert!(dispatch_stats_at(socket, &input, CALL_TIMEOUT)
+            .await
+            .is_err());
+    }
+    assert_eq!(stats.0.lock().unwrap().len(), before);
+    assert!(
+        dispatch_stats_at(socket, &json!({"name":"slow"}), Duration::from_millis(50))
+            .await
+            .is_err()
+    );
+    server.abort();
+}
+
 #[derive(Default)]
 struct MockState {
     inbounds: HashMap<String, xray::core::InboundHandlerConfig>,

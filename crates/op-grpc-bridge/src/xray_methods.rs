@@ -350,6 +350,42 @@ fn request<T>(message: T, timeout: Duration) -> Request<T> {
     request
 }
 
+pub(crate) async fn dispatch_stats_method(args: &Value) -> Result<Value> {
+    dispatch_stats_at(commander_client::DEFAULT_API_SOCKET, args, CALL_TIMEOUT).await
+}
+
+async fn dispatch_stats_at(socket: &str, args: &Value, timeout: Duration) -> Result<Value> {
+    let name = args
+        .get("name")
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow::anyhow!("name required"))?;
+    validate_key(name, 4096, "stat counter name")?;
+    let execute = async {
+        let mut client = commander_client::stats_client(socket)
+            .await
+            .context("connecting to xray commander API socket")?;
+        let response = client
+            .get_stats(request(
+                commander_client::stats::GetStatsRequest {
+                    name: name.to_owned(),
+                    reset: false,
+                },
+                timeout,
+            ))
+            .await
+            .context("xray StatsService.GetStats")?
+            .into_inner();
+        let stat = response
+            .stat
+            .ok_or_else(|| anyhow::anyhow!("no such stat counter: {name}"))?;
+        ensure!(stat.name == name, "xray returned a different stat counter");
+        Ok(serde_json::json!({"name":stat.name,"value":stat.value}))
+    };
+    tokio::time::timeout(timeout, execute)
+        .await
+        .context("xray stats deadline exceeded")?
+}
+
 async fn validate_user_target(
     client: &mut Client,
     input: &AddUserInput,

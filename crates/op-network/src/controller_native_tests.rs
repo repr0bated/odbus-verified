@@ -14,6 +14,30 @@ impl Drop for NativeChild {
     }
 }
 
+struct OvsEnvironment(Vec<(&'static str, Option<std::ffi::OsString>)>);
+
+impl OvsEnvironment {
+    fn set(root: &Path) -> Self {
+        let mut previous = Vec::new();
+        for key in ["OVS_RUNDIR", "OVS_DBDIR", "OVS_LOGDIR"] {
+            previous.push((key, std::env::var_os(key)));
+            std::env::set_var(key, root);
+        }
+        Self(previous)
+    }
+}
+
+impl Drop for OvsEnvironment {
+    fn drop(&mut self) {
+        for (key, value) in self.0.drain(..) {
+            match value {
+                Some(value) => std::env::set_var(key, value),
+                None => std::env::remove_var(key),
+            }
+        }
+    }
+}
+
 fn command(binary: &str, arguments: &[String], root: &Path) -> Command {
     let mut command = Command::new(binary);
     command
@@ -49,6 +73,7 @@ async fn wait_socket(path: &Path) {
 async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
     let root = tempfile::tempdir().unwrap();
     let path = root.path();
+    let _ovs_environment = OvsEnvironment::set(path);
     let database = path.join("db");
     let socket = path.join("db.sock");
     run(
@@ -83,6 +108,7 @@ async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
         &[db.clone(), "--no-wait".into(), "init".into()],
         path,
     );
+
     let _switch = NativeChild(
         command(
             "/usr/bin/ovs-vswitchd",
@@ -110,7 +136,7 @@ async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
     run(
         "/usr/bin/ovs-vsctl",
         &[
-            db,
+            db.clone(),
             "--timeout=10".into(),
             "--".into(),
             "add-br".into(),
@@ -138,6 +164,45 @@ async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
     })
     .await
     .expect("private OVS did not complete controller handshake");
+
+    // Exercise every retained OpenFlow control method against this private
+    // OVSDB/ovs-vswitchd pair and verify the resulting owner state.
+    crate::datapath_safe::set_fail_mode("fixture0", "standalone")
+        .await
+        .unwrap();
+    let health = crate::datapath_safe::get_datapath_health("fixture0")
+        .await
+        .unwrap();
+    assert_eq!(health.bridge, "fixture0");
+    assert_eq!(health.fail_mode, "standalone");
+    crate::datapath_safe::ensure_fallback_normal("fixture0")
+        .await
+        .unwrap();
+    assert!(crate::datapath_safe::fallback_present("fixture0")
+        .await
+        .unwrap());
+    crate::datapath_safe::del_controller("fixture0")
+        .await
+        .unwrap();
+    let controllers = Command::new("/usr/bin/ovs-vsctl")
+        .args([&db, "get-controller", "fixture0"])
+        .output()
+        .unwrap();
+    assert!(controllers.status.success());
+    assert!(String::from_utf8_lossy(&controllers.stdout)
+        .trim()
+        .is_empty());
+    crate::datapath_safe::set_controller("fixture0", &format!("tcp:{address}"))
+        .await
+        .unwrap();
+    let attached =
+        crate::datapath_safe::attach_controller_safe("fixture0", &format!("tcp:{address}"))
+            .await
+            .unwrap();
+    assert_eq!(attached.bridge, "fixture0");
+    assert_eq!(attached.fail_mode, "standalone");
+    assert!(attached.fallback_normal);
+    assert!(!attached.disable_in_band);
     let original = serde_json::json!({"table":7,"priority":123,"cookie":0x4f42_0000_0000_0001u64,
         "match_fields":{"ip":""},"actions":[{"type":"set_field","field":"nw_ttl","value":"64"},{"type":"normal"}],"idle_timeout":0,"hard_timeout":0}).to_string();
     assert!(handle

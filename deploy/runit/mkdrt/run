@@ -6,6 +6,9 @@
 # the return path for the router/tablet/phone source addresses; it deliberately
 # has no additional local address and therefore creates no competing service IP.
 exec 2>&1
+# mkdrt = this host's peer link into the decoy's identity WireGuard (wg-opdbus).
+# /etc/wireguard/mkdrt.conf carries FwMark = 0x51820; /etc/wireguard/wgcf.conf's
+# PostUp routes that mark into WARP, so the decoy sees a Cloudflare endpoint.
 
 wg-quick down mkdrt 2>/dev/null || true
 wg-quick up mkdrt || exit 1

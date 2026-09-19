@@ -209,7 +209,7 @@ pub(crate) fn fail2ban_schema() -> PluginSchema {
         "fail2ban.write".to_string(),
         op_state_store::CapabilityDecl {
             id: "fail2ban.write".to_string(),
-            description: "Grants daemon-native ban_ip and unban_ip. Reload remains unavailable until a typed configuration-stream producer is installed.".to_string(),
+        description: "Grants daemon-native ban_ip and unban_ip; reload requires a validated configuration stream.".to_string(),
         },
     );
     schema

@@ -16,7 +16,8 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, ValueEnum};
 use op_plugin_lint::{
     audit_source, audit_source_with_coverage, complete_to_json, complete_to_markdown,
-    emit_complete_plugin, resolve_introspect_target_with, CoverageInputs, IntrospectOpts,
+    emit_complete_plugin, emit_inspector_rust, resolve_introspect_target_with, CoverageInputs,
+    IntrospectOpts,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -30,6 +31,8 @@ enum Format {
     Json,
     /// Full contract plugin document (fields + typed methods + audit + introspect gaps).
     Complete,
+    /// New Rust source with Inspector Gadget/Repomix contract candidates appended.
+    Rust,
 }
 
 #[derive(Parser)]
@@ -182,6 +185,25 @@ fn emit_one(
             );
             Ok(doc.audit.ok)
         }
+        Format::Rust => {
+            let doc = emit_complete_plugin(name, &source, coverage, &extra_refs)?;
+            let body = emit_inspector_rust(&source, &doc)?;
+            write_body(output, &body)?;
+            eprintln!(
+                "{}: generated Rust candidate fields={} methods={} -> {}",
+                input.display(),
+                doc.introspect
+                    .as_ref()
+                    .map(|i| i.gaps.missing_config_fields.len())
+                    .unwrap_or(0),
+                doc.introspect
+                    .as_ref()
+                    .map(|i| i.gaps.missing_cli_commands.len())
+                    .unwrap_or(0),
+                output.display()
+            );
+            Ok(doc.audit.ok)
+        }
         Format::Md | Format::Json => {
             let report = if coverage.instance_json.is_some()
                 || coverage.sealed_schema_json.is_some()
@@ -194,7 +216,7 @@ fn emit_one(
             let body = match format {
                 Format::Md => report.to_markdown(),
                 Format::Json => report.to_json()?,
-                Format::Complete => unreachable!(),
+                Format::Complete | Format::Rust => unreachable!(),
             };
             write_body(output, &body)?;
             eprintln!(
@@ -247,6 +269,7 @@ fn emit_dir(
             Format::Md => "md",
             Format::Json => "json",
             Format::Complete => "complete.json",
+            Format::Rust => "generated.rs",
         };
         let out_path = output_dir.join(format!("{name}.{ext}"));
         let ok = emit_one(path, &out_path, format, coverage)?;

@@ -1,0 +1,16 @@
+#!/bin/sh
+# Mark fabric->internet traffic forwarded from the router (wg-opdbus, 10.0.0.0/24)
+# with 0x51820 so the existing rule (fwmark 0x51820 -> table 51820 -> wgcf-ingress)
+# and masquerade carry it out WARP. MSS-clamp the double-tunnel path. Idempotent.
+set -eu
+sysctl -qw net.ipv4.ip_forward=1
+iptables -t mangle -N FABRIC_EGRESS 2>/dev/null || iptables -t mangle -F FABRIC_EGRESS
+iptables -t mangle -C PREROUTING -i wg-opdbus -j FABRIC_EGRESS 2>/dev/null || \
+    iptables -t mangle -A PREROUTING -i wg-opdbus -j FABRIC_EGRESS
+for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 100.64.0.0/10 169.254.0.0/16; do
+    iptables -t mangle -A FABRIC_EGRESS -d "$net" -j RETURN
+done
+iptables -t mangle -A FABRIC_EGRESS -j MARK --set-mark 0x51820
+iptables -t mangle -C FORWARD -i wg-opdbus -o wgcf-ingress -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || \
+    iptables -t mangle -A FORWARD -i wg-opdbus -o wgcf-ingress -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+echo "decoy-fabric-egress: wg-opdbus internet-bound traffic marked 0x51820 -> WARP (MSS clamped)"

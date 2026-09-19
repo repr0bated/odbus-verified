@@ -1,0 +1,651 @@
+[
+  {
+    "plugin": "openflow",
+    "method": "add_flow",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_three_flow_methods_cross_canonical_admission_native_cas_and_child_fold",
+        "path": "crates/op-grpc-bridge/src/openflow_canonical_tests.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Canonical admission invokes the native ControllerFixture CAS owner and reads committed openflow SHM; effects and sibling preservation are asserted."
+  },
+  {
+    "plugin": "openflow",
+    "method": "attach_controller_safe",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying successful plugin-method invocation test covers this method; existing tests are schema/dispatcher wiring or cover only the three flow CAS mutations."
+  },
+  {
+    "plugin": "openflow",
+    "method": "del_controller",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying successful plugin-method invocation test covers this method; existing tests are schema/dispatcher wiring or cover only the three flow CAS mutations."
+  },
+  {
+    "plugin": "openflow",
+    "method": "delete_flow",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_three_flow_methods_cross_canonical_admission_native_cas_and_child_fold",
+        "path": "crates/op-grpc-bridge/src/openflow_canonical_tests.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Canonical admission invokes the native ControllerFixture CAS owner and reads committed openflow SHM; effects and sibling preservation are asserted."
+  },
+  {
+    "plugin": "openflow",
+    "method": "ensure_fallback_normal",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying successful plugin-method invocation test covers this method; existing tests are schema/dispatcher wiring or cover only the three flow CAS mutations."
+  },
+  {
+    "plugin": "openflow",
+    "method": "get_datapath_health",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying successful plugin-method invocation test covers this method; existing tests are schema/dispatcher wiring or cover only the three flow CAS mutations."
+  },
+  {
+    "plugin": "openflow",
+    "method": "modify_flow",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_three_flow_methods_cross_canonical_admission_native_cas_and_child_fold",
+        "path": "crates/op-grpc-bridge/src/openflow_canonical_tests.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Canonical admission invokes the native ControllerFixture CAS owner and reads committed openflow SHM; effects and sibling preservation are asserted."
+  },
+  {
+    "plugin": "openflow",
+    "method": "set_controller",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying successful plugin-method invocation test covers this method; existing tests are schema/dispatcher wiring or cover only the three flow CAS mutations."
+  },
+  {
+    "plugin": "openflow",
+    "method": "set_fail_mode",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying successful plugin-method invocation test covers this method; existing tests are schema/dispatcher wiring or cover only the three flow CAS mutations."
+  },
+  {
+    "plugin": "openflow_obfuscation",
+    "method": "deobfuscate_flow",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "flow_methods_commit_verified_children_and_reject_revoked_identity",
+        "path": "crates/op-grpc-bridge/src/obfuscation_canonical_tests.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Canonical dispatch invokes the FlowOwner fixture, asserts native ownership and reads committed flow children/revision from SHM."
+  },
+  {
+    "plugin": "openflow_obfuscation",
+    "method": "obfuscate_flow",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "flow_methods_commit_verified_children_and_reject_revoked_identity",
+        "path": "crates/op-grpc-bridge/src/obfuscation_canonical_tests.rs",
+        "scope": "canonical"
+      }
+    ],
+    "notes": "Canonical dispatch invokes the FlowOwner fixture, asserts native ownership and reads committed flow children/revision from SHM."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "add_port",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "cancel",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "create_bridge",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "delete_bridge",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "echo",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "get_schema",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "list_dbs",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "lock",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "monitor",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "monitor_cond",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "remove_port",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "steal",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "transact",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "ovsdb_bridge",
+    "method": "unlock",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit OVSDB effect/readback was found; low-level RPC/parser and monitor tests do not count."
+  },
+  {
+    "plugin": "rovs_commands",
+    "method": "add_port",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit isolated OVSDB effect/readback was found; the dispatcher has no execution fixture."
+  },
+  {
+    "plugin": "rovs_commands",
+    "method": "create_bridge",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit isolated OVSDB effect/readback was found; the dispatcher has no execution fixture."
+  },
+  {
+    "plugin": "rovs_commands",
+    "method": "delete_bridge",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit isolated OVSDB effect/readback was found; the dispatcher has no execution fixture."
+  },
+  {
+    "plugin": "rovs_commands",
+    "method": "ensure_internal_port",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit isolated OVSDB effect/readback was found; the dispatcher has no execution fixture."
+  },
+  {
+    "plugin": "rovs_commands",
+    "method": "list_bridges",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit isolated OVSDB effect/readback was found; the dispatcher has no execution fixture."
+  },
+  {
+    "plugin": "rovs_commands",
+    "method": "list_dbs",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit isolated OVSDB effect/readback was found; the dispatcher has no execution fixture."
+  },
+  {
+    "plugin": "rovs_commands",
+    "method": "list_ports",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit isolated OVSDB effect/readback was found; the dispatcher has no execution fixture."
+  },
+  {
+    "plugin": "rovs_commands",
+    "method": "remove_port",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit isolated OVSDB effect/readback was found; the dispatcher has no execution fixture."
+  },
+  {
+    "plugin": "rtnetlink",
+    "method": "add_ipv4_address",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit kernel netlink effect/readback was found; existing tests only validate inputs/contracts."
+  },
+  {
+    "plugin": "rtnetlink",
+    "method": "add_link",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit kernel netlink effect/readback was found; existing tests only validate inputs/contracts."
+  },
+  {
+    "plugin": "rtnetlink",
+    "method": "add_route",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit kernel netlink effect/readback was found; existing tests only validate inputs/contracts."
+  },
+  {
+    "plugin": "rtnetlink",
+    "method": "add_rule",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit kernel netlink effect/readback was found; existing tests only validate inputs/contracts."
+  },
+  {
+    "plugin": "rtnetlink",
+    "method": "del_link",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit kernel netlink effect/readback was found; existing tests only validate inputs/contracts."
+  },
+  {
+    "plugin": "rtnetlink",
+    "method": "del_route",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit kernel netlink effect/readback was found; existing tests only validate inputs/contracts."
+  },
+  {
+    "plugin": "rtnetlink",
+    "method": "set_default_route",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit kernel netlink effect/readback was found; existing tests only validate inputs/contracts."
+  },
+  {
+    "plugin": "rtnetlink",
+    "method": "set_link_state",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit kernel netlink effect/readback was found; existing tests only validate inputs/contracts."
+  },
+  {
+    "plugin": "rtnetlink",
+    "method": "set_mac_address",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "No qualifying plugin-method invocation with explicit kernel netlink effect/readback was found; existing tests only validate inputs/contracts."
+  },
+  {
+    "plugin": "wg_opdbus",
+    "method": "create_interface",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "wg_opdbus_uses_same_owner_and_preserves_anna_identity",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct owner fixture."
+  },
+  {
+    "plugin": "wg_opdbus",
+    "method": "get_status",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "wg_opdbus_uses_same_owner_and_preserves_anna_identity",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct owner fixture."
+  },
+  {
+    "plugin": "wgcf",
+    "method": "apply_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "all_eight_methods_use_native_readback_match_schema_and_never_project_secrets",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WgcfOwner native-readback fixture."
+  },
+  {
+    "plugin": "wgcf",
+    "method": "generate_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "all_eight_methods_use_native_readback_match_schema_and_never_project_secrets",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WgcfOwner native-readback fixture."
+  },
+  {
+    "plugin": "wgcf",
+    "method": "refresh",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "all_eight_methods_use_native_readback_match_schema_and_never_project_secrets",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WgcfOwner native-readback fixture."
+  },
+  {
+    "plugin": "wgcf",
+    "method": "register",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "all_eight_methods_use_native_readback_match_schema_and_never_project_secrets",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WgcfOwner native-readback fixture."
+  },
+  {
+    "plugin": "wgcf",
+    "method": "rotate_keys",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "all_eight_methods_use_native_readback_match_schema_and_never_project_secrets",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WgcfOwner native-readback fixture."
+  },
+  {
+    "plugin": "wgcf",
+    "method": "set_endpoint",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "all_eight_methods_use_native_readback_match_schema_and_never_project_secrets",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WgcfOwner native-readback fixture."
+  },
+  {
+    "plugin": "wgcf",
+    "method": "status",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "all_eight_methods_use_native_readback_match_schema_and_never_project_secrets",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WgcfOwner native-readback fixture."
+  },
+  {
+    "plugin": "wgcf",
+    "method": "update",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "all_eight_methods_use_native_readback_match_schema_and_never_project_secrets",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wgcf_owner.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WgcfOwner native-readback fixture."
+  },
+  {
+    "plugin": "wireguard",
+    "method": "add_peer",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "six_wireguard_methods_apply_and_return_sanitized_readback",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WireGuardOwner native-readback fixture."
+  },
+  {
+    "plugin": "wireguard",
+    "method": "get_device",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "six_wireguard_methods_apply_and_return_sanitized_readback",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WireGuardOwner native-readback fixture."
+  },
+  {
+    "plugin": "wireguard",
+    "method": "list_peers",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "six_wireguard_methods_apply_and_return_sanitized_readback",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WireGuardOwner native-readback fixture."
+  },
+  {
+    "plugin": "wireguard",
+    "method": "remove_peer",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "six_wireguard_methods_apply_and_return_sanitized_readback",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WireGuardOwner native-readback fixture."
+  },
+  {
+    "plugin": "wireguard",
+    "method": "set_config",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "six_wireguard_methods_apply_and_return_sanitized_readback",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WireGuardOwner native-readback fixture."
+  },
+  {
+    "plugin": "wireguard",
+    "method": "set_device",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_siblings",
+        "path": "crates/op-grpc-bridge/src/decoy_canonical_tests.rs",
+        "scope": "canonical"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "six_wireguard_methods_apply_and_return_sanitized_readback",
+        "path": "crates/op-plugins/src/state_plugins/decoy_network/wireguard_owner_tests.rs",
+        "scope": "owner"
+      }
+    ],
+    "notes": "Covered by the canonical decoy test and direct WireGuardOwner native-readback fixture."
+  }
+]

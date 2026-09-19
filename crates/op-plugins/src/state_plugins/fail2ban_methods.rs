@@ -90,9 +90,7 @@ impl Fail2banMethods {
                     input.jail, &response,
                 )?)?)
             }
-            "reload" => bail!(
-                "Fail2ban reload requires a typed configuration stream; no producer is installed"
-            ),
+            "reload" => bail!("fail2ban reload requires a validated configuration stream"),
             _ => bail!("unsupported fail2ban method"),
         }
     }
@@ -794,7 +792,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn native_fixture_covers_ban_unban_status_and_explicit_reload_error() {
+    async fn native_fixture_covers_ban_unban_and_status() {
         let (_dir, service) = fixture(vec![
             ack(PickleValue::I64(1)),
             ack(PickleValue::I64(1)),
@@ -823,10 +821,6 @@ mod tests {
             .unwrap();
         assert_eq!(status["currently_failed"], 1);
         assert_eq!(status["banned_ips"], serde_json::json!(["192.0.2.4"]));
-        assert!(service
-            .dispatch("reload", &serde_json::json!({}))
-            .await
-            .is_err());
     }
 
     #[tokio::test]

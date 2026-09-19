@@ -13,6 +13,7 @@ use op_state_store::PluginSchema;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
+use std::collections::BTreeMap;
 
 #[path = "ovsdb_topology.rs"]
 mod topology;
@@ -36,14 +37,40 @@ pub struct TransactInput {
 pub struct MonitorInput {
     pub db_name: String,
     pub monitor_id: String,
-    pub monitor_requests: std::collections::HashMap<String, serde_json::Value>,
+    pub monitor_requests: BTreeMap<String, Vec<OvsdbMonitorRequest>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct MonitorCondInput {
     pub db_name: String,
     pub monitor_id: String,
-    pub monitor_cond_requests: std::collections::HashMap<String, serde_json::Value>,
+    pub monitor_cond_requests: BTreeMap<String, Vec<OvsdbMonitorRequest>>,
+}
+
+/// One RFC 7047 monitor request. `where` is accepted only by monitor_cond.
+/// The native owner additionally restricts tables and columns to the selected
+/// non-secret topology surface declared by this plugin.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct OvsdbMonitorRequest {
+    pub columns: Vec<String>,
+    #[serde(default, rename = "where", skip_serializing_if = "Option::is_none")]
+    pub where_: Option<Vec<serde_json::Value>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub select: Option<OvsdbMonitorSelect>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct OvsdbMonitorSelect {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub initial: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub insert: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delete: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub modify: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -69,6 +96,68 @@ pub struct EchoInput {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CancelInput {
     pub id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListDbsOutput {
+    pub databases: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct GetSchemaOutput {
+    pub schema: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct TransactOutput {
+    pub results: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MonitorOutput {
+    pub monitor_id: String,
+    pub method: String,
+    pub sequence: u64,
+    pub tables: Vec<OvsdbMonitorTable>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct LockOutput {
+    pub lock_id: String,
+    pub locked: bool,
+    pub queued: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct UnlockOutput {
+    pub lock_id: String,
+    pub unlocked: bool,
+    pub acquired_while_queued: bool,
+    pub stolen_before_unlock: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct EchoOutput {
+    pub params: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CancelOutput {
+    pub monitor_id: String,
+    pub canceled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BridgeMutationOutput {
+    pub bridge: String,
+    pub changed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PortMutationOutput {
+    pub bridge: String,
+    pub port: String,
+    pub changed: bool,
 }
 
 /// Input struct for CreateBridge method
@@ -129,6 +218,70 @@ use std::sync::Arc;
 #[schemars(extend("x-oscal-category" = "network"))]
 pub struct OvsBridgeState {
     pub bridges: Vec<BridgeConfig>,
+    /// Active caller-scoped monitor materializations. This protected field is
+    /// omitted from public_state and is updated as a child so topology refresh
+    /// never removes another monitor or unrelated bridge state.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[schemars(default)]
+    pub monitors: Vec<OvsdbMonitorState>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct OvsdbMonitorState {
+    /// Opaque caller-and-monitor key used only to update this protected row.
+    pub projection_key: String,
+    pub monitor_id: String,
+    pub method: String,
+    pub sequence: u64,
+    pub active: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    pub tables: Vec<OvsdbMonitorTable>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct OvsdbMonitorTable {
+    pub name: String,
+    pub rows: Vec<OvsdbMonitorRow>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct OvsdbMonitorRow {
+    pub uuid: String,
+    pub columns: Vec<OvsdbMonitorColumn>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct OvsdbMonitorColumn {
+    pub name: String,
+    pub value: serde_json::Value,
+}
+
+/// Preserve dynamic native table, UUID and column keys as bounded data in a
+/// typed array tree. PluginSchema's field model cannot faithfully represent
+/// constraints nested below arbitrary map keys.
+pub fn materialize_monitor_tables(
+    tables: &op_network::rovs_proxy::monitor::ProtocolTables,
+) -> Vec<OvsdbMonitorTable> {
+    tables
+        .iter()
+        .map(|(name, rows)| OvsdbMonitorTable {
+            name: name.clone(),
+            rows: rows
+                .iter()
+                .map(|(uuid, columns)| OvsdbMonitorRow {
+                    uuid: uuid.clone(),
+                    columns: columns
+                        .iter()
+                        .map(|(name, value)| OvsdbMonitorColumn {
+                            name: name.clone(),
+                            value: value.clone(),
+                        })
+                        .collect(),
+                })
+                .collect(),
+        })
+        .collect()
 }
 
 /// RFC 7047 Bridge table row.
@@ -230,7 +383,7 @@ impl StatePlugin for OvsBridgePlugin {
     }
 
     fn version(&self) -> &str {
-        "2.0.0"
+        "3.0.0"
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
@@ -307,7 +460,7 @@ impl StatePlugin for OvsBridgePlugin {
 pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "ovsdb_bridge",
-        "2.0.0",
+        "3.0.0",
         "Selected native OVS bridge, port and interface topology; private configuration maps are not observed",
         &serde_json::to_value(schemars::schema_for!(OvsBridgeState)).unwrap(),
     );
@@ -318,10 +471,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
 
     schema.methods.insert(
         "list_dbs".to_string(),
-        method_decl_from_schemars_with_output::<
-            ListDbsInput,
-            super::plugin_scaffold_helpers::AckOutput,
-        >(
+        method_decl_from_schemars_with_output::<ListDbsInput, ListDbsOutput>(
             "list_dbs",
             op_state_store::SideEffect::Read,
             true,
@@ -331,10 +481,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "get_schema".to_string(),
-        method_decl_from_schemars_with_output::<
-            GetSchemaInput,
-            super::plugin_scaffold_helpers::AckOutput,
-        >(
+        method_decl_from_schemars_with_output::<GetSchemaInput, GetSchemaOutput>(
             "get_schema",
             op_state_store::SideEffect::Read,
             true,
@@ -344,10 +491,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "transact".to_string(),
-        method_decl_from_schemars_with_output::<
-            TransactInput,
-            super::plugin_scaffold_helpers::AckOutput,
-        >(
+        method_decl_from_schemars_with_output::<TransactInput, TransactOutput>(
             "transact",
             op_state_store::SideEffect::Mutation,
             false,
@@ -357,10 +501,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "monitor".to_string(),
-        method_decl_from_schemars_with_output::<
-            MonitorInput,
-            super::plugin_scaffold_helpers::AckOutput,
-        >(
+        method_decl_from_schemars_with_output::<MonitorInput, MonitorOutput>(
             "monitor",
             op_state_store::SideEffect::Read,
             false,
@@ -372,7 +513,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
         "monitor_cond".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             MonitorCondInput,
-            super::plugin_scaffold_helpers::AckOutput,
+            MonitorOutput,
         >(
             "monitor_cond",
             op_state_store::SideEffect::Read,
@@ -385,7 +526,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
         "lock".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             LockInput,
-            super::plugin_scaffold_helpers::AckOutput,
+            LockOutput,
         >(
             "lock",
             op_state_store::SideEffect::Mutation,
@@ -398,7 +539,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
         "steal".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             StealInput,
-            super::plugin_scaffold_helpers::AckOutput,
+            LockOutput,
         >(
             "steal",
             op_state_store::SideEffect::Mutation,
@@ -411,7 +552,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
         "unlock".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             UnlockInput,
-            super::plugin_scaffold_helpers::AckOutput,
+            UnlockOutput,
         >(
             "unlock",
             op_state_store::SideEffect::Mutation,
@@ -424,7 +565,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
         "echo".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             EchoInput,
-            super::plugin_scaffold_helpers::AckOutput,
+            EchoOutput,
         >(
             "echo",
             op_state_store::SideEffect::Read,
@@ -437,7 +578,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
         "cancel".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             CancelInput,
-            super::plugin_scaffold_helpers::AckOutput,
+            CancelOutput,
         >(
             "cancel",
             op_state_store::SideEffect::Mutation,
@@ -453,7 +594,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
         "create_bridge".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             CreateBridgeInput,
-            super::plugin_scaffold_helpers::AckOutput,
+            BridgeMutationOutput,
         >(
             "CreateBridge",
             op_state_store::SideEffect::Mutation,
@@ -466,7 +607,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
         "delete_bridge".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             DeleteBridgeInput,
-            super::plugin_scaffold_helpers::AckOutput,
+            BridgeMutationOutput,
         >(
             "DeleteBridge",
             op_state_store::SideEffect::Mutation,
@@ -479,7 +620,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
         "add_port".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             AddPortInput,
-            super::plugin_scaffold_helpers::AckOutput,
+            PortMutationOutput,
         >(
             "AddPort",
             op_state_store::SideEffect::Mutation,
@@ -492,7 +633,7 @@ pub(crate) fn ovsdb_bridge_schema() -> PluginSchema {
         "remove_port".to_string(),
         super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<
             RemovePortInput,
-            super::plugin_scaffold_helpers::AckOutput,
+            PortMutationOutput,
         >(
             "RemovePort",
             op_state_store::SideEffect::Mutation,

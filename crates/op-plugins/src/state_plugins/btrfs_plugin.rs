@@ -1255,75 +1255,164 @@ mod tests {
     fn all_twelve_declared_methods_execute_against_injected_backend() {
         let backend = TestBackend::new();
         let cases = [
-            (
-                "create_subvolume",
-                serde_json::json!({"path":"/mnt/new"}),
-                "created",
-            ),
+            ("create_subvolume", serde_json::json!({"path":"/mnt/new"})),
             (
                 "snapshot",
                 serde_json::json!({"source":"/mnt/source","destination":"/mnt/snap","readonly":true}),
-                "snapshotted",
             ),
-            (
-                "list_subvolumes",
-                serde_json::json!({"path":"/mnt"}),
-                "subvolumes",
-            ),
-            (
-                "scrub_start",
-                serde_json::json!({"path":"/mnt"}),
-                "completed",
-            ),
-            (
-                "scrub_status",
-                serde_json::json!({"path":"/mnt"}),
-                "running",
-            ),
-            (
-                "balance_start",
-                serde_json::json!({"path":"/mnt"}),
-                "completed",
-            ),
-            (
-                "balance_status",
-                serde_json::json!({"path":"/mnt"}),
-                "running",
-            ),
-            (
-                "filesystem_df",
-                serde_json::json!({"path":"/mnt"}),
-                "spaces",
-            ),
-            (
-                "filesystem_usage",
-                serde_json::json!({"path":"/mnt"}),
-                "devices",
-            ),
+            ("list_subvolumes", serde_json::json!({"path":"/mnt"})),
+            ("scrub_start", serde_json::json!({"path":"/mnt"})),
+            ("scrub_status", serde_json::json!({"path":"/mnt"})),
+            ("balance_start", serde_json::json!({"path":"/mnt"})),
+            ("balance_status", serde_json::json!({"path":"/mnt"})),
+            ("filesystem_df", serde_json::json!({"path":"/mnt"})),
+            ("filesystem_usage", serde_json::json!({"path":"/mnt"})),
             (
                 "device_add",
                 serde_json::json!({"device":"/dev/test3","path":"/mnt"}),
-                "added",
             ),
             (
                 "device_remove",
                 serde_json::json!({"device":"/dev/test3","path":"/mnt"}),
-                "removed",
             ),
-            (
-                "delete_subvolume",
-                serde_json::json!({"path":"/mnt/new"}),
-                "removed_subvolume_id",
-            ),
+            ("delete_subvolume", serde_json::json!({"path":"/mnt/new"})),
         ];
-        for (method, args, proof) in cases {
+        for (method, args) in cases {
             let output = dispatch_with_backend(&backend, method, &args).unwrap();
-            let object = output.as_object().expect("typed method object output");
             assert!(
-                object.get(proof).is_some()
-                    || object.values().any(|value| value.as_str() == Some(proof)),
-                "{method}: {output}"
+                output.is_object(),
+                "{method}: typed method object output: {output}"
             );
+            match method {
+                "create_subvolume" => {
+                    assert_eq!(output["operation"], "created");
+                    assert_eq!(output["path"], "/mnt/new");
+                    assert_eq!(output["subvolume"]["id"], 300);
+                    assert_eq!(output["subvolume"]["name"], "new");
+                    assert_eq!(
+                        output["subvolume"]["uuid"],
+                        "00000000-0000-0000-0000-000000000300"
+                    );
+                    assert_eq!(output["total_subvolumes"], 2);
+                    assert!(backend
+                        .state
+                        .lock()
+                        .unwrap()
+                        .subvolumes
+                        .iter()
+                        .any(|subvolume| subvolume.name == "new"));
+                }
+                "snapshot" => {
+                    assert_eq!(output["operation"], "snapshotted");
+                    assert_eq!(output["path"], "/mnt/snap");
+                    assert_eq!(output["subvolume"]["id"], 301);
+                    assert_eq!(
+                        output["subvolume"]["parent_uuid"],
+                        "00000000-0000-0000-0000-000000000256"
+                    );
+                    assert_eq!(output["subvolume"]["readonly"], true);
+                    assert_eq!(output["total_subvolumes"], 3);
+                    assert!(backend
+                        .state
+                        .lock()
+                        .unwrap()
+                        .subvolumes
+                        .iter()
+                        .any(|subvolume| subvolume.name == "snap" && subvolume.readonly));
+                }
+                "list_subvolumes" => {
+                    assert_eq!(output["filesystem_uuid"], "fs-uuid");
+                    assert_eq!(output["total"], 3);
+                    assert_eq!(output["maximum_supported"], 5);
+                    let subvolumes = output["subvolumes"].as_array().unwrap();
+                    assert_eq!(subvolumes.len(), 3);
+                    assert_eq!(subvolumes[0]["name"], "source");
+                    assert_eq!(subvolumes[1]["name"], "new");
+                    assert_eq!(subvolumes[2]["name"], "snap");
+                }
+                "scrub_start" => {
+                    assert_eq!(output["filesystem_uuid"], "fs-uuid");
+                    assert_eq!(output["state"], "completed");
+                    assert_eq!(output["devices"][0]["device_id"], 1);
+                    assert_eq!(output["devices"][0]["data_bytes_scrubbed"], 100);
+                    assert_eq!(output["devices"][0]["read_errors"], 0);
+                }
+                "scrub_status" => {
+                    assert_eq!(output["filesystem_uuid"], "fs-uuid");
+                    assert_eq!(output["state"], "running");
+                    assert_eq!(output["devices"][0]["device_id"], 1);
+                    assert_eq!(output["devices"][0]["data_bytes_scrubbed"], 50);
+                }
+                "balance_start" => {
+                    assert_eq!(output["filesystem_uuid"], "fs-uuid");
+                    assert_eq!(output["state"], "completed");
+                    assert_eq!(output["progress"]["expected_chunks"], 3);
+                    assert_eq!(output["progress"]["considered_chunks"], 3);
+                    assert_eq!(output["progress"]["completed_chunks"], 2);
+                }
+                "balance_status" => {
+                    assert_eq!(output["filesystem_uuid"], "fs-uuid");
+                    assert_eq!(output["state"], "running");
+                    assert_eq!(output["progress"]["expected_chunks"], 3);
+                    assert_eq!(output["progress"]["considered_chunks"], 2);
+                    assert_eq!(output["progress"]["completed_chunks"], 1);
+                }
+                "filesystem_df" => {
+                    assert_eq!(output["filesystem_uuid"], "fs-uuid");
+                    assert_eq!(output["spaces"][0]["flags"], 1);
+                    assert_eq!(output["spaces"][0]["total_bytes"], 800);
+                    assert_eq!(output["spaces"][0]["used_bytes"], 500);
+                    assert_eq!(output["allocated_bytes"], 800);
+                    assert_eq!(output["used_bytes"], 500);
+                }
+                "filesystem_usage" => {
+                    assert_eq!(output["filesystem_uuid"], "fs-uuid");
+                    assert_eq!(output["generation"], 42);
+                    assert_eq!(output["node_size"], 16_384);
+                    assert_eq!(output["sector_size"], 4096);
+                    assert_eq!(output["device_total_bytes"], 2000);
+                    assert_eq!(output["allocated_bytes"], 800);
+                    assert_eq!(output["used_bytes"], 500);
+                    assert_eq!(output["devices"].as_array().unwrap().len(), 2);
+                    assert_eq!(output["devices"][0]["path"], "/dev/test1");
+                    assert_eq!(output["devices"][1]["bytes_used"], 300);
+                }
+                "device_add" => {
+                    assert_eq!(output["operation"], "added");
+                    assert_eq!(output["filesystem_uuid"], "fs-uuid");
+                    assert_eq!(output["device"], "/dev/test3");
+                    assert_eq!(output["devices"].as_array().unwrap().len(), 3);
+                    assert!(output["devices"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|device| device["path"] == "/dev/test3" && device["id"] == 3));
+                }
+                "device_remove" => {
+                    assert_eq!(output["operation"], "removed");
+                    assert_eq!(output["filesystem_uuid"], "fs-uuid");
+                    assert_eq!(output["device"], "/dev/test3");
+                    assert_eq!(output["devices"].as_array().unwrap().len(), 2);
+                    assert!(output["devices"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .all(|device| device["path"] != "/dev/test3"));
+                }
+                "delete_subvolume" => {
+                    assert_eq!(output["path"], "/mnt/new");
+                    assert_eq!(output["removed_subvolume_id"], 300);
+                    assert_eq!(output["remaining_subvolumes"], 2);
+                    assert!(backend
+                        .state
+                        .lock()
+                        .unwrap()
+                        .subvolumes
+                        .iter()
+                        .all(|subvolume| subvolume.name != "new"));
+                }
+                _ => unreachable!("fixture lists every declared btrfs method"),
+            }
         }
         assert_eq!(backend.effects.load(Ordering::SeqCst), 7);
     }
@@ -1379,6 +1468,13 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.to_string().contains("not found"));
+        assert!(backend
+            .state
+            .lock()
+            .unwrap()
+            .subvolumes
+            .iter()
+            .all(|subvolume| subvolume.name != "missing"));
 
         let mut failing = TestBackend::new();
         failing.backend_error = true;

@@ -468,3 +468,7 @@ async fn resolve_context(
     }
     Ok(context)
 }
+
+#[cfg(test)]
+#[path = "project_dispatch_tests.rs"]
+mod tests;

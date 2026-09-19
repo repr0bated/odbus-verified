@@ -640,9 +640,70 @@ mod tests {
             ("build_prompt_surface", json!({})),
         ];
         assert_eq!(cases.len(), 15);
+        let mut outputs = std::collections::BTreeMap::new();
         for (method, args) in cases {
-            service.dispatch(method, &args).await.unwrap();
+            outputs.insert(method, service.dispatch(method, &args).await.unwrap());
         }
+        // A successful return alone does not prove these read methods. Check
+        // independently useful catalog facts and consistency between public
+        // lookup, listing, health, prompt, validation and schema-export methods.
+        let packages = outputs["list_packages"]["packages"].as_array().unwrap();
+        let core = packages
+            .iter()
+            .find(|p| p["package_name"] == "@json-render/core")
+            .unwrap();
+        assert_eq!(&outputs["get_package"]["package"], core);
+        assert!(!core["version"].as_str().unwrap().is_empty());
+        let components = outputs["list_components"]["components"].as_array().unwrap();
+        let button = components.iter().find(|c| c["name"] == "Button").unwrap();
+        assert_eq!(&outputs["get_component_schema"]["component"], button);
+        let valid_props = json!({"label":"Go","variant":null,"disabled":null});
+        jsonschema::validate(&button["props_schema"], &valid_props).unwrap();
+        assert!(jsonschema::validate(&button["props_schema"], &json!({"label":42})).is_err());
+        let actions = outputs["list_actions"]["actions"].as_array().unwrap();
+        assert!(!actions.is_empty());
+        assert!(outputs["list_core_exports"]["exports"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["name"] == "defineCatalog" && item["package"] == "@json-render/core"));
+        assert!(outputs["list_renderers"]["renderers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|renderer| renderer["id"] == "react"
+                && renderer["package_name"] == "@json-render/react"));
+        let health = &outputs["get_health"];
+        assert_eq!(health["status"], "catalog_snapshot");
+        assert_eq!(health["package_count"], packages.len());
+        assert_eq!(health["component_count"], components.len());
+        assert_eq!(health["catalog_kind"], "manifest_pinned_upstream_reference");
+        assert_eq!(outputs["validate_spec"]["valid"], true);
+        assert_eq!(outputs["validate_spec"]["checked_elements"], 1);
+        assert_eq!(outputs["validate_spec"]["issues"], json!([]));
+        let valid_spec = json!({"root":"x","elements":{"x":{
+            "type":"Button","props":valid_props,"children":[]
+        }}});
+        for method in ["get_spec_schema", "export_json_schema"] {
+            jsonschema::validate(&outputs[method]["schema"], &valid_spec).unwrap();
+            let mut invalid = valid_spec.clone();
+            invalid["elements"]["x"]["props"]["label"] = json!(42);
+            assert!(
+                jsonschema::validate(&outputs[method]["schema"], &invalid).is_err(),
+                "{method}"
+            );
+        }
+        let prompt = outputs["build_prompt_surface"]["prompt"].as_str().unwrap();
+        assert_eq!(outputs["build_prompt_surface"]["renderer"], "react");
+        assert!(prompt.contains("Renderer target: react."));
+        assert!(prompt.contains("Button: props="));
+        assert!(prompt.contains("Runtime JSON Schema:"));
+        for action in actions {
+            assert!(prompt.contains(&format!("- {}(", action["name"].as_str().unwrap())));
+        }
+        let readback = service.dispatch("get_config", &json!({})).await.unwrap();
+        assert_eq!(readback["config"], outputs["set_config"]["config"]);
+        assert_eq!(readback["revision"], outputs["set_config"]["revision"]);
         let tools = service.dispatch("list_tools", &json!({})).await.unwrap();
         let names: BTreeSet<_> = tools["tools"]
             .as_array()

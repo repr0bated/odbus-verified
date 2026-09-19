@@ -1,0 +1,1069 @@
+[
+  {
+    "plugin": "cron",
+    "method": "create_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_methods::tests::all_nine_methods_return_provider_observations",
+        "path": "crates/op-grpc-bridge/src/cron_methods_tests.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_gateway::tests::real_bounded_transport_maps_all_nine_canonical_methods",
+        "path": "crates/op-grpc-bridge/src/cron_gateway_tests.rs",
+        "scope": "native HTTP fixture"
+      }
+    ],
+    "notes": "Both direct owner dispatch and native gateway fixture invoke this method successfully and assert returned/readback state."
+  },
+  {
+    "plugin": "cron",
+    "method": "delete_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_methods::tests::all_nine_methods_return_provider_observations",
+        "path": "crates/op-grpc-bridge/src/cron_methods_tests.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_gateway::tests::real_bounded_transport_maps_all_nine_canonical_methods",
+        "path": "crates/op-grpc-bridge/src/cron_gateway_tests.rs",
+        "scope": "native HTTP fixture"
+      }
+    ],
+    "notes": "Both direct owner dispatch and native gateway fixture invoke this method successfully and assert returned/readback state."
+  },
+  {
+    "plugin": "cron",
+    "method": "disable_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_methods::tests::all_nine_methods_return_provider_observations",
+        "path": "crates/op-grpc-bridge/src/cron_methods_tests.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_gateway::tests::real_bounded_transport_maps_all_nine_canonical_methods",
+        "path": "crates/op-grpc-bridge/src/cron_gateway_tests.rs",
+        "scope": "native HTTP fixture"
+      }
+    ],
+    "notes": "Both direct owner dispatch and native gateway fixture invoke this method successfully and assert returned/readback state."
+  },
+  {
+    "plugin": "cron",
+    "method": "enable_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_methods::tests::all_nine_methods_return_provider_observations",
+        "path": "crates/op-grpc-bridge/src/cron_methods_tests.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_gateway::tests::real_bounded_transport_maps_all_nine_canonical_methods",
+        "path": "crates/op-grpc-bridge/src/cron_gateway_tests.rs",
+        "scope": "native HTTP fixture"
+      }
+    ],
+    "notes": "Both direct owner dispatch and native gateway fixture invoke this method successfully and assert returned/readback state."
+  },
+  {
+    "plugin": "cron",
+    "method": "get_history",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_methods::tests::all_nine_methods_return_provider_observations",
+        "path": "crates/op-grpc-bridge/src/cron_methods_tests.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_gateway::tests::real_bounded_transport_maps_all_nine_canonical_methods",
+        "path": "crates/op-grpc-bridge/src/cron_gateway_tests.rs",
+        "scope": "native HTTP fixture"
+      }
+    ],
+    "notes": "Both direct owner dispatch and native gateway fixture invoke this method successfully and assert returned/readback state."
+  },
+  {
+    "plugin": "cron",
+    "method": "get_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_methods::tests::all_nine_methods_return_provider_observations",
+        "path": "crates/op-grpc-bridge/src/cron_methods_tests.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_gateway::tests::real_bounded_transport_maps_all_nine_canonical_methods",
+        "path": "crates/op-grpc-bridge/src/cron_gateway_tests.rs",
+        "scope": "native HTTP fixture"
+      }
+    ],
+    "notes": "Both direct owner dispatch and native gateway fixture invoke this method successfully and assert returned/readback state."
+  },
+  {
+    "plugin": "cron",
+    "method": "list_jobs",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_methods::tests::all_nine_methods_return_provider_observations",
+        "path": "crates/op-grpc-bridge/src/cron_methods_tests.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_gateway::tests::real_bounded_transport_maps_all_nine_canonical_methods",
+        "path": "crates/op-grpc-bridge/src/cron_gateway_tests.rs",
+        "scope": "native HTTP fixture"
+      }
+    ],
+    "notes": "Both direct owner dispatch and native gateway fixture invoke this method successfully and assert returned/readback state."
+  },
+  {
+    "plugin": "cron",
+    "method": "run_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_methods::tests::all_nine_methods_return_provider_observations",
+        "path": "crates/op-grpc-bridge/src/cron_methods_tests.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_gateway::tests::real_bounded_transport_maps_all_nine_canonical_methods",
+        "path": "crates/op-grpc-bridge/src/cron_gateway_tests.rs",
+        "scope": "native HTTP fixture"
+      }
+    ],
+    "notes": "Both direct owner dispatch and native gateway fixture invoke this method successfully and assert returned/readback state."
+  },
+  {
+    "plugin": "cron",
+    "method": "update_job",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_methods::tests::all_nine_methods_return_provider_observations",
+        "path": "crates/op-grpc-bridge/src/cron_methods_tests.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "cron_gateway::tests::real_bounded_transport_maps_all_nine_canonical_methods",
+        "path": "crates/op-grpc-bridge/src/cron_gateway_tests.rs",
+        "scope": "native HTTP fixture"
+      }
+    ],
+    "notes": "Both direct owner dispatch and native gateway fixture invoke this method successfully and assert returned/readback state."
+  },
+  {
+    "plugin": "fail2ban",
+    "method": "ban_ip",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::fail2ban_methods::tests::native_fixture_covers_ban_unban_and_status",
+        "path": "crates/op-plugins/src/state_plugins/fail2ban_methods.rs",
+        "scope": "native Unix control-socket fixture"
+      }
+    ],
+    "notes": "Native Unix control-socket fixture invokes ban_ip and asserts the daemon-reported affected count."
+  },
+  {
+    "plugin": "fail2ban",
+    "method": "get_jail_status",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::fail2ban_methods::tests::native_fixture_covers_ban_unban_and_status",
+        "path": "crates/op-plugins/src/state_plugins/fail2ban_methods.rs",
+        "scope": "native Unix control-socket fixture"
+      }
+    ],
+    "notes": "Native Unix control-socket fixture invokes get_jail_status and asserts failed/banned counts plus the returned banned IP list."
+  },
+  {
+    "plugin": "fail2ban",
+    "method": "reload",
+    "status": "missing",
+    "positive_tests": [],
+    "notes": "Missing: the native Fail2ban protocol requires a validated configuration stream and jail/options tuple (installed fail2banclient sends [reload, jail, opts, stream]); no safe isolated config owner is currently wired."
+  },
+  {
+    "plugin": "fail2ban",
+    "method": "unban_ip",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::fail2ban_methods::tests::native_fixture_covers_ban_unban_and_status",
+        "path": "crates/op-plugins/src/state_plugins/fail2ban_methods.rs",
+        "scope": "native Unix control-socket fixture"
+      }
+    ],
+    "notes": "Native Unix control-socket fixture invokes unban_ip and asserts the daemon-reported affected count."
+  },
+  {
+    "plugin": "freedesktop",
+    "method": "Get",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "freedesktop_dispatch::tests::public_read_only_metadata_does_not_disclose_hidden_lock_state",
+        "path": "crates/op-grpc-bridge/src/freedesktop_dispatch.rs",
+        "scope": "canonical sealed catalog and committed SHM fixture"
+      }
+    ],
+    "notes": "The sealed catalog/SHM fixture invokes Get and asserts returned values and read-only metadata across lock-state readbacks."
+  },
+  {
+    "plugin": "freedesktop",
+    "method": "GetAll",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "freedesktop_dispatch::tests::enumeration_requires_current_blob_and_filters_public_fields",
+        "path": "crates/op-grpc-bridge/src/freedesktop_dispatch.rs",
+        "scope": "canonical sealed catalog and committed SHM fixture"
+      }
+    ],
+    "notes": "The sealed catalog/SHM fixture invokes GetAll and asserts the exact managed object and public property readback."
+  },
+  {
+    "plugin": "freedesktop",
+    "method": "GetMachineId",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "freedesktop_dispatch::tests::peer_methods_cross_private_dbus_and_read_sealed_identity",
+        "path": "crates/op-grpc-bridge/src/freedesktop_dispatch.rs",
+        "scope": "native private D-Bus Peer fixture"
+      }
+    ],
+    "notes": "Private D-Bus Peer fixture invokes GetMachineId through prepare and asserts the exact machine ID returned by the canonical object."
+  },
+  {
+    "plugin": "freedesktop",
+    "method": "GetManagedObjects",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "freedesktop_dispatch::tests::enumeration_requires_current_blob_and_filters_public_fields",
+        "path": "crates/op-grpc-bridge/src/freedesktop_dispatch.rs",
+        "scope": "canonical sealed catalog and committed SHM fixture"
+      }
+    ],
+    "notes": "The sealed catalog/SHM fixture invokes GetManagedObjects and asserts the complete object list and filtered public properties."
+  },
+  {
+    "plugin": "freedesktop",
+    "method": "Introspect",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "freedesktop_dispatch::tests::introspection_reports_wrapper_abi_and_exact_escaped_sealed_metadata",
+        "path": "crates/op-grpc-bridge/src/freedesktop_dispatch.rs",
+        "scope": "canonical sealed catalog and committed SHM fixture"
+      }
+    ],
+    "notes": "The sealed catalog/SHM fixture invokes Introspect and asserts wrapper ABI XML, escaped schema metadata, and the pinned schema hash."
+  },
+  {
+    "plugin": "freedesktop",
+    "method": "Ping",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "freedesktop_dispatch::tests::peer_methods_cross_private_dbus_and_read_sealed_identity",
+        "path": "crates/op-grpc-bridge/src/freedesktop_dispatch.rs",
+        "scope": "native private D-Bus Peer fixture"
+      }
+    ],
+    "notes": "Private D-Bus Peer fixture invokes Ping through prepare and asserts the canonical plugin identity, object path, and sealed schema hash."
+  },
+  {
+    "plugin": "freedesktop",
+    "method": "Set",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-grpc-bridge/lib",
+        "filter": "freedesktop_dispatch::tests::set_facade_applies_injected_owner_effect_and_reads_back_committed_state",
+        "path": "crates/op-grpc-bridge/src/freedesktop_dispatch.rs",
+        "scope": "owner injected isolated SHM fixture"
+      }
+    ],
+    "notes": "The exact Set facade plan is authorized, applied by an injected owner, committed to isolated SHM, and read back with the target receipt preserved."
+  },
+  {
+    "plugin": "full_system",
+    "method": "capture_state",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::full_system::tests::capture_state_dispatch_returns_complete_read_only_snapshot",
+        "path": "crates/op-plugins/src/state_plugins/full_system.rs",
+        "scope": "owner read-only host capture"
+      }
+    ],
+    "notes": "Read-only owner capture dispatch succeeds and asserts version, timestamp, hostname, and complete system/network/storage/container sections."
+  },
+  {
+    "plugin": "full_system",
+    "method": "set_hostname",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::full_system::tests::set_hostname_dispatch_applies_private_dbus_owner_and_reads_back",
+        "path": "crates/op-plugins/src/state_plugins/full_system.rs",
+        "scope": "private D-Bus hostname1 owner fixture"
+      }
+    ],
+    "notes": "Private D-Bus hostname1 fixture receives SetHostname, mutates owned state, and property readback verifies the effect; invalid and missing hostname inputs leave the prior value unchanged."
+  },
+  {
+    "plugin": "hardware",
+    "method": "get_device",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::hardware::tests::all_inventory_methods_use_typed_fixture_and_filter_devices",
+        "path": "crates/op-plugins/src/state_plugins/hardware.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "hardware",
+    "method": "get_stats",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::hardware::tests::all_inventory_methods_use_typed_fixture_and_filter_devices",
+        "path": "crates/op-plugins/src/state_plugins/hardware.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "hardware",
+    "method": "list_devices",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::hardware::tests::all_inventory_methods_use_typed_fixture_and_filter_devices",
+        "path": "crates/op-plugins/src/state_plugins/hardware.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "hardware",
+    "method": "refresh_inventory",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::hardware::tests::all_inventory_methods_use_typed_fixture_and_filter_devices",
+        "path": "crates/op-plugins/src/state_plugins/hardware.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "hardware",
+    "method": "scan_hardware",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::hardware::tests::all_inventory_methods_use_typed_fixture_and_filter_devices",
+        "path": "crates/op-plugins/src/state_plugins/hardware.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "attach_device",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "create_session",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "flush_devices",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "get_seat",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "get_session",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "get_user",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "hibernate",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "kill_session",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "kill_user",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "list_seats",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "list_sessions",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "list_users",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "lock_session",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "power_off",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "reboot",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "release_session",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "set_user_linger",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "sleep",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "suspend",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "terminate_seat",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "terminate_session",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "terminate_user",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "login1",
+    "method": "unlock_session",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::login1::methods::tests::all_declared_methods_cross_the_real_dbus_wire",
+        "path": "crates/op-plugins/src/state_plugins/login1/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "packagekit",
+    "method": "get_updates",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::packagekit::tests::all_six_methods_use_u64_and_ordered_package_finished",
+        "path": "crates/op-plugins/src/state_plugins/packagekit.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "packagekit",
+    "method": "install_packages",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::packagekit::tests::all_six_methods_use_u64_and_ordered_package_finished",
+        "path": "crates/op-plugins/src/state_plugins/packagekit.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "packagekit",
+    "method": "remove_packages",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::packagekit::tests::all_six_methods_use_u64_and_ordered_package_finished",
+        "path": "crates/op-plugins/src/state_plugins/packagekit.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "packagekit",
+    "method": "resolve",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::packagekit::tests::all_six_methods_use_u64_and_ordered_package_finished",
+        "path": "crates/op-plugins/src/state_plugins/packagekit.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "packagekit",
+    "method": "search_names",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::packagekit::tests::all_six_methods_use_u64_and_ordered_package_finished",
+        "path": "crates/op-plugins/src/state_plugins/packagekit.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "packagekit",
+    "method": "update_packages",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::packagekit::tests::all_six_methods_use_u64_and_ordered_package_finished",
+        "path": "crates/op-plugins/src/state_plugins/packagekit.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "pcidecl",
+    "method": "enumerate_devices",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::pcidecl::tests::enumerate_applies_typed_normalized_filters_and_returns_records",
+        "path": "crates/op-plugins/src/state_plugins/pcidecl.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::pcidecl::tests::exact_lookup_distinguishes_missing_from_provider_error",
+        "path": "crates/op-plugins/src/state_plugins/pcidecl.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "pcidecl",
+    "method": "get_device_info",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::pcidecl::tests::enumerate_applies_typed_normalized_filters_and_returns_records",
+        "path": "crates/op-plugins/src/state_plugins/pcidecl.rs",
+        "scope": "owner fixture"
+      },
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::pcidecl::tests::exact_lookup_distinguishes_missing_from_provider_error",
+        "path": "crates/op-plugins/src/state_plugins/pcidecl.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "procfs",
+    "method": "get_cpuinfo",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::procfs::tests::all_seven_methods_dispatch_from_one_typed_fixture",
+        "path": "crates/op-plugins/src/state_plugins/procfs.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "procfs",
+    "method": "get_loadavg",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::procfs::tests::all_seven_methods_dispatch_from_one_typed_fixture",
+        "path": "crates/op-plugins/src/state_plugins/procfs.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "procfs",
+    "method": "get_meminfo",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::procfs::tests::all_seven_methods_dispatch_from_one_typed_fixture",
+        "path": "crates/op-plugins/src/state_plugins/procfs.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "procfs",
+    "method": "get_net_dev",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::procfs::tests::all_seven_methods_dispatch_from_one_typed_fixture",
+        "path": "crates/op-plugins/src/state_plugins/procfs.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "procfs",
+    "method": "get_process_info",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::procfs::tests::all_seven_methods_dispatch_from_one_typed_fixture",
+        "path": "crates/op-plugins/src/state_plugins/procfs.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "procfs",
+    "method": "get_uptime",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::procfs::tests::all_seven_methods_dispatch_from_one_typed_fixture",
+        "path": "crates/op-plugins/src/state_plugins/procfs.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "procfs",
+    "method": "list_processes",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::procfs::tests::all_seven_methods_dispatch_from_one_typed_fixture",
+        "path": "crates/op-plugins/src/state_plugins/procfs.rs",
+        "scope": "owner fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "service",
+    "method": "init",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::service::methods::tests::lifecycle_wire_calls_and_observed_receipts",
+        "path": "crates/op-plugins/src/state_plugins/service/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "service",
+    "method": "run",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::service::methods::tests::lifecycle_wire_calls_and_observed_receipts",
+        "path": "crates/op-plugins/src/state_plugins/service/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "service",
+    "method": "shutdown",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::service::methods::tests::lifecycle_wire_calls_and_observed_receipts",
+        "path": "crates/op-plugins/src/state_plugins/service/methods.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "software",
+    "method": "get_info",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::software::tests::all_four_methods_use_exact_packagekit_transactions",
+        "path": "crates/op-plugins/src/state_plugins/software.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "software",
+    "method": "install",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::software::tests::all_four_methods_use_exact_packagekit_transactions",
+        "path": "crates/op-plugins/src/state_plugins/software.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "software",
+    "method": "uninstall",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::software::tests::all_four_methods_use_exact_packagekit_transactions",
+        "path": "crates/op-plugins/src/state_plugins/software.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  },
+  {
+    "plugin": "software",
+    "method": "update",
+    "status": "mapped",
+    "positive_tests": [
+      {
+        "target": "op-plugins/lib",
+        "filter": "state_plugins::software::tests::all_four_methods_use_exact_packagekit_transactions",
+        "path": "crates/op-plugins/src/state_plugins/software.rs",
+        "scope": "native D-Bus fixture"
+      }
+    ],
+    "notes": "Qualifying successful method invocation and domain output/effect assertions are present."
+  }
+]

@@ -1,0 +1,132 @@
+{
+  "purpose": "Test work assignment only; runtime contracts and the method denominator come from sealed plugin blobs.",
+  "catalog_hash": "f0715eb44e8e6a3965cb7fe7a7c129fb1fc3e3d80a40da02faee3337555cfd37",
+  "workers": [
+    {
+      "agent": "swarm_01_router",
+      "model": "gpt-5.6-luna",
+      "plugins": [
+        "tched_router"
+      ]
+    },
+    {
+      "agent": "swarm_02_notebook",
+      "model": "gpt-5.6-luna",
+      "plugins": [
+        "notebooklm"
+      ]
+    },
+    {
+      "agent": "swarm_03_ai",
+      "model": "gpt-5.6-luna",
+      "plugins": [
+        "agent_config",
+        "cognitive_mcp",
+        "ctl_plane_chatbot",
+        "embedding_model",
+        "gemma_brain",
+        "large_language_model",
+        "mcp",
+        "antigravity",
+        "antigravity_chat"
+      ]
+    },
+    {
+      "agent": "swarm_04_identity",
+      "model": "gpt-5.6-luna",
+      "plugins": [
+        "human_principal",
+        "identity_sled",
+        "keypair",
+        "keyring",
+        "persona",
+        "sess_decl",
+        "users",
+        "oscal_subid_registry"
+      ]
+    },
+    {
+      "agent": "swarm_05_ui_projects",
+      "model": "gpt-5.6-luna",
+      "plugins": [
+        "json_render",
+        "schema_renderer",
+        "web_ui",
+        "project",
+        "workflows"
+      ]
+    },
+    {
+      "agent": "swarm_06_data",
+      "model": "gpt-5.6-luna",
+      "plugins": [
+        "memory",
+        "cozo",
+        "datastore",
+        "mongodb_mcp",
+        "qdrant",
+        "config"
+      ]
+    },
+    {
+      "agent": "swarm_07_host",
+      "model": "gpt-5.6-luna",
+      "plugins": [
+        "cron",
+        "fail2ban",
+        "freedesktop",
+        "full_system",
+        "hardware",
+        "login1",
+        "packagekit",
+        "pcidecl",
+        "procfs",
+        "service",
+        "software"
+      ]
+    },
+    {
+      "agent": "swarm_08_network",
+      "model": "gpt-5.6-luna",
+      "plugins": [
+        "dnsresolver",
+        "emqx",
+        "endpoint",
+        "ghostbridge",
+        "net",
+        "privacy_routes",
+        "proxy_server",
+        "shared_unix_socket",
+        "unix_socket",
+        "xray"
+      ]
+    },
+    {
+      "agent": "swarm_09_decoy_ovs",
+      "model": "gpt-5.6-luna",
+      "plugins": [
+        "openflow",
+        "openflow_obfuscation",
+        "ovsdb_bridge",
+        "rovs_commands",
+        "rtnetlink",
+        "wg_opdbus",
+        "wgcf",
+        "wireguard"
+      ]
+    },
+    {
+      "agent": "swarm_10_storage_mail",
+      "model": "gpt-5.6-luna",
+      "plugins": [
+        "btrfs",
+        "incus",
+        "oci",
+        "snowball",
+        "mail_server",
+        "adc",
+        "gcloud_adc"
+      ]
+    }
+  ]
+}
