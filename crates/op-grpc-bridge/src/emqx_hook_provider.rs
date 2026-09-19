@@ -64,8 +64,6 @@ impl HookProviderService {
         }
     }
 
-
-
     /// Record a broker observation, never a fictitious mutation/tool call.
     async fn record_event(
         &self,

@@ -891,7 +891,23 @@ mod tests {
                 false
             );
         }
-        let service = service(CozoGraphShuttle::new_persistent(path).unwrap());
+        // The dropped handle releases RocksDB's LOCK asynchronously; under a
+        // loaded parallel test run the reopen can race it. Production never
+        // reopens a path in-process, so the test waits rather than the code.
+        let reopened = {
+            let mut attempt = 0;
+            loop {
+                match CozoGraphShuttle::new_persistent(path.clone()) {
+                    Ok(store) => break store,
+                    Err(error) if attempt < 50 && error.to_string().contains("LOCK") => {
+                        attempt += 1;
+                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                    }
+                    Err(error) => panic!("reopen runtime store: {error}"),
+                }
+            }
+        };
+        let service = service(reopened);
         let config = service.dispatch("get_config", &json!({})).await.unwrap();
         assert_eq!(config["config"]["expose_catalog"], false);
         assert!(service
