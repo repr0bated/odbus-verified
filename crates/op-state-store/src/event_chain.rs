@@ -140,6 +140,12 @@ pub struct ChainEvent {
     /// is never used as an identity, grant key, or payload digest.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_genesis: Option<String>,
+    /// `blake3` hex digest of the SID1 sealed-identity envelope that authored
+    /// this event — a commitment to the identity blob without disclosing the
+    /// credential. Absent for events recorded before the field existed and
+    /// for anonymous or bridge-internal actors.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sealed_id_digest: Option<String>,
     /// Capability used for the operation
     pub capability_id: Option<String>,
     /// Plugin that owns the state
@@ -219,6 +225,7 @@ impl ChainEvent {
             actor_id,
             session_id: None,
             session_genesis: None,
+            sealed_id_digest: None,
             capability_id: None,
             plugin_id,
             schema_version,
@@ -257,6 +264,7 @@ impl ChainEvent {
                 actor_id: &self.actor_id,
                 session_id: self.session_id.as_deref(),
                 session_genesis: self.session_genesis.as_deref(),
+                sealed_id_digest: self.sealed_id_digest.as_deref(),
                 capability_id: self.capability_id.as_deref(),
                 plugin_id: &self.plugin_id,
                 schema_version: &self.schema_version,
@@ -339,6 +347,8 @@ struct CanonicalEventPayload<'a> {
     actor_id: &'a str,
     session_id: Option<&'a str>,
     session_genesis: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sealed_id_digest: Option<&'a str>,
     capability_id: Option<&'a str>,
     plugin_id: &'a str,
     schema_version: &'a str,
@@ -662,6 +672,7 @@ impl EventChain {
             actor_id,
             None,
             None,
+            None,
             plugin_id,
             method_name,
             capability_id,
@@ -677,6 +688,7 @@ impl EventChain {
         actor_id: String,
         session_id: Option<String>,
         session_genesis: Option<String>,
+        sealed_id_digest: Option<String>,
         plugin_id: String,
         method_name: String,
         capability_id: Option<String>,
@@ -699,6 +711,7 @@ impl EventChain {
         );
         event.session_id = session_id;
         event.session_genesis = session_genesis;
+        event.sealed_id_digest = sealed_id_digest;
         event.capability_id = capability_id;
         event.method_name = Some(method_name);
         // Recompute hash now that capability_id and method_name are set.
@@ -1357,6 +1370,7 @@ mod tests {
                 "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff".into(),
                 Some("session-7".into()),
                 Some("genesis-7".into()),
+                Some("f00d".repeat(16)),
                 "cognitive_mcp".into(),
                 "memory_store".into(),
                 Some("cognitive_mcp.invoke".into()),
@@ -1366,6 +1380,18 @@ mod tests {
 
         assert_eq!(event.actor_id, "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff");
         assert_eq!(event.session_id.as_deref(), Some("session-7"));
+        assert_eq!(
+            event.sealed_id_digest.as_deref(),
+            Some("f00d".repeat(16).as_str())
+        );
+        // The digest is part of the hashed canonical payload.
+        let mut altered = event.clone();
+        altered.sealed_id_digest = Some("beef".repeat(16));
+        assert_ne!(altered.compute_hash(), event.event_hash);
+        // Events without a digest hash exactly as before the field existed.
+        let mut legacy = event.clone();
+        legacy.sealed_id_digest = None;
+        assert!(!legacy.compute_hash().is_empty());
         assert_eq!(event.session_genesis.as_deref(), Some("genesis-7"));
         let payload = event.input_payload.as_ref().expect("direct payload");
         assert_eq!(payload["method"], "memory_store");

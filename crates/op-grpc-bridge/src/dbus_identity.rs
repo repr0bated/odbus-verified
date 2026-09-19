@@ -294,6 +294,16 @@ impl DbusIdentityResolver {
                 genesis_hex: resolved.session_genesis.clone(),
                 session_id: resolved.session_id.clone(),
                 wireguard_pubkey: session.wireguard_pubkey,
+                sealed_id_digest: crate::identity_sled_dispatch::stored_session(
+                    self.engine.as_ref(),
+                    &resolved.session_id,
+                )
+                .await
+                .ok()
+                .flatten()
+                .and_then(|sled| {
+                    crate::mutation_engine::sealed_id_digest(sled.sealed_id.as_deref())
+                }),
             })
             .await;
 
@@ -404,6 +414,16 @@ impl DbusIdentityResolver {
                 genesis_hex: resolved.session_genesis.clone(),
                 session_id: resolved.session_id.clone(),
                 wireguard_pubkey: claims.wireguard_pubkey,
+                sealed_id_digest: crate::identity_sled_dispatch::stored_session(
+                    self.engine.as_ref(),
+                    &resolved.session_id,
+                )
+                .await
+                .ok()
+                .flatten()
+                .and_then(|sled| {
+                    crate::mutation_engine::sealed_id_digest(sled.sealed_id.as_deref())
+                }),
             })
             .await;
 
@@ -609,6 +629,9 @@ impl DbusIdentityResolver {
             }
             let context = crate::mutation_engine::SessionContext {
                 genesis_hex: record.genesis.unwrap_or_default(),
+                sealed_id_digest: crate::mutation_engine::sealed_id_digest(
+                    record.sealed_id.as_deref(),
+                ),
                 session_id: record.session_id,
                 wireguard_pubkey: record.wireguard_pubkey,
             };

@@ -492,6 +492,17 @@ pub struct SessionContext {
     pub genesis_hex: String,
     pub session_id: String,
     pub wireguard_pubkey: String,
+    /// `blake3` hex of the sled's SID1 envelope; stamped on every mutation
+    /// this session authors. Never the credential itself.
+    pub sealed_id_digest: Option<String>,
+}
+
+/// Commitment to a SID1 envelope for audit records: the credential's blake3
+/// digest, or `None` when the sled carries no sealed id.
+pub fn sealed_id_digest(sealed_id: Option<&str>) -> Option<String> {
+    sealed_id
+        .filter(|s| !s.is_empty())
+        .map(|s| blake3::hash(s.as_bytes()).to_hex().to_string())
 }
 
 const ANONYMOUS_ACTOR: &str = "anonymous";
@@ -898,6 +909,7 @@ impl MutationEngine {
             genesis_hex,
             session_id: record.session_id,
             wireguard_pubkey: record.wireguard_pubkey,
+            sealed_id_digest: sealed_id_digest(record.sealed_id.as_deref()),
         };
         self.register_session_context(context.clone()).await;
         Some(context)
@@ -974,6 +986,7 @@ impl MutationEngine {
                 genesis_hex: record.genesis.unwrap_or_default(),
                 session_id: record.session_id,
                 wireguard_pubkey: record.wireguard_pubkey,
+                sealed_id_digest: sealed_id_digest(record.sealed_id.as_deref()),
             };
             self.register_session_context(context.clone()).await;
             return Some(context);
@@ -1064,6 +1077,7 @@ impl MutationEngine {
                 genesis_hex: existing_genesis.clone(),
                 session_id: session_id.to_string(),
                 wireguard_pubkey: wireguard_pubkey.to_string(),
+                sealed_id_digest: sealed_id_digest(Some(&stamp.sealed_id)),
             })
             .await;
             return Ok(existing_genesis);
@@ -1085,6 +1099,7 @@ impl MutationEngine {
             genesis_hex: stored.clone(),
             session_id: session_id.to_string(),
             wireguard_pubkey: wireguard_pubkey.to_string(),
+            sealed_id_digest: sealed_id_digest(Some(&stamp.sealed_id)),
         })
         .await;
         self.record_session_arrival(session_id).await;
@@ -2070,7 +2085,13 @@ impl MutationEngine {
         let session_stamp = self
             .session_context_for_actor(&actor_id)
             .await
-            .map(|context| (context.session_id, context.genesis_hex));
+            .map(|context| {
+                (
+                    context.session_id,
+                    context.genesis_hex,
+                    context.sealed_id_digest,
+                )
+            });
         if session_stamp.is_none() && actor_id != ANONYMOUS_ACTOR {
             tracing::warn!(
                 actor_id = %actor_id,
@@ -2098,9 +2119,10 @@ impl MutationEngine {
                 Decision::Allow,
                 &public_new_value,
             );
-            if let Some((session_id, session_genesis)) = session_stamp {
+            if let Some((session_id, session_genesis, sealed_id_digest)) = session_stamp {
                 event.session_id = Some(session_id);
                 event.session_genesis = Some(session_genesis);
+                event.sealed_id_digest = sealed_id_digest;
             }
             if let Some(capability) = capability_id {
                 event.capability_id = Some(capability);
@@ -2625,6 +2647,19 @@ impl MutationEngine {
             // Tenant data must not leak through the global chain/change streams.
             // Notarize a digest, while dispatch still receives the original input.
             let audit_json = audit_method_arguments(plugin_id, method, json_args);
+            // Commitment to the authoring SID1 for the audit record: from the
+            // anchored session when the caller named one, else from the actor's
+            // own sled. Resolved before the chain lock is taken.
+            let method_sealed_id_digest = match session_id {
+                Some(sid) => self
+                    .session_context(sid)
+                    .await
+                    .and_then(|context| context.sealed_id_digest),
+                None => self
+                    .session_context_for_actor(actor_id)
+                    .await
+                    .and_then(|context| context.sealed_id_digest),
+            };
             let audit_value = simd_json::serde::to_owned_value(serde_json::from_str::<
                 serde_json::Value,
             >(&audit_json)?)?;
@@ -2638,6 +2673,7 @@ impl MutationEngine {
                     actor_id.to_string(),
                     session_id.map(str::to_string),
                     session_genesis.map(str::to_string),
+                    method_sealed_id_digest,
                     plugin_id.to_string(),
                     method.to_string(),
                     capability_id.map(|s| s.to_string()),
@@ -4732,6 +4768,12 @@ fn event_to_footprint(event: &ChainEvent) -> PluginFootprint {
         metadata.insert(
             "session_genesis".to_string(),
             simd_json::OwnedValue::from(session_genesis),
+        );
+    }
+    if let Some(sealed_id_digest) = event.sealed_id_digest.as_deref() {
+        metadata.insert(
+            "sealed_id_digest".to_string(),
+            simd_json::OwnedValue::from(sealed_id_digest),
         );
     }
     metadata.insert(
