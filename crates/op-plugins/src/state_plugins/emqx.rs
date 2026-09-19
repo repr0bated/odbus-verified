@@ -21,7 +21,7 @@ use std::time::Duration;
 use zbus::{Connection, Proxy};
 
 const PLUGIN_NAME: &str = "emqx";
-const PLUGIN_VERSION: &str = "2.0.0";
+const PLUGIN_VERSION: &str = "2.1.0";
 const PLUGIN_CATEGORY: &str = "net";
 const PLUGIN_DESCRIPTION: &str =
     "Standalone local EMQX broker: status, listeners, hooks, and fixed-service lifecycle";
@@ -35,6 +35,35 @@ pub const EMQX_LOG_DIR: &str = "/var/log/emqx";
 pub const EMQX_DASHBOARD_URL: &str = "http://127.0.0.1:18083";
 pub const EMQX_API_BASE: &str = "http://127.0.0.1:18083/api/v5";
 pub const EMQX_MQTT_TCP_BIND: &str = "127.0.0.1:1883";
+/// Doorbell listener: MQTT over WSS on the svc0 fabric address (the same
+/// WARP-inner address the `:8090` door binds), TLS from the svc0 material.
+/// Browsers loaded over `https://10.0.0.3:8090` can only open `wss://`.
+pub const EMQX_MQTT_WSS_BIND: &str = "10.0.0.3:8084";
+/// The fabric address shared with the bridge door (`FABRIC_BIND` in the
+/// op-grpc-bridge run script). Listeners may bind loopback or this address.
+pub const FABRIC_SVC0_IP: &str = "10.0.0.3";
+/// Content-free wake topics. `<owner-key>` is the private-view owner key
+/// (`sha256(principal, session, genesis)`), so the broker never sees an
+/// identity. Payload is `{"seq": <scope revision>}` only.
+pub const WAKE_TOPIC_PREFIX: &str = "opdbus/wake/";
+/// Transport scope a SID1 must carry to open the doorbell.
+pub const WAKE_TRANSPORT_SCOPE: &str = "mqtt";
+
+/// `opdbus/wake/<owner-key>` for a valid owner key.
+pub fn wake_topic(owner_key: &str) -> Result<String> {
+    anyhow::ensure!(
+        valid_owner_key(owner_key),
+        "wake owner key must be 64 lowercase hex characters"
+    );
+    Ok(format!("{WAKE_TOPIC_PREFIX}{owner_key}"))
+}
+
+pub fn valid_owner_key(owner_key: &str) -> bool {
+    owner_key.len() == 64
+        && owner_key
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
 pub const EXHOOK_PROTO: &str = "emqx.exhook.v3";
 pub const EXHOOK_SERVICE: &str = "emqx.exhook.v3.HookProvider";
 pub const EXHOOK_SERVER_NAME: &str = "opdbus";
@@ -115,7 +144,7 @@ pub struct EmqxExhookDeclaration {
 /// Deterministic declared state. No live probe or credential is allowed here;
 /// schema generation and blob sealing must produce identical output offline.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
-#[schemars(extend("x-oscal-subid" = "sch.software.plugin.emqx.schema@v2"))]
+#[schemars(extend("x-oscal-subid" = "sch.software.plugin.emqx.schema@v3"))]
 #[schemars(extend("x-oscal-category" = "network"))]
 #[schemars(extend("x-immutable-paths" = ["software", "service_name", "data_dir", "config_dir", "log_dir", "api_base"]))]
 pub struct EmqxState {
@@ -147,11 +176,18 @@ impl EmqxState {
             log_dir: EMQX_LOG_DIR.to_string(),
             dashboard_url: EMQX_DASHBOARD_URL.to_string(),
             api_base: EMQX_API_BASE.to_string(),
-            listeners: vec![EmqxDeclaredListener {
-                id: "tcp:default".to_string(),
-                r#type: "tcp".to_string(),
-                bind: EMQX_MQTT_TCP_BIND.to_string(),
-            }],
+            listeners: vec![
+                EmqxDeclaredListener {
+                    id: "tcp:default".to_string(),
+                    r#type: "tcp".to_string(),
+                    bind: EMQX_MQTT_TCP_BIND.to_string(),
+                },
+                EmqxDeclaredListener {
+                    id: "wss:wake".to_string(),
+                    r#type: "wss".to_string(),
+                    bind: EMQX_MQTT_WSS_BIND.to_string(),
+                },
+            ],
             exhook: EmqxExhookDeclaration {
                 proto: EXHOOK_PROTO.to_string(),
                 service: EXHOOK_SERVICE.to_string(),
@@ -360,6 +396,35 @@ pub struct RestartOutput {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PublishWakeInput {
+    /// Private-view owner key; the topic is derived from it, never chosen.
+    pub owner_key: String,
+    /// Scope revision that was committed to SHM before this wake.
+    pub seq: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PublishWakeOutput {
+    pub topic: String,
+    pub published: bool,
+    pub message_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct KickClientInput {
+    /// MQTT client id to disconnect (a revoked sled's doorbell connection).
+    pub client_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct KickClientOutput {
+    pub kicked: bool,
+    pub was_connected: bool,
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 struct RunitStatus {
     active_state: String,
@@ -451,7 +516,7 @@ fn api_credentials_from_files() -> Result<(String, String)> {
 async fn emqx_api(
     transport: &EmqxNativeTransport,
     method: Method,
-    path: &'static str,
+    path: &str,
     body: Option<JsonValue>,
 ) -> Result<JsonValue> {
     let (api_key, api_secret) = transport.credentials()?;
@@ -530,8 +595,60 @@ fn local_endpoint(value: &str) -> bool {
         .unwrap_or(value);
     address
         .parse::<SocketAddr>()
-        .map(|address| address.ip().is_loopback())
+        .map(|address| address.ip().is_loopback() || address.ip().to_string() == FABRIC_SVC0_IP)
         .unwrap_or(false)
+}
+
+async fn publish_wake(
+    transport: &EmqxNativeTransport,
+    input: PublishWakeInput,
+) -> Result<PublishWakeOutput> {
+    let topic = wake_topic(&input.owner_key)?;
+    let response = emqx_api(
+        transport,
+        Method::POST,
+        "/publish",
+        Some(serde_json::json!({
+            "topic": topic,
+            "payload": serde_json::json!({"seq": input.seq}).to_string(),
+            "qos": 1,
+            "retain": false,
+        })),
+    )
+    .await
+    .context("EMQX wake publish failed")?;
+    Ok(PublishWakeOutput {
+        topic,
+        published: true,
+        message_id: string_field(&response, &["id"]),
+    })
+}
+
+async fn kick_client(
+    transport: &EmqxNativeTransport,
+    input: KickClientInput,
+) -> Result<KickClientOutput> {
+    anyhow::ensure!(
+        !input.client_id.is_empty()
+            && input.client_id.len() <= 256
+            && !input
+                .client_id
+                .chars()
+                .any(|c| c.is_control() || matches!(c, '/' | '?' | '#' | '%')),
+        "client id must be a bounded MQTT client id"
+    );
+    let path = format!("/clients/{}", input.client_id);
+    match emqx_api(transport, Method::DELETE, &path, None).await {
+        Ok(_) => Ok(KickClientOutput {
+            kicked: true,
+            was_connected: true,
+        }),
+        Err(error) if error.to_string().contains("HTTP 404") => Ok(KickClientOutput {
+            kicked: false,
+            was_connected: false,
+        }),
+        Err(error) => Err(error.context("EMQX client kick failed")),
+    }
 }
 
 async fn query_listeners(transport: &EmqxNativeTransport) -> Result<ListListenersOutput> {
@@ -880,6 +997,14 @@ async fn dispatch_emqx_method_on(
                 message,
             })?
         }
+        "publish_wake" => {
+            let input: PublishWakeInput = typed_input(args)?;
+            serde_json::to_value(publish_wake(transport, input).await?)?
+        }
+        "kick_client" => {
+            let input: KickClientInput = typed_input(args)?;
+            serde_json::to_value(kick_client(transport, input).await?)?
+        }
         other => anyhow::bail!("unknown emqx method: {other}"),
     };
     Ok(output)
@@ -1076,6 +1201,22 @@ pub(crate) fn emqx_schema() -> PluginSchema {
         "cap.network.emqx.lifecycle.restart@v1",
         "mut.network.emqx.lifecycle.restart@v1",
     );
+    add_method::<PublishWakeInput, PublishWakeOutput>(
+        &mut schema,
+        "publish_wake",
+        SideEffect::Mutation,
+        true,
+        "cap.network.emqx.wake.publish@v1",
+        "mut.network.emqx.wake.publish@v1",
+    );
+    add_method::<KickClientInput, KickClientOutput>(
+        &mut schema,
+        "kick_client",
+        SideEffect::Mutation,
+        true,
+        "cap.network.emqx.clients.kick@v1",
+        "mut.network.emqx.clients.kick@v1",
+    );
 
     schema
 }
@@ -1107,6 +1248,8 @@ mod tests {
             "start",
             "stop",
             "restart",
+            "publish_wake",
+            "kick_client",
         ];
         assert_eq!(first.methods.len(), expected.len());
         for method in expected {
@@ -1120,14 +1263,46 @@ mod tests {
     }
 
     #[test]
-    fn declared_endpoints_are_local_and_mcp_gateway_is_absent() {
+    fn declared_endpoints_are_local_or_fabric_and_mcp_gateway_is_absent() {
         let state = EmqxState::declared();
         assert!(state
             .listeners
             .iter()
             .all(|listener| local_endpoint(&listener.bind)));
         assert!(local_endpoint(&state.exhook.target));
+        assert!(
+            !local_endpoint("0.0.0.0:8083"),
+            "wildcard binds are never declared"
+        );
+        assert!(
+            !local_endpoint("129.80.64.127:8084"),
+            "the decoy is not a listener host"
+        );
+        let wake = state
+            .listeners
+            .iter()
+            .find(|l| l.id == "wss:wake")
+            .expect("doorbell listener is declared");
+        assert_eq!(
+            (wake.r#type.as_str(), wake.bind.as_str()),
+            ("wss", EMQX_MQTT_WSS_BIND)
+        );
         assert!(!state.mcp_gateway_installed);
+    }
+
+    #[test]
+    fn wake_topics_are_derived_from_owner_keys_only() {
+        let key = "ab".repeat(32);
+        assert_eq!(wake_topic(&key).unwrap(), format!("opdbus/wake/{key}"));
+        for bad in [
+            "",
+            "AB",
+            &"ab".repeat(31),
+            "opdbus/wake/#",
+            &"zz".repeat(32),
+        ] {
+            assert!(wake_topic(bad).is_err(), "{bad:?}");
+        }
     }
 
     #[test]
@@ -1255,6 +1430,18 @@ mod tests {
                 SideEffect::Mutation,
                 false,
                 "mut.network.emqx.lifecycle.restart@v1",
+            ),
+            (
+                "publish_wake",
+                SideEffect::Mutation,
+                true,
+                "mut.network.emqx.wake.publish@v1",
+            ),
+            (
+                "kick_client",
+                SideEffect::Mutation,
+                true,
+                "mut.network.emqx.clients.kick@v1",
             ),
         ];
         for (name, effect, idempotent, subid) in expected {

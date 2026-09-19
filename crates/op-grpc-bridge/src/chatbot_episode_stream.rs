@@ -42,11 +42,15 @@ fn private_path(path: &str) -> bool {
         "episode_count",
         "episode_revision",
         "episodes_truncated",
+        "knowledge",
+        "knowledge_count",
+        "knowledge_truncated",
     ]
     .into_iter()
     .any(|child| {
         let child_root = format!("{root}/{child}");
-        path == child_root || (child == "episodes" && path.starts_with(&(child_root + "/")))
+        path == child_root
+            || (matches!(child, "episodes" | "knowledge") && path.starts_with(&(child_root + "/")))
     })
 }
 

@@ -15,8 +15,9 @@ use op_plugins::state_plugins::{
     ctl_plane_chatbot_methods::{
         complete_vectorization, config_state_fields, cosine_similarity, plan_vectorization,
         validate_episode, ClassifySignificanceInput, ConfigPublication, ContextMatch,
-        CtlPlaneChatbotMethods, GetConfigInput, GetEpisodeInput, GetEpisodeOutput,
-        ListEpisodesInput, ListEpisodesOutput, QueryContextInput, QueryContextOutput,
+        CtlPlaneChatbotMethods, GetConfigInput, GetDoorbellInput, GetDoorbellOutput,
+        GetEpisodeInput, GetEpisodeOutput, ListEpisodesInput, ListEpisodesOutput,
+        ListKnowledgeInput, ListKnowledgeOutput, QueryContextInput, QueryContextOutput,
         SetConfigInput, VectorizeInput,
     },
     embedding_model::{
@@ -306,6 +307,77 @@ async fn dispatch_owned(
                 episode_count: page.episode_count,
                 episode_revision: page.revision,
                 episodes_truncated: page.episode_count > page.episodes.len() as u64,
+            })?;
+            revalidate_method_boundary(engine, method, actor, session, genesis, admitted, &pin)
+                .await?;
+            validate_output(admitted, method, &output)?;
+            Ok(output)
+        }
+        "list_knowledge" => {
+            revalidate_method_boundary(engine, method, actor, session, genesis, admitted, &pin)
+                .await?;
+            engine
+                .chatbot_episode_publisher()?
+                .recover(engine, scope.clone())
+                .await?;
+            let input: ListKnowledgeInput =
+                serde_json::from_value(args.clone()).context("invalid list_knowledge arguments")?;
+            let limit = if input.limit == 0 { 32 } else { input.limit };
+            anyhow::ensure!(limit <= 200, "knowledge list limit must be at most 200");
+            let store = engine.ctl_plane_chatbot_episode_cozo().await?;
+            let read_scope = scope.clone();
+            let (rows, snapshot) = blocking(move || {
+                let rows = store.list_scoped_knowledge(&read_scope, limit as usize)?;
+                let snapshot = store.snapshot_scoped_episodes(&read_scope, 1)?;
+                Ok::<_, anyhow::Error>((rows, snapshot))
+            })
+            .await?;
+            let knowledge = rows
+                .iter()
+                .map(|row| {
+                    anyhow::ensure!(row.scope == scope, "knowledge row crosses identity scope");
+                    let push: op_plugins::state_plugins::ctl_plane_chatbot::KnowledgePush =
+                        serde_json::from_value(row.push.clone())
+                            .context("durable knowledge push is not the typed contract")?;
+                    op_plugins::state_plugins::ctl_plane_chatbot_methods::validate_knowledge_push(
+                        &push,
+                    )?;
+                    Ok(push)
+                })
+                .collect::<Result<Vec<_>>>()?;
+            let output = serde_json::to_value(ListKnowledgeOutput {
+                knowledge_truncated: snapshot.knowledge_count > rows.len() as u64,
+                knowledge,
+                knowledge_count: snapshot.knowledge_count,
+                episode_revision: snapshot.revision,
+            })?;
+            revalidate_method_boundary(engine, method, actor, session, genesis, admitted, &pin)
+                .await?;
+            validate_output(admitted, method, &output)?;
+            Ok(output)
+        }
+        "get_doorbell" => {
+            revalidate_method_boundary(engine, method, actor, session, genesis, admitted, &pin)
+                .await?;
+            let _: GetDoorbellInput =
+                serde_json::from_value(args.clone()).context("invalid get_doorbell arguments")?;
+            let owner_key = crate::wake_doorbell::owner_key(&scope);
+            let root = crate::state_stream::plugin_object_path(PLUGIN);
+            let output = serde_json::to_value(GetDoorbellOutput {
+                topic: op_plugins::state_plugins::emqx::wake_topic(&owner_key)?,
+                owner_key,
+                listener: format!(
+                    "wss://{}",
+                    op_plugins::state_plugins::emqx::EMQX_MQTT_WSS_BIND
+                ),
+                password_prefixes: vec![
+                    op_identity::sealed_id::INLINE_PREFIX.to_string(),
+                    crate::wake_doorbell::OIA1_PASSWORD_PREFIX.to_string(),
+                ],
+                knowledge_paths: ["knowledge", "knowledge_count", "knowledge_truncated"]
+                    .iter()
+                    .map(|child| format!("{root}/{child}"))
+                    .collect(),
             })?;
             revalidate_method_boundary(engine, method, actor, session, genesis, admitted, &pin)
                 .await?;
@@ -1170,6 +1242,54 @@ mod tests {
             listed["result"]["episodes"][0]["episode_id"],
             episode.episode_id
         );
+
+        let doorbell = canonical_call(
+            &engine,
+            PLUGIN,
+            "get_doorbell",
+            serde_json::json!({}),
+            "chatbot.read",
+            &actor,
+            &session,
+            &genesis,
+        )
+        .await
+        .unwrap();
+        let owner_key = doorbell["result"]["owner_key"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        assert_eq!(owner_key.len(), 64);
+        assert_eq!(
+            doorbell["result"]["topic"],
+            format!("opdbus/wake/{owner_key}"),
+            "the topic is derived from the owner key"
+        );
+        assert!(doorbell["result"]["listener"]
+            .as_str()
+            .unwrap()
+            .starts_with("wss://"));
+        assert!(doorbell["result"]["knowledge_paths"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p.as_str().unwrap().ends_with("/knowledge")));
+
+        let empty = canonical_call(
+            &engine,
+            PLUGIN,
+            "list_knowledge",
+            serde_json::json!({}),
+            "chatbot.read",
+            &actor,
+            &session,
+            &genesis,
+        )
+        .await
+        .unwrap();
+        assert_eq!(empty["result"]["knowledge_count"], 0);
+        assert_eq!(empty["result"]["knowledge"], serde_json::json!([]));
+        assert_eq!(empty["result"]["episode_revision"], 2);
 
         let fetched = canonical_call(
             &engine,

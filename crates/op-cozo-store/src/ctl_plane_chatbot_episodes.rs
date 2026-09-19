@@ -40,13 +40,32 @@ pub struct ScopedEpisodeRecord {
     pub embedding: Option<EpisodeEmbeddingRecord>,
 }
 
+/// One durable knowledge push in an identity scope. `push_id` is the
+/// zero-padded scope revision that committed it, so ids order by commit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScopedKnowledgeRecord {
+    pub scope: EpisodeScope,
+    pub push_id: String,
+    pub content_hash: String,
+    pub push: Value,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct EpisodeSnapshot {
     pub episodes: Vec<ScopedEpisodeRecord>,
     pub episode_count: u64,
     pub revision: u64,
     pub truncated: bool,
+    /// Newest knowledge pushes of the scope, bounded by the snapshot limit.
+    pub knowledge: Vec<ScopedKnowledgeRecord>,
+    pub knowledge_count: u64,
+    pub knowledge_truncated: bool,
 }
+
+/// Knowledge pushes kept in the private SHM snapshot.
+pub const KNOWLEDGE_SNAPSHOT_LIMIT: usize = 32;
+const MAX_KNOWLEDGE_PUSH_BYTES: usize = 64 * 1024;
+const MAX_SNAPSHOT_KNOWLEDGE_BYTES: usize = 2 * 1024 * 1024;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EpisodePage {
@@ -135,6 +154,88 @@ fn validate_row(row: &ScopedEpisodeRecord) -> std::result::Result<(), CozoError>
         validate_embedding(embedding)?;
     }
     Ok(())
+}
+
+fn validate_knowledge_row(row: &ScopedKnowledgeRecord) -> std::result::Result<(), CozoError> {
+    validate_scope(&row.scope)?;
+    if row.push_id.len() != 20
+        || !row.push_id.bytes().all(|byte| byte.is_ascii_digit())
+        || row.content_hash.len() != 64
+        || !row
+            .content_hash
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit())
+        || serde_json::to_vec(&row.push)?.len() > MAX_KNOWLEDGE_PUSH_BYTES
+    {
+        return Err(error("invalid knowledge push document"));
+    }
+    let object = row
+        .push
+        .as_object()
+        .ok_or_else(|| error("invalid knowledge push document"))?;
+    let matches =
+        |field: &str, expected: &str| object.get(field).and_then(Value::as_str) == Some(expected);
+    if !matches("principal_id", &row.scope.principal_id)
+        || !matches("session_id", &row.scope.session_id)
+        || !matches("session_genesis", &row.scope.session_genesis)
+        || !matches("push_id", &row.push_id)
+        || !matches("content_hash", &row.content_hash)
+    {
+        return Err(error(
+            "knowledge push document differs from its identity key",
+        ));
+    }
+    Ok(())
+}
+
+fn read_knowledge_rows(
+    tx: &MultiTransaction,
+    script: &str,
+    values: Params,
+    scope: &EpisodeScope,
+) -> std::result::Result<Vec<ScopedKnowledgeRecord>, CozoError> {
+    let rows = tx
+        .run_script(script, values)
+        .map_err(|error| CozoError::Other(format!("knowledge read failed: {error}")))?;
+    rows.rows
+        .into_iter()
+        .map(|row| {
+            let [DataValue::Str(push_id), DataValue::Str(content_hash), DataValue::Str(push_json)] =
+                row.as_slice()
+            else {
+                return Err(error("corrupt knowledge push row"));
+            };
+            let record = ScopedKnowledgeRecord {
+                scope: scope.clone(),
+                push_id: push_id.to_string(),
+                content_hash: content_hash.to_string(),
+                push: serde_json::from_str(push_json)
+                    .map_err(|_| error("corrupt knowledge push JSON"))?,
+            };
+            validate_knowledge_row(&record)?;
+            Ok(record)
+        })
+        .collect()
+}
+
+fn knowledge_count(
+    tx: &MultiTransaction,
+    scope: &EpisodeScope,
+) -> std::result::Result<u64, CozoError> {
+    let rows = tx
+        .run_script(
+            "?[count(push_id)] := *ctl_plane_chatbot_knowledge{principal_id, session_id, session_genesis, push_id}, principal_id = $principal, session_id = $session, session_genesis = $genesis",
+            params(scope, None),
+        )
+        .map_err(|error| CozoError::Other(format!("knowledge count failed: {error}")))?;
+    match rows.rows.as_slice() {
+        [] => Ok(0),
+        [row] => match row.as_slice() {
+            [DataValue::Num(Num::Int(count))] if *count >= 0 => Ok(*count as u64),
+            _ => Err(error("corrupt knowledge count row")),
+        },
+        _ => Err(error("corrupt knowledge count row")),
+    }
 }
 
 fn params(scope: &EpisodeScope, episode_id: Option<&str>) -> Params {
@@ -265,11 +366,29 @@ fn snapshot_in_transaction(
         bytes += row_bytes;
         episodes.push(row);
     }
+    let knowledge_total = knowledge_count(tx, scope)?;
+    let knowledge_limit = limit.min(KNOWLEDGE_SNAPSHOT_LIMIT);
+    let script = format!(
+        "?[push_id, content_hash, push_json] := *ctl_plane_chatbot_knowledge{{principal_id, session_id, session_genesis, push_id, content_hash, push_json}}, principal_id = $principal, session_id = $session, session_genesis = $genesis :order -push_id :limit {knowledge_limit}"
+    );
+    let mut knowledge = Vec::new();
+    let mut knowledge_bytes = 0usize;
+    for row in read_knowledge_rows(tx, &script, params(scope, None), scope)? {
+        let row_bytes = serde_json::to_vec(&row.push)?.len() + row.push_id.len() + 4;
+        if knowledge_bytes.saturating_add(row_bytes) > MAX_SNAPSHOT_KNOWLEDGE_BYTES {
+            break;
+        }
+        knowledge_bytes += row_bytes;
+        knowledge.push(row);
+    }
     Ok(EpisodeSnapshot {
         truncated: episode_count > episodes.len() as u64,
         episodes,
         episode_count,
         revision,
+        knowledge_truncated: knowledge_total > knowledge.len() as u64,
+        knowledge,
+        knowledge_count: knowledge_total,
     })
 }
 
@@ -330,6 +449,12 @@ impl CozoGraphShuttle {
                 principal_id: String, session_id: String, session_genesis: String
                 => revision: Int, episode_count: Int
             }"#,
+            r#":create ctl_plane_chatbot_knowledge {
+                principal_id: String, session_id: String, session_genesis: String, push_id: String
+                =>
+                content_hash: String,
+                push_json: String
+            }"#,
         ] {
             if let Err(error) =
                 self.db
@@ -349,6 +474,7 @@ impl CozoGraphShuttle {
         for probe in [
             "?[principal_id, session_id, session_genesis, episode_id, content_hash, episode_json, embedding_json] := *ctl_plane_chatbot_episodes{principal_id, session_id, session_genesis, episode_id, content_hash, episode_json, embedding_json} :limit 0",
             "?[principal_id, session_id, session_genesis, revision, episode_count] := *ctl_plane_chatbot_episode_scopes{principal_id, session_id, session_genesis, revision, episode_count} :limit 0",
+            "?[principal_id, session_id, session_genesis, push_id, content_hash, push_json] := *ctl_plane_chatbot_knowledge{principal_id, session_id, session_genesis, push_id, content_hash, push_json} :limit 0",
         ] {
             self.db
                 .run_script(probe, BTreeMap::new(), ScriptMutability::Immutable)
@@ -420,6 +546,118 @@ impl CozoGraphShuttle {
         commit_checked(&tx)?;
         self.sync_runtime_document_store()?;
         Ok(snapshot)
+    }
+
+    /// Append one knowledge push to the scope. The store assigns `push_id`
+    /// from the advanced scope revision; `source_id` inside the document is
+    /// the caller's idempotency key and a duplicate is rejected.
+    pub fn insert_scoped_knowledge_and_snapshot(
+        &self,
+        scope: &EpisodeScope,
+        push: &Value,
+        content_hash_for: &dyn Fn(&Value) -> std::result::Result<String, CozoError>,
+        snapshot_limit: usize,
+    ) -> std::result::Result<(ScopedKnowledgeRecord, EpisodeSnapshot), CozoError> {
+        validate_scope(scope)?;
+        let object = push
+            .as_object()
+            .ok_or_else(|| error("invalid knowledge push document"))?;
+        let source_id = object
+            .get("source_id")
+            .and_then(Value::as_str)
+            .filter(|id| bounded_identity(id, MAX_EPISODE_ID_BYTES))
+            .ok_or_else(|| error("knowledge push requires a bounded source_id"))?
+            .to_string();
+        let _guard = self
+            .episode_transaction
+            .lock()
+            .map_err(|_| error("chatbot episode owner is poisoned"))?;
+        self.runtime_document_preflight()?;
+        let tx = self.db.multi_transaction(true);
+        let existing = read_knowledge_rows(
+            &tx,
+            "?[push_id, content_hash, push_json] := *ctl_plane_chatbot_knowledge{principal_id, session_id, session_genesis, push_id, content_hash, push_json}, principal_id = $principal, session_id = $session, session_genesis = $genesis",
+            params(scope, None),
+            scope,
+        )?;
+        if existing.iter().any(|row| {
+            row.push.get("source_id").and_then(Value::as_str) == Some(source_id.as_str())
+        }) {
+            return Err(error("knowledge push already exists"));
+        }
+        let (revision, count) = read_scope_state(&tx, scope)?;
+        let revision = revision
+            .checked_add(1)
+            .ok_or_else(|| error("episode revision exhausted"))?;
+        let push_id = format!("{revision:020}");
+        let mut document = push.clone();
+        let doc = document
+            .as_object_mut()
+            .ok_or_else(|| error("invalid knowledge push document"))?;
+        doc.insert("push_id".into(), Value::String(push_id.clone()));
+        doc.insert(
+            "principal_id".into(),
+            Value::String(scope.principal_id.clone()),
+        );
+        doc.insert("session_id".into(), Value::String(scope.session_id.clone()));
+        doc.insert(
+            "session_genesis".into(),
+            Value::String(scope.session_genesis.clone()),
+        );
+        doc.insert("content_hash".into(), Value::String(String::new()));
+        let content_hash = content_hash_for(&document)?;
+        document
+            .as_object_mut()
+            .ok_or_else(|| error("invalid knowledge push document"))?
+            .insert("content_hash".into(), Value::String(content_hash.clone()));
+        let record = ScopedKnowledgeRecord {
+            scope: scope.clone(),
+            push_id: push_id.clone(),
+            content_hash: content_hash.clone(),
+            push: document.clone(),
+        };
+        validate_knowledge_row(&record)?;
+        let mut values = params(scope, None);
+        values.insert("push".into(), DataValue::Str(push_id.into()));
+        values.insert("hash".into(), DataValue::Str(content_hash.into()));
+        values.insert(
+            "document".into(),
+            DataValue::Str(serde_json::to_string(&document)?.into()),
+        );
+        tx.run_script(
+            "?[principal_id, session_id, session_genesis, push_id, content_hash, push_json] <- [[$principal, $session, $genesis, $push, $hash, $document]] :put ctl_plane_chatbot_knowledge {principal_id, session_id, session_genesis, push_id => content_hash, push_json}",
+            values,
+        )
+        .map_err(|error| CozoError::Other(format!("knowledge write failed: {error}")))?;
+        // Knowledge advances the shared scope revision; the episode count is unchanged.
+        write_scope_state(&tx, scope, revision, count)?;
+        let snapshot = snapshot_in_transaction(&tx, scope, snapshot_limit)?;
+        commit_checked(&tx)?;
+        self.sync_runtime_document_store()?;
+        Ok((record, snapshot))
+    }
+
+    /// Newest-first knowledge pushes of the scope.
+    pub fn list_scoped_knowledge(
+        &self,
+        scope: &EpisodeScope,
+        limit: usize,
+    ) -> std::result::Result<Vec<ScopedKnowledgeRecord>, CozoError> {
+        validate_scope(scope)?;
+        if !(1..=MAX_LIST_LIMIT).contains(&limit) {
+            return Err(error("chatbot knowledge list limit must be 1..=200"));
+        }
+        let _guard = self
+            .episode_transaction
+            .lock()
+            .map_err(|_| error("chatbot episode owner is poisoned"))?;
+        let tx = self.db.multi_transaction(false);
+        let script = format!(
+            "?[push_id, content_hash, push_json] := *ctl_plane_chatbot_knowledge{{principal_id, session_id, session_genesis, push_id, content_hash, push_json}}, principal_id = $principal, session_id = $session, session_genesis = $genesis :order -push_id :limit {limit}"
+        );
+        let rows = read_knowledge_rows(&tx, &script, params(scope, None), scope)?;
+        commit_checked(&tx)?;
+        Ok(rows)
     }
 
     pub fn get_scoped_episode(
@@ -688,6 +926,86 @@ mod tests {
             .list_scoped_episodes(&scope("carol"), None, 10)
             .unwrap()
             .is_empty());
+    }
+
+    /// The store only checks the hash shape; the plugin owns the real digest.
+    fn fixture_hash(document: &Value) -> std::result::Result<String, CozoError> {
+        let bytes = serde_json::to_vec(document)?;
+        let mut acc = 0xcbf2_9ce4_8422_2325u64;
+        for byte in bytes {
+            acc = (acc ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3);
+        }
+        Ok(format!("{acc:016x}").repeat(4))
+    }
+
+    /// Knowledge pushes share the scope revision with episodes, survive a
+    /// restart, stay private to their principal, and reject duplicates.
+    #[test]
+    fn knowledge_pushes_advance_the_scope_revision_and_persist_privately() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("episodes");
+        let alice = scope("alice");
+        {
+            let store = CozoGraphShuttle::new_persistent(path.clone()).unwrap();
+            store.initialize_chatbot_episode_store().unwrap();
+            let before = store
+                .insert_scoped_episode_and_snapshot(&row(alice.clone(), "001", &"aa".repeat(32)), 8)
+                .unwrap();
+            assert_eq!((before.revision, before.knowledge_count), (1, 0));
+            let (record, snapshot) = store
+                .insert_scoped_knowledge_and_snapshot(
+                    &alice,
+                    &serde_json::json!({"source_id": "p-1", "trigger": "ErrorAssistance"}),
+                    &fixture_hash,
+                    8,
+                )
+                .unwrap();
+            assert_eq!(record.push_id, format!("{:020}", 2));
+            assert_eq!(record.push["principal_id"], "alice");
+            assert_eq!(record.push["content_hash"], record.content_hash);
+            assert_eq!(
+                (
+                    snapshot.revision,
+                    snapshot.episode_count,
+                    snapshot.knowledge_count
+                ),
+                (2, 1, 1)
+            );
+            assert!(!snapshot.knowledge_truncated);
+            let duplicate = store.insert_scoped_knowledge_and_snapshot(
+                &alice,
+                &serde_json::json!({"source_id": "p-1"}),
+                &fixture_hash,
+                8,
+            );
+            assert!(duplicate.is_err(), "source_id is the idempotency key");
+            for i in 2..5 {
+                store
+                    .insert_scoped_knowledge_and_snapshot(
+                        &alice,
+                        &serde_json::json!({"source_id": format!("p-{i}")}),
+                        &fixture_hash,
+                        8,
+                    )
+                    .unwrap();
+            }
+        }
+        let store = CozoGraphShuttle::new_persistent(path).unwrap();
+        store.initialize_chatbot_episode_store().unwrap();
+        let snapshot = store.snapshot_scoped_episodes(&alice, 2).unwrap();
+        assert_eq!(snapshot.knowledge_count, 4);
+        assert_eq!(snapshot.knowledge.len(), 2, "bounded by the snapshot limit");
+        assert!(snapshot.knowledge_truncated);
+        assert!(
+            snapshot.knowledge[0].push_id > snapshot.knowledge[1].push_id,
+            "newest first"
+        );
+        assert_eq!(snapshot.revision, 5);
+        assert!(store
+            .list_scoped_knowledge(&scope("bob"), 10)
+            .unwrap()
+            .is_empty());
+        assert_eq!(store.list_scoped_knowledge(&alice, 10).unwrap().len(), 4);
     }
 
     #[test]

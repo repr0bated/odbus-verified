@@ -143,8 +143,35 @@ fn state(snapshot: &EpisodeSnapshot, scope: &EpisodeScope, schema: &PluginSchema
         );
         episodes.insert(row.episode_id.clone(), row.episode.clone());
     }
+    let mut knowledge = BTreeMap::new();
+    for row in &snapshot.knowledge {
+        anyhow::ensure!(
+            &row.scope == scope,
+            "knowledge snapshot crosses identity scope"
+        );
+        let push: op_plugins::state_plugins::ctl_plane_chatbot::KnowledgePush =
+            serde_json::from_value(row.push.clone()).context("invalid durable knowledge push")?;
+        op_plugins::state_plugins::ctl_plane_chatbot_methods::validate_knowledge_push(&push)?;
+        anyhow::ensure!(
+            push.principal_id == scope.principal_id
+                && push.session_id == scope.session_id
+                && push.session_genesis == scope.session_genesis
+                && push.push_id == row.push_id
+                && push.content_hash == row.content_hash,
+            "knowledge document differs from durable identity key"
+        );
+        knowledge.insert(row.push_id.clone(), row.push.clone());
+    }
+    anyhow::ensure!(
+        snapshot.knowledge_count >= snapshot.knowledge.len() as u64
+            && snapshot.knowledge_truncated
+                == (snapshot.knowledge_count > snapshot.knowledge.len() as u64),
+        "knowledge snapshot count disagrees with its durable rows"
+    );
     let value = json!({"episodes":episodes, "episode_count":snapshot.episode_count,
-        "episode_revision":snapshot.revision, "episodes_truncated":snapshot.truncated});
+        "episode_revision":snapshot.revision, "episodes_truncated":snapshot.truncated,
+        "knowledge":knowledge, "knowledge_count":snapshot.knowledge_count,
+        "knowledge_truncated":snapshot.knowledge_truncated});
     anyhow::ensure!(
         serde_json::to_vec(&value)?.len() <= op_cozo_store::MAX_CHATBOT_SNAPSHOT_BYTES,
         "private episode snapshot exceeds its committed byte bound"
@@ -181,6 +208,21 @@ fn validate_scope(value: &Value, scope: &EpisodeScope) -> Result<()> {
                 && episode.session_id == scope.session_id
                 && episode.session_genesis == scope.session_genesis,
             "committed episode document crosses identity scope"
+        );
+    }
+    let knowledge = value["knowledge"]
+        .as_object()
+        .context("private knowledge map is absent")?;
+    for (id, document) in knowledge {
+        let push: op_plugins::state_plugins::ctl_plane_chatbot::KnowledgePush =
+            serde_json::from_value(document.clone())?;
+        op_plugins::state_plugins::ctl_plane_chatbot_methods::validate_knowledge_push(&push)?;
+        anyhow::ensure!(
+            push.push_id == *id
+                && push.principal_id == scope.principal_id
+                && push.session_id == scope.session_id
+                && push.session_genesis == scope.session_genesis,
+            "committed knowledge document crosses identity scope"
         );
     }
     Ok(())
@@ -408,6 +450,41 @@ impl EpisodePublisher {
         .context("owned episode recovery task failed")?
     }
 
+    /// Commit one knowledge push for `scope` through the owned effect path:
+    /// durable row first, then the private SHM document, then the wake.
+    /// The push document is the engine's push without identity fields; the
+    /// store assigns `push_id` and the plugin's digest seals it.
+    pub(crate) async fn commit_knowledge(
+        self: &Arc<Self>,
+        engine: &MutationEngine,
+        scope: EpisodeScope,
+        push: serde_json::Value,
+    ) -> Result<EpisodeSnapshot> {
+        let store = engine.ctl_plane_chatbot_episode_cozo().await?;
+        let effect = self.admit_effect(engine, scope.clone()).await?;
+        self.commit_effect(effect, move || {
+            let (_, snapshot) = store.insert_scoped_knowledge_and_snapshot(
+                &scope,
+                &push,
+                &|document| {
+                    let typed: op_plugins::state_plugins::ctl_plane_chatbot::KnowledgePush =
+                        serde_json::from_value(document.clone()).map_err(|error| {
+                            op_cozo_store::CozoError::Other(format!(
+                                "knowledge push is not the typed contract: {error}"
+                            ))
+                        })?;
+                    op_plugins::state_plugins::ctl_plane_chatbot_methods::knowledge_content_hash(
+                        &typed,
+                    )
+                    .map_err(|error| op_cozo_store::CozoError::Other(error.to_string()))
+                },
+                SNAPSHOT_LIMIT,
+            )?;
+            Ok(snapshot)
+        })
+        .await
+    }
+
     pub(crate) fn subscribe(&self) -> broadcast::Receiver<String> {
         self.wakes.subscribe()
     }
@@ -633,5 +710,74 @@ mod tests {
             .get_scoped_episode(&scope, &third_id)
             .unwrap()
             .is_some());
+
+        // A knowledge push is the same owned effect: durable row, private
+        // document child, owner-key wake — and the episode window is intact.
+        let push = op_cognitive_mcp::context_awareness::KnowledgePush {
+            id: "push-1".into(),
+            session_id: scope.session_id.clone(),
+            trigger: op_cognitive_mcp::context_awareness::PushTrigger::ErrorAssistance,
+            trigger_reason: "repeated build error".into(),
+            relevance_score: 0.9,
+            timestamp: chrono::Utc::now(),
+            content: op_cognitive_mcp::context_awareness::KnowledgeContent::ToolGuidance {
+                tool_name: "rust_pro".into(),
+                usage_tips: vec!["check first".into()],
+                example_usage: serde_json::Value::Null,
+            },
+            suggested_action: Some("run rust_pro check".into()),
+            proactive: true,
+        };
+        let resolved = crate::knowledge_delivery::scope_for_session(&engine, &scope.session_id)
+            .await
+            .unwrap()
+            .expect("anchored sled resolves to its scope");
+        assert_eq!(resolved, scope);
+        let snapshot = publisher
+            .commit_knowledge(
+                &engine,
+                scope.clone(),
+                crate::knowledge_delivery::push_document(&push),
+            )
+            .await
+            .unwrap();
+        assert_eq!(snapshot.knowledge_count, 1);
+        assert_eq!(wakes.recv().await.unwrap(), EpisodePublisher::key(&scope));
+        let with_knowledge = publisher.read(scope.clone()).await.unwrap();
+        let state = with_knowledge.plugins[PLUGIN].state.as_ref().unwrap();
+        assert_eq!(state["episode_count"], 3);
+        assert_eq!(state["knowledge_count"], 1);
+        assert_eq!(state["knowledge_truncated"], false);
+        let (push_id, document) = state["knowledge"]
+            .as_object()
+            .unwrap()
+            .iter()
+            .next()
+            .unwrap();
+        assert_eq!(push_id, &format!("{:020}", snapshot.revision));
+        assert_eq!(document["source_id"], "push-1");
+        assert_eq!(document["principal_id"], scope.principal_id);
+        assert_eq!(document["suggested_action"], "run rust_pro check");
+        assert_eq!(
+            document["content_hash"].as_str().map(str::len),
+            Some(64),
+            "sealed by the plugin digest"
+        );
+        // The same engine push again is a duplicate, not a second row.
+        assert!(publisher
+            .commit_knowledge(
+                &engine,
+                scope.clone(),
+                crate::knowledge_delivery::push_document(&push),
+            )
+            .await
+            .is_err());
+        assert!(
+            crate::knowledge_delivery::scope_for_session(&engine, "no-such-session")
+                .await
+                .unwrap()
+                .is_none(),
+            "no sled, no delivery"
+        );
     }
 }

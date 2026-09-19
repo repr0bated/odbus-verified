@@ -538,6 +538,13 @@ pub(crate) async fn stored_session(
         .find(|sled| sled.session_id == session_id))
 }
 
+/// Every sled in the committed credential projection (doorbell revalidation).
+pub(crate) async fn all_sessions(
+    _engine: &MutationEngine,
+) -> anyhow::Result<Vec<ContainerIdentitySled>> {
+    Ok(read_private_state().await?.sleds)
+}
+
 pub(crate) async fn session_record_for_actor(
     _engine: &MutationEngine,
     actor_id: &str,
@@ -1064,6 +1071,16 @@ pub(crate) async fn tombstone_session(
             (),
         )
         .await?;
+        // The revoked sled's doorbell connection must not outlive the row.
+        // Best effort: the next subscribe would be refused anyway.
+        if let Some(owner_key) = crate::wake_doorbell::owner_key_for_sled(&sled) {
+            let args = serde_json::json!({ "client_id": owner_key });
+            if let Err(error) =
+                op_plugins::state_plugins::emqx::dispatch_emqx_method("kick_client", &args).await
+            {
+                tracing::debug!(%error, "doorbell client not kicked");
+            }
+        }
         if had_instance {
             preflight_native_identity_effect().await?;
             IncusIdentityContainerLifecycle.stop(&session_id).await?;

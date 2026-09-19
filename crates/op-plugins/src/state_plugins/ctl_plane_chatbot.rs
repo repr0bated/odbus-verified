@@ -386,8 +386,81 @@ pub struct Significance {
     pub rule: Option<String>,
 }
 
+/// One knowledge push the context engine produced for this exact identity
+/// scope. Durable in the private episode Cozo owner, projected into the
+/// private SHM document, and announced to the UI by a content-free wake.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct KnowledgePush {
+    #[schemars(description = "Verified principal this push belongs to [PII]", extend("readOnly" = true))]
+    pub principal_id: String,
+    #[schemars(description = "Verified identity session this push belongs to [PII]", extend("readOnly" = true))]
+    pub session_id: String,
+    #[schemars(description = "Immutable verified session genesis binding [PII]", extend("readOnly" = true))]
+    pub session_genesis: String,
+    #[schemars(
+        description = "Durable push id: the zero-padded scope revision that committed it, so ids order by commit",
+        example = &"00000000000000000042",
+        extend("readOnly" = true),
+        extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.knowledge.push-id@v1")
+    )]
+    pub push_id: String,
+    #[schemars(
+        description = "Context-engine push id (idempotency key across retries)",
+        extend("readOnly" = true),
+        extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.knowledge.source-id@v1")
+    )]
+    pub source_id: String,
+    #[schemars(
+        description = "ISO-8601 time the context engine produced the push",
+        example = &"2026-09-19T14:30:00Z",
+        extend("readOnly" = true),
+        extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.knowledge.created-at@v1")
+    )]
+    pub created_at: String,
+    #[schemars(
+        description = "What triggered the push (context engine trigger name)",
+        example = &"ErrorAssistance",
+        extend("readOnly" = true),
+        extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.knowledge.trigger@v1")
+    )]
+    pub trigger: String,
+    #[schemars(
+        description = "Why the engine pushed it [PII]",
+        extend("readOnly" = true),
+        extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.knowledge.trigger-reason@v1")
+    )]
+    pub trigger_reason: String,
+    #[schemars(
+        range(min = 0.0, max = 1.0),
+        description = "Engine relevance score 0.0-1.0",
+        extend("readOnly" = true),
+        extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.knowledge.relevance@v1")
+    )]
+    pub relevance_score: f64,
+    #[schemars(
+        with = "serde_json::Value",
+        description = "Typed knowledge content as the engine emitted it [PII]",
+        extend("readOnly" = true),
+        extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.knowledge.content@v1")
+    )]
+    pub content: serde_json::Value,
+    #[schemars(
+        description = "Suggested next action, when the engine proposed one [PII]",
+        extend("readOnly" = true),
+        extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.knowledge.suggested-action@v1")
+    )]
+    pub suggested_action: Option<String>,
+    #[schemars(
+        description = "SHA-256 of the typed push serialized with content_hash set to the empty string",
+        extend("readOnly" = true),
+        extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.knowledge.content-hash@v1")
+    )]
+    pub content_hash: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.software.plugin.ctl-plane-chatbot.schema@v4"))]
+#[schemars(extend("x-oscal-subid" = "sch.software.plugin.ctl-plane-chatbot.schema@v5"))]
 #[schemars(extend("x-oscal-category" = "llm"))]
 pub struct CtlPlaneChatbotState {
     #[serde(default)]
@@ -400,8 +473,17 @@ pub struct CtlPlaneChatbotState {
     #[schemars(description = "True when the private SHM snapshot omits older durable episodes", extend("readOnly" = true))]
     pub episodes_truncated: bool,
     #[serde(default)]
-    #[schemars(description = "Durable monotonic revision of the private episode scope", extend("readOnly" = true))]
+    #[schemars(description = "Durable monotonic revision of the private identity scope; advanced by every episode and knowledge commit", extend("readOnly" = true))]
     pub episode_revision: u64,
+    #[serde(default)]
+    #[schemars(with = "serde_json::Value", description = "Private identity-scoped durable knowledge pushes (newest bounded window); absent from public projections", extend("readOnly" = true))]
+    pub knowledge: BTreeMap<String, KnowledgePush>,
+    #[serde(default)]
+    #[schemars(description = "Total durable knowledge pushes in the exact private identity scope", extend("readOnly" = true))]
+    pub knowledge_count: u64,
+    #[serde(default)]
+    #[schemars(description = "True when the private SHM snapshot omits older durable knowledge pushes", extend("readOnly" = true))]
+    pub knowledge_truncated: bool,
     #[serde(default = "default_chat_llm_plugin")]
     #[schemars(
         description = "Reserved legacy field without an active config owner. Native Chat routing is selected through the tched_router contract.",
@@ -554,7 +636,7 @@ impl StatePlugin for CtlPlaneChatbotPlugin {
         "ctl_plane_chatbot"
     }
     fn version(&self) -> &str {
-        "4.0.0"
+        "4.1.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -648,15 +730,15 @@ impl StatePlugin for CtlPlaneChatbotPlugin {
 pub(crate) fn ctl_plane_chatbot_schema() -> PluginSchema {
     use super::ctl_plane_chatbot_methods::{
         ClassifySignificanceInput, ClassifySignificanceOutput, GetConfigInput, GetConfigOutput,
-        GetEpisodeInput, GetEpisodeOutput, ListEpisodesInput, ListEpisodesOutput,
-        QueryContextInput, QueryContextOutput, SetConfigInput, SetConfigOutput, VectorizeInput,
-        VectorizeOutput,
+        GetDoorbellInput, GetDoorbellOutput, GetEpisodeInput, GetEpisodeOutput, ListEpisodesInput,
+        ListEpisodesOutput, ListKnowledgeInput, ListKnowledgeOutput, QueryContextInput,
+        QueryContextOutput, SetConfigInput, SetConfigOutput, VectorizeInput, VectorizeOutput,
     };
     let root = serde_json::to_value(schemars::schema_for!(CtlPlaneChatbotState))
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "ctl_plane_chatbot",
-        "4.0.0",
+        "4.1.0",
         "Control-plane chatbot reasoning episode contract, PII-aware significance rules, durable singleton configuration, and typed embedding facade",
         &root,
     );
@@ -672,6 +754,15 @@ pub(crate) fn ctl_plane_chatbot_schema() -> PluginSchema {
             .expect("episode map schema serializes"),
     )
     .expect("episode snapshot schema is self-contained");
+    schema
+        .fields
+        .get_mut("knowledge")
+        .expect("knowledge snapshot field")
+        .field_type = op_state_store::FieldType::exact_json_schema(
+        serde_json::to_value(schemars::schema_for!(BTreeMap<String, KnowledgePush>))
+            .expect("knowledge map schema serializes"),
+    )
+    .expect("knowledge snapshot schema is self-contained");
 
     // Add methods
     use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
@@ -715,6 +806,26 @@ pub(crate) fn ctl_plane_chatbot_schema() -> PluginSchema {
             true,
             "chatbot.read",
             "obs.service.ctl-plane-chatbot.episode.get@v1",
+        ),
+    );
+    schema.methods.insert(
+        "list_knowledge".to_string(),
+        method_decl_from_schemars_with_output::<ListKnowledgeInput, ListKnowledgeOutput>(
+            "list_knowledge",
+            SideEffect::Read,
+            true,
+            "chatbot.read",
+            "obs.service.ctl-plane-chatbot.knowledge.list@v1",
+        ),
+    );
+    schema.methods.insert(
+        "get_doorbell".to_string(),
+        method_decl_from_schemars_with_output::<GetDoorbellInput, GetDoorbellOutput>(
+            "get_doorbell",
+            SideEffect::Read,
+            true,
+            "chatbot.read",
+            "obs.service.ctl-plane-chatbot.doorbell.get@v1",
         ),
     );
     schema.methods.insert(
@@ -779,12 +890,14 @@ mod tests {
     #[test]
     fn v3_methods_are_typed_and_pure_classification_is_idempotent() {
         let schema = ctl_plane_chatbot_schema();
-        assert_eq!(schema.version, "4.0.0");
+        assert_eq!(schema.version, "4.1.0");
         for method in [
             "get_config",
             "set_config",
             "list_episodes",
             "get_episode",
+            "get_doorbell",
+            "list_knowledge",
             "query_context",
             "classify_significance",
             "vectorize",

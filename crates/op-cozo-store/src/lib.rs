@@ -22,7 +22,8 @@ pub use runtime_document_transactions::{
 mod ctl_plane_chatbot_episodes;
 pub use ctl_plane_chatbot_episodes::{
     EpisodeEmbeddingRecord, EpisodePage, EpisodeScope, EpisodeSnapshot, ScopedEpisodeRecord,
-    MAX_CHATBOT_EPISODE_BYTES, MAX_CHATBOT_SNAPSHOT_BYTES,
+    ScopedKnowledgeRecord, KNOWLEDGE_SNAPSHOT_LIMIT, MAX_CHATBOT_EPISODE_BYTES,
+    MAX_CHATBOT_SNAPSHOT_BYTES,
 };
 
 /// Strongly-typed error for CozoDB graph operations.

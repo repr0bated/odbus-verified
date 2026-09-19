@@ -54,6 +54,7 @@ pub mod identity_sled_dispatch;
 mod incus_observer;
 pub mod interceptor;
 mod json_schema_proto;
+mod knowledge_delivery;
 mod knowledge_inbox;
 mod large_language_model_dispatch;
 mod mcp_config_dispatch;
@@ -65,6 +66,7 @@ pub mod nlm_cli;
 mod notebooklm_queries;
 pub mod oracle_assertion;
 pub mod oracle_assertion_client;
+mod wake_doorbell;
 pub use oracle_assertion_client::DecoyAssertionClient;
 mod obfuscation_methods;
 #[cfg(test)]

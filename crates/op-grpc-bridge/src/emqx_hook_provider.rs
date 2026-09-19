@@ -3,9 +3,13 @@
 //! EMQX acts as a gRPC client, calling this service for MQTT events
 //! The pinned EMQX 6.2.2 broker requires `emqx.exhook.v3`.
 //! The implementation records events through MutationEngine for
-//! accountability. Authenticate/authorize/publish decisions are left to the
-//! broker (`IGNORE`) — the hook is an audit tap, not the auth gate; identity
-//! gating stays with the Ghostbridge interceptor on the plugin surface.
+//! accountability. Publish decisions are left to the broker (`IGNORE`) — the
+//! hook is an audit tap; identity gating stays with the Ghostbridge
+//! interceptor on the plugin surface. The one exception is the doorbell
+//! (`wake_doorbell`): clients whose id is an owner key must prove the
+//! matching SID1 against the identity sled, and may only subscribe to their
+//! own `opdbus/wake/<owner-key>` topic. Every other client is kept out of
+//! the `opdbus/` namespace and otherwise left to the broker's own rules.
 
 use std::sync::Arc;
 
@@ -29,11 +33,20 @@ use crate::proto::emqx_exhook::{
 #[derive(Clone)]
 pub struct HookProviderService {
     mutation_engine: Arc<MutationEngine>,
+    /// Doorbell OIA1 verification: the same validator family as the door
+    /// (trust store, replay store, source binding from the environment).
+    assertion_validator: Arc<crate::oracle_assertion::AssertionValidator>,
 }
 
 impl HookProviderService {
     pub fn new(mutation_engine: Arc<MutationEngine>) -> Self {
-        Self { mutation_engine }
+        let assertion_validator = Arc::new(crate::oracle_assertion::AssertionValidator::from_env(
+            crate::oracle_assertion::DecoyTrustStore::load(),
+        ));
+        Self {
+            mutation_engine,
+            assertion_validator,
+        }
     }
 
     /// Record a broker observation, never a fictitious mutation/tool call.
@@ -99,6 +112,23 @@ fn client_id(info: &Option<exhook::ClientInfo>) -> &str {
 
 fn empty() -> Response<EmptySuccess> {
     Response::new(EmptySuccess {})
+}
+
+/// A doorbell verdict as the broker expects it: `Ignore` keeps the chain,
+/// `Allow`/`Deny` stop it with a boolean.
+fn respond(verdict: crate::wake_doorbell::Verdict) -> Response<ValuedResponse> {
+    match verdict {
+        crate::wake_doorbell::Verdict::Ignore => ignore(),
+        crate::wake_doorbell::Verdict::Allow => stop_with(true),
+        crate::wake_doorbell::Verdict::Deny => stop_with(false),
+    }
+}
+
+fn stop_with(result: bool) -> Response<ValuedResponse> {
+    Response::new(ValuedResponse {
+        r#type: valued_response::ResponsedType::StopAndReturn as i32,
+        value: Some(valued_response::Value::BoolResult(result)),
+    })
 }
 
 /// Leave the broker's own decision in place.
@@ -199,15 +229,40 @@ impl HookProvider for HookProviderService {
         let req = request.into_inner();
         let client = client_id(&req.clientinfo);
         debug!(client_id = %client, result = req.result, "EMQX OnClientAuthenticate");
+        let (password, peer) = req
+            .clientinfo
+            .as_ref()
+            .map(|info| {
+                (
+                    info.password.as_str(),
+                    format!("{}:{}", info.peerhost, info.peerport)
+                        .parse::<std::net::SocketAddr>()
+                        .ok(),
+                )
+            })
+            .unwrap_or_default();
+        let verdict = crate::wake_doorbell::authenticate(
+            &self.mutation_engine,
+            &self.assertion_validator,
+            client,
+            password,
+            peer,
+        )
+        .await;
         let _ = self
             .record_event(
                 "on_client_authenticate",
                 client,
                 None,
-                Some(if req.result { "pass" } else { "fail" }),
+                Some(match verdict {
+                    crate::wake_doorbell::Verdict::Ignore if req.result => "pass",
+                    crate::wake_doorbell::Verdict::Ignore => "fail",
+                    crate::wake_doorbell::Verdict::Allow => "doorbell-pass",
+                    crate::wake_doorbell::Verdict::Deny => "doorbell-fail",
+                }),
             )
             .await;
-        Ok(ignore())
+        Ok(respond(verdict))
     }
 
     async fn on_client_authorize(
@@ -217,10 +272,24 @@ impl HookProvider for HookProviderService {
         let req = request.into_inner();
         let client = client_id(&req.clientinfo);
         debug!(client_id = %client, topic = %req.topic, "EMQX OnClientAuthorize");
+        let subscribe =
+            req.r#type == exhook::client_authorize_request::AuthorizeReqType::Subscribe as i32;
+        let verdict =
+            crate::wake_doorbell::authorize(&self.mutation_engine, client, subscribe, &req.topic)
+                .await;
         let _ = self
-            .record_event("on_client_authorize", client, Some(&req.topic), None)
+            .record_event(
+                "on_client_authorize",
+                client,
+                Some(&req.topic),
+                Some(match verdict {
+                    crate::wake_doorbell::Verdict::Ignore => "broker",
+                    crate::wake_doorbell::Verdict::Allow => "doorbell-allow",
+                    crate::wake_doorbell::Verdict::Deny => "doorbell-deny",
+                }),
+            )
             .await;
-        Ok(ignore())
+        Ok(respond(verdict))
     }
 
     async fn on_client_subscribe(

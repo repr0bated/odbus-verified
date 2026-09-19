@@ -3,7 +3,8 @@
 //! module does not create an episode collection or embedding authority.
 
 use super::ctl_plane_chatbot::{
-    CtlPlaneChatbotConfig, OutcomeClass, ReasoningEpisode, Significance, SignificanceLevel,
+    CtlPlaneChatbotConfig, KnowledgePush, OutcomeClass, ReasoningEpisode, Significance,
+    SignificanceLevel,
 };
 use super::embedding_model::methods::{
     EmbedInput, EmbedOutput, EmbeddingInputType, EmbeddingProvider,
@@ -160,6 +161,47 @@ pub struct GetEpisodeInput {
 #[serde(deny_unknown_fields)]
 pub struct GetEpisodeOutput {
     pub episode: Option<ReasoningEpisode>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetDoorbellInput {}
+
+/// How the verified caller rings in: its private-view owner key (also its
+/// MQTT client id), the one topic it may subscribe to, and the WSS listener.
+/// The credential is the caller's own door credential, never issued here.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetDoorbellOutput {
+    /// `sha256(principal, session, genesis)` — opaque to the broker.
+    pub owner_key: String,
+    /// `opdbus/wake/<owner_key>`.
+    pub topic: String,
+    /// `wss://<host:port>` of the broker's doorbell listener.
+    pub listener: String,
+    /// Password prefixes the doorbell accepts (`sid1:` inline, `oia1:` base64).
+    pub password_prefixes: Vec<String>,
+    /// The private state children a wake tells the caller to re-read.
+    pub knowledge_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ListKnowledgeInput {
+    /// Newest pushes to return (0 = default 32, max 200).
+    #[serde(default)]
+    pub limit: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ListKnowledgeOutput {
+    /// Newest first.
+    pub knowledge: Vec<KnowledgePush>,
+    pub knowledge_count: u64,
+    /// The scope revision (shared with episodes); a wake carries it as `seq`.
+    pub episode_revision: u64,
+    pub knowledge_truncated: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -532,6 +574,79 @@ pub fn validate_episode(episode: &ReasoningEpisode) -> Result<()> {
 /// retained and set to the empty string.
 pub fn episode_content_hash(episode: &ReasoningEpisode) -> Result<String> {
     let mut content = episode.clone();
+    content.content_hash.clear();
+    Ok(format!(
+        "{:x}",
+        Sha256::digest(serde_json::to_vec(&content)?)
+    ))
+}
+
+/// Largest durable knowledge push (typed, serialized).
+pub const MAX_KNOWLEDGE_PUSH_BYTES: usize = 64 * 1024;
+
+pub fn validate_knowledge_push(push: &KnowledgePush) -> Result<()> {
+    let bytes = serde_json::to_vec(push)?;
+    ensure!(
+        bytes.len() <= MAX_KNOWLEDGE_PUSH_BYTES,
+        "knowledge push exceeds {MAX_KNOWLEDGE_PUSH_BYTES} bytes"
+    );
+    ensure!(
+        !push.principal_id.is_empty()
+            && !push.session_id.is_empty()
+            && !push.session_genesis.is_empty(),
+        "knowledge push identity scope is invalid"
+    );
+    ensure!(
+        push.push_id.len() == 20 && push.push_id.bytes().all(|b| b.is_ascii_digit()),
+        "knowledge push_id must be the 20-digit zero-padded scope revision"
+    );
+    ensure!(
+        !push.source_id.is_empty()
+            && push.source_id.len() <= 128
+            && !push.source_id.chars().any(char::is_control),
+        "knowledge source_id must be 1..=128 bytes without control characters"
+    );
+    ensure!(
+        push.created_at.len() <= 64,
+        "knowledge created_at exceeds 64 bytes"
+    );
+    chrono::DateTime::parse_from_rfc3339(&push.created_at)
+        .context("knowledge created_at is not RFC3339")?;
+    ensure!(
+        !push.trigger.is_empty() && push.trigger.len() <= 64,
+        "knowledge trigger must be 1..=64 bytes"
+    );
+    ensure!(
+        push.trigger_reason.len() <= 4096
+            && push
+                .suggested_action
+                .as_ref()
+                .is_none_or(|value| value.len() <= 4096),
+        "knowledge reason or suggestion exceeds 4096 bytes"
+    );
+    ensure!(
+        push.relevance_score.is_finite() && (0.0..=1.0).contains(&push.relevance_score),
+        "knowledge relevance_score must be finite and between zero and one"
+    );
+    ensure!(
+        push.content_hash.len() == 64
+            && push
+                .content_hash
+                .bytes()
+                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()),
+        "knowledge content_hash must be a 64-character hexadecimal SHA-256"
+    );
+    ensure!(
+        push.content_hash == knowledge_content_hash(push)?,
+        "knowledge content_hash does not match the push"
+    );
+    Ok(())
+}
+
+/// SHA-256 of the typed push serialized with its `content_hash` field
+/// retained and set to the empty string.
+pub fn knowledge_content_hash(push: &KnowledgePush) -> Result<String> {
+    let mut content = push.clone();
     content.content_hash.clear();
     Ok(format!(
         "{:x}",

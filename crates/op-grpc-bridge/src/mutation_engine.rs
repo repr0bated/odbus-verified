@@ -698,7 +698,7 @@ fn sealed_sealed_id(
         chain_head_at_arrival: stamp.chain_head_at_arrival.clone(),
         catalog_hash_at_arrival: stamp.catalog_hash_at_arrival.clone(),
         head_timestamp_at_arrival: stamp.head_timestamp_at_arrival,
-        transport_scope: "dbus,grpc,mcp".to_string(),
+        transport_scope: "dbus,grpc,mcp,mqtt".to_string(),
     }
     .to_inline_ref()
     .map_err(|error| anyhow::anyhow!("seal session sealed ID: {error}"))
@@ -1478,6 +1478,14 @@ impl MutationEngine {
                 // inbox that the next turn / `specialist` call reads.
                 self.knowledge_inbox
                     .consume(server.context_engine().subscribe_pushes());
+                // ...and delivered to the UI: committed to the session's
+                // private SHM document, then the EMQX doorbell rings.
+                if let Some(engine) = crate::interceptor::engine_handle() {
+                    crate::knowledge_delivery::spawn(
+                        engine,
+                        server.context_engine().subscribe_pushes(),
+                    );
+                }
                 Ok(Arc::new(server))
             })
             .await

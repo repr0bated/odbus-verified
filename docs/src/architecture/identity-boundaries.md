@@ -109,6 +109,43 @@ stand-ins.
   back to that strict mode.
 - WARP is transport-level policy; it is not identity.
 
+### 3.2a The EMQX doorbell (reactive delivery, decided 2026-09-19)
+
+Owner decisions: **no broker ACL tables, no MCP over MQTT, nothing
+authoritative on the broker; SHM is the one source of truth.** EMQX Cloud
+"Agents" was evaluated and rejected (hosted on EMQX Cloud/GCP; puts agent
+definitions, runs and credentials off-host). What remains of EMQX in the
+identity picture is a *doorbell*:
+
+- A knowledge push is first committed by the MutationEngine as a durable
+  `ctl_plane_chatbot_knowledge` row and the `knowledge` child of the
+  session's private SHM document (the same owned effect as an episode; the
+  door's private StateSync view wakes). Only then does the bridge call the
+  declared `emqx.publish_wake` method, which publishes `{"seq": revision}` —
+  nothing else — to `opdbus/wake/<owner-key>`, `owner-key =
+  sha256(principal, session, genesis)`. The broker never sees an identity or
+  a value; retain is off.
+- The UI (`3tched.com`) connects to the `wss:wake` listener with **client id
+  = owner key** (from `ctl_plane_chatbot.get_doorbell`) and **password = its
+  own door credential** (`oia1:<base64>` from the decoy pickup, fresh per
+  CONNECT because the nonce is one-time; or `sid1:…` inline for provisioned
+  container sessions). On a wake it re-reads `list_knowledge` through the
+  `:8090` door.
+- The exhook (`wake_doorbell.rs`) answers `client.authenticate` and
+  `client.authorize` with **functions of the presented identity, never a
+  policy lookup**: the credential is verified exactly as the door verifies it
+  (`AssertionValidator` / `authenticate_sid1_wire` with transport scope
+  `mqtt`, registry + revocation), must derive the client id, and a doorbell
+  client may only SUBSCRIBE to its own topic while an anchored, unexpired
+  sled still derives it. Every other client is denied the `opdbus/`
+  namespace and otherwise left to the broker's own rules. Tombstoning a sled
+  kicks its owner key's connection (`emqx.kick_client`).
+- Operator steps (not performed by workers): provision the EMQX `wss`
+  listener at `10.0.0.3:8084` with the svc0 TLS material (`EmqxState::declared`
+  lists it); existing SID1 sleds were minted with scope `dbus,grpc,mcp` and
+  must be re-minted to gain `mqtt` before a container session can use the
+  doorbell (browsers use OIA1 and are unaffected).
+
 ### 3.3 Xray container (EXTERNAL, unchanged)
 
 - Passthrough only: SNI/protocol sniffing, no TLS termination for this
