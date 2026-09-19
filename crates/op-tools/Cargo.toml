@@ -46,9 +46,7 @@ axum = { workspace = true }
 reqwest = { workspace = true }
 
 # System info
-op-state = { workspace = true }
 lazy_static = { workspace = true }
-op-execution-tracker = { path = "../op-execution-tracker" }
 
 # Async recursion for self-tools
 async-recursion = "1.0"

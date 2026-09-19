@@ -7,7 +7,6 @@ license.workspace = true
 description = "Inspector Gadget - Universal object inspector with AI gap-filling and Proxmox introspection"
 
 [dependencies]
-op-core = { workspace = true }
 op-introspection = { path = "../op-introspection" }
 tokio = { workspace = true }
 serde = { workspace = true }

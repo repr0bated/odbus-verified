@@ -23,8 +23,6 @@ op-state-store = { path = "../op-state-store" }
 op-cozo-store = { workspace = true }
 op-snowball = { path = "../op-snowball" }
 op-network = { path = "../op-network" }
-op-dynamic-loader = { path = "../op-dynamic-loader" }
-op-execution-tracker = { path = "../op-execution-tracker" }
 op-agents = { path = "../op-agents" }
 # The 3tched Router config surface is generated from the OFFICIAL zeroclaw
 # binary's imported `config schema` contract in the plugin, and validated

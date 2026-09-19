@@ -12,5 +12,4 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 thiserror = "1.0"
 anyhow = "1.0"
 tracing = { workspace = true }
-op-core = { path = "../op-core" }
 op-state-store = { path = "../op-state-store" }

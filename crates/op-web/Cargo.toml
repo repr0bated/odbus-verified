@@ -17,7 +17,6 @@ op-chat = { workspace = true }
 op-llm = { path = "../op-llm" }
 op-tools = { path = "../op-tools" }
 op-agents = { path = "../op-agents" }
-op-state = { workspace = true }
 op-network = { workspace = true }
 op-mcp-aggregator = { path = "../op-mcp-aggregator" }
 op-state-store = { path = "../op-state-store" }

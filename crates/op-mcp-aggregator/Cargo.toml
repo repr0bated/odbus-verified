@@ -10,7 +10,6 @@ description = "MCP Server Aggregator - proxies and aggregates multiple MCP serve
 # Workspace crates
 op-core = { workspace = true }
 op-tools = { workspace = true }
-op-plugins = { workspace = true }
 
 # Async runtime
 tokio = { workspace = true, features = ["full", "sync"] }

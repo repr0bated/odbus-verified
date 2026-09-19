@@ -87,3 +87,15 @@ techops/
 /token.txt
 # agent/editor scratch backups
 *.bak-*
+
+# Editor/patch artifacts never belong next to verified source
+*.bak
+*.patch
+*.backup
+*.copied
+*.stub
+*.fix
+*.orig
+*.rej
+*.grpc-additions
+*.code-workspace

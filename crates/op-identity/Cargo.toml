@@ -20,7 +20,6 @@ sha2 = { workspace = true }
 uuid = { version = "1.6", features = ["v4", "serde"] }
 tracing = "0.1"
 op-core = { path = "../op-core" }
-op-compliance = { path = "../op-compliance" }
 dashmap = { workspace = true }
 dirs = "5"
 hostname = "0.4"

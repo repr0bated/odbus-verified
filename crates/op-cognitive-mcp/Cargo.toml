@@ -4,15 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-op-core = { path = "../op-core" }
 op-identity = { path = "../op-identity" }
 op-blob = { workspace = true }
 op-mcp = { path = "../op-mcp" }
 op-agents = { path = "../op-agents" }
 op-state-store = { path = "../op-state-store" }
 op-plugins = { path = "../op-plugins" }
-op-dynamic-loader = { path = "../op-dynamic-loader" }
-op-cache = { path = "../op-cache" }
 op-snowball = { path = "../op-snowball" }
 op-cozo-store = { workspace = true }
 hex = { workspace = true }

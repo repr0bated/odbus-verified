@@ -9,5 +9,4 @@ thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
-op-core = { path = "../op-core" }
 op-state-store = { path = "../op-state-store" }

@@ -49,7 +49,6 @@ op-plugins = { path = "../op-plugins" }
 op-identity = { path = "../op-identity" }
 op-network = { path = "../op-network" }
 op-cozo-store = { path = "../op-cozo-store" }
-op-jsonrpc = { path = "../op-jsonrpc" }
 op-mcp.workspace = true
 op-cognitive-mcp = { path = "../op-cognitive-mcp" }
 op-agents = { path = "../op-agents" }

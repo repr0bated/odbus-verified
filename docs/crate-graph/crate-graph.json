@@ -233,14 +233,6 @@
       }
     },
     {
-      "id": "bin:rag-ingest",
-      "label": "bin",
-      "props": {
-        "crate": "op-cognitive-mcp",
-        "src": "crates/op-cognitive-mcp/src/bin/rag-ingest.rs"
-      }
-    },
-    {
       "id": "bin:svd",
       "label": "bin",
       "props": {
@@ -260,12 +252,12 @@
           "op-agent-manager"
         ],
         "has_lib": true,
-        "rs_files": 144,
-        "loc": 20633,
-        "tests": 36,
+        "rs_files": 146,
+        "loc": 21518,
+        "tests": 41,
         "unsafe_refs": 0,
         "todo": 2,
-        "unwrap_expect": 24
+        "unwrap_expect": 25
       }
     },
     {
@@ -328,12 +320,12 @@
           "list_tools_client"
         ],
         "has_lib": true,
-        "rs_files": 44,
-        "loc": 29049,
-        "tests": 59,
+        "rs_files": 31,
+        "loc": 21220,
+        "tests": 34,
         "unsafe_refs": 1,
-        "todo": 11,
-        "unwrap_expect": 68
+        "todo": 6,
+        "unwrap_expect": 28
       }
     },
     {
@@ -344,16 +336,15 @@
         "description": "",
         "bins": [
           "op-chain-vectors",
-          "op-cog-admin",
-          "rag-ingest"
+          "op-cog-admin"
         ],
         "has_lib": true,
-        "rs_files": 32,
-        "loc": 11579,
-        "tests": 50,
+        "rs_files": 30,
+        "loc": 11109,
+        "tests": 48,
         "unsafe_refs": 0,
         "todo": 1,
-        "unwrap_expect": 32
+        "unwrap_expect": 47
       }
     },
     {
@@ -380,9 +371,9 @@
         "description": "Core types and utilities for op-dbus-v2",
         "bins": [],
         "has_lib": true,
-        "rs_files": 21,
-        "loc": 5354,
-        "tests": 53,
+        "rs_files": 19,
+        "loc": 4984,
+        "tests": 52,
         "unsafe_refs": 4,
         "todo": 0,
         "unwrap_expect": 19
@@ -399,11 +390,11 @@
         ],
         "has_lib": true,
         "rs_files": 9,
-        "loc": 5940,
-        "tests": 43,
+        "loc": 6302,
+        "tests": 45,
         "unsafe_refs": 1,
         "todo": 0,
-        "unwrap_expect": 104
+        "unwrap_expect": 126
       }
     },
     {
@@ -533,12 +524,12 @@
           "op-grpc-bridge"
         ],
         "has_lib": true,
-        "rs_files": 134,
-        "loc": 78933,
-        "tests": 625,
+        "rs_files": 140,
+        "loc": 82066,
+        "tests": 648,
         "unsafe_refs": 3,
         "todo": 0,
-        "unwrap_expect": 1436
+        "unwrap_expect": 1499
       }
     },
     {
@@ -549,12 +540,12 @@
         "description": "Central HTTP/TLS server for all op-dbus modules",
         "bins": [],
         "has_lib": true,
-        "rs_files": 8,
-        "loc": 1719,
+        "rs_files": 5,
+        "loc": 1018,
         "tests": 0,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 26
+        "unwrap_expect": 5
       }
     },
     {
@@ -584,12 +575,12 @@
         "description": "Inspector Gadget - Universal object inspector with AI gap-filling and Proxmox introspection",
         "bins": [],
         "has_lib": true,
-        "rs_files": 6,
-        "loc": 3567,
-        "tests": 27,
+        "rs_files": 4,
+        "loc": 2207,
+        "tests": 12,
         "unsafe_refs": 3,
         "todo": 0,
-        "unwrap_expect": 38
+        "unwrap_expect": 16
       }
     },
     {
@@ -600,8 +591,8 @@
         "description": "DBus introspection capabilities for op-dbus-v2",
         "bins": [],
         "has_lib": true,
-        "rs_files": 10,
-        "loc": 4121,
+        "rs_files": 7,
+        "loc": 1726,
         "tests": 2,
         "unsafe_refs": 2,
         "todo": 0,
@@ -616,12 +607,12 @@
         "description": "JSON-RPC server with OVSDB and NonNet database support for op-dbus-v2",
         "bins": [],
         "has_lib": true,
-        "rs_files": 7,
-        "loc": 1767,
+        "rs_files": 4,
+        "loc": 1212,
         "tests": 7,
-        "unsafe_refs": 5,
+        "unsafe_refs": 4,
         "todo": 0,
-        "unwrap_expect": 14
+        "unwrap_expect": 12
       }
     },
     {
@@ -632,12 +623,12 @@
         "description": "LLM provider integration with dynamic model discovery for HuggingFace",
         "bins": [],
         "has_lib": true,
-        "rs_files": 18,
-        "loc": 8845,
-        "tests": 25,
+        "rs_files": 17,
+        "loc": 8355,
+        "tests": 24,
         "unsafe_refs": 19,
         "todo": 1,
-        "unwrap_expect": 82
+        "unwrap_expect": 79
       }
     },
     {
@@ -648,12 +639,12 @@
         "description": "MCP protocol, tool-registry, and transport library for bridge-owned frontends",
         "bins": [],
         "has_lib": true,
-        "rs_files": 39,
-        "loc": 11003,
-        "tests": 40,
+        "rs_files": 19,
+        "loc": 6631,
+        "tests": 25,
         "unsafe_refs": 12,
-        "todo": 3,
-        "unwrap_expect": 56
+        "todo": 0,
+        "unwrap_expect": 52
       }
     },
     {
@@ -664,9 +655,9 @@
         "description": "MCP Server Aggregator - proxies and aggregates multiple MCP servers behind a single endpoint",
         "bins": [],
         "has_lib": true,
-        "rs_files": 9,
-        "loc": 5417,
-        "tests": 33,
+        "rs_files": 8,
+        "loc": 4786,
+        "tests": 28,
         "unsafe_refs": 1,
         "todo": 0,
         "unwrap_expect": 9
@@ -722,12 +713,12 @@
           "opblob"
         ],
         "has_lib": true,
-        "rs_files": 149,
-        "loc": 115886,
-        "tests": 526,
-        "unsafe_refs": 17,
-        "todo": 2,
-        "unwrap_expect": 1223
+        "rs_files": 144,
+        "loc": 113475,
+        "tests": 514,
+        "unsafe_refs": 15,
+        "todo": 1,
+        "unwrap_expect": 1228
       }
     },
     {
@@ -792,8 +783,8 @@
         "description": "State management system with plugin infrastructure, crypto, and schema validation",
         "bins": [],
         "has_lib": true,
-        "rs_files": 11,
-        "loc": 2137,
+        "rs_files": 9,
+        "loc": 1957,
         "tests": 9,
         "unsafe_refs": 5,
         "todo": 1,
@@ -808,9 +799,9 @@
         "description": "MCP Execution State Store - Persistent job ledger and state tracking",
         "bins": [],
         "has_lib": true,
-        "rs_files": 14,
-        "loc": 7929,
-        "tests": 74,
+        "rs_files": 13,
+        "loc": 7626,
+        "tests": 71,
         "unsafe_refs": 2,
         "todo": 0,
         "unwrap_expect": 122
@@ -826,12 +817,12 @@
           "op-packagekit-install"
         ],
         "has_lib": true,
-        "rs_files": 50,
-        "loc": 20605,
-        "tests": 50,
+        "rs_files": 28,
+        "loc": 12347,
+        "tests": 33,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 52
+        "unwrap_expect": 44
       }
     },
     {
@@ -845,12 +836,12 @@
           "opdbus"
         ],
         "has_lib": true,
-        "rs_files": 64,
-        "loc": 14516,
-        "tests": 58,
+        "rs_files": 58,
+        "loc": 13418,
+        "tests": 53,
         "unsafe_refs": 0,
         "todo": 14,
-        "unwrap_expect": 73
+        "unwrap_expect": 66
       }
     },
     {
@@ -1861,13 +1852,6 @@
       }
     },
     {
-      "id": "ext:zip",
-      "label": "ext_crate",
-      "props": {
-        "req": "^2"
-      }
-    },
-    {
       "id": "ext:zstd",
       "label": "ext_crate",
       "props": {
@@ -1878,8 +1862,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-19T07:15:49Z",
-        "commit": "2ab594d509921a2b575f2be5ccf5ed9e395630a8",
+        "generated_at": "2026-09-19T18:02:24Z",
+        "commit": "fdaac28178503d5f9d9616cf2e240916231fa497",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -2824,15 +2808,6 @@
       }
     },
     {
-      "id": "mod:crates/op-agents/src/agents/system/mod.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-agents",
-        "kind": "src",
-        "loc": 23
-      }
-    },
-    {
       "id": "mod:crates/op-agents/src/agents/webframeworks/django_pro.rs",
       "label": "module",
       "props": {
@@ -2905,6 +2880,33 @@
       }
     },
     {
+      "id": "mod:crates/op-agents/src/dynamic/assemble.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-agents",
+        "kind": "src",
+        "loc": 435
+      }
+    },
+    {
+      "id": "mod:crates/op-agents/src/dynamic/mod.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-agents",
+        "kind": "src",
+        "loc": 27
+      }
+    },
+    {
+      "id": "mod:crates/op-agents/src/dynamic/pieces.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-agents",
+        "kind": "src",
+        "loc": 444
+      }
+    },
+    {
       "id": "mod:crates/op-agents/src/generator/md_parser.rs",
       "label": "module",
       "props": {
@@ -2937,7 +2939,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 103
+        "loc": 105
       }
     },
     {
@@ -3724,15 +3726,6 @@
       }
     },
     {
-      "id": "mod:crates/op-chat/src/chat_loop.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 401
-      }
-    },
-    {
       "id": "mod:crates/op-chat/src/chat_service.rs",
       "label": "module",
       "props": {
@@ -3757,33 +3750,6 @@
         "crate": "op-chat",
         "kind": "src",
         "loc": 299
-      }
-    },
-    {
-      "id": "mod:crates/op-chat/src/grpc_client.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 730
-      }
-    },
-    {
-      "id": "mod:crates/op-chat/src/hybrid_executor.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 220
-      }
-    },
-    {
-      "id": "mod:crates/op-chat/src/intent_executor.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 667
       }
     },
     {
@@ -3814,48 +3780,12 @@
       }
     },
     {
-      "id": "mod:crates/op-chat/src/orchestrated_executor.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 648
-      }
-    },
-    {
-      "id": "mod:crates/op-chat/src/orchestration/coordinator.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 440
-      }
-    },
-    {
-      "id": "mod:crates/op-chat/src/orchestration/dbus_orchestrator.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 451
-      }
-    },
-    {
       "id": "mod:crates/op-chat/src/orchestration/error.rs",
       "label": "module",
       "props": {
         "crate": "op-chat",
         "kind": "src",
         "loc": 490
-      }
-    },
-    {
-      "id": "mod:crates/op-chat/src/orchestration/executor.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 544
       }
     },
     {
@@ -3994,39 +3924,12 @@
       }
     },
     {
-      "id": "mod:crates/op-chat/src/orchestration/workflows.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 490
-      }
-    },
-    {
       "id": "mod:crates/op-chat/src/orchestration/workstack_executor.rs",
       "label": "module",
       "props": {
         "crate": "op-chat",
         "kind": "src",
         "loc": 1158
-      }
-    },
-    {
-      "id": "mod:crates/op-chat/src/orchestration/workstacks.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 613
-      }
-    },
-    {
-      "id": "mod:crates/op-chat/src/router.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 209
       }
     },
     {
@@ -4054,24 +3957,6 @@
         "crate": "op-chat",
         "kind": "src",
         "loc": 504
-      }
-    },
-    {
-      "id": "mod:crates/op-chat/src/tool_loader.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 2222
-      }
-    },
-    {
-      "id": "mod:crates/op-chat/src/tool_orchestrator.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-chat",
-        "kind": "src",
-        "loc": 194
       }
     },
     {
@@ -4129,15 +4014,6 @@
       }
     },
     {
-      "id": "mod:crates/op-cognitive-mcp/src/bin/rag-ingest.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-cognitive-mcp",
-        "kind": "bin",
-        "loc": 271
-      }
-    },
-    {
       "id": "mod:crates/op-cognitive-mcp/src/blob_catalog_tool.rs",
       "label": "module",
       "props": {
@@ -4170,7 +4046,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 414
+        "loc": 399
       }
     },
     {
@@ -4255,21 +4131,12 @@
       }
     },
     {
-      "id": "mod:crates/op-cognitive-mcp/src/live_schema.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-cognitive-mcp",
-        "kind": "src",
-        "loc": 132
-      }
-    },
-    {
       "id": "mod:crates/op-cognitive-mcp/src/memory_store.rs",
       "label": "module",
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 658
+        "loc": 767
       }
     },
     {
@@ -4305,7 +4172,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 1350
+        "loc": 1189
       }
     },
     {
@@ -4390,15 +4257,6 @@
       }
     },
     {
-      "id": "mod:crates/op-core/src/connection.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-core",
-        "kind": "src",
-        "loc": 186
-      }
-    },
-    {
       "id": "mod:crates/op-core/src/error.rs",
       "label": "module",
       "props": {
@@ -4441,15 +4299,6 @@
         "crate": "op-core",
         "kind": "src",
         "loc": 31
-      }
-    },
-    {
-      "id": "mod:crates/op-core/src/message.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-core",
-        "kind": "src",
-        "loc": 184
       }
     },
     {
@@ -4602,7 +4451,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 856
+        "loc": 1217
       }
     },
     {
@@ -4629,7 +4478,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 2546
+        "loc": 2547
       }
     },
     {
@@ -4948,6 +4797,24 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 835
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/agent_triggers.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 94
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/antigravity_canonical_tests.rs",
       "label": "module",
       "props": {
@@ -5002,15 +4869,6 @@
       }
     },
     {
-      "id": "mod:crates/op-grpc-bridge/src/callable_reflection.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-grpc-bridge",
-        "kind": "src",
-        "loc": 16
-      }
-    },
-    {
       "id": "mod:crates/op-grpc-bridge/src/chat_service.rs",
       "label": "module",
       "props": {
@@ -5025,7 +4883,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 637
+        "loc": 783
       }
     },
     {
@@ -5034,7 +4892,16 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 700
+        "loc": 704
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/context_bundle.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 289
       }
     },
     {
@@ -5097,7 +4964,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1466
+        "loc": 1587
       }
     },
     {
@@ -5142,7 +5009,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 604
+        "loc": 648
       }
     },
     {
@@ -5151,7 +5018,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 412
+        "loc": 506
       }
     },
     {
@@ -5313,7 +5180,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 2300
+        "loc": 2317
       }
     },
     {
@@ -5344,6 +5211,24 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/knowledge_delivery.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 175
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/knowledge_inbox.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 168
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/large_language_model_dispatch.rs",
       "label": "module",
       "props": {
@@ -5358,7 +5243,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 351
+        "loc": 358
       }
     },
     {
@@ -5403,7 +5288,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 783
+        "loc": 794
       }
     },
     {
@@ -5439,7 +5324,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 6001
+        "loc": 6211
       }
     },
     {
@@ -5641,15 +5526,6 @@
       }
     },
     {
-      "id": "mod:crates/op-grpc-bridge/src/schema_passthrough.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-grpc-bridge",
-        "kind": "src",
-        "loc": 188
-      }
-    },
-    {
       "id": "mod:crates/op-grpc-bridge/src/schema_renderer_dispatch.rs",
       "label": "module",
       "props": {
@@ -5710,6 +5586,15 @@
         "crate": "op-grpc-bridge",
         "kind": "src",
         "loc": 354
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/specialist.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 315
       }
     },
     {
@@ -5866,6 +5751,15 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/wake_doorbell.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 410
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/web_ui_dispatch.rs",
       "label": "module",
       "props": {
@@ -5952,7 +5846,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 154
+        "loc": 207
       }
     },
     {
@@ -6028,6 +5922,15 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/tests/source_reachability_gate.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "test",
+        "loc": 344
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/tests/support/mod.rs",
       "label": "module",
       "props": {
@@ -6073,15 +5976,6 @@
       }
     },
     {
-      "id": "mod:crates/op-http/src/health.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-http",
-        "kind": "src",
-        "loc": 238
-      }
-    },
-    {
       "id": "mod:crates/op-http/src/lib.rs",
       "label": "module",
       "props": {
@@ -6091,30 +5985,12 @@
       }
     },
     {
-      "id": "mod:crates/op-http/src/metrics.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-http",
-        "kind": "src",
-        "loc": 284
-      }
-    },
-    {
       "id": "mod:crates/op-http/src/middleware.rs",
       "label": "module",
       "props": {
         "crate": "op-http",
         "kind": "src",
         "loc": 237
-      }
-    },
-    {
-      "id": "mod:crates/op-http/src/request_filters.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-http",
-        "kind": "src",
-        "loc": 179
       }
     },
     {
@@ -6298,24 +6174,6 @@
       }
     },
     {
-      "id": "mod:crates/op-inspector/src/cli.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-inspector",
-        "kind": "src",
-        "loc": 1002
-      }
-    },
-    {
-      "id": "mod:crates/op-inspector/src/datadump.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-inspector",
-        "kind": "src",
-        "loc": 358
-      }
-    },
-    {
       "id": "mod:crates/op-inspector/src/gcloud.rs",
       "label": "module",
       "props": {
@@ -6361,24 +6219,6 @@
       }
     },
     {
-      "id": "mod:crates/op-introspection/src/cpu_features.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-introspection",
-        "kind": "src",
-        "loc": 679
-      }
-    },
-    {
-      "id": "mod:crates/op-introspection/src/hierarchical.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-introspection",
-        "kind": "src",
-        "loc": 688
-      }
-    },
-    {
       "id": "mod:crates/op-introspection/src/indexer.rs",
       "label": "module",
       "props": {
@@ -6403,15 +6243,6 @@
         "crate": "op-introspection",
         "kind": "src",
         "loc": 110
-      }
-    },
-    {
-      "id": "mod:crates/op-introspection/src/mod.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-introspection",
-        "kind": "src",
-        "loc": 1028
       }
     },
     {
@@ -6451,39 +6282,12 @@
       }
     },
     {
-      "id": "mod:crates/op-jsonrpc/src/nonnet_staging.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-jsonrpc",
-        "kind": "src",
-        "loc": 155
-      }
-    },
-    {
       "id": "mod:crates/op-jsonrpc/src/ovsdb.rs",
       "label": "module",
       "props": {
         "crate": "op-jsonrpc",
         "kind": "src",
         "loc": 702
-      }
-    },
-    {
-      "id": "mod:crates/op-jsonrpc/src/ovsdb_jsonrpc.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-jsonrpc",
-        "kind": "src",
-        "loc": 365
-      }
-    },
-    {
-      "id": "mod:crates/op-jsonrpc/src/ovsdb_rpc_call.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-jsonrpc",
-        "kind": "src",
-        "loc": 35
       }
     },
     {
@@ -6520,15 +6324,6 @@
         "crate": "op-llm",
         "kind": "src",
         "loc": 1325
-      }
-    },
-    {
-      "id": "mod:crates/op-llm/src/antigravity_replay.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-llm",
-        "kind": "src",
-        "loc": 490
       }
     },
     {
@@ -6739,15 +6534,6 @@
       }
     },
     {
-      "id": "mod:crates/op-mcp-aggregator/src/unused/context.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp-aggregator",
-        "kind": "src",
-        "loc": 631
-      }
-    },
-    {
       "id": "mod:crates/op-mcp/build.rs",
       "label": "module",
       "props": {
@@ -6771,16 +6557,7 @@
       "props": {
         "crate": "op-mcp",
         "kind": "src",
-        "loc": 391
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/builtin_trait_agents.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 259
+        "loc": 397
       }
     },
     {
@@ -6799,15 +6576,6 @@
         "crate": "op-mcp",
         "kind": "src",
         "loc": 681
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/config.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 31
       }
     },
     {
@@ -6856,30 +6624,12 @@
       }
     },
     {
-      "id": "mod:crates/op-mcp/src/http_server.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 569
-      }
-    },
-    {
       "id": "mod:crates/op-mcp/src/lib.rs",
       "label": "module",
       "props": {
         "crate": "op-mcp",
         "kind": "src",
         "loc": 106
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/mod.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 13
       }
     },
     {
@@ -6892,39 +6642,12 @@
       }
     },
     {
-      "id": "mod:crates/op-mcp/src/request_context.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 580
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/request_handler.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 499
-      }
-    },
-    {
       "id": "mod:crates/op-mcp/src/resources.rs",
       "label": "module",
       "props": {
         "crate": "op-mcp",
         "kind": "src",
         "loc": 157
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/router.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 243
       }
     },
     {
@@ -6937,129 +6660,12 @@
       }
     },
     {
-      "id": "mod:crates/op-mcp/src/sse.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 110
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tool_adapter.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 493
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tool_adapter_orchestrated.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 313
-      }
-    },
-    {
       "id": "mod:crates/op-mcp/src/tool_registry.rs",
       "label": "module",
       "props": {
         "crate": "op-mcp",
         "kind": "src",
         "loc": 419
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tools/filesystem.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 213
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tools/mod.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 61
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tools/ovs.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 146
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tools/plugin.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 101
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tools/qdrant.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 85
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tools/response.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 89
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tools/shell.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 87
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tools/system.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 43
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/tools/systemd.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 196
-      }
-    },
-    {
-      "id": "mod:crates/op-mcp/src/trait_agent_executor.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-mcp",
-        "kind": "src",
-        "loc": 247
       }
     },
     {
@@ -7639,6 +7245,15 @@
       }
     },
     {
+      "id": "mod:crates/op-plugins/src/state_plugins/agent_triggers.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-plugins",
+        "kind": "src",
+        "loc": 460
+      }
+    },
+    {
       "id": "mod:crates/op-plugins/src/state_plugins/antigravity.rs",
       "label": "module",
       "props": {
@@ -7671,7 +7286,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1328
+        "loc": 1573
       }
     },
     {
@@ -7708,15 +7323,6 @@
         "crate": "op-plugins",
         "kind": "src",
         "loc": 281
-      }
-    },
-    {
-      "id": "mod:crates/op-plugins/src/state_plugins/common/selector.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-plugins",
-        "kind": "src",
-        "loc": 504
       }
     },
     {
@@ -7770,7 +7376,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 885
+        "loc": 1047
       }
     },
     {
@@ -7779,7 +7385,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 944
+        "loc": 1156
       }
     },
     {
@@ -7860,7 +7466,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1318
+        "loc": 1505
       }
     },
     {
@@ -7963,15 +7569,6 @@
       }
     },
     {
-      "id": "mod:crates/op-plugins/src/state_plugins/host_runtime.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-plugins",
-        "kind": "src",
-        "loc": 828
-      }
-    },
-    {
       "id": "mod:crates/op-plugins/src/state_plugins/human_principal.rs",
       "label": "module",
       "props": {
@@ -8058,7 +7655,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 995
+        "loc": 1011
       }
     },
     {
@@ -8220,7 +7817,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 157
+        "loc": 158
       }
     },
     {
@@ -8364,7 +7961,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 585
+        "loc": 650
       }
     },
     {
@@ -8374,24 +7971,6 @@
         "crate": "op-plugins",
         "kind": "src",
         "loc": 550
-      }
-    },
-    {
-      "id": "mod:crates/op-plugins/src/state_plugins/privacy.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-plugins",
-        "kind": "src",
-        "loc": 238
-      }
-    },
-    {
-      "id": "mod:crates/op-plugins/src/state_plugins/privacy_router.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-plugins",
-        "kind": "src",
-        "loc": 1558
       }
     },
     {
@@ -8581,24 +8160,6 @@
         "crate": "op-plugins",
         "kind": "src",
         "loc": 974
-      }
-    },
-    {
-      "id": "mod:crates/op-plugins/src/state_plugins/systemd.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-plugins",
-        "kind": "src",
-        "loc": 466
-      }
-    },
-    {
-      "id": "mod:crates/op-plugins/src/state_plugins/systemd_networkd.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-plugins",
-        "kind": "src",
-        "loc": 165
       }
     },
     {
@@ -9106,15 +8667,6 @@
       }
     },
     {
-      "id": "mod:crates/op-state-store/src/subid_ui.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-state-store",
-        "kind": "src",
-        "loc": 303
-      }
-    },
-    {
       "id": "mod:crates/op-state/src/authority.rs",
       "label": "module",
       "props": {
@@ -9157,24 +8709,6 @@
         "crate": "op-state",
         "kind": "src",
         "loc": 50
-      }
-    },
-    {
-      "id": "mod:crates/op-state/src/manager.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-state",
-        "kind": "src",
-        "loc": 168
-      }
-    },
-    {
-      "id": "mod:crates/op-state/src/mod.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-state",
-        "kind": "src",
-        "loc": 12
       }
     },
     {
@@ -9250,57 +8784,12 @@
       }
     },
     {
-      "id": "mod:crates/op-tools/src/builtin/dbus.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 445
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/dbus_hybrid.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 466
-      }
-    },
-    {
       "id": "mod:crates/op-tools/src/builtin/dbus_introspection.rs",
       "label": "module",
       "props": {
         "crate": "op-tools",
         "kind": "src",
         "loc": 1485
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/dbus_search_tool.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 318
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/dbus_tool.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 804
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/error_reporting_tool.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 64
       }
     },
     {
@@ -9322,33 +8811,6 @@
       }
     },
     {
-      "id": "mod:crates/op-tools/src/builtin/incus_tools.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 860
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/indexer_tools.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 142
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/lxc_tools.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 734
-      }
-    },
-    {
       "id": "mod:crates/op-tools/src/builtin/mod.rs",
       "label": "module",
       "props": {
@@ -9358,84 +8820,12 @@
       }
     },
     {
-      "id": "mod:crates/op-tools/src/builtin/openflow_tools.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 340
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/ovs.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 139
-      }
-    },
-    {
       "id": "mod:crates/op-tools/src/builtin/ovs_tools.rs",
       "label": "module",
       "props": {
         "crate": "op-tools",
         "kind": "src",
         "loc": 1305
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/ovsdb.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 454
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/packagekit.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 220
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/plugin.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 99
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/plugin_state_tool.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 318
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/procfs.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 467
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/respond_tool.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 182
       }
     },
     {
@@ -9457,15 +8847,6 @@
       }
     },
     {
-      "id": "mod:crates/op-tools/src/builtin/self_tools.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 1010
-      }
-    },
-    {
       "id": "mod:crates/op-tools/src/builtin/shell.rs",
       "label": "module",
       "props": {
@@ -9475,39 +8856,12 @@
       }
     },
     {
-      "id": "mod:crates/op-tools/src/builtin/shell_tool.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 484
-      }
-    },
-    {
       "id": "mod:crates/op-tools/src/builtin/sv.rs",
       "label": "module",
       "props": {
         "crate": "op-tools",
         "kind": "src",
         "loc": 304
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin/system.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 90
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/builtin_old.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 375
       }
     },
     {
@@ -9571,15 +8925,6 @@
         "crate": "op-tools",
         "kind": "src",
         "loc": 129
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/executor.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 150
       }
     },
     {
@@ -9652,15 +8997,6 @@
         "crate": "op-tools",
         "kind": "src",
         "loc": 742
-      }
-    },
-    {
-      "id": "mod:crates/op-tools/src/validation_tests.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-tools",
-        "kind": "src",
-        "loc": 97
       }
     },
     {
@@ -9742,15 +9078,6 @@
         "crate": "op-web",
         "kind": "src",
         "loc": 66
-      }
-    },
-    {
-      "id": "mod:crates/op-web/src/handlers/auth_bridge.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-web",
-        "kind": "src",
-        "loc": 366
       }
     },
     {
@@ -9925,15 +9252,6 @@
       }
     },
     {
-      "id": "mod:crates/op-web/src/handlers/websocket.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-web",
-        "kind": "src",
-        "loc": 166
-      }
-    },
-    {
       "id": "mod:crates/op-web/src/lib.rs",
       "label": "module",
       "props": {
@@ -9985,15 +9303,6 @@
         "crate": "op-web",
         "kind": "src",
         "loc": 51
-      }
-    },
-    {
-      "id": "mod:crates/op-web/src/orchestrator/anti_hallucination.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-web",
-        "kind": "src",
-        "loc": 227
       }
     },
     {
@@ -10096,15 +9405,6 @@
       }
     },
     {
-      "id": "mod:crates/op-web/src/router.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-web",
-        "kind": "src",
-        "loc": 60
-      }
-    },
-    {
       "id": "mod:crates/op-web/src/routes/admin.rs",
       "label": "module",
       "props": {
@@ -10138,15 +9438,6 @@
         "crate": "op-web",
         "kind": "src",
         "loc": 321
-      }
-    },
-    {
-      "id": "mod:crates/op-web/src/server.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-web",
-        "kind": "src",
-        "loc": 158
       }
     },
     {
@@ -10192,15 +9483,6 @@
         "crate": "op-web",
         "kind": "src",
         "loc": 499
-      }
-    },
-    {
-      "id": "mod:crates/op-web/src/system_prompt_loader.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-web",
-        "kind": "src",
-        "loc": 121
       }
     },
     {
@@ -10456,7 +9738,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/cognitive_mcp.rs",
-        "line": 1327,
+        "line": 1572,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/cognitive_mcp"
       }
@@ -10496,7 +9778,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/ctl_plane_chatbot.rs",
-        "line": 884,
+        "line": 1046,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/ctl_plane_chatbot"
       }
@@ -10536,7 +9818,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/emqx.rs",
-        "line": 1084,
+        "line": 1225,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/emqx"
       }
@@ -10619,16 +9901,6 @@
         "line": 663,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/hardware"
-      }
-    },
-    {
-      "id": "plugin:host_runtime",
-      "label": "plugin",
-      "props": {
-        "file": "crates/op-plugins/src/state_plugins/host_runtime.rs",
-        "line": 806,
-        "declared": false,
-        "dbus_path": "/org/opdbus/v1/plugins/host_runtime"
       }
     },
     {
@@ -10846,19 +10118,9 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/persona.rs",
-        "line": 513,
+        "line": 578,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/persona"
-      }
-    },
-    {
-      "id": "plugin:privacy_router",
-      "label": "plugin",
-      "props": {
-        "file": "crates/op-plugins/src/state_plugins/privacy_router.rs",
-        "line": 1523,
-        "declared": false,
-        "dbus_path": "/org/opdbus/v1/plugins/privacy_router"
       }
     },
     {
@@ -11388,12 +10650,6 @@
       "src": "bin:opdbus",
       "rel": "bin_entry",
       "dst": "mod:crates/op-web/src/bin/opdbus.rs",
-      "props": {}
-    },
-    {
-      "src": "bin:rag-ingest",
-      "rel": "bin_entry",
-      "dst": "mod:crates/op-cognitive-mcp/src/bin/rag-ingest.rs",
       "props": {}
     },
     {
@@ -12029,12 +11285,6 @@
     {
       "src": "crate:op-agents",
       "rel": "contains",
-      "dst": "mod:crates/op-agents/src/agents/system/mod.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-agents",
-      "rel": "contains",
       "dst": "mod:crates/op-agents/src/agents/webframeworks/django_pro.rs",
       "props": {}
     },
@@ -12078,6 +11328,24 @@
       "src": "crate:op-agents",
       "rel": "contains",
       "dst": "mod:crates/op-agents/src/dbus_service.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-agents",
+      "rel": "contains",
+      "dst": "mod:crates/op-agents/src/dynamic/assemble.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-agents",
+      "rel": "contains",
+      "dst": "mod:crates/op-agents/src/dynamic/mod.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-agents",
+      "rel": "contains",
+      "dst": "mod:crates/op-agents/src/dynamic/pieces.rs",
       "props": {}
     },
     {
@@ -13483,12 +12751,6 @@
     {
       "src": "crate:op-chat",
       "rel": "contains",
-      "dst": "mod:crates/op-chat/src/chat_loop.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
       "dst": "mod:crates/op-chat/src/chat_service.rs",
       "props": {}
     },
@@ -13502,24 +12764,6 @@
       "src": "crate:op-chat",
       "rel": "contains",
       "dst": "mod:crates/op-chat/src/forced_tool_pipeline.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
-      "dst": "mod:crates/op-chat/src/grpc_client.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
-      "dst": "mod:crates/op-chat/src/hybrid_executor.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
-      "dst": "mod:crates/op-chat/src/intent_executor.rs",
       "props": {}
     },
     {
@@ -13543,31 +12787,7 @@
     {
       "src": "crate:op-chat",
       "rel": "contains",
-      "dst": "mod:crates/op-chat/src/orchestrated_executor.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
-      "dst": "mod:crates/op-chat/src/orchestration/coordinator.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
-      "dst": "mod:crates/op-chat/src/orchestration/dbus_orchestrator.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
       "dst": "mod:crates/op-chat/src/orchestration/error.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
-      "dst": "mod:crates/op-chat/src/orchestration/executor.rs",
       "props": {}
     },
     {
@@ -13663,25 +12883,7 @@
     {
       "src": "crate:op-chat",
       "rel": "contains",
-      "dst": "mod:crates/op-chat/src/orchestration/workflows.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
       "dst": "mod:crates/op-chat/src/orchestration/workstack_executor.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
-      "dst": "mod:crates/op-chat/src/orchestration/workstacks.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
-      "dst": "mod:crates/op-chat/src/router.rs",
       "props": {}
     },
     {
@@ -13700,18 +12902,6 @@
       "src": "crate:op-chat",
       "rel": "contains",
       "dst": "mod:crates/op-chat/src/tool_executor.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
-      "dst": "mod:crates/op-chat/src/tool_loader.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "contains",
-      "dst": "mod:crates/op-chat/src/tool_orchestrator.rs",
       "props": {}
     },
     {
@@ -13748,22 +12938,6 @@
       "src": "crate:op-chat",
       "rel": "depends_on",
       "dst": "crate:op-execution-tracker",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "depends_on",
-      "dst": "crate:op-grpc-bridge",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-chat",
-      "rel": "depends_on",
-      "dst": "crate:op-introspection",
       "props": {
         "optional": false
       }
@@ -14048,12 +13222,6 @@
     {
       "src": "crate:op-cognitive-mcp",
       "rel": "contains",
-      "dst": "mod:crates/op-cognitive-mcp/src/bin/rag-ingest.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-cognitive-mcp",
-      "rel": "contains",
       "dst": "mod:crates/op-cognitive-mcp/src/blob_catalog_tool.rs",
       "props": {}
     },
@@ -14127,12 +13295,6 @@
       "src": "crate:op-cognitive-mcp",
       "rel": "contains",
       "dst": "mod:crates/op-cognitive-mcp/src/lib.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-cognitive-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-cognitive-mcp/src/live_schema.rs",
       "props": {}
     },
     {
@@ -14226,31 +13388,7 @@
     {
       "src": "crate:op-cognitive-mcp",
       "rel": "depends_on",
-      "dst": "crate:op-cache",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-cognitive-mcp",
-      "rel": "depends_on",
-      "dst": "crate:op-core",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-cognitive-mcp",
-      "rel": "depends_on",
       "dst": "crate:op-cozo-store",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-cognitive-mcp",
-      "rel": "depends_on",
-      "dst": "crate:op-dynamic-loader",
       "props": {
         "optional": false
       }
@@ -14305,12 +13443,6 @@
       "src": "crate:op-cognitive-mcp",
       "rel": "provides_bin",
       "dst": "bin:op-cog-admin",
-      "props": {}
-    },
-    {
-      "src": "crate:op-cognitive-mcp",
-      "rel": "provides_bin",
-      "dst": "bin:rag-ingest",
       "props": {}
     },
     {
@@ -14487,6 +13619,15 @@
     {
       "src": "crate:op-cognitive-mcp",
       "rel": "uses_ext",
+      "dst": "ext:tempfile",
+      "props": {
+        "kind": "dev",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-cognitive-mcp",
+      "rel": "uses_ext",
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
@@ -14584,27 +13725,10 @@
       }
     },
     {
-      "src": "crate:op-cognitive-mcp",
-      "rel": "uses_ext",
-      "dst": "ext:zip",
-      "props": {
-        "kind": "normal",
-        "optional": false
-      }
-    },
-    {
       "src": "crate:op-compliance",
       "rel": "contains",
       "dst": "mod:crates/op-compliance/src/lib.rs",
       "props": {}
-    },
-    {
-      "src": "crate:op-compliance",
-      "rel": "depends_on",
-      "dst": "crate:op-core",
-      "props": {
-        "optional": false
-      }
     },
     {
       "src": "crate:op-compliance",
@@ -14668,12 +13792,6 @@
     {
       "src": "crate:op-core",
       "rel": "contains",
-      "dst": "mod:crates/op-core/src/connection.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-core",
-      "rel": "contains",
       "dst": "mod:crates/op-core/src/error.rs",
       "props": {}
     },
@@ -14699,12 +13817,6 @@
       "src": "crate:op-core",
       "rel": "contains",
       "dst": "mod:crates/op-core/src/lib.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-core",
-      "rel": "contains",
-      "dst": "mod:crates/op-core/src/message.rs",
       "props": {}
     },
     {
@@ -14784,14 +13896,6 @@
       "rel": "contains",
       "dst": "mod:crates/op-core/tests/no_s6_regression.rs",
       "props": {}
-    },
-    {
-      "src": "crate:op-core",
-      "rel": "depends_on",
-      "dst": "crate:op-execution-tracker",
-      "props": {
-        "optional": false
-      }
     },
     {
       "src": "crate:op-core",
@@ -15569,14 +14673,6 @@
     },
     {
       "src": "crate:op-dbus-cli",
-      "rel": "depends_on",
-      "dst": "crate:op-introspection",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-dbus-cli",
       "rel": "provides_bin",
       "dst": "bin:dbus-plugin-cli",
       "props": {}
@@ -15682,14 +14778,6 @@
       "rel": "contains",
       "dst": "mod:crates/op-dbus-model/src/models.rs",
       "props": {}
-    },
-    {
-      "src": "crate:op-dbus-model",
-      "rel": "depends_on",
-      "dst": "crate:op-core",
-      "props": {
-        "optional": false
-      }
     },
     {
       "src": "crate:op-dbus-model",
@@ -15947,14 +15035,6 @@
       "rel": "contains",
       "dst": "mod:crates/op-dynamic-loader/src/loading_strategy.rs",
       "props": {}
-    },
-    {
-      "src": "crate:op-dynamic-loader",
-      "rel": "depends_on",
-      "dst": "crate:op-core",
-      "props": {
-        "optional": false
-      }
     },
     {
       "src": "crate:op-dynamic-loader",
@@ -16452,6 +15532,18 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/agent_triggers.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/antigravity_canonical_tests.rs",
       "props": {}
     },
@@ -16488,12 +15580,6 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
-      "dst": "mod:crates/op-grpc-bridge/src/callable_reflection.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-grpc-bridge",
-      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/chat_service.rs",
       "props": {}
     },
@@ -16507,6 +15593,12 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/chatbot_episode_stream.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/context_bundle.rs",
       "props": {}
     },
     {
@@ -16716,6 +15808,18 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/knowledge_delivery.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/knowledge_inbox.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/large_language_model_dispatch.rs",
       "props": {}
     },
@@ -16914,12 +16018,6 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
-      "dst": "mod:crates/op-grpc-bridge/src/schema_passthrough.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-grpc-bridge",
-      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/schema_renderer_dispatch.rs",
       "props": {}
     },
@@ -16957,6 +16055,12 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/shared_socket_tests.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/specialist.rs",
       "props": {}
     },
     {
@@ -17059,6 +16163,12 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/ui_workspace_stream_tests.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/wake_doorbell.rs",
       "props": {}
     },
     {
@@ -17172,6 +16282,12 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/tests/source_reachability_gate.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/tests/support/mod.rs",
       "props": {}
     },
@@ -17268,6 +16384,14 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "depends_on",
+      "dst": "crate:op-agents",
+      "props": {
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "depends_on",
       "dst": "crate:op-blob",
       "props": {
         "optional": false
@@ -17301,14 +16425,6 @@
       "src": "crate:op-grpc-bridge",
       "rel": "depends_on",
       "dst": "crate:op-identity",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-grpc-bridge",
-      "rel": "depends_on",
-      "dst": "crate:op-jsonrpc",
       "props": {
         "optional": false
       }
@@ -17854,31 +16970,13 @@
     {
       "src": "crate:op-http",
       "rel": "contains",
-      "dst": "mod:crates/op-http/src/health.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-http",
-      "rel": "contains",
       "dst": "mod:crates/op-http/src/lib.rs",
       "props": {}
     },
     {
       "src": "crate:op-http",
       "rel": "contains",
-      "dst": "mod:crates/op-http/src/metrics.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-http",
-      "rel": "contains",
       "dst": "mod:crates/op-http/src/middleware.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-http",
-      "rel": "contains",
-      "dst": "mod:crates/op-http/src/request_filters.rs",
       "props": {}
     },
     {
@@ -18157,14 +17255,6 @@
     {
       "src": "crate:op-identity",
       "rel": "depends_on",
-      "dst": "crate:op-compliance",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-identity",
-      "rel": "depends_on",
       "dst": "crate:op-core",
       "props": {
         "optional": false
@@ -18401,18 +17491,6 @@
     {
       "src": "crate:op-inspector",
       "rel": "contains",
-      "dst": "mod:crates/op-inspector/src/cli.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-inspector",
-      "rel": "contains",
-      "dst": "mod:crates/op-inspector/src/datadump.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-inspector",
-      "rel": "contains",
       "dst": "mod:crates/op-inspector/src/gcloud.rs",
       "props": {}
     },
@@ -18433,14 +17511,6 @@
       "rel": "contains",
       "dst": "mod:crates/op-inspector/src/runit.rs",
       "props": {}
-    },
-    {
-      "src": "crate:op-inspector",
-      "rel": "depends_on",
-      "dst": "crate:op-core",
-      "props": {
-        "optional": false
-      }
     },
     {
       "src": "crate:op-inspector",
@@ -18585,18 +17655,6 @@
     {
       "src": "crate:op-introspection",
       "rel": "contains",
-      "dst": "mod:crates/op-introspection/src/cpu_features.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-introspection",
-      "rel": "contains",
-      "dst": "mod:crates/op-introspection/src/hierarchical.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-introspection",
-      "rel": "contains",
       "dst": "mod:crates/op-introspection/src/indexer.rs",
       "props": {}
     },
@@ -18610,12 +17668,6 @@
       "src": "crate:op-introspection",
       "rel": "contains",
       "dst": "mod:crates/op-introspection/src/lib.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-introspection",
-      "rel": "contains",
-      "dst": "mod:crates/op-introspection/src/mod.rs",
       "props": {}
     },
     {
@@ -18805,25 +17857,7 @@
     {
       "src": "crate:op-jsonrpc",
       "rel": "contains",
-      "dst": "mod:crates/op-jsonrpc/src/nonnet_staging.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-jsonrpc",
-      "rel": "contains",
       "dst": "mod:crates/op-jsonrpc/src/ovsdb.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-jsonrpc",
-      "rel": "contains",
-      "dst": "mod:crates/op-jsonrpc/src/ovsdb_jsonrpc.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-jsonrpc",
-      "rel": "contains",
-      "dst": "mod:crates/op-jsonrpc/src/ovsdb_rpc_call.rs",
       "props": {}
     },
     {
@@ -18837,14 +17871,6 @@
       "rel": "contains",
       "dst": "mod:crates/op-jsonrpc/src/server.rs",
       "props": {}
-    },
-    {
-      "src": "crate:op-jsonrpc",
-      "rel": "depends_on",
-      "dst": "crate:op-core",
-      "props": {
-        "optional": false
-      }
     },
     {
       "src": "crate:op-jsonrpc",
@@ -18919,12 +17945,6 @@
       "src": "crate:op-llm",
       "rel": "contains",
       "dst": "mod:crates/op-llm/src/antigravity.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-llm",
-      "rel": "contains",
-      "dst": "mod:crates/op-llm/src/antigravity_replay.rs",
       "props": {}
     },
     {
@@ -19224,12 +18244,6 @@
     {
       "src": "crate:op-mcp",
       "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/builtin_trait_agents.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
       "dst": "mod:crates/op-mcp/src/cognitive_bridge.rs",
       "props": {}
     },
@@ -19237,12 +18251,6 @@
       "src": "crate:op-mcp",
       "rel": "contains",
       "dst": "mod:crates/op-mcp/src/compact.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/config.rs",
       "props": {}
     },
     {
@@ -19278,19 +18286,7 @@
     {
       "src": "crate:op-mcp",
       "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/http_server.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
       "dst": "mod:crates/op-mcp/src/lib.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/mod.rs",
       "props": {}
     },
     {
@@ -19302,25 +18298,7 @@
     {
       "src": "crate:op-mcp",
       "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/request_context.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/request_handler.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
       "dst": "mod:crates/op-mcp/src/resources.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/router.rs",
       "props": {}
     },
     {
@@ -19332,85 +18310,7 @@
     {
       "src": "crate:op-mcp",
       "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/sse.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tool_adapter.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tool_adapter_orchestrated.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
       "dst": "mod:crates/op-mcp/src/tool_registry.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tools/filesystem.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tools/mod.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tools/ovs.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tools/plugin.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tools/qdrant.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tools/response.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tools/shell.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tools/system.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/tools/systemd.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp/src/trait_agent_executor.rs",
       "props": {}
     },
     {
@@ -19465,38 +18365,6 @@
       "src": "crate:op-mcp",
       "rel": "depends_on",
       "dst": "crate:op-introspection",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "depends_on",
-      "dst": "crate:op-network",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "depends_on",
-      "dst": "crate:op-plugins",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "depends_on",
-      "dst": "crate:op-state",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "depends_on",
-      "dst": "crate:op-state-store",
       "props": {
         "optional": false
       }
@@ -19811,22 +18679,8 @@
     },
     {
       "src": "crate:op-mcp-aggregator",
-      "rel": "contains",
-      "dst": "mod:crates/op-mcp-aggregator/src/unused/context.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-mcp-aggregator",
       "rel": "depends_on",
       "dst": "crate:op-core",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-mcp-aggregator",
-      "rel": "depends_on",
-      "dst": "crate:op-plugins",
       "props": {
         "optional": false
       }
@@ -20782,6 +19636,12 @@
     {
       "src": "crate:op-plugins",
       "rel": "contains",
+      "dst": "mod:crates/op-plugins/src/state_plugins/agent_triggers.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/antigravity.rs",
       "props": {}
     },
@@ -20825,12 +19685,6 @@
       "src": "crate:op-plugins",
       "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/common/oscal.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "contains",
-      "dst": "mod:crates/op-plugins/src/state_plugins/common/selector.rs",
       "props": {}
     },
     {
@@ -20993,12 +19847,6 @@
       "src": "crate:op-plugins",
       "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/hardware.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "contains",
-      "dst": "mod:crates/op-plugins/src/state_plugins/host_runtime.rs",
       "props": {}
     },
     {
@@ -21274,18 +20122,6 @@
     {
       "src": "crate:op-plugins",
       "rel": "contains",
-      "dst": "mod:crates/op-plugins/src/state_plugins/privacy.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "contains",
-      "dst": "mod:crates/op-plugins/src/state_plugins/privacy_router.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/privacy_routes.rs",
       "props": {}
     },
@@ -21407,18 +20243,6 @@
       "src": "crate:op-plugins",
       "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/software.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "contains",
-      "dst": "mod:crates/op-plugins/src/state_plugins/systemd.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "contains",
-      "dst": "mod:crates/op-plugins/src/state_plugins/systemd_networkd.rs",
       "props": {}
     },
     {
@@ -21589,22 +20413,6 @@
       "src": "crate:op-plugins",
       "rel": "depends_on",
       "dst": "crate:op-dbus-model",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "depends_on",
-      "dst": "crate:op-dynamic-loader",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "depends_on",
-      "dst": "crate:op-execution-tracker",
       "props": {
         "optional": false
       }
@@ -21794,12 +20602,6 @@
     {
       "src": "crate:op-plugins",
       "rel": "registers_plugin",
-      "dst": "plugin:host_runtime",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "registers_plugin",
       "dst": "plugin:human_principal",
       "props": {}
     },
@@ -21927,12 +20729,6 @@
       "src": "crate:op-plugins",
       "rel": "registers_plugin",
       "dst": "plugin:persona",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "registers_plugin",
-      "dst": "plugin:privacy_router",
       "props": {}
     },
     {
@@ -22774,14 +21570,6 @@
     },
     {
       "src": "crate:op-snowball",
-      "rel": "depends_on",
-      "dst": "crate:op-core",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-snowball",
       "rel": "uses_ext",
       "dst": "ext:anyhow",
       "props": {
@@ -22957,18 +21745,6 @@
     {
       "src": "crate:op-state",
       "rel": "contains",
-      "dst": "mod:crates/op-state/src/manager.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-state",
-      "rel": "contains",
-      "dst": "mod:crates/op-state/src/mod.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-state",
-      "rel": "contains",
       "dst": "mod:crates/op-state/src/plugin.rs",
       "props": {}
     },
@@ -22994,30 +21770,6 @@
       "src": "crate:op-state",
       "rel": "depends_on",
       "dst": "crate:op-core",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-state",
-      "rel": "depends_on",
-      "dst": "crate:op-jsonrpc",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-state",
-      "rel": "depends_on",
-      "dst": "crate:op-network",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-state",
-      "rel": "depends_on",
-      "dst": "crate:op-snowball",
       "props": {
         "optional": false
       }
@@ -23299,12 +22051,6 @@
     },
     {
       "src": "crate:op-state-store",
-      "rel": "contains",
-      "dst": "mod:crates/op-state-store/src/subid_ui.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-state-store",
       "rel": "uses_ext",
       "dst": "ext:anyhow",
       "props": {
@@ -23519,37 +22265,7 @@
     {
       "src": "crate:op-tools",
       "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/dbus.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/dbus_hybrid.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
       "dst": "mod:crates/op-tools/src/builtin/dbus_introspection.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/dbus_search_tool.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/dbus_tool.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/error_reporting_tool.rs",
       "props": {}
     },
     {
@@ -23567,79 +22283,13 @@
     {
       "src": "crate:op-tools",
       "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/incus_tools.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/indexer_tools.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/lxc_tools.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
       "dst": "mod:crates/op-tools/src/builtin/mod.rs",
       "props": {}
     },
     {
       "src": "crate:op-tools",
       "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/openflow_tools.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/ovs.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
       "dst": "mod:crates/op-tools/src/builtin/ovs_tools.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/ovsdb.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/packagekit.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/plugin.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/plugin_state_tool.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/procfs.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/respond_tool.rs",
       "props": {}
     },
     {
@@ -23657,37 +22307,13 @@
     {
       "src": "crate:op-tools",
       "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/self_tools.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
       "dst": "mod:crates/op-tools/src/builtin/shell.rs",
       "props": {}
     },
     {
       "src": "crate:op-tools",
       "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/shell_tool.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
       "dst": "mod:crates/op-tools/src/builtin/sv.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin/system.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/builtin_old.rs",
       "props": {}
     },
     {
@@ -23730,12 +22356,6 @@
       "src": "crate:op-tools",
       "rel": "contains",
       "dst": "mod:crates/op-tools/src/dynamic_tool.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/executor.rs",
       "props": {}
     },
     {
@@ -23788,12 +22408,6 @@
     },
     {
       "src": "crate:op-tools",
-      "rel": "contains",
-      "dst": "mod:crates/op-tools/src/validation_tests.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-tools",
       "rel": "depends_on",
       "dst": "crate:op-agents",
       "props": {
@@ -23804,14 +22418,6 @@
       "src": "crate:op-tools",
       "rel": "depends_on",
       "dst": "crate:op-core",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "depends_on",
-      "dst": "crate:op-execution-tracker",
       "props": {
         "optional": false
       }
@@ -23844,14 +22450,6 @@
       "src": "crate:op-tools",
       "rel": "depends_on",
       "dst": "crate:op-network",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-tools",
-      "rel": "depends_on",
-      "dst": "crate:op-state",
       "props": {
         "optional": false
       }
@@ -24099,12 +22697,6 @@
     {
       "src": "crate:op-web",
       "rel": "contains",
-      "dst": "mod:crates/op-web/src/handlers/auth_bridge.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-web",
-      "rel": "contains",
       "dst": "mod:crates/op-web/src/handlers/chat.rs",
       "props": {}
     },
@@ -24219,12 +22811,6 @@
     {
       "src": "crate:op-web",
       "rel": "contains",
-      "dst": "mod:crates/op-web/src/handlers/websocket.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-web",
-      "rel": "contains",
       "dst": "mod:crates/op-web/src/lib.rs",
       "props": {}
     },
@@ -24256,12 +22842,6 @@
       "src": "crate:op-web",
       "rel": "contains",
       "dst": "mod:crates/op-web/src/middleware/spa_cache.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-web",
-      "rel": "contains",
-      "dst": "mod:crates/op-web/src/orchestrator/anti_hallucination.rs",
       "props": {}
     },
     {
@@ -24333,12 +22913,6 @@
     {
       "src": "crate:op-web",
       "rel": "contains",
-      "dst": "mod:crates/op-web/src/router.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-web",
-      "rel": "contains",
       "dst": "mod:crates/op-web/src/routes/admin.rs",
       "props": {}
     },
@@ -24358,12 +22932,6 @@
       "src": "crate:op-web",
       "rel": "contains",
       "dst": "mod:crates/op-web/src/routes/mod.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-web",
-      "rel": "contains",
-      "dst": "mod:crates/op-web/src/server.rs",
       "props": {}
     },
     {
@@ -24394,12 +22962,6 @@
       "src": "crate:op-web",
       "rel": "contains",
       "dst": "mod:crates/op-web/src/state_tree.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-web",
-      "rel": "contains",
-      "dst": "mod:crates/op-web/src/system_prompt_loader.rs",
       "props": {}
     },
     {
@@ -24510,14 +23072,6 @@
       "src": "crate:op-web",
       "rel": "depends_on",
       "dst": "crate:op-network",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-web",
-      "rel": "depends_on",
-      "dst": "crate:op-state",
       "props": {
         "optional": false
       }
@@ -25542,14 +24096,6 @@
       }
     },
     {
-      "src": "mod:crates/op-chat/src/chat_loop.rs",
-      "rel": "imports",
-      "dst": "crate:op-llm",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-chat/src/forced_execution.rs",
       "rel": "imports",
       "dst": "crate:op-tools",
@@ -25567,54 +24113,6 @@
     },
     {
       "src": "mod:crates/op-chat/src/forced_tool_pipeline.rs",
-      "rel": "imports",
-      "dst": "crate:op-tools",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/grpc_client.rs",
-      "rel": "imports",
-      "dst": "crate:op-grpc-bridge",
-      "props": {
-        "refs": 2
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/hybrid_executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/hybrid_executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-llm",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/hybrid_executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-tools",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/intent_executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/intent_executor.rs",
       "rel": "imports",
       "dst": "crate:op-tools",
       "props": {
@@ -25654,46 +24152,6 @@
       }
     },
     {
-      "src": "mod:crates/op-chat/src/orchestrated_executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/orchestrated_executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-tools",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/orchestration/executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/orchestration/executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-tools",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/router.rs",
-      "rel": "imports",
-      "dst": "crate:op-http",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-chat/src/session.rs",
       "rel": "imports",
       "dst": "crate:op-core",
@@ -25727,54 +24185,6 @@
     },
     {
       "src": "mod:crates/op-chat/src/tool_executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-tools",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/tool_loader.rs",
-      "rel": "imports",
-      "dst": "crate:op-introspection",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/tool_loader.rs",
-      "rel": "imports",
-      "dst": "crate:op-network",
-      "props": {
-        "refs": 4
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/tool_loader.rs",
-      "rel": "imports",
-      "dst": "crate:op-tools",
-      "props": {
-        "refs": 3
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/tool_orchestrator.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/tool_orchestrator.rs",
-      "rel": "imports",
-      "dst": "crate:op-llm",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-chat/src/tool_orchestrator.rs",
       "rel": "imports",
       "dst": "crate:op-tools",
       "props": {
@@ -26070,6 +24480,62 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
+      "rel": "imports",
+      "dst": "crate:op-agents",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
+      "rel": "imports",
+      "dst": "crate:op-core",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 5
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_triggers.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/antigravity_canonical_tests.rs",
       "rel": "imports",
       "dst": "crate:op-core",
@@ -26240,6 +24706,14 @@
     {
       "src": "mod:crates/op-grpc-bridge/src/chatbot_episode_state.rs",
       "rel": "imports",
+      "dst": "crate:op-cognitive-mcp",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chatbot_episode_state.rs",
+      "rel": "imports",
       "dst": "crate:op-core",
       "props": {
         "refs": 3
@@ -26250,7 +24724,7 @@
       "rel": "imports",
       "dst": "crate:op-cozo-store",
       "props": {
-        "refs": 4
+        "refs": 6
       }
     },
     {
@@ -26266,7 +24740,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 5
+        "refs": 11
       }
     },
     {
@@ -26342,6 +24816,30 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/context_bundle.rs",
+      "rel": "imports",
+      "dst": "crate:op-agents",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/context_bundle.rs",
+      "rel": "imports",
+      "dst": "crate:op-cognitive-mcp",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/context_bundle.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/cron_dispatch.rs",
       "rel": "imports",
       "dst": "crate:op-state-store",
@@ -26402,7 +24900,7 @@
       "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {
@@ -26410,7 +24908,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 5
+        "refs": 9
       }
     },
     {
@@ -26594,7 +25092,7 @@
       "rel": "imports",
       "dst": "crate:op-blob",
       "props": {
-        "refs": 6
+        "refs": 8
       }
     },
     {
@@ -26602,7 +25100,7 @@
       "rel": "imports",
       "dst": "crate:op-state-store",
       "props": {
-        "refs": 3
+        "refs": 6
       }
     },
     {
@@ -27058,7 +25556,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {
@@ -27099,6 +25597,46 @@
       "dst": "crate:op-blob",
       "props": {
         "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/knowledge_delivery.rs",
+      "rel": "imports",
+      "dst": "crate:op-cognitive-mcp",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/knowledge_delivery.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/knowledge_delivery.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/knowledge_delivery.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/knowledge_inbox.rs",
+      "rel": "imports",
+      "dst": "crate:op-cognitive-mcp",
+      "props": {
+        "refs": 2
       }
     },
     {
@@ -27370,7 +25908,7 @@
       "rel": "imports",
       "dst": "crate:op-cognitive-mcp",
       "props": {
-        "refs": 1
+        "refs": 5
       }
     },
     {
@@ -27426,7 +25964,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 116
+        "refs": 118
       }
     },
     {
@@ -27838,14 +26376,6 @@
       }
     },
     {
-      "src": "mod:crates/op-grpc-bridge/src/schema_passthrough.rs",
-      "rel": "imports",
-      "dst": "crate:op-plugins",
-      "props": {
-        "refs": 3
-      }
-    },
-    {
       "src": "mod:crates/op-grpc-bridge/src/schema_renderer_dispatch.rs",
       "rel": "imports",
       "dst": "crate:op-plugins",
@@ -28019,6 +26549,30 @@
       "dst": "crate:op-plugins",
       "props": {
         "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/specialist.rs",
+      "rel": "imports",
+      "dst": "crate:op-agents",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/specialist.rs",
+      "rel": "imports",
+      "dst": "crate:op-cognitive-mcp",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/specialist.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 2
       }
     },
     {
@@ -28295,6 +26849,38 @@
     },
     {
       "src": "mod:crates/op-grpc-bridge/src/ui_workspace_stream_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/wake_doorbell.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/wake_doorbell.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 4
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/wake_doorbell.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 9
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/wake_doorbell.rs",
       "rel": "imports",
       "dst": "crate:op-state",
       "props": {
@@ -28974,14 +27560,6 @@
       }
     },
     {
-      "src": "mod:crates/op-introspection/src/mod.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-introspection/src/parser.rs",
       "rel": "imports",
       "dst": "crate:op-core",
@@ -29134,27 +27712,11 @@
       }
     },
     {
-      "src": "mod:crates/op-mcp/src/http_server.rs",
-      "rel": "imports",
-      "dst": "crate:op-agents",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-mcp/src/lib.rs",
       "rel": "imports",
       "dst": "crate:op-core",
       "props": {
         "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/request_handler.rs",
-      "rel": "imports",
-      "dst": "crate:op-tools",
-      "props": {
-        "refs": 3
       }
     },
     {
@@ -29166,14 +27728,6 @@
       }
     },
     {
-      "src": "mod:crates/op-mcp/src/router.rs",
-      "rel": "imports",
-      "dst": "crate:op-http",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-mcp/src/server.rs",
       "rel": "imports",
       "dst": "crate:op-tools",
@@ -29182,83 +27736,11 @@
       }
     },
     {
-      "src": "mod:crates/op-mcp/src/tool_adapter.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/tool_adapter.rs",
-      "rel": "imports",
-      "dst": "crate:op-dynamic-loader",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/tool_adapter.rs",
-      "rel": "imports",
-      "dst": "crate:op-execution-tracker",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/tool_adapter.rs",
-      "rel": "imports",
-      "dst": "crate:op-tools",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/tool_adapter_orchestrated.rs",
-      "rel": "imports",
-      "dst": "crate:op-chat",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/tool_adapter_orchestrated.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/tool_adapter_orchestrated.rs",
-      "rel": "imports",
-      "dst": "crate:op-tools",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-mcp/src/tool_registry.rs",
       "rel": "imports",
       "dst": "crate:op-core",
       "props": {
         "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/tools/ovs.rs",
-      "rel": "imports",
-      "dst": "crate:op-network",
-      "props": {
-        "refs": 3
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/trait_agent_executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-agents",
-      "props": {
-        "refs": 2
       }
     },
     {
@@ -29514,6 +27996,14 @@
       }
     },
     {
+      "src": "mod:crates/op-plugins/src/state_plugins/agent_triggers.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-plugins/src/state_plugins/antigravity.rs",
       "rel": "defines_plugin",
       "dst": "plugin:antigravity",
@@ -29718,7 +28208,7 @@
       "rel": "imports",
       "dst": "crate:op-state-store",
       "props": {
-        "refs": 6
+        "refs": 7
       }
     },
     {
@@ -29726,7 +28216,7 @@
       "rel": "imports",
       "dst": "crate:op-cozo-store",
       "props": {
-        "refs": 7
+        "refs": 10
       }
     },
     {
@@ -30079,28 +28569,6 @@
       "dst": "crate:op-state-store",
       "props": {
         "refs": 4
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/host_runtime.rs",
-      "rel": "defines_plugin",
-      "dst": "plugin:host_runtime",
-      "props": {}
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/host_runtime.rs",
-      "rel": "imports",
-      "dst": "crate:op-state",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/host_runtime.rs",
-      "rel": "imports",
-      "dst": "crate:op-state-store",
-      "props": {
-        "refs": 3
       }
     },
     {
@@ -30756,52 +29224,6 @@
       }
     },
     {
-      "src": "mod:crates/op-plugins/src/state_plugins/privacy.rs",
-      "rel": "imports",
-      "dst": "crate:op-state",
-      "props": {
-        "refs": 5
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/privacy.rs",
-      "rel": "imports",
-      "dst": "crate:op-state-store",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/privacy_router.rs",
-      "rel": "defines_plugin",
-      "dst": "plugin:privacy_router",
-      "props": {}
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/privacy_router.rs",
-      "rel": "imports",
-      "dst": "crate:op-network",
-      "props": {
-        "refs": 12
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/privacy_router.rs",
-      "rel": "imports",
-      "dst": "crate:op-state",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/privacy_router.rs",
-      "rel": "imports",
-      "dst": "crate:op-state-store",
-      "props": {
-        "refs": 2
-      }
-    },
-    {
       "src": "mod:crates/op-plugins/src/state_plugins/privacy_routes.rs",
       "rel": "defines_plugin",
       "dst": "plugin:privacy_routes",
@@ -31176,14 +29598,6 @@
       }
     },
     {
-      "src": "mod:crates/op-plugins/src/state_plugins/systemd.rs",
-      "rel": "imports",
-      "dst": "crate:op-state",
-      "props": {
-        "refs": 2
-      }
-    },
-    {
       "src": "mod:crates/op-plugins/src/state_plugins/tched_router.rs",
       "rel": "defines_plugin",
       "dst": "plugin:tched_router",
@@ -31534,14 +29948,6 @@
       }
     },
     {
-      "src": "mod:crates/op-state/src/manager.rs",
-      "rel": "imports",
-      "dst": "crate:op-state-store",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-state/src/plugin.rs",
       "rel": "imports",
       "dst": "crate:op-state-store",
@@ -31574,57 +29980,9 @@
       }
     },
     {
-      "src": "mod:crates/op-tools/src/builtin/dbus_search_tool.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/dbus_search_tool.rs",
-      "rel": "imports",
-      "dst": "crate:op-introspection",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/dbus_tool.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-tools/src/builtin/gcloud_tools.rs",
       "rel": "imports",
       "dst": "crate:op-inspector",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/lxc_tools.rs",
-      "rel": "imports",
-      "dst": "crate:op-network",
-      "props": {
-        "refs": 8
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/openflow_tools.rs",
-      "rel": "imports",
-      "dst": "crate:op-network",
-      "props": {
-        "refs": 2
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/ovs.rs",
-      "rel": "imports",
-      "dst": "crate:op-network",
       "props": {
         "refs": 1
       }
@@ -31638,59 +29996,11 @@
       }
     },
     {
-      "src": "mod:crates/op-tools/src/builtin/ovsdb.rs",
-      "rel": "imports",
-      "dst": "crate:op-network",
-      "props": {
-        "refs": 2
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/plugin.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/plugin.rs",
-      "rel": "imports",
-      "dst": "crate:op-state",
-      "props": {
-        "refs": 3
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/plugin_state_tool.rs",
-      "rel": "imports",
-      "dst": "crate:op-state",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/respond_tool.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-tools/src/builtin/rtnetlink_tools.rs",
       "rel": "imports",
       "dst": "crate:op-network",
       "props": {
         "refs": 9
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/shell_tool.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
       }
     },
     {
@@ -31702,14 +30012,6 @@
       }
     },
     {
-      "src": "mod:crates/op-tools/src/builtin_old.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-tools/src/discovery/projection_engine.rs",
       "rel": "imports",
       "dst": "crate:op-core",
@@ -31737,14 +30039,6 @@
       "src": "mod:crates/op-tools/src/discovery/sources/dbus.rs",
       "rel": "imports",
       "dst": "crate:op-introspection",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/executor.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
       "props": {
         "refs": 1
       }
@@ -32139,14 +30433,6 @@
       "dst": "crate:op-state-store",
       "props": {
         "refs": 15
-      }
-    },
-    {
-      "src": "mod:crates/op-web/src/system_prompt_loader.rs",
-      "rel": "imports",
-      "dst": "crate:op-llm",
-      "props": {
-        "refs": 2
       }
     },
     {

@@ -17,7 +17,6 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 nix = { version = "0.28", features = ["fs", "user"] }
 zbus = { workspace = true }
-op-execution-tracker = { path = "../op-execution-tracker" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full", "test-util"] }

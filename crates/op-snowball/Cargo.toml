@@ -7,7 +7,6 @@ license.workspace = true
 description = "Streaming snowball with BTRFS subvolumes for op-dbus-v2"
 
 [dependencies]
-op-core = { workspace = true }
 op-cache = { path = "../op-cache" }
 tokio = { workspace = true }
 serde = { workspace = true }

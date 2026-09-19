@@ -53,11 +53,7 @@ op-blob = { path = "../op-blob" }
 op-core = { path = "../op-core" }
 op-identity = { path = "../op-identity" }
 op-tools = { path = "../op-tools" }
-op-plugins = { path = "../op-plugins" }
 op-introspection = { path = "../op-introspection" }
-op-state = { path = "../op-state" }
-op-state-store = { path = "../op-state-store" }
-op-network = { path = "../op-network" }
 
 [build-dependencies]
 tonic-build = { workspace = true, optional = true }

@@ -13,7 +13,6 @@ path = "src/main.rs"
 [dependencies]
 op-core = { workspace = true }
 op-identity = { path = "../op-identity" }
-op-introspection = { path = "../op-introspection" }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

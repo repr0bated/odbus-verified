@@ -18,6 +18,5 @@ lru = { workspace = true }
 anyhow = { workspace = true }
 
 # Internal dependencies
-op-core = { path = "../op-core" }
 op-tools = { path = "../op-tools" }
 op-execution-tracker = { path = "../op-execution-tracker" }

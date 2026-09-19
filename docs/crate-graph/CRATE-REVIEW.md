@@ -153,6 +153,21 @@ HookProvider (EMQX exhook), ComponentRegistry, RegistrationService.
 
 ### 2.1 ≈34 k LOC of source is not compiled — orphaned files under `src/`
 
+> **Closed 2026-09-19.** The 89 orphaned files (~41k LOC on the merged head; the
+> three `include!`'d bodies `op_chat.chat.rs`, `op_chat.orchestration.rs`,
+> `depreciated-wg.rs` are reachable and stayed) were deleted, the 28 internal
+> dependencies no `.rs` in the dependent referenced (24 below plus four that
+> only the orphans used: `op-chat → op-introspection, op-grpc-bridge`,
+> `op-mcp → op-network`, `op-tools → op-state`) were removed, and the 26
+> stray artifacts of §2.3 were deleted with their patterns added to
+> `.gitignore`. `crates/op-grpc-bridge/tests/source_reachability_gate.rs`
+> now fails the workspace gate on any unreachable `.rs` under `src/` or any
+> artifact next to source. The workspace built and tested unchanged without
+> them. The `docs/src/architecture/*.sha256` manifests are historical
+> snapshots (not consumed by any test) and still list the removed paths.
+> The findings below are kept as the record of what was found.
+
+
 Files that no `lib.rs`/`main.rs`/`bin` reaches through `mod` / `#[path]` /
 `include!`. They are invisible to `cargo build`, `clippy` and `/verify`, so they rot
 silently, and several of them are exactly the "retired design" code AGENTS.md says
