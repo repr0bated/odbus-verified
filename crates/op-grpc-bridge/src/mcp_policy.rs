@@ -26,11 +26,22 @@ pub const COMPACT_TOOL_NAMES: [&str; 4] = [
     "execute_tool",
 ];
 
-pub const HOT_TOOL_NAMES: [&str; 8] = [
+pub const HOT_TOOL_NAMES: [&str; 19] = [
     "memory_recall",
     "memory_store",
+    "memory_query",
+    "memory_retrieve",
+    "memory_delete",
+    "memory_list_namespaces",
+    "memory_semantic_query",
     "oscal_subids",
     "rust_pro",
+    "python_pro",
+    "typescript_pro",
+    "sequential_thinking",
+    "context_manager",
+    "code_review_orchestrator",
+    "specialist",
     "schema_read",
     "workflow_query",
     "workflow_run",
@@ -526,7 +537,7 @@ mod tests {
         let manifest = parse_toolset_manifest(
             br#"{
               "generation": 7,
-              "hot": ["memory_recall", "memory_store", "oscal_subids", "rust_pro", "schema_read", "workflow_query", "workflow_run", "toolsets"],
+              "hot": ["memory_recall", "memory_store", "memory_query", "memory_retrieve", "memory_delete", "memory_list_namespaces", "memory_semantic_query", "oscal_subids", "rust_pro", "python_pro", "typescript_pro", "sequential_thinking", "context_manager", "code_review_orchestrator", "specialist", "schema_read", "workflow_query", "workflow_run", "toolsets"],
               "sets": [{
                 "id": "emqx_ops",
                 "temperature": "warm",
@@ -544,14 +555,14 @@ mod tests {
     fn frequency_or_generic_tools_cannot_change_the_surface() {
         let dynamic_hot = br#"{
           "generation": 1,
-          "hot": ["memory_recall", "memory_store", "oscal_subids", "rust_pro", "schema_read", "workflow_query", "invoke_tool", "toolsets"],
+          "hot": ["memory_recall", "memory_store", "memory_query", "memory_retrieve", "memory_delete", "memory_list_namespaces", "memory_semantic_query", "oscal_subids", "rust_pro", "python_pro", "typescript_pro", "sequential_thinking", "context_manager", "code_review_orchestrator", "specialist", "schema_read", "workflow_query", "invoke_tool", "toolsets"],
           "sets": []
         }"#;
         assert!(parse_toolset_manifest(dynamic_hot).is_err());
 
         let generic_set = br#"{
           "generation": 1,
-          "hot": ["memory_recall", "memory_store", "oscal_subids", "rust_pro", "schema_read", "workflow_query", "workflow_run", "toolsets"],
+          "hot": ["memory_recall", "memory_store", "memory_query", "memory_retrieve", "memory_delete", "memory_list_namespaces", "memory_semantic_query", "oscal_subids", "rust_pro", "python_pro", "typescript_pro", "sequential_thinking", "context_manager", "code_review_orchestrator", "specialist", "schema_read", "workflow_query", "workflow_run", "toolsets"],
           "sets": [{
             "id": "escape",
             "temperature": "cold",

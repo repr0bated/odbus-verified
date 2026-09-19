@@ -647,6 +647,49 @@ mod tests {
         }
     }
 
+    /// The chatbot's episodes are the ledger of its activity: they must
+    /// outlive the process and stay invisible across principals.
+    #[test]
+    fn scoped_episodes_survive_a_reopen_and_stay_isolated_by_principal() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("episodes");
+        let alice = scope("alice");
+        let bob = scope("bob");
+        {
+            let store = CozoGraphShuttle::new_persistent(path.clone()).unwrap();
+            store.initialize_chatbot_episode_store().unwrap();
+            store
+                .insert_scoped_episode_and_snapshot(&row(alice.clone(), "001", &"aa".repeat(32)), 8)
+                .unwrap();
+            store
+                .insert_scoped_episode_and_snapshot(&row(alice.clone(), "002", &"bb".repeat(32)), 8)
+                .unwrap();
+            store
+                .insert_scoped_episode_and_snapshot(&row(bob.clone(), "001", &"cc".repeat(32)), 8)
+                .unwrap();
+        }
+        // Process restart.
+        let store = CozoGraphShuttle::new_persistent(path).unwrap();
+        store.initialize_chatbot_episode_store().unwrap();
+        let alice_rows = store.list_scoped_episodes(&alice, None, 10).unwrap();
+        assert_eq!(
+            alice_rows
+                .iter()
+                .map(|r| r.episode_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["001", "002"],
+            "alice's episodes persisted in order"
+        );
+        let bob_rows = store.list_scoped_episodes(&bob, None, 10).unwrap();
+        assert_eq!(bob_rows.len(), 1);
+        assert_eq!(bob_rows[0].content_hash, "cc".repeat(32));
+        // A third principal on the same session/genesis sees nothing.
+        assert!(store
+            .list_scoped_episodes(&scope("carol"), None, 10)
+            .unwrap()
+            .is_empty());
+    }
+
     #[test]
     fn immutable_scoped_rows_cursor_and_embedding_cas_are_atomic() {
         let store = CozoGraphShuttle::new_in_memory().unwrap();

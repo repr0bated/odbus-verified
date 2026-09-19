@@ -440,6 +440,154 @@ pub struct MemoryStoreInput {
     pub tags: Vec<String>,
 }
 
+/// Typed input for `memory_retrieve`.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct MemoryRetrieveInput {
+    #[schemars(description = "Namespace that owns the entry")]
+    pub namespace: String,
+    #[schemars(description = "Exact entry key")]
+    pub key: String,
+}
+
+/// Typed input for `memory_query` (Cozo key/tag query within a namespace).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct MemoryQueryInput {
+    #[schemars(description = "Namespace to query")]
+    pub namespace: String,
+    #[schemars(description = "Optional key prefix/pattern filter")]
+    pub key_pattern: Option<String>,
+    #[serde(default)]
+    #[schemars(description = "Only entries carrying every listed tag")]
+    pub tags: Vec<String>,
+    #[serde(default = "default_memory_limit")]
+    #[schemars(description = "Maximum entries to return (default 50)")]
+    pub limit: i64,
+}
+
+/// Typed input for `memory_semantic_query` (Qdrant semantic recall mirrored
+/// from namespace memory; requires the semantic shuttle).
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct MemorySemanticQueryInput {
+    #[schemars(description = "Natural-language query text")]
+    pub query: String,
+    #[schemars(description = "Optional namespace to scope the recall")]
+    pub namespace: Option<String>,
+    #[schemars(description = "Optional key prefix/pattern filter")]
+    pub key_pattern: Option<String>,
+    #[schemars(description = "Container (identity) that owns the mirrored vectors")]
+    pub container_id: Option<String>,
+    #[serde(default = "default_memory_limit")]
+    #[schemars(description = "Maximum entries to return (default 50)")]
+    pub limit: i64,
+}
+
+/// Typed input for `memory_delete`.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct MemoryDeleteInput {
+    #[schemars(description = "Namespace that owns the entry")]
+    pub namespace: String,
+    #[schemars(description = "Exact entry key to delete")]
+    pub key: String,
+}
+
+/// Operations of the language executor agents (`python_pro`, `typescript_pro`).
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ExecutorOperation {
+    Run,
+    Test,
+    Lint,
+    Format,
+    Typecheck,
+    Install,
+}
+
+/// Typed input for the language executor agents.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ExecutorAgentInput {
+    #[schemars(description = "Executor operation to perform")]
+    pub operation: ExecutorOperation,
+    #[schemars(description = "Project or file path the operation applies to")]
+    pub path: String,
+    #[schemars(description = "Extra arguments passed to the underlying tool")]
+    pub args: Option<String>,
+}
+
+/// Operations of the workflow agents (`sequential_thinking`, `context_manager`,
+/// `code_review_orchestrator`).
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkflowOperation {
+    RunWorkflow,
+    ListSteps,
+    Validate,
+}
+
+/// Typed input for the workflow agents.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct WorkflowAgentInput {
+    #[schemars(description = "Workflow operation to perform")]
+    pub operation: WorkflowOperation,
+    #[schemars(description = "Workflow input: the task, question or step arguments")]
+    pub args: Option<String>,
+}
+
+/// Operations of the advisor (persona) agents.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AdvisorOperation {
+    Consult,
+    Review,
+    Explain,
+    Recommend,
+    Advise,
+    Analyze,
+    Help,
+}
+
+/// Typed input for `specialist`: a persona assembled per call from the shared
+/// piece pool (behaviours, knowledge, examples, executor capabilities) and
+/// answered by the selected router model. This replaces static advisor
+/// personas; nothing about the specialist is fixed ahead of the call.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct SpecialistInput {
+    #[schemars(description = "Advisory operation to perform")]
+    pub operation: AdvisorOperation,
+    #[schemars(description = "The question, code, failing output or situation")]
+    pub question: String,
+    #[schemars(
+        description = "Optional path that grounds the task (drives language/domain detection)"
+    )]
+    pub path: Option<String>,
+    #[serde(default)]
+    #[schemars(
+        description = "Optional explicit domain hints (rust, dbus, network, security, ...)"
+    )]
+    pub domain_hints: Vec<String>,
+}
+
+/// The persona that answered a `specialist` call — kept for audit.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct SpecialistPersona {
+    pub name: String,
+    pub domains: Vec<String>,
+    pub piece_ids: Vec<String>,
+    pub sources: Vec<String>,
+}
+
+/// Output of `specialist`.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct SpecialistOutput {
+    pub answer: String,
+    pub persona: SpecialistPersona,
+    #[schemars(
+        description = "Retrieved context lines rendered into the persona (memory, activity, pushes)"
+    )]
+    pub context_used: usize,
+    pub provider: String,
+    pub model: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum RustProOperation {
@@ -744,6 +892,24 @@ pub struct RustProOutput {
     pub metadata: serde_json::Value,
 }
 
+/// Output of every hot agent method (same shape the agent registry returns).
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct AgentOperationOutput {
+    pub success: bool,
+    pub agent_type: String,
+    pub agent_name: String,
+    pub operation: String,
+    pub data: String,
+    pub metadata: serde_json::Value,
+}
+
+/// Output for MemorySemanticQuery method
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct MemorySemanticQueryOutput {
+    pub results: Vec<String>,
+    pub count: usize,
+}
+
 /// Output for MemoryRetrieve method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct MemoryRetrieveOutput {
@@ -931,7 +1097,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "memory_retrieve".to_string(),
-        method_decl_from_schemars_with_output::<(), MemoryRetrieveOutput>(
+        method_decl_from_schemars_with_output::<MemoryRetrieveInput, MemoryRetrieveOutput>(
             "memory_retrieve",
             SideEffect::Read,
             true,
@@ -941,7 +1107,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "memory_query".to_string(),
-        method_decl_from_schemars_with_output::<(), MemoryQueryOutput>(
+        method_decl_from_schemars_with_output::<MemoryQueryInput, MemoryQueryOutput>(
             "memory_query",
             SideEffect::Read,
             true,
@@ -951,7 +1117,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "memory_delete".to_string(),
-        method_decl_from_schemars_with_output::<(), MemoryDeleteOutput>(
+        method_decl_from_schemars_with_output::<MemoryDeleteInput, MemoryDeleteOutput>(
             "memory_delete",
             SideEffect::Mutation,
             true,
@@ -961,7 +1127,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "memory_list_namespaces".to_string(),
-        method_decl_from_schemars_with_output::<(), MemoryListNamespacesOutput>(
+        method_decl_from_schemars_with_output::<NoArgs, MemoryListNamespacesOutput>(
             "memory_list_namespaces",
             SideEffect::Read,
             true,
@@ -1007,6 +1173,67 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             false,
             "cognitive_mcp.invoke",
             "mut.software.rust-pro.execute@v1",
+        ),
+    );
+    schema.methods.insert(
+        "memory_semantic_query".to_string(),
+        method_decl_from_schemars_with_output::<MemorySemanticQueryInput, MemorySemanticQueryOutput>(
+            "memory_semantic_query",
+            SideEffect::Read,
+            true,
+            "cognitive_mcp.read",
+            "obs.service.cognitive-mcp.memory.semantic-query@v1",
+        ),
+    );
+    // Hot agents: every one of these has an in-process executor registered as
+    // `agent_<type>_<operation>` by op-cognitive-mcp's agent_tools; the bridge
+    // maps the method to that tool after validating the operation.
+    for (method, subid) in [
+        ("python_pro", "mut.software.python-pro.execute@v1"),
+        ("typescript_pro", "mut.software.typescript-pro.execute@v1"),
+    ] {
+        schema.methods.insert(
+            method.to_string(),
+            method_decl_from_schemars_with_output::<ExecutorAgentInput, AgentOperationOutput>(
+                method,
+                SideEffect::Mutation,
+                false,
+                "cognitive_mcp.invoke",
+                subid,
+            ),
+        );
+    }
+    for (method, subid) in [
+        (
+            "sequential_thinking",
+            "mut.service.sequential-thinking.execute@v1",
+        ),
+        ("context_manager", "mut.service.context-manager.execute@v1"),
+        (
+            "code_review_orchestrator",
+            "mut.service.code-review-orchestrator.execute@v1",
+        ),
+    ] {
+        schema.methods.insert(
+            method.to_string(),
+            method_decl_from_schemars_with_output::<WorkflowAgentInput, AgentOperationOutput>(
+                method,
+                SideEffect::Mutation,
+                false,
+                "cognitive_mcp.invoke",
+                subid,
+            ),
+        );
+    }
+    // Dynamically assembled specialist: replaces static advisor personas.
+    schema.methods.insert(
+        "specialist".to_string(),
+        method_decl_from_schemars_with_output::<SpecialistInput, SpecialistOutput>(
+            "specialist",
+            SideEffect::Read,
+            false,
+            "cognitive_mcp.read",
+            "obs.service.cognitive-mcp.specialist.consult@v1",
         ),
     );
     schema.methods.insert(
@@ -1240,12 +1467,32 @@ mod tests {
             "oscal_subids",
             "gemini_query",
             "invoke_tool",
+            // 2026-09-19: semantic recall, hot executors/workflow agents and the
+            // dynamically assembled specialist (static advisors are not methods).
+            "memory_semantic_query",
+            "python_pro",
+            "typescript_pro",
+            "sequential_thinking",
+            "context_manager",
+            "code_review_orchestrator",
+            "specialist",
         ];
         assert_eq!(
             schema.methods.len(),
             expected_methods.len(),
             "sealed bridge-owned cognitive method inventory drifted"
         );
+        for retired_static_advisor in [
+            "debugger",
+            "dbus_expert",
+            "network_engineer",
+            "security_auditor",
+        ] {
+            assert!(
+                !schema.methods.contains_key(retired_static_advisor),
+                "static advisor persona {retired_static_advisor} must not be a schema method"
+            );
+        }
         for method in expected_methods {
             assert!(
                 schema.methods.contains_key(method),

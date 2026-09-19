@@ -381,6 +381,9 @@ pub struct MutationEngine {
     /// reached only after a call has entered PluginService/MutationEngine; it
     /// never opens a second listener or becomes a parallel control plane.
     cognitive_mcp: Arc<OnceCell<Arc<CognitiveMcpServer>>>,
+    /// Knowledge pushes produced by the context engine, waiting to be
+    /// consumed by the next chatbot turn or `specialist` call of that session.
+    knowledge_inbox: crate::knowledge_inbox::KnowledgeInbox,
     chatbot_episode_cozo: Arc<OnceCell<Arc<op_cozo_store::CozoGraphShuttle>>>,
     /// Private memory methods share one writer lock and the existing Cozo
     /// handle; request context determines their principal/session namespace.
@@ -1168,6 +1171,7 @@ impl MutationEngine {
             ovsdb_monitor_state: Arc::new(Mutex::new(())),
             chat_manager: Arc::new(ChatManager::new()),
             cognitive_mcp: Arc::new(OnceCell::new()),
+            knowledge_inbox: crate::knowledge_inbox::KnowledgeInbox::default(),
             chatbot_episode_cozo: Arc::new(OnceCell::new()),
             memory_methods: Arc::new(OnceCell::new()),
             sess_decl_methods: Arc::new(OnceCell::new()),
@@ -1452,7 +1456,7 @@ impl MutationEngine {
         .await
     }
 
-    async fn cognitive_mcp(&self) -> anyhow::Result<&Arc<CognitiveMcpServer>> {
+    pub(crate) async fn cognitive_mcp(&self) -> anyhow::Result<&Arc<CognitiveMcpServer>> {
         self.cognitive_mcp
             .get_or_try_init(|| async {
                 let path = std::env::var("COGNITIVE_MCP_DB_PATH")
@@ -1469,9 +1473,20 @@ impl MutationEngine {
                 if let Some(episodes) = self.chatbot_episode_cozo.get() {
                     episodes.ensure_distinct_from(&server.cozo_shuttle())?;
                 }
+                // The control-plane chatbot is the consumer of the context
+                // engine's knowledge pushes: drain them into the per-session
+                // inbox that the next turn / `specialist` call reads.
+                self.knowledge_inbox
+                    .consume(server.context_engine().subscribe_pushes());
                 Ok(Arc::new(server))
             })
             .await
+    }
+
+    /// Drain the knowledge pushes waiting for `scope`, oldest first, as
+    /// rendered context lines. Expired pushes are dropped.
+    pub(crate) async fn take_pending_knowledge(&self, scope: &str) -> Vec<String> {
+        self.knowledge_inbox.take(scope).await
     }
 
     /// Open the durable audit sink and rebuild the in-memory event chain from it.
@@ -4022,7 +4037,16 @@ impl MutationEngine {
             }
             "cognitive_mcp" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                self.dispatch_cognitive_mcp_method(method, &args).await?
+                self.dispatch_cognitive_mcp_method(
+                    crate::specialist::CognitiveCaller {
+                        actor_id,
+                        session_id,
+                        session_genesis,
+                    },
+                    method,
+                    &args,
+                )
+                .await?
             }
             "oscal_subid_registry" => {
                 crate::oscal_dispatch::dispatch(
@@ -4225,6 +4249,44 @@ impl MutationEngine {
             if let Some(origin) = &facade_origin {
                 origin.readmit(self, &caller).await?;
             }
+            // The control-plane chatbot consumes what the session already
+            // knows: recent episodes, namespace memory, semantic recall,
+            // activity signals and pending knowledge pushes, scoped to this
+            // principal/session and bounded. Injected as the first system
+            // message; the episode records what was drawn on.
+            let turn_query = goal_text.clone().unwrap_or_default();
+            let bundle = crate::context_bundle::assemble_for_turn(self, &scope, &turn_query).await;
+            let mut args = args;
+            if let Some(recalled) = bundle.render(crate::context_bundle::TURN_BUDGET_CHARS) {
+                if args.messages.is_empty() && !args.message.trim().is_empty() {
+                    let message = std::mem::take(&mut args.message);
+                    args.messages
+                        .push(op_plugins::state_plugins::tched_router::TchedChatMessage {
+                            role: "user".into(),
+                            content: message,
+                        });
+                }
+                args.messages.insert(
+                    0,
+                    op_plugins::state_plugins::tched_router::TchedChatMessage {
+                        role: "system".into(),
+                        content: recalled,
+                    },
+                );
+            }
+            let provenance = bundle.provenance();
+            // The turn itself is session activity for the context engine.
+            if let Ok(runtime) = self.cognitive_mcp().await {
+                runtime
+                    .context_engine()
+                    .record_activity(
+                        &scope.session_id,
+                        op_cognitive_mcp::context_awareness::ActivityType::Query,
+                        turn_query.clone(),
+                        serde_json::json!({ "source": "tched_router.chat", "context": provenance }),
+                    )
+                    .await;
+            }
             // Selected model on tched-router (:8084). Tools are compact MCP on
             // that agent; the bridge does not own a second provider state.
             let output = crate::tched_router_runtime::TchedRouterRuntimeClient::from_env()
@@ -4237,7 +4299,7 @@ impl MutationEngine {
                         conversation_id,
                         goal_text,
                         decision_output: output.content.clone(),
-                        tools: Vec::new(),
+                        tools: provenance,
                         started_at,
                         ended_at: completed_effect_time(started_at, started_clock.elapsed()),
                     },
@@ -5592,9 +5654,13 @@ impl MutationEngine {
 
     async fn dispatch_cognitive_mcp_method(
         &self,
+        caller: crate::specialist::CognitiveCaller<'_>,
         method: &str,
         args: &serde_json::Value,
     ) -> anyhow::Result<serde_json::Value> {
+        if method == "specialist" {
+            return crate::specialist::consult(self, caller, args).await;
+        }
         // Bridge-local health answers from the published in-process projection;
         // every cognitive operation below executes through the embedded registry.
         if method == "get_health" {
@@ -5687,7 +5753,48 @@ impl MutationEngine {
         let runtime = self.cognitive_mcp().await?;
         let input = simd_json::serde::to_owned_value(&tool_args)?;
         let result = runtime.tool_registry().execute(&tool_name, input).await?;
-        Ok(serde_json::to_value(result)?)
+        let value = serde_json::to_value(result)?;
+        // Executor outcomes are session activity: a failing build or test is
+        // exactly what the context engine's `build_error`/`test_failure`
+        // triggers exist for, and the resulting knowledge push reaches the
+        // chatbot's next turn (context bundle) or `specialist` call.
+        if tool_name.starts_with("agent_") {
+            let operation = args
+                .get("operation")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default();
+            let success = value
+                .get("success")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(true);
+            let activity = match (success, operation) {
+                (false, "test") => op_cognitive_mcp::context_awareness::ActivityType::TestFailure,
+                (false, _) => op_cognitive_mcp::context_awareness::ActivityType::BuildError,
+                (true, _) => op_cognitive_mcp::context_awareness::ActivityType::ToolCall,
+            };
+            let data = value
+                .get("data")
+                .map(|d| match d {
+                    serde_json::Value::String(text) => text.clone(),
+                    other => other.to_string(),
+                })
+                .unwrap_or_default();
+            let content: String = data.chars().take(4_000).collect();
+            runtime
+                .context_engine()
+                .record_activity(
+                    caller.scope(),
+                    activity,
+                    format!("{method}({operation}): {content}"),
+                    serde_json::json!({
+                        "tool": tool_name,
+                        "success": success,
+                        "path": args.get("path"),
+                    }),
+                )
+                .await;
+        }
+        Ok(value)
     }
 }
 
@@ -5734,6 +5841,23 @@ fn project_sealed_cognitive_tool_descriptor(
 /// registry exposes a single `cognitive_memory` tool selected by an `operation`
 /// field, so the memory methods inject that field rather than existing as separate
 /// tools. `invoke_tool` bypasses the table entirely and names its tool directly.
+/// Validate a hot agent method's `operation` against the operations its
+/// catalog descriptor declares.
+fn hot_agent_operation<'a>(
+    method: &str,
+    args: &'a serde_json::Value,
+    allowed: &[&str],
+) -> anyhow::Result<&'a str> {
+    let operation = args
+        .get("operation")
+        .and_then(|value| value.as_str())
+        .ok_or_else(|| anyhow::anyhow!("{method}: missing required field 'operation'"))?;
+    if !allowed.contains(&operation) {
+        anyhow::bail!("{method}: unsupported operation '{operation}'");
+    }
+    Ok(operation)
+}
+
 fn map_schema_method_to_tool(
     method: &str,
     args: &serde_json::Value,
@@ -5769,10 +5893,42 @@ fn map_schema_method_to_tool(
             "cognitive_memory".into(),
             with_field("operation", "list_namespaces"),
         )),
+        "memory_semantic_query" => Ok((
+            "cognitive_memory".into(),
+            with_field("operation", "semantic_query"),
+        )),
         // Code retrieval / indexing.
         "code_search" => Ok(("code_search".into(), base)),
         "code_index" => Ok(("code_index".into(), base)),
         "code_context" => Ok(("code_context".into(), base)),
+        // Hot agents: `agent_<type>_<operation>` executors registered by
+        // op-cognitive-mcp's agent_tools. The operation must be one the
+        // agent's catalog descriptor declares; the schema enum already
+        // constrains it, this is the fail-closed backstop.
+        "python_pro" | "typescript_pro" => {
+            let operation = hot_agent_operation(
+                method,
+                args,
+                &["run", "test", "lint", "format", "typecheck", "install"],
+            )?;
+            let mut tool_args = serde_json::json!({});
+            if let Some(path) = args.get("path").and_then(|value| value.as_str()) {
+                tool_args["path"] = serde_json::Value::String(path.to_string());
+            }
+            if let Some(extra) = args.get("args").and_then(|value| value.as_str()) {
+                tool_args["args"] = serde_json::Value::String(extra.to_string());
+            }
+            Ok((format!("agent_{method}_{operation}"), tool_args))
+        }
+        "sequential_thinking" | "context_manager" | "code_review_orchestrator" => {
+            let operation =
+                hot_agent_operation(method, args, &["run_workflow", "list_steps", "validate"])?;
+            let mut tool_args = serde_json::json!({});
+            if let Some(extra) = args.get("args").and_then(|value| value.as_str()) {
+                tool_args["args"] = serde_json::Value::String(extra.to_string());
+            }
+            Ok((format!("agent_{method}_{operation}"), tool_args))
+        }
         "rust_pro" => {
             let operation = args
                 .get("operation")
@@ -5907,6 +6063,47 @@ mod cognitive_dispatch_tests {
         .expect("mapping must exist");
         assert_eq!(tool, "cognitive_memory");
         assert_eq!(args["operation"], "store");
+    }
+
+    #[test]
+    fn hot_agents_map_to_their_registered_executor_tools() {
+        let (tool, args) = map_schema_method_to_tool(
+            "python_pro",
+            &serde_json::json!({"operation": "test", "path": "/srv/git/x", "args": "-k smoke"}),
+        )
+        .unwrap();
+        assert_eq!(tool, "agent_python_pro_test");
+        assert_eq!(args["path"], "/srv/git/x");
+        assert_eq!(args["args"], "-k smoke");
+
+        let (tool, args) = map_schema_method_to_tool(
+            "sequential_thinking",
+            &serde_json::json!({"operation": "run_workflow", "args": "plan the migration"}),
+        )
+        .unwrap();
+        assert_eq!(tool, "agent_sequential_thinking_run_workflow");
+        assert_eq!(args["args"], "plan the migration");
+
+        // Operations outside the agent's catalog are refused; static advisor
+        // personas are not registry tools any more (see `specialist`).
+        assert!(map_schema_method_to_tool(
+            "python_pro",
+            &serde_json::json!({"operation": "clippy", "path": "/x"})
+        )
+        .is_err());
+        assert!(map_schema_method_to_tool(
+            "dbus_expert",
+            &serde_json::json!({"operation": "explain", "args": "q"})
+        )
+        .is_err());
+        let (tool, args) = map_schema_method_to_tool(
+            "memory_semantic_query",
+            &serde_json::json!({"query": "what did we decide about ledger ids?"}),
+        )
+        .unwrap();
+        assert_eq!(tool, "cognitive_memory");
+        assert_eq!(args["operation"], "semantic_query");
+        assert_eq!(args["query"], "what did we decide about ledger ids?");
     }
 
     #[test]

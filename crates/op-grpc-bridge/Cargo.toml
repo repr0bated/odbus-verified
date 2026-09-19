@@ -52,6 +52,7 @@ op-cozo-store = { path = "../op-cozo-store" }
 op-jsonrpc = { path = "../op-jsonrpc" }
 op-mcp.workspace = true
 op-cognitive-mcp = { path = "../op-cognitive-mcp" }
+op-agents = { path = "../op-agents" }
 op-llm = { path = "../op-llm" }
 op-xray-daemon = { path = "../op-xray-daemon" }
 nix = { version = "0.28", features = ["fs", "signal", "user"] }

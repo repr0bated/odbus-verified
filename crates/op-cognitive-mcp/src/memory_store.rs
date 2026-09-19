@@ -93,6 +93,9 @@ pub struct MemoryEntry {
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct EntryQuery {
+    /// The namespace **name** (the `memory_entries` relation is keyed by
+    /// name, not by the namespace record's uuid). Kept as `namespace_id` for
+    /// the existing callers across crates.
     pub namespace_id: Option<String>,
     pub key_pattern: Option<String>,
     pub tags: Option<Vec<String>>,
@@ -607,6 +610,112 @@ fn parse_ts(s: &str) -> DateTime<Utc> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Chatbot and user memory must outlive the process and stay in their
+    /// own namespaces: the chatbot's namespace, a user's namespace, and the
+    /// shared `agent_pieces` pool are distinct and all come back after a reopen.
+    #[tokio::test]
+    async fn namespaces_and_entries_survive_a_reopen_and_stay_separate() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("memory");
+        {
+            let shuttle = Arc::new(CozoGraphShuttle::new_persistent(path.clone()).unwrap());
+            let store = CognitiveMemoryStore::new(shuttle).await.unwrap();
+            for (name, kind) in [
+                ("ctl_plane_chatbot", NamespaceKind::Agent),
+                ("user:alice", NamespaceKind::Session),
+                ("agent_pieces", NamespaceKind::Agent),
+            ] {
+                store
+                    .upsert_namespace(
+                        name,
+                        kind,
+                        Some("fixture"),
+                        None,
+                        None,
+                        serde_json::json!({}),
+                    )
+                    .await
+                    .unwrap();
+            }
+            store
+                .store_entry(
+                    "ctl_plane_chatbot",
+                    "ledger_id_decision",
+                    serde_json::json!("parked: OD-59"),
+                    vec!["decision".into()],
+                    None,
+                )
+                .await
+                .unwrap();
+            store
+                .store_entry(
+                    "user:alice",
+                    "preferred_editor",
+                    serde_json::json!("helix"),
+                    vec![],
+                    None,
+                )
+                .await
+                .unwrap();
+            store
+                .store_entry(
+                    "agent_pieces",
+                    "rust_async_lock",
+                    serde_json::json!({"kind":"knowledge","domains":["rust"],"title":"Async lock rule","body":"Never hold a std Mutex across an await."}),
+                    vec!["rust".into()],
+                    None,
+                )
+                .await
+                .unwrap();
+        }
+        // Process restart.
+        let shuttle = Arc::new(CozoGraphShuttle::new_persistent(path).unwrap());
+        let store = CognitiveMemoryStore::new(shuttle).await.unwrap();
+        let names: Vec<String> = store
+            .list_namespaces(None)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|n| n.name)
+            .collect();
+        for expected in ["ctl_plane_chatbot", "user:alice", "agent_pieces"] {
+            assert!(
+                names.iter().any(|n| n == expected),
+                "namespace {expected} persisted: {names:?}"
+            );
+        }
+        let decision = store
+            .retrieve_entry("ctl_plane_chatbot", "ledger_id_decision")
+            .await
+            .unwrap()
+            .expect("chatbot memory persisted");
+        assert_eq!(decision.value, serde_json::json!("parked: OD-59"));
+        let editor = store
+            .retrieve_entry("user:alice", "preferred_editor")
+            .await
+            .unwrap()
+            .expect("user memory persisted");
+        assert_eq!(editor.value, serde_json::json!("helix"));
+        // Namespaces do not bleed into each other.
+        assert!(store
+            .retrieve_entry("user:alice", "ledger_id_decision")
+            .await
+            .unwrap()
+            .is_none());
+        let entries = store
+            .query_entries(EntryQuery {
+                namespace_id: Some("agent_pieces".into()),
+                key_pattern: None,
+                tags: Some(vec!["rust".into()]),
+                limit: Some(10),
+                offset: None,
+            })
+            .await
+            .unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].key, "rust_async_lock");
+    }
 
     #[tokio::test]
     async fn query_entries_returns_active_rows_and_filters_expired_rows() {

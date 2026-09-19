@@ -69,3 +69,6 @@ path = "src/bin/op-chain-vectors.rs"
 
 [build-dependencies]
 tonic-build = { version = "0.12" }
+
+[dev-dependencies]
+tempfile = { workspace = true }
