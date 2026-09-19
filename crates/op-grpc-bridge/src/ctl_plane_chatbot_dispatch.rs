@@ -919,6 +919,7 @@ mod tests {
             conversation_id: Some("fixture".into()),
             content_hash: String::new(),
             pii_flagged: true,
+            run: None,
         };
         episode.content_hash =
             op_plugins::state_plugins::ctl_plane_chatbot_methods::episode_content_hash(&episode)

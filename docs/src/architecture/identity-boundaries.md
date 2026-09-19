@@ -146,6 +146,39 @@ identity picture is a *doorbell*:
   must be re-minted to gain `mqtt` before a container session can use the
   doorbell (browsers use OIA1 and are unaffected).
 
+### 3.2b Event-triggered agent runs (OD-63, 2026-09-19)
+
+The loop of EMQX Cloud "Agents" (trigger → run → tools → run record),
+hosted here and inside the identity model. Spec:
+`docs/specs/od-63-event-triggered-agents/`.
+
+- **Triggers are sealed `persona` plugin state** (`list_triggers` /
+  `set_trigger` / `delete_trigger`, durable runtime document with CAS
+  revisions): `{topic_filter, agent_session_id, instructions,
+  allowed_methods, max_payload_bytes, max_actions, timeout_ms}`. Filters can
+  never reach `opdbus/` or `$` topics and must start with a literal level.
+- **The broker only delivers the event.** The exhook's `message.publish`
+  (already loopback mTLS) matches enabled triggers and enqueues a bounded
+  run; the payload is read only on a match and only up to the trigger's
+  bound; the publish verdict stays the broker's.
+- **A run executes under an agent identity sled.** The trigger's
+  `agent_session_id` must resolve to an anchored, unexpired sled whose
+  principal is registered and unrevoked (`verified_session`) or the run is
+  dropped before any effect — no fallback actor. Every action is a plugin
+  method dispatched through `dispatch_method_call_with_identity` with the
+  agent's `(principal, session, genesis)`, so it carries the agent's
+  `sealed_id_digest` and must pass the agent's own grants and the sealed
+  method contract's declared capability; the trigger's `allowed_methods` is
+  a further allow-list. The model's answer is untrusted; the publisher is
+  never an identity.
+- **The run record is an episode in the agent's own private scope**
+  (`ReasoningEpisode.run: RunRecord{status, trigger_id, topic_ref (digest),
+  queued_ms, duration_ms, tokens_in, tokens_out, actions[]}`), committed
+  through the same durable + private SHM path as chat episodes. Statuses:
+  queued / running / succeeded / dropped / failed / timeout.
+- Operator steps: mint the agent's sled like any principal (register its key,
+  anchor a genesis), materialize its grants, then `set_trigger`.
+
 ### 3.3 Xray container (EXTERNAL, unchanged)
 
 - Passthrough only: SNI/protocol sniffing, no TLS termination for this

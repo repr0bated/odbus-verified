@@ -14,6 +14,7 @@
 // ---------------------------------------------------------------------------
 pub mod adc;
 pub mod agent_config;
+pub mod agent_triggers;
 pub mod antigravity;
 pub mod antigravity_chat;
 pub mod btrfs_plugin;

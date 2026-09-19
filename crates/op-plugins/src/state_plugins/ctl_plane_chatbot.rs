@@ -364,6 +364,55 @@ pub struct ReasoningEpisode {
         extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.pii-flagged@v1")
     )]
     pub pii_flagged: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        description = "Present when the episode is an event-triggered agent run (OD-63): status, timing, token usage and the action timeline",
+        extend("readOnly" = true),
+        extend("x-oscal-subid" = "obs.software.plugin.ctl-plane-chatbot.run@v1")
+    )]
+    pub run: Option<RunRecord>,
+}
+
+/// Terminal state of an event-triggered agent run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RunStatus {
+    Succeeded,
+    Dropped,
+    Failed,
+    Timeout,
+}
+
+/// One action the run performed (or was refused).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RunAction {
+    /// `plugin.method`.
+    pub method: String,
+    pub ok: bool,
+    pub duration_ms: u64,
+    /// Refusal or error, bounded.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// The run record an event-triggered agent commits with its episode.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RunRecord {
+    pub status: RunStatus,
+    pub trigger_id: String,
+    /// blake3 digest of the triggering topic (the topic itself may be data).
+    pub topic_ref: String,
+    pub queued_ms: u64,
+    pub duration_ms: u64,
+    pub tokens_in: u64,
+    pub tokens_out: u64,
+    #[serde(default)]
+    pub actions: Vec<RunAction>,
+    /// Why the run ended other than `succeeded`, bounded.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -460,7 +509,7 @@ pub struct KnowledgePush {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.software.plugin.ctl-plane-chatbot.schema@v5"))]
+#[schemars(extend("x-oscal-subid" = "sch.software.plugin.ctl-plane-chatbot.schema@v6"))]
 #[schemars(extend("x-oscal-category" = "llm"))]
 pub struct CtlPlaneChatbotState {
     #[serde(default)]
@@ -636,7 +685,7 @@ impl StatePlugin for CtlPlaneChatbotPlugin {
         "ctl_plane_chatbot"
     }
     fn version(&self) -> &str {
-        "4.1.0"
+        "4.2.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -738,7 +787,7 @@ pub(crate) fn ctl_plane_chatbot_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "ctl_plane_chatbot",
-        "4.1.0",
+        "4.2.0",
         "Control-plane chatbot reasoning episode contract, PII-aware significance rules, durable singleton configuration, and typed embedding facade",
         &root,
     );
@@ -890,7 +939,7 @@ mod tests {
     #[test]
     fn v3_methods_are_typed_and_pure_classification_is_idempotent() {
         let schema = ctl_plane_chatbot_schema();
-        assert_eq!(schema.version, "4.1.0");
+        assert_eq!(schema.version, "4.2.0");
         for method in [
             "get_config",
             "set_config",

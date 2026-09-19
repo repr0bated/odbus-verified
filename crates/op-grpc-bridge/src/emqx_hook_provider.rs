@@ -36,18 +36,35 @@ pub struct HookProviderService {
     /// Doorbell OIA1 verification: the same validator family as the door
     /// (trust store, replay store, source binding from the environment).
     assertion_validator: Arc<crate::oracle_assertion::AssertionValidator>,
+    /// Event-triggered agent runs (OD-63): match + enqueue on publish.
+    triggers: crate::agent_triggers::TriggerMatcher,
 }
 
 impl HookProviderService {
     pub fn new(mutation_engine: Arc<MutationEngine>) -> Self {
+        let queue = crate::agent_runs::RunQueue::spawn(
+            mutation_engine.clone(),
+            crate::agent_runs::DEFAULT_CAPACITY,
+            crate::agent_runs::DEFAULT_CONCURRENCY,
+        );
+        Self::with_queue(mutation_engine, queue)
+    }
+
+    pub(crate) fn with_queue(
+        mutation_engine: Arc<MutationEngine>,
+        queue: crate::agent_runs::RunQueue,
+    ) -> Self {
         let assertion_validator = Arc::new(crate::oracle_assertion::AssertionValidator::from_env(
             crate::oracle_assertion::DecoyTrustStore::load(),
         ));
         Self {
             mutation_engine,
             assertion_validator,
+            triggers: crate::agent_triggers::TriggerMatcher::new(queue),
         }
     }
+
+
 
     /// Record a broker observation, never a fictitious mutation/tool call.
     async fn record_event(
@@ -418,6 +435,16 @@ impl HookProvider for HookProviderService {
                     None,
                 )
                 .await;
+            // OD-63: a matching trigger enqueues a run; the payload is read
+            // only for a match and bounded by the trigger. The verdict is
+            // still the broker's.
+            let enqueued = self
+                .triggers
+                .on_publish(&message.topic, &message.payload)
+                .await;
+            if enqueued > 0 {
+                debug!(enqueued, topic = %message.topic, "agent runs enqueued");
+            }
         }
         Ok(ignore())
     }

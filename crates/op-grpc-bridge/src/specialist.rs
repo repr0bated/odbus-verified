@@ -150,6 +150,20 @@ pub async fn consult(
     Ok(serde_json::to_value(result)?)
 }
 
+/// Compose a persona for `task` from the shared pool, refreshed with memory
+/// pieces when the cognitive runtime is available (best effort). Used by
+/// event-triggered runs, which have no caller session of their own.
+pub(crate) async fn assemble_for_task(
+    engine: &MutationEngine,
+    task: &TaskContext,
+) -> AssembledPersona {
+    if let Ok(runtime) = engine.cognitive_mcp().await {
+        refresh_memory_pieces(runtime).await;
+    }
+    let library = LIBRARY.read().await;
+    assemble(&library, task, PERSONA_BUDGET_CHARS)
+}
+
 fn operation_name(input: &SpecialistInput) -> String {
     serde_json::to_value(&input.operation)
         .ok()

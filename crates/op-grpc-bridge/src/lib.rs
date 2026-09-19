@@ -21,6 +21,8 @@
 //!     └─────────────────┘            └─────────────────┘
 //! ```
 
+mod agent_runs;
+mod agent_triggers;
 mod antigravity_dispatch;
 pub mod chat_service;
 mod chatbot_episode_state;

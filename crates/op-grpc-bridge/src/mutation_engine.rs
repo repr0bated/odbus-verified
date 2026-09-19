@@ -1298,7 +1298,12 @@ impl MutationEngine {
             .map_err(|_| anyhow::anyhow!("chatbot episode Cozo owner is already configured"))
     }
 
-    #[cfg(test)]
+    /// Admit and commit an episode in one step. The chat path admits before
+    /// its native effect (it must not lose the receipt of a completed
+    /// completion); an event-triggered run's actions are each admitted
+    /// mutations of their own, so its record is admitted at the end — a
+    /// sled revoked mid-run then refuses the record, not the fail-closed
+    /// actions.
     pub(crate) async fn commit_chatbot_episode(
         &self,
         row: op_cozo_store::ScopedEpisodeRecord,

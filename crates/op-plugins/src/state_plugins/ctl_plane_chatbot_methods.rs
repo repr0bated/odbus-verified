@@ -33,6 +33,78 @@ pub struct CompletedChatEpisode {
     pub ended_at: chrono::DateTime<chrono::Utc>,
 }
 
+/// An event-triggered agent run, committed as an episode in the agent's own
+/// scope (`Trigger::SystemEvent`), with its run record.
+pub struct CompletedAgentRun {
+    pub scope: op_cozo_store::EpisodeScope,
+    pub trigger_id: String,
+    pub goal_text: String,
+    pub summary: String,
+    pub tools: Vec<String>,
+    pub started_at: chrono::DateTime<chrono::Utc>,
+    pub ended_at: chrono::DateTime<chrono::Utc>,
+    pub run: super::ctl_plane_chatbot::RunRecord,
+}
+
+pub fn build_completed_agent_run(
+    input: CompletedAgentRun,
+) -> Result<op_cozo_store::ScopedEpisodeRecord> {
+    use super::ctl_plane_chatbot::{ExitReason, RunStatus, Trigger};
+    ensure!(
+        input.ended_at >= input.started_at,
+        "agent run ended before it started"
+    );
+    let duration_ms = u64::try_from(
+        input
+            .ended_at
+            .signed_duration_since(input.started_at)
+            .num_milliseconds(),
+    )
+    .context("agent run duration is invalid")?;
+    let (exit_reason, outcome_class) = match input.run.status {
+        RunStatus::Succeeded if input.run.actions.iter().any(|a| a.ok) => {
+            (ExitReason::ToolCall, OutcomeClass::GoalAchieved)
+        }
+        RunStatus::Succeeded => (ExitReason::ResponseEmitted, OutcomeClass::GoalAchieved),
+        RunStatus::Timeout | RunStatus::Dropped => {
+            (ExitReason::Interrupt, OutcomeClass::Interrupted)
+        }
+        RunStatus::Failed => (ExitReason::ResponseEmitted, OutcomeClass::Inconclusive),
+    };
+    let mut episode = ReasoningEpisode {
+        principal_id: input.scope.principal_id.clone(),
+        session_id: input.scope.session_id.clone(),
+        session_genesis: input.scope.session_genesis.clone(),
+        on_behalf_of: input.scope.principal_id.clone(),
+        episode_id: uuid::Uuid::now_v7().to_string(),
+        started_at: input.started_at.to_rfc3339(),
+        ended_at: input.ended_at.to_rfc3339(),
+        duration_ms,
+        trigger: Trigger::SystemEvent,
+        exit_reason,
+        goal_text: Some(input.goal_text),
+        reasoning_summary: None,
+        tools_consulted: input.tools,
+        decision_output: Some(input.summary),
+        outcome_class,
+        confidence: None,
+        plugin_id: Some("persona".into()),
+        conversation_id: Some(format!("trigger:{}", input.trigger_id)),
+        content_hash: String::new(),
+        pii_flagged: true,
+        run: Some(input.run),
+    };
+    episode.content_hash = episode_content_hash(&episode)?;
+    validate_episode(&episode)?;
+    Ok(op_cozo_store::ScopedEpisodeRecord {
+        scope: input.scope,
+        episode_id: episode.episode_id.clone(),
+        content_hash: episode.content_hash.clone(),
+        episode: serde_json::to_value(episode)?,
+        embedding: None,
+    })
+}
+
 pub fn build_completed_chat_episode(
     input: CompletedChatEpisode,
 ) -> Result<op_cozo_store::ScopedEpisodeRecord> {
@@ -66,6 +138,7 @@ pub fn build_completed_chat_episode(
         conversation_id: input.conversation_id,
         content_hash: String::new(),
         pii_flagged: true,
+        run: None,
     };
     episode.content_hash = episode_content_hash(&episode)?;
     validate_episode(&episode)?;
@@ -555,6 +628,29 @@ pub fn validate_episode(episode: &ReasoningEpisode) -> Result<()> {
             .is_none_or(|value| value.is_finite() && (0.0..=1.0).contains(&value)),
         "reasoning confidence must be finite and between zero and one"
     );
+    if let Some(run) = &episode.run {
+        ensure!(
+            !run.trigger_id.is_empty() && run.trigger_id.len() <= 64,
+            "run trigger_id must be 1..=64 bytes"
+        );
+        ensure!(
+            run.topic_ref.len() == 64 && run.topic_ref.bytes().all(|b| b.is_ascii_hexdigit()),
+            "run topic_ref must be a 64-hex digest"
+        );
+        ensure!(run.actions.len() <= 64, "run records at most 64 actions");
+        ensure!(
+            run.actions.iter().all(|a| {
+                !a.method.is_empty()
+                    && a.method.len() <= 256
+                    && a.error.as_ref().is_none_or(|e| e.len() <= 1024)
+            }),
+            "run action is invalid"
+        );
+        ensure!(
+            run.reason.as_ref().is_none_or(|r| r.len() <= 1024),
+            "run reason exceeds 1024 bytes"
+        );
+    }
     ensure!(
         episode.content_hash.len() == 64
             && episode
@@ -687,6 +783,7 @@ mod tests {
             conversation_id: None,
             content_hash: String::new(),
             pii_flagged: false,
+            run: None,
         };
         episode.content_hash = episode_content_hash(&episode).unwrap();
         episode

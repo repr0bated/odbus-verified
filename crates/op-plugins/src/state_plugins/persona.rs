@@ -19,7 +19,7 @@ use simd_json::OwnedValue as Value;
 // =============================================================================
 
 const PLUGIN_NAME: &str = "persona";
-const PLUGIN_VERSION: &str = "1.0.0";
+const PLUGIN_VERSION: &str = "1.1.0";
 const PLUGIN_CATEGORY: &str = "agents";
 const PLUGIN_DESCRIPTION: &str =
     "Agent persona catalog — built-in agent types, names, descriptions, operations";
@@ -90,7 +90,7 @@ pub struct PersonaOperationSchema {
 
 /// Persona catalog live state.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.agent.plugin.persona.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.agent.plugin.persona.schema@v2"))]
 #[schemars(extend("x-oscal-category" = "agents"))]
 pub struct PersonaState {
     /// Current status.
@@ -283,6 +283,32 @@ pub async fn dispatch_persona_method(
         }
         "set_identity" | "SetIdentity" => {
             anyhow::bail!("persona catalog is read-only (code-defined in op-agents)")
+        }
+        "list_triggers" => {
+            let _: super::agent_triggers::ListTriggersInput = serde_json::from_value(args.clone())
+                .map_err(|e| anyhow::anyhow!("invalid list_triggers args: {e}"))?;
+            let documents = super::runtime_documents::runtime_documents().await?;
+            Ok(serde_json::to_value(
+                super::agent_triggers::list_triggers(&documents).await?,
+            )?)
+        }
+        "set_trigger" => {
+            let input: super::agent_triggers::SetTriggerInput =
+                serde_json::from_value(args.clone())
+                    .map_err(|e| anyhow::anyhow!("invalid set_trigger args: {e}"))?;
+            let documents = super::runtime_documents::runtime_documents().await?;
+            Ok(serde_json::to_value(
+                super::agent_triggers::set_trigger(&documents, input).await?,
+            )?)
+        }
+        "delete_trigger" => {
+            let input: super::agent_triggers::DeleteTriggerInput =
+                serde_json::from_value(args.clone())
+                    .map_err(|e| anyhow::anyhow!("invalid delete_trigger args: {e}"))?;
+            let documents = super::runtime_documents::runtime_documents().await?;
+            Ok(serde_json::to_value(
+                super::agent_triggers::delete_trigger(&documents, input).await?,
+            )?)
         }
         "authenticate" | "Authenticate" => Ok(serde_json::to_value(AuthenticateOutput {
             authenticated: false,
@@ -482,18 +508,57 @@ pub fn persona_schema() -> PluginSchema {
         ),
     );
 
+    // Event triggers (OD-63): durable, revisioned, sealed here.
+    {
+        use super::agent_triggers::{
+            DeleteTriggerInput, DeleteTriggerOutput, ListTriggersInput, ListTriggersOutput,
+            SetTriggerInput, SetTriggerOutput,
+        };
+        schema.methods.insert(
+            "list_triggers".to_string(),
+            method_decl_from_schemars_with_output::<ListTriggersInput, ListTriggersOutput>(
+                "list_triggers",
+                SideEffect::Read,
+                true,
+                "persona.read",
+                "obs.agent.persona.triggers.list@v1",
+            ),
+        );
+        schema.methods.insert(
+            "set_trigger".to_string(),
+            method_decl_from_schemars_with_output::<SetTriggerInput, SetTriggerOutput>(
+                "set_trigger",
+                SideEffect::Mutation,
+                true,
+                "persona.write",
+                "mut.agent.persona.triggers.set@v1",
+            ),
+        );
+        schema.methods.insert(
+            "delete_trigger".to_string(),
+            method_decl_from_schemars_with_output::<DeleteTriggerInput, DeleteTriggerOutput>(
+                "delete_trigger",
+                SideEffect::Mutation,
+                true,
+                "persona.write",
+                "mut.agent.persona.triggers.delete@v1",
+            ),
+        );
+    }
+
     schema.capabilities.insert(
         "persona.read".to_string(),
         op_state_store::CapabilityDecl {
             id: "persona.read".to_string(),
-            description: "Grants: get_identity.".to_string(),
+            description: "Grants: get_identity, list_triggers.".to_string(),
         },
     );
     schema.capabilities.insert(
         "persona.write".to_string(),
         op_state_store::CapabilityDecl {
             id: "persona.write".to_string(),
-            description: "Grants: set_identity, authenticate.".to_string(),
+            description: "Grants: set_identity, authenticate, set_trigger, delete_trigger."
+                .to_string(),
         },
     );
     schema.capabilities.insert(
