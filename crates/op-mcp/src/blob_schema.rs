@@ -378,8 +378,14 @@ mod tests {
     }
 
     fn tempfile_dir() -> TempDir {
+        // Unique per process *and* per call: tests in this module run in
+        // parallel, and a clock-only name let two of them share (and one of
+        // them delete) the same directory.
+        static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let path = std::env::temp_dir().join(format!(
-            "op-mcp-blob-schema-{}",
+            "op-mcp-blob-schema-{}-{}-{}",
+            std::process::id(),
+            COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
