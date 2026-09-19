@@ -257,8 +257,9 @@ fn default_activity_type() -> ActivityType {
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum CodeIndexMode {
+    /// Index a single in-memory file from the live workspace. (Repomix zip
+    /// ingestion is retired from the knowledge loop, 2026-09-19.)
     Source,
-    RepomixZip,
 }
 
 impl Default for CodeIndexMode {
@@ -329,6 +330,7 @@ fn example_code_search_language() -> Option<String> {
 }
 
 fn example_collection() -> Option<String> {
+    // Stored collection name kept for existing deployments.
     Some("repomix_rag".to_string())
 }
 
@@ -589,10 +591,6 @@ pub struct CodeIndexInput {
     pub file_path: Option<String>,
     #[schemars(description = "Raw file content (source mode)")]
     pub content: Option<String>,
-    #[schemars(description = "Path to repomix zip (repomix_zip mode)")]
-    pub zip_path: Option<String>,
-    #[schemars(description = "Entry name within the zip (repomix_zip mode)")]
-    pub entry: Option<String>,
     #[schemars(description = "Override target collection")]
     pub collection: Option<String>,
 }
@@ -836,7 +834,7 @@ pub struct CognitiveMcpState {
     pub code_search: Option<CodeSearchInput>,
     #[schemars(description = "CodeContextTool input: activity-aware context retrieval for the current session.", extend("readOnly" = true), extend("x-oscal-subid" = "exp.service.code-context.render@v1"))]
     pub code_context: Option<CodeContextInput>,
-    #[schemars(description = "CodeIndexTool input: live single-file or repomix-zip indexing into the code corpus.", extend("readOnly" = true), extend("x-oscal-subid" = "src.software.workspace.index@v1"))]
+    #[schemars(description = "CodeIndexTool input: live single-file indexing into the code corpus.", extend("readOnly" = true), extend("x-oscal-subid" = "src.software.workspace.index@v1"))]
     pub code_index: Option<CodeIndexInput>,
 }
 
