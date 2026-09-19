@@ -5837,11 +5837,28 @@ impl MutationEngine {
             .await;
         }
 
-        let (tool_name, tool_args) = map_schema_method_to_tool(method, args)?;
+        // Memory is bound to the principal's selected mode (OD-65): the
+        // namespace comes from the selection, never from the caller.
+        let mut bound_args = args.clone();
+        let memory_context = if crate::memory_binding::is_memory_method(method) {
+            let context =
+                crate::memory_binding::context_for(self, caller.actor_id, caller.session_id)
+                    .await?;
+            crate::memory_binding::bind_args(method, &context, &mut bound_args)?;
+            Some(context)
+        } else {
+            None
+        };
+        let (tool_name, tool_args) = map_schema_method_to_tool(method, &bound_args)?;
         let runtime = self.cognitive_mcp().await?;
         let input = simd_json::serde::to_owned_value(&tool_args)?;
         let result = runtime.tool_registry().execute(&tool_name, input).await?;
-        let value = serde_json::to_value(result)?;
+        let mut value = serde_json::to_value(result)?;
+        if method == "memory_list_namespaces" {
+            if let Some(context) = &memory_context {
+                crate::memory_binding::filter_listing(context, &mut value);
+            }
+        }
         // Executor outcomes are session activity: a failing build or test is
         // exactly what the context engine's `build_error`/`test_failure`
         // triggers exist for, and the resulting knowledge push reaches the

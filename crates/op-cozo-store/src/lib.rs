@@ -270,6 +270,10 @@ impl CozoGraphShuttle {
             r#":create project_catalog { project_id: String => document: String }"#,
             r#":create project_documents { collection: String, document_id: String => document: String }"#,
             r#":create notebooklm_selection { session_id: String => notebook_id: String }"#,
+            // The chat mode a principal selected in the UI (OD-65): mode,
+            // project and personal sub-namespace. Memory tools and recall
+            // bind to it; the principal is always the scope.
+            r#":create chat_context_selection { session_id: String => document: String }"#,
             // Durable plugin-owned runtime values. These documents contain no
             // method schemas and never participate in plugin discovery.
             r#":create plugin_runtime_documents { plugin_id: String => revision: Int, document: String }"#,

@@ -1,6 +1,6 @@
 //! Container-backed projects. Membership names authenticated sessions until
 //! user profiles exist; a project is never an identity credential or a grant.
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
@@ -20,6 +20,66 @@ pub enum ChatMode {
     Project,
     ControlPlane,
     Accountability,
+    /// The selected NotebookLM notebook is the partition.
+    NotebookLm,
+    /// Rendering surface only: no memory is read or written in this mode.
+    UiRender,
+}
+
+impl ChatMode {
+    /// Modes that carry memory at all.
+    pub fn has_memory(self) -> bool {
+        !matches!(self, ChatMode::UiRender)
+    }
+}
+
+/// A user-defined personal sub-namespace name: short, lowercase, no separators.
+pub fn validate_personal_namespace(name: &str) -> Result<()> {
+    ensure!(
+        !name.is_empty()
+            && name.len() <= 64
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-'),
+        "personal namespace must be 1..=64 chars of [a-z0-9_-]"
+    );
+    Ok(())
+}
+
+/// The memory namespace for a session in a mode. The session id is the
+/// principal's account-lifetime identity; projects, notebooks and personal
+/// sub-spaces are partitions under it, never a second scope.
+pub fn memory_namespace_for(
+    mode: ChatMode,
+    session: &str,
+    partition: Option<&str>,
+    personal_namespace: Option<&str>,
+) -> Result<String> {
+    Ok(match mode {
+        ChatMode::Personal => match personal_namespace {
+            Some(name) => {
+                validate_personal_namespace(name)?;
+                format!("session/{session}/personal/{name}")
+            }
+            None => format!("session/{session}/personal"),
+        },
+        ChatMode::Project => format!(
+            "project/{}",
+            partition.ok_or_else(|| anyhow!("project mode requires project_id"))?
+        ),
+        ChatMode::NotebookLm => format!(
+            "session/{session}/notebooklm/{}",
+            partition.ok_or_else(|| anyhow!("notebooklm mode requires a selected notebook"))?
+        ),
+        ChatMode::ControlPlane => format!("session/{session}/control_plane"),
+        ChatMode::Accountability => format!("session/{session}/accountability"),
+        ChatMode::UiRender => String::new(),
+    })
+}
+
+/// Everything under the principal a caller may name in a memory call.
+pub fn namespace_prefix_for_session(session: &str) -> String {
+    format!("session/{session}/")
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -254,7 +314,37 @@ pub struct ResolveContextInput {
     pub mode: ChatMode,
     #[serde(default)]
     pub project_id: Option<String>,
+    /// Personal mode only: a user-defined sub-namespace under the principal.
+    #[serde(default)]
+    pub personal_namespace: Option<String>,
 }
+
+/// The selection the UI makes for this session (OD-65). Persisted per
+/// session; every memory call and every turn's recall binds to it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ChatContextSelection {
+    #[serde(default)]
+    pub mode: ChatMode,
+    #[serde(default)]
+    pub project_id: Option<String>,
+    #[serde(default)]
+    pub personal_namespace: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SelectContextInput {
+    pub mode: ChatMode,
+    #[serde(default)]
+    pub project_id: Option<String>,
+    #[serde(default)]
+    pub personal_namespace: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetContextInput {}
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ResolvedChatContext {
@@ -283,7 +373,7 @@ impl StatePlugin for ProjectPlugin {
         "project"
     }
     fn version(&self) -> &str {
-        "1.0.0"
+        "1.1.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
         Some(project_schema())
@@ -315,7 +405,7 @@ impl StatePlugin for ProjectPlugin {
 
 pub fn project_schema() -> PluginSchema {
     let root = serde_json::to_value(schemars::schema_for!(ProjectState)).expect("project schema");
-    let mut schema = super::schemars_adapter::plugin_schema_from_json("project", "1.0.0",
+    let mut schema = super::schemars_adapter::plugin_schema_from_json("project", "1.1.0",
         "Container-backed projects with session ACLs, invitations, persistent memory/context/artifacts and agent selection", &root);
     schema.category = "workspace".into();
     schema.display_name = Some("Projects".into());
@@ -395,6 +485,20 @@ pub fn project_schema() -> PluginSchema {
     method!(
         "resolve_context",
         ResolveContextInput,
+        ResolvedChatContext,
+        Read,
+        "chat.context"
+    );
+    method!(
+        "select_context",
+        SelectContextInput,
+        ResolvedChatContext,
+        Mutation,
+        "chat.context"
+    );
+    method!(
+        "get_context",
+        GetContextInput,
         ResolvedChatContext,
         Read,
         "chat.context"

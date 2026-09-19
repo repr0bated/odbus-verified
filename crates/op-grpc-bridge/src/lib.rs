@@ -63,6 +63,7 @@ mod large_language_model_dispatch;
 mod mcp_config_dispatch;
 pub mod mcp_frontend;
 pub mod mcp_policy;
+mod memory_binding;
 pub(crate) mod method_contract_admission;
 pub mod mutation_engine;
 pub mod nlm_cli;

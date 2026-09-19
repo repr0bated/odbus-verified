@@ -192,7 +192,7 @@ pub(crate) async fn dispatch(
         "create" => "project.create",
         "invite" | "revoke_member" | "select_agent" => "project.admin",
         "put_document" => "project.write",
-        "resolve_context" => "chat.context",
+        "resolve_context" | "select_context" | "get_context" => "chat.context",
         "get" | "list" | "accept_invite" | "list_documents" => "project.read",
         _ => bail!("unknown project method"),
     };
@@ -207,6 +207,30 @@ pub(crate) async fn dispatch(
         let input: ResolveContextInput = serde_json::from_value(args.clone())?;
         return Ok(serde_json::to_value(
             resolve_context(engine, &session, &grants, input).await?,
+        )?);
+    }
+    if method == "select_context" {
+        let input: SelectContextInput = serde_json::from_value(args.clone())?;
+        let selection = ChatContextSelection {
+            mode: input.mode,
+            project_id: input.project_id,
+            personal_namespace: input.personal_namespace,
+        };
+        // Validate exactly as a turn would resolve it before persisting.
+        let resolved = resolve_selection(engine, &session, &grants, &selection).await?;
+        let document = serde_json::to_string(&selection)?;
+        catalog(
+            engine,
+            "?[session_id, document] <- [[$session, $document]] :put chat_context_selection {session_id => document}",
+            json!({"session": session, "document": document}),
+        )
+        .await?;
+        return Ok(serde_json::to_value(resolved)?);
+    }
+    if method == "get_context" {
+        let _: GetContextInput = serde_json::from_value(args.clone())?;
+        return Ok(serde_json::to_value(
+            current_chat_context(engine, &session, &grants).await?,
         )?);
     }
     if method == "list" {
@@ -400,6 +424,9 @@ async fn resolve_context(
     if input.mode != ChatMode::Project && input.project_id.is_some() {
         bail!("project_id is only valid in project mode");
     }
+    if input.mode != ChatMode::Personal && input.personal_namespace.is_some() {
+        bail!("personal_namespace is only valid in personal mode");
+    }
     let mut context = ResolvedChatContext {
         mode: input.mode,
         session_id: session.into(),
@@ -425,7 +452,12 @@ async fn resolve_context(
             context.selected_agent = project.selected_agent;
         }
         ChatMode::Personal => {
-            context.memory_namespace = format!("session/{session}/personal");
+            context.memory_namespace = memory_namespace_for(
+                ChatMode::Personal,
+                session,
+                None,
+                input.personal_namespace.as_deref(),
+            )?;
             context.effective_capabilities = grants
                 .iter()
                 .filter(|cap| {
@@ -465,8 +497,109 @@ async fn resolve_context(
                 .cloned()
                 .collect();
         }
+        ChatMode::NotebookLm => {
+            // The partition is the notebook this session selected through the
+            // notebooklm plugin; none selected → the mode cannot be entered.
+            let notebook = selected_notebook(engine, session)
+                .await?
+                .ok_or_else(|| anyhow!("notebooklm mode requires a selected notebook"))?;
+            context.memory_namespace =
+                memory_namespace_for(ChatMode::NotebookLm, session, Some(&notebook), None)?;
+            context.effective_capabilities = grants
+                .iter()
+                .filter(|cap| {
+                    matches!(
+                        cap.as_str(),
+                        "chat.context"
+                            | "cognitive_mcp.read"
+                            | "cognitive_mcp.memory.write"
+                            | "notebooklm.read"
+                            | "notebooklm.query"
+                    )
+                })
+                .cloned()
+                .collect();
+        }
+        ChatMode::UiRender => {
+            // No memory at all: nothing recalled, nothing written.
+            context.memory_namespace = String::new();
+            context.read_only = true;
+            context.effective_capabilities = grants
+                .iter()
+                .filter(|cap| matches!(cap.as_str(), "chat.context"))
+                .cloned()
+                .collect();
+        }
     }
     Ok(context)
+}
+
+async fn selected_notebook(engine: &MutationEngine, session: &str) -> Result<Option<String>> {
+    let rows = catalog(
+        engine,
+        "?[notebook_id] := *notebooklm_selection{session_id, notebook_id}, session_id = $session",
+        json!({"session": session}),
+    )
+    .await?;
+    Ok(rows
+        .as_array()
+        .and_then(|rows| rows.first())
+        .and_then(|row| row["notebook_id"].as_str())
+        .filter(|id| !id.is_empty())
+        .map(str::to_owned))
+}
+
+async fn resolve_selection(
+    engine: &MutationEngine,
+    session: &str,
+    grants: &BTreeSet<String>,
+    selection: &ChatContextSelection,
+) -> Result<ResolvedChatContext> {
+    resolve_context(
+        engine,
+        session,
+        grants,
+        ResolveContextInput {
+            mode: selection.mode,
+            project_id: selection.project_id.clone(),
+            personal_namespace: selection.personal_namespace.clone(),
+        },
+    )
+    .await
+}
+
+/// The session's persisted selection (personal when none was made).
+pub(crate) async fn stored_selection(
+    engine: &MutationEngine,
+    session: &str,
+) -> Result<ChatContextSelection> {
+    let rows = catalog(
+        engine,
+        "?[document] := *chat_context_selection{session_id, document}, session_id = $session",
+        json!({"session": session}),
+    )
+    .await?;
+    let Some(document) = rows
+        .as_array()
+        .and_then(|rows| rows.first())
+        .and_then(|row| row["document"].as_str())
+    else {
+        return Ok(ChatContextSelection::default());
+    };
+    Ok(serde_json::from_str(document)?)
+}
+
+/// What this session's memory calls and turns bind to right now. Re-resolved
+/// on every use so a revoked membership or grant takes effect immediately;
+/// a selection that no longer resolves fails closed (no silent fallback to
+/// personal).
+pub(crate) async fn current_chat_context(
+    engine: &MutationEngine,
+    session: &str,
+    grants: &BTreeSet<String>,
+) -> Result<ResolvedChatContext> {
+    let selection = stored_selection(engine, session).await?;
+    resolve_selection(engine, session, grants, &selection).await
 }
 
 #[cfg(test)]

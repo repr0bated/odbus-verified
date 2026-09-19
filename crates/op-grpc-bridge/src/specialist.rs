@@ -72,6 +72,14 @@ pub async fn consult(
 
     let runtime = engine.cognitive_mcp().await?;
     let scope = caller.scope().to_string();
+    // The memory the specialist may draw on is the caller's selected mode.
+    let context =
+        crate::memory_binding::context_for(engine, caller.actor_id, caller.session_id).await?;
+    anyhow::ensure!(
+        context.mode.has_memory(),
+        "specialist: memory is disabled in ui_render mode"
+    );
+    let namespaces = vec![context.memory_namespace.clone()];
 
     // 1. Task context from what the session already knows.
     let mut task = TaskContext {
@@ -82,7 +90,7 @@ pub async fn consult(
         snippets: Vec::new(),
         executors: EXECUTORS.iter().map(|s| s.to_string()).collect(),
     };
-    task.snippets = memory_snippets(runtime, &scope, &task).await;
+    task.snippets = memory_snippets(runtime, &namespaces, &task).await;
     task.snippets
         .extend(engine.take_pending_knowledge(&scope).await);
 
@@ -204,17 +212,20 @@ pub(crate) async fn activity_lines(runtime: &CognitiveMcpServer, scope: &str) ->
     lines
 }
 
-/// Memory entries the caller may see, matched to the task: the scope's own
-/// namespace(s) and the shared pieces namespace, filtered by task terms.
+/// Memory entries the caller may see, matched to the task: the bound
+/// namespace(s) of the selected mode and the shared pieces namespace,
+/// filtered by task terms.
 pub(crate) async fn memory_snippets(
     runtime: &CognitiveMcpServer,
-    scope: &str,
+    namespaces: &[String],
     task: &TaskContext,
 ) -> Vec<String> {
     let store = runtime.memory_store();
     let terms = task.terms();
     let mut snippets = Vec::new();
-    for namespace_name in [scope, PIECES_NAMESPACE] {
+    let pieces = PIECES_NAMESPACE.to_string();
+    for namespace_name in namespaces.iter().chain(std::iter::once(&pieces)) {
+        let namespace_name = namespace_name.as_str();
         let Ok(Some(_)) = store.get_namespace_by_name(namespace_name).await else {
             continue;
         };

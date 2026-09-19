@@ -260,6 +260,68 @@ async fn project_membership_and_context_methods_enforce_durable_session_ownershi
     )
     .await
     .is_err());
+    // OD-65: the selection is per session, persisted, re-resolved on read,
+    // and every memory call binds to it (see memory_binding).
+    let selected = invoke(
+        &engine,
+        owner,
+        "select_context",
+        json!({"mode":"personal","personal_namespace":"notes"}),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        selected["memory_namespace"],
+        format!("session/{}/personal/notes", owner.session_id)
+    );
+    let current = invoke(&engine, owner, "get_context", json!({}))
+        .await
+        .unwrap();
+    assert_eq!(current["memory_namespace"], selected["memory_namespace"]);
+    // Nothing selected yet for the member: personal by default.
+    let default = invoke(&engine, member, "get_context", json!({}))
+        .await
+        .unwrap();
+    assert_eq!(
+        default["memory_namespace"],
+        format!("session/{}/personal", member.session_id)
+    );
+    // Invalid selections are refused before they are stored.
+    for bad in [
+        json!({"mode":"personal","personal_namespace":"Not Valid"}),
+        json!({"mode":"project","personal_namespace":"notes"}),
+        json!({"mode":"notebooklm"}),
+        json!({"mode":"project","project_id":id}),
+    ] {
+        assert!(
+            invoke(&engine, member, "select_context", bad.clone())
+                .await
+                .is_err(),
+            "{bad}"
+        );
+    }
+    // ui_render: no memory at all, and it persists like any other selection.
+    let ui = invoke(
+        &engine,
+        owner,
+        "select_context",
+        json!({"mode":"ui_render"}),
+    )
+    .await
+    .unwrap();
+    assert_eq!(ui["memory_namespace"], "");
+    assert_eq!(ui["read_only"], true);
+    let ui_again = invoke(&engine, owner, "get_context", json!({}))
+        .await
+        .unwrap();
+    assert_eq!(ui_again["mode"], "ui_render");
+    let stored = crate::project_dispatch::stored_selection(&engine, &owner.session_id)
+        .await
+        .unwrap();
+    assert_eq!(stored.mode, ChatMode::UiRender);
+    // (Project mode selection needs a provisioned, Ready container — the
+    // resolve path is covered by the project fixture above.)
+
     let mut forged = owner.clone();
     forged.session_id = member.session_id.clone();
     assert!(invoke(&engine, &forged, "get", args).await.is_err());

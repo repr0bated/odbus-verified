@@ -115,6 +115,25 @@ pub async fn assemble_for_turn(
     query: &str,
 ) -> ContextBundle {
     let mut bundle = ContextBundle::default();
+    // The selected mode decides what memory a turn may recall (OD-65);
+    // ui_render recalls nothing at all — not even pending pushes.
+    let context = match crate::memory_binding::context_for(
+        engine,
+        &scope.principal_id,
+        Some(&scope.session_id),
+    )
+    .await
+    {
+        Ok(context) => context,
+        Err(error) => {
+            tracing::warn!(%error, "context bundle: selected chat mode does not resolve; no memory recalled");
+            return bundle;
+        }
+    };
+    if !context.mode.has_memory() {
+        return bundle;
+    }
+    let namespaces = vec![context.memory_namespace.clone()];
     let terms = op_agents::dynamic::TaskContext {
         question: query.to_string(),
         ..Default::default()
@@ -176,7 +195,7 @@ pub async fn assemble_for_turn(
     // 2. Namespace memory (this session's namespace + shared pieces).
     bundle.memories = specialist::memory_snippets(
         runtime,
-        &scope.session_id,
+        &namespaces,
         &op_agents::dynamic::TaskContext {
             question: query.to_string(),
             ..Default::default()
@@ -185,7 +204,7 @@ pub async fn assemble_for_turn(
     .await;
 
     // 3. Semantic recall, only when the shuttle exists, bounded in time.
-    bundle.semantic = semantic_recall(runtime, scope, query).await;
+    bundle.semantic = semantic_recall(runtime, &context.memory_namespace, query).await;
 
     // 4. Activity signals and 5. pending pushes.
     bundle.activity = specialist::activity_lines(runtime, &scope.session_id).await;
@@ -195,7 +214,7 @@ pub async fn assemble_for_turn(
 
 async fn semantic_recall(
     runtime: &CognitiveMcpServer,
-    scope: &EpisodeScope,
+    namespace: &str,
     query: &str,
 ) -> Vec<String> {
     if runtime.qdrant_shuttle().is_none() {
@@ -204,7 +223,8 @@ async fn semantic_recall(
     let input = simd_json::json!({
         "operation": "semantic_query",
         "query": query,
-        "container_id": scope.session_id,
+        "namespace": namespace,
+        "container_id": namespace,
         "limit": 5,
     });
     let registry = runtime.tool_registry();

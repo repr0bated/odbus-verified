@@ -213,6 +213,38 @@ the noise filter is **the sealed plugin schema that created the data**.
   level; readers **must** filter by `actor_id`/`sealed_id_digest` payload
   fields (retrieval stays principal-scoped — §OD-47).
 
+### 3.2d Memory binding to the selected chat mode (OD-65, 2026-09-19)
+
+Owner rules: "it will always be principal; projects are second class,
+controlled by the principal"; modes are personal (with user-defined
+sub-spaces), project, control_plane, accountability, notebooklm, and
+ui_render which has **no memory**; the mode is what the principal selected
+in the chat interface.
+
+- The selection is state: `project.select_context{mode, project_id?,
+  personal_namespace?}` validates through `resolve_context` (grants,
+  membership, control-plane grant, selected notebook) and persists per
+  session in `chat_context_selection`; `get_context` re-resolves it on every
+  read, so a revoked membership or grant takes effect immediately and a
+  selection that stops resolving fails closed (no silent fallback).
+- Namespaces (`memory_namespace_for`): `session/{s}/personal[/{name}]`,
+  `project/{id}`, `session/{s}/control_plane`, `session/{s}/accountability`,
+  `session/{s}/notebooklm/{notebook}`, and none for ui_render. `{s}` is the
+  sled session id — the principal's account-lifetime identity — so every
+  partition sits under the principal.
+- Every `memory_*` call is bound at the door (`memory_binding`): the
+  namespace comes from the selection, never the caller. A caller-supplied
+  `namespace` is honoured only in personal mode and only as a bare
+  `[a-z0-9_-]` sub-name; anything else is replaced. Writes are refused in
+  read-only modes (accountability; a project `Reader`); everything is
+  refused in ui_render. `memory_list_namespaces` shows only the principal's
+  partitions, the bound one, and the shared `agent_pieces`.
+- A turn's recall (`context_bundle`) and `specialist` read the bound
+  namespace; in ui_render nothing is recalled and no pushes are injected.
+  Episodes (the ledger) stay principal-scoped in every mode.
+- Project members are read/write by default; a per-member read-only toggle
+  is wishlist (OD-66).
+
 ### 3.3 Xray container (EXTERNAL, unchanged)
 
 - Passthrough only: SNI/protocol sniffing, no TLS termination for this
