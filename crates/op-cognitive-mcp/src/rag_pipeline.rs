@@ -1,6 +1,9 @@
-//! RAG ingestion pipeline for repomix content.
+//! RAG ingestion pipeline for source content (live workspace files).
 //!
-//! Pipeline: zip → repomix parse → enrich → chunk → Voyage embed → Qdrant upsert
+//! Pipeline: source text → enrich → chunk → Voyage embed → Qdrant upsert
+//!
+//! Repomix zip ingestion is retired (2026-09-19): the knowledge loop indexes
+//! live source through `code_index` mode=source only.
 //!
 //! Each Qdrant point payload carries rich metadata for hover display:
 //!   repo, file_path, language, symbols, doc_comments, imports, tags,
@@ -19,13 +22,7 @@ use qdrant_client::{
 use regex::Regex;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use std::{
-    collections::HashMap,
-    io::{BufRead, BufReader},
-    path::Path,
-    sync::OnceLock,
-    time::Duration,
-};
+use std::{collections::HashMap, sync::OnceLock, time::Duration};
 use tracing::{info, warn};
 
 // ─── constants ───────────────────────────────────────────────────────────────
@@ -283,105 +280,6 @@ impl RagPipeline {
         Ok(Self { qdrant, voyage })
     }
 
-    /// Ingest a single repomix file from the zip into Qdrant.
-    #[tracing::instrument(skip(self, zip_path), fields(entry_name, collection))]
-    pub async fn ingest_repomix_entry(
-        &self,
-        zip_path: &Path,
-        entry_name: &str,
-        collection: &str,
-    ) -> Result<IngestStats> {
-        self.ensure_collection(collection).await?;
-
-        let repo = repo_name_from_entry(entry_name);
-        info!(repo = %repo, entry = %entry_name, "Ingesting repomix entry");
-
-        let file = std::fs::File::open(zip_path)?;
-        let mut archive = zip::ZipArchive::new(file)?;
-
-        let entry_idx = (0..archive.len())
-            .find(|&i| {
-                archive
-                    .by_index(i)
-                    .map(|e| e.name().to_string())
-                    .ok()
-                    .as_deref()
-                    == Some(entry_name)
-            })
-            .with_context(|| format!("Entry '{entry_name}' not found in zip"))?;
-
-        let entry = archive.by_index(entry_idx)?;
-        let reader = BufReader::new(entry);
-
-        let mut stats = IngestStats::default();
-        let mut batch: Vec<PointStruct> = Vec::new();
-        let mut seen_files = std::collections::HashSet::new();
-
-        for chunk in parse_and_chunk(reader, &repo) {
-            if seen_files.insert(chunk.file_path.clone()) {
-                stats.files_parsed += 1;
-            }
-            stats.chunks_created += 1;
-
-            // Embed
-            let vector = match self.embed_document(&chunk.embed_text).await {
-                Ok(v) => v,
-                Err(e) => {
-                    warn!(file = %chunk.file_path, error = %e, "Embed failed, skipping chunk");
-                    stats.errors += 1;
-                    continue;
-                }
-            };
-
-            // Build Qdrant payload with all metadata for hover display
-            let payload: Payload = serde_json::json!({
-                "repo":          chunk.repo,
-                "file_path":     chunk.file_path,
-                "language":      chunk.meta.language,
-                "file_type":     chunk.meta.file_type.as_str(),
-                "symbols":       chunk.meta.symbols,
-                "doc_comments":  chunk.meta.doc_comments,
-                "imports":       chunk.meta.imports,
-                "tags":          chunk.meta.tags,
-                "is_test":       chunk.meta.is_test,
-                "line_start":    chunk.line_start,
-                "line_end":      chunk.line_end,
-                "chunk_index":   chunk.chunk_index,
-                "total_chunks":  chunk.total_chunks,
-                "content":       chunk.content,
-                "content_hash":  chunk.content_hash,
-            })
-            .try_into()
-            .context("Failed to build payload")?;
-
-            // Use content hash as stable point ID (dedup)
-            batch.push(PointStruct::new(
-                stable_uuid(&chunk.content_hash),
-                vector,
-                payload,
-            ));
-
-            if batch.len() >= VOYAGE_BATCH {
-                self.flush_batch(collection, &mut batch, &mut stats).await;
-                tokio::time::sleep(Duration::from_millis(VOYAGE_RATE_DELAY_MS)).await;
-            }
-        }
-
-        if !batch.is_empty() {
-            self.flush_batch(collection, &mut batch, &mut stats).await;
-        }
-
-        info!(
-            repo = %repo,
-            files = stats.files_parsed,
-            chunks = stats.chunks_created,
-            upserted = stats.chunks_upserted,
-            "Ingest complete"
-        );
-
-        Ok(stats)
-    }
-
     /// Semantic search over a Qdrant collection.
     #[tracing::instrument(skip(self), fields(collection, query_text, limit))]
     pub async fn query(
@@ -583,9 +481,9 @@ impl RagPipeline {
 
     /// Index a single in-memory source file (live workspace indexing).
     ///
-    /// Unlike `ingest_repomix_entry`, this takes raw file content directly so a
-    /// changed buffer can be re-indexed without a repomix zip. Enrichment,
-    /// chunking, embedding, and upsert are identical to the repomix path.
+    /// Takes raw file content directly so a changed buffer can be re-indexed
+    /// straight from the workspace; enrichment, chunking, embedding and upsert
+    /// are the single ingestion path.
     /// subid: `src.software.workspace.index@v1`
     #[tracing::instrument(skip(self, content), fields(repo, file_path, collection))]
     pub async fn ingest_source_text(
@@ -743,7 +641,10 @@ impl RagPipeline {
 }
 
 pub fn default_collection_from_env() -> String {
+    // `COGNITIVE_MCP_REPOMIX_COLLECTION` is honoured only so an existing
+    // deployment keeps pointing at the collection it already filled.
     std::env::var("COGNITIVE_MCP_RAG_COLLECTION")
+        .or_else(|_| std::env::var("COGNITIVE_MCP_CODE_COLLECTION"))
         .or_else(|_| std::env::var("COGNITIVE_MCP_REPOMIX_COLLECTION"))
         .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string())
 }
@@ -815,54 +716,7 @@ fn is_already_exists(err: &QdrantError) -> bool {
     }
 }
 
-// ─── repomix streaming parser ─────────────────────────────────────────────────
-
-/// Stream-parse a repomix file and yield enriched, chunked entries.
-/// Never loads the whole file into memory.
-fn parse_and_chunk(reader: impl BufRead, repo: &str) -> impl Iterator<Item = Chunk> {
-    let repo = repo.to_string();
-    let mut lines_iter = reader.lines();
-    let mut pending: Option<(String, Vec<String>, usize)> = None; // (path, lines, start_lineno)
-    let mut output: Vec<Chunk> = Vec::new();
-    let mut file_count = 0usize;
-
-    // State machine: collect lines between <file path="..."> and </file>
-    while let Some(Ok(line)) = lines_iter.next() {
-        file_count += 1;
-
-        if let Some(path) = extract_file_path(&line) {
-            pending = Some((path, Vec::new(), file_count));
-            continue;
-        }
-
-        if line.trim() == "</file>" {
-            if let Some((path, content_lines, _start)) = pending.take() {
-                let meta = enrich(&path, &content_lines);
-                let chunks = build_chunks(&repo, &path, meta, content_lines);
-                output.extend(chunks);
-            }
-            continue;
-        }
-
-        if let Some((_, ref mut lines, _)) = pending {
-            lines.push(line);
-        }
-    }
-
-    output.into_iter()
-}
-
-fn extract_file_path(line: &str) -> Option<String> {
-    let trimmed = line.trim();
-    if !trimmed.starts_with("<file path=\"") {
-        return None;
-    }
-    let rest = trimmed.strip_prefix("<file path=\"")?;
-    let end = rest.find('"')?;
-    Some(rest[..end].to_string())
-}
-
-// ─── enrichment ───────────────────────────────────────────────────────────────
+// ─── source enrichment ─────────────────────────────────────────────────────────
 
 fn enrich(file_path: &str, lines: &[String]) -> FileMeta {
     let language = detect_language(file_path);
@@ -1254,21 +1108,6 @@ fn build_embed_text(repo: &str, file_path: &str, meta: &FileMeta, content: &str)
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
-
-fn repo_name_from_entry(entry_name: &str) -> String {
-    // "rust-analyzer-repomix.md" → "rust-analyzer"
-    // "google-cloud-rust-repomix-2.md" → "google-cloud-rust"
-    let base = entry_name.trim_end_matches(".md").trim_end_matches(".xml");
-
-    // Strip trailing "-repomix" and any "-N" suffix
-    let base = if let Some(pos) = base.rfind("-repomix") {
-        &base[..pos]
-    } else {
-        base
-    };
-
-    base.to_string()
-}
 
 fn hex_hash(data: &[u8]) -> String {
     let mut h = Sha256::new();

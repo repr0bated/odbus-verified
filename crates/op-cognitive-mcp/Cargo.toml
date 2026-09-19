@@ -40,7 +40,6 @@ tonic-health = { workspace = true }
 tonic-web = { workspace = true }
 
 # RAG pipeline
-zip = "2"
 sha2 = { workspace = true }
 regex = { workspace = true }
 
@@ -59,9 +58,6 @@ futures = "0.3"
 # D-Bus
 zbus = { workspace = true }
 
-[[bin]]
-name = "rag-ingest"
-path = "src/bin/rag-ingest.rs"
 
 [[bin]]
 name = "op-cog-admin"

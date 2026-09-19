@@ -10,7 +10,7 @@
 //!   subid: `obs.service.code-rag.search@v1`
 //! - `code_context` — session-aware fused retrieval + awareness signals.
 //!   subid: `exp.service.code-context.render@v1`
-//! - `code_index`   — live indexing of a source file / repomix entry.
+//! - `code_index`   — live indexing of a source file.
 //!   subid: `src.software.workspace.index@v1`
 
 use crate::context_awareness::{ActivityType, ContextAwarenessEngine};
@@ -20,7 +20,6 @@ use async_trait::async_trait;
 use op_mcp::tool_registry::{BoxedTool, Tool, ToolRegistry};
 use simd_json::prelude::*;
 use simd_json::{json, OwnedValue as Value};
-use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::warn;
 
@@ -250,9 +249,8 @@ impl Tool for CodeIndexTool {
     }
 
     fn description(&self) -> &str {
-        "Index code into the semantic store. mode='source' indexes a single in-memory file \
-         (repo, file_path, content) for live workspace updates; mode='repomix_zip' ingests an \
-         entry from a repomix zip (zip_path, entry)."
+        "Index code into the semantic store: indexes a single in-memory file \
+         (repo, file_path, content) for live workspace updates."
     }
 
     fn category(&self) -> &str {
@@ -301,19 +299,6 @@ impl Tool for CodeIndexTool {
                     .ok_or_else(|| anyhow::anyhow!("source mode requires 'content'"))?;
                 self.rag
                     .ingest_source_text(repo, file_path, content, collection)
-                    .await?
-            }
-            "repomix_zip" => {
-                let zip_path = input
-                    .get("zip_path")
-                    .and_then(Value::as_str)
-                    .ok_or_else(|| anyhow::anyhow!("repomix_zip mode requires 'zip_path'"))?;
-                let entry = input
-                    .get("entry")
-                    .and_then(Value::as_str)
-                    .ok_or_else(|| anyhow::anyhow!("repomix_zip mode requires 'entry'"))?;
-                self.rag
-                    .ingest_repomix_entry(&PathBuf::from(zip_path), entry, collection)
                     .await?
             }
             other => return Err(anyhow::anyhow!("unknown mode: {other}")),

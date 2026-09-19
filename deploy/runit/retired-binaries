@@ -14,3 +14,6 @@ zeroclaw-gui
 # and svd. Scanning target/release must not resurrect earlier s6 executables.
 op-s6-systemctl
 s6d
+# Repomix zip ingestion is retired from the knowledge loop (2026-09-19); live
+# source is indexed through cognitive_mcp.code_index mode=source.
+rag-ingest
