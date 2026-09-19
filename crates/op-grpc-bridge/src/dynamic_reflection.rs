@@ -434,6 +434,50 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn retired_plugin_pinned_by_a_stale_manifest_is_not_advertised() {
+        let dir = tempfile::tempdir().unwrap();
+        let seal = |id: &str| {
+            let schema = op_state_store::PluginSchema::builder(id)
+                .version("1.0.0")
+                .method(op_state_store::MethodDecl {
+                    name: "Read".into(),
+                    args: simd_json::json!({"type":"object", "properties":{}}),
+                    returns: Some(simd_json::json!({"type":"object", "properties":{}})),
+                    side_effect: op_state_store::SideEffect::Read,
+                    idempotent: true,
+                    required_capability: Some("fixture.read".into()),
+                    subid: "obs.service.fixture.read@v1".into(),
+                })
+                .build();
+            op_blob::blobify_plugin_schema(id, schema)
+        };
+        let mut producer = op_blob::BlobStore::open(dir.path()).unwrap();
+        producer.write(&seal("tched_router")).unwrap();
+        // Simulates a catalog sealed before `factory` was retired.
+        producer.write(&seal("factory")).unwrap();
+
+        // The manifest pins both blobs; the manifest-pinned reader drops the
+        // retired id before reflection ever sees it (sealed_schema_reader).
+        let catalog = ActiveReflectionCatalog::with_dir(dir.path().into());
+        assert_eq!(
+            catalog.sync_from_shm().await,
+            1,
+            "only the live plugin is loaded"
+        );
+        let services = catalog.list_services().await;
+        assert!(
+            services.iter().any(|s| s.contains("TchedRouter")),
+            "live plugin advertised: {services:?}"
+        );
+        assert!(
+            !services
+                .iter()
+                .any(|s| s.to_ascii_lowercase().contains("factory")),
+            "retired plugin must not be advertised: {services:?}"
+        );
+    }
+
+    #[tokio::test]
     async fn same_schema_and_catalog_hash_refreshes_changed_valid_descriptor_artifacts() {
         let dir = tempfile::tempdir().unwrap();
         let schema = op_state_store::PluginSchema::builder("tched_router")
