@@ -905,6 +905,13 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         anyhow::bail!("TCHED_ROUTER_BIND_ADDR is empty — no TCP addresses to bind");
     }
     let mut tcp_tasks = Vec::new();
+    // One MCP policy owner / axum app, cloned onto every TCP bind. Building
+    // per-address panics: MutationEngine installs that owner exactly once.
+    let ingress = build_axum_app_with_validator(
+        loader.clone(),
+        operation_server.clone(),
+        assertion_validator.clone(),
+    );
     for bind_addr_str in &bind_addrs {
         let bind_addr: SocketAddr = bind_addr_str.parse()?;
         let listener = tokio::net::TcpListener::bind(bind_addr)
@@ -912,16 +919,11 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
             .map_err(|error| anyhow::anyhow!("cannot bind TCP fabric at {bind_addr}: {error}"))?;
         info!(addr = %bind_addr, "tched_router TLS gRPC/gRPC-Web listening on TCP");
         let tls_config = ServerTlsConfig::new().identity(identity.clone());
-        let ingress = build_axum_app_with_validator(
-            loader.clone(),
-            operation_server.clone(),
-            assertion_validator.clone(),
-        );
         let server = tonic::transport::Server::builder()
             .accept_http1(true)
             .tls_config(tls_config)
             .map_err(|e| anyhow::anyhow!("invalid TLS config for {bind_addr}: {e}"))?
-            .add_routes(tonic::service::Routes::from(ingress))
+            .add_routes(tonic::service::Routes::from(ingress.clone()))
             .serve_with_incoming(tokio_stream::wrappers::TcpListenerStream::new(listener));
         tcp_tasks.push(tokio::spawn(server));
     }

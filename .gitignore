@@ -99,3 +99,15 @@ techops/
 *.rej
 *.grpc-additions
 *.code-workspace
+
+# local upload blobs, do not commit
+repo.zip
+repo.docx
+repo.txt
+op-agents.txt
+/repo
+/blob
+repo.tar
+repo.tar.gz
+blob.bin
+/tar/

@@ -1110,7 +1110,18 @@ pub(crate) async fn park_orphaned_container_sessions(
     let mut failures = Vec::new();
     for session in &sessions {
         if let Err(error) = deactivate_session(engine, session).await {
-            failures.push(format!("{session}: {error:#}"));
+            let detail = format!("{error:#}");
+            // Incus reports already-parked identity CTs as ERROR, not STOPPED.
+            // A second stop then fails; the instance is still not running.
+            if detail.contains("already stopped") || detail.contains("in Error status") {
+                tracing::warn!(
+                    session,
+                    %error,
+                    "identity container is not running; treating park as complete"
+                );
+            } else {
+                failures.push(format!("{session}: {detail}"));
+            }
         }
         engine.forget_session_context(session).await;
     }
