@@ -32,6 +32,7 @@ use tokio_stream::Stream;
 use tonic::transport::server::{Connected, UdsConnectInfo};
 
 pub const DEFAULT_SOCKET_PATH: &str = "/run/ghostbridge/container.sock";
+const SOCKET_MODE: u32 = 0o600;
 const EVENT_CAPACITY: usize = 256;
 
 #[cfg(test)]
@@ -327,7 +328,12 @@ impl SharedListenerController {
             "socket bound but ownership could not be established; refusing unproven cleanup",
         )?;
         let listener_result = (|| -> Result<UnixListener> {
-            fs::set_permissions(&self.path, fs::Permissions::from_mode(0o666))?;
+            fs::set_permissions(&self.path, fs::Permissions::from_mode(SOCKET_MODE))?;
+            let metadata = fs::symlink_metadata(&self.path)?;
+            ensure!(
+                metadata.mode() & 0o777 == SOCKET_MODE,
+                "bound socket does not have private service permissions"
+            );
             ownership = SocketOwnership::read(&self.path)?;
             state.lease.record(ownership.clone())?;
             Ok(UnixListener::from_std(

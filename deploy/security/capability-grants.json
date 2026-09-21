@@ -38,6 +38,7 @@
       "tched-router.write",
       "cognitive_mcp.invoke",
       "cognitive_mcp.read",
+      "chatbot.read",
       "cognitive_mcp.memory.write",
       "cognitive_mcp.code.write",
       "workflows.read",

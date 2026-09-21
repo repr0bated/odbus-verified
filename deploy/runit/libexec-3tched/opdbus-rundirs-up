@@ -5,7 +5,7 @@ umask 022
 
 install -d -m 0755 /run/opdbus
 # Shared container UDS parent (bind-mounted into assistant/qdrant as /run/ghostbridge)
-install -d -m 0777 /run/ghostbridge
+install -d -m 0755 /run/ghostbridge
 # Per-container rendezvous dirs. Every container here is NIC-less and
 # proxy-less, so this bind-mounted dir is its ONLY channel to the host: the
 # in-container op-uds-relay binds its sockets here and the host-side uds-*

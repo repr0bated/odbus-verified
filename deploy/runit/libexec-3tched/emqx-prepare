@@ -60,6 +60,15 @@ ca_key=/etc/op-dbus/tls/tonic-svc0-ca.key
 [ -r "$ca_key" ] || { echo "missing OP-DBUS CA key: $ca_key" >&2; exit 1; }
 install -m 0644 -o root -g emqx "$ca_cert" /etc/emqx/certs/opdbus-ca.crt
 
+# The browser authenticates with its sled credential through ExHook. EMQX
+# presents the existing svc0 server identity, with a key readable only by
+# its service group; the bridge's private key remains root-only.
+server_cert=/etc/op-dbus/tls/tonic-svc0.crt
+server_key=/etc/op-dbus/tls/tonic-svc0.key
+openssl verify -CAfile "$ca_cert" -purpose sslserver "$server_cert" >/dev/null
+install -m 0644 -o root -g emqx "$server_cert" /etc/emqx/certs/doorbell-server.crt
+install -m 0640 -o root -g emqx "$server_key" /etc/emqx/certs/doorbell-server.key
+
 client_cert=/etc/emqx/certs/emqx-exhook-client.crt
 client_key=/etc/emqx/certs/emqx-exhook-client.key
 renew=0

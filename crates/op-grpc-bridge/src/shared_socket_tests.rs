@@ -47,6 +47,10 @@ async fn bind_listen_backlog_and_accept_use_the_actual_incoming_transport() {
     assert!(controller.take_incoming().is_err());
     let bound = call(&controller, "bind", json!({})).await;
     assert_eq!(bound["phase"], "bound");
+    assert_eq!(
+        fs::symlink_metadata(controller.path()).unwrap().mode() & 0o777,
+        SOCKET_MODE
+    );
     assert!(std::os::unix::net::UnixStream::connect(controller.path()).is_err());
     let listening = call(&controller, "listen", json!({"backlog":2})).await;
     assert_eq!(listening["requested_backlog"], 2);
@@ -351,4 +355,20 @@ async fn failed_bind_setup_cleans_its_owned_inode_and_checks_generation_before_b
     );
     assert!(!controller.path().exists());
     assert_eq!(controller.snapshot().unwrap().phase, "closed");
+}
+
+#[test]
+fn bind_rejects_a_parent_writable_by_other_users() {
+    let root = tempfile::tempdir().unwrap();
+    let controller = SharedListenerController::open_with_lease_dir(
+        root.path().join("container.sock"),
+        &root.path().join("leases"),
+    )
+    .unwrap();
+    fs::set_permissions(root.path(), fs::Permissions::from_mode(0o777)).unwrap();
+    let error = controller.bind().unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("socket parent must be service-owned"));
+    assert!(!controller.path().exists());
 }

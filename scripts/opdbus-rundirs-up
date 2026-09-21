@@ -5,7 +5,7 @@ umask 022
 
 install -d -m 0755 /run/opdbus
 # Shared container UDS parent (bind-mounted into assistant/qdrant as /run/ghostbridge)
-install -d -m 0777 /run/ghostbridge
+install -d -m 0755 /run/ghostbridge
 install -d -m 0755 /run/op-dbus
 install -d -m 0755 /run/opdbus/runit-ready
 install -d -m 0755 /dev/shm/opdbus/plugin-blobs

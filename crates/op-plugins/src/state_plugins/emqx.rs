@@ -599,6 +599,67 @@ fn local_endpoint(value: &str) -> bool {
         .unwrap_or(false)
 }
 
+fn listener_running(item: &JsonValue) -> bool {
+    fn status_running(value: &JsonValue) -> Option<bool> {
+        value
+            .get("running")
+            .and_then(JsonValue::as_bool)
+            .or_else(|| {
+                value.get("status").and_then(|status| {
+                    status
+                        .as_bool()
+                        .or_else(|| status.as_str().map(|value| value == "running"))
+                        .or_else(|| status.as_object().and_then(|_| status_running(status)))
+                })
+            })
+    }
+    let node_status_running = item
+        .get("node_status")
+        .and_then(JsonValue::as_array)
+        .is_some_and(|nodes| nodes.iter().any(|node| status_running(node) == Some(true)));
+    if node_status_running {
+        return true;
+    }
+    item.get("running")
+        .and_then(JsonValue::as_bool)
+        .or_else(|| item.get("status").and_then(status_running))
+        .or_else(|| item.get("enable").and_then(JsonValue::as_bool))
+        .unwrap_or(false)
+}
+
+fn listener_status_field(item: &JsonValue, field_names: &[&str]) -> u64 {
+    let direct = u64_field(item, field_names);
+    if direct != 0 {
+        return direct;
+    }
+    item.get("status")
+        .map(|status| u64_field(status, field_names))
+        .unwrap_or(0)
+}
+
+fn listener_current_connections(item: &JsonValue) -> u64 {
+    let direct = listener_status_field(item, &["current_connections", "current_conns"]);
+    if direct != 0 {
+        return direct;
+    }
+    item.get("node_status")
+        .and_then(JsonValue::as_array)
+        .map(|nodes| {
+            nodes
+                .iter()
+                .map(|node| listener_status_field(node, &["current_connections", "current_conns"]))
+                .sum()
+        })
+        .unwrap_or(0)
+}
+
+fn listener_endpoint_allowed(item: &JsonValue, bind: &str, running: bool) -> bool {
+    if bind == ":0" || bind.ends_with(":0") {
+        return item.get("enable").and_then(JsonValue::as_bool) == Some(false) && !running;
+    }
+    local_endpoint(bind)
+}
+
 async fn publish_wake(
     transport: &EmqxNativeTransport,
     input: PublishWakeInput,
@@ -683,17 +744,18 @@ async fn query_listeners(transport: &EmqxNativeTransport) -> Result<ListListener
                 .or_else(|| id.split(':').next().map(str::to_string))
                 .unwrap_or_else(|| "unknown".into());
             let bind = string_field(item, &["bind", "listen_on"]).unwrap_or_default();
+            let running = listener_running(item);
             EmqxListener {
                 id,
                 r#type: listener_type,
-                is_loopback_or_uds: local_endpoint(&bind),
+                // `:0` is acceptable only when the API proves that it is not
+                // running. An active port-zero listener is an ephemeral
+                // socket and must fail the local-only policy.
+                is_loopback_or_uds: listener_endpoint_allowed(item, &bind, running),
                 bind,
-                running: item
-                    .get("running")
-                    .and_then(JsonValue::as_bool)
-                    .unwrap_or(true),
-                current_connections: u64_field(item, &["current_connections", "current_conns"]),
-                max_connections: u64_field(item, &["max_connections", "max_conns"]),
+                running,
+                current_connections: listener_current_connections(item),
+                max_connections: listener_status_field(item, &["max_connections", "max_conns"]),
             }
         })
         .collect::<Vec<_>>();
@@ -718,9 +780,9 @@ fn exhook_from_json(item: &JsonValue) -> EmqxExhookServer {
     let transport_authenticated = url == EXHOOK_TARGET
         && ssl["enable"].as_bool() == Some(true)
         && ssl["verify"].as_str() == Some("verify_peer")
-        && ssl["cacertfile"].as_str() == Some("/etc/op-dbus/tls/tonic-svc0-ca.crt")
-        && ssl["certfile"].as_str() == Some("/etc/op-dbus/tls/emqx-exhook-client.crt")
-        && ssl["keyfile"].as_str() == Some("/etc/op-dbus/tls/emqx-exhook-client.key");
+        && ssl["cacertfile"].as_str() == Some("/etc/emqx/certs/opdbus-ca.crt")
+        && ssl["certfile"].as_str() == Some("/etc/emqx/certs/emqx-exhook-client.crt")
+        && ssl["keyfile"].as_str() == Some("/etc/emqx/certs/emqx-exhook-client.key");
     let status = item["node_status"]
         .as_array()
         .filter(|nodes| !nodes.is_empty())
@@ -813,9 +875,9 @@ async fn configure_hooks(
         "ssl": {
             "enable": true,
             "verify": "verify_peer",
-            "cacertfile": "/etc/op-dbus/tls/tonic-svc0-ca.crt",
-            "certfile": "/etc/op-dbus/tls/emqx-exhook-client.crt",
-            "keyfile": "/etc/op-dbus/tls/emqx-exhook-client.key"
+            "cacertfile": "/etc/emqx/certs/opdbus-ca.crt",
+            "certfile": "/etc/emqx/certs/emqx-exhook-client.crt",
+            "keyfile": "/etc/emqx/certs/emqx-exhook-client.key"
         }
     });
     let _ = emqx_api(transport, Method::PUT, "/exhooks/opdbus", Some(body)).await?;
@@ -1461,9 +1523,9 @@ mod tests {
             "ssl": {
                 "enable": true,
                 "verify": "verify_peer",
-                "cacertfile": "/etc/op-dbus/tls/tonic-svc0-ca.crt",
-                "certfile": "/etc/op-dbus/tls/emqx-exhook-client.crt",
-                "keyfile": "/etc/op-dbus/tls/emqx-exhook-client.key"
+                "cacertfile": "/etc/emqx/certs/opdbus-ca.crt",
+                "certfile": "/etc/emqx/certs/emqx-exhook-client.crt",
+                "keyfile": "/etc/emqx/certs/emqx-exhook-client.key"
             },
             "node_status": [{"node": "emqx@127.0.0.1", "status": "connected"}],
             "hooks": [{"name": "message.publish", "params": {"topics": ["#"]}}]

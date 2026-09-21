@@ -17,6 +17,9 @@ enum ApiMode {
     Unauthorized = 1,
     PublicListener = 2,
     UnauthenticatedHook = 3,
+    DefaultListeners = 4,
+    ActivePortZero = 5,
+    NodeOnlyActivePortZero = 6,
 }
 
 #[derive(Debug, Clone)]
@@ -111,6 +114,11 @@ async fn serve_http_request(
 
     let listener_bind = if mode == ApiMode::PublicListener as u8 {
         "0.0.0.0:1883"
+    } else if mode == ApiMode::DefaultListeners as u8
+        || mode == ApiMode::ActivePortZero as u8
+        || mode == ApiMode::NodeOnlyActivePortZero as u8
+    {
+        ":0"
     } else {
         "127.0.0.1:1883"
     };
@@ -132,6 +140,25 @@ async fn serve_http_request(
             "node_status":"running",
             "version":EMQX_RELEASE_VERSION
         }]}),
+        ("GET", "/api/v5/listeners") if mode == ApiMode::DefaultListeners as u8 => json!({"data":[
+            {"id":"tcp:default","type":"tcp","bind":":0","enable":false,
+             "status":{"running":false,"max_connections":"infinity","current_connections":0},
+             "node_status":[{"node":"emqx@127.0.0.1","status":{"running":false,"max_connections":"infinity","current_connections":0}}]},
+            {"id":"tcp:active","type":"tcp","bind":"127.0.0.1:1883","enable":true,
+             "status":{"running":true,"max_connections":1024,"current_connections":3},
+             "node_status":[{"node":"emqx@127.0.0.1","status":{"running":true,"max_connections":1024,"current_connections":3}}]}
+        ]}),
+        ("GET", "/api/v5/listeners") if mode == ApiMode::ActivePortZero as u8 => json!({"data":[
+            {"id":"tcp:default","type":"tcp","bind":":0","enable":true,
+             "status":{"running":true,"max_connections":1024,"current_connections":0},
+             "node_status":[{"node":"emqx@127.0.0.1","status":{"running":true,"max_connections":1024,"current_connections":0}}]}
+        ]}),
+        ("GET", "/api/v5/listeners") if mode == ApiMode::NodeOnlyActivePortZero as u8 => {
+            json!({"data":[
+                {"id":"tcp:default","type":"tcp","bind":":0","enable":false,
+                 "node_status":[{"node":"emqx@127.0.0.1","status":{"running":true,"max_connections":1024,"current_connections":0}}]}
+            ]})
+        }
         ("GET", "/api/v5/listeners") => json!({"data":[{
             "id":"tcp:default",
             "type":"tcp",
@@ -147,9 +174,9 @@ async fn serve_http_request(
             "ssl":{
                 "enable":true,
                 "verify":hook_verify,
-                "cacertfile":"/etc/op-dbus/tls/tonic-svc0-ca.crt",
-                "certfile":"/etc/op-dbus/tls/emqx-exhook-client.crt",
-                "keyfile":"/etc/op-dbus/tls/emqx-exhook-client.key"
+                "cacertfile":"/etc/emqx/certs/opdbus-ca.crt",
+                "certfile":"/etc/emqx/certs/emqx-exhook-client.crt",
+                "keyfile":"/etc/emqx/certs/emqx-exhook-client.key"
             },
             "node_status":[{"node":"emqx@127.0.0.1","status":"connected"}],
             "hooks":hooks
@@ -450,7 +477,7 @@ async fn configure_hooks_sends_fixed_mtls_shape_and_verifies_readback() {
     assert_eq!(body["ssl"]["verify"], "verify_peer");
     assert_eq!(
         body["ssl"]["certfile"],
-        "/etc/op-dbus/tls/emqx-exhook-client.crt"
+        "/etc/emqx/certs/emqx-exhook-client.crt"
     );
     assert!(!body.to_string().contains(FIXTURE_SECRET));
 
@@ -469,6 +496,38 @@ async fn configure_hooks_sends_fixed_mtls_shape_and_verifies_readback() {
         .expect_err("partial hook set must be rejected before the API call");
     assert!(error.to_string().contains("exact supported"));
     assert_eq!(fixture.http.requests().len(), request_count);
+}
+
+#[tokio::test]
+async fn listeners_accept_disabled_port_zero_and_read_nested_node_status() {
+    let fixture = NativeFixture::spawn(true, false, ApiMode::DefaultListeners).await;
+    let listeners = fixture.call("list_listeners", json!({})).await.unwrap();
+    assert_eq!(listeners["total_connections"], 3);
+    assert_eq!(listeners["all_loopback_or_uds"], true);
+    assert_eq!(listeners["listeners"][0]["bind"], ":0");
+    assert_eq!(listeners["listeners"][0]["running"], false);
+    assert_eq!(listeners["listeners"][1]["running"], true);
+    assert_eq!(listeners["listeners"][1]["current_connections"], 3);
+}
+
+#[tokio::test]
+async fn listeners_reject_active_port_zero_endpoints() {
+    let fixture = NativeFixture::spawn(true, false, ApiMode::ActivePortZero).await;
+    let error = fixture
+        .call("list_listeners", json!({}))
+        .await
+        .expect_err("active port-zero listener must fail closed");
+    assert!(error.to_string().contains("outside loopback/UDS"));
+}
+
+#[tokio::test]
+async fn node_status_running_overrides_disabled_port_zero_config() {
+    let fixture = NativeFixture::spawn(true, false, ApiMode::NodeOnlyActivePortZero).await;
+    let error = fixture
+        .call("list_listeners", json!({}))
+        .await
+        .expect_err("node status must reject an active port-zero listener");
+    assert!(error.to_string().contains("outside loopback/UDS"));
 }
 
 #[tokio::test]
