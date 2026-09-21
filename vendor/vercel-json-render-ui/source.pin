@@ -6,4 +6,5 @@ content_manifest_sha256=f2e7786db621293ca7d166669aa880e86c71d45ac2e2b7fb81a3ac76
 source_archive_sha256=5583a31ff32569fedccb5d946abac535ff8f741ffbf6d317a5762d7822f64a5a
 archive_root=vercel-json-render-ui
 node_engine=>=22.22.2
-asset_base=/vercel-json-render/
+asset_base=/
+door_default=https://10.0.0.3:8090

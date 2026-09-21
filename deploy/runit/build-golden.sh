@@ -14,7 +14,7 @@
 #     sbin/                      control scripts + systemd compat layer
 #     usr/bin/zeroclaw           pinned tched_router native dependency
 #     usr/share/op-dbus/         native and UI provenance manifests
-#     usr/local/share/op-dbus/dashboard/vercel-json-render/  pinned UI assets
+#     usr/local/share/op-dbus/dashboard/  pinned production UI assets at root
 #     sv/<service>/run           runit service definitions
 #     etc/                       environment defaults, pacman hooks
 #     var/lib/opdbus/plugin-blobs/  persisted sealed plugin catalog
@@ -354,7 +354,8 @@ jq -e \
      .source.archive_sha256 == $source_archive_sha256 and
      .source.content_manifest_sha256 == $content_manifest_sha256 and
      .source.package_lock_sha256 == $package_lock_sha256 and
-     .build.base == "/vercel-json-render/" and
+     .build.base == "/" and
+     .build.door == "https://10.0.0.3:8090" and
      (.build.node_version | type == "string" and length > 0) and
      (.build.npm_version | type == "string" and length > 0) and
      .artifact.name == "assets.tar.gz" and
@@ -524,9 +525,10 @@ build_golden() {
     run install -Dm644 "$TCHED_ROUTER_NATIVE_MANIFEST" \
         "$GOLDEN_DIR/usr/share/op-dbus/native-manifests/tched-router.json"
     ok "staged pinned tched_router native binary and provenance manifest"
-    ui_destination="$GOLDEN_DIR/usr/local/share/op-dbus/dashboard/vercel-json-render"
-    [ ! -e "$ui_destination" ] || run rm -r -- "$ui_destination"
+    ui_destination="$GOLDEN_DIR/usr/local/share/op-dbus/dashboard"
     run install -d -m 0755 "$ui_destination"
+    [ ! -e "$ui_destination/assets" ] || run rm -r -- "$ui_destination/assets"
+    [ ! -e "$ui_destination/index.html" ] || run rm -- "$ui_destination/index.html"
     run tar -xzf "$UI_ASSET_ARCHIVE" -C "$ui_destination"
     run install -Dm644 "$UI_ASSET_MANIFEST" \
         "$GOLDEN_DIR/usr/share/op-dbus/ui-manifests/vercel-json-render-ui.json"

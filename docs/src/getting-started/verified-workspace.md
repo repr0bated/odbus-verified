@@ -58,11 +58,11 @@ review the selected inputs before admitting them to the fresh repository. The
 export is source input only; it does not prove a clean build, runtime behavior,
 deployment readiness, or a complete external dependency closure.
 
-The active UI's development checkout remains the sibling repository
-`/srv/git/vercel-json-render-ui`. The export does not depend on that checkout:
-an allowlisted portable source artifact, its actual content hashes and build
-helper are included under `vendor/vercel-json-render-ui/`. The pin records both
-the checkout HEAD and that the captured working tree was dirty. Rebuild and
+The production UI's development checkout is the sibling repository
+`/srv/git/3tched.com`. The export does not depend on that checkout:
+a portable archive of its committed source, exact content hashes and build
+helper are included under `vendor/vercel-json-render-ui/`. The pin records
+the captured production commit. Rebuild and
 verify the UI without deploying it:
 
 ```bash
@@ -72,8 +72,9 @@ vendor/vercel-json-render-ui/build-assets.sh \
 ```
 
 The helper runs `npm ci`, type checking, lint, tests and the Vite build with
-base `/vercel-json-render/`, then emits an asset archive and provenance
-manifest. Golden preparation validates and stages those assets. It never
+base `/` and the production `https://10.0.0.3:8090` door, then emits an asset
+archive and provenance manifest. Golden preparation validates and stages
+`index.html` and `assets/` at the dashboard root, preserving sibling mounts. It never
 consults the external checkout, invokes its rsync deployment script or changes
 live dashboard files.
 

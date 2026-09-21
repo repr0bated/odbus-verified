@@ -83,6 +83,16 @@ tar -tvzf "$SOURCE_ARCHIVE" | awk 'substr($1,1,1) !~ /[-d]/ {bad=1} END {exit ba
 stage=$(mktemp -d "${TMPDIR:-/var/tmp}/op-ui-build.XXXXXX")
 tar -xzf "$SOURCE_ARCHIVE" -C "$stage"
 source_root="$stage/vercel-json-render-ui"
+asset_base=$(pin asset_base)
+door_default=$(pin door_default)
+[ "$asset_base" = "/" ] || {
+    printf 'production UI asset base must be the dashboard root: %s\n' "$asset_base" >&2
+    exit 1
+}
+[ "$door_default" = "https://10.0.0.3:8090" ] || {
+    printf 'production UI door default is not the pinned :8090 door: %s\n' "$door_default" >&2
+    exit 1
+}
 (cd "$source_root" && sha256sum -c "$SCRIPT_DIR/source-sha256sums" >/dev/null) || {
     printf 'UI source files do not match the pinned content manifest\n' >&2
     exit 1
@@ -124,11 +134,11 @@ export NPM_CONFIG_USERCONFIG=/dev/null
     npm run type-check
     npm run lint
     npm test
-    npm run build -- --base /vercel-json-render/
+    VITE_OPDBUS_DOOR="$door_default" npm run build -- --base "$asset_base"
 )
 [ -f "$source_root/dist/index.html" ] || { printf 'Vite omitted dist/index.html\n' >&2; exit 1; }
-grep -Fq '/vercel-json-render/' "$source_root/dist/index.html" || {
-    printf 'Vite output does not contain the pinned dashboard base path\n' >&2
+grep -Fq '/assets/' "$source_root/dist/index.html" || {
+    printf 'Vite output does not contain root-relative dashboard assets\n' >&2
     exit 1
 }
 [ -z "$(find "$source_root/dist" -type l -print -quit)" ] || {
@@ -152,11 +162,13 @@ jq -n \
     --arg package_lock_sha256 "$lock_sha" \
     --arg node_version "$node_version" \
     --arg npm_version "$npm_version" \
+    --arg base "$asset_base" \
+    --arg door "$door_default" \
     --arg asset_sha256 "$asset_sha" \
     --argjson asset_bytes "$asset_bytes" \
     '{format:"opdbus.vercel-json-render-ui-assets.v1",
       source:{head:$source_head,worktree:$source_worktree,archive_sha256:$source_archive_sha256,content_manifest_sha256:$content_manifest_sha256,package_lock_sha256:$package_lock_sha256},
-      build:{node_version:$node_version,npm_version:$npm_version,base:"/vercel-json-render/"},
+      build:{node_version:$node_version,npm_version:$npm_version,base:$base,door:$door},
       artifact:{name:"assets.tar.gz",sha256:$asset_sha256,bytes:$asset_bytes}}' \
     > "$OUTPUT_DIR/manifest.json"
 printf 'built UI assets: %s\n' "$OUTPUT_DIR"
