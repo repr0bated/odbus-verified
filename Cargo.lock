@@ -4214,6 +4214,7 @@ dependencies = [
  "chrono",
  "cozo",
  "nix 0.28.0",
+ "op-identity",
  "serde",
  "serde_json",
  "tempfile",

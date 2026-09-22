@@ -8,6 +8,30 @@ use simd_json::OwnedValue;
 type State<T> = (Option<OwnedValue>, T);
 
 impl MutationEngine {
+    /// Author a replacement SID1 for an already anchored session. This keeps
+    /// the arrival claims immutable and only migrates the transport scope.
+    pub(crate) fn refresh_identity_sealed_id(
+        &self,
+        sled: &op_plugins::state_plugins::identity_sled::ContainerIdentitySled,
+    ) -> Result<String> {
+        anyhow::ensure!(
+            sled.is_anchored(),
+            "credential refresh requires an anchored session"
+        );
+        let stamp = super::GenesisStamp {
+            session_id: sled.session_id.clone(),
+            wireguard_pubkey: sled.wireguard_pubkey.clone(),
+            genesis_hex: sled.genesis.clone().unwrap_or_default(),
+            trace_id: sled.trace_id.clone(),
+            sealed_id: String::new(),
+            arrival_timestamp: sled.arrival_timestamp,
+            chain_head_at_arrival: sled.chain_head_at_arrival.clone(),
+            catalog_hash_at_arrival: sled.catalog_hash_at_arrival.clone(),
+            head_timestamp_at_arrival: sled.head_timestamp_at_arrival,
+        };
+        super::sealed_sealed_id(&stamp, sled.schema_version, sled.expires_at.unwrap_or(0))
+    }
+
     /// Recover the explicitly configured durable owner before an embedding
     /// exposes transports. This trusted Rust API is not a plugin method.
     pub async fn recover_configured_identity_store(&self) -> Result<()> {

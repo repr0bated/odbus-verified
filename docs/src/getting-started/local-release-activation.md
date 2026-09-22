@@ -104,9 +104,11 @@ files, native gateway pairing state and runtime configuration are not
 overwritten by a directory-level switch. Keep identity, Cozo, Qdrant,
 Snowball, replay and broker data in their existing durable locations.
 
-Once links and prerequisites are ready, select the received tree atomically:
+Once links and prerequisites are ready, stop the affected application services
+before changing the binary/catalog pair. For this bridge/identity release:
 
 ```sh
+sudo sv down emqx op-web op-grpc-bridge opdbus-grants
 sudo ln -s "releases/$release_id" /opt/op-dbus/.current-next
 sudo mv -Tf /opt/op-dbus/.current-next /opt/op-dbus/current
 ```
@@ -114,7 +116,8 @@ sudo mv -Tf /opt/op-dbus/.current-next /opt/op-dbus/current
 Activate the received persisted catalog with `opblob persist <received
 catalog> /var/lib/opdbus/plugin-blobs`, then `opblob stage-shm`. Startup
 consumes that catalog and must never reseal or restore old private SHM state.
-Deliberately restart only the changed application services with `sudo sv`:
+Bring up `opdbus-grants` and the bridge before EMQX and op-web, checking their
+readiness with `sudo sv check`. Deliberately restart only changed services:
 the native router when its configuration changes, grants materialization,
 the bridge, EMQX, and op-web. Preserve existing runlevel symlinks, adding only
 the explicitly enabled application service when absent. Do not restart or
@@ -143,10 +146,40 @@ other shared-directory sockets, weaken directory permissions, or bypass
 the bridge's ownership checks. Restart the bridge after this one-time
 operator cleanup; it records ownership of the newly created sockets.
 
+### Existing identity credentials and MQTT
+
+New identities include the `mqtt` transport scope. An older persisted SID1
+may contain only `dbus,grpc,mcp`; restarting the bridge deliberately preserves
+those authored bytes. Do not edit the credential or weaken the broker check.
+The identity owner uses a dedicated durable transport-refresh transaction;
+ordinary identity compare/exchange still rejects anchored credential changes.
+
+For an existing human identity, invoke the canonical
+`identity_sled.refresh_credential` method with `{}` and the exact
+`identity_sled.credential.refresh` capability using that human's authenticated
+session. The release grants this capability only to the configured local
+human. The method resolves the target from verified session metadata and
+accepts no caller-selected identity or credential fields. MutationEngine
+authors the supported transport upgrade, commits it through Cozo and private
+SHM, and returns a receipt without credential bytes.
+
+Fetch the newly authored credential through the existing identity-header
+helper or `/api/identity/self` afterward. The previous SID1 stops
+authenticating. Principal, session, genesis, trace and arrival claims are
+preserved, so the knowledge owner key and history remain the same. Repeating
+the call with a current credential is idempotent. The advertised doorbell URL
+must include `/mqtt`, matching the EMQX WebSocket route.
+
 ## Roll back
 
+After the first credential refresh, the durable identity store may contain a
+`transport-refresh` revision. Any rollback binary must understand that revision
+kind. The earlier `dacc6dd` release does not, so keep it as a pre-refresh recovery
+artifact; do not activate it against the refreshed store or restore old identity
+data to make it boot. Use a compatible replacement release for later rollback.
+
 For subsequent releases, atomically restore `current` to the previous
-received release, restore its persisted catalog and stage it into SHM, then
+compatible received release, restore its persisted catalog and stage it into SHM, then
 restart the same application services. For the first migration, restore the
 original paths from the activation receipt instead. Restore any deliberately
 changed native router config/token pair together. Runtime data is never

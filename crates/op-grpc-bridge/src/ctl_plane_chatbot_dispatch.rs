@@ -367,7 +367,7 @@ async fn dispatch_owned(
                 topic: op_plugins::state_plugins::emqx::wake_topic(&owner_key)?,
                 owner_key,
                 listener: format!(
-                    "wss://{}",
+                    "wss://{}/mqtt",
                     op_plugins::state_plugins::emqx::EMQX_MQTT_WSS_BIND
                 ),
                 password_prefixes: vec![
@@ -1266,10 +1266,7 @@ mod tests {
             format!("opdbus/wake/{owner_key}"),
             "the topic is derived from the owner key"
         );
-        assert!(doorbell["result"]["listener"]
-            .as_str()
-            .unwrap()
-            .starts_with("wss://"));
+        assert_eq!(doorbell["result"]["listener"], "wss://10.0.0.3:8084/mqtt");
         assert!(doorbell["result"]["knowledge_paths"]
             .as_array()
             .unwrap()

@@ -4,6 +4,7 @@
     "capabilities": [
       "cap.identity.dbus.bind@v1",
       "identity_sled.read",
+      "identity_sled.credential.refresh",
       "cap.service.lifecycle.init@v1",
       "cap.service.lifecycle.run@v1",
       "cap.service.lifecycle.shutdown@v1",

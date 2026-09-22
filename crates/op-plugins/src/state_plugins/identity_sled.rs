@@ -233,10 +233,10 @@ impl StatePlugin for IdentitySledPlugin {
         "identity_sled"
     }
 
-    // Plugin field contract v3 retains the native Device discriminants.
+    // Plugin field contract v3.1 retains the native Device discriminants.
     // SID1, RECORD_FORMAT and durable identity record/revision formats do not change.
     fn version(&self) -> &str {
-        "3.0.0"
+        "3.1.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -282,7 +282,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "identity_sled",
-        "3.0.0",
+        "3.1.0",
         "Container identity sleds: the container is the sled is the identity; host is container zero; each record is seeded by its sealed blob",
         &root,
     );
@@ -298,6 +298,15 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     pub struct GetIdentityOutput {
         pub identity: ContainerIdentitySled,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    #[serde(deny_unknown_fields)]
+    pub struct RefreshCredentialInput {}
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct RefreshCredentialOutput {
+        pub refreshed: bool,
+        pub session_id: String,
+        pub transport_scope: String,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
@@ -402,6 +411,16 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         ),
     );
     schema.methods.insert(
+        "refresh_credential".to_string(),
+        method_decl_from_schemars_with_output::<RefreshCredentialInput, RefreshCredentialOutput>(
+            "refresh_credential",
+            SideEffect::Mutation,
+            true,
+            "identity_sled.credential.refresh",
+            "mut.service.identity-sled.credential.refresh@v1",
+        ),
+    );
+    schema.methods.insert(
         "provision_container".to_string(),
         method_decl_from_schemars_with_output::<ProvisionContainerInput, GetIdentityOutput>(
             "provision_container",
@@ -466,6 +485,13 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
             description: "Grants: write_identity, provision_container, attach_btrfs_device, touch_session, record_session_event.".to_string(),
         },
     );
+    schema.capabilities.insert(
+        "identity_sled.credential.refresh".to_string(),
+        op_state_store::CapabilityDecl {
+            id: "identity_sled.credential.refresh".to_string(),
+            description: "Refreshes the caller's anchored SID1 credential without changing its session claims.".to_string(),
+        },
+    );
 
     schema
 }
@@ -508,10 +534,11 @@ mod tests {
     #[test]
     fn schema_has_method_surface() {
         let schema = identity_sled_schema();
-        assert_eq!(schema.version, "3.0.0");
+        assert_eq!(schema.version, "3.1.0");
         for method in [
             "get_identity",
             "write_identity",
+            "refresh_credential",
             "provision_container",
             "attach_btrfs_device",
             "touch_session",

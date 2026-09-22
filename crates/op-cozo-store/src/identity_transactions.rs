@@ -30,7 +30,15 @@ pub struct IdentityCompareExchange {
 
 pub enum IdentityIntent {
     CompareExchange(Box<IdentityCompareExchange>),
-    AdvanceMutationIndex { event_id: u64 },
+    /// A narrowly bounded migration authored by the identity owner. Ordinary
+    /// compare/exchange continues to prohibit changes to anchored credentials.
+    RefreshTransportCredential {
+        expected: Box<IdentityRevision>,
+        sealed_id: String,
+    },
+    AdvanceMutationIndex {
+        event_id: u64,
+    },
 }
 
 pub struct IdentityCommit {
@@ -557,6 +565,36 @@ impl CozoGraphShuttle {
                     (record, genesis, "cas", value, false)
                 }
             }
+            IdentityIntent::RefreshTransportCredential {
+                expected,
+                sealed_id,
+            } => {
+                if expected.session_id != session_id {
+                    return Err(err("identity refresh session mismatch"));
+                }
+                let mut record = refresh_transport_record(&expected, sealed_id)?;
+                record.mutation_index = record
+                    .mutation_index
+                    .checked_add(1)
+                    .ok_or_else(|| err("identity index overflow"))?;
+                let value = i64::try_from(expected.revision)
+                    .map_err(|_| err("identity revision exceeds Cozo Int"))?;
+                let genesis = expected.genesis.clone();
+                let record = Some(record);
+                let replayed = previous.operation_id == operation_id;
+                if replayed {
+                    if metadata.kind != "transport-refresh"
+                        || metadata.value != value
+                        || previous.record != record
+                        || previous.genesis != genesis
+                    {
+                        return Err(err("identity operation id reused for a different intent"));
+                    }
+                } else if previous != *expected {
+                    return Err(err("identity compare/exchange conflict"));
+                }
+                (record, genesis, "transport-refresh", value, replayed)
+            }
             IdentityIntent::AdvanceMutationIndex { event_id } => {
                 let value =
                     i64::try_from(event_id).map_err(|_| err("identity index exceeds Cozo Int"))?;
@@ -757,7 +795,7 @@ fn decode_revision(row: &[DataValue]) -> std::result::Result<RevisionMetadata, C
         || !op
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
-        || !matches!(kind.as_str(), "cas" | "advance")
+        || !matches!(kind.as_str(), "cas" | "advance" | "transport-refresh")
         || value < 0
         || !matches!(principal_kind.as_str(), "" | "human" | "service")
     {
@@ -838,6 +876,54 @@ fn validate_pair(
     }
     Ok(())
 }
+fn refresh_transport_record(
+    expected: &IdentityRevision,
+    sealed_id: String,
+) -> std::result::Result<IdentitySledRecord, CozoError> {
+    let mut row = expected
+        .record
+        .clone()
+        .ok_or_else(|| err("identity refresh target is absent"))?;
+    let genesis = expected
+        .genesis
+        .as_ref()
+        .ok_or_else(|| err("identity refresh genesis is absent"))?;
+    validate_pair(&expected.session_id, Some(&row), Some(genesis))?;
+    let mut old =
+        op_identity::sealed_id::SealedId::from_inline_ref(&row.sealed_id).map_err(native)?;
+    let new = op_identity::sealed_id::SealedId::from_inline_ref(&sealed_id).map_err(native)?;
+    if row.principal_kind.as_deref() != Some("human")
+        || old.principal_kind != "wireguard-principal"
+        || old.principal_id != op_identity::session::derive_principal_id(&row.wireguard_pubkey)
+        || old.session_id != row.session_id
+        || old.session_id != op_identity::session::derive_session_id(&row.wireguard_pubkey)
+        || old.wireguard_pubkey != row.wireguard_pubkey
+        || old.session_genesis != row.session_genesis
+        || old.trace_id != row.trace_id
+        || i64::from(old.schema_version) != row.schema_version
+        || old.expires_at != row.expires_at
+        || old.issued_at != genesis.arrival_timestamp
+        || old.arrival_timestamp != genesis.arrival_timestamp
+        || old.chain_head_at_arrival != genesis.chain_head_at_arrival
+        || old.catalog_hash_at_arrival != genesis.catalog_hash_at_arrival
+        || old.head_timestamp_at_arrival != genesis.head_timestamp_at_arrival
+        || old.transport_scope != "dbus,grpc,mcp"
+        || new.transport_scope != "dbus,grpc,mcp,mqtt"
+    {
+        return Err(err(
+            "identity transport refresh does not match anchored legacy claims",
+        ));
+    }
+    old.transport_scope = "dbus,grpc,mcp,mqtt".into();
+    if old != new {
+        return Err(err(
+            "identity transport refresh cannot replace anchored claims",
+        ));
+    }
+    row.sealed_id = sealed_id;
+    Ok(row)
+}
+
 fn validate_binding(
     previous: &IdentityRevision,
     row: Option<&IdentitySledRecord>,

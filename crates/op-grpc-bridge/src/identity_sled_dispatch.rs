@@ -1163,6 +1163,13 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
     btrfs_mount_verifier: BtrfsMountVerifier,
 ) -> anyhow::Result<JsonValue> {
     match method {
+        "refresh_credential" => {
+            anyhow::ensure!(
+                args.as_object().is_some_and(|object| object.is_empty()),
+                "refresh_credential accepts no arguments"
+            );
+            anyhow::bail!("refresh_credential requires verified session metadata")
+        }
         "get_identity" => {
             let mut session_id = arg_str(args, "session_id");
             let trace_id = arg_str(args, "trace_id");
@@ -1428,6 +1435,235 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
     }
 }
 
+async fn refresh_credential_owned(
+    engine: &MutationEngine,
+    store: &IdentitySledStore,
+    operation_id: String,
+    actor_id: &str,
+    session_id: &str,
+    session_genesis: &str,
+) -> anyhow::Result<JsonValue> {
+    anyhow::ensure!(
+        !actor_id.is_empty() && !session_id.is_empty() && !session_genesis.is_empty(),
+        "credential refresh requires verified session metadata"
+    );
+    let lifecycle_lock = store.lifecycle_lock(session_id).await;
+    let _session_guard = lifecycle_lock.lock_owned().await;
+    crate::method_contract_admission::admit_compiled_method(
+        "identity_sled",
+        "refresh_credential",
+        Some("identity_sled.credential.refresh"),
+    )?;
+    anyhow::ensure!(
+        crate::interceptor::load_capability_grants(actor_id)
+            .iter()
+            .any(|capability| capability == "identity_sled.credential.refresh"),
+        "credential refresh requires a current exact-principal grant"
+    );
+    let expected = load_revision(store, session_id).await?;
+    let mut sled =
+        revision_sled(&expected)?.ok_or_else(|| anyhow::anyhow!("identity session not found"))?;
+    anyhow::ensure!(
+        sled.is_anchored(),
+        "credential refresh requires an anchored session"
+    );
+    anyhow::ensure!(
+        sled.genesis.as_deref() == Some(session_genesis),
+        "verified session genesis does not match identity"
+    );
+    anyhow::ensure!(
+        op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id,
+        "identity session does not match its key"
+    );
+    anyhow::ensure!(
+        op_identity::session::derive_principal_id(&sled.wireguard_pubkey) == actor_id,
+        "verified actor does not match identity"
+    );
+    anyhow::ensure!(
+        sled.principal_kind.as_deref() == Some("human"),
+        "credential refresh requires a human identity"
+    );
+    anyhow::ensure!(
+        sled.instance
+            .as_ref()
+            .is_some_and(|instance| instance.name == sled.session_id
+                && instance.instance_type == "container"),
+        "identity has no matching provisioned container binding"
+    );
+    anyhow::ensure!(
+        sled.schema_version == RECORD_FORMAT,
+        "identity schema version is not current"
+    );
+    anyhow::ensure!(
+        crate::human_principal_dispatch::resolve_key_for_assertion(&sled.wireguard_pubkey)
+            .await
+            .map_err(|_| anyhow::anyhow!("identity principal registry is unavailable"))?
+            .is_some_and(|record| record.revoked_at == 0 && record.principal_id == actor_id),
+        "identity principal is not currently registered"
+    );
+    anyhow::ensure!(
+        sled.expires_at
+            .is_none_or(|expiry| expiry == 0 || expiry > now()),
+        "identity session is expired"
+    );
+    let old = sled
+        .sealed_id
+        .as_deref()
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("identity has no refreshable SID1 credential"))?;
+    let old_claims = op_identity::sealed_id::SealedId::from_inline_ref(old)
+        .map_err(|error| anyhow::anyhow!("stored SID1 is invalid: {error}"))?;
+    anyhow::ensure!(
+        old_claims.principal_id == actor_id
+            && old_claims.principal_kind == "wireguard-principal"
+            && old_claims.session_id == sled.session_id
+            && old_claims.wireguard_pubkey == sled.wireguard_pubkey
+            && old_claims.session_genesis == session_genesis
+            && old_claims.trace_id == sled.trace_id
+            && old_claims.schema_version == sled.schema_version
+            && old_claims.arrival_timestamp == sled.arrival_timestamp
+            && old_claims.issued_at == sled.arrival_timestamp
+            && old_claims.expires_at == sled.expires_at.unwrap_or(0)
+            && old_claims.chain_head_at_arrival == sled.chain_head_at_arrival
+            && old_claims.catalog_hash_at_arrival == sled.catalog_hash_at_arrival
+            && old_claims.head_timestamp_at_arrival == sled.head_timestamp_at_arrival,
+        "stored SID1 claims do not match authoritative identity"
+    );
+    anyhow::ensure!(
+        matches!(
+            old_claims.transport_scope.as_str(),
+            "dbus,grpc,mcp" | "dbus,grpc,mcp,mqtt"
+        ),
+        "stored SID1 transport scope is not refreshable"
+    );
+    // Recheck the seal and grant after asynchronous identity reads, before
+    // publishing a replacement credential or returning an idempotent receipt.
+    crate::method_contract_admission::admit_compiled_method(
+        "identity_sled",
+        "refresh_credential",
+        Some("identity_sled.credential.refresh"),
+    )?;
+    anyhow::ensure!(
+        crate::interceptor::load_capability_grants(actor_id)
+            .iter()
+            .any(|capability| capability == "identity_sled.credential.refresh"),
+        "credential refresh requires a current exact-principal grant"
+    );
+    if old_claims.transport_scope == "dbus,grpc,mcp,mqtt" {
+        let published = stored_session(engine, session_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("identity credential publication is absent"))?;
+        anyhow::ensure!(
+            published.sealed_id == sled.sealed_id && published.genesis == sled.genesis,
+            "identity credential publication requires recovery"
+        );
+        return Ok(
+            serde_json::json!({"refreshed": false, "session_id": sled.session_id, "transport_scope": old_claims.transport_scope}),
+        );
+    }
+    let sealed_id = engine.refresh_identity_sealed_id(&sled)?;
+    sled.sealed_id = Some(sealed_id);
+    sled.mutation_index = sled
+        .mutation_index
+        .checked_add(1)
+        .ok_or_else(|| anyhow::anyhow!("mutation index overflow"))?;
+    let cozo = store.cozo.clone();
+    let owned_session = session_id.to_string();
+    let candidate = sled.sealed_id.clone().expect("credential authored above");
+    let publication = engine
+        .commit_identity_intent(operation_id.clone(), move |_| {
+            let committed = cozo.apply_identity_intent(
+                &owned_session,
+                &operation_id,
+                IdentityIntent::RefreshTransportCredential {
+                    expected: Box::new(expected),
+                    sealed_id: candidate,
+                },
+            )?;
+            let snapshot = cozo.read_identity_recovery_state(MAX_EVENTS_IN_STATE)?;
+            Ok((
+                Some(state_value(&snapshot)?),
+                DurableResult {
+                    value: (),
+                    replayed: committed.replayed,
+                },
+            ))
+        })
+        .await?;
+    publication_value(publication)?;
+    let published = stored_session(engine, session_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("identity credential publication is absent"))?;
+    anyhow::ensure!(
+        published.sealed_id == sled.sealed_id && published.genesis == sled.genesis,
+        "identity credential publication requires recovery"
+    );
+    engine
+        .register_session_context(crate::mutation_engine::SessionContext {
+            genesis_hex: sled.genesis.clone().unwrap_or_default(),
+            session_id: sled.session_id.clone(),
+            wireguard_pubkey: sled.wireguard_pubkey.clone(),
+            sealed_id_digest: crate::mutation_engine::sealed_id_digest(sled.sealed_id.as_deref()),
+        })
+        .await;
+    Ok(
+        serde_json::json!({"refreshed": true, "session_id": sled.session_id, "transport_scope": "dbus,grpc,mcp,mqtt"}),
+    )
+}
+
+pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
+    engine: &MutationEngine,
+    method: &str,
+    args: &JsonValue,
+    actor_id: &str,
+    session_id: Option<&str>,
+    session_genesis: Option<&str>,
+) -> anyhow::Result<JsonValue> {
+    if method == "refresh_credential" {
+        anyhow::ensure!(
+            args.as_object().is_some_and(|object| object.is_empty()),
+            "refresh_credential accepts no arguments"
+        );
+        anyhow::ensure!(
+            session_id.is_some_and(|value| !value.is_empty())
+                && session_genesis.is_some_and(|value| !value.is_empty()),
+            "credential refresh requires verified session metadata"
+        );
+        let trusted = engine
+            .session_context_for_actor(actor_id)
+            .await
+            .ok_or_else(|| {
+                anyhow::anyhow!("credential refresh requires a verified anchored session")
+            })?;
+        anyhow::ensure!(
+            session_id == Some(trusted.session_id.as_str()),
+            "requested session does not match verified actor"
+        );
+        anyhow::ensure!(
+            session_genesis == Some(trusted.genesis_hex.as_str()),
+            "requested genesis does not match verified session"
+        );
+        let owned_engine = engine.clone();
+        let owned_store = engine.identity_sled_store()?.clone();
+        let actor_id = actor_id.to_string();
+        let session_id = trusted.session_id;
+        let session_genesis = trusted.genesis_hex;
+        return tokio::spawn(async move {
+            refresh_credential_owned(
+                &owned_engine,
+                &owned_store,
+                opid("credential-refresh"),
+                &actor_id,
+                &session_id,
+                &session_genesis,
+            )
+            .await
+        })
+        .await?;
+    }
+    dispatch_identity_sled_method(engine, method, args).await
+}
+
 pub(crate) async fn dispatch_identity_sled_method_with_operation(
     engine: &MutationEngine,
     store: &IdentitySledStore,
@@ -1578,7 +1814,7 @@ pub(crate) mod tests {
         engine: &MutationEngine,
         pubkey: &str,
     ) -> anyhow::Result<ContainerIdentitySled> {
-        write_identity_term(engine, pubkey, 0).await
+        write_identity_term_with_scope(engine, pubkey, 0, None).await
     }
 
     /// Exercise the real durable parking path with an isolated native lifecycle.
@@ -1664,6 +1900,15 @@ pub(crate) mod tests {
         pubkey: &str,
         expires_at: i64,
     ) -> anyhow::Result<ContainerIdentitySled> {
+        write_identity_term_with_scope(engine, pubkey, expires_at, None).await
+    }
+
+    async fn write_identity_term_with_scope(
+        engine: &MutationEngine,
+        pubkey: &str,
+        expires_at: i64,
+        transport_scope: Option<&str>,
+    ) -> anyhow::Result<ContainerIdentitySled> {
         let store = engine.identity_sled_store()?;
         let session_id = op_identity::session::derive_session_id(pubkey);
         let expected = load_revision(store, &session_id).await?;
@@ -1697,9 +1942,17 @@ pub(crate) mod tests {
             catalog_hash_at_arrival: String::new(),
             head_timestamp_at_arrival: 0,
         };
-        let stamp = engine
+        let mut stamp = engine
             .mint_identity_genesis_stamp(&session_id, pubkey, expires_at)
             .await?;
+        if let Some(scope) = transport_scope {
+            let claims = op_identity::sealed_id::SealedId::from_inline_ref(&stamp.sealed_id)?;
+            stamp.sealed_id = op_identity::sealed_id::SealedId {
+                transport_scope: scope.into(),
+                ..claims
+            }
+            .to_inline_ref()?;
+        }
         apply_genesis_stamp(&mut sled, &stamp)?;
         commit_sled_update(engine, store, opid("fixture"), expected, sled.clone(), sled).await
     }
@@ -1826,6 +2079,340 @@ pub(crate) mod tests {
                     .unwrap(),
             )
             .unwrap()
+    }
+
+    async fn refresh_test_fixture(
+        byte: u8,
+    ) -> (
+        Arc<MutationEngine>,
+        TempShm,
+        ContainerIdentitySled,
+        tempfile::TempDir,
+        Option<std::ffi::OsString>,
+        crate::human_principal_dispatch::tests::TempCozo,
+    ) {
+        refresh_test_fixture_with_claims(byte, None, 0).await
+    }
+
+    async fn refresh_test_fixture_with_claims(
+        byte: u8,
+        transport_scope: Option<&str>,
+        expires_at: i64,
+    ) -> (
+        Arc<MutationEngine>,
+        TempShm,
+        ContainerIdentitySled,
+        tempfile::TempDir,
+        Option<std::ffi::OsString>,
+        crate::human_principal_dispatch::tests::TempCozo,
+    ) {
+        let registry = crate::human_principal_dispatch::tests::temp_cozo();
+        let key = pk(byte);
+        let (engine, shm) = sled_engine();
+        crate::human_principal_dispatch::dispatch_human_principal_method(
+            "register_key",
+            &serde_json::json!({"human_pubkey": key, "display_alias": format!("refresh-{byte}")}),
+        )
+        .await
+        .unwrap();
+        let identity = write_identity_term_with_scope(&engine, &key, expires_at, transport_scope)
+            .await
+            .unwrap();
+        set_session_actor_class(&engine, &identity.session_id, "human")
+            .await
+            .unwrap();
+        let identity = stored_session(&engine, &identity.session_id)
+            .await
+            .unwrap()
+            .unwrap();
+        let principal = op_identity::session::derive_principal_id(&key);
+        let grants_dir = tempfile::tempdir().unwrap();
+        let grants_path = grants_dir.path().join("capability-grants.json");
+        std::fs::write(
+            &grants_path,
+            serde_json::to_vec(&serde_json::json!({principal: {"capabilities": ["identity_sled.credential.refresh"]}})).unwrap(),
+        )
+        .unwrap();
+        let previous = std::env::var_os("OP_GRANTS_PATH");
+        std::env::set_var("OP_GRANTS_PATH", &grants_path);
+        (engine, shm, identity, grants_dir, previous, registry)
+    }
+
+    fn restore_grants_path(previous: Option<std::ffi::OsString>) {
+        match previous {
+            Some(value) => std::env::set_var("OP_GRANTS_PATH", value),
+            None => std::env::remove_var("OP_GRANTS_PATH"),
+        }
+    }
+
+    fn refresh_test_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+        LOCK.get_or_init(|| std::sync::Mutex::new(()))
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn refresh_migrates_legacy_sid1_and_replaces_transport_auth() {
+        let _refresh_lock = refresh_test_lock();
+        let (engine, _shm, identity, _grants_dir, previous, _registry) =
+            refresh_test_fixture_with_claims(0x81, Some("dbus,grpc,mcp"), 0).await;
+        let key = identity.wireguard_pubkey.clone();
+        let principal = op_identity::session::derive_principal_id(&key);
+        let old = op_identity::sealed_id::SealedId::open(&inline_sid1_wire(
+            identity.sealed_id.as_deref().unwrap(),
+        ))
+        .unwrap();
+        let store = engine.identity_sled_store().unwrap().clone();
+        let legacy = op_identity::sealed_id::SealedId {
+            transport_scope: "dbus,grpc,mcp".into(),
+            ..old.clone()
+        }
+        .to_inline_ref()
+        .unwrap();
+        let refreshed = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            &principal,
+            Some(&identity.session_id),
+            identity.genesis.as_deref(),
+        )
+        .await
+        .unwrap_or_else(|error| {
+            if let Some(pending) = error.downcast_ref::<IdentityPublicationPending>() {
+                panic!("refresh publication pending: {}", pending._private_cause);
+            }
+            panic!("refresh failed: {error:#}");
+        });
+        assert_eq!(refreshed["refreshed"], true);
+        let current = revision_sled(&load_revision(&store, &identity.session_id).await.unwrap())
+            .unwrap()
+            .unwrap();
+        let new_claims = op_identity::sealed_id::SealedId::open(&inline_sid1_wire(
+            current.sealed_id.as_deref().unwrap(),
+        ))
+        .unwrap();
+        assert_eq!(new_claims.principal_id, old.principal_id);
+        assert_eq!(new_claims.session_id, old.session_id);
+        assert_eq!(new_claims.wireguard_pubkey, old.wireguard_pubkey);
+        assert_eq!(new_claims.session_genesis, old.session_genesis);
+        assert_eq!(new_claims.trace_id, old.trace_id);
+        assert_eq!(new_claims.schema_version, old.schema_version);
+        assert_eq!(new_claims.arrival_timestamp, old.arrival_timestamp);
+        assert_eq!(new_claims.expires_at, old.expires_at);
+        assert_eq!(new_claims.transport_scope, "dbus,grpc,mcp,mqtt");
+        assert!(
+            authenticate_sid1_wire(&engine, &inline_sid1_wire(&legacy), "grpc")
+                .await
+                .is_err()
+        );
+        authenticate_sid1_wire(
+            &engine,
+            &inline_sid1_wire(current.sealed_id.as_deref().unwrap()),
+            "mqtt",
+        )
+        .await
+        .unwrap();
+        let private = strict_private_state()
+            .unwrap()
+            .sleds
+            .into_iter()
+            .find(|sled| sled.session_id == identity.session_id)
+            .unwrap();
+        assert_eq!(private.sealed_id, current.sealed_id);
+        restore_grants_path(previous);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn refresh_is_idempotent_and_rejects_unverified_inputs() {
+        let _refresh_lock = refresh_test_lock();
+        let (engine, _shm, identity, _grants_dir, previous, _registry) =
+            refresh_test_fixture(0x82).await;
+        let actor = op_identity::session::derive_principal_id(&identity.wireguard_pubkey);
+        let first = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            &actor,
+            Some(&identity.session_id),
+            identity.genesis.as_deref(),
+        )
+        .await
+        .unwrap();
+        let current = revision_sled(
+            &load_revision(engine.identity_sled_store().unwrap(), &identity.session_id)
+                .await
+                .unwrap(),
+        )
+        .unwrap()
+        .unwrap();
+        let second = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            &actor,
+            Some(&identity.session_id),
+            current.genesis.as_deref(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(first["refreshed"], false);
+        assert_eq!(second["refreshed"], false);
+        let error = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({"session_id": identity.session_id}),
+            &actor,
+            Some(&identity.session_id),
+            current.genesis.as_deref(),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.to_string().contains("accepts no arguments"));
+        let error = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            "wrong-actor",
+            Some(&identity.session_id),
+            current.genesis.as_deref(),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.to_string().contains("verified anchored session"));
+        let error = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            &actor,
+            None,
+            current.genesis.as_deref(),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.to_string().contains("verified session metadata"));
+        assert!(dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            &actor,
+            Some(&identity.session_id),
+            Some("wrong-genesis")
+        )
+        .await
+        .is_err());
+        assert!(dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            &actor,
+            Some("wrong-session"),
+            current.genesis.as_deref()
+        )
+        .await
+        .is_err());
+        assert!(dispatch_with_fixtures(
+            &engine,
+            Arc::new(RecordingLifecycle::default()),
+            no_btrfs_mount_verifier(),
+            "refresh_credential",
+            serde_json::json!({})
+        )
+        .await
+        .is_err());
+        assert!(dispatch_identity_sled_method(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({})
+        )
+        .await
+        .is_err());
+        restore_grants_path(previous);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn refresh_rejects_invalid_scope_expiry_revocation_and_missing_grant() {
+        let _refresh_lock = refresh_test_lock();
+        {
+            let (bad_engine, _bad_shm, bad_identity, _bad_grants, bad_previous, _bad_registry) =
+                refresh_test_fixture_with_claims(0x84, Some("dbus,mqtt"), 0).await;
+            let bad_actor =
+                op_identity::session::derive_principal_id(&bad_identity.wireguard_pubkey);
+            assert!(dispatch_identity_sled_method_for_verified_session(
+                &bad_engine,
+                "refresh_credential",
+                &serde_json::json!({}),
+                &bad_actor,
+                Some(&bad_identity.session_id),
+                bad_identity.genesis.as_deref()
+            )
+            .await
+            .is_err());
+            restore_grants_path(bad_previous);
+        }
+        {
+            let (
+                expired_engine,
+                _expired_shm,
+                expired_identity,
+                _expired_grants,
+                expired_previous,
+                _expired_registry,
+            ) = refresh_test_fixture_with_claims(0x85, None, now() - 1).await;
+            let expired_actor =
+                op_identity::session::derive_principal_id(&expired_identity.wireguard_pubkey);
+            assert!(dispatch_identity_sled_method_for_verified_session(
+                &expired_engine,
+                "refresh_credential",
+                &serde_json::json!({}),
+                &expired_actor,
+                Some(&expired_identity.session_id),
+                expired_identity.genesis.as_deref()
+            )
+            .await
+            .is_err());
+            restore_grants_path(expired_previous);
+        }
+        let (engine, _shm, identity, grants_dir, previous, _registry) =
+            refresh_test_fixture(0x83).await;
+        let actor = op_identity::session::derive_principal_id(&identity.wireguard_pubkey);
+        std::fs::write(&grants_dir.path().join("capability-grants.json"), b"{}").unwrap();
+        assert!(dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            &actor,
+            Some(&identity.session_id),
+            identity.genesis.as_deref()
+        )
+        .await
+        .is_err());
+        std::fs::write(
+            &grants_dir.path().join("capability-grants.json"),
+            serde_json::to_vec(
+                &serde_json::json!({actor.clone(): {"capabilities": ["identity_sled.credential.refresh"]}}),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        crate::human_principal_dispatch::dispatch_human_principal_method(
+            "revoke_key",
+            &serde_json::json!({"human_pubkey": identity.wireguard_pubkey}),
+        )
+        .await
+        .unwrap();
+        assert!(dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            &actor,
+            Some(&identity.session_id),
+            identity.genesis.as_deref()
+        )
+        .await
+        .is_err());
+        restore_grants_path(previous);
     }
 
     #[tokio::test(flavor = "multi_thread")]

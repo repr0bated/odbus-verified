@@ -53,6 +53,65 @@ fn genesis(sid: &str) -> GenesisInputsRecord {
         schema_content_hash: "record-format".into(),
     }
 }
+
+fn legacy_credential_fixture() -> (IdentitySledRecord, GenesisInputsRecord, String) {
+    let wireguard_pubkey = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=".to_string();
+    let session_id = op_identity::session::derive_session_id(&wireguard_pubkey);
+    let genesis = GenesisInputsRecord {
+        session_id: session_id.clone(),
+        arrival_timestamp: 10,
+        chain_head_at_arrival: "head".into(),
+        catalog_hash_at_arrival: "catalog".into(),
+        head_timestamp_at_arrival: 9,
+        schema_content_hash: "record-format".into(),
+    };
+    let session_genesis = "ab".repeat(32);
+    let trace_id = "cd".repeat(16);
+    let legacy = op_identity::sealed_id::SealedId {
+        principal_id: op_identity::session::derive_principal_id(&wireguard_pubkey),
+        principal_kind: "wireguard-principal".into(),
+        session_id: session_id.clone(),
+        wireguard_pubkey: wireguard_pubkey.clone(),
+        session_genesis: session_genesis.clone(),
+        trace_id: trace_id.clone(),
+        schema_version: 3,
+        issued_at: genesis.arrival_timestamp,
+        expires_at: 0,
+        arrival_timestamp: genesis.arrival_timestamp,
+        chain_head_at_arrival: genesis.chain_head_at_arrival.clone(),
+        catalog_hash_at_arrival: genesis.catalog_hash_at_arrival.clone(),
+        head_timestamp_at_arrival: genesis.head_timestamp_at_arrival,
+        transport_scope: "dbus,grpc,mcp".into(),
+    }
+    .to_inline_ref()
+    .unwrap();
+    let current = op_identity::sealed_id::SealedId {
+        transport_scope: "dbus,grpc,mcp,mqtt".into(),
+        ..op_identity::sealed_id::SealedId::from_inline_ref(&legacy).unwrap()
+    }
+    .to_inline_ref()
+    .unwrap();
+    let row = IdentitySledRecord {
+        session_id,
+        wireguard_pubkey: wireguard_pubkey.clone(),
+        interface: "wg0".into(),
+        peer_ip: "10.0.0.7".into(),
+        mutation_index: 7,
+        session_genesis,
+        trace_id,
+        schema_version: 3,
+        vector_id: "vec".into(),
+        sealed_id: legacy,
+        principal_kind: Some("human".into()),
+        btrfs_device_json: "{\"device\":\"x\"}".into(),
+        instance_json: "{\"name\":\"container\"}".into(),
+        session_started_at: 1,
+        last_seen_at: 8,
+        active: true,
+        expires_at: 0,
+    };
+    (row, genesis, current)
+}
 fn put(
     store: &CozoGraphShuttle,
     sid: &str,
@@ -80,6 +139,135 @@ fn native_commit_errors_are_not_mistaken_for_transport_success() {
     assert!(unwrap_commit_reply::<(), _, &str>(Ok(Err("native commit conflict"))).is_err());
     assert!(unwrap_commit_reply::<(), &str, _>(Err("closed channel")).is_err());
     assert!(unwrap_commit_reply::<(), &str, &str>(Ok(Ok(()))).is_ok());
+}
+
+#[test]
+fn transport_refresh_preserves_anchored_data_and_replays_exactly() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let (row, genesis, current_sealed_id) = legacy_credential_fixture();
+    let sid = row.session_id.clone();
+    let first = put(
+        &store,
+        &sid,
+        "seed-refresh",
+        row.clone(),
+        Some(genesis.clone()),
+    );
+    let committed = store
+        .apply_identity_intent(
+            &sid,
+            "refresh-1",
+            IdentityIntent::RefreshTransportCredential {
+                expected: Box::new(first.clone()),
+                sealed_id: current_sealed_id.clone(),
+            },
+        )
+        .unwrap();
+    assert!(!committed.replayed);
+    assert_eq!(committed.current.revision, first.revision + 1);
+    let refreshed = committed.current.record.clone().unwrap();
+    assert_eq!(refreshed.sealed_id, current_sealed_id);
+    assert_eq!(refreshed.mutation_index, row.mutation_index + 1);
+    let mut expected_row = row.clone();
+    expected_row.sealed_id = current_sealed_id.clone();
+    expected_row.mutation_index += 1;
+    assert_eq!(refreshed, expected_row);
+    assert_eq!(committed.current.genesis, Some(genesis));
+
+    let replay = store
+        .apply_identity_intent(
+            &sid,
+            "refresh-1",
+            IdentityIntent::RefreshTransportCredential {
+                expected: Box::new(first),
+                sealed_id: current_sealed_id,
+            },
+        )
+        .unwrap();
+    assert!(replay.replayed);
+    assert_eq!(replay.current, committed.current);
+}
+
+#[test]
+fn transport_refresh_rejects_stale_reuse_claim_and_scope_changes() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let (row, genesis, current_sealed_id) = legacy_credential_fixture();
+    let sid = row.session_id.clone();
+    let first = put(&store, &sid, "seed-refresh", row.clone(), Some(genesis));
+    let refreshed = store
+        .apply_identity_intent(
+            &sid,
+            "refresh-1",
+            IdentityIntent::RefreshTransportCredential {
+                expected: Box::new(first.clone()),
+                sealed_id: current_sealed_id.clone(),
+            },
+        )
+        .unwrap();
+    assert!(store
+        .apply_identity_intent(
+            &sid,
+            "refresh-stale",
+            IdentityIntent::RefreshTransportCredential {
+                expected: Box::new(first.clone()),
+                sealed_id: current_sealed_id.clone(),
+            },
+        )
+        .is_err());
+
+    let altered_claim = op_identity::sealed_id::SealedId {
+        transport_scope: "dbus,grpc,mcp,mqtt".into(),
+        wireguard_pubkey: "Q0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0M=".into(),
+        ..op_identity::sealed_id::SealedId::from_inline_ref(&row.sealed_id).unwrap()
+    }
+    .to_inline_ref()
+    .unwrap();
+    assert!(store
+        .apply_identity_intent(
+            &sid,
+            "refresh-claim-change",
+            IdentityIntent::RefreshTransportCredential {
+                expected: Box::new(first.clone()),
+                sealed_id: altered_claim.clone(),
+            },
+        )
+        .is_err());
+
+    let disallowed_scope = op_identity::sealed_id::SealedId {
+        transport_scope: "dbus,mqtt".into(),
+        ..op_identity::sealed_id::SealedId::from_inline_ref(&row.sealed_id).unwrap()
+    }
+    .to_inline_ref()
+    .unwrap();
+    assert!(store
+        .apply_identity_intent(
+            &sid,
+            "refresh-scope-change",
+            IdentityIntent::RefreshTransportCredential {
+                expected: Box::new(first.clone()),
+                sealed_id: disallowed_scope,
+            },
+        )
+        .is_err());
+
+    let mut different_intent = first;
+    different_intent.revision += 1;
+    let reused = match store.apply_identity_intent(
+        &sid,
+        "refresh-1",
+        IdentityIntent::RefreshTransportCredential {
+            expected: Box::new(different_intent),
+            sealed_id: current_sealed_id,
+        },
+    ) {
+        Ok(_) => panic!("operation reuse with a different credential must fail"),
+        Err(error) => error,
+    };
+    assert!(reused.to_string().contains("operation id reused"));
+    assert_eq!(
+        store.read_identity_revision(&sid).unwrap(),
+        refreshed.current
+    );
 }
 
 #[test]

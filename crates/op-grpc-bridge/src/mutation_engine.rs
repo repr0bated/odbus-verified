@@ -2716,6 +2716,12 @@ impl MutationEngine {
                         .cloned()
                         .unwrap_or_else(|| serde_json::Value::Object(Default::default()));
                 }
+                // This compatibility entry has no verified transport session.
+                // Credential refresh is accepted only by canonical dispatch.
+                anyhow::ensure!(
+                    method != "refresh_credential",
+                    "credential refresh requires verified session metadata"
+                );
                 let domain = crate::identity_sled_dispatch::dispatch_identity_sled_method(
                     self, method, &args_json,
                 )
@@ -3329,8 +3335,15 @@ impl MutationEngine {
             }
             "identity_sled" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                crate::identity_sled_dispatch::dispatch_identity_sled_method(self, method, &args)
-                    .await?
+                crate::identity_sled_dispatch::dispatch_identity_sled_method_for_verified_session(
+                    self,
+                    method,
+                    &args,
+                    actor_id,
+                    session_id,
+                    session_genesis,
+                )
+                .await?
             }
             "cron" => {
                 crate::cron_dispatch::dispatch(
