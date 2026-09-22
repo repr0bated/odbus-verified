@@ -61,6 +61,8 @@ EMQX_ARTIFACT_CACHE_DIR=${EMQX_ARTIFACT_CACHE_DIR:-/var/cache/op-dbus/source-art
 MCP_PROVIDER_ARTIFACT_CACHE_DIR=${MCP_PROVIDER_ARTIFACT_CACHE_DIR:-/var/cache/op-dbus/source-artifacts}
 NOTEBOOKLM_MCP_VERSION_FILE="$SCRIPT_DIR/../config/notebooklm-mcp.version"
 MONGODB_MCP_VERSION_FILE="$SCRIPT_DIR/../config/mongodb-mcp-server.version"
+EXECUTION_PYTHON_LOCK="$SCRIPT_DIR/../config/execution-python-requirements.lock"
+EXECUTION_PYTHON_PREPARE="$SCRIPT_DIR/prepare-execution-python.sh"
 NLM_CLI_ROOT=/opt/opdbus
 TCHED_ROUTER_SOURCE_PIN="$PROJECT_ROOT/vendor/tched-router/source.pin"
 TCHED_ROUTER_VENDORED_SOURCE="$PROJECT_ROOT/vendor/tched-router/source.tar.gz"
@@ -462,6 +464,9 @@ fi
     die "missing host runtime package manifest: $HOST_RUNTIME_PACKAGES_SOURCE"
 HOST_RUNTIME_PACKAGES=$(grep -Ev '^[[:space:]]*(#|$)' "$HOST_RUNTIME_PACKAGES_SOURCE")
 [ -n "$HOST_RUNTIME_PACKAGES" ] || die "host runtime package manifest is empty"
+[ -r "$EXECUTION_PYTHON_LOCK" ] || die "missing execution Python requirements lock"
+[ -x "$EXECUTION_PYTHON_PREPARE" ] || die "execution Python preparation helper is not executable"
+EXECUTION_PYTHON_LOCK_SHA256=$(sha256sum "$EXECUTION_PYTHON_LOCK" | cut -d' ' -f1)
 command -v pacman >/dev/null 2>&1 || die "pacman is required to verify host runtime packages"
 missing_host_packages=$(pacman -T $HOST_RUNTIME_PACKAGES 2>/dev/null || true)
 [ -z "$missing_host_packages" ] ||
@@ -501,6 +506,16 @@ build_golden() {
         "$GOLDEN_DIR/etc" "$GOLDEN_DIR/opt"
     run install -d -m 0700 -o root -g root \
         "$GOLDEN_DIR/var/lib/op-dbus/identity-cozo"
+    run env \
+        OP_EXECUTION_PYTHON_ROOT="$GOLDEN_DIR/opt/op-dbus/execution-python" \
+        OP_EXECUTION_PYTHON_REPO="$PROJECT_ROOT" \
+        OP_EXECUTION_PYTHON_LOCK="$EXECUTION_PYTHON_LOCK" \
+        OP_EXECUTION_PYTHON_CACHE="${OP_EXECUTION_PYTHON_CACHE:-/var/cache/op-dbus/execution-python}" \
+        "$EXECUTION_PYTHON_PREPARE"
+    run test -x "$GOLDEN_DIR/opt/op-dbus/execution-python/bin/ruff"
+    run test -x "$GOLDEN_DIR/opt/op-dbus/execution-python/bin/mypy"
+    run "$GOLDEN_DIR/opt/op-dbus/execution-python/bin/python" -m pytest --version
+    ok "staged pinned Python execution environment ($EXECUTION_PYTHON_LOCK_SHA256)"
 
     # Binaries. A reused golden subvolume must not retain listener executables
     # that were retired when their implementation moved behind the bridge.
@@ -782,6 +797,7 @@ build_golden() {
             printf 'nlm-cli-sha256: %s\n' "$NOTEBOOKLM_MCP_SHA256"
             printf 'mongodb-mcp-artifact: %s\n' "$MONGODB_MCP_ARTIFACT"
             printf 'mongodb-mcp-sha256: %s\n' "$MONGODB_MCP_SHA256"
+            printf 'execution-python-lock-sha256: %s\n' "$EXECUTION_PYTHON_LOCK_SHA256"
             printf '\n[sha256]\n'
             printf '%s\n' "$BINARIES" | while IFS= read -r bin; do
                 printf '%s  %s\n' "$(sha256sum "$bin" | cut -d' ' -f1)" "$(basename "$bin")"

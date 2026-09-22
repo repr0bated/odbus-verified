@@ -1,0 +1,5 @@
+# Python execution tools for the supervised unified-execution backend.
+# The generated lock contains hashes for every resolved wheel.
+pytest==8.3.5
+ruff==0.11.2
+mypy==1.15.0

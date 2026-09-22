@@ -1181,7 +1181,7 @@
 +}
 --- a/crates/zeroclaw-providers/src/stateless.rs
 +++ b/crates/zeroclaw-providers/src/stateless.rs
-@@ -0,0 +1,319 @@
+@@ -0,0 +1,320 @@
 +//! One provider-only generation turn. Config owns provider/model selection;
 +//! this consumed view pins that selection for one request. There is no Agent,
 +//! memory, history, workspace, tool registry, provider fallback or persistence.
