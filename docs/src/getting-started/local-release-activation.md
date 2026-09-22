@@ -75,8 +75,8 @@ host bindings are retained in
 `/opt/op-dbus/recovery/activation-20260922T001242Z-dacc6dd/`; transfer and
 catalog receipts are in `/var/tmp/opdbus-release-P8UxXV5ctf/`.
 
-The completed EMQX baseline is `20260922T013431Z-1f1b772`, selected by
-`current`. Its source UUID is `46fb8811-8f29-4f40-8547-56869fb16cde`, and
+The preceding EMQX release was `20260922T013431Z-1f1b772`. Its source UUID
+is `46fb8811-8f29-4f40-8547-56869fb16cde`, and
 the received filesystem records that UUID. It contains the native binaries
 built at `a01411c`, the unchanged pinned UI, and the final ACL correction.
 All 66 plugin IDs remain; only the `identity_sled` schema changed. The live,
@@ -84,6 +84,35 @@ persisted and received catalog manifests match. The production UI client
 received wake sequence 3 and reread scoped knowledge in 108 ms; a wildcard
 subscription was refused. Metadata-only evidence is retained under
 `/var/tmp/opdbus-release-P8UxXV5ctf/activation-20260922T013431Z-1f1b772/`.
+
+The final cognitive MCP/EMQX baseline is `20260922T023328Z-2f48e86`, selected
+by `current`. The native GNU workspace release built at `2f48e86` in 9m28s;
+69 focused tests passed. Source UUID and received UUID both record
+`887d3eae-da94-e545-86e1-27cde332bf3f`. All 66 plugin IDs remain, with only
+`cognitive_mcp` changing schema; received, persisted and SHM catalog manifests
+match SHA-256 `66660da6bb4cfb4487c13dbf80b3549a074bcc44f421a32da78969b752d65149`.
+The running bridge, web and grants binaries match the release. Both bridge
+sockets remain root-owned mode 0600, and all four affected services pass
+runit readiness checks.
+
+The live test stored disposable account-scoped advice, received EMQX wake 5,
+and used the production UI client to reread a new owned knowledge row
+containing that exact advice. Knowledge count and revision advanced 4 → 5.
+The wildcard subscription was refused, and disposable memory was deleted.
+Public MCP memory round trips, protected identity metadata refusal, three
+workflow facades and replacement of forged context-session hints also passed.
+The positive and negative MQTT tests run sequentially: they share the
+owner-derived MQTT client ID, so running them concurrently disconnects the
+positive test's subscription.
+
+Final evidence is `/var/tmp/opdbus-closeout-20260922/baseline-receipt.json`;
+activation metadata is under
+`/var/tmp/opdbus-release-P8UxXV5ctf/activation-20260922T023558Z-20260922T023328Z-2f48e86/`.
+The obsolete `dacc6dd` received filesystem was archived as a protected,
+digest-checked btrfs stream under `/opt/op-dbus/recovery/closeout-20260922/`
+before retiring it. Five managed subvolumes remain, including both compatible
+preceding releases. Full `/verify` remains cancelled by the owner; historical
+Qdrant recovery (OD-68) and exhaustive retained-method audit are separate work.
 
 When only one subvolume slot is free, send the read-only source snapshot to
 a protected ordinary stream file first. After successful send, record the
