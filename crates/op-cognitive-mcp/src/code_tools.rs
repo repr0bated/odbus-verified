@@ -14,7 +14,9 @@
 //!   subid: `src.software.workspace.index@v1`
 
 use crate::context_awareness::{ActivityType, ContextAwarenessEngine};
-use crate::rag_pipeline::{CodeFilter, RagPipeline, RagResult, RetrievalMode, RetrievalProfile};
+use crate::rag_pipeline::{
+    with_retrieval_deadline, CodeFilter, RagPipeline, RagResult, RetrievalMode, RetrievalProfile,
+};
 use anyhow::Result;
 use async_trait::async_trait;
 use op_mcp::tool_registry::{BoxedTool, Tool, ToolRegistry};
@@ -102,19 +104,28 @@ impl Tool for CodeSearchTool {
         let filter = filter_from(&input, false);
         let collections = collections_from(&input, &self.collection, &profile);
 
-        let results = if collections.len() > 1 {
-            self.rag
-                .query_fused_collections(&collections, query, limit, profile.fetch_limit, &filter)
-                .await?
-        } else if input.get("fused").and_then(Value::as_bool).unwrap_or(true) {
-            self.rag
-                .query_fused(&collections[0], query, limit, &filter)
-                .await?
-        } else {
-            self.rag
-                .query_filtered(&collections[0], query, limit, &filter)
-                .await?
-        };
+        let results = with_retrieval_deadline(profile.deadline, async {
+            if collections.len() > 1 {
+                self.rag
+                    .query_fused_collections_unbounded(
+                        &collections,
+                        query,
+                        limit,
+                        profile.fetch_limit,
+                        &filter,
+                    )
+                    .await
+            } else if input.get("fused").and_then(Value::as_bool).unwrap_or(true) {
+                self.rag
+                    .query_fused(&collections[0], query, limit, &filter)
+                    .await
+            } else {
+                self.rag
+                    .query_filtered(&collections[0], query, limit, &filter)
+                    .await
+            }
+        })
+        .await?;
 
         Ok(json!({
             "count": results.len(),
@@ -194,16 +205,26 @@ impl Tool for CodeContextTool {
                 session_id,
                 activity_type,
                 query.to_string(),
-                serde_json::json!({ "source": "code_context" }),
+                serde_json::json!({
+                    "source": "code_context",
+                    "memory_namespace": input.get("memory_namespace").and_then(Value::as_str),
+                }),
             )
             .await;
 
         let filter = filter_from(&input, false);
         let collections = collections_from(&input, &self.collection, &profile);
-        let (results, retrieval_error) = match self
-            .rag
-            .query_fused_collections(&collections, query, limit, profile.fetch_limit, &filter)
-            .await
+        let (results, retrieval_error) = match with_retrieval_deadline(
+            profile.deadline,
+            self.rag.query_fused_collections_unbounded(
+                &collections,
+                query,
+                limit,
+                profile.fetch_limit,
+                &filter,
+            ),
+        )
+        .await
         {
             Ok(results) => (results, None),
             Err(err) => {
@@ -266,7 +287,7 @@ impl Tool for CodeIndexTool {
     }
 
     fn required_capability(&self) -> Option<&str> {
-        Some("cognitive_mcp.invoke")
+        Some("cognitive_mcp.code.write")
     }
 
     fn subid(&self) -> Option<&str> {
@@ -396,4 +417,125 @@ fn serde_to_simd(v: &serde_json::Value) -> Value {
     let s = serde_json::to_string(v).unwrap_or_default();
     let mut buf = s.into_bytes();
     simd_json::from_slice(&mut buf).unwrap_or(Value::Static(simd_json::StaticNode::Null))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::context_awareness::{ContextAwarenessConfig, ContextAwarenessEngine};
+    use crate::cozo_shuttle::CozoGraphShuttle;
+    use crate::memory_store::CognitiveMemoryStore;
+    use crate::voyage::VoyageClient;
+    use op_plugins::state_plugins::cognitive_mcp::CodeContextOutput;
+    use qdrant_client::Qdrant;
+    struct RestoreEnvironment(Vec<(&'static str, Option<std::ffi::OsString>)>);
+
+    impl Drop for RestoreEnvironment {
+        fn drop(&mut self) {
+            for (key, value) in &self.0 {
+                match value {
+                    Some(value) => std::env::set_var(key, value),
+                    None => std::env::remove_var(key),
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn code_search_single_and_fused_branches_obey_deadline() {
+        let _restore = RestoreEnvironment(
+            [
+                "COGNITIVE_MCP_SEARCH_DEADLINE_MS",
+                "COGNITIVE_MCP_COMPLETION_DEADLINE_MS",
+                "EMBEDDING_VOYAGE_CREDENTIAL_ORIGIN",
+            ]
+            .into_iter()
+            .map(|key| (key, std::env::var_os(key)))
+            .collect(),
+        );
+        std::env::set_var("COGNITIVE_MCP_SEARCH_DEADLINE_MS", "100");
+        std::env::set_var("COGNITIVE_MCP_COMPLETION_DEADLINE_MS", "100");
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::env::set_var(
+            "EMBEDDING_VOYAGE_CREDENTIAL_ORIGIN",
+            format!("https://127.0.0.1:{port}"),
+        );
+        let acceptor = tokio::spawn(async move {
+            let mut sockets = Vec::new();
+            for _ in 0..8 {
+                if let Ok((socket, _)) = listener.accept().await {
+                    sockets.push(socket);
+                }
+            }
+            sockets
+        });
+        let qdrant_url = format!("http://127.0.0.1:{port}");
+        let qdrant = Qdrant::from_url(&qdrant_url)
+            .skip_compatibility_check()
+            .build()
+            .unwrap();
+        let rag = RagPipeline::for_test(
+            qdrant,
+            VoyageClient::from_params(
+                format!("https://127.0.0.1:{port}/v1/embeddings"),
+                "fixture-key".into(),
+                "fixture-model".into(),
+            )
+            .unwrap(),
+        );
+        let rag = Arc::new(rag);
+        let tool = CodeSearchTool {
+            rag: rag.clone(),
+            collection: "test".into(),
+        };
+        for fused in [true, false] {
+            let error = tool
+                .execute(json!({
+                    "query": "deadline",
+                    "collection": "test",
+                    "fused": fused
+                }))
+                .await
+                .unwrap_err();
+            assert!(error.to_string().contains("deadline exceeded"));
+        }
+        let error = tool
+            .execute(json!({
+                "query": "deadline",
+                "collections": ["one", "two"]
+            }))
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("deadline exceeded"), "{error:#}");
+
+        let cozo = Arc::new(CozoGraphShuttle::new_in_memory().unwrap());
+        let memory = Arc::new(CognitiveMemoryStore::new(cozo).await.unwrap());
+        let engine = Arc::new(ContextAwarenessEngine::new(
+            ContextAwarenessConfig::default(),
+            memory,
+            None,
+        ));
+        let context = CodeContextTool {
+            rag,
+            engine,
+            collection: "test".into(),
+        };
+        let output = context
+            .execute(json!({"query": "deadline", "session_id": "test"}))
+            .await
+            .unwrap();
+        let output_json: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&output).unwrap()).unwrap();
+        let typed: CodeContextOutput = serde_json::from_value(output_json).unwrap();
+        assert_eq!(typed.count, 0);
+        assert!(typed
+            .retrieval_error
+            .as_deref()
+            .unwrap()
+            .contains("deadline exceeded"));
+        acceptor.abort();
+    }
 }

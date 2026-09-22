@@ -58,9 +58,13 @@
 //! - `idle_recovery` - User returned after idle, refresh context
 
 use crate::memory_store::{CognitiveMemoryStore, EntryQuery};
-use crate::rag_pipeline::{default_collection_from_env, RagPipeline};
+use crate::rag_pipeline::{
+    default_collection_from_env, with_retrieval_deadline, RagPipeline, RetrievalMode,
+    RetrievalProfile,
+};
 use anyhow::{Context as AnyhowContext, Result};
 use dashmap::DashMap;
+use op_plugins::state_plugins::project::namespace_prefix_for_session;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -751,7 +755,7 @@ impl ContextAwarenessEngine {
     ) -> Result<()> {
         // Retrieve relevant knowledge
         let content = self
-            .retrieve_relevant_knowledge(&context_query, &trigger)
+            .retrieve_relevant_knowledge(session_id, &context_query, &trigger)
             .await?;
 
         let push = KnowledgePush {
@@ -787,8 +791,27 @@ impl ContextAwarenessEngine {
         Ok(())
     }
 
+    fn memory_namespace_for_session(&self, session_id: &str) -> Option<String> {
+        let entry = self.session_states.get(session_id)?;
+        let state = entry.value().try_read().ok()?;
+        let namespace = state
+            .activity_window
+            .back()
+            .and_then(|activity| activity.metadata.get("memory_namespace"))
+            .and_then(serde_json::Value::as_str)
+            .filter(|namespace| {
+                let prefix = namespace_prefix_for_session(session_id);
+                namespace.starts_with(&prefix) && namespace.len() > prefix.len()
+            })
+            .map(str::to_owned);
+        drop(state);
+        drop(entry);
+        namespace
+    }
+
     async fn retrieve_relevant_knowledge(
         &self,
+        session_id: &str,
         query: &str,
         trigger: &PushTrigger,
     ) -> Result<KnowledgeContent> {
@@ -796,11 +819,21 @@ impl ContextAwarenessEngine {
             PushTrigger::StuckSession
             | PushTrigger::NewTopicDetected
             | PushTrigger::IdleRecovery => {
+                if self.memory_namespace_for_session(session_id).is_none() {
+                    return Ok(KnowledgeContent::RagResults {
+                        query: query.to_string(),
+                        results: Vec::new(),
+                        sources: Vec::new(),
+                    });
+                }
                 // Use RAG for semantic search
                 if let Some(ref rag) = self.rag_pipeline {
-                    let results = rag
-                        .query(&self.config.rag_collection, query, 5, None)
-                        .await?;
+                    let profile = RetrievalProfile::from_env(RetrievalMode::Completion);
+                    let results = with_retrieval_deadline(
+                        profile.deadline,
+                        rag.query(&self.config.rag_collection, query, 5, None),
+                    )
+                    .await?;
 
                     let result_values: Vec<serde_json::Value> = results
                         .into_iter()
@@ -820,8 +853,15 @@ impl ContextAwarenessEngine {
                 }
 
                 // Fallback to memory search
+                let Some(namespace) = self.memory_namespace_for_session(session_id) else {
+                    return Ok(KnowledgeContent::MemoryEntries {
+                        namespace: "context_search".to_string(),
+                        entries: Vec::new(),
+                        context: query.to_string(),
+                    });
+                };
                 let memory_query = EntryQuery {
-                    namespace_id: None,
+                    namespace_id: Some(namespace.clone()),
                     key_pattern: Some(query.to_string()),
                     tags: None,
                     limit: Some(5),
@@ -831,7 +871,7 @@ impl ContextAwarenessEngine {
                 let entries = self.memory_store.query_entries(memory_query).await?;
 
                 Ok(KnowledgeContent::MemoryEntries {
-                    namespace: "context_search".to_string(),
+                    namespace,
                     entries: entries
                         .into_iter()
                         .map(|e| serde_json::to_value(e).unwrap_or_default())
@@ -844,8 +884,16 @@ impl ContextAwarenessEngine {
                 // Search for error-related documentation
                 let error_query = format!("{} error troubleshooting solution", query);
 
+                let Some(namespace) = self.memory_namespace_for_session(session_id) else {
+                    return Ok(KnowledgeContent::ErrorAssistance {
+                        error_pattern: query.to_string(),
+                        resolution_steps: Vec::new(),
+                        related_docs: Vec::new(),
+                    });
+                };
+
                 let memory_query = EntryQuery {
-                    namespace_id: None,
+                    namespace_id: Some(namespace),
                     key_pattern: Some(error_query),
                     tags: Some(vec!["error".to_string(), "troubleshoot".to_string()]),
                     limit: Some(5),
@@ -909,7 +957,7 @@ impl ContextAwarenessEngine {
     /// Manually trigger a knowledge push for a session
     pub async fn request_push(&self, session_id: &str, query: &str) -> Result<KnowledgePush> {
         let content = self
-            .retrieve_relevant_knowledge(query, &PushTrigger::PatternMatch)
+            .retrieve_relevant_knowledge(session_id, query, &PushTrigger::PatternMatch)
             .await?;
 
         let push = KnowledgePush {
@@ -963,6 +1011,8 @@ impl ContextAwarenessEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cozo_shuttle::CozoGraphShuttle;
+    use crate::memory_store::NamespaceKind;
 
     #[test]
     fn should_detect_stuck_session() {
@@ -1034,5 +1084,101 @@ mod tests {
 
         state.record_push();
         assert!(!state.can_push()); // Too soon
+    }
+
+    #[tokio::test]
+    async fn automatic_error_memory_is_bound_to_latest_verified_namespace() {
+        let shuttle = Arc::new(CozoGraphShuttle::new_in_memory().unwrap());
+        let store = Arc::new(CognitiveMemoryStore::new(shuttle).await.unwrap());
+        let session = "sid-own";
+        let own_namespace = format!("session/{session}/personal");
+        let foreign_namespace = "session/sid-other/personal";
+        for namespace in [own_namespace.as_str(), foreign_namespace] {
+            store
+                .upsert_namespace(
+                    namespace,
+                    NamespaceKind::Session,
+                    None,
+                    None,
+                    None,
+                    serde_json::json!({}),
+                )
+                .await
+                .unwrap();
+            store
+                .store_entry(
+                    namespace,
+                    "EMQX error troubleshooting solution",
+                    serde_json::json!(format!("{namespace} resolution")),
+                    vec!["error".to_string(), "troubleshoot".to_string()],
+                    None,
+                )
+                .await
+                .unwrap();
+        }
+        let engine = ContextAwarenessEngine::new(ContextAwarenessConfig::default(), store, None);
+        engine
+            .record_activity(
+                session,
+                ActivityType::Error,
+                "EMQX".to_string(),
+                serde_json::json!({"memory_namespace": own_namespace}),
+            )
+            .await;
+
+        let owned = engine
+            .retrieve_relevant_knowledge(session, "EMQX", &PushTrigger::ErrorAssistance)
+            .await
+            .unwrap();
+        let KnowledgeContent::ErrorAssistance {
+            resolution_steps, ..
+        } = owned
+        else {
+            panic!("expected error assistance content");
+        };
+        assert_eq!(
+            resolution_steps,
+            vec![format!("{own_namespace} resolution")]
+        );
+
+        engine
+            .record_activity(
+                session,
+                ActivityType::Error,
+                "foreign metadata".to_string(),
+                serde_json::json!({"memory_namespace": foreign_namespace}),
+            )
+            .await;
+        let foreign = engine
+            .retrieve_relevant_knowledge(session, "EMQX", &PushTrigger::ErrorAssistance)
+            .await
+            .unwrap();
+        let KnowledgeContent::ErrorAssistance {
+            resolution_steps, ..
+        } = foreign
+        else {
+            panic!("expected error assistance content");
+        };
+        assert!(resolution_steps.is_empty());
+
+        engine
+            .record_activity(
+                session,
+                ActivityType::Error,
+                "missing metadata".to_string(),
+                serde_json::json!({}),
+            )
+            .await;
+        let missing = engine
+            .retrieve_relevant_knowledge(session, "EMQX", &PushTrigger::ErrorAssistance)
+            .await
+            .unwrap();
+        let KnowledgeContent::ErrorAssistance {
+            resolution_steps, ..
+        } = missing
+        else {
+            panic!("expected error assistance content");
+        };
+        assert!(resolution_steps.is_empty());
     }
 }

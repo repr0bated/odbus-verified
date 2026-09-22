@@ -22,7 +22,7 @@ use qdrant_client::{
 use regex::Regex;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use std::{collections::HashMap, sync::OnceLock, time::Duration};
+use std::{collections::HashMap, future::Future, sync::OnceLock, time::Duration};
 use tracing::{info, warn};
 
 // ─── constants ───────────────────────────────────────────────────────────────
@@ -184,6 +184,7 @@ pub struct RetrievalProfile {
     pub fetch_limit: u64,
     pub rerank_enabled: bool,
     pub kiro_lsp_state_dir: String,
+    pub deadline: Duration,
 }
 
 impl RetrievalProfile {
@@ -208,6 +209,7 @@ impl RetrievalProfile {
             RetrievalMode::Search => rerank_mode == "always",
             RetrievalMode::Deep => rerank_mode == "always" || rerank_mode == "auto",
         };
+        let deadline = retrieval_deadline(mode);
 
         Self {
             mode,
@@ -217,6 +219,7 @@ impl RetrievalProfile {
             rerank_enabled,
             kiro_lsp_state_dir: std::env::var("COGNITIVE_MCP_KIRO_LSP_STATE_DIR")
                 .unwrap_or_else(|_| "/home/jeremy/git/logs/kiro-lsp-state".into()),
+            deadline,
         }
     }
 }
@@ -270,6 +273,11 @@ pub struct RagPipeline {
 }
 
 impl RagPipeline {
+    #[cfg(test)]
+    pub(crate) fn for_test(qdrant: Qdrant, voyage: VoyageClient) -> Self {
+        Self { qdrant, voyage }
+    }
+
     pub fn from_env() -> Result<Self> {
         // Config (endpoint/model/key) resolves through the embedding_model
         // plugin's projection, falling back to its own env-var reads — see
@@ -376,9 +384,32 @@ impl RagPipeline {
         limit: u64,
         fetch_limit: u64,
         filter: &CodeFilter,
+        deadline: Duration,
+    ) -> Result<Vec<RagResult>> {
+        with_retrieval_deadline(
+            deadline,
+            self.query_fused_collections_unbounded(
+                collections,
+                query_text,
+                limit,
+                fetch_limit,
+                filter,
+            ),
+        )
+        .await
+    }
+
+    pub(crate) async fn query_fused_collections_unbounded(
+        &self,
+        collections: &[String],
+        query_text: &str,
+        limit: u64,
+        fetch_limit: u64,
+        filter: &CodeFilter,
     ) -> Result<Vec<RagResult>> {
         let vector = self.embed_query(query_text).await?;
         let mut all = Vec::new();
+        let mut completed = 0usize;
 
         for collection in collections {
             match self
@@ -392,7 +423,10 @@ impl RagPipeline {
                 )
                 .await
             {
-                Ok(mut results) => all.append(&mut results),
+                Ok(mut results) => {
+                    completed += 1;
+                    all.append(&mut results);
+                }
                 Err(err) => warn!(
                     collection = %collection,
                     error = %err,
@@ -400,6 +434,8 @@ impl RagPipeline {
                 ),
             }
         }
+
+        ensure_collection_success(completed, collections.len())?;
 
         all.sort_by(|a, b| {
             b.score
@@ -693,6 +729,58 @@ fn env_u64(key: &str, default: u64) -> u64 {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(default)
+}
+
+const MIN_RETRIEVAL_DEADLINE_MS: u64 = 100;
+const MAX_RETRIEVAL_DEADLINE_MS: u64 = 120_000;
+
+fn retrieval_deadline(mode: RetrievalMode) -> Duration {
+    let key = match mode {
+        RetrievalMode::Completion => "COGNITIVE_MCP_COMPLETION_DEADLINE_MS",
+        RetrievalMode::Search => "COGNITIVE_MCP_SEARCH_DEADLINE_MS",
+        RetrievalMode::Deep => "COGNITIVE_MCP_DEEP_DEADLINE_MS",
+    };
+    retrieval_deadline_from_values(
+        mode,
+        std::env::var(key).ok().as_deref(),
+        std::env::var("COGNITIVE_MCP_RETRIEVAL_DEADLINE_MS")
+            .ok()
+            .as_deref(),
+    )
+}
+
+fn retrieval_deadline_from_values(
+    mode: RetrievalMode,
+    mode_value: Option<&str>,
+    global_value: Option<&str>,
+) -> Duration {
+    let default = match mode {
+        RetrievalMode::Completion => 5_000,
+        RetrievalMode::Search => 10_000,
+        RetrievalMode::Deep => 30_000,
+    };
+    let value = mode_value
+        .or(global_value)
+        .and_then(|raw| raw.parse().ok())
+        .unwrap_or(default)
+        .clamp(MIN_RETRIEVAL_DEADLINE_MS, MAX_RETRIEVAL_DEADLINE_MS);
+    Duration::from_millis(value)
+}
+
+fn ensure_collection_success(completed: usize, total: usize) -> Result<()> {
+    if completed == 0 && total != 0 {
+        anyhow::bail!("all code retrieval collections failed");
+    }
+    Ok(())
+}
+
+pub(crate) async fn with_retrieval_deadline<F, T>(deadline: Duration, future: F) -> Result<T>
+where
+    F: Future<Output = Result<T>>,
+{
+    tokio::time::timeout(deadline, future)
+        .await
+        .context("code retrieval deadline exceeded")?
 }
 
 fn dedupe_results_by_file(results: &mut Vec<RagResult>) {
@@ -1186,4 +1274,44 @@ fn str_arr(v: &serde_json::Value, key: &str) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retrieval_deadline_has_mode_default_override_and_bounds() {
+        assert_eq!(
+            retrieval_deadline_from_values(RetrievalMode::Completion, None, None),
+            Duration::from_secs(5)
+        );
+        assert_eq!(
+            retrieval_deadline_from_values(RetrievalMode::Completion, None, Some("1")),
+            Duration::from_millis(MIN_RETRIEVAL_DEADLINE_MS)
+        );
+        assert_eq!(
+            retrieval_deadline_from_values(RetrievalMode::Completion, Some("999999"), None),
+            Duration::from_millis(MAX_RETRIEVAL_DEADLINE_MS)
+        );
+    }
+
+    #[tokio::test]
+    async fn pending_retrieval_is_bounded_by_total_deadline() {
+        let started = tokio::time::Instant::now();
+        let error = with_retrieval_deadline(Duration::from_millis(10), async {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            Ok::<_, anyhow::Error>(())
+        })
+        .await
+        .unwrap_err();
+        assert!(error.to_string().contains("deadline exceeded"));
+        assert!(started.elapsed() < Duration::from_millis(500));
+    }
+
+    #[test]
+    fn empty_successful_collection_is_distinct_from_all_failures() {
+        assert!(ensure_collection_success(1, 1).is_ok());
+        assert!(ensure_collection_success(0, 1).is_err());
+    }
 }

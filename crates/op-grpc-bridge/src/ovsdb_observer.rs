@@ -30,14 +30,15 @@ pub(crate) async fn observe(engine: Arc<MutationEngine>, client: OvsdbDbusClient
             MonitorObservation::Snapshot(snapshot) => {
                 match prepare_observation(&catalog, &snapshot) {
                     Ok(prepared) => {
-                        // Root replacement preserves the schema's array tree;
+                        // Property replacement preserves the schema's array tree
+                        // and the independently observed monitor collection;
                         // raw table deltas and legacy /ovsdb paths never enter
                         // SHM. Audit carries only these selected topology data.
                         let bridges = prepared.state["bridges"].clone();
                         if let Err(error) = engine
-                            .process_observed_child(
+                            .process_observed_property(
                                 PLUGIN,
-                                format!("{}/bridges", op_plugins::canonical::plugin_path(PLUGIN)),
+                                "bridges",
                                 bridges,
                                 prepared.expected_schema_hash,
                             )
@@ -95,6 +96,7 @@ fn prepare_observation(catalog: &Path, snapshot: &OvsdbSnapshot) -> Result<Prepa
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::human_principal_dispatch::tests::{temp_cozo, temp_shm_with_schemas, test_engine};
     use op_state::StatePlugin;
     use std::collections::BTreeMap;
 
@@ -107,6 +109,67 @@ mod tests {
                 .collect(),
         }
     }
+
+    #[tokio::test]
+    async fn topology_and_monitor_arrays_commit_without_erasing_each_other() {
+        let _cozo = temp_cozo();
+        let schema = op_plugins::state_plugins::ovsdb_bridge::OvsBridgePlugin::new()
+            .schema()
+            .unwrap();
+        let _shm = temp_shm_with_schemas(&[schema]);
+        let engine = test_engine();
+        let prepared = prepare_observation(&blob_catalog_dir_from_env(), &empty()).unwrap();
+        let pin = prepared.expected_schema_hash;
+        engine
+            .process_observed_property(
+                PLUGIN,
+                "bridges",
+                prepared.state["bridges"].clone(),
+                pin.clone(),
+            )
+            .await
+            .unwrap();
+        let monitors = simd_json::json!([{
+            "projection_key":"owner-monitor", "monitor_id":"monitor", "method":"monitor",
+            "sequence":1, "active":true, "tables":[]
+        }]);
+        engine
+            .process_observed_property(PLUGIN, "monitors", monitors.clone(), pin.clone())
+            .await
+            .unwrap();
+        let bridges = simd_json::json!([{
+            "name":"observed", "ports":[], "datapath_type":"system",
+            "stp_enable":false, "mcast_snooping_enable":false
+        }]);
+        engine
+            .process_observed_property(PLUGIN, "bridges", bridges.clone(), pin.clone())
+            .await
+            .unwrap();
+        let read = || -> serde_json::Value {
+            serde_json::from_slice(&op_core::projection_shm::read_projection_bytes(PLUGIN).unwrap())
+                .unwrap()
+        };
+        assert_eq!(read()["monitors"], serde_json::to_value(&monitors).unwrap());
+        assert_eq!(read()["bridges"], serde_json::to_value(&bridges).unwrap());
+        engine
+            .process_observed_property(PLUGIN, "monitors", simd_json::json!([]), pin.clone())
+            .await
+            .unwrap();
+        assert_eq!(read()["bridges"], serde_json::to_value(&bridges).unwrap());
+        assert_eq!(read()["monitors"], serde_json::json!([]));
+        engine
+            .process_observed_property(PLUGIN, "bridges", simd_json::json!([]), pin)
+            .await
+            .unwrap();
+        assert_eq!(read()["bridges"], serde_json::json!([]));
+        let before = read();
+        assert!(engine
+            .process_observed_property(PLUGIN, "bridges", bridges, "stale".into())
+            .await
+            .is_err());
+        assert_eq!(read(), before);
+    }
+
     #[test]
     fn only_present_compatible_seals_allow_complete_topology_publication() {
         let directory = tempfile::tempdir().unwrap();

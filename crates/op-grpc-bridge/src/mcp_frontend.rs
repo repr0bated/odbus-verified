@@ -2720,6 +2720,37 @@ mod tests {
     }
 
     #[test]
+    fn hot_agent_targets_require_their_exact_sealed_capability() {
+        let targets = [
+            ("rust_pro", "cognitive_mcp.rust_pro"),
+            ("python_pro", "cognitive_mcp.python_pro"),
+            ("typescript_pro", "cognitive_mcp.typescript_pro"),
+            ("sequential_thinking", "cognitive_mcp.sequential_thinking"),
+            ("context_manager", "cognitive_mcp.context_manager"),
+            (
+                "code_review_orchestrator",
+                "cognitive_mcp.code_review_orchestrator",
+            ),
+        ];
+        for (name, capability) in targets {
+            let descriptor = json!({
+                "name": name,
+                "required_capability": capability,
+                "subid": format!("mut.service.cognitive-mcp.{name}.execute@v1"),
+                "input_schema": {"type": "object"}
+            });
+            let exact = HashSet::from([capability.to_string()]);
+            assert!(
+                authorize_and_validate_tool_call(&descriptor, name, &json!({}), &exact).is_ok()
+            );
+            let generic = HashSet::from(["cognitive_mcp.invoke".to_string()]);
+            let error = authorize_and_validate_tool_call(&descriptor, name, &json!({}), &generic)
+                .unwrap_err();
+            assert!(error.to_string().contains(capability));
+        }
+    }
+
+    #[test]
     fn public_tool_projection_strips_authority_metadata() {
         let projected = normalize_tool_definition(json!({
             "name": "code_search",

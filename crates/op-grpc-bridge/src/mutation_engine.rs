@@ -2113,18 +2113,20 @@ impl MutationEngine {
         .await
     }
 
-    pub(crate) async fn process_observed_child(
+    /// Replace one root property while retaining every other committed field.
+    /// Array-valued properties are not whole D-Bus child objects.
+    pub(crate) async fn process_observed_property(
         &self,
         plugin_id: &str,
-        object_path: String,
+        member: &str,
         value: simd_json::OwnedValue,
         expected_schema_hash: String,
     ) -> Result<StateChange, String> {
         self.process_authoritative_change_inner(
             plugin_id.to_string(),
-            object_path,
+            op_plugins::canonical::plugin_path(plugin_id),
             ChangeType::PropertySet,
-            None,
+            Some(member.to_owned()),
             None,
             value,
             Vec::new(),
@@ -2160,12 +2162,9 @@ impl MutationEngine {
         let state = op_plugins::state_plugins::ovsdb_bridge::OvsBridgePlugin::new()
             .query_bridges()
             .await?;
-        self.process_observed_child(
+        self.process_observed_property(
             "ovsdb_bridge",
-            format!(
-                "{}/bridges",
-                op_plugins::canonical::plugin_path("ovsdb_bridge")
-            ),
+            "bridges",
             simd_json::serde::to_owned_value(state.bridges)?,
             expected_schema_hash.to_owned(),
         )
@@ -2222,12 +2221,9 @@ impl MutationEngine {
             monitors.push(replacement);
             monitors.sort_by(|left, right| left.projection_key.cmp(&right.projection_key));
         }
-        self.process_observed_child(
+        self.process_observed_property(
             "ovsdb_bridge",
-            format!(
-                "{}/monitors",
-                op_plugins::canonical::plugin_path("ovsdb_bridge")
-            ),
+            "monitors",
             simd_json::serde::to_owned_value(monitors)?,
             expected_schema_hash.to_owned(),
         )
@@ -4138,16 +4134,30 @@ impl MutationEngine {
             }
             "cognitive_mcp" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                self.dispatch_cognitive_mcp_method(
-                    crate::specialist::CognitiveCaller {
-                        actor_id,
-                        session_id,
-                        session_genesis,
-                    },
-                    method,
-                    &args,
-                )
-                .await?
+                let result = self
+                    .dispatch_cognitive_mcp_method(
+                        crate::specialist::CognitiveCaller {
+                            actor_id,
+                            session_id,
+                            session_genesis,
+                        },
+                        method,
+                        &args,
+                    )
+                    .await?;
+                if crate::memory_binding::is_memory_method(method)
+                    || matches!(method, "code_search" | "code_context" | "code_index")
+                {
+                    let declaration = admitted_schema
+                        .methods
+                        .get(method)
+                        .context("admitted cognitive method is absent")?;
+                    crate::method_contract_admission::validate_admitted_output(
+                        declaration,
+                        &result,
+                    )?;
+                }
+                result
             }
             "oscal_subid_registry" => {
                 crate::oscal_dispatch::dispatch(
@@ -5853,6 +5863,29 @@ impl MutationEngine {
         // Memory is bound to the principal's selected mode (OD-65): the
         // namespace comes from the selection, never from the caller.
         let mut bound_args = args.clone();
+        if method == "code_context" {
+            let session = crate::project_dispatch::verified_session(
+                self,
+                caller.actor_id,
+                caller.session_id,
+                caller.session_genesis,
+            )
+            .await?;
+            let context =
+                crate::memory_binding::context_for(self, caller.actor_id, Some(&session)).await?;
+            let object = bound_args
+                .as_object_mut()
+                .context("code context requires an argument object")?;
+            object.insert("session_id".into(), session.into());
+            object.insert(
+                "memory_namespace".into(),
+                if context.mode.has_memory() {
+                    context.memory_namespace.into()
+                } else {
+                    serde_json::Value::Null
+                },
+            );
+        }
         let memory_context = if crate::memory_binding::is_memory_method(method) {
             let context =
                 crate::memory_binding::context_for(self, caller.actor_id, caller.session_id)

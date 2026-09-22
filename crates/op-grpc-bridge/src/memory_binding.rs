@@ -72,6 +72,11 @@ pub(crate) fn bind_args(
     if context.read_only && WRITE_METHODS.contains(&method) {
         bail!("memory is read-only in this mode");
     }
+    if WRITE_METHODS.contains(&method)
+        && args.get("key").and_then(|value| value.as_str()) == Some("_identity")
+    {
+        bail!("memory identity metadata is owned by the verified session");
+    }
     let namespace = match (context.mode, args.get("namespace").and_then(|v| v.as_str())) {
         // Personal mode: a bare sub-name selects a user-defined partition
         // under the principal. A path is not a name.
@@ -102,6 +107,11 @@ pub(crate) fn bind_args(
         // `container_id` derives a namespace inside the tool; the binding is
         // the only source of truth, so it carries the same value.
         object.insert("container_id".into(), namespace.clone().into());
+        // The account-lifetime identity is the verified sled session. The
+        // memory owner requires it when creating a partition's identity link;
+        // caller-authored identity fields never supply that authority.
+        object.insert("identity_id".into(), context.session_id.clone().into());
+        object.remove("wireguard_pubkey");
     }
     Ok(namespace)
 }
@@ -127,6 +137,10 @@ pub(crate) fn filter_listing(context: &ResolvedChatContext, value: &mut serde_js
     for key in ["namespaces", "data", "result"] {
         if let Some(items) = value.get_mut(key).and_then(|v| v.as_array_mut()) {
             items.retain(|entry| keep(entry));
+            let count = items.len();
+            if let Some(object) = value.as_object_mut() {
+                object.insert("count".into(), count.into());
+            }
             return;
         }
     }
@@ -232,6 +246,119 @@ mod tests {
                 "project/p1",
                 "agent_pieces"
             ]
+        );
+        assert_eq!(listing["count"], 4);
+    }
+
+    #[tokio::test]
+    async fn bound_memory_round_trip_uses_verified_identity_and_isolates_sessions() {
+        use op_cognitive_mcp::{cognitive_tools::MemoryTool, memory_store::CognitiveMemoryStore};
+        use op_mcp::tool_registry::Tool;
+        use std::sync::Arc;
+
+        fn validate(method: &str, result: &simd_json::OwnedValue) {
+            let schema = op_plugins::cognitive_mcp_plugin_schema();
+            crate::method_contract_admission::validate_admitted_output(
+                &schema.methods[method],
+                &serde_json::to_value(result).unwrap(),
+            )
+            .unwrap();
+        }
+
+        let store = Arc::new(
+            CognitiveMemoryStore::new(Arc::new(
+                op_cozo_store::CozoGraphShuttle::new_in_memory().unwrap(),
+            ))
+            .await
+            .unwrap(),
+        );
+        let tool = MemoryTool::new(store.clone(), None);
+        let personal = context(ChatMode::Personal, "session/sess/personal", false);
+        let mut input = serde_json::json!({
+            "operation":"store", "namespace":"notes", "key":"closeout", "value":"remember",
+            "identity_id":"forged", "container_id":"other", "wireguard_pubkey":"forged"
+        });
+        let namespace = bind_args("memory_store", &personal, &mut input).unwrap();
+        let stored = tool
+            .execute(simd_json::serde::to_owned_value(&input).unwrap())
+            .await
+            .unwrap();
+        validate("memory_store", &stored);
+        let identity = store
+            .retrieve_entry(&namespace, "_identity")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(identity.value["identity_id"], "sess");
+        assert!(identity.value["wireguard_pubkey"].is_null());
+        assert_eq!(
+            store
+                .retrieve_entry(&namespace, "closeout")
+                .await
+                .unwrap()
+                .unwrap()
+                .value,
+            "remember"
+        );
+
+        for (method, operation) in [
+            ("memory_retrieve", "retrieve"),
+            ("memory_query", "query"),
+            ("memory_recall", "query"),
+            ("memory_list_namespaces", "list_namespaces"),
+        ] {
+            let mut args =
+                serde_json::json!({"operation":operation, "namespace":"notes", "key":"closeout"});
+            bind_args(method, &personal, &mut args).unwrap();
+            let result = tool
+                .execute(simd_json::serde::to_owned_value(&args).unwrap())
+                .await
+                .unwrap();
+            validate(method, &result);
+        }
+
+        let mut other = personal.clone();
+        other.session_id = "other".into();
+        other.memory_namespace = "session/other/personal".into();
+        let mut read =
+            serde_json::json!({"operation":"retrieve", "namespace":namespace, "key":"closeout"});
+        bind_args("memory_retrieve", &other, &mut read).unwrap();
+        let result = tool
+            .execute(simd_json::serde::to_owned_value(&read).unwrap())
+            .await
+            .unwrap();
+        validate("memory_retrieve", &result);
+        assert_eq!(serde_json::to_value(result).unwrap()["found"], false);
+
+        let mut delete =
+            serde_json::json!({"operation":"delete", "namespace":"notes", "key":"closeout"});
+        bind_args("memory_delete", &personal, &mut delete).unwrap();
+        let deleted = tool
+            .execute(simd_json::serde::to_owned_value(&delete).unwrap())
+            .await
+            .unwrap();
+        validate("memory_delete", &deleted);
+        assert!(store
+            .retrieve_entry(&namespace, "closeout")
+            .await
+            .unwrap()
+            .is_none());
+        for method in WRITE_METHODS {
+            assert!(bind_args(
+                method,
+                &personal,
+                &mut serde_json::json!({"key":"_identity"})
+            )
+            .is_err());
+        }
+        assert_eq!(
+            store
+                .retrieve_entry(&namespace, "_identity")
+                .await
+                .unwrap()
+                .unwrap()
+                .value,
+            identity.value
         );
     }
 }

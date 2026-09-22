@@ -193,6 +193,33 @@ the file authorizer runs before ExHook and stops the hook chain on a match.
 Keep `authorization.no_match = deny` as the final denial default. The only
 static allow is the existing generated local publisher account.
 
+## Coding retrieval deadlines
+
+Coding retrieval has one total budget covering embedding and collection
+queries. Defaults are 5 seconds for completion, 10 seconds for search, and
+30 seconds for deep retrieval. Operators may set
+`COGNITIVE_MCP_RETRIEVAL_DEADLINE_MS`, or override a mode with
+`COGNITIVE_MCP_COMPLETION_DEADLINE_MS`, `COGNITIVE_MCP_SEARCH_DEADLINE_MS`,
+or `COGNITIVE_MCP_DEEP_DEADLINE_MS`. Values are bounded to 100–120,000 ms.
+Search reports failure when its budget expires; context returns an explicit
+`retrieval_error` with empty results. Failure of every requested collection
+also reports an error. Partial results remain available when at least one
+collection query succeeds.
+
+### Cognitive tool contracts
+
+The baseline binds memory identity and coding activity to the authenticated
+session. Memory callers cannot replace the reserved `_identity` record or
+select another session through request fields. Memory and coding results are
+checked against their admitted output schemas before being returned.
+
+The six language/workflow agent facades require their own
+`cognitive_mcp.<tool-name>` capabilities. A generic `cognitive_mcp.invoke`
+grant does not authorize these MCP targets. The baseline policy grants those
+six capabilities only to the existing local human principal; memory deletion
+uses the existing `cognitive_mcp.memory.write` grant. Deploy this policy with
+the matching cognitive schema and binary.
+
 ## Roll back
 
 After the first credential refresh, the durable identity store may contain a

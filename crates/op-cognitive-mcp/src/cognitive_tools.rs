@@ -457,13 +457,13 @@ impl MemoryTool {
         let items: Vec<Value> = results
             .into_iter()
             .map(|point| {
-                json!({
+                Ok(json!({
                     "id": format!("{:?}", point.id),
                     "score": point.score,
-                    "payload": format!("{:?}", point.payload)
-                })
+                    "payload": serde_to_simd_json(serde_json::to_value(&point.payload)?)
+                }))
             })
-            .collect();
+            .collect::<Result<Vec<_>>>()?;
 
         Ok(json!({
             "count": count,

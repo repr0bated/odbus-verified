@@ -23,7 +23,7 @@ use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 // =============================================================================
 
 const PLUGIN_NAME: &str = "cognitive_mcp";
-const PLUGIN_VERSION: &str = "2.0.0";
+const PLUGIN_VERSION: &str = "2.1.0";
 const PLUGIN_CATEGORY: &str = "service";
 const PLUGIN_DESCRIPTION: &str = "Bridge-owned cognitive MCP tools — memory, code context, and grounded query capabilities compiled into op-grpc-bridge. THE PLUGIN IS THE SCHEMA: every method, tool, property, and field is declared here. Downstream inherits.";
 const PLUGIN_DISPLAY_NAME: &str = "GB.CognitiveMcp";
@@ -706,7 +706,7 @@ pub struct CodeContextInput {
     #[schemars(description = "Current query / what the agent is working on")]
     pub query: String,
     #[serde(default = "default_session_id")]
-    #[schemars(description = "Session identifier (default 'default')")]
+    #[schemars(description = "Compatibility hint; the bridge always binds this to the verified caller session")]
     pub session_id: String,
     #[serde(default = "default_activity_type")]
     #[schemars(description = "Kind of activity being recorded (default 'query')")]
@@ -808,15 +808,28 @@ pub struct RegisterToolOutput {
 /// Output for MemoryStore method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct MemoryStoreOutput {
-    pub success: bool,
+    pub ok: bool,
+    pub id: String,
+    pub namespace: String,
     pub key: String,
+    pub semantic_mirrored: bool,
 }
 
 /// Output for the memory_recall HOT facade.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct MemoryRecallOutput {
-    pub results: Vec<serde_json::Value>,
+    pub entries: Vec<MemoryEntrySummary>,
     pub count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct MemoryEntrySummary {
+    pub id: String,
+    pub namespace_id: String,
+    pub key: String,
+    pub tags: Vec<String>,
+    pub access_count: i64,
+    pub updated_at: String,
 }
 
 /// Output for workflow_query. The concrete entries inherit the authoritative
@@ -906,57 +919,124 @@ pub struct AgentOperationOutput {
 /// Output for MemorySemanticQuery method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct MemorySemanticQueryOutput {
-    pub results: Vec<String>,
+    pub results: Vec<MemorySemanticResult>,
     pub count: usize,
+    pub container_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct MemorySemanticResult {
+    pub id: String,
+    pub score: f32,
+    pub payload: serde_json::Value,
 }
 
 /// Output for MemoryRetrieve method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct MemoryRetrieveOutput {
-    pub success: bool,
-    pub value: Option<String>,
+    pub found: bool,
     pub namespace: String,
+    pub key: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access_count: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
 }
 
 /// Output for MemoryQuery method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct MemoryQueryOutput {
-    pub results: Vec<String>,
+    pub entries: Vec<MemoryEntrySummary>,
     pub count: usize,
 }
 
 /// Output for MemoryDelete method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct MemoryDeleteOutput {
-    pub success: bool,
-    pub keys_deleted: usize,
+    pub ok: bool,
+    pub namespace: String,
+    pub key: String,
 }
 
 /// Output for MemoryListNamespaces method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct MemoryListNamespacesOutput {
-    pub namespaces: Vec<String>,
+    pub namespaces: Vec<MemoryNamespaceSummary>,
+    pub count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct MemoryNamespaceSummary {
+    pub id: String,
+    pub name: String,
+    pub kind: String,
+    pub description: Option<String>,
+    pub linked_task_id: Option<String>,
+    pub linked_cron: Option<String>,
 }
 
 /// Output for CodeSearch method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct CodeSearchOutput {
-    pub results: Vec<String>,
+    pub results: Vec<CodeRetrievalResult>,
     pub count: usize,
+    pub collections: Vec<String>,
+    pub retrieval_mode: String,
+    pub rerank_enabled: bool,
+    pub kiro_lsp_state_dir: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct CodeRetrievalResult {
+    pub retrieval_collection: String,
+    pub score: f32,
+    pub repo: String,
+    pub file_path: String,
+    pub language: String,
+    pub file_type: String,
+    pub symbols: Vec<String>,
+    pub doc_comments: Vec<String>,
+    pub imports: Vec<String>,
+    pub tags: Vec<String>,
+    pub is_test: bool,
+    pub line_start: i64,
+    pub line_end: i64,
+    pub chunk_index: i64,
+    pub total_chunks: i64,
+    pub content: String,
 }
 
 /// Output for CodeIndex method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct CodeIndexOutput {
-    pub success: bool,
-    pub files_indexed: usize,
+    pub ok: bool,
+    pub mode: String,
+    pub collection: String,
+    pub files_parsed: u64,
+    pub chunks_created: u64,
+    pub chunks_upserted: u64,
+    pub chunks_skipped: u64,
+    pub errors: u64,
 }
 
 /// Output for CodeContext method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct CodeContextOutput {
-    pub context: String,
-    pub sources: Vec<String>,
+    pub results: Vec<CodeRetrievalResult>,
+    pub count: usize,
+    pub collections: Vec<String>,
+    pub retrieval_mode: String,
+    pub rerank_enabled: bool,
+    pub kiro_lsp_state_dir: String,
+    pub session_id: String,
+    pub signals: serde_json::Value,
+    pub retrieval_error: Option<String>,
 }
 
 /// Output for GeminiQuery method
@@ -1121,7 +1201,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "memory_delete",
             SideEffect::Mutation,
             true,
-            "cognitive_mcp.invoke",
+            "cognitive_mcp.memory.write",
             "mut.service.cognitive-mcp.memory.delete@v1",
         ),
     );
@@ -1171,7 +1251,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "rust_pro",
             SideEffect::Mutation,
             false,
-            "cognitive_mcp.invoke",
+            "cognitive_mcp.rust_pro",
             "mut.software.rust-pro.execute@v1",
         ),
     );
@@ -1188,9 +1268,17 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
     // Hot agents: every one of these has an in-process executor registered as
     // `agent_<type>_<operation>` by op-cognitive-mcp's agent_tools; the bridge
     // maps the method to that tool after validating the operation.
-    for (method, subid) in [
-        ("python_pro", "mut.software.python-pro.execute@v1"),
-        ("typescript_pro", "mut.software.typescript-pro.execute@v1"),
+    for (method, capability, subid) in [
+        (
+            "python_pro",
+            "cognitive_mcp.python_pro",
+            "mut.software.python-pro.execute@v1",
+        ),
+        (
+            "typescript_pro",
+            "cognitive_mcp.typescript_pro",
+            "mut.software.typescript-pro.execute@v1",
+        ),
     ] {
         schema.methods.insert(
             method.to_string(),
@@ -1198,19 +1286,25 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
                 method,
                 SideEffect::Mutation,
                 false,
-                "cognitive_mcp.invoke",
+                capability,
                 subid,
             ),
         );
     }
-    for (method, subid) in [
+    for (method, capability, subid) in [
         (
             "sequential_thinking",
+            "cognitive_mcp.sequential_thinking",
             "mut.service.sequential-thinking.execute@v1",
         ),
-        ("context_manager", "mut.service.context-manager.execute@v1"),
+        (
+            "context_manager",
+            "cognitive_mcp.context_manager",
+            "mut.service.context-manager.execute@v1",
+        ),
         (
             "code_review_orchestrator",
+            "cognitive_mcp.code_review_orchestrator",
             "mut.service.code-review-orchestrator.execute@v1",
         ),
     ] {
@@ -1220,7 +1314,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
                 method,
                 SideEffect::Mutation,
                 false,
-                "cognitive_mcp.invoke",
+                capability,
                 subid,
             ),
         );
@@ -1323,14 +1417,49 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
         "cognitive_mcp.invoke".to_string(),
         op_state_store::CapabilityDecl {
             id: "cognitive_mcp.invoke".to_string(),
-            description: "Grants declared bridge-owned cognitive and agent execution methods; it does not authorize the generic invoke_tool escape hatch on the MCP projection.".to_string(),
+            description: "Grants generic bridge-owned invocation; target MCP methods use their own exact capabilities and the generic invoke_tool escape hatch remains excluded from the MCP projection.".to_string(),
         },
     );
+    for (id, description) in [
+        (
+            "cognitive_mcp.sequential_thinking",
+            "Grants the sealed sequential_thinking agent facade.",
+        ),
+        (
+            "cognitive_mcp.context_manager",
+            "Grants the sealed context_manager agent facade.",
+        ),
+        (
+            "cognitive_mcp.code_review_orchestrator",
+            "Grants the sealed code_review_orchestrator agent facade.",
+        ),
+        (
+            "cognitive_mcp.rust_pro",
+            "Grants the sealed rust_pro agent facade.",
+        ),
+        (
+            "cognitive_mcp.python_pro",
+            "Grants the sealed python_pro agent facade.",
+        ),
+        (
+            "cognitive_mcp.typescript_pro",
+            "Grants the sealed typescript_pro agent facade.",
+        ),
+    ] {
+        schema.capabilities.insert(
+            id.to_string(),
+            op_state_store::CapabilityDecl {
+                id: id.to_string(),
+                description: description.to_string(),
+            },
+        );
+    }
     schema.capabilities.insert(
         "cognitive_mcp.memory.write".to_string(),
         op_state_store::CapabilityDecl {
             id: "cognitive_mcp.memory.write".to_string(),
-            description: "Grants the sealed HOT memory_store method.".to_string(),
+            description: "Grants the sealed HOT memory_store and memory_delete methods."
+                .to_string(),
         },
     );
     schema.capabilities.insert(
@@ -1503,9 +1632,32 @@ mod tests {
         let rust_pro = &schema.methods["rust_pro"];
         assert_eq!(
             rust_pro.required_capability.as_deref(),
-            Some("cognitive_mcp.invoke")
+            Some("cognitive_mcp.rust_pro")
         );
         assert_eq!(rust_pro.side_effect, SideEffect::Mutation);
+
+        assert_eq!(
+            schema.methods["memory_delete"]
+                .required_capability
+                .as_deref(),
+            Some("cognitive_mcp.memory.write")
+        );
+
+        for (method, capability) in [
+            ("sequential_thinking", "cognitive_mcp.sequential_thinking"),
+            ("context_manager", "cognitive_mcp.context_manager"),
+            (
+                "code_review_orchestrator",
+                "cognitive_mcp.code_review_orchestrator",
+            ),
+            ("rust_pro", "cognitive_mcp.rust_pro"),
+            ("python_pro", "cognitive_mcp.python_pro"),
+            ("typescript_pro", "cognitive_mcp.typescript_pro"),
+        ] {
+            let declaration = &schema.methods[method];
+            assert_eq!(declaration.required_capability.as_deref(), Some(capability));
+            assert_eq!(declaration.side_effect, SideEffect::Mutation);
+        }
 
         let schema_read = &schema.methods["schema_read"];
         assert_eq!(

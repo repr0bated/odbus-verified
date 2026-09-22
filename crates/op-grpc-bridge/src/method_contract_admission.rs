@@ -134,6 +134,26 @@ pub(crate) fn validate_admitted_arguments(
     })
 }
 
+/// Check the result without including private result values in an error.
+pub(crate) fn validate_admitted_output(
+    declaration: &MethodDecl,
+    output: &serde_json::Value,
+) -> Result<()> {
+    let returns = declaration
+        .returns
+        .as_ref()
+        .context("admitted method has no output contract")?;
+    let contract = serde_json::to_value(returns)?;
+    let validator =
+        jsonschema::Validator::new(&contract).context("invalid admitted method output contract")?;
+    validator.validate(output).map_err(|error| {
+        anyhow::anyhow!(
+            "result does not conform to admitted method at {}",
+            error.instance_path
+        )
+    })
+}
+
 fn admit_pinned_method(
     pinned: &ManifestPinnedSchemaDocument,
     plugin_id: &str,
