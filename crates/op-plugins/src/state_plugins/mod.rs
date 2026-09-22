@@ -18,6 +18,7 @@ pub mod agent_triggers;
 pub mod antigravity;
 pub mod antigravity_chat;
 pub mod btrfs_plugin;
+pub mod cognitive_agents;
 pub mod cognitive_mcp;
 pub mod common;
 pub mod config;

@@ -11,6 +11,8 @@ BOOTSTRAP_CONFIG=${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/zeroclaw-runtime.
 BOOTSTRAP_SKILLS=${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/zeroclaw-skills/default}
 OPENCODE_SECRET_FILE=${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}
 SALAD_SECRET_FILE=${TCHED_ROUTER_SALAD_KEY_FILE:-/etc/op-dbus/secrets/salad-api-key}
+OPENROUTER_SECRET_FILE=${TCHED_ROUTER_OPENROUTER_KEY_FILE:-/etc/op-dbus/secrets/openrouter-api-key}
+OPENROUTER_SOURCE_CONFIG=${TCHED_ROUTER_OPENROUTER_SOURCE_CONFIG:-$CONFIG_DIR/config.toml}
 NATIVE_BIN=${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}
 NATIVE_MANIFEST=${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}
 HOST=${TCHED_ROUTER_HOST:-127.0.0.1}
@@ -35,6 +37,64 @@ if [ -d "$BOOTSTRAP_SKILLS" ]; then
     cp -a "$BOOTSTRAP_SKILLS"/. "$CONFIG_DIR/shared/skills/default/"
     chown -R jeremy:jeremy "$CONFIG_DIR/shared/skills/default"
 fi
+
+# Existing installations predate the dedicated role sections. Initialize only
+# missing native parents before applying the reviewed secret/non-secret patches;
+# config init is idempotent and preserves the dashboard selection/settings.
+for section in \
+    providers.models.openrouter.control_plane \
+    providers.models.openrouter.accountability \
+    agents.control_plane \
+    agents.control_plane.a2a \
+    agents.control_plane.memory \
+    agents.accountability \
+    agents.accountability.a2a \
+    agents.accountability.memory \
+    risk_profiles.control_plane \
+    risk_profiles.accountability
+do
+    chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
+        PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
+        "$NATIVE_BIN" config init --config-dir "$CONFIG_DIR" "$section" >/dev/null
+done
+
+# Complete the non-secret role migration after initialization. This is kept as
+# an atomic native JSON Patch so existing dashboard/provider settings survive;
+# credentials are applied separately below through the secret-aware path.
+cat <<'JSON' | chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
+    PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
+    "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
+[
+  {"op":"add","path":"/providers/models/openrouter/control_plane/model","value":"openrouter/auto"},
+  {"op":"add","path":"/providers/models/openrouter/control_plane/uri","value":"https://openrouter.ai/api/v1"},
+  {"op":"add","path":"/providers/models/openrouter/control_plane/wire_api","value":"chat_completions"},
+  {"op":"add","path":"/providers/models/openrouter/accountability/model","value":"openrouter/auto"},
+  {"op":"add","path":"/providers/models/openrouter/accountability/uri","value":"https://openrouter.ai/api/v1"},
+  {"op":"add","path":"/providers/models/openrouter/accountability/wire_api","value":"chat_completions"},
+  {"op":"add","path":"/agents/control_plane/enabled","value":true},
+  {"op":"add","path":"/agents/control_plane/model_provider","value":"openrouter.control_plane"},
+  {"op":"add","path":"/agents/control_plane/risk_profile","value":"control_plane"},
+  {"op":"add","path":"/agents/control_plane/skill_bundles","value":["default"]},
+  {"op":"add","path":"/agents/control_plane/a2a/published","value":true},
+  {"op":"add","path":"/agents/control_plane/a2a/exposed_skills","value":["plugin-schema"]},
+  {"op":"add","path":"/agents/control_plane/memory/backend","value":"none"},
+  {"op":"add","path":"/agents/accountability/enabled","value":true},
+  {"op":"add","path":"/agents/accountability/model_provider","value":"openrouter.accountability"},
+  {"op":"add","path":"/agents/accountability/risk_profile","value":"accountability"},
+  {"op":"add","path":"/agents/accountability/skill_bundles","value":["default"]},
+  {"op":"add","path":"/agents/accountability/a2a/published","value":true},
+  {"op":"add","path":"/agents/accountability/a2a/exposed_skills","value":["plugin-schema"]},
+  {"op":"add","path":"/agents/accountability/memory/backend","value":"none"},
+  {"op":"add","path":"/risk_profiles/control_plane/level","value":"readonly"},
+  {"op":"add","path":"/risk_profiles/control_plane/workspace_only","value":true},
+  {"op":"add","path":"/risk_profiles/control_plane/require_approval_for_medium_risk","value":true},
+  {"op":"add","path":"/risk_profiles/control_plane/block_high_risk_commands","value":true},
+  {"op":"add","path":"/risk_profiles/accountability/level","value":"readonly"},
+  {"op":"add","path":"/risk_profiles/accountability/workspace_only","value":true},
+  {"op":"add","path":"/risk_profiles/accountability/require_approval_for_medium_risk","value":true},
+  {"op":"add","path":"/risk_profiles/accountability/block_high_risk_commands","value":true}
+]
+JSON
 
 # The pinned OpenAI-compatible provider resolves its credential from config;
 # this source pin has no verified environment-variable hook for custom Salad.
@@ -62,6 +122,53 @@ jq -n --rawfile key "$SALAD_SECRET_FILE" \
     chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
         PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
         "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
+
+# Role-isolated ControlPlane and Accountability providers use the approved
+# root-only OpenRouter secret path. The value is supplied only through native
+# config patch stdin and is never placed in argv, tracked config, or logs.
+if [ -f "$OPENROUTER_SECRET_FILE" ]; then
+    set -- $(stat -Lc '%u %a' "$OPENROUTER_SECRET_FILE")
+    [ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
+        echo "tched-router: openrouter secret must be root-owned with mode 0400 or 0600" >&2
+        exit 78
+    }
+    OPENROUTER_API_KEY=$(cat "$OPENROUTER_SECRET_FILE")
+else
+    # Migration compatibility: the already-authorized native config may carry
+    # the existing openrouter.default credential. Extract it only in memory;
+    # never log or persist the source value. New installs must provision the
+    # root-only secret file instead.
+    [ -f "$OPENROUTER_SOURCE_CONFIG" ] || {
+        echo "tched-router: missing openrouter secret and source config" >&2
+        exit 78
+    }
+    OPENROUTER_API_KEY=$(awk '
+        /^[[:space:]]*\[providers\.models\.openrouter\.default\][[:space:]]*$/ { in_section=1; next }
+        /^\[/ { if (in_section) exit }
+        in_section && /^[[:space:]]*api_key[[:space:]]*=/ {
+            value=$0
+            sub(/^[^=]*=[[:space:]]*"/, "", value)
+            sub(/"[[:space:]]*$/, "", value)
+            print value
+            exit
+        }
+    ' "$OPENROUTER_SOURCE_CONFIG")
+fi
+case "$OPENROUTER_API_KEY" in
+    ''|*[!A-Za-z0-9._~-]*)
+        echo "tched-router: openrouter provider secret has invalid format" >&2
+        exit 78
+        ;;
+esac
+printf '%s' "$OPENROUTER_API_KEY" | jq -Rs \
+    '. as $key | [
+      {op:"add",path:"/providers/models/openrouter/control_plane/api_key",value:$key},
+      {op:"add",path:"/providers/models/openrouter/accountability/api_key",value:$key}
+    ]' |
+    chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
+        PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
+        "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
+unset OPENROUTER_API_KEY
 
 export HOME="$CONFIG_DIR/home" USER=jeremy PATH=/usr/local/bin:/usr/bin:/bin \
     ZEROCLAW_CONFIG_DIR="$CONFIG_DIR"

@@ -655,7 +655,7 @@ mod tests {
         )))
         .unwrap();
         assert_eq!(manifest.hot.as_slice(), HOT_TOOL_NAMES);
-        assert_eq!(manifest.generation, 7);
+        assert_eq!(manifest.generation, 8);
         for id in [
             "context_code",
             "context_knowledge",
@@ -695,6 +695,40 @@ mod tests {
         assert!(policy.is_hot_tool("plugin.cognitive_mcp.code_context"));
         assert!(policy.is_hot_tool("plugin.notebooklm.notebook_query"));
         assert!(!policy.is_hot_tool("plugin.mongodb_mcp.find"));
+    }
+
+    #[test]
+    fn deployed_catalog_covers_every_agent_and_notebook_method() {
+        let manifest = parse_toolset_manifest(include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../deploy/config/mcp-toolsets.json"
+        )))
+        .unwrap();
+        let all: Vec<_> = manifest
+            .sets
+            .iter()
+            .flat_map(|set| set.tools.iter())
+            .collect();
+        for agent in op_plugins::state_plugins::cognitive_agents::catalog_agent_methods() {
+            let name = format!("plugin.cognitive_mcp.{}", agent.declaration.name);
+            assert_eq!(
+                all.iter().filter(|tool| tool.as_str() == name).count(),
+                1,
+                "{name}"
+            );
+        }
+        use op_state::StatePlugin;
+        let notebook = op_plugins::state_plugins::notebooklm::NotebookLmPlugin::new()
+            .schema()
+            .unwrap();
+        for method in notebook.methods.keys() {
+            let name = format!("plugin.notebooklm.{method}");
+            assert_eq!(
+                all.iter().filter(|tool| tool.as_str() == name).count(),
+                1,
+                "{name}"
+            );
+        }
     }
 
     #[test]

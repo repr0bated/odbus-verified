@@ -5,6 +5,8 @@
 use async_trait::async_trait;
 use simd_json::json;
 use simd_json::prelude::*;
+use std::io::Write;
+use tempfile::NamedTempFile;
 
 use super::super::agent_trait::{
     AgentCapability, AgentCategory, AgentRequest, AgentResponse, UnifiedAgent,
@@ -42,32 +44,36 @@ impl PythonExecutor {
     }
 
     async fn run_python(&self, code: &str, args: &[&str]) -> AgentResponse {
-        // Write code to temp file
-        let temp_file = "/tmp/python_exec.py";
-        if let Err(e) = tokio::fs::write(temp_file, code).await {
+        // NamedTempFile removes the private 0600 file even if this future is
+        // cancelled while the child is running.
+        let mut temp_file = match NamedTempFile::new_in("/tmp") {
+            Ok(file) => file,
+            Err(e) => return AgentResponse::failure(format!("Failed to create temp file: {}", e)),
+        };
+        if let Err(e) = temp_file.write_all(code.as_bytes()) {
             return AgentResponse::failure(format!("Failed to write temp file: {}", e));
         }
+        let temp_path = temp_file.path().to_string_lossy().into_owned();
 
-        let mut cmd_args = vec![temp_file];
+        let mut cmd_args = vec![temp_path.as_str()];
         cmd_args.extend(args);
 
-        match self
+        let result = match self
             .base
             .execute_command("python3", &cmd_args, None, 60)
             .await
         {
-            Ok((stdout, stderr, code)) => {
+            Ok((stdout, stderr, code)) => AgentResponse::success(
+                json!({ "stdout": stdout, "stderr": stderr, "exit_code": code }),
                 if code == 0 {
-                    AgentResponse::success(
-                        json!({ "stdout": stdout, "stderr": stderr, "exit_code": code }),
-                        "Python code executed successfully",
-                    )
+                    "Python code executed successfully"
                 } else {
-                    AgentResponse::failure(format!("Python exited with code {}: {}", code, stderr))
-                }
-            }
+                    "Python code exited with a failure status"
+                },
+            ),
             Err(e) => AgentResponse::failure(e),
-        }
+        };
+        result
     }
 
     async fn run_pytest(&self, path: &str, args: &[&str]) -> AgentResponse {
@@ -251,8 +257,8 @@ impl UnifiedAgent for PythonExecutor {
                     .execute_command("ruff", &["format", path], None, 60)
                     .await
                 {
-                    Ok((stdout, _, code)) => AgentResponse::success(
-                        json!({ "output": stdout, "exit_code": code }),
+                    Ok((stdout, stderr, code)) => AgentResponse::success(
+                        json!({ "output": stdout, "errors": stderr, "exit_code": code }),
                         "Code formatted",
                     ),
                     Err(e) => AgentResponse::failure(e),
@@ -287,5 +293,30 @@ impl UnifiedAgent for PythonExecutor {
             }
             _ => AgentResponse::failure(format!("Unknown operation: {}", request.operation)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::unified::agent_trait::{AgentRequest, UnifiedAgent};
+
+    #[tokio::test]
+    async fn run_preserves_nonzero_diagnostics_and_status() {
+        let agent = PythonExecutor::new();
+        let response = agent
+            .execute(AgentRequest {
+                operation: "run".into(),
+                args: simd_json::json!({
+                    "code": "import sys; sys.stderr.write('diagnostic'); sys.exit(7)",
+                    "args": [],
+                }),
+                context: None,
+                files: Vec::new(),
+            })
+            .await;
+        assert!(response.success);
+        assert_eq!(response.data["exit_code"], 7);
+        assert_eq!(response.data["stderr"], "diagnostic");
     }
 }

@@ -163,8 +163,8 @@ impl UnifiedAgent for JavaScriptExecutor {
                     .execute_command("npx", &["prettier", "--write", "."], Some(path), 60)
                     .await
                 {
-                    Ok((stdout, _, code)) => AgentResponse::success(
-                        json!({ "output": stdout, "exit_code": code }),
+                    Ok((stdout, stderr, code)) => AgentResponse::success(
+                        json!({ "output": stdout, "errors": stderr, "exit_code": code }),
                         "Code formatted",
                     ),
                     Err(e) => AgentResponse::failure(e),

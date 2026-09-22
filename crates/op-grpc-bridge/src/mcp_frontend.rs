@@ -74,6 +74,9 @@ pub const HTTP_SEALED_ID_HEADER: &str = op_identity::sealed_id::HTTP_HEADER_NAME
 const MAX_BODY_BYTES: usize = 1024 * 1024;
 const MAX_ASSERTION_BYTES: usize = 16 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(90);
+// Agent executors have their own bounded process deadlines (up to one hour).
+// Keep the public RPC alive long enough to return that real terminal outcome.
+const AGENT_REQUEST_TIMEOUT: Duration = Duration::from_secs(3660);
 const NOTEBOOKLM_AUTH_REQUEST_TIMEOUT: Duration = Duration::from_secs(660);
 const DEFAULT_PAGE_SIZE: usize = 100;
 const MAX_PAGE_SIZE: usize = 500;
@@ -418,6 +421,28 @@ impl MutationEngineMcpBackend {
         method_descriptor(&schema, method_name, public_name)
     }
 
+    async fn typed_tool_descriptor_cached(
+        &self,
+        public_name: &str,
+        schemas: &mut HashMap<String, op_state_store::PluginSchema>,
+    ) -> anyhow::Result<Value> {
+        let (plugin_id, method_name) = parse_typed_tool_name(public_name)?;
+        if !schemas.contains_key(plugin_id) {
+            let dir = self.blob_catalog_dir.clone();
+            let plugin_id_owned = plugin_id.to_string();
+            let schema = tokio::task::spawn_blocking(move || {
+                read_manifest_pinned_plugin_schema(&dir, &plugin_id_owned)
+            })
+            .await
+            .map_err(|error| anyhow::anyhow!("sealed schema task failed: {error}"))??;
+            schemas.insert(plugin_id.to_string(), schema);
+        }
+        let schema = schemas
+            .get(plugin_id)
+            .expect("cached plugin schema inserted above");
+        method_descriptor(schema, method_name, public_name)
+    }
+
     fn hot_tool_descriptor(public_name: &str) -> anyhow::Result<Value> {
         let schema = op_plugins::cognitive_mcp_plugin_schema();
         method_descriptor(&schema, public_name, public_name)
@@ -440,13 +465,14 @@ impl MutationEngineMcpBackend {
         &self,
         set: &ToolsetDefinition,
         grants: &HashSet<String>,
+        schemas: &mut HashMap<String, op_state_store::PluginSchema>,
     ) -> anyhow::Result<Vec<Value>> {
         if !Self::provider_ready(set) {
             anyhow::bail!("provider_unavailable: {}", set.provider);
         }
         let mut tools = Vec::with_capacity(set.tools.len());
         for name in &set.tools {
-            let descriptor = self.typed_tool_descriptor(name).await?;
+            let descriptor = self.typed_tool_descriptor_cached(name, schemas).await?;
             if descriptor_authority(&descriptor, Some(name))
                 .is_ok_and(|(capability, _)| grants.contains(capability))
             {
@@ -480,6 +506,7 @@ impl MutationEngineMcpBackend {
         let grants = load_exact_capability_grants(&caller.principal_id);
         let policy = self.policy.snapshot();
         let mut by_name = BTreeMap::new();
+        let mut schemas = HashMap::new();
         for descriptor in self.authorized_hot_tools(&grants).await? {
             by_name.insert(tool_name(&descriptor).to_string(), descriptor);
         }
@@ -489,13 +516,19 @@ impl MutationEngineMcpBackend {
             .iter()
             .filter(|set| set.temperature == ToolTemperature::Hot && Self::provider_ready(set))
         {
-            for descriptor in self.authorized_toolset_tools(set, &grants).await? {
+            for descriptor in self
+                .authorized_toolset_tools(set, &grants, &mut schemas)
+                .await?
+            {
                 by_name.insert(tool_name(&descriptor).to_string(), descriptor);
             }
         }
         if let Some(selection) = selection {
             let set = Self::selected_set(&policy, selection)?;
-            for descriptor in self.authorized_toolset_tools(set, &grants).await? {
+            for descriptor in self
+                .authorized_toolset_tools(set, &grants, &mut schemas)
+                .await?
+            {
                 by_name.insert(tool_name(&descriptor).to_string(), descriptor);
             }
         }
@@ -515,6 +548,7 @@ impl MutationEngineMcpBackend {
         let grants = load_exact_capability_grants(&caller.principal_id);
         let policy = self.policy.snapshot();
         let mut by_name = BTreeMap::new();
+        let mut schemas = HashMap::new();
         for descriptor in self.authorized_hot_tools(&grants).await? {
             by_name.insert(tool_name(&descriptor).to_string(), descriptor);
         }
@@ -522,7 +556,10 @@ impl MutationEngineMcpBackend {
             if !Self::provider_ready(set) {
                 continue;
             }
-            for descriptor in self.authorized_toolset_tools(set, &grants).await? {
+            for descriptor in self
+                .authorized_toolset_tools(set, &grants, &mut schemas)
+                .await?
+            {
                 by_name.insert(tool_name(&descriptor).to_string(), descriptor);
             }
         }
@@ -536,6 +573,7 @@ impl MutationEngineMcpBackend {
     ) -> anyhow::Result<Value> {
         let grants = load_exact_capability_grants(&caller.principal_id);
         let policy = self.policy.snapshot();
+        let mut schemas = HashMap::new();
         let operation = arguments
             .get("operation")
             .and_then(Value::as_str)
@@ -543,7 +581,7 @@ impl MutationEngineMcpBackend {
         let mut projected = Vec::new();
         for set in &policy.toolsets.sets {
             let authorized_count = self
-                .authorized_toolset_tools_without_health(set, &grants)
+                .authorized_toolset_tools_without_health(set, &grants, &mut schemas)
                 .await?
                 .len();
             if authorized_count == 0 {
@@ -576,7 +614,9 @@ impl MutationEngineMcpBackend {
                 if !Self::provider_ready(set) {
                     anyhow::bail!("provider_unavailable: {}", set.provider);
                 }
-                let tools = self.authorized_toolset_tools(set, &grants).await?;
+                let tools = self
+                    .authorized_toolset_tools(set, &grants, &mut schemas)
+                    .await?;
                 if tools.is_empty() {
                     anyhow::bail!("AccessDenied: no authorized tools in toolset '{id}'");
                 }
@@ -602,10 +642,11 @@ impl MutationEngineMcpBackend {
         &self,
         set: &ToolsetDefinition,
         grants: &HashSet<String>,
+        schemas: &mut HashMap<String, op_state_store::PluginSchema>,
     ) -> anyhow::Result<Vec<Value>> {
         let mut tools = Vec::with_capacity(set.tools.len());
         for name in &set.tools {
-            let descriptor = self.typed_tool_descriptor(name).await?;
+            let descriptor = self.typed_tool_descriptor_cached(name, schemas).await?;
             if descriptor_authority(&descriptor, Some(name))
                 .is_ok_and(|(capability, _)| grants.contains(capability))
             {
@@ -1046,13 +1087,33 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
 }
 
 fn request_timeout_for(method: &str, params: &Value) -> Duration {
-    if method == "tools/call"
-        && params.get("name").and_then(Value::as_str) == Some("plugin.notebooklm.setup_auth")
-    {
-        NOTEBOOKLM_AUTH_REQUEST_TIMEOUT
-    } else {
-        REQUEST_TIMEOUT
+    if method == "tools/call" {
+        let name = params
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        if name == "plugin.notebooklm.setup_auth" {
+            return NOTEBOOKLM_AUTH_REQUEST_TIMEOUT;
+        }
+        if matches!(
+            name,
+            "specialist"
+                | "rust_pro"
+                | "python_pro"
+                | "typescript_pro"
+                | "sequential_thinking"
+                | "context_manager"
+                | "code_review_orchestrator"
+        ) || name
+            .strip_prefix("plugin.cognitive_mcp.")
+            .is_some_and(|method| {
+                op_plugins::state_plugins::cognitive_agents::method_by_name(method).is_some()
+            })
+        {
+            return AGENT_REQUEST_TIMEOUT;
+        }
     }
+    REQUEST_TIMEOUT
 }
 
 async fn handle_mcp_events(
@@ -1621,9 +1682,14 @@ fn method_descriptor(
         );
     }
     let input_schema = mcp_input_schema(serde_json::to_value(&method.args)?);
+    let description = input_schema
+        .get("description")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .unwrap_or_else(|| format!("{} — {}", schema.description, method.name));
     let mut descriptor = json!({
         "name": public_name,
-        "description": format!("{} — {}", schema.description, method.name),
+        "description": description,
         "inputSchema": input_schema,
         "required_capability": required_capability,
         "subid": method.subid,

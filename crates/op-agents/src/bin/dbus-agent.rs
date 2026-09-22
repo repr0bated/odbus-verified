@@ -77,11 +77,11 @@ use op_agents::agents::{
     webframeworks::{DjangoProAgent, FastAPIProAgent, TemporalPythonProAgent},
     AgentTrait,
 };
-use op_agents::dbus_service::{generate_agent_id, start_agent};
+use op_agents::dbus_service::{generate_agent_id, start_agent, start_unified_execution_service};
 
 fn print_usage() {
     eprintln!(
-        "Usage:\n  dbus-agent [--system] <agent-type> [agent-id]\n  dbus-agent --list\n\nExamples:\n  dbus-agent python-pro\n  dbus-agent --system rust-pro\n  dbus-agent python-pro my-agent-id"
+        "Usage:\n  dbus-agent [--system] <agent-type> [agent-id]\n  dbus-agent --system --unified-execution\n  dbus-agent --list\n\nExamples:\n  dbus-agent python-pro\n  dbus-agent --system rust-pro\n  dbus-agent --system --unified-execution"
     );
 }
 
@@ -195,11 +195,13 @@ async fn main() -> anyhow::Result<()> {
 
     let args = env::args().skip(1);
     let mut use_system = false;
+    let mut unified_execution = false;
 
     let mut raw = Vec::new();
     for arg in args {
         match arg.as_str() {
             "--system" => use_system = true,
+            "--unified-execution" => unified_execution = true,
             "--list" => {
                 for descriptor in builtin_agent_descriptors() {
                     println!("{} - {}", descriptor.agent_type, descriptor.description);
@@ -215,6 +217,16 @@ async fn main() -> anyhow::Result<()> {
     }
 
     if raw.is_empty() {
+        if unified_execution {
+            let bus_type = if use_system {
+                BusType::System
+            } else {
+                BusType::Session
+            };
+            let _conn = start_unified_execution_service(bus_type).await?;
+            tokio::signal::ctrl_c().await?;
+            return Ok(());
+        }
         print_usage();
         return Ok(());
     }

@@ -16,6 +16,7 @@ use op_state_store::SideEffect;
 use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
 
+pub use super::cognitive_agents::CatalogExecutionOutput;
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 
 // =============================================================================
@@ -23,7 +24,7 @@ use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 // =============================================================================
 
 const PLUGIN_NAME: &str = "cognitive_mcp";
-const PLUGIN_VERSION: &str = "2.1.0";
+const PLUGIN_VERSION: &str = "3.0.0";
 const PLUGIN_CATEGORY: &str = "service";
 const PLUGIN_DESCRIPTION: &str = "Bridge-owned cognitive MCP tools — memory, code context, and grounded query capabilities compiled into op-grpc-bridge. THE PLUGIN IS THE SCHEMA: every method, tool, property, and field is declared here. Downstream inherits.";
 const PLUGIN_DISPLAY_NAME: &str = "GB.CognitiveMcp";
@@ -490,46 +491,93 @@ pub struct MemoryDeleteInput {
     pub key: String,
 }
 
-/// Operations of the language executor agents (`python_pro`, `typescript_pro`).
+/// Operation-specific inputs for the language executor agents.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum ExecutorOperation {
-    Run,
-    Test,
-    Lint,
-    Format,
-    Typecheck,
-    Install,
+#[serde(tag = "operation", rename_all = "snake_case")]
+pub enum PythonExecutorInput {
+    Run {
+        code: String,
+        args: Vec<String>,
+    },
+    Test {
+        path: String,
+        args: Vec<String>,
+    },
+    Lint {
+        path: String,
+        #[serde(default)]
+        fix: bool,
+    },
+    Format {
+        path: String,
+    },
+    Typecheck {
+        path: String,
+    },
+    Install {
+        packages: Vec<String>,
+    },
 }
 
-/// Typed input for the language executor agents.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct ExecutorAgentInput {
-    #[schemars(description = "Executor operation to perform")]
-    pub operation: ExecutorOperation,
-    #[schemars(description = "Project or file path the operation applies to")]
-    pub path: String,
-    #[schemars(description = "Extra arguments passed to the underlying tool")]
-    pub args: Option<String>,
+#[serde(tag = "operation", rename_all = "snake_case")]
+pub enum JavaScriptExecutorInput {
+    Run { path: String, script: String },
+    Test { path: String },
+    Lint { path: String },
+    Format { path: String },
+    Typecheck { path: String },
+    Install { path: String },
 }
 
-/// Operations of the workflow agents (`sequential_thinking`, `context_manager`,
-/// `code_review_orchestrator`).
+/// Operation-specific workflow inputs and authenticated child steps.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum WorkflowOperation {
-    RunWorkflow,
-    ListSteps,
-    Validate,
+#[serde(deny_unknown_fields)]
+pub struct WorkflowAgentStep {
+    pub agent_type: String,
+    pub operation: String,
+    pub arguments: serde_json::Value,
+    pub condition: Option<String>,
+    pub name: Option<String>,
 }
 
-/// Typed input for the workflow agents.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct WorkflowAgentInput {
-    #[schemars(description = "Workflow operation to perform")]
-    pub operation: WorkflowOperation,
-    #[schemars(description = "Workflow input: the task, question or step arguments")]
-    pub args: Option<String>,
+#[serde(tag = "operation", rename_all = "snake_case")]
+pub enum WorkflowAgentInput {
+    RunWorkflow {
+        steps: Option<Vec<WorkflowAgentStep>>,
+        context: Option<String>,
+    },
+    ListSteps {
+        steps: Option<Vec<WorkflowAgentStep>>,
+        context: Option<String>,
+    },
+    Validate {
+        steps: Option<Vec<WorkflowAgentStep>>,
+        context: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(untagged)]
+pub enum WorkflowAgentOutput {
+    Run {
+        ok: bool,
+        workflow_agent: String,
+        steps_completed: usize,
+        results: Vec<serde_json::Value>,
+        context: Option<String>,
+    },
+    List {
+        workflow_agent: String,
+        steps: Vec<serde_json::Value>,
+    },
+    Validate {
+        valid: bool,
+        workflow_agent: String,
+        errors: Vec<serde_json::Value>,
+        steps: Vec<serde_json::Value>,
+    },
 }
 
 /// Operations of the advisor (persona) agents.
@@ -589,27 +637,30 @@ pub struct SpecialistOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum RustProOperation {
-    Check,
-    Build,
-    Test,
-    Clippy,
-    Format,
-    Run,
-}
-
-/// Always-loaded Rust workspace agent. The operation is explicit and validated
-/// before the bridge dispatches to the eagerly registered Rust Pro executor.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct RustProInput {
-    #[schemars(description = "Cargo operation to perform")]
-    pub operation: RustProOperation,
-    #[schemars(description = "Workspace or crate directory")]
-    pub path: String,
-    #[serde(default)]
-    #[schemars(description = "Use a release profile for build or run")]
-    pub release: bool,
+#[serde(tag = "operation", rename_all = "snake_case")]
+pub enum RustProInput {
+    Check {
+        path: String,
+    },
+    Build {
+        path: String,
+        #[serde(default)]
+        release: bool,
+    },
+    Test {
+        path: String,
+    },
+    Clippy {
+        path: String,
+    },
+    Format {
+        path: String,
+    },
+    Run {
+        path: String,
+        #[serde(default)]
+        release: bool,
+    },
 }
 
 /// Stable HOT workflow query.
@@ -706,7 +757,9 @@ pub struct CodeContextInput {
     #[schemars(description = "Current query / what the agent is working on")]
     pub query: String,
     #[serde(default = "default_session_id")]
-    #[schemars(description = "Compatibility hint; the bridge always binds this to the verified caller session")]
+    #[schemars(
+        description = "Compatibility hint; the bridge always binds this to the verified caller session"
+    )]
     pub session_id: String,
     #[serde(default = "default_activity_type")]
     #[schemars(description = "Kind of activity being recorded (default 'query')")]
@@ -1247,7 +1300,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "rust_pro".to_string(),
-        method_decl_from_schemars_with_output::<RustProInput, RustProOutput>(
+        method_decl_from_schemars_with_output::<RustProInput, CatalogExecutionOutput>(
             "rust_pro",
             SideEffect::Mutation,
             false,
@@ -1268,29 +1321,26 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
     // Hot agents: every one of these has an in-process executor registered as
     // `agent_<type>_<operation>` by op-cognitive-mcp's agent_tools; the bridge
     // maps the method to that tool after validating the operation.
-    for (method, capability, subid) in [
-        (
+    schema.methods.insert(
+        "python_pro".to_string(),
+        method_decl_from_schemars_with_output::<PythonExecutorInput, CatalogExecutionOutput>(
             "python_pro",
+            SideEffect::Mutation,
+            false,
             "cognitive_mcp.python_pro",
             "mut.software.python-pro.execute@v1",
         ),
-        (
+    );
+    schema.methods.insert(
+        "typescript_pro".to_string(),
+        method_decl_from_schemars_with_output::<JavaScriptExecutorInput, CatalogExecutionOutput>(
             "typescript_pro",
+            SideEffect::Mutation,
+            false,
             "cognitive_mcp.typescript_pro",
             "mut.software.typescript-pro.execute@v1",
         ),
-    ] {
-        schema.methods.insert(
-            method.to_string(),
-            method_decl_from_schemars_with_output::<ExecutorAgentInput, AgentOperationOutput>(
-                method,
-                SideEffect::Mutation,
-                false,
-                capability,
-                subid,
-            ),
-        );
-    }
+    );
     for (method, capability, subid) in [
         (
             "sequential_thinking",
@@ -1310,7 +1360,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
     ] {
         schema.methods.insert(
             method.to_string(),
-            method_decl_from_schemars_with_output::<WorkflowAgentInput, AgentOperationOutput>(
+            method_decl_from_schemars_with_output::<WorkflowAgentInput, WorkflowAgentOutput>(
                 method,
                 SideEffect::Mutation,
                 false,
@@ -1370,6 +1420,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "obs.service.cognitive-mcp.schema.read@v1",
         ),
     );
+    super::cognitive_agents::append_catalog_methods(&mut schema);
     schema.methods.insert(
         "oscal_subids".to_string(),
         method_decl_from_schemars_with_output::<OscalSubidsInput, OscalSubidsOutput>(
@@ -1390,11 +1441,9 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "mut.service.gemini.query@v1",
         ),
     );
-    // Generic tool invocation. The 12 methods above are fixed at blob-seal time, but
-    // the ToolRegistry is populated at runtime (406 tools today), so a per-tool method
-    // is impossible without re-sealing on every registration. `invoke_tool` is the one
-    // typed door to the whole registry: `tool_name` selects the tool and `arguments` is
-    // passed verbatim for the tool itself to validate.
+    // Generic tool invocation remains a compatibility surface for provider-owned
+    // tools; the sealed agent catalog below declares every built-in agent method
+    // individually with its exact capability and typed contract.
     schema.methods.insert(
         "invoke_tool".to_string(),
         method_decl_from_schemars_with_output::<InvokeToolInput, InvokeToolOutput>(

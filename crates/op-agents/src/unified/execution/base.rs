@@ -5,6 +5,27 @@ use std::process::Stdio;
 use tokio::process::Command;
 use tokio::time::{timeout, Duration};
 
+const MAX_OUTPUT_BYTES: usize = 1024 * 1024;
+
+async fn read_bounded<R>(mut reader: R) -> std::io::Result<String>
+where
+    R: tokio::io::AsyncRead + Unpin,
+{
+    use tokio::io::AsyncReadExt;
+    let mut bytes = Vec::with_capacity(8192);
+    let mut chunk = [0u8; 8192];
+    loop {
+        let read = reader.read(&mut chunk).await?;
+        if read == 0 {
+            return Ok(String::from_utf8_lossy(&bytes).into_owned());
+        }
+        if bytes.len().saturating_add(read) > MAX_OUTPUT_BYTES {
+            return Err(std::io::Error::other("executor output exceeded 1MiB bound"));
+        }
+        bytes.extend_from_slice(&chunk[..read]);
+    }
+}
+
 use super::super::agent_trait::{
     AgentCapability, AgentCategory, AgentRequest, AgentResponse, UnifiedAgent,
 };
@@ -32,13 +53,24 @@ impl ExecutionAgent {
         language: &str,
         allowed_commands: Vec<&str>,
     ) -> Self {
-        let security_profile = SecurityProfile::code_execution(id, allowed_commands.clone());
+        let mut security_profile = SecurityProfile::code_execution(id, allowed_commands.clone());
+        security_profile
+            .config
+            .allowed_read_paths
+            .push("/srv/git".into());
+        security_profile
+            .config
+            .allowed_write_paths
+            .push("/srv/git".into());
 
         let system_prompt = EXECUTION_AGENT
             .replace("{agent_name}", name)
             .replace("{language}", language)
             .replace("{allowed_commands}", &allowed_commands.join(", "))
-            .replace("{file_access}", "read: /home, /tmp; write: /tmp");
+            .replace(
+                "{file_access}",
+                "read: /home, /tmp, /opt, /srv/git; write: /tmp, /srv/git",
+            );
 
         Self {
             id: id.to_string(),
@@ -75,6 +107,9 @@ impl ExecutionAgent {
         }
 
         let mut cmd = Command::new(command);
+        // The timeout owns the child future; ensure dropping it cannot leave a
+        // detached executor process behind.
+        cmd.kill_on_drop(true);
         cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
 
         if let Some(dir) = working_dir {
@@ -87,18 +122,75 @@ impl ExecutionAgent {
         }
 
         // Execute with timeout
-        let result = timeout(Duration::from_secs(timeout_secs), cmd.output()).await;
-
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("Command execution failed: {}", e))?;
+        let mut stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| "executor stdout pipe unavailable".to_string())?;
+        let mut stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| "executor stderr pipe unavailable".to_string())?;
+        let result = timeout(Duration::from_secs(timeout_secs.min(3600)), async {
+            let (stdout, stderr) =
+                tokio::try_join!(read_bounded(&mut stdout), read_bounded(&mut stderr))
+                    .map_err(|e| e.to_string())?;
+            let status = child
+                .wait()
+                .await
+                .map_err(|e| format!("Command wait failed: {}", e))?;
+            Ok::<_, String>((stdout, stderr, status.code().unwrap_or(-1)))
+        })
+        .await;
         match result {
-            Ok(Ok(output)) => {
-                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-                let code = output.status.code().unwrap_or(-1);
-                Ok((stdout, stderr, code))
+            Ok(Ok(output)) => Ok(output),
+            Ok(Err(error)) => {
+                let _ = child.kill().await;
+                let _ = child.wait().await;
+                Err(error)
             }
-            Ok(Err(e)) => Err(format!("Command execution failed: {}", e)),
-            Err(_) => Err(format!("Command timed out after {} seconds", timeout_secs)),
+            Err(_) => {
+                let _ = child.kill().await;
+                let _ = child.wait().await;
+                Err(format!(
+                    "Command timed out after {} seconds",
+                    timeout_secs.min(3600)
+                ))
+            }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn shell_agent() -> ExecutionAgent {
+        ExecutionAgent::new("test-shell", "test shell", "", "shell", vec!["sh"])
+    }
+
+    #[tokio::test]
+    async fn output_limit_kills_chatty_child() {
+        let result = shell_agent()
+            .execute_command("sh", &["-c", "while :; do printf x; done"], None, 5)
+            .await;
+        assert!(result
+            .expect_err("chatty child must hit output bound")
+            .contains("1MiB bound"));
+    }
+
+    #[tokio::test]
+    async fn timeout_kills_looping_child() {
+        let started = tokio::time::Instant::now();
+        let result = shell_agent()
+            .execute_command("sh", &["-c", "while :; do :; done"], None, 1)
+            .await;
+        assert!(result
+            .expect_err("looping child must time out")
+            .contains("timed out"));
+        assert!(started.elapsed() < Duration::from_secs(5));
     }
 }
 

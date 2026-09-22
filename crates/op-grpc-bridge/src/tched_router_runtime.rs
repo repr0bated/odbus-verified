@@ -194,6 +194,14 @@ impl TchedRouterRuntimeClient {
         Self::new(endpoint, agent_alias, token)
     }
 
+    /// Build a client for a dedicated native agent alias while retaining the
+    /// endpoint and token configured for the bridge process.
+    pub(crate) fn for_agent_alias(agent_alias: &str) -> Self {
+        let mut client = Self::from_env();
+        client.agent_alias = agent_alias.to_owned();
+        client
+    }
+
     pub(crate) fn new(endpoint: String, agent_alias: String, token: Option<String>) -> Self {
         let endpoint = endpoint.trim_end_matches('/').to_string();
         let endpoint_error = validate_loopback_endpoint(&endpoint).err();
@@ -245,6 +253,25 @@ impl TchedRouterRuntimeClient {
             dyn crate::tched_router_generation_native::NativeGenerationAdmission,
         >,
     ) -> anyhow::Result<crate::tched_router_generation_native::NativeGenerationTask> {
+        self.spawn_stateless_generation_with_expectations(
+            input,
+            native_session_id,
+            before_prompt,
+            None,
+            None,
+        )
+    }
+
+    fn spawn_stateless_generation_with_expectations(
+        &self,
+        input: op_plugins::state_plugins::tched_router::generation::StartGenerationInput,
+        native_session_id: String,
+        before_prompt: std::sync::Arc<
+            dyn crate::tched_router_generation_native::NativeGenerationAdmission,
+        >,
+        expected_provider: Option<String>,
+        expected_model: Option<String>,
+    ) -> anyhow::Result<crate::tched_router_generation_native::NativeGenerationTask> {
         // Reuse the configured client's strict endpoint validation, and require
         // an explicit credential rather than anonymous shared-gateway access.
         self.http()?;
@@ -260,12 +287,91 @@ impl TchedRouterRuntimeClient {
                 agent_alias: input.agent_alias,
                 native_session_id,
                 prompt: input.prompt,
-                expected_provider: None,
-                expected_model: None,
+                expected_provider,
+                expected_model,
                 before_prompt,
             },
         )
         .map_err(|_| anyhow!("native stateless generation request could not be started"))
+    }
+
+    /// Complete one provider-only native generation turn. The caller holds the
+    /// selection guard; the native adapter performs the final identity/schema
+    /// admission immediately before releasing the prompt.
+    pub(crate) async fn complete_under_guard(
+        &self,
+        input: ChatInput,
+        before_prompt: std::sync::Arc<
+            dyn crate::tched_router_generation_native::NativeGenerationAdmission,
+        >,
+    ) -> anyhow::Result<ChatOutput> {
+        let prompt = conversation_prompt(&input)?;
+        let observed = self.current_provider().await?;
+        if !input.provider.trim().is_empty()
+            && !input.provider.eq_ignore_ascii_case(&observed.family)
+            && !input.provider.eq_ignore_ascii_case(&observed.reference)
+        {
+            return Err(anyhow!(
+                "requested provider '{}' differs from native selection '{}'",
+                input.provider,
+                observed.family
+            ));
+        }
+        if !input.model.trim().is_empty()
+            && !input.model.eq_ignore_ascii_case(&observed.selected_model)
+        {
+            return Err(anyhow!(
+                "requested model '{}' differs from native selection '{}'",
+                input.model,
+                observed.selected_model
+            ));
+        }
+        // The stateless ACK uses the exact native provider reference (for
+        // example `custom.salad` or `openrouter.accountability`), while the
+        // public Chat contract may carry only the provider family.
+        let expected_provider = Some(observed.reference.clone());
+        let expected_model = Some(observed.selected_model.clone());
+        let task_input =
+            op_plugins::state_plugins::tched_router::generation::StartGenerationInput {
+                agent_alias: self.agent_alias.clone(),
+                prompt,
+            };
+        let mut task = self.spawn_stateless_generation_with_expectations(
+            task_input,
+            uuid::Uuid::new_v4().to_string(),
+            before_prompt,
+            expected_provider,
+            expected_model,
+        )?;
+        while task.recv_event().await.is_some() {}
+        let terminal = task
+            .wait()
+            .await
+            .map_err(|error| anyhow!(error.to_string()))?;
+        let done = match terminal {
+            crate::tched_router_generation_native::NativeGenerationTerminal::Done(done) => done,
+            crate::tched_router_generation_native::NativeGenerationTerminal::Cancelled => {
+                return Err(anyhow!("native generation was cancelled"));
+            }
+        };
+        let _native_provider = done
+            .provider
+            .context("native generation omitted provider")?;
+        let model = done.model.context("native generation omitted model")?;
+        Ok(ChatOutput {
+            content: done.full_response,
+            // Preserve the public Chat contract's provider-family shape while
+            // the native adapter has already verified the exact reference.
+            provider: observed.family,
+            model,
+            finish_reason: String::new(),
+            usage: serde_json::json!({
+                "input_tokens": done.usage.input_tokens,
+                "output_tokens": done.usage.output_tokens,
+                "tokens_used": done.usage.tokens_used,
+                "cost_usd_micros": done.usage.cost_usd_micros,
+            }),
+        })
     }
 
     fn request(&self, request: RequestBuilder) -> anyhow::Result<RequestBuilder> {
@@ -1923,6 +2029,183 @@ fn truncate_error(detail: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures::{SinkExt, StreamExt};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio_tungstenite::{
+        accept_hdr_async,
+        tungstenite::{
+            handshake::server::{Request, Response},
+            Message,
+        },
+    };
+
+    struct AllowGenerationAdmission;
+    impl crate::tched_router_generation_native::NativeGenerationAdmission for AllowGenerationAdmission {
+        fn check(
+            &self,
+        ) -> std::pin::Pin<
+            Box<
+                dyn std::future::Future<
+                        Output = Result<
+                            (),
+                            crate::tched_router_generation_native::NativeGenerationError,
+                        >,
+                    > + Send
+                    + '_,
+            >,
+        > {
+            Box::pin(async { Ok(()) })
+        }
+    }
+
+    async fn complete_fixture(
+        alias: &str,
+        provider_ref: &str,
+        public_provider: &str,
+        ack_provider: &str,
+    ) -> anyhow::Result<ChatOutput> {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let address = listener.local_addr()?;
+        let alias = alias.to_owned();
+        let provider_ref = provider_ref.to_owned();
+        let ack_provider = ack_provider.to_owned();
+        let server_alias = alias.clone();
+        let server = tokio::spawn(async move {
+            for _ in 0..4 {
+                let (mut stream, _) = listener.accept().await.unwrap();
+                let mut peek = [0u8; 8];
+                let n = stream.peek(&mut peek).await.unwrap();
+                if std::str::from_utf8(&peek[..n])
+                    .unwrap_or_default()
+                    .starts_with("GET /ws")
+                {
+                    let socket =
+                        accept_hdr_async(stream, |request: &Request, mut response: Response| {
+                            assert!(request
+                                .uri()
+                                .query()
+                                .unwrap_or_default()
+                                .contains(&format!("agent_alias={server_alias}")));
+                            response.headers_mut().insert(
+                                "Sec-WebSocket-Protocol",
+                                "tched_router.generation.v1".parse().unwrap(),
+                            );
+                            Ok(response)
+                        })
+                        .await
+                        .unwrap();
+                    let (mut sink, mut incoming) = socket.split();
+                    let connect = incoming.next().await.unwrap().unwrap();
+                    let connect: Value = serde_json::from_str(connect.to_text().unwrap()).unwrap();
+                    assert_eq!(connect["type"], "connect");
+                    sink.send(Message::Text(json!({"type":"session_start","session_id":connect["session_id"],"resumed":false,"message_count":0,"stateless_generation":1}).to_string().into())).await.unwrap();
+                    sink.send(Message::Text(format!(r#"{{"type":"connected","stateless_generation":1,"provider":"{}","model":"fixture-model"}}"#, ack_provider).into())).await.unwrap();
+                    let prompt =
+                        tokio::time::timeout(Duration::from_secs(2), incoming.next()).await;
+                    if ack_provider != provider_ref {
+                        assert!(
+                            !matches!(prompt, Ok(Some(Ok(Message::Text(_))))),
+                            "wrong ACK released a prompt"
+                        );
+                        return;
+                    }
+                    let prompt = prompt.unwrap().unwrap().unwrap();
+                    let prompt: Value = serde_json::from_str(prompt.to_text().unwrap()).unwrap();
+                    assert_eq!(prompt["type"], "message");
+                    assert_eq!(prompt["content"], "hello");
+                    sink.send(Message::Text(
+                        r#"{"type":"chunk","content":"fixture answer"}"#.into(),
+                    ))
+                    .await
+                    .unwrap();
+                    sink.send(Message::Text(format!(r#"{{"type":"done","full_response":"fixture answer","provider":"{}","model":"fixture-model","tokens_used":4}}"#, ack_provider).into())).await.unwrap();
+                } else {
+                    let mut buffer = vec![0u8; 4096];
+                    let n = stream.read(&mut buffer).await.unwrap();
+                    let request = String::from_utf8_lossy(&buffer[..n]);
+                    let path = request
+                        .lines()
+                        .next()
+                        .unwrap_or_default()
+                        .split_whitespace()
+                        .nth(1)
+                        .unwrap_or_default();
+                    let body = if path.starts_with("/health") {
+                        r#"{"status":"ok"}"#.to_string()
+                    } else if path.starts_with("/api/config/prop")
+                        && path.contains("model_provider")
+                    {
+                        format!(r#"{{"value":"{}"}}"#, provider_ref)
+                    } else if path.starts_with("/api/config/prop") {
+                        r#"{"value":"fixture-model"}"#.to_string()
+                    } else {
+                        format!(
+                            r#"{{"entries":[{{"path":"providers.models.{}.model","value":"fixture-model"}}]}}"#,
+                            provider_ref
+                        )
+                    };
+                    let response = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body);
+                    stream.write_all(response.as_bytes()).await.unwrap();
+                }
+            }
+        });
+        let client = TchedRouterRuntimeClient::new(
+            format!("http://{address}"),
+            alias,
+            Some("fixture-token".into()),
+        );
+        let output = client
+            .complete_under_guard(
+                ChatInput {
+                    message: "hello".into(),
+                    provider: public_provider.into(),
+                    model: "fixture-model".into(),
+                    ..Default::default()
+                },
+                std::sync::Arc::new(AllowGenerationAdmission),
+            )
+            .await;
+        server.await.unwrap();
+        output
+    }
+
+    #[tokio::test]
+    async fn provider_only_wrapper_accepts_exact_role_ack_and_returns_public_family() {
+        let output = complete_fixture(
+            "accountability",
+            "openrouter.accountability",
+            "openrouter",
+            "openrouter.accountability",
+        )
+        .await
+        .unwrap();
+        assert_eq!(output.content, "fixture answer");
+        assert_eq!(output.provider, "openrouter");
+        assert_eq!(output.model, "fixture-model");
+    }
+
+    #[tokio::test]
+    async fn provider_only_wrapper_accepts_custom_family_against_exact_reference() {
+        let output = complete_fixture("dashboard", "custom.salad", "custom", "custom.salad")
+            .await
+            .unwrap();
+        assert_eq!(output.provider, "custom");
+    }
+
+    #[tokio::test]
+    async fn provider_only_wrapper_rejects_wrong_native_ack_before_prompt() {
+        let error = complete_fixture(
+            "accountability",
+            "openrouter.accountability",
+            "openrouter",
+            "openrouter.other",
+        )
+        .await
+        .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("native generation protocol rejected"));
+    }
 
     #[tokio::test]
     async fn oversized_chat_request_is_rejected_before_native_io() {

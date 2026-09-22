@@ -294,6 +294,8 @@ fn audit_method_arguments(plugin_id: &str, method: &str, json_args: &str) -> Str
     let private = matches!(
         plugin_id,
         "project"
+            | "cognitive_mcp"
+            | "persona"
             | "memory"
             | "cozo"
             | "sess_decl"
@@ -309,8 +311,10 @@ fn audit_method_arguments(plugin_id: &str, method: &str, json_args: &str) -> Str
             | "antigravity_chat"
     ) || (plugin_id == "xray" && matches!(method, "add_user" | "add_inbound"))
         || (plugin_id == "tched_router"
-            && (matches!(method, "PatchConfig" | "config_set" | "config_patch")
-                || crate::generation_jobs_dispatch::is_generation_method(method)))
+            && (matches!(
+                method,
+                "Chat" | "PatchConfig" | "config_set" | "config_patch"
+            ) || crate::generation_jobs_dispatch::is_generation_method(method)))
         || (plugin_id == "large_language_model" && method == "stream_generate")
         || (plugin_id == "embedding_model" && method == "embed")
         || (plugin_id == "mcp" && method == "configure_server")
@@ -3394,7 +3398,50 @@ impl MutationEngine {
             }
             "persona" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                op_plugins::state_plugins::persona::dispatch_persona_method(method, &args).await?
+                if method == "execute" {
+                    let input: op_plugins::state_plugins::persona::ExecuteInput =
+                        serde_json::from_value(args)?;
+                    let target = op_plugins::state_plugins::cognitive_agents::catalog_agent_method(
+                        &input.agent_type,
+                        &input.operation,
+                    )
+                    .context("unknown agent operation")?;
+                    let required = target
+                        .declaration
+                        .required_capability
+                        .as_deref()
+                        .context("agent requires exact capability")?;
+                    anyhow::ensure!(
+                        crate::interceptor::load_capability_grants(actor_id).contains(required),
+                        "persona execution requires the target agent capability"
+                    );
+                    let mut arguments = input.args.unwrap_or_else(|| serde_json::json!({}));
+                    let object = arguments
+                        .as_object_mut()
+                        .context("agent arguments must be an object")?;
+                    if let Some(question) = input.query {
+                        object.insert("question".into(), question.into());
+                    }
+                    if let Some(path) = input.path {
+                        object.insert("path".into(), path.into());
+                    }
+                    let envelope = self
+                        .dispatch_method_call_with_identity(
+                            "cognitive_mcp",
+                            &target.declaration.name,
+                            &serde_json::to_string(&arguments)?,
+                            Some(required),
+                            actor_id,
+                            session_id,
+                            session_genesis,
+                        )
+                        .await?;
+                    serde_json::json!({"success":true,"agent_type":input.agent_type,
+                        "operation":input.operation,"data":envelope.get("result").unwrap_or(&envelope)})
+                } else {
+                    op_plugins::state_plugins::persona::dispatch_persona_method(method, &args)
+                        .await?
+                }
             }
             "gcloud_adc" => {
                 let args = serde_json::to_value(&parsed_value)?;
@@ -4143,10 +4190,22 @@ impl MutationEngine {
                         },
                         method,
                         &args,
+                        &admitted_schema,
                     )
                     .await?;
                 if crate::memory_binding::is_memory_method(method)
                     || matches!(method, "code_search" | "code_context" | "code_index")
+                    || op_plugins::state_plugins::cognitive_agents::method_by_name(method).is_some()
+                    || matches!(
+                        method,
+                        "specialist"
+                            | "rust_pro"
+                            | "python_pro"
+                            | "typescript_pro"
+                            | "sequential_thinking"
+                            | "context_manager"
+                            | "code_review_orchestrator"
+                    )
                 {
                     let declaration = admitted_schema
                         .methods
@@ -4332,11 +4391,28 @@ impl MutationEngine {
                     .clone()
                     .context("chat episode requires verified genesis")?,
             };
-            self.ctl_plane_chatbot_episode_cozo().await?;
-            let episode_effect = self
-                .chatbot_episode_publisher()?
-                .admit_effect(self, scope.clone())
-                .await?;
+            let route = crate::chat_mode_routing::resolve(
+                self,
+                crate::specialist::CognitiveCaller {
+                    actor_id: &caller.actor,
+                    session_id: caller.session.as_deref(),
+                    session_genesis: caller.genesis.as_deref(),
+                },
+                args,
+            )
+            .await?;
+            let has_memory = route.mode.has_memory();
+            let args = route.input;
+            let episode_effect = if has_memory {
+                self.ctl_plane_chatbot_episode_cozo().await?;
+                Some(
+                    self.chatbot_episode_publisher()?
+                        .admit_effect(self, scope.clone())
+                        .await?,
+                )
+            } else {
+                None
+            };
             let conversation_id = args.conversation_id.clone();
             let goal_text = if args.messages.is_empty() {
                 Some(args.message.clone())
@@ -4366,7 +4442,13 @@ impl MutationEngine {
             // principal/session and bounded. Injected as the first system
             // message; the episode records what was drawn on.
             let turn_query = goal_text.clone().unwrap_or_default();
-            let bundle = crate::context_bundle::assemble_for_turn(self, &scope, &turn_query).await;
+            let bundle = crate::context_bundle::assemble_for_context(
+                self,
+                &scope,
+                &turn_query,
+                &route.context,
+            )
+            .await;
             let mut args = args;
             if let Some(recalled) = bundle.render(crate::context_bundle::TURN_BUDGET_CHARS) {
                 if args.messages.is_empty() && !args.message.trim().is_empty() {
@@ -4387,8 +4469,9 @@ impl MutationEngine {
             }
             let provenance = bundle.provenance();
             // The turn itself is session activity for the context engine.
-            if let Ok(runtime) = self.cognitive_mcp().await {
-                runtime
+            if has_memory {
+                if let Ok(runtime) = self.cognitive_mcp().await {
+                    runtime
                     .context_engine()
                     .record_activity(
                         &scope.session_id,
@@ -4397,13 +4480,35 @@ impl MutationEngine {
                         serde_json::json!({ "source": "tched_router.chat", "context": provenance }),
                     )
                     .await;
+                }
             }
             // Selected model on tched-router (:8084). Tools are compact MCP on
             // that agent; the bridge does not own a second provider state.
-            let output = crate::tched_router_runtime::TchedRouterRuntimeClient::from_env()
-                .chat_under_guard(args)
-                .await?;
-            let episode =
+            let output = if matches!(
+                route.mode,
+                op_plugins::state_plugins::project::ChatMode::UiRender
+                    | op_plugins::state_plugins::project::ChatMode::Accountability
+            ) {
+                let before_prompt = crate::specialist::generation_admission(
+                    self,
+                    &admitted_schema,
+                    crate::specialist::CognitiveCaller {
+                        actor_id: &caller.actor,
+                        session_id: caller.session.as_deref(),
+                        session_genesis: caller.genesis.as_deref(),
+                    },
+                    "tched_router",
+                    method,
+                )?;
+                route
+                    .client
+                    .complete_under_guard(args, before_prompt)
+                    .await?
+            } else {
+                route.client.chat_under_guard(args).await?
+            };
+            if let Some(episode_effect) = episode_effect {
+                let episode =
                 op_plugins::state_plugins::ctl_plane_chatbot_methods::build_completed_chat_episode(
                     op_plugins::state_plugins::ctl_plane_chatbot_methods::CompletedChatEpisode {
                         scope,
@@ -4416,11 +4521,12 @@ impl MutationEngine {
                     },
                 )
                 .context("native chat completed but episode construction failed")?;
-            self.commit_chatbot_episode_effect(episode_effect, episode)
+                self.commit_chatbot_episode_effect(episode_effect, episode)
                 .await
                 .context(
                     "native chat completed but episode publication failed; recover before retry",
                 )?;
+            }
             crate::tched_router_admission::readmit_call(
                 self,
                 &admitted_schema,
@@ -5768,9 +5874,75 @@ impl MutationEngine {
         caller: crate::specialist::CognitiveCaller<'_>,
         method: &str,
         args: &serde_json::Value,
+        admitted_schema: &op_state_store::PluginSchema,
     ) -> anyhow::Result<serde_json::Value> {
+        if method == "invoke_tool" {
+            let target = args
+                .get("tool_name")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default();
+            if let Some(catalog) =
+                op_plugins::state_plugins::cognitive_agents::method_by_name(target)
+            {
+                let required = catalog
+                    .declaration
+                    .required_capability
+                    .as_deref()
+                    .context("agent requires exact capability")?;
+                anyhow::ensure!(
+                    crate::interceptor::load_capability_grants(caller.actor_id).contains(required),
+                    "generic invocation does not grant the target agent capability"
+                );
+                let arguments = args
+                    .get("arguments")
+                    .cloned()
+                    .unwrap_or_else(|| serde_json::json!({}));
+                let envelope = self
+                    .dispatch_method_call_with_identity(
+                        "cognitive_mcp",
+                        target,
+                        &serde_json::to_string(&arguments)?,
+                        Some(required),
+                        caller.actor_id,
+                        caller.session_id,
+                        caller.session_genesis,
+                    )
+                    .await?;
+                return Ok(
+                    serde_json::json!({"success":true,"tool_name":target,"result":envelope.get("result").unwrap_or(&envelope)}),
+                );
+            }
+        }
+        if let Some(catalog) = op_plugins::state_plugins::cognitive_agents::method_by_name(method) {
+            return crate::agent_catalog_dispatch::dispatch(
+                self,
+                caller,
+                catalog,
+                args,
+                admitted_schema,
+                method,
+            )
+            .await;
+        }
+        if let Some((catalog, normalized)) =
+            crate::agent_catalog_dispatch::hot_method(method, args)?
+        {
+            crate::method_contract_admission::validate_admitted_arguments(
+                &catalog.declaration,
+                &normalized,
+            )?;
+            return crate::agent_catalog_dispatch::dispatch(
+                self,
+                caller,
+                catalog,
+                &normalized,
+                admitted_schema,
+                method,
+            )
+            .await;
+        }
         if method == "specialist" {
-            return crate::specialist::consult(self, caller, args).await;
+            return crate::specialist::consult(self, caller, args, admitted_schema, method).await;
         }
         // Bridge-local health answers from the published in-process projection;
         // every cognitive operation below executes through the embedded registry.
@@ -5961,6 +6133,18 @@ fn project_sealed_cognitive_tool_descriptor(
     let name = candidate.get("name")?.as_str()?.to_string();
     let candidate_capability = candidate.get("required_capability")?.as_str()?;
     let candidate_subid = candidate.get("subid")?.as_str()?;
+    if let Some(agent) = op_plugins::state_plugins::cognitive_agents::method_by_name(&name) {
+        let declaration = &agent.declaration;
+        if Some(candidate_capability) != declaration.required_capability.as_deref()
+            || candidate_subid != declaration.subid
+        {
+            return None;
+        }
+        candidate
+            .as_object_mut()?
+            .insert("authority_method".into(), name.into());
+        return Some(candidate);
+    }
     let schema = op_plugins::cognitive_mcp_plugin_schema();
     let method = schema.methods.get(&name)?;
     let sealed_capability = method.required_capability.as_deref()?;
@@ -5992,27 +6176,17 @@ fn project_sealed_cognitive_tool_descriptor(
 /// registry exposes a single `cognitive_memory` tool selected by an `operation`
 /// field, so the memory methods inject that field rather than existing as separate
 /// tools. `invoke_tool` bypasses the table entirely and names its tool directly.
-/// Validate a hot agent method's `operation` against the operations its
-/// catalog descriptor declares.
-fn hot_agent_operation<'a>(
-    method: &str,
-    args: &'a serde_json::Value,
-    allowed: &[&str],
-) -> anyhow::Result<&'a str> {
-    let operation = args
-        .get("operation")
-        .and_then(|value| value.as_str())
-        .ok_or_else(|| anyhow::anyhow!("{method}: missing required field 'operation'"))?;
-    if !allowed.contains(&operation) {
-        anyhow::bail!("{method}: unsupported operation '{operation}'");
-    }
-    Ok(operation)
-}
-
 fn map_schema_method_to_tool(
     method: &str,
     args: &serde_json::Value,
 ) -> anyhow::Result<(String, serde_json::Value)> {
+    if let Some((catalog, normalized)) = crate::agent_catalog_dispatch::hot_method(method, args)? {
+        crate::method_contract_admission::validate_admitted_arguments(
+            &catalog.declaration,
+            &normalized,
+        )?;
+        return Ok((catalog.declaration.name.clone(), normalized));
+    }
     let base = if args.is_object() {
         args.clone()
     } else {
@@ -6052,55 +6226,6 @@ fn map_schema_method_to_tool(
         "code_search" => Ok(("code_search".into(), base)),
         "code_index" => Ok(("code_index".into(), base)),
         "code_context" => Ok(("code_context".into(), base)),
-        // Hot agents: `agent_<type>_<operation>` executors registered by
-        // op-cognitive-mcp's agent_tools. The operation must be one the
-        // agent's catalog descriptor declares; the schema enum already
-        // constrains it, this is the fail-closed backstop.
-        "python_pro" | "typescript_pro" => {
-            let operation = hot_agent_operation(
-                method,
-                args,
-                &["run", "test", "lint", "format", "typecheck", "install"],
-            )?;
-            let mut tool_args = serde_json::json!({});
-            if let Some(path) = args.get("path").and_then(|value| value.as_str()) {
-                tool_args["path"] = serde_json::Value::String(path.to_string());
-            }
-            if let Some(extra) = args.get("args").and_then(|value| value.as_str()) {
-                tool_args["args"] = serde_json::Value::String(extra.to_string());
-            }
-            Ok((format!("agent_{method}_{operation}"), tool_args))
-        }
-        "sequential_thinking" | "context_manager" | "code_review_orchestrator" => {
-            let operation =
-                hot_agent_operation(method, args, &["run_workflow", "list_steps", "validate"])?;
-            let mut tool_args = serde_json::json!({});
-            if let Some(extra) = args.get("args").and_then(|value| value.as_str()) {
-                tool_args["args"] = serde_json::Value::String(extra.to_string());
-            }
-            Ok((format!("agent_{method}_{operation}"), tool_args))
-        }
-        "rust_pro" => {
-            let operation = args
-                .get("operation")
-                .and_then(|value| value.as_str())
-                .ok_or_else(|| anyhow::anyhow!("rust_pro: missing required field 'operation'"))?;
-            if !matches!(
-                operation,
-                "check" | "build" | "test" | "clippy" | "format" | "run"
-            ) {
-                anyhow::bail!("rust_pro: unsupported operation '{operation}'");
-            }
-            let mut tool_args = serde_json::json!({
-                "config": {
-                    "release": args.get("release").and_then(|value| value.as_bool()).unwrap_or(false)
-                }
-            });
-            if let Some(path) = args.get("path").and_then(|value| value.as_str()) {
-                tool_args["path"] = serde_json::Value::String(path.to_string());
-            }
-            Ok((format!("agent_rust_pro_{operation}"), tool_args))
-        }
         // Gemini question answering: the tool names the field `question`.
         "gemini_query" => {
             let mut v = base.clone();
@@ -6196,7 +6321,7 @@ mod cognitive_dispatch_tests {
         .expect("Rust Pro mapping must exist");
         assert_eq!(tool, "agent_rust_pro_check");
         assert_eq!(args["path"], "/srv/git/odbus");
-        assert_eq!(args["config"]["release"], false);
+        assert!(args.get("release").is_none());
 
         assert!(map_schema_method_to_tool(
             "rust_pro",
@@ -6220,20 +6345,20 @@ mod cognitive_dispatch_tests {
     fn hot_agents_map_to_their_registered_executor_tools() {
         let (tool, args) = map_schema_method_to_tool(
             "python_pro",
-            &serde_json::json!({"operation": "test", "path": "/srv/git/x", "args": "-k smoke"}),
+            &serde_json::json!({"operation": "test", "path": "/srv/git/x", "args": ["-k", "smoke"]}),
         )
         .unwrap();
         assert_eq!(tool, "agent_python_pro_test");
         assert_eq!(args["path"], "/srv/git/x");
-        assert_eq!(args["args"], "-k smoke");
+        assert_eq!(args["args"], serde_json::json!(["-k", "smoke"]));
 
         let (tool, args) = map_schema_method_to_tool(
             "sequential_thinking",
-            &serde_json::json!({"operation": "run_workflow", "args": "plan the migration"}),
+            &serde_json::json!({"operation": "run_workflow", "context": "plan the migration"}),
         )
         .unwrap();
         assert_eq!(tool, "agent_sequential_thinking_run_workflow");
-        assert_eq!(args["args"], "plan the migration");
+        assert_eq!(args["context"], "plan the migration");
 
         // Operations outside the agent's catalog are refused; static advisor
         // personas are not registry tools any more (see `specialist`).
@@ -6296,6 +6421,13 @@ mod private_method_audit_tests {
                 "configure_server",
                 r#"{"operations":[{"value":"private credential"}]}"#,
             ),
+            (
+                "cognitive_mcp",
+                "agent_backend_architect_consult",
+                r#"{"question":"private code"}"#,
+            ),
+            ("persona", "execute", r#"{"query":"private code"}"#),
+            ("tched_router", "Chat", r#"{"message":"private message"}"#),
         ] {
             let audit = audit_method_arguments(plugin, method, input);
             assert!(audit.contains("arguments_redacted"));

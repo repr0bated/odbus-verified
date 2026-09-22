@@ -1,11 +1,13 @@
 //! MCP tool registry adapter for built-in agents.
 //!
-//! The agent catalog is the local schema source for exposing agents as tools.
+//! Contracts come from the cognitive plugin. Authenticated persona and workflow
+//! execution lives in the bridge; this registry is its implementation inventory.
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use op_agents::{builtin_agent_descriptors, create_agent, AgentDescriptor, AgentTask};
 use op_mcp::tool_registry::{BoxedTool, Tool, ToolRegistry};
+use op_plugins::state_plugins::cognitive_agents;
 use simd_json::prelude::*;
 use simd_json::{json, OwnedValue as Value};
 use std::collections::HashMap;
@@ -67,23 +69,26 @@ impl Tool for AgentCatalogTool {
     }
 
     fn input_schema(&self) -> Value {
-        json!({
-            "type": "object",
-            "properties": {
-                "args": {
-                    "type": "string",
-                    "description": "Natural-language task or operation-specific arguments"
-                },
-                "path": {
-                    "type": "string",
-                    "description": "Optional working path"
-                },
-                "config": {
-                    "type": "object",
-                    "description": "Optional agent-specific configuration"
-                }
-            }
-        })
+        cognitive_agents::method_by_name(&self.tool_name)
+            .expect("registered agent must have a plugin contract")
+            .declaration
+            .args
+            .clone()
+    }
+
+    fn required_capability(&self) -> Option<&str> {
+        cognitive_agents::method_by_name(&self.tool_name)?
+            .declaration
+            .required_capability
+            .as_deref()
+    }
+
+    fn subid(&self) -> Option<&str> {
+        Some(
+            &cognitive_agents::method_by_name(&self.tool_name)?
+                .declaration
+                .subid,
+        )
     }
 
     async fn execute(&self, input: Value) -> Result<Value> {
@@ -98,10 +103,7 @@ impl Tool for AgentCatalogTool {
         if let Some(path) = input.get("path").and_then(|v| v.as_str()) {
             task = task.with_path(path);
         }
-        if let Some(args) = input.get("args").and_then(|v| v.as_str()) {
-            task = task.with_args(args);
-        }
-        if let Some(config) = input.get("config").and_then(|v| v.as_object()) {
+        if let Some(config) = input.as_object() {
             task.config = config
                 .iter()
                 .map(|(key, value)| (key.to_string(), value.clone()))

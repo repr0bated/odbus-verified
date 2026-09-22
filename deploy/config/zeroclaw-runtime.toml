@@ -32,11 +32,52 @@ native_tools = true
 merge_system_into_user = false
 provider_extra = { chat_template_kwargs = { enable_thinking = false } }
 
+# Role-isolated chat routes. The bridge selects these aliases only after it
+# re-resolves the verified session's ControlPlane or Accountability mode.
+# Credentials are injected from the root-only
+# /etc/op-dbus/secrets/openrouter-api-key file by the runit bootstrap; none are
+# stored here.
+[providers.models.openrouter.control_plane]
+model = "openrouter/auto"
+uri = "https://openrouter.ai/api/v1"
+wire_api = "chat_completions"
+
+[providers.models.openrouter.accountability]
+model = "openrouter/auto"
+uri = "https://openrouter.ai/api/v1"
+wire_api = "chat_completions"
+
 [agents.dashboard]
 enabled = true
 model_provider = "custom.salad"
 risk_profile = "dashboard"
 skill_bundles = ["default"]
+
+[agents.control_plane]
+enabled = true
+model_provider = "openrouter.control_plane"
+risk_profile = "control_plane"
+skill_bundles = ["default"]
+
+[agents.control_plane.a2a]
+published = true
+exposed_skills = ["plugin-schema"]
+
+[agents.control_plane.memory]
+backend = "none"
+
+[agents.accountability]
+enabled = true
+model_provider = "openrouter.accountability"
+risk_profile = "accountability"
+skill_bundles = ["default"]
+
+[agents.accountability.a2a]
+published = true
+exposed_skills = ["plugin-schema"]
+
+[agents.accountability.memory]
+backend = "none"
 
 [agents.dashboard.a2a]
 published = true
@@ -48,6 +89,18 @@ exposed_skills = [
 ]
 
 [risk_profiles.dashboard]
+level = "readonly"
+workspace_only = true
+require_approval_for_medium_risk = true
+block_high_risk_commands = true
+
+[risk_profiles.control_plane]
+level = "readonly"
+workspace_only = true
+require_approval_for_medium_risk = true
+block_high_risk_commands = true
+
+[risk_profiles.accountability]
 level = "readonly"
 workspace_only = true
 require_approval_for_medium_risk = true

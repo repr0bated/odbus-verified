@@ -257,15 +257,28 @@
          let mut last_err = None;
 --- a/crates/zeroclaw-providers/src/compatible.rs
 +++ b/crates/zeroclaw-providers/src/compatible.rs
-@@ -2484,6 +2484,12 @@
+@@ -2484,6 +2484,25 @@
  
  #[async_trait]
  impl ModelProvider for OpenAiCompatibleModelProvider {
 +    fn supports_stateless_generation(&self) -> bool {
-+        // Arbitrary extra keys can override messages, tools or model.
-+        self.extra_body
-+            .as_ref()
-+            .is_none_or(|value| value.as_object().is_some_and(|map| map.is_empty()))
++        // Permit only the existing harmless thinking toggle; messages, tools,
++        // model and arbitrary provider fields remain stateless-ineligible.
++        self.extra_body.as_ref().is_none_or(|value| {
++            value.as_object().is_some_and(|map| {
++                map.is_empty()
++                    || (map.len() == 1
++                        && map
++                            .get("chat_template_kwargs")
++                            .and_then(serde_json::Value::as_object)
++                            .is_some_and(|nested| {
++                                nested.len() == 1
++                                    && nested
++                                        .get("enable_thinking")
++                                        .is_some_and(serde_json::Value::is_boolean)
++                            }))
++            })
++        })
 +    }
      fn capabilities(&self) -> zeroclaw_api::model_provider::ProviderCapabilities {
          zeroclaw_api::model_provider::ProviderCapabilities {
@@ -328,15 +341,28 @@
              native_tool_calling: true,
 --- a/crates/zeroclaw-providers/src/openrouter.rs
 +++ b/crates/zeroclaw-providers/src/openrouter.rs
-@@ -540,6 +540,12 @@
+@@ -540,6 +540,25 @@
  
  #[async_trait]
  impl ModelProvider for OpenRouterModelProvider {
 +    fn supports_stateless_generation(&self) -> bool {
-+        // Arbitrary extra keys can override messages, tools or model.
-+        self.extra_body
-+            .as_ref()
-+            .is_none_or(|value| value.as_object().is_some_and(|map| map.is_empty()))
++        // Permit only the existing harmless thinking toggle; messages, tools,
++        // model and arbitrary provider fields remain stateless-ineligible.
++        self.extra_body.as_ref().is_none_or(|value| {
++            value.as_object().is_some_and(|map| {
++                map.is_empty()
++                    || (map.len() == 1
++                        && map
++                            .get("chat_template_kwargs")
++                            .and_then(serde_json::Value::as_object)
++                            .is_some_and(|nested| {
++                                nested.len() == 1
++                                    && nested
++                                        .get("enable_thinking")
++                                        .is_some_and(serde_json::Value::is_boolean)
++                            }))
++            })
++        })
 +    }
      // ── ModelProvider-family defaults ──
      fn default_base_url(&self) -> Option<&str> {
@@ -1155,7 +1181,7 @@
 +}
 --- a/crates/zeroclaw-providers/src/stateless.rs
 +++ b/crates/zeroclaw-providers/src/stateless.rs
-@@ -0,0 +1,277 @@
+@@ -0,0 +1,319 @@
 +//! One provider-only generation turn. Config owns provider/model selection;
 +//! this consumed view pins that selection for one request. There is no Agent,
 +//! memory, history, workspace, tool registry, provider fallback or persistence.
@@ -1376,6 +1402,49 @@
 +            serde_json::json!({"messages": [{"role":"system","content":"hidden"}]}),
 +            serde_json::json!({"tools": [{"type":"function"}]}),
 +            serde_json::json!({"model":"other"}),
++        ] {
++            let compatible = OpenAiCompatibleModelProvider::builder("fixture")
++                .display_name("Fixture")
++                .base_url("http://127.0.0.1:9/v1")
++                .auth_style(AuthStyle::Bearer)
++                .extra_body(extra.clone())
++                .build();
++            let router = OpenRouterModelProvider::builder("fixture")
++                .extra_body(extra)
++                .build();
++            assert!(!compatible.supports_stateless_generation());
++            assert!(!router.supports_stateless_generation());
++        }
++    }
++
++    #[test]
++    fn only_thinking_toggle_is_stateless_capable() {
++        use crate::{
++            compatible::{AuthStyle, OpenAiCompatibleModelProvider},
++            openrouter::OpenRouterModelProvider,
++        };
++        for extra in [
++            serde_json::json!({"chat_template_kwargs": {"enable_thinking": true}}),
++            serde_json::json!({"chat_template_kwargs": {"enable_thinking": false}}),
++            serde_json::json!({}),
++        ] {
++            let compatible = OpenAiCompatibleModelProvider::builder("fixture")
++                .display_name("Fixture")
++                .base_url("http://127.0.0.1:9/v1")
++                .auth_style(AuthStyle::Bearer)
++                .extra_body(extra.clone())
++                .build();
++            let router = OpenRouterModelProvider::builder("fixture")
++                .extra_body(extra)
++                .build();
++            assert!(compatible.supports_stateless_generation());
++            assert!(router.supports_stateless_generation());
++        }
++        for extra in [
++            serde_json::json!({"chat_template_kwargs": {"enable_thinking": "false"}}),
++            serde_json::json!({"chat_template_kwargs": {"enable_thinking": false, "other": true}}),
++            serde_json::json!({"chat_template_kwargs": {}, "other": true}),
++            serde_json::json!({"temperature": 0.1}),
 +        ] {
 +            let compatible = OpenAiCompatibleModelProvider::builder("fixture")
 +                .display_name("Fixture")

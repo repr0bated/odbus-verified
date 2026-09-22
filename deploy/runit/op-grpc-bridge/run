@@ -21,6 +21,7 @@ wait_dep() {
 wait_dep opdbus-rundirs
 wait_dep opdbus-grants
 wait_dep dbus
+wait_dep unified-execution
 wait_dep op-runit-systemctl
 wait_dep op-session-bus
 wait_dep ovsdb-server

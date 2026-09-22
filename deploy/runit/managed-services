@@ -4,6 +4,7 @@ op-grpc-bridge
 op-runit-systemctl
 emqx
 mongodb-mcp-server
+unified-execution
 op-web
 op-of-controller
 sshd

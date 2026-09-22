@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+exec 2>&1
+
+i=0
+until sv check dbus >/dev/null 2>&1; do
+    i=$((i + 1))
+    [ "$i" -lt 90 ] || { echo 'unified-execution: system bus not ready' >&2; exit 1; }
+    sleep 1
+done
+id jeremy >/dev/null 2>&1 || { echo 'unified-execution: jeremy user missing' >&2; exit 78; }
+exec chpst -u jeremy:jeremy env HOME=/home/jeremy USER=jeremy \
+    PATH=/home/jeremy/.cargo/bin:/home/jeremy/.local/bin:/usr/local/bin:/usr/bin:/bin \
+    CXXFLAGS="-include cstdint" /usr/local/bin/dbus-agent --system --unified-execution

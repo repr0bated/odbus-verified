@@ -27,11 +27,16 @@
 //! ```
 
 use crate::agents::base::{AgentTask, AgentTrait};
+use crate::unified::{agent_trait::AgentRequest, AgentCategory, GLOBAL_REGISTRY};
 use op_core::BusType;
+use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info};
-use zbus::{connection::Builder, interface, object_server::SignalEmitter, Connection};
+use zbus::{
+    connection::Builder, fdo::DBusProxy, interface, message::Header, object_server::SignalEmitter,
+    Connection,
+};
 
 /// Error type for D-Bus agent service operations
 #[derive(Debug, thiserror::Error)]
@@ -57,6 +62,167 @@ pub struct DbusAgentService {
     agent: Arc<RwLock<Box<dyn AgentTrait>>>,
     agent_type: String,
     agent_id: String,
+}
+
+/// Authenticated request forwarded by the bridge to the supervised execution
+/// backend.  Identity fields are attribution only; admission remains in the
+/// bridge and this process never mints or grants credentials.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CatalogExecutionRequest {
+    agent_type: String,
+    operation: String,
+    arguments: serde_json::Value,
+    actor_id: String,
+    session_id: String,
+    session_genesis: String,
+}
+
+pub struct UnifiedExecutionService;
+
+impl UnifiedExecutionService {
+    pub const SERVICE_NAME: &'static str = "org.dbusmcp.Agent.UnifiedExecution";
+    pub const OBJECT_PATH: &'static str = "/org/dbusmcp/Agent/UnifiedExecution";
+
+    async fn require_root(
+        connection: &Connection,
+        header: &Header<'_>,
+    ) -> Result<(), zbus::fdo::Error> {
+        let sender = header
+            .sender()
+            .ok_or_else(|| zbus::fdo::Error::AccessDenied("missing D-Bus sender".into()))?;
+        let proxy = DBusProxy::new(connection)
+            .await
+            .map_err(|e| zbus::fdo::Error::Failed(format!("credential lookup unavailable: {e}")))?;
+        let uid = proxy
+            .get_connection_unix_user(sender.clone().into())
+            .await
+            .map_err(|e| zbus::fdo::Error::Failed(format!("credential lookup failed: {e}")))?;
+        if uid != 0 {
+            return Err(zbus::fdo::Error::AccessDenied(
+                "unified execution requires the bridge uid".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[interface(name = "org.dbusmcp.Agent")]
+impl UnifiedExecutionService {
+    async fn execute_catalog(
+        &self,
+        request_json: String,
+        #[zbus(connection)] connection: &Connection,
+        #[zbus(header)] header: Header<'_>,
+    ) -> zbus::fdo::Result<String> {
+        Self::require_root(connection, &header).await?;
+        if request_json.len() > 256 * 1024 {
+            return Err(zbus::fdo::Error::InvalidArgs(
+                "catalog execution request exceeds 256KiB".into(),
+            ));
+        }
+        let request: CatalogExecutionRequest = serde_json::from_str(&request_json)
+            .map_err(|e| zbus::fdo::Error::InvalidArgs(format!("invalid catalog request: {e}")))?;
+        if request.actor_id.is_empty()
+            || request.session_id.is_empty()
+            || request.session_genesis.is_empty()
+            || !request.arguments.is_object()
+        {
+            return Err(zbus::fdo::Error::InvalidArgs(
+                "catalog attribution and object arguments are required".into(),
+            ));
+        }
+        if !matches!(
+            request.agent_type.as_str(),
+            "python-executor"
+                | "rust-executor"
+                | "javascript-executor"
+                | "go-executor"
+                | "shell-executor"
+        ) {
+            return Err(zbus::fdo::Error::InvalidArgs(
+                "agent is outside the canonical execution catalog".into(),
+            ));
+        }
+        let agent = GLOBAL_REGISTRY
+            .get_normalized(&request.agent_type)
+            .ok_or_else(|| zbus::fdo::Error::InvalidArgs("unknown execution agent".into()))?;
+        if agent.category() != AgentCategory::Execution || !agent.can_handle(&request.operation) {
+            return Err(zbus::fdo::Error::InvalidArgs(
+                "unsupported execution agent operation".into(),
+            ));
+        }
+        let response = agent
+            .execute(AgentRequest {
+                operation: request.operation.clone(),
+                args: simd_json::serde::to_owned_value(&request.arguments).map_err(|e| {
+                    zbus::fdo::Error::InvalidArgs(format!("invalid arguments: {e}"))
+                })?,
+                context: Some(format!(
+                    "actor={} session={} genesis={}",
+                    request.actor_id, request.session_id, request.session_genesis
+                )),
+                files: Vec::new(),
+            })
+            .await;
+        if !response.success {
+            return Err(zbus::fdo::Error::Failed(response.message));
+        }
+        let data = serde_json::to_value(response.data)
+            .map_err(|e| zbus::fdo::Error::Failed(format!("invalid executor response: {e}")))?;
+        let exit_code = data
+            .get("exit_code")
+            .and_then(serde_json::Value::as_i64)
+            .ok_or_else(|| zbus::fdo::Error::Failed("executor returned no exit status".into()))?;
+        let stdout = data
+            .get("stdout")
+            .or_else(|| data.get("output"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        let stderr = data
+            .get("stderr")
+            .or_else(|| data.get("errors"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        serde_json::to_string(&serde_json::json!({
+            "agent_type": request.agent_type,
+            "operation": request.operation,
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": exit_code,
+            "success": response.success,
+            "error": (!response.success).then_some(response.message),
+        }))
+        .map_err(|e| zbus::fdo::Error::Failed(format!("response serialization failed: {e}")))
+    }
+}
+
+pub async fn start_unified_execution_service(
+    bus_type: BusType,
+) -> Result<Connection, DbusAgentError> {
+    let connection = match bus_type {
+        BusType::System => {
+            Builder::system()?
+                .name(UnifiedExecutionService::SERVICE_NAME)?
+                .serve_at(
+                    UnifiedExecutionService::OBJECT_PATH,
+                    UnifiedExecutionService,
+                )?
+                .build()
+                .await?
+        }
+        BusType::Session => {
+            Builder::session()?
+                .name(UnifiedExecutionService::SERVICE_NAME)?
+                .serve_at(
+                    UnifiedExecutionService::OBJECT_PATH,
+                    UnifiedExecutionService,
+                )?
+                .build()
+                .await?
+        }
+    };
+    Ok(connection)
 }
 
 impl DbusAgentService {

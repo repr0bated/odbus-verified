@@ -114,9 +114,6 @@ pub async fn assemble_for_turn(
     scope: &EpisodeScope,
     query: &str,
 ) -> ContextBundle {
-    let mut bundle = ContextBundle::default();
-    // The selected mode decides what memory a turn may recall (OD-65);
-    // ui_render recalls nothing at all — not even pending pushes.
     let context = match crate::memory_binding::context_for(
         engine,
         &scope.principal_id,
@@ -127,9 +124,24 @@ pub async fn assemble_for_turn(
         Ok(context) => context,
         Err(error) => {
             tracing::warn!(%error, "context bundle: selected chat mode does not resolve; no memory recalled");
-            return bundle;
+            return ContextBundle::default();
         }
     };
+    assemble_for_context(engine, scope, query, &context).await
+}
+
+/// Assemble context using the already-admitted chat context. Callers that
+/// resolved routing under the selection guard use this overload so memory
+/// recall cannot observe a different mode after routing has been chosen.
+pub async fn assemble_for_context(
+    engine: &MutationEngine,
+    scope: &EpisodeScope,
+    query: &str,
+    context: &op_plugins::state_plugins::project::ResolvedChatContext,
+) -> ContextBundle {
+    let mut bundle = ContextBundle::default();
+    // The selected mode decides what memory a turn may recall (OD-65);
+    // ui_render recalls nothing at all — not even pending pushes.
     if !context.mode.has_memory() {
         return bundle;
     }

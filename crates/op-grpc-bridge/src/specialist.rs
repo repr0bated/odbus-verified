@@ -11,7 +11,7 @@
 //! auditable, and the call is recorded as session activity so the context
 //! engine can follow up.
 
-use std::sync::Arc;
+use std::{future::Future, pin::Pin, sync::Arc};
 
 use anyhow::Context as _;
 use op_agents::dynamic::{assemble, AssembledPersona, PieceLibrary, TaskContext};
@@ -22,6 +22,7 @@ use op_plugins::state_plugins::cognitive_mcp::{
     SpecialistInput, SpecialistOutput, SpecialistPersona,
 };
 use op_plugins::state_plugins::tched_router::{ChatInput, TchedChatMessage};
+use op_state_store::PluginSchema;
 use tokio::sync::RwLock;
 
 use crate::mutation_engine::MutationEngine;
@@ -52,6 +53,87 @@ const PERSONA_BUDGET_CHARS: usize = 12_000;
 /// methods the caller can invoke next; the persona is told they exist.
 const EXECUTORS: [&str; 3] = ["rust_pro", "python_pro", "typescript_pro"];
 
+struct SpecialistGenerationAdmission {
+    engine: MutationEngine,
+    schema: PluginSchema,
+    actor: String,
+    session: String,
+    genesis: String,
+    authority_plugin: &'static str,
+    authority_method: String,
+    capability: String,
+}
+
+impl crate::tched_router_generation_native::NativeGenerationAdmission
+    for SpecialistGenerationAdmission
+{
+    fn check(
+        &self,
+    ) -> Pin<
+        Box<
+            dyn Future<
+                    Output = Result<
+                        (),
+                        crate::tched_router_generation_native::NativeGenerationError,
+                    >,
+                > + Send
+                + '_,
+        >,
+    > {
+        Box::pin(async move {
+            crate::tched_router_admission::readmit_call(
+                &self.engine,
+                &self.schema,
+                self.authority_plugin,
+                &self.authority_method,
+                &crate::tched_router_admission::RouterCaller {
+                    actor: self.actor.clone(),
+                    capability: Some(self.capability.clone()),
+                    session: Some(self.session.clone()),
+                    genesis: Some(self.genesis.clone()),
+                },
+            )
+            .await
+            .map(|_| ())
+            .map_err(|_| {
+                crate::tched_router_generation_native::NativeGenerationError::Terminal(
+                    crate::tched_router_generation_native::NativeErrorCode::Auth,
+                )
+            })
+        })
+    }
+}
+
+pub(crate) fn generation_admission(
+    engine: &MutationEngine,
+    schema: &PluginSchema,
+    caller: CognitiveCaller<'_>,
+    authority_plugin: &'static str,
+    authority_method: &str,
+) -> anyhow::Result<Arc<dyn crate::tched_router_generation_native::NativeGenerationAdmission>> {
+    let capability = schema
+        .methods
+        .get(authority_method)
+        .and_then(|method| method.required_capability.as_deref())
+        .context("generation authority method has no exact capability")?;
+    Ok(Arc::new(SpecialistGenerationAdmission {
+        engine: engine.clone(),
+        schema: schema.clone(),
+        actor: caller.actor_id.to_owned(),
+        session: caller
+            .session_id
+            .context("verified session is required")?
+            .to_owned(),
+        genesis: caller
+            .session_genesis
+            .context("verified genesis is required")?
+            .to_owned(),
+        authority_plugin,
+        authority_method: authority_method.to_owned(),
+        capability: capability.to_owned(),
+    }))
+}
+
 /// Shared pool: seeded from the static catalog once, refreshed with memory
 /// pieces on every call (they are the freshest shared knowledge).
 static LIBRARY: std::sync::LazyLock<Arc<RwLock<PieceLibrary>>> =
@@ -61,95 +143,270 @@ pub async fn consult(
     engine: &MutationEngine,
     caller: CognitiveCaller<'_>,
     args: &serde_json::Value,
+    admitted_schema: &PluginSchema,
+    authority_method: &str,
 ) -> anyhow::Result<serde_json::Value> {
     let input: SpecialistInput =
         serde_json::from_value(args.clone()).context("specialist: invalid input")?;
+    consult_input(
+        engine,
+        caller,
+        input,
+        None,
+        None,
+        admitted_schema,
+        authority_method,
+    )
+    .await
+}
+
+/// Consult one catalog persona through the authenticated bridge and the model
+/// selected by the chat UI. The agent contributes its role and knowledge to
+/// the shared dynamic persona; it never owns a provider client or credentials.
+pub async fn consult_catalog_agent(
+    engine: &MutationEngine,
+    caller: CognitiveCaller<'_>,
+    agent_type: &str,
+    operation: &str,
+    question: &str,
+    path: Option<&str>,
+    context: Option<&str>,
+    admitted_schema: &PluginSchema,
+    authority_method: &str,
+) -> anyhow::Result<serde_json::Value> {
+    anyhow::ensure!(
+        !caller.actor_id.trim().is_empty()
+            && caller
+                .session_id
+                .is_some_and(|value| !value.trim().is_empty())
+            && caller
+                .session_genesis
+                .is_some_and(|value| !value.trim().is_empty()),
+        "specialist: verified session and genesis are required"
+    );
+    let agent = op_agents::unified::GLOBAL_REGISTRY
+        .get_normalized(agent_type)
+        .ok_or_else(|| anyhow::anyhow!("specialist: unknown catalog agent '{agent_type}'"))?;
+    anyhow::ensure!(
+        agent.category() == op_agents::AgentCategory::Persona,
+        "specialist: catalog agent '{agent_type}' is not a Persona agent"
+    );
+    anyhow::ensure!(
+        agent
+            .operations()
+            .iter()
+            .any(|candidate| *candidate == operation),
+        "specialist: Persona agent '{agent_type}' does not support operation '{operation}'"
+    );
+    let advisor_operation: op_plugins::state_plugins::cognitive_mcp::AdvisorOperation =
+        serde_json::from_value(serde_json::Value::String(operation.to_string()))
+            .with_context(|| format!("specialist: invalid advisor operation '{operation}'"))?;
+    let question = question.trim();
+    anyhow::ensure!(
+        !question.is_empty(),
+        "specialist: 'question' must not be empty"
+    );
+
+    consult_input(
+        engine,
+        caller,
+        SpecialistInput {
+            operation: advisor_operation,
+            question: question.to_owned(),
+            path: path.map(str::to_owned),
+            domain_hints: vec![agent.id().to_owned(), agent.name().to_owned()],
+        },
+        Some((agent_type, agent.as_ref())),
+        context,
+        admitted_schema,
+        authority_method,
+    )
+    .await
+}
+
+async fn consult_input(
+    engine: &MutationEngine,
+    caller: CognitiveCaller<'_>,
+    input: SpecialistInput,
+    catalog_agent: Option<(&str, &dyn op_agents::unified::UnifiedAgent)>,
+    caller_context: Option<&str>,
+    admitted_schema: &PluginSchema,
+    authority_method: &str,
+) -> anyhow::Result<serde_json::Value> {
+    anyhow::ensure!(
+        !caller.actor_id.trim().is_empty()
+            && caller
+                .session_id
+                .is_some_and(|value| !value.trim().is_empty())
+            && caller
+                .session_genesis
+                .is_some_and(|value| !value.trim().is_empty()),
+        "specialist: verified session and genesis are required"
+    );
     let question = input.question.trim();
     anyhow::ensure!(
         !question.is_empty(),
         "specialist: 'question' must not be empty"
     );
 
+    let capability = admitted_schema
+        .methods
+        .get(authority_method)
+        .and_then(|method| method.required_capability.as_deref())
+        .context("specialist authority method has no exact capability")?;
+    let _selection_guard =
+        crate::tched_router_runtime::TchedRouterRuntimeClient::selection_guard().await;
+    crate::tched_router_admission::readmit_call(
+        engine,
+        admitted_schema,
+        "cognitive_mcp",
+        authority_method,
+        &crate::tched_router_admission::RouterCaller {
+            actor: caller.actor_id.to_owned(),
+            capability: Some(capability.to_owned()),
+            session: caller.session_id.map(str::to_owned),
+            genesis: caller.session_genesis.map(str::to_owned),
+        },
+    )
+    .await?;
+    // Resolve mode only after the guard/admission boundary, then retain that
+    // exact context for memory and routing so a mode switch cannot split one
+    // consultation across two privacy policies.
+    let mut route = crate::chat_mode_routing::resolve(
+        engine,
+        caller,
+        ChatInput {
+            conversation_id: caller.session_id.map(str::to_owned),
+            ..ChatInput::default()
+        },
+    )
+    .await?;
     let runtime = engine.cognitive_mcp().await?;
     let scope = caller.scope().to_string();
     // The memory the specialist may draw on is the caller's selected mode.
-    let context =
-        crate::memory_binding::context_for(engine, caller.actor_id, caller.session_id).await?;
-    anyhow::ensure!(
-        context.mode.has_memory(),
-        "specialist: memory is disabled in ui_render mode"
-    );
+    let context = route.context.clone();
     let namespaces = vec![context.memory_namespace.clone()];
+    let has_memory = context.mode.has_memory();
 
     // 1. Task context from what the session already knows.
     let mut task = TaskContext {
         question: question.to_string(),
         path: input.path.clone(),
         domain_hints: input.domain_hints.clone(),
-        activity: activity_lines(runtime, &scope).await,
+        activity: if has_memory {
+            activity_lines(runtime, &scope).await
+        } else {
+            Vec::new()
+        },
         snippets: Vec::new(),
         executors: EXECUTORS.iter().map(|s| s.to_string()).collect(),
     };
-    task.snippets = memory_snippets(runtime, &namespaces, &task).await;
-    task.snippets
-        .extend(engine.take_pending_knowledge(&scope).await);
+    if has_memory {
+        task.snippets = memory_snippets(runtime, &namespaces, &task).await;
+        task.snippets
+            .extend(engine.take_pending_knowledge(&scope).await);
+    }
+    if let Some(context) = caller_context.map(str::trim).filter(|s| !s.is_empty()) {
+        task.snippets.push(format!(
+            "[verified caller context] {}",
+            truncate(context, 8_000)
+        ));
+    }
 
     // 2. Refresh shared pieces from memory, then compose the persona.
-    refresh_memory_pieces(runtime).await;
+    if has_memory {
+        refresh_memory_pieces(runtime).await;
+    }
     let persona: AssembledPersona = {
-        let library = LIBRARY.read().await;
-        assemble(&library, &task, PERSONA_BUDGET_CHARS)
+        if has_memory {
+            let library = LIBRARY.read().await;
+            assemble(&library, &task, PERSONA_BUDGET_CHARS)
+        } else {
+            // UI/VUI rendering must not reuse memory-refreshed pieces from a
+            // prior private consultation in this process.
+            let library = PieceLibrary::seeded_from_catalog();
+            assemble(&library, &task, PERSONA_BUDGET_CHARS)
+        }
     };
 
     // 3. Record the consultation as session activity before answering, so a
     //    failed completion still leaves the signal.
-    runtime
-        .context_engine()
-        .record_activity(
-            &scope,
-            ActivityType::Query,
-            format!("specialist({}): {}", operation_name(&input), question),
-            serde_json::json!({
-                "persona": persona.name,
-                "domains": persona.domains,
-                "pieces": persona.piece_ids.len(),
-                "path": input.path,
-            }),
-        )
-        .await;
+    if has_memory {
+        runtime
+            .context_engine()
+            .record_activity(
+                &scope,
+                ActivityType::Query,
+                format!("specialist({}): {}", operation_name(&input), question),
+                serde_json::json!({
+                    "persona": persona.name,
+                    "domains": persona.domains,
+                    "pieces": persona.piece_ids.len(),
+                    "path": input.path,
+                    "memory_namespace": context.memory_namespace,
+                }),
+            )
+            .await;
+    }
 
     // 4. Complete through the guarded native router path.
-    let output = crate::tched_router_runtime::TchedRouterRuntimeClient::from_env()
-        .chat_under_guard(ChatInput {
-            message: String::new(),
-            messages: vec![
-                TchedChatMessage {
-                    role: "system".into(),
-                    content: persona.system_prompt.clone(),
-                },
-                TchedChatMessage {
-                    role: "user".into(),
-                    content: format!("[{}] {question}", operation_name(&input)),
-                },
-            ],
-            provider: String::new(),
-            model: String::new(),
-            conversation_id: caller.session_id.map(str::to_owned),
-        })
+    let mut system_prompt = persona.system_prompt.clone();
+    let persona_name = if let Some((agent_type, agent)) = catalog_agent {
+        system_prompt.push_str("\n\n## Requested catalog persona\n");
+        system_prompt.push_str("Catalog id: ");
+        system_prompt.push_str(agent_type);
+        system_prompt.push_str("\nRole: ");
+        system_prompt.push_str(agent.system_prompt().trim());
+        if let Some(knowledge) = agent.knowledge_base() {
+            system_prompt.push_str("\nKnowledge:\n");
+            system_prompt.push_str(&truncate(knowledge, 8_000));
+        }
+        format!("{} ({})", agent.name(), persona.name)
+    } else {
+        persona.name.clone()
+    };
+    route.input.messages = vec![
+        TchedChatMessage {
+            role: "system".into(),
+            content: system_prompt,
+        },
+        TchedChatMessage {
+            role: "user".into(),
+            content: format!("[{}] {question}", operation_name(&input)),
+        },
+    ];
+    let before_prompt = generation_admission(
+        engine,
+        admitted_schema,
+        caller,
+        "cognitive_mcp",
+        authority_method,
+    )?;
+    let output = route
+        .client
+        .complete_under_guard(route.input, before_prompt)
         .await
-        .context("specialist: native completion failed")?;
+        .context("specialist: provider-only native completion failed")?;
+    anyhow::ensure!(
+        !output.content.trim().is_empty(),
+        "specialist: native completion returned an empty reply"
+    );
 
+    let mut sources = persona
+        .sources
+        .iter()
+        .map(|s| serde_json::to_string(s).unwrap_or_default())
+        .collect::<Vec<_>>();
+    if let Some((agent_type, _)) = catalog_agent {
+        sources.push(format!("catalog_agent:{agent_type}"));
+    }
     let result = SpecialistOutput {
         answer: output.content,
         persona: SpecialistPersona {
-            name: persona.name,
+            name: persona_name,
             domains: persona.domains,
             piece_ids: persona.piece_ids,
-            sources: persona
-                .sources
-                .iter()
-                .map(|s| serde_json::to_string(s).unwrap_or_default())
-                .collect(),
+            sources,
         },
         context_used: task.snippets.len() + task.activity.len(),
         provider: output.provider,

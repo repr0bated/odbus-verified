@@ -80,6 +80,15 @@ pub struct AgentResponse {
     pub suggestions: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowStepMetadata {
+    pub name: String,
+    pub agent_type: String,
+    pub operation: String,
+    pub args_template: Value,
+    pub condition: Option<String>,
+}
+
 impl AgentResponse {
     pub fn success(data: Value, message: impl Into<String>) -> Self {
         Self {
@@ -174,6 +183,18 @@ pub trait UnifiedAgent: Send + Sync {
 
     /// List of operations this agent can perform
     fn operations(&self) -> Vec<&str>;
+
+    /// Agents that coordinate other agents expose their fixed delegation
+    /// surface through metadata so the bridge can validate workflows without
+    /// downcasting concrete implementations.
+    fn delegated_agents(&self) -> Vec<String> {
+        Vec::new()
+    }
+
+    /// Fixed workflow steps, represented as (name, agent, operation).
+    fn workflow_steps(&self) -> Vec<WorkflowStepMetadata> {
+        Vec::new()
+    }
 
     /// Execute an operation
     async fn execute(&self, request: AgentRequest) -> AgentResponse;

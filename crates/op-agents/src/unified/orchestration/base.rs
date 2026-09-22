@@ -6,7 +6,7 @@ use simd_json::{json, OwnedValue as Value};
 use std::collections::HashSet;
 
 use super::super::agent_trait::{
-    AgentCapability, AgentCategory, AgentRequest, AgentResponse, UnifiedAgent,
+    AgentCapability, AgentCategory, AgentRequest, AgentResponse, UnifiedAgent, WorkflowStepMetadata,
 };
 use super::super::registry::UnifiedAgentRegistry;
 use crate::security::SecurityProfile;
@@ -161,6 +161,23 @@ impl UnifiedAgent for OrchestrationAgent {
         vec!["run_workflow", "list_steps", "validate"]
     }
 
+    fn delegated_agents(&self) -> Vec<String> {
+        self.allowed_agents.iter().cloned().collect()
+    }
+
+    fn workflow_steps(&self) -> Vec<WorkflowStepMetadata> {
+        self.workflow_steps
+            .iter()
+            .map(|step| WorkflowStepMetadata {
+                name: step.name.clone(),
+                agent_type: step.agent_id.clone(),
+                operation: step.operation.clone(),
+                args_template: step.args_template.clone(),
+                condition: step.condition.clone(),
+            })
+            .collect()
+    }
+
     async fn execute(&self, request: AgentRequest) -> AgentResponse {
         match request.operation.as_str() {
             "list_steps" => {
@@ -181,8 +198,34 @@ impl UnifiedAgent for OrchestrationAgent {
                 )
             }
             "validate" => {
-                // Would validate workflow configuration
-                AgentResponse::success(json!({ "valid": true }), "Workflow configuration is valid")
+                let mut errors = Vec::new();
+                let mut names = HashSet::new();
+                for step in &self.workflow_steps {
+                    if !names.insert(step.name.clone()) {
+                        errors.push(format!("duplicate workflow step name: {}", step.name));
+                    }
+                    if !self.allowed_agents.contains(&step.agent_id) {
+                        errors.push(format!(
+                            "workflow step '{}' targets disallowed agent '{}'",
+                            step.name, step.agent_id
+                        ));
+                    }
+                    if step.operation.trim().is_empty() {
+                        errors.push(format!(
+                            "workflow step '{}' has an empty operation",
+                            step.name
+                        ));
+                    }
+                }
+                let valid = errors.is_empty();
+                AgentResponse::success(
+                    json!({ "valid": valid, "errors": errors }),
+                    if valid {
+                        "Workflow configuration is valid"
+                    } else {
+                        "Workflow configuration is invalid"
+                    },
+                )
             }
             _ => AgentResponse::failure(
                 "run_workflow requires a registry - use execute_workflow() directly",

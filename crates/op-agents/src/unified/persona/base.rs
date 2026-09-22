@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::OwnedValue as Value;
 
 use super::super::agent_trait::{
     AgentCapability, AgentCategory, AgentRequest, AgentResponse, UnifiedAgent,
@@ -20,7 +20,12 @@ const ADVICE_OPS: &[&str] = &[
     "help",
 ];
 
-/// Base implementation for persona agents (domain guidance from embedded knowledge)
+/// Base metadata implementation for persona agents.
+///
+/// Persona completion is owned by the authenticated bridge. This type retains
+/// the catalog role and knowledge used to compose a bridge consultation, but it
+/// must never manufacture an unauthenticated model client or return canned
+/// advice as if a model had answered.
 pub struct PersonaAgent {
     pub id: String,
     pub name: String,
@@ -106,163 +111,6 @@ impl PersonaAgent {
         }
         None
     }
-
-    /// Split embedded knowledge into markdown `##` sections.
-    fn knowledge_sections(knowledge: &str) -> Vec<(String, String)> {
-        let mut sections = Vec::new();
-        let mut current_title = String::new();
-        let mut current_body = String::new();
-
-        for line in knowledge.lines() {
-            if let Some(rest) = line.strip_prefix("## ") {
-                if !current_title.is_empty() || !current_body.trim().is_empty() {
-                    sections.push((current_title, current_body.trim().to_string()));
-                }
-                current_title = rest.trim().to_string();
-                current_body.clear();
-            } else {
-                current_body.push_str(line);
-                current_body.push('\n');
-            }
-        }
-        if !current_title.is_empty() || !current_body.trim().is_empty() {
-            sections.push((current_title, current_body.trim().to_string()));
-        }
-        sections
-    }
-
-    /// Significant lowercase tokens from the query (length ≥ 3, not stopwords).
-    fn query_tokens(query: &str) -> Vec<String> {
-        const STOP: &[&str] = &[
-            "the", "and", "for", "with", "how", "what", "when", "where", "why", "this", "that",
-            "from", "into", "about", "please", "help", "need", "want", "can", "you", "are", "is",
-            "a", "an", "of", "to", "in", "on", "or", "be", "do", "does", "did",
-        ];
-        query
-            .split(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
-            .map(|t| t.to_lowercase())
-            .filter(|t| t.len() >= 3 && !STOP.contains(&t.as_str()))
-            .collect()
-    }
-
-    /// Select knowledge sections that match query keywords (fallback: first sections).
-    fn relevant_knowledge(&self, query: &str) -> Vec<(String, String)> {
-        let sections = Self::knowledge_sections(&self.knowledge);
-        if sections.is_empty() {
-            return Vec::new();
-        }
-        let tokens = Self::query_tokens(query);
-        if tokens.is_empty() {
-            return sections.into_iter().take(2).collect();
-        }
-
-        let mut matched: Vec<(String, String)> = sections
-            .iter()
-            .filter(|(title, body)| {
-                let hay = format!("{title}\n{body}").to_lowercase();
-                tokens.iter().any(|t| hay.contains(t))
-            })
-            .cloned()
-            .collect();
-
-        if matched.is_empty() {
-            matched = sections.into_iter().take(2).collect();
-        }
-        matched
-    }
-
-    /// Bullet recommendations drawn from matched knowledge section lines.
-    fn recommendations_from_sections(sections: &[(String, String)], limit: usize) -> Vec<String> {
-        let mut out = Vec::new();
-        for (_title, body) in sections {
-            for line in body.lines() {
-                let trimmed = line.trim();
-                let bullet = trimmed
-                    .strip_prefix("- ")
-                    .or_else(|| trimmed.strip_prefix("* "))
-                    .unwrap_or("");
-                if !bullet.is_empty() {
-                    out.push(bullet.to_string());
-                    if out.len() >= limit {
-                        return out;
-                    }
-                }
-            }
-        }
-        out
-    }
-
-    /// Build structured domain guidance from system prompt + keyword-matched knowledge.
-    fn domain_guidance(&self, operation: &str, query: &str) -> Value {
-        let sections = self.relevant_knowledge(query);
-        let recommendations = Self::recommendations_from_sections(&sections, 8);
-
-        let mut answer = String::new();
-        answer.push_str(&format!(
-            "Domain guidance from embedded {} knowledge (not an LLM completion) for operation `{}`.\n\n",
-            self.domain, operation
-        ));
-        answer.push_str(&format!("Regarding: \"{}\"\n\n", query));
-
-        let role = self.system_prompt.lines().find(|l| !l.trim().is_empty());
-        if let Some(line) = role {
-            answer.push_str("Role framing: ");
-            answer.push_str(line.trim());
-            answer.push_str("\n\n");
-        }
-
-        if sections.is_empty() {
-            answer.push_str(
-                "No structured knowledge sections were available; apply the agent role framing above to the query.\n",
-            );
-        } else {
-            answer.push_str("Relevant knowledge applied to the query:\n");
-            for (title, body) in &sections {
-                if !title.is_empty() {
-                    answer.push_str(&format!("\n### {}\n", title));
-                }
-                answer.push_str(body);
-                answer.push('\n');
-            }
-        }
-
-        if recommendations.is_empty() {
-            // Derive actionable lines from system prompt bullets if knowledge had none
-            let from_prompt = Self::recommendations_from_sections(
-                &[(String::new(), self.system_prompt.clone())],
-                5,
-            );
-            let recs = if from_prompt.is_empty() {
-                vec![format!(
-                    "Apply {} best practices from this agent's embedded knowledge to: {}",
-                    self.domain, query
-                )]
-            } else {
-                from_prompt
-            };
-            json!({
-                "query": query,
-                "domain": self.domain,
-                "agent": self.id,
-                "operation": operation,
-                "source": "embedded_knowledge",
-                "answer": answer,
-                "recommendations": recs,
-                "matched_sections": sections.iter().map(|(t, _)| t.clone()).collect::<Vec<_>>(),
-            })
-        } else {
-            json!({
-                "query": query,
-                "domain": self.domain,
-                "agent": self.id,
-                "operation": operation,
-                "source": "embedded_knowledge",
-                "answer": answer,
-                "recommendations": recommendations,
-                "matched_sections": sections.iter().map(|(t, _)| t.clone()).collect::<Vec<_>>(),
-            })
-        }
-    }
 }
 
 #[async_trait]
@@ -328,14 +176,11 @@ impl UnifiedAgent for PersonaAgent {
             ));
         };
 
-        let data = self.domain_guidance(op, &query);
-        AgentResponse::success(
-            data,
-            format!(
-                "Domain guidance from embedded {} knowledge (not an LLM completion)",
-                self.domain
-            ),
-        )
+        let _ = query;
+        AgentResponse::failure(format!(
+            "persona operation '{}' requires authenticated bridge consultation via cognitive_mcp.specialist",
+            op
+        ))
     }
 }
 
@@ -396,7 +241,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn consult_applies_keyword_matched_knowledge() {
+    async fn consult_fails_closed_without_authenticated_bridge_context() {
         let agent = sample_agent();
         let resp = agent
             .execute(AgentRequest {
@@ -406,33 +251,12 @@ mod tests {
                 files: vec![],
             })
             .await;
-        assert!(resp.success, "{}", resp.message);
-        assert_eq!(
-            resp.data.get("query").and_then(|v| v.as_str()),
-            Some("How should I set resource limits on pods?")
-        );
-        assert_eq!(
-            resp.data.get("domain").and_then(|v| v.as_str()),
-            Some("kubernetes")
-        );
-        assert_eq!(
-            resp.data.get("agent").and_then(|v| v.as_str()),
-            Some("k8s-expert")
-        );
-        let answer = resp
-            .data
-            .get("answer")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        assert!(answer.contains("not an LLM completion"));
-        assert!(answer.contains("resource") || answer.contains("Best Practices"));
-        let recs = resp.data.get("recommendations");
-        assert!(recs.is_some());
-        assert!(!resp.message.to_lowercase().contains("prompt augmented"));
+        assert!(!resp.success);
+        assert!(resp.message.contains("authenticated bridge consultation"));
     }
 
     #[tokio::test]
-    async fn string_args_accepted_as_query() {
+    async fn string_args_fail_closed_without_authenticated_bridge_context() {
         let agent = sample_agent();
         let resp = agent
             .execute(AgentRequest {
@@ -442,14 +266,7 @@ mod tests {
                 files: vec![],
             })
             .await;
-        assert!(resp.success, "{}", resp.message);
-        let answer = resp
-            .data
-            .get("answer")
-            .and_then(|v| v.as_str())
-            .unwrap_or("");
-        assert!(
-            answer.contains("Canary") || answer.contains("Patterns") || answer.contains("canary")
-        );
+        assert!(!resp.success);
+        assert!(resp.message.contains("authenticated bridge consultation"));
     }
 }

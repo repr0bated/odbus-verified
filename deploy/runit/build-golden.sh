@@ -723,6 +723,8 @@ build_golden() {
         "$GOLDEN_DIR/etc/opdbus/mcp-audience-policy.json"
     run install -Dm600 "$MCP_TOOLSETS_SOURCE" \
         "$GOLDEN_DIR/etc/opdbus/mcp-toolsets.json"
+    run install -Dm644 "$PROJECT_ROOT/deploy/dbus/org.dbusmcp.conf" \
+        "$GOLDEN_DIR/etc/dbus-1/system.d/org.dbusmcp.conf"
     run install -Dm644 "$HOST_RUNTIME_PACKAGES_SOURCE" \
         "$GOLDEN_DIR/etc/opdbus/host-runtime-packages.txt"
     run install -Dm644 "$TCHED_ROUTER_BOOTSTRAP_CONFIG" \

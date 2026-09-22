@@ -230,20 +230,25 @@ impl PersonaPlugin {
             .map(|d| {
                 let category = format!("{:?}", d.category).to_lowercase();
                 let operation_schemas = d
-                    .operation_schemas
+                    .operations
                     .iter()
                     .map(|op| PersonaOperationSchema {
-                        name: op.name.clone(),
-                        description: op.description.clone(),
-                        input_schema: serde_json::from_str(
-                            &simd_json::to_string(&op.input_schema).unwrap_or_else(|_| "{}".into()),
+                        name: op.clone(),
+                        description: format!("{}: {}", d.description, op),
+                        input_schema: serde_json::to_value(
+                            &super::cognitive_agents::catalog_agent_method(&d.agent_type, op)
+                                .expect("agent has a cognitive method contract")
+                                .declaration
+                                .args,
                         )
-                        .unwrap_or(serde_json::json!({})),
-                        output_schema: serde_json::from_str(
-                            &simd_json::to_string(&op.output_schema)
-                                .unwrap_or_else(|_| "{}".into()),
+                        .expect("input schema serializes"),
+                        output_schema: serde_json::to_value(
+                            &super::cognitive_agents::catalog_agent_method(&d.agent_type, op)
+                                .expect("agent has a cognitive method contract")
+                                .declaration
+                                .returns,
                         )
-                        .unwrap_or(serde_json::json!({})),
+                        .expect("output schema serializes"),
                     })
                     .collect();
                 Persona {
@@ -620,19 +625,13 @@ mod methods_tests {
         )
         .await
         .unwrap();
-        assert_eq!(executed["success"], true);
+        assert_eq!(executed["success"], false);
         assert_eq!(executed["agent_type"], "backend-architect");
         assert_eq!(executed["operation"], "consult");
-        assert_eq!(executed["data"]["query"], query);
-        assert_eq!(executed["data"]["source"], "embedded_knowledge");
-        assert!(!executed["data"]["recommendations"]
-            .as_array()
-            .unwrap()
-            .is_empty());
-        assert!(executed["data"]["answer"]
+        assert!(executed["message"]
             .as_str()
             .unwrap()
-            .contains("API design"));
+            .contains("authenticated"));
         let unknown =
             dispatch_persona_method("get_identity", &json!({"agent_type":"absent-persona"}))
                 .await

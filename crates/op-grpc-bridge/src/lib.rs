@@ -72,6 +72,9 @@ pub mod oracle_assertion;
 pub mod oracle_assertion_client;
 mod wake_doorbell;
 pub use oracle_assertion_client::DecoyAssertionClient;
+mod agent_catalog_dispatch;
+mod agent_workflow;
+pub(crate) mod chat_mode_routing;
 mod obfuscation_methods;
 #[cfg(test)]
 mod openflow_canonical_tests;
