@@ -75,6 +75,23 @@ host bindings are retained in
 `/opt/op-dbus/recovery/activation-20260922T001242Z-dacc6dd/`; transfer and
 catalog receipts are in `/var/tmp/opdbus-release-P8UxXV5ctf/`.
 
+The completed EMQX baseline is `20260922T013431Z-1f1b772`, selected by
+`current`. Its source UUID is `46fb8811-8f29-4f40-8547-56869fb16cde`, and
+the received filesystem records that UUID. It contains the native binaries
+built at `a01411c`, the unchanged pinned UI, and the final ACL correction.
+All 66 plugin IDs remain; only the `identity_sled` schema changed. The live,
+persisted and received catalog manifests match. The production UI client
+received wake sequence 3 and reread scoped knowledge in 108 ms; a wildcard
+subscription was refused. Metadata-only evidence is retained under
+`/var/tmp/opdbus-release-P8UxXV5ctf/activation-20260922T013431Z-1f1b772/`.
+
+When only one subvolume slot is free, send the read-only source snapshot to
+a protected ordinary stream file first. After successful send, record the
+stream digest and source UUID, remove only that temporary source snapshot,
+then receive the completed stream. Verify the received UUID, read-only flag
+and contents before activation. This release used that sequence to preserve
+the existing received filesystems without exceeding five subvolumes.
+
 ## Activate
 
 First migration creates per-file links from established host paths into
@@ -169,6 +186,12 @@ authenticating. Principal, session, genesis, trace and arrival claims are
 preserved, so the knowledge owner key and history remain the same. Repeating
 the call with a current credential is idempotent. The advertised doorbell URL
 must include `/mqtt`, matching the EMQX WebSocket route.
+
+The static ACL must leave identity clients unmatched so ExHook can authorize
+their exact owner topic. Do not restore a terminal `{deny, all}` file rule:
+the file authorizer runs before ExHook and stops the hook chain on a match.
+Keep `authorization.no_match = deny` as the final denial default. The only
+static allow is the existing generated local publisher account.
 
 ## Roll back
 
