@@ -68,6 +68,13 @@ Record the manifest digest, source UUID and received UUID. Check the
 received binary/config/catalog/UI digests before selecting it. A completed
 transfer alone does not activate a release.
 
+The first local baseline was transferred as
+`20260922T001242Z-dacc6dd`. Its received UUID references source UUID
+`6131ecd3-87f4-174d-be41-b2aed69b3c4a`. The activation receipt and 66 explicit
+host bindings are retained in
+`/opt/op-dbus/recovery/activation-20260922T001242Z-dacc6dd/`; transfer and
+catalog receipts are in `/var/tmp/opdbus-release-P8UxXV5ctf/`.
+
 ## Activate
 
 First migration creates per-file links from established host paths into
@@ -118,6 +125,23 @@ Check that running executable digests match the received release, live and
 persisted catalog manifests match, authenticated MCP works, and the UI
 receives its own EMQX wake before reading private committed knowledge.
 Report any remaining backend-data failure separately from deployment.
+
+### First migration socket cleanup
+
+The former live bridge readiness script changed socket permissions, which
+changed their ctime after the bridge recorded its ownership lease. The new
+readiness script is observational. On the first activation, the bridge can
+therefore reject the old socket with `existing socket does not match the
+previous bridge lease; refusing cleanup`.
+
+Stop the bridge with `sv`, retain the socket metadata and lease files in the
+activation receipt, and check each exact bridge socket independently. Only
+unlink a root-owned socket after confirming it has no live listener and a
+connection attempt is refused. The two bridge paths on this host are
+`/run/ghostbridge/container.sock` and `/run/opdbus/grpc.sock`. Do not remove
+other shared-directory sockets, weaken directory permissions, or bypass
+the bridge's ownership checks. Restart the bridge after this one-time
+operator cleanup; it records ownership of the newly created sockets.
 
 ## Roll back
 
