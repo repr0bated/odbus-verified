@@ -1,31 +1,50 @@
 #!/bin/sh
-# opdbus-rundirs: runtime dirs and the sealed plugin-blob catalog.
+# opdbus-rundirs: runtime directories and the sealed-blob catalog.
 set -eu
 umask 022
 
 install -d -m 0755 /run/opdbus
 # Shared container UDS parent (bind-mounted into assistant/qdrant as /run/ghostbridge)
 install -d -m 0755 /run/ghostbridge
+# Per-container rendezvous dirs. Every container here is NIC-less and
+# proxy-less, so this bind-mounted dir is its ONLY channel to the host: the
+# in-container op-uds-relay binds its sockets here and the host-side uds-*
+# runit services connect to them. Containers are unprivileged (idmap base
+# 1000000), so each dir must be owned by the mapped root or the container
+# cannot create sockets -- and the service goes dark while still reporting
+# healthy. A per-container dir (rather than a shared 0777 parent) also stops
+# one container binding another's socket name.
+for _ct in mail cozo qdrant xray; do
+    install -d -m 0755 -o 1000000 -g 1000000 "/run/ghostbridge/$_ct"
+done
+unset _ct
 install -d -m 0755 /run/op-dbus
 install -d -m 0755 /run/opdbus/runit-ready
 install -d -m 0755 /dev/shm/opdbus/plugin-blobs
 # Socket rendezvous parents shared into NIC-less containers (socket contracts).
-install -d -m 0755 /var/lib/opdbus-runtime /var/lib/netmaker-runtime
+install -d -m 0755 /var/lib/opdbus-runtime
 install -d -m 0755 -o svlog -g svlog /var/log/op-dbus
 
-# Seal plugin blobs before op-grpc-bridge starts: the bridge hydrates its gRPC
+# Stage plugin blobs before op-grpc-bridge starts: the bridge hydrates its gRPC
 # reflection from this catalog and retry-loops against an empty tmpfs.
-if [ -x /usr/local/bin/opblob ]; then
-    /usr/local/bin/opblob seal-shm >/dev/null
-    find /dev/shm/opdbus/plugin-blobs -maxdepth 1 -type f \
-        \( -name '*.blob' -o -name '.manifest.json' \) \
-        -exec chmod 0644 {} +
-else
-    echo "warning: /usr/local/bin/opblob missing — blob catalog not sealed"
-fi
+#
+# Stage, do not seal. Sealing loads every plugin and calls schema_live(), which
+# probes real backends — on the boot path that makes startup depend on service
+# ordering and costs minutes. `stage-shm` copies the catalog captured by the
+# last deliberate `opblob seal-shm && opblob persist` (a build-time act).
+# Fail closed when the prepared catalog is unavailable: a historical state
+# snapshot is not an alternate plugin or private-state authority.
+[ -x /usr/local/bin/opblob ] || {
+    echo "opblob is missing; activate a prepared release before starting services" >&2
+    exit 1
+}
+/usr/local/bin/opblob stage-shm
+find /dev/shm/opdbus/plugin-blobs -maxdepth 1 -type f \
+    \( -name '*.blob' -o -name '.manifest.json' \) \
+    -exec chmod 0644 {} +
 
 # Xray owns its single live configuration inside the container at
 # /etc/xray/xray_config.json. Host bootstrap must not create a shadow live
 # path in /dev/shm or /var/lib; container materialization/reload belongs to
 # the validated D-Bus deployment path.
-echo "rundirs ready: /run/opdbus and sealed plugin catalog"
+echo "rundirs ready: /run/opdbus and sealed catalog"

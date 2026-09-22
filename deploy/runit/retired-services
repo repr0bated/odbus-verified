@@ -45,3 +45,4 @@ notebooklm-mcp
 # the OIA1 there, and the client carries it over WARP to the :8090 door; the
 # decoy's user-facing 10.0.0.1 VIP reaches the host through the WARP/Xray leg.
 mkdrt
+zeroclaw

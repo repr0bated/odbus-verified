@@ -6,4 +6,5 @@ op-grpc-bridge
 op-web
 op-runit-systemctl
 emqx
+tched-router
 mongodb-mcp-server

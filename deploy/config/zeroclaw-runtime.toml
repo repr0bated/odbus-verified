@@ -9,7 +9,7 @@ directory = "shared/skills/default"
 
 [gateway]
 host = "127.0.0.1"
-port = 8082
+port = 8084
 require_pairing = true
 allow_public_bind = false
 allow_remote_admin = false

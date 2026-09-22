@@ -105,7 +105,7 @@ pair one client in the native gateway, write that raw token only to
 `/etc/op-dbus/secrets/tched-router-runtime-token` as root with mode `0400` or
 `0600`, and retain only the gateway-managed token hash in native configuration.
 The bridge runit service reads this protected file and connects to the pinned
-loopback endpoint `http://127.0.0.1:8082`; no token is minted by repository
+loopback endpoint `http://127.0.0.1:8084`; no token is minted by repository
 scripts.
 
 ## Workspace checks

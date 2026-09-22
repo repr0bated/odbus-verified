@@ -1,9 +1,10 @@
 #!/bin/sh
-# op-grpc-bridge readiness — socket exists + accepts a connect (no socat).
-SOCK="/run/opdbus/grpc.sock"
-[ -S "$SOCK" ] || exit 1
-perms=$(stat -c '%a' "$SOCK" 2>/dev/null)
-if [ "$perms" != "777" ]; then
-    chmod 777 "$SOCK" 2>/dev/null || exit 1
-fi
-exec python3 -c 'import socket,sys; s=socket.socket(socket.AF_UNIX); s.settimeout(1); s.connect(sys.argv[1]); s.close()' "$SOCK"
+# Readiness is observational: never widen a service-owned socket's mode.
+set -eu
+[ -S "${TCHED_ROUTER_UNIX_SOCKET:-/run/opdbus/grpc.sock}" ] || exit 1
+status=$(curl --silent --show-error --connect-timeout 1 --max-time 3 \
+    --cacert "${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}" \
+    --output /dev/null --write-out '%{http_code}' \
+    https://localhost:8090/mcp) || exit 1
+# An unauthenticated request must reach the active identity gate.
+[ "$status" = 401 ]

@@ -24,6 +24,7 @@ wait_dep dbus
 wait_dep op-runit-systemctl
 wait_dep op-session-bus
 wait_dep ovsdb-server
+wait_dep tched-router
 # Qdrant is optional here. The bridge initializes its semantic shuttle
 # best-effort and must still open :8090 for D-Bus and gRPC when vector search
 # is unavailable.
@@ -36,7 +37,7 @@ set +a
 # The native router's provider-only generation protocol requires a real paired
 # subject. Consume the operator-provisioned token from a root-only file; never
 # accept the secret itself from the broad environment file.
-export TCHED_ROUTER_RUNTIME_ENDPOINT="${TCHED_ROUTER_RUNTIME_ENDPOINT:-http://127.0.0.1:8082}"
+export TCHED_ROUTER_RUNTIME_ENDPOINT="${TCHED_ROUTER_RUNTIME_ENDPOINT:-http://127.0.0.1:8084}"
 export TCHED_ROUTER_RUNTIME_AGENT="${TCHED_ROUTER_RUNTIME_AGENT:-dashboard}"
 TCHED_ROUTER_RUNTIME_TOKEN_FILE=${TCHED_ROUTER_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/tched-router-runtime-token}
 unset TCHED_ROUTER_RUNTIME_TOKEN
@@ -175,6 +176,12 @@ export OP_LOCAL_HUMAN_DISPLAY_ALIAS="${OP_LOCAL_HUMAN_DISPLAY_ALIAS:-jeremy-wg-f
 export OP_ORACLE_ASSERTION_SOURCE_BINDING="${OP_ORACLE_ASSERTION_SOURCE_BINDING:-trusted-decoy-signature}"
 export RUST_LOG="${GRPC_RUST_LOG:-info}"
 export COGNITIVE_MCP_QDRANT_URL="${COGNITIVE_MCP_QDRANT_URL:-http://10.200.0.2:6334}"
+# The clean baseline uses source indexed through cognitive_mcp.code_index.
+# Historical bulk collections are retained for recovery; their Gridstore
+# payload reads currently fail, so they must not stall normal context calls.
+export COGNITIVE_MCP_RAG_COLLECTION="${COGNITIVE_MCP_RAG_COLLECTION:-opdbus_baseline_code_v1}"
+export COGNITIVE_MCP_COMPLETION_COLLECTIONS="${COGNITIVE_MCP_COMPLETION_COLLECTIONS:-$COGNITIVE_MCP_RAG_COLLECTION}"
+export COGNITIVE_MCP_SEARCH_COLLECTIONS="${COGNITIVE_MCP_SEARCH_COLLECTIONS:-$COGNITIVE_MCP_RAG_COLLECTION}"
 [ -r /etc/op-dbus/secrets/voyage-api-key ] && export VOYAGE_API_KEY="$(cat /etc/op-dbus/secrets/voyage-api-key)"
 # Phase 2: tool dispatch is in-process ToolRegistry — no HTTP MCP loopback URL.
 

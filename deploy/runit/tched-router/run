@@ -1,0 +1,71 @@
+#!/bin/sh
+exec 2>&1
+set -eu
+
+set -a
+[ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
+set +a
+
+CONFIG_DIR=${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}
+BOOTSTRAP_CONFIG=${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/zeroclaw-runtime.toml}
+BOOTSTRAP_SKILLS=${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/zeroclaw-skills/default}
+OPENCODE_SECRET_FILE=${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}
+SALAD_SECRET_FILE=${TCHED_ROUTER_SALAD_KEY_FILE:-/etc/op-dbus/secrets/salad-api-key}
+NATIVE_BIN=${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}
+NATIVE_MANIFEST=${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}
+HOST=${TCHED_ROUTER_HOST:-127.0.0.1}
+PORT=${TCHED_ROUTER_PORT:-8084}
+
+[ -x "$NATIVE_BIN" ] || { echo "pinned tched_router native binary is missing" >&2; exit 78; }
+[ -f "$NATIVE_MANIFEST" ] || { echo "tched_router native provenance manifest is missing" >&2; exit 78; }
+manifest_format=$(jq -er '.format' "$NATIVE_MANIFEST")
+manifest_commit=$(jq -er '.upstream.commit' "$NATIVE_MANIFEST")
+manifest_binary_sha256=$(jq -er '.artifact.sha256' "$NATIVE_MANIFEST")
+[ "$manifest_format" = opdbus.tched-router-native.v1 ] || { echo "unsupported tched_router provenance" >&2; exit 78; }
+[ "$manifest_commit" = a56c345d51dd8ab562e9351e0d4ab83f6a741db9 ] || { echo "wrong tched_router upstream commit" >&2; exit 78; }
+[ "$(sha256sum "$NATIVE_BIN" | awk '{print $1}')" = "$manifest_binary_sha256" ] || { echo "tched_router binary/provenance mismatch" >&2; exit 78; }
+[ "$($NATIVE_BIN --version)" = "zeroclaw 0.8.4" ] || { echo "unexpected native version" >&2; exit 78; }
+
+install -d -o jeremy -g jeremy -m 0700 "$CONFIG_DIR" "$CONFIG_DIR/home"
+if [ ! -f "$CONFIG_DIR/config.toml" ]; then
+    install -o jeremy -g jeremy -m 0600 "$BOOTSTRAP_CONFIG" "$CONFIG_DIR/config.toml"
+fi
+if [ -d "$BOOTSTRAP_SKILLS" ]; then
+    install -d -o jeremy -g jeremy -m 0755 "$CONFIG_DIR/shared/skills/default"
+    cp -a "$BOOTSTRAP_SKILLS"/. "$CONFIG_DIR/shared/skills/default/"
+    chown -R jeremy:jeremy "$CONFIG_DIR/shared/skills/default"
+fi
+
+# The pinned OpenAI-compatible provider resolves its credential from config;
+# this source pin has no verified environment-variable hook for custom Salad.
+# Use native JSON Patch over stdin for Salad and the verified environment
+# hook for OpenCode. Neither credential is passed in an argument.
+[ -f "$OPENCODE_SECRET_FILE" ] || { echo "tched-router: missing opencode provider secret" >&2; exit 78; }
+set -- $(stat -Lc '%u %a' "$OPENCODE_SECRET_FILE")
+[ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
+    echo "tched-router: opencode secret must be root-owned with mode 0400 or 0600" >&2
+    exit 78
+}
+export OPENCODE_API_KEY=$(cat "$OPENCODE_SECRET_FILE")
+[ -n "$OPENCODE_API_KEY" ] || { echo "tched-router: empty opencode provider secret" >&2; exit 78; }
+
+[ -f "$SALAD_SECRET_FILE" ] || { echo "tched-router: missing salad provider secret" >&2; exit 78; }
+set -- $(stat -Lc '%u %a' "$SALAD_SECRET_FILE")
+[ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
+    echo "tched-router: salad secret must be root-owned with mode 0400 or 0600" >&2
+    exit 78
+}
+# `config patch -` consumes JSONPatch from stdin and applies the native
+# secret-aware persistence path. The secret is rawfile input, never argv.
+jq -n --rawfile key "$SALAD_SECRET_FILE" \
+    '[{op:"add",path:"/providers/models/custom/salad/api_key",value:($key|gsub("[\\r\\n]+$";""))}]' |
+    chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
+        PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
+        "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
+
+export HOME="$CONFIG_DIR/home" USER=jeremy PATH=/usr/local/bin:/usr/bin:/bin \
+    ZEROCLAW_CONFIG_DIR="$CONFIG_DIR"
+# chpst receives no secret-bearing argv; the exported credential is inherited
+# by the daemon after the uid/gid transition.
+exec chpst -u jeremy:jeremy "$NATIVE_BIN" daemon \
+    --config-dir "$CONFIG_DIR" --host "$HOST" --port "$PORT" --log-level warn
