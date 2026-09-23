@@ -61,7 +61,7 @@ pub fn audit_source_with_coverage(
                     .map(|s| s.ident.to_string())
                     .collect::<Vec<_>>()
                     .join("::");
-                if path.contains("inventory") && path.contains("submit") {
+                if path == "inventory::submit" {
                     has_inventory = true;
                 }
             }
@@ -94,11 +94,6 @@ pub fn audit_source_with_coverage(
             }
             _ => {}
         }
-    }
-
-    // inventory::submit! appears as Item::Macro with path inventory::submit
-    if source.contains("inventory::submit!") {
-        has_inventory = true;
     }
 
     if schemars_structs == 0 {
@@ -191,6 +186,24 @@ pub fn audit_source_with_coverage(
     apply_gadget_coverage(&mut report, source, coverage)?;
 
     Ok(report)
+}
+
+#[cfg(test)]
+mod inventory_detection_tests {
+    use super::audit_source;
+
+    #[test]
+    fn inventory_comment_does_not_satisfy_registration_check() {
+        let source = r#"
+            // inventory::submit! is only a comment, not a registration.
+            struct Example;
+        "#;
+        let report = audit_source("comment_only.rs", source).unwrap();
+        assert!(report
+            .findings
+            .iter()
+            .any(|finding| finding.code == "missing_inventory_submit"));
+    }
 }
 
 fn apply_gadget_coverage(

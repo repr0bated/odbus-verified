@@ -1,15 +1,10 @@
-//! D-Bus first transport layer with HTTP/JSON-RPC fallback.
+//! D-Bus first transport layer for the Assistant compatibility client.
 //!
-//! `Transport::new` attempts to acquire a session D-Bus connection. When the
-//! connection succeeds the primary kind is D-Bus; otherwise the fallback HTTP
-//! transport is used. Both kinds remain initialised so callers can request a
-//! specific transport explicitly.
+//! A failed D-Bus control call must not fall back to direct HTTP JSON-RPC,
+//! where the legacy schema-tag headers are not an identity credential.
 
 use crate::error::{AssistantError, Result};
-use crate::incus::{
-    SchemaTags, DEFAULT_WG_XRAY_ENDPOINT, ENV_RPC_ENDPOINT, HEADER_FOOTPRINT, HEADER_GENESIS,
-    HEADER_TRACE_ID,
-};
+use crate::incus::{DEFAULT_WG_XRAY_ENDPOINT, ENV_RPC_ENDPOINT};
 use serde_json::Value;
 use std::time::Duration;
 
@@ -115,19 +110,14 @@ impl Transport {
         self.dbus.as_ref()
     }
 
-    /// Dispatch a high-level Assistant call. The transport will try the
-    /// primary route and transparently fall back to HTTP if the D-Bus call
-    /// fails.
+    /// Dispatch a high-level Assistant call only through its configured D-Bus
+    /// target. The retired direct RPC path cannot carry canonical admission.
     pub async fn call(&self, method: &str, body: Value) -> Result<Value> {
         match self.primary {
-            TransportKind::DBus => match self.dbus_call(method, &body).await {
-                Ok(v) => Ok(v),
-                Err(err) => {
-                    tracing::warn!(?err, %method, "D-Bus call failed, falling back to RPC");
-                    self.rpc_call(method, body).await
-                }
-            },
-            TransportKind::Rpc => self.rpc_call(method, body).await,
+            TransportKind::DBus => self.dbus_call(method, &body).await,
+            TransportKind::Rpc => Err(AssistantError::Transport(
+                "direct Assistant HTTP RPC transport is disabled".into(),
+            )),
         }
     }
 
@@ -152,30 +142,6 @@ impl Transport {
         let value: Value = serde_json::from_str(&response)?;
         Ok(value)
     }
-
-    async fn rpc_call(&self, method: &str, body: Value) -> Result<Value> {
-        let url = format!(
-            "{}/rpc/{}",
-            self.cfg.rpc_endpoint.trim_end_matches('/'),
-            method
-        );
-        let tags = SchemaTags::load();
-        let mut req = self.http.post(&url).json(&body);
-        if tags.is_valid() {
-            req = req
-                .header(HEADER_GENESIS, tags.footprint_hex.clone())
-                .header(HEADER_FOOTPRINT, tags.footprint_hex)
-                .header(HEADER_TRACE_ID, tags.trace_id);
-        }
-        let resp = req.send().await?;
-        let status = resp.status();
-        if !status.is_success() {
-            let text = resp.text().await.unwrap_or_default();
-            return Err(crate::error::map_http_status(status.as_u16(), text).into());
-        }
-        let value = resp.json::<Value>().await?;
-        Ok(value)
-    }
 }
 
 impl From<tonic::Status> for AssistantError {
@@ -198,12 +164,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn transport_initialises_with_rpc_fallback() {
+    async fn direct_rpc_mode_fails_before_sending_control_call() {
         let cfg = TransportConfig {
             force_kind: Some(TransportKind::Rpc),
+            rpc_endpoint: "http://127.0.0.1:9".into(),
             ..Default::default()
         };
         let t = Transport::new(cfg).await.expect("init");
         assert_eq!(t.primary_kind(), TransportKind::Rpc);
+        let error = t
+            .call("cron.create", serde_json::json!({}))
+            .await
+            .unwrap_err();
+        assert!(matches!(error, AssistantError::Transport(_)));
     }
 }

@@ -1,9 +1,9 @@
 //! Runit service-management tools, exposed to agents over the tool registry.
 //!
 //! This host boots runit as PID 1 and is controlled with `sv`; s6 is not
-//! installed. Each tool prefers the `op-runit-systemctl` D-Bus service so the
-//! change lands on the audited control plane, and falls back to invoking `sv`
-//! directly when that daemon is not reachable.
+//! installed. Each tool uses the `op-runit-systemctl` D-Bus service so the
+//! change lands on the audited control plane and fails closed when that daemon
+//! is not reachable.
 //!
 //! The five tools mirror the verbs runit actually has. `sv restart` is native,
 //! so restart is one operation rather than a stop/start pair.
@@ -42,15 +42,6 @@ async fn get_proxy() -> Result<RunitSystemctlProxy<'static>> {
         .context("create RunitSystemctl D-Bus proxy")
 }
 
-/// Fallback: invoke `sv` directly. Requires root, same as the daemon path.
-async fn sv(args: &[&str]) -> Result<std::process::Output> {
-    tokio::process::Command::new(op_core::runit::SV_BIN)
-        .args(args)
-        .output()
-        .await
-        .with_context(|| format!("failed to run sv {}", args.join(" ")))
-}
-
 /// One-line schema shared by every tool that takes a service name.
 fn service_schema(verb: &str) -> Value {
     json!({
@@ -73,7 +64,7 @@ fn service_arg(input: &Value) -> Result<String> {
         .ok_or_else(|| anyhow!("Missing required parameter: service"))
 }
 
-/// The three mutating verbs share one shape: try D-Bus, else `sv <verb>`.
+/// The three mutating verbs share one D-Bus-only shape.
 async fn control(verb: &str, service: &str) -> Result<Value> {
     let past_tense = match verb {
         "start" => "started",
@@ -81,36 +72,23 @@ async fn control(verb: &str, service: &str) -> Result<Value> {
         _ => "restarted",
     };
 
-    if let Ok(proxy) = get_proxy().await {
-        let call = match verb {
-            "start" => proxy.start(service).await,
-            "stop" => proxy.stop(service).await,
-            _ => proxy.restart(service).await,
-        };
-        if let Ok((ok, message)) = call {
-            if ok {
-                return Ok(json!({
-                    past_tense: true,
-                    "service": service,
-                    "manager": "runit",
-                    "via": "dbus"
-                }));
-            }
-            return Err(anyhow!("sv {verb} {service} failed: {message}"));
-        }
+    let proxy = get_proxy().await?;
+    let (ok, message) = match verb {
+        "start" => proxy.start(service).await,
+        "stop" => proxy.stop(service).await,
+        _ => proxy.restart(service).await,
     }
-
-    let out = sv(&[verb, service]).await?;
-    if out.status.success() {
-        return Ok(json!({
+    .with_context(|| format!("call RunitSystemctl.{verb} over D-Bus"))?;
+    if ok {
+        Ok(json!({
             past_tense: true,
             "service": service,
             "manager": "runit",
-            "via": "sv"
-        }));
+            "via": "dbus"
+        }))
+    } else {
+        Err(anyhow!("sv {verb} {service} failed: {message}"))
     }
-    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-    Err(anyhow!("sv {verb} {service} failed: {stderr}"))
 }
 
 pub struct SvStartServiceTool;
@@ -191,32 +169,17 @@ impl Tool for SvStatusTool {
     async fn execute(&self, input: Value) -> Result<Value> {
         let service = service_arg(&input)?;
 
-        if let Ok(proxy) = get_proxy().await {
-            if let Ok(status) = proxy.status(&service).await {
-                return Ok(json!({
-                    "service": service,
-                    "status": status,
-                    "manager": "runit",
-                    "via": "dbus"
-                }));
-            }
-        }
-
-        let out = sv(&["status", &service]).await?;
-        let status = String::from_utf8_lossy(&out.stdout).trim().to_string();
-        if out.status.success() {
-            // `sv status` prints e.g. "run: op-web: (pid 1234) 56s".
-            let running = status.starts_with("run:");
-            return Ok(json!({
-                "service": service,
-                "status": status,
-                "running": running,
-                "manager": "runit",
-                "via": "sv"
-            }));
-        }
-        let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-        Err(anyhow!("sv status {service} failed: {stderr}"))
+        let proxy = get_proxy().await?;
+        let status = proxy
+            .status(&service)
+            .await
+            .context("call RunitSystemctl.status over D-Bus")?;
+        Ok(json!({
+            "service": service,
+            "status": status,
+            "manager": "runit",
+            "via": "dbus"
+        }))
     }
     fn category(&self) -> &str {
         "runit"
@@ -235,35 +198,12 @@ impl Tool for SvListServicesTool {
         json!({ "type": "object", "properties": {} })
     }
     async fn execute(&self, _input: Value) -> Result<Value> {
-        if let Ok(proxy) = get_proxy().await {
-            if let Ok(units) = proxy.list_units().await {
-                return Ok(json!({ "services": units, "manager": "runit", "via": "dbus" }));
-            }
-        }
-
-        // Definitions are directories; enablement is a symlink in the runlevel.
-        let mut services: Vec<Value> = Vec::new();
-        if let Ok(entries) = std::fs::read_dir(op_core::runit::SV_DIR) {
-            for entry in entries.flatten() {
-                if !entry.path().is_dir() {
-                    continue;
-                }
-                let name = entry.file_name().to_string_lossy().to_string();
-                let enabled = std::path::Path::new(&op_core::runit::enabled_path(&name)).exists();
-                let supervised = std::path::Path::new(&op_core::runit::live_path(&name)).exists();
-                services.push(json!({
-                    "service": name,
-                    "enabled": enabled,
-                    "supervised": supervised
-                }));
-            }
-        }
-        Ok(json!({
-            "services": services,
-            "manager": "runit",
-            "via": "filesystem",
-            "definitions": op_core::runit::SV_DIR
-        }))
+        let proxy = get_proxy().await?;
+        let units = proxy
+            .list_units()
+            .await
+            .context("call RunitSystemctl.list_units over D-Bus")?;
+        Ok(json!({ "services": units, "manager": "runit", "via": "dbus" }))
     }
     fn category(&self) -> &str {
         "runit"

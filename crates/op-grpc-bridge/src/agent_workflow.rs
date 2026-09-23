@@ -328,7 +328,7 @@ fn inject_context(
 
 #[cfg(test)]
 mod tests {
-    use super::child_success;
+    use super::{child_success, validate};
     use serde_json::json;
 
     #[test]
@@ -347,5 +347,70 @@ mod tests {
     fn non_execution_success_field_is_supported() {
         assert!(child_success("orchestration", &json!({"success":true})).unwrap());
         assert!(!child_success("orchestration", &json!({"success":false})).unwrap());
+    }
+
+    #[test]
+    fn empty_workflow_is_invalid() {
+        let steps = Vec::new();
+        let report = validate("code-review-orchestrator", Some(&steps)).unwrap();
+        assert_eq!(report["valid"], false);
+        assert_eq!(report["errors"][0]["code"], "empty_workflow");
+    }
+
+    #[test]
+    fn nested_workflow_target_is_rejected() {
+        let steps = vec![json!({
+            "agent_type": "code-review-orchestrator",
+            "operation": "run_workflow",
+            "arguments": {"steps": []}
+        })];
+        let error = validate("code-review-orchestrator", Some(&steps)).unwrap()["errors"][0]
+            ["message"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        assert!(error.contains("nested orchestration"), "{error}");
+    }
+
+    #[test]
+    fn forbidden_delegated_target_is_rejected() {
+        let steps = vec![json!({
+            "agent_type": "shell-executor",
+            "operation": "exec",
+            "arguments": {"command": "true", "cwd": ".", "timeout": 1}
+        })];
+        let error = validate("code-review-orchestrator", Some(&steps)).unwrap()["errors"][0]
+            ["message"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        assert!(error.contains("does not allow"), "{error}");
+    }
+
+    #[test]
+    fn valid_child_arguments_are_accepted() {
+        let steps = vec![json!({
+            "agent_type": "python-executor",
+            "operation": "lint",
+            "arguments": {"path": ".", "fix": false}
+        })];
+        let report = validate("code-review-orchestrator", Some(&steps)).unwrap();
+        assert_eq!(report["valid"], true);
+        assert!(report["errors"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn python_run_requires_nonempty_code() {
+        let steps = vec![json!({
+            "agent_type": "python-executor",
+            "operation": "run",
+            "arguments": {}
+        })];
+        let error = validate("code-review-orchestrator", Some(&steps)).unwrap()["errors"][0]
+            ["message"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        assert!(error.contains("violate schema"), "{error}");
     }
 }

@@ -251,7 +251,7 @@ impl HeadlessOAuthProvider {
     async fn load_token(&self) -> Result<OAuthToken> {
         let contents = tokio::fs::read_to_string(&self.token_file)
             .await
-            .with_context(|| format!("Token file not found: {}\n\nTo authenticate:\n1. Start Antigravity headless: sudo systemctl start antigravity-display\n2. Connect via VNC: vncviewer localhost:5900\n3. Log in with Google account\n4. Run: ./scripts/antigravity-extract-token.sh", self.token_file.display()))?;
+            .with_context(|| missing_token_guidance(&self.token_file))?;
 
         let mut contents_mut = contents;
         let token: OAuthToken =
@@ -317,6 +317,27 @@ impl HeadlessOAuthProvider {
 
         info!("Token refreshed successfully");
         Ok(new_token)
+    }
+}
+
+fn missing_token_guidance(path: &Path) -> String {
+    format!(
+        "Token file not found: {}. Authenticate through the configured Antigravity OAuth flow and provision this token file.",
+        path.display()
+    )
+}
+
+#[cfg(test)]
+mod token_guidance_tests {
+    use super::missing_token_guidance;
+    use std::path::Path;
+
+    #[test]
+    fn missing_token_guidance_uses_no_stale_systemd_command() {
+        let guidance = missing_token_guidance(Path::new("/tmp/token.json"));
+        assert!(guidance.contains("configured Antigravity OAuth flow"));
+        assert!(guidance.contains("/tmp/token.json"));
+        assert!(!guidance.contains("systemctl"));
     }
 }
 

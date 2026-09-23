@@ -19,7 +19,7 @@
 use axum::{
     body::Body,
     extract::ConnectInfo,
-    http::{header, StatusCode},
+    http::{header, HeaderMap, StatusCode},
     response::Response,
 };
 use base64::Engine as _;
@@ -59,6 +59,25 @@ fn configured_human_peers() -> HashMap<IpAddr, Option<String>> {
     parse_human_peers(&std::env::var(HUMAN_PEERS_ENV).unwrap_or_default())
 }
 
+/// Resolve a human arrival using the same TCP-source mapping as identity/self.
+/// Callers must additionally check the exact principal's operation grant.
+pub(crate) fn human_session_for_peer(peer: SocketAddr) -> Option<op_identity::SessionIdentity> {
+    let source = match peer.ip() {
+        IpAddr::V6(v6) => v6
+            .to_ipv4_mapped()
+            .map(IpAddr::V4)
+            .unwrap_or(IpAddr::V6(v6)),
+        v4 => v4,
+    };
+    let peers = configured_human_peers();
+    let selector = peers.get(&source)?;
+    let session = op_identity::resolve_identity_credential_session(selector.as_deref()).ok()?;
+    (session.principal_kind.as_deref()
+        == Some(op_identity::session_projection::PRINCIPAL_KIND_HUMAN)
+        && session.sealed_id_header_for_transport(TRANSPORT).is_ok())
+    .then_some(session)
+}
+
 fn configured_door_url() -> String {
     std::env::var(DOOR_URL_ENV)
         .ok()
@@ -91,7 +110,16 @@ fn not_found() -> Response {
 }
 
 /// Resolve the requester's SID1 by TCP source address.
-pub async fn identity_self_handler(ConnectInfo(peer): ConnectInfo<SocketAddr>) -> Response {
+pub async fn identity_self_handler(
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+) -> Response {
+    if !crate::middleware::security::request_site_is_same_origin(&headers) {
+        return json_response(
+            StatusCode::FORBIDDEN,
+            json!({ "error": "cross-site identity access denied" }),
+        );
+    }
     let source = match peer.ip() {
         IpAddr::V6(v6) => v6
             .to_ipv4_mapped()
@@ -172,5 +200,16 @@ mod tests {
             wire
         );
         assert!(grpc_web_sealed_id("not base64!").is_err());
+    }
+
+    #[tokio::test]
+    async fn cross_site_browser_cannot_read_identity() {
+        let mut headers = HeaderMap::new();
+        headers.insert("host", "dashboard.example".parse().unwrap());
+        headers.insert("origin", "https://attacker.example".parse().unwrap());
+        headers.insert("sec-fetch-site", "cross-site".parse().unwrap());
+        let response =
+            identity_self_handler(ConnectInfo("127.0.0.1:1234".parse().unwrap()), headers).await;
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 }

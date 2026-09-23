@@ -26,6 +26,9 @@ pub fn admin_routes() -> Router {
         .route("/prompt/test", post(test_prompt))
         .route("/prompt/reload", post(reload_prompt))
         .route("/config", get(get_config))
+        .layer(axum::middleware::from_fn(
+            crate::middleware::security::require_project_admin,
+        ))
 }
 
 // =============================================================================

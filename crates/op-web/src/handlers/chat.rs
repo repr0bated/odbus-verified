@@ -452,38 +452,55 @@ pub async fn update_system_prompt_handler(
 pub async fn save_transcript_handler(
     Extension(state): Extension<Arc<AppState>>,
     Json(params): Json<Value>,
-) -> Json<Value> {
+) -> (axum::http::StatusCode, Json<Value>) {
     let filename = params
         .get("filename")
         .and_then(|v| v.as_str())
         .map(str::to_string)
-        .unwrap_or_else(|| format!("chat-transcript-{}.txt", chrono::Utc::now().timestamp()));
+        .unwrap_or_else(|| format!("chat-transcript-{}.txt", uuid::Uuid::new_v4()));
+    if !valid_transcript_filename(&filename) {
+        return (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(json!({
+                "success": false, "error": "Invalid transcript filename"
+            })),
+        );
+    }
 
     // Check if session_id is provided (for existing conversations)
     if let Some(session_id) = params.get("session_id").and_then(|v| v.as_str()) {
         if let Some(history) = state.conversations.get_history(session_id).await {
             if history.is_empty() {
-                return Json(json!({
-                    "success": false,
-                    "error": "No messages in conversation"
-                }));
+                return (
+                    axum::http::StatusCode::BAD_REQUEST,
+                    Json(json!({
+                        "success": false,
+                        "error": "No messages in conversation"
+                    })),
+                );
             }
             return save_transcript_to_file(&history, filename.as_str(), Some(session_id)).await;
         } else {
-            return Json(json!({
-                "success": false,
-                "error": "Conversation not found"
-            }));
+            return (
+                axum::http::StatusCode::NOT_FOUND,
+                Json(json!({
+                    "success": false,
+                    "error": "Conversation not found"
+                })),
+            );
         }
     }
 
     // Check if messages array is provided directly
     if let Some(messages) = params.get("messages").and_then(|v| v.as_array()) {
         if messages.is_empty() {
-            return Json(json!({
-                "success": false,
-                "error": "No messages provided"
-            }));
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "success": false,
+                    "error": "No messages provided"
+                })),
+            );
         }
 
         // Convert Value array to ChatMessage vector
@@ -503,30 +520,63 @@ pub async fn save_transcript_handler(
         }
 
         if history.is_empty() {
-            return Json(json!({
-                "success": false,
-                "error": "Invalid message format"
-            }));
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "success": false,
+                    "error": "Invalid message format"
+                })),
+            );
         }
 
         return save_transcript_to_file(&history, filename.as_str(), None).await;
     }
 
-    Json(json!({
-        "success": false,
-        "error": "Either session_id or messages array required",
-        "usage": {
-            "by_session_id": {"session_id": "session-123", "filename": "optional-filename.txt"},
-            "by_messages": {"messages": [{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi"}], "filename": "optional-filename.txt"}
-        }
-    }))
+    (
+        axum::http::StatusCode::BAD_REQUEST,
+        Json(json!({
+            "success": false,
+            "error": "Either session_id or messages array required",
+            "usage": {
+                "by_session_id": {"session_id": "session-123", "filename": "optional-filename.txt"},
+                "by_messages": {"messages": [{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi"}], "filename": "optional-filename.txt"}
+            }
+        })),
+    )
+}
+
+fn valid_transcript_filename(filename: &str) -> bool {
+    !filename.is_empty()
+        && filename.len() <= 128
+        && filename != "."
+        && filename != ".."
+        && filename
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
 }
 
 async fn save_transcript_to_file(
     history: &[op_llm::ChatMessage],
     filename: &str,
     session_id: Option<&str>,
-) -> Json<Value> {
+) -> (axum::http::StatusCode, Json<Value>) {
+    save_transcript_to_file_in(history, filename, session_id, std::path::Path::new("/tmp")).await
+}
+
+async fn save_transcript_to_file_in(
+    history: &[op_llm::ChatMessage],
+    filename: &str,
+    session_id: Option<&str>,
+    root: &std::path::Path,
+) -> (axum::http::StatusCode, Json<Value>) {
+    if !valid_transcript_filename(filename) {
+        return (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(json!({
+                "success": false, "error": "Invalid transcript filename"
+            })),
+        );
+    }
     // Format transcript
     let mut transcript = String::new();
 
@@ -568,19 +618,90 @@ async fn save_transcript_to_file(
     }
 
     // Save to file
-    let filepath = format!("/tmp/{}", filename);
-    match tokio::fs::write(&filepath, &transcript).await {
-        Ok(_) => Json(json!({
-            "success": true,
-            "message": "Transcript saved successfully",
-            "filepath": filepath,
-            "filename": filename,
-            "message_count": history.len(),
-            "transcript_preview": transcript.chars().take(200).collect::<String>() + "..."
-        })),
-        Err(e) => Json(json!({
-            "success": false,
-            "error": format!("Failed to save transcript: {}", e)
-        })),
+    let filepath = root.join(filename);
+    let mut options = tokio::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        options.mode(0o600);
+    }
+    let result = options.open(&filepath).await;
+    match result {
+        Ok(mut file) => {
+            use tokio::io::AsyncWriteExt;
+            if let Err(e) = file.write_all(transcript.as_bytes()).await {
+                return (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({
+                        "success": false, "error": format!("Failed to save transcript: {}", e)
+                    })),
+                );
+            }
+            (
+                axum::http::StatusCode::OK,
+                Json(json!({
+                    "success": true,
+                    "message": "Transcript saved successfully",
+                    "filepath": filepath.to_string_lossy(),
+                    "filename": filename,
+                    "message_count": history.len(),
+                    "transcript_preview": transcript.chars().take(200).collect::<String>() + "..."
+                })),
+            )
+        }
+        Err(e) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "success": false,
+                "error": format!("Failed to save transcript: {}", e)
+            })),
+        ),
+    }
+}
+
+#[cfg(test)]
+mod transcript_security_tests {
+    use super::*;
+
+    fn message() -> op_llm::ChatMessage {
+        op_llm::ChatMessage {
+            role: "user".to_string(),
+            content: "hello".to_string(),
+            tool_calls: None,
+            tool_call_id: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn transcript_rejects_escape_and_existing_symlink() {
+        let root = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let sentinel = outside.path().join("sentinel.txt");
+        tokio::fs::write(&sentinel, "keep").await.unwrap();
+        let (status, _) =
+            save_transcript_to_file_in(&[message()], "../sentinel.txt", None, root.path()).await;
+        assert_eq!(status, axum::http::StatusCode::BAD_REQUEST);
+        assert_eq!(tokio::fs::read_to_string(&sentinel).await.unwrap(), "keep");
+
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(&sentinel, root.path().join("linked.txt")).unwrap();
+            let (status, _) =
+                save_transcript_to_file_in(&[message()], "linked.txt", None, root.path()).await;
+            assert!(!status.is_success());
+            assert_eq!(tokio::fs::read_to_string(&sentinel).await.unwrap(), "keep");
+        }
+        let (status, _) =
+            save_transcript_to_file_in(&[message()], "valid.txt", None, root.path()).await;
+        assert_eq!(status, axum::http::StatusCode::OK);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(root.path().join("valid.txt"))
+                .unwrap()
+                .permissions()
+                .mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
     }
 }

@@ -9,12 +9,13 @@ use anyhow::{Context, Result};
 use simd_json::prelude::*;
 use simd_json::{json, OwnedValue as Value};
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
 use tokio::sync::RwLock;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 use crate::protocol::{error_codes, JsonRpcRequest, JsonRpcResponse};
 use crate::OvsdbDbusClient;
@@ -71,36 +72,18 @@ impl JsonRpcServer {
 
     /// Run the server
     pub async fn run(self: Arc<Self>) -> Result<()> {
-        let mut handles = Vec::new();
-
-        // Start Unix socket server
-        if let Some(ref socket_path) = self.config.unix_socket {
-            let server = Arc::clone(&self);
-            let path = socket_path.clone();
-            handles.push(tokio::spawn(async move {
-                if let Err(e) = server.run_unix(&path).await {
-                    error!("Unix socket server error: {}", e);
-                }
-            }));
+        match (
+            self.config.unix_socket.as_deref(),
+            self.config.tcp_addr.as_deref(),
+        ) {
+            (Some(path), Some(addr)) => {
+                tokio::try_join!(self.run_unix(path), self.run_tcp(addr))?;
+                Ok(())
+            }
+            (Some(path), None) => self.run_unix(path).await,
+            (None, Some(addr)) => self.run_tcp(addr).await,
+            (None, None) => anyhow::bail!("JSON-RPC server has no configured listener"),
         }
-
-        // Start TCP server
-        if let Some(ref addr) = self.config.tcp_addr {
-            let server = Arc::clone(&self);
-            let addr = addr.clone();
-            handles.push(tokio::spawn(async move {
-                if let Err(e) = server.run_tcp(&addr).await {
-                    error!("TCP server error: {}", e);
-                }
-            }));
-        }
-
-        // Wait for all servers
-        for handle in handles {
-            handle.await?;
-        }
-
-        Ok(())
     }
 
     /// Run Unix socket server
@@ -133,6 +116,10 @@ impl JsonRpcServer {
 
     /// Run TCP server
     async fn run_tcp(&self, addr: &str) -> Result<()> {
+        let addr: SocketAddr = addr.parse().context("Invalid JSON-RPC TCP address")?;
+        if !addr.ip().is_loopback() {
+            anyhow::bail!("JSON-RPC TCP listener must bind to loopback");
+        }
         let listener = TcpListener::bind(addr)
             .await
             .context("Failed to bind TCP socket")?;
@@ -226,6 +213,16 @@ impl JsonRpcServerConnection {
     async fn handle_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
         let method = &request.method;
 
+        // This ingress carries no verified principal or OVSDB mutation grant.
+        // Check before custom handlers so they cannot shadow the reserved method.
+        if method == "ovsdb.transact" {
+            return JsonRpcResponse::error(
+                request.id,
+                error_codes::PERMISSION_DENIED,
+                "OVSDB transactions require verified control-plane admission",
+            );
+        }
+
         // Check custom handlers first
         {
             let handlers = self.handlers.read().await;
@@ -237,9 +234,7 @@ impl JsonRpcServerConnection {
         // Built-in methods
         match method.as_str() {
             // OVSDB proxy methods
-            "ovsdb.list_dbs" | "ovsdb.get_schema" | "ovsdb.transact"
-                if self.config.ovsdb_enabled =>
-            {
+            "ovsdb.list_dbs" | "ovsdb.get_schema" if self.config.ovsdb_enabled => {
                 return self.handle_ovsdb_request(request).await;
             }
 
@@ -303,36 +298,6 @@ impl JsonRpcServerConnection {
                     }
                 }
             }
-            "ovsdb.transact" => {
-                let params = request.params.as_array();
-                if let Some(params) = params {
-                    if params.len() < 2 {
-                        return JsonRpcResponse::error(
-                            request.id,
-                            error_codes::INVALID_PARAMS,
-                            "Missing database or operations",
-                        );
-                    }
-                    let db = params[0].as_str().unwrap_or("Open_vSwitch");
-                    let ops = json!(params[1..].to_vec());
-                    match client.transact(db, ops).await {
-                        Ok(result) => result,
-                        Err(e) => {
-                            return JsonRpcResponse::error(
-                                request.id,
-                                error_codes::DATABASE_ERROR,
-                                e.to_string(),
-                            )
-                        }
-                    }
-                } else {
-                    return JsonRpcResponse::error(
-                        request.id,
-                        error_codes::INVALID_PARAMS,
-                        "Invalid params",
-                    );
-                }
-            }
             _ => {
                 return JsonRpcResponse::error(
                     request.id,
@@ -343,5 +308,58 @@ impl JsonRpcServerConnection {
         };
 
         JsonRpcResponse::success(request.id, result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tcp_only(addr: String) -> JsonRpcServerConfig {
+        JsonRpcServerConfig {
+            unix_socket: None,
+            tcp_addr: Some(addr),
+            ovsdb_enabled: true,
+        }
+    }
+
+    #[tokio::test]
+    async fn credential_free_ovsdb_transaction_is_denied_before_custom_handlers() {
+        let server = JsonRpcServer::new(tcp_only("127.0.0.1:0".into()));
+        server
+            .register_handler(
+                "ovsdb.transact",
+                Box::new(|request| {
+                    JsonRpcResponse::success(request.id, json!({ "bypassed": true }))
+                }),
+            )
+            .await;
+        let connection = server.clone_for_connection();
+        let mut line = String::from(
+            r#"{"jsonrpc":"2.0","method":"ovsdb.transact","params":["Open_vSwitch",{"op":"delete","table":"Bridge","where":[]}],"id":9}"#,
+        );
+
+        let response = connection.process_line(&mut line).await;
+        assert_eq!(response.id, Value::from(9));
+        assert_eq!(
+            response.error.as_ref().map(|error| error.code),
+            Some(error_codes::PERMISSION_DENIED)
+        );
+        assert!(response.result.is_none());
+    }
+
+    #[tokio::test]
+    async fn tcp_listener_start_failure_is_returned_to_caller() {
+        let server = Arc::new(JsonRpcServer::new(tcp_only("127.0.0.1:not-a-port".into())));
+
+        let error = server.run().await.unwrap_err();
+        assert!(error.to_string().contains("Invalid JSON-RPC TCP address"));
+    }
+
+    #[tokio::test]
+    async fn tcp_listener_rejects_non_loopback_address() {
+        let server = Arc::new(JsonRpcServer::new(tcp_only("0.0.0.0:0".into())));
+        let error = server.run().await.unwrap_err();
+        assert!(error.to_string().contains("must bind to loopback"));
     }
 }

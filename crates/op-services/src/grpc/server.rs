@@ -6,6 +6,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 
+use super::auth::{self, CredentialVerifier, FailClosedVerifier};
 use super::proto::service_manager_server::ServiceManager as ServiceManagerTrait;
 use super::proto::*;
 use crate::manager::ServiceManager;
@@ -13,17 +14,26 @@ use crate::schema::{self, ServiceName};
 
 pub struct GrpcServer {
     manager: Arc<ServiceManager>,
+    verifier: Arc<dyn CredentialVerifier>,
 }
 
 impl GrpcServer {
     pub fn new(manager: Arc<ServiceManager>) -> Self {
-        Self { manager }
+        Self {
+            manager,
+            verifier: Arc::new(FailClosedVerifier),
+        }
+    }
+
+    async fn authorize<T>(&self, request: &Request<T>, capability: &str) -> Result<(), Status> {
+        auth::authorize(request, capability, &self.verifier).await
     }
 }
 
 #[tonic::async_trait]
 impl ServiceManagerTrait for GrpcServer {
     async fn start(&self, req: Request<StartRequest>) -> Result<Response<StartResponse>, Status> {
+        self.authorize(&req, "service_manager.start").await?;
         let name = ServiceName::new(&req.get_ref().name)
             .map_err(|e| Status::invalid_argument(e.to_string()))?;
 
@@ -39,6 +49,7 @@ impl ServiceManagerTrait for GrpcServer {
     }
 
     async fn stop(&self, req: Request<StopRequest>) -> Result<Response<StopResponse>, Status> {
+        self.authorize(&req, "service_manager.stop").await?;
         let name = ServiceName::new(&req.get_ref().name)
             .map_err(|e| Status::invalid_argument(e.to_string()))?;
 
@@ -57,6 +68,7 @@ impl ServiceManagerTrait for GrpcServer {
         &self,
         req: Request<RestartRequest>,
     ) -> Result<Response<RestartResponse>, Status> {
+        self.authorize(&req, "service_manager.restart").await?;
         let name = ServiceName::new(&req.get_ref().name)
             .map_err(|e| Status::invalid_argument(e.to_string()))?;
 
@@ -75,6 +87,7 @@ impl ServiceManagerTrait for GrpcServer {
         &self,
         req: Request<ReloadRequest>,
     ) -> Result<Response<ReloadResponse>, Status> {
+        self.authorize(&req, "service_manager.reload").await?;
         let name = ServiceName::new(&req.get_ref().name)
             .map_err(|e| Status::invalid_argument(e.to_string()))?;
 
@@ -94,6 +107,7 @@ impl ServiceManagerTrait for GrpcServer {
         &self,
         req: Request<CreateRequest>,
     ) -> Result<Response<CreateResponse>, Status> {
+        self.authorize(&req, "service_manager.create").await?;
         let proto_def = req
             .get_ref()
             .service
@@ -118,6 +132,7 @@ impl ServiceManagerTrait for GrpcServer {
         &self,
         req: Request<DeleteRequest>,
     ) -> Result<Response<DeleteResponse>, Status> {
+        self.authorize(&req, "service_manager.delete").await?;
         let name = ServiceName::new(&req.get_ref().name)
             .map_err(|e| Status::invalid_argument(e.to_string()))?;
 
@@ -130,6 +145,7 @@ impl ServiceManagerTrait for GrpcServer {
     }
 
     async fn get(&self, req: Request<GetRequest>) -> Result<Response<GetResponse>, Status> {
+        self.authorize(&req, "service_manager.get").await?;
         let name = ServiceName::new(&req.get_ref().name)
             .map_err(|e| Status::invalid_argument(e.to_string()))?;
 
@@ -152,7 +168,8 @@ impl ServiceManagerTrait for GrpcServer {
         }))
     }
 
-    async fn list(&self, _req: Request<ListRequest>) -> Result<Response<ListResponse>, Status> {
+    async fn list(&self, req: Request<ListRequest>) -> Result<Response<ListResponse>, Status> {
+        self.authorize(&req, "service_manager.list").await?;
         let services = self
             .manager
             .list()
@@ -168,6 +185,7 @@ impl ServiceManagerTrait for GrpcServer {
         &self,
         req: Request<EnableRequest>,
     ) -> Result<Response<EnableResponse>, Status> {
+        self.authorize(&req, "service_manager.enable").await?;
         let name = ServiceName::new(&req.get_ref().name)
             .map_err(|e| Status::invalid_argument(e.to_string()))?;
 
@@ -183,6 +201,7 @@ impl ServiceManagerTrait for GrpcServer {
         &self,
         req: Request<DisableRequest>,
     ) -> Result<Response<DisableResponse>, Status> {
+        self.authorize(&req, "service_manager.disable").await?;
         let name = ServiceName::new(&req.get_ref().name)
             .map_err(|e| Status::invalid_argument(e.to_string()))?;
 
@@ -198,8 +217,9 @@ impl ServiceManagerTrait for GrpcServer {
 
     async fn watch_status(
         &self,
-        _req: Request<WatchRequest>,
+        req: Request<WatchRequest>,
     ) -> Result<Response<Self::WatchStatusStream>, Status> {
+        self.authorize(&req, "service_manager.watch_status").await?;
         let (tx, rx) = mpsc::channel(128);
         let mut sub = self.manager.subscribe();
 
@@ -388,5 +408,84 @@ impl From<crate::manager::ServiceEvent> for ServiceEvent {
                 nanos: 0,
             }),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tonic::Code;
+
+    struct FixtureVerifier;
+
+    #[tonic::async_trait]
+    impl CredentialVerifier for FixtureVerifier {
+        async fn verify(&self, wire: &[u8], capability: &str) -> Result<(), Status> {
+            if wire != b"fixture-credential" {
+                return Err(Status::unauthenticated("invalid fixture credential"));
+            }
+            if capability != "service_manager.list" {
+                return Err(Status::permission_denied("capability not granted"));
+            }
+            Ok(())
+        }
+    }
+
+    async fn server() -> GrpcServer {
+        let path = std::env::temp_dir().join(format!(
+            "op-services-auth-test-{}-{}.json",
+            std::process::id(),
+            chrono::Utc::now().timestamp_nanos_opt().unwrap()
+        ));
+        let store = Arc::new(crate::store::Store::new(path).await.unwrap());
+        GrpcServer {
+            manager: Arc::new(ServiceManager::for_test(store)),
+            verifier: Arc::new(FixtureVerifier),
+        }
+    }
+
+    fn credential_request<T>(value: T) -> Request<T> {
+        let mut request = Request::new(value);
+        request.metadata_mut().insert_bin(
+            auth::SEALED_ID_METADATA_KEY,
+            tonic::metadata::MetadataValue::from_bytes(b"fixture-credential"),
+        );
+        request
+    }
+
+    #[tokio::test]
+    async fn credential_free_mutations_are_rejected_before_manager_calls() {
+        let server = server().await;
+        let create = server
+            .create(Request::new(CreateRequest { service: None }))
+            .await;
+        assert_eq!(create.unwrap_err().code(), Code::Unauthenticated);
+        let delete = server
+            .delete(Request::new(DeleteRequest {
+                name: "demo".into(),
+            }))
+            .await;
+        assert_eq!(delete.unwrap_err().code(), Code::Unauthenticated);
+        let stop = server
+            .stop(Request::new(StopRequest {
+                name: "demo".into(),
+            }))
+            .await;
+        assert_eq!(stop.unwrap_err().code(), Code::Unauthenticated);
+    }
+
+    #[tokio::test]
+    async fn verified_exact_grant_reaches_manager_and_wrong_action_is_denied() {
+        let server = server().await;
+        let listed = server
+            .list(credential_request(ListRequest { filter: None }))
+            .await;
+        assert!(listed.unwrap().into_inner().services.is_empty());
+        let stop = server
+            .stop(credential_request(StopRequest {
+                name: "demo".into(),
+            }))
+            .await;
+        assert_eq!(stop.unwrap_err().code(), Code::PermissionDenied);
     }
 }

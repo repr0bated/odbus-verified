@@ -190,6 +190,7 @@ pub trait AgentTrait: Send + Sync {
 
 /// Common validation functions for agents
 pub mod validation {
+    use std::path::{Component, Path};
     pub const FORBIDDEN_CHARS: &[char] = &[
         '$', '`', ';', '&', '|', '>', '<', '(', ')', '{', '}', '\n', '\r',
     ];
@@ -207,7 +208,21 @@ pub mod validation {
             }
         }
 
-        let is_allowed = allowed_dirs.iter().any(|dir| path.starts_with(dir));
+        let requested = Path::new(path);
+        if requested
+            .components()
+            .any(|part| matches!(part, Component::ParentDir))
+        {
+            return Err("Path traversal is not allowed".to_string());
+        }
+        let canonical = requested
+            .canonicalize()
+            .map_err(|e| format!("Failed to resolve path: {e}"))?;
+        let is_allowed = allowed_dirs.iter().any(|dir| {
+            Path::new(dir)
+                .canonicalize()
+                .is_ok_and(|root| canonical.starts_with(root))
+        });
         if !is_allowed {
             return Err(format!(
                 "Path must be within allowed directories: {:?}",
@@ -215,7 +230,7 @@ pub mod validation {
             ));
         }
 
-        Ok(path.to_string())
+        Ok(canonical.to_string_lossy().into_owned())
     }
 
     pub fn validate_args(args: &str) -> Result<String, String> {
@@ -230,6 +245,28 @@ pub mod validation {
         }
 
         Ok(args.to_string())
+    }
+}
+
+#[cfg(test)]
+mod path_security_tests {
+    use super::validation::validate_path;
+
+    #[test]
+    fn debugger_path_rejects_traversal_symlink_and_prefix_lookalike() {
+        let root = tempfile::tempdir().unwrap();
+        let allowed = root.path().join("allowed");
+        std::fs::create_dir(&allowed).unwrap();
+        let inside = allowed.join("log");
+        std::fs::write(&inside, "ok").unwrap();
+        let outside = root.path().join("outside");
+        std::fs::write(&outside, "secret").unwrap();
+        std::os::unix::fs::symlink(&outside, allowed.join("link")).unwrap();
+        let root_str = allowed.to_str().unwrap();
+        assert!(validate_path(inside.to_str().unwrap(), &[root_str]).is_ok());
+        assert!(validate_path(allowed.join("../outside").to_str().unwrap(), &[root_str]).is_err());
+        assert!(validate_path(allowed.join("link").to_str().unwrap(), &[root_str]).is_err());
+        assert!(validate_path(outside.to_str().unwrap(), &[root_str]).is_err());
     }
 }
 

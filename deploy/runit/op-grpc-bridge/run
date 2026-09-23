@@ -40,6 +40,9 @@ set +a
 # accept the secret itself from the broad environment file.
 export TCHED_ROUTER_RUNTIME_ENDPOINT="${TCHED_ROUTER_RUNTIME_ENDPOINT:-http://127.0.0.1:8084}"
 export TCHED_ROUTER_RUNTIME_AGENT="${TCHED_ROUTER_RUNTIME_AGENT:-dashboard}"
+# All user-facing model choices use the native OpenCode session adapter. Old
+# private provider entries may remain for rollback but are not public routes.
+export TCHED_ROUTER_REQUIRE_OPENCODE=1
 TCHED_ROUTER_RUNTIME_TOKEN_FILE=${TCHED_ROUTER_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/tched-router-runtime-token}
 unset TCHED_ROUTER_RUNTIME_TOKEN
 if [ ! -f "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ] || [ -L "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ]; then
@@ -118,7 +121,7 @@ wait_for_ipv4 svc0 10.0.0.3 "${OP_GRPC_SVC0_WAIT_SECS:-90}"
 # identities (10.0.0.2 tonic-web, 10.200.0.2 gRPC) arrive through Xray; this
 # process must not bind them. Loopback and the UDS are internal transports,
 # not additional fabric surfaces.
-FABRIC_BIND="127.0.0.1:8090,10.0.0.3:8090"
+FABRIC_BIND="127.0.0.1:8090,10.0.0.2:8090,10.0.0.3:8090"
 export TCHED_ROUTER_BIND_ADDR="$FABRIC_BIND"
 export GRPC_BIND="$FABRIC_BIND"
 export TCHED_ROUTER_UNIX_SOCKET="${TCHED_ROUTER_UNIX_SOCKET:-/run/opdbus/grpc.sock}"

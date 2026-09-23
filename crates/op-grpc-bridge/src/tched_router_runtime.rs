@@ -84,6 +84,7 @@ pub(crate) struct TchedRouterRuntimeClient {
     endpoint_error: Option<String>,
     agent_alias: String,
     token: Option<String>,
+    sealed_identity: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -226,7 +227,14 @@ impl TchedRouterRuntimeClient {
             endpoint_error,
             agent_alias,
             token,
+            sealed_identity: None,
         }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn with_sealed_identity(mut self, sealed_identity: Option<&str>) -> Self {
+        self.sealed_identity = sealed_identity.map(ToOwned::to_owned);
+        self
     }
 
     fn http(&self) -> anyhow::Result<&reqwest::Client> {
@@ -289,6 +297,7 @@ impl TchedRouterRuntimeClient {
                 prompt: input.prompt,
                 expected_provider,
                 expected_model,
+                sealed_identity: before_prompt.sealed_identity().map(ToOwned::to_owned),
                 before_prompt,
             },
         )
@@ -378,10 +387,17 @@ impl TchedRouterRuntimeClient {
         if let Some(error) = &self.endpoint_error {
             return Err(anyhow!(error.clone()));
         }
-        Ok(match &self.token {
+        let mut request = match &self.token {
             Some(token) => request.bearer_auth(token),
             None => request,
-        })
+        };
+        if let Some(identity) = self.sealed_identity.as_deref() {
+            let mut header = reqwest::header::HeaderValue::from_str(identity)
+                .map_err(|_| anyhow!("invalid canonical SID1 metadata"))?;
+            header.set_sensitive(true);
+            request = request.header("x-opdbus-sealed-id-bin", header);
+        }
+        Ok(request)
     }
 
     async fn send_json<T: DeserializeOwned>(
@@ -398,6 +414,18 @@ impl TchedRouterRuntimeClient {
             .await
             .with_context(|| format!("tched_router {operation} request failed"))?;
         let status = response.status();
+        if operation == "chat"
+            && self.sealed_identity.is_some()
+            && response
+                .headers()
+                .get("x-opdbus-identity-authenticated")
+                .and_then(|value| value.to_str().ok())
+                != Some("SID1")
+        {
+            return Err(anyhow!(
+                "tched_router {operation} did not authenticate the forwarded SID1"
+            ));
+        }
         if response
             .content_length()
             .is_some_and(|length| length > max_response_bytes as u64)
@@ -971,7 +999,11 @@ impl TchedRouterRuntimeClient {
                 "list configured providers",
             )
             .await?;
-        parse_configured_providers(response.entries)
+        let mut providers = parse_configured_providers(response.entries)?;
+        if std::env::var("TCHED_ROUTER_REQUIRE_OPENCODE").as_deref() == Ok("1") {
+            providers.retain(|provider| provider.reference.starts_with("custom.opencode_"));
+        }
+        Ok(providers)
     }
 
     async fn runtime_defaults(&self) -> anyhow::Result<(String, String)> {
@@ -1036,6 +1068,16 @@ impl TchedRouterRuntimeClient {
             provider: observed.family,
             model: observed.selected_model,
         })
+    }
+
+    /// Observe the connected OpenCode model inventory through the native
+    /// provider. A fallback/static catalog is not proof of account access.
+    pub(crate) async fn connected_opencode_models(
+        &self,
+    ) -> anyhow::Result<std::collections::BTreeSet<String>> {
+        let catalog = self.model_catalog("custom").await?;
+        anyhow::ensure!(catalog.live, "OpenCode model inventory is not live");
+        Ok(catalog.models.into_iter().collect())
     }
 
     #[allow(dead_code)] // Runtime catalog projection helper; selection dispatch reads its own inputs.

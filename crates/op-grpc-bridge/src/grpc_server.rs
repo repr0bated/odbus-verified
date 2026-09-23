@@ -434,6 +434,15 @@ struct RegistryInner {
 }
 
 impl RegistryInner {
+    fn ensure_registration_vacant(&self, component_id: &str) -> Result<(), Status> {
+        if self.components.contains_key(component_id) {
+            return Err(Status::permission_denied(
+                "component is already registered; deregister with its lease before registering again",
+            ));
+        }
+        Ok(())
+    }
+
     fn new() -> (
         Self,
         broadcast::Sender<crate::proto::registry::RegistryEvent>,
@@ -447,6 +456,41 @@ impl RegistryInner {
             },
             tx,
         )
+    }
+}
+
+#[cfg(test)]
+mod component_registration_tests {
+    use super::*;
+
+    #[test]
+    fn occupied_component_id_requires_prior_lease_deregistration() {
+        let (mut registry, _) = RegistryInner::new();
+        let component_id = "component-a".to_string();
+        let existing = crate::proto::registry::ComponentInfo {
+            component_id: component_id.clone(),
+            endpoint: "unix:///original.sock".into(),
+            ..Default::default()
+        };
+        registry
+            .components
+            .insert(component_id.clone(), existing.clone());
+        registry
+            .leases
+            .insert(component_id.clone(), "original-lease".into());
+
+        let error = registry
+            .ensure_registration_vacant(&component_id)
+            .unwrap_err();
+        assert_eq!(error.code(), tonic::Code::PermissionDenied);
+        assert_eq!(
+            registry.components[&component_id].endpoint,
+            existing.endpoint
+        );
+        assert_eq!(registry.leases[&component_id], "original-lease");
+        registry
+            .ensure_registration_vacant("new-component")
+            .unwrap();
     }
 }
 
@@ -3348,12 +3392,13 @@ impl ComponentRegistry for OperationGrpcServer {
             return Err(Status::invalid_argument("component_id must not be empty"));
         }
 
-        let lease_token = Uuid::new_v4().to_string();
-        let now = OperationGrpcServer::now_ts();
-
         let mut inner = self.registry.write().await;
 
-        let is_update = inner.components.contains_key(&req.component_id);
+        // RegisterRequest carries no prior lease or verified owner grant. Do
+        // not let another caller replace an existing endpoint advertisement.
+        inner.ensure_registration_vacant(&req.component_id)?;
+        let lease_token = Uuid::new_v4().to_string();
+        let now = OperationGrpcServer::now_ts();
         let info = ComponentInfo {
             component_id: req.component_id.clone(),
             component_type: req.component_type.clone(),
@@ -3376,13 +3421,8 @@ impl ComponentRegistry for OperationGrpcServer {
             .leases
             .insert(req.component_id.clone(), lease_token.clone());
 
-        let event_type = if is_update {
-            RegistryEventType::RegistryEventUpdated
-        } else {
-            RegistryEventType::RegistryEventRegistered
-        };
         let event = RegistryEvent {
-            event_type: event_type as i32,
+            event_type: RegistryEventType::RegistryEventRegistered as i32,
             component: Some(info),
             timestamp: Some(now),
         };
@@ -3392,17 +3432,12 @@ impl ComponentRegistry for OperationGrpcServer {
         info!(
             component_id = %req.component_id,
             component_type = %req.component_type,
-            update = is_update,
             "component registered"
         );
 
         Ok(Response::new(RegisterResponse {
             success: true,
-            message: if is_update {
-                "updated".to_string()
-            } else {
-                "registered".to_string()
-            },
+            message: "registered".to_string(),
             lease_token,
             registered_at: Some(now),
         }))

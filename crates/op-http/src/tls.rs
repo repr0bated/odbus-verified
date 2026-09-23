@@ -256,30 +256,17 @@ pub fn detect_certificates() -> Result<Option<(String, String)>> {
 
 /// Validate that a certificate and key match
 pub fn validate_cert_key_match(cert_path: &str, key_path: &str) -> Result<bool> {
-    use std::process::Command;
-
     // Get certificate modulus
-    let cert_output = Command::new("openssl")
-        .args(["x509", "-in", cert_path, "-noout", "-modulus"])
-        .output()
-        .map_err(|e| ServerError::CertificateError(format!("Failed to run openssl: {}", e)))?;
+    let cert_output = run_openssl(&["x509", "-in", cert_path, "-noout", "-modulus"])?;
 
-    let key_output = Command::new("openssl")
-        .args(["rsa", "-in", key_path, "-noout", "-modulus"])
-        .output()
-        .map_err(|e| ServerError::CertificateError(format!("Failed to run openssl: {}", e)))?;
+    let key_output = run_openssl(&["rsa", "-in", key_path, "-noout", "-modulus"])?;
 
     Ok(cert_output.stdout == key_output.stdout)
 }
 
 /// Get certificate expiry information
 pub fn get_cert_expiry(cert_path: &str) -> Result<String> {
-    use std::process::Command;
-
-    let output = Command::new("openssl")
-        .args(["x509", "-in", cert_path, "-noout", "-enddate"])
-        .output()
-        .map_err(|e| ServerError::CertificateError(format!("Failed to run openssl: {}", e)))?;
+    let output = run_openssl(&["x509", "-in", cert_path, "-noout", "-enddate"])?;
 
     let expiry = String::from_utf8_lossy(&output.stdout)
         .replace("notAfter=", "")
@@ -291,13 +278,42 @@ pub fn get_cert_expiry(cert_path: &str) -> Result<String> {
 
 /// Check if certificate is from Cloudflare
 pub fn is_cloudflare_cert(cert_path: &str) -> Result<bool> {
-    use std::process::Command;
-
-    let output = Command::new("openssl")
-        .args(["x509", "-in", cert_path, "-noout", "-issuer"])
-        .output()
-        .map_err(|e| ServerError::CertificateError(format!("Failed to run openssl: {}", e)))?;
+    let output = run_openssl(&["x509", "-in", cert_path, "-noout", "-issuer"])?;
 
     let issuer = String::from_utf8_lossy(&output.stdout).to_lowercase();
     Ok(issuer.contains("cloudflare"))
+}
+
+fn run_openssl(args: &[&str]) -> Result<std::process::Output> {
+    let output = std::process::Command::new("openssl")
+        .args(args)
+        .output()
+        .map_err(|error| {
+            ServerError::CertificateError(format!("Failed to run openssl: {error}"))
+        })?;
+    if !output.status.success() {
+        return Err(ServerError::CertificateError(format!(
+            "openssl rejected certificate material ({}): {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr).trim()
+        )));
+    }
+    Ok(output)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invalid_certificate_and_key_are_not_reported_as_matching() {
+        let directory = tempfile::tempdir().unwrap();
+        let certificate = directory.path().join("certificate.pem");
+        let key = directory.path().join("key.pem");
+        std::fs::write(&certificate, "not a certificate").unwrap();
+        std::fs::write(&key, "not a private key").unwrap();
+
+        let result = validate_cert_key_match(certificate.to_str().unwrap(), key.to_str().unwrap());
+        assert!(matches!(result, Err(ServerError::CertificateError(_))));
+    }
 }

@@ -51,6 +51,16 @@ pub struct ServiceEvent {
 }
 
 impl ServiceManager {
+    #[cfg(test)]
+    pub(crate) fn for_test(store: Arc<Store>) -> Self {
+        let (events, _) = broadcast::channel(256);
+        Self {
+            store,
+            statuses: Arc::new(RwLock::new(HashMap::new())),
+            events,
+        }
+    }
+
     pub async fn new(store: Arc<Store>) -> anyhow::Result<Self> {
         if !Path::new(RUNIT_ACTIVE_DIR).is_dir() {
             anyhow::bail!("runit active service directory not found at {RUNIT_ACTIVE_DIR}");

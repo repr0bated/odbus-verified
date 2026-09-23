@@ -47,6 +47,32 @@ history, workspace, memory, tool, or persistence state. It opts in only for
 providers that declare support and rejects provider request overrides that
 could alter the messages, tools, or model.
 
+Patch 0002 also adds the OP-DBUS OpenCode session transport selected by the
+local-only `provider_extra.opdbus_transport = "opencode_session"` marker. The
+marker is consumed before request serialization. The adapter accepts only an
+explicit literal-loopback HTTP URI, authenticates to OpenCode with Basic user
+`opencode`, creates one deny-all disposable session per request, pins the exact
+`providerID/modelID`, rejects tool/agent response parts and always deletes the
+session (aborting first on cancellation). Live model discovery comes from
+OpenCode's connected provider catalog and excludes the `openrouter` provider.
+The live catalog path preserves the configured alias options so the local
+transport marker reaches the factory without entering an upstream request.
+
+The HTTP contract was checked against OpenCode 1.18.31's generated OpenAPI:
+`GET /provider`, `POST /session`, `POST /session/:id/message`,
+`POST /session/:id/abort`, and `DELETE /session/:id`. The adapter does not read
+OpenCode's OAuth files or launch OpenCode; the installed server owns upstream
+provider authentication.
+
+Native inference additionally requires the original identity-sled-authored
+SID1 credential. The gateway verifies that opaque credential against the
+configured OP-DBUS MCP door before WebSocket, A2A, or live-catalog admission;
+the OpenCode adapter rechecks it immediately before session creation and the
+message request. Native code neither decodes nor mints SID1. Configure
+`OPDBUS_SLED_AUTH_URL` and `OPDBUS_SLED_CA_FILE` for the authoritative TLS
+callback. The OpenCode Basic password is a local channel credential and never
+substitutes for the caller identity.
+
 This protocol is opt-in. Older native binaries do not understand the new
 query/protocol admission and cannot back new stateless-generation jobs. The
 mode is one-turn provider transport; it does not provide replay, global
@@ -56,13 +82,17 @@ Future repository inputs must retain the checked-in complete upstream archive
 at this pin and this patch package. The gateway and providers have workspace dependencies;
 copying those two crate directories alone is insufficient. The gateway test dependency
 adds `tokio-tungstenite = "=0.29.0"`; lockfile changes are included in 0002.
-The focused tests use loopback HTTP fixtures and do not require provider
-credentials. Suggested commands after applying the patches are:
+The focused tests use loopback HTTP and TLS fixtures and do not require live
+provider credentials. Suggested commands after applying the patches are:
 
 ```sh
 cargo fmt --all -- --check
-cargo clippy --locked -p zeroclaw-api -p zeroclaw-providers -p zeroclaw-gateway --all-targets -- -D warnings
+cargo clippy --locked -p zeroclaw-api -p zeroclaw-providers -p zeroclaw-runtime -p zeroclaw-gateway --all-targets -- -D warnings
 cargo test --locked -p zeroclaw-providers -p zeroclaw-gateway --lib stateless
+cargo test --locked -p zeroclaw-providers --lib opencode_session
+cargo test --locked -p zeroclaw-providers --lib sled_identity
+cargo test --locked -p zeroclaw-gateway --lib ws_stateless
+cargo test --locked -p zeroclaw-runtime --lib model_catalog_with_config
 cargo test --locked -p zeroclaw-providers -p zeroclaw-gateway --lib eof_after_stop_reason_without_message_stop_surfaces_error_not_final
 cargo test --locked -p zeroclaw-providers -p zeroclaw-gateway --lib live_event_stream
 ```

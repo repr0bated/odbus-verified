@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use tokio::sync::{broadcast, RwLock};
+use tonic::{Request, Status};
 use tonic_reflection;
 use tonic_web;
 
@@ -153,7 +154,15 @@ impl OrchestrationServer {
 
 /// Start the orchestration gRPC server on the given address.
 ///
-/// Registers all 4 services on a single `tonic::Server`.
+/// The standalone compatibility listener has no canonical principal and
+/// operation-grant verifier. All RPCs remain unavailable until the bridge's
+/// admission authority can be shared with this process.
+fn require_canonical_admission(_request: Request<()>) -> Result<Request<()>, Status> {
+    Err(Status::unavailable(
+        "standalone orchestration RPCs require canonical identity and operation-grant admission",
+    ))
+}
+
 pub async fn run_orchestration_server(
     server: Arc<OrchestrationServer>,
     addr: std::net::SocketAddr,
@@ -177,6 +186,7 @@ pub async fn run_orchestration_server(
         .expect("failed to build reflection service");
 
     tonic::transport::Server::builder()
+        .layer(tonic::service::interceptor(require_canonical_admission))
         .accept_http1(true)
         .add_service(tonic_web::enable(AgentLifecycleServer::from_arc(
             server.clone(),
@@ -205,4 +215,83 @@ pub async fn run_orchestration_server(
         .add_service(tonic_web::enable(reflection))
         .serve(addr)
         .await
+}
+
+#[cfg(test)]
+mod admission_tests {
+    use super::*;
+    use crate::orchestration::proto::op_chat_orchestration::{
+        agent_execution_server::AgentExecutionServer,
+        rust_pro_service_server::{RustProService, RustProServiceServer},
+        CargoRequest,
+    };
+    use crate::orchestration::workstack_executor::ToolExecutor;
+    use tonic::codegen::{http, Service};
+    use tonic::service::interceptor::InterceptedService;
+    use tonic::Code;
+
+    struct NeverExecuteTool;
+
+    impl ToolExecutor for NeverExecuteTool {
+        fn execute<'a>(
+            &'a self,
+            _tool: &'a str,
+            _arguments: &'a simd_json::OwnedValue,
+        ) -> std::pin::Pin<
+            Box<
+                dyn std::future::Future<
+                        Output = crate::orchestration::error::OrchestrationResult<
+                            simd_json::OwnedValue,
+                        >,
+                    > + Send
+                    + 'a,
+            >,
+        > {
+            Box::pin(async { panic!("unauthenticated tool execution") })
+        }
+    }
+
+    #[tokio::test]
+    async fn standalone_services_reject_cargo_and_agent_execution_before_dispatch() {
+        let pool = Arc::new(GrpcAgentPool::with_defaults());
+        let executor = Arc::new(WorkstackExecutor::new(
+            pool.clone(),
+            Arc::new(NeverExecuteTool),
+        ));
+        let server = Arc::new(OrchestrationServer::new(pool, executor));
+        // The handler also fails closed if mounted outside this listener.
+        assert!(matches!(
+            server.check(tonic::Request::new(CargoRequest::default())).await,
+            Err(status) if status.code() == Code::Unavailable
+        ));
+        assert!(matches!(
+            server.build(tonic::Request::new(CargoRequest::default())).await,
+            Err(status) if status.code() == Code::Unavailable
+        ));
+        let mut rust_pro = InterceptedService::new(
+            RustProServiceServer::from_arc(server.clone()),
+            require_canonical_admission,
+        );
+        for method in ["Check", "Build"] {
+            let request = http::Request::builder()
+                .uri(format!("/op.chat.orchestration.v1.RustProService/{method}"))
+                .header("content-type", "application/grpc")
+                .body(tonic::body::empty_body())
+                .unwrap();
+            let response = rust_pro.call(request).await.unwrap();
+            assert_eq!(response.headers().get("grpc-status").unwrap(), "14");
+        }
+
+        let mut agent = InterceptedService::new(
+            AgentExecutionServer::from_arc(server),
+            require_canonical_admission,
+        );
+        let request = http::Request::builder()
+            .uri("/op.chat.orchestration.v1.AgentExecution/Execute")
+            .header("content-type", "application/grpc")
+            .body(tonic::body::empty_body())
+            .unwrap();
+        let response = agent.call(request).await.unwrap();
+        assert_eq!(response.headers().get("grpc-status").unwrap(), "14");
+    }
 }

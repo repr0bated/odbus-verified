@@ -512,6 +512,32 @@ impl UserStore {
         Ok(())
     }
 
+    /// Reuse the existing per-user bearer credential, minting it only after a
+    /// successful account verification. Provider keys are left untouched.
+    pub async fn ensure_user_api_token(&self, user_id: &str) -> Result<String> {
+        let mut user = self.get_user(user_id).await.context("User not found")?;
+        anyhow::ensure!(user.email_verified, "User is not verified");
+        if let Some(credentials) = &user.api_credentials {
+            if !credentials.token.is_empty() {
+                return Ok(credentials.token.clone());
+            }
+        }
+        let token = generate_magic_link_token(32);
+        if let Some(credentials) = user.api_credentials.as_mut() {
+            credentials.token = token.clone();
+        } else {
+            user.api_credentials = Some(UserApiCredentials {
+                token: token.clone(),
+                gemini_api_key: None,
+                anthropic_api_key: None,
+                openai_api_key: None,
+                preferred_provider: None,
+            });
+        }
+        self.upsert_in_cozo(&user).await?;
+        Ok(token)
+    }
+
     /// Mark a user as connected to the privacy network and persist container mapping.
     pub async fn mark_privacy_network_connected(
         &self,
@@ -591,5 +617,52 @@ impl UserStore {
             .await
             .context("spawn_blocking")??;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod privacy_token_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn verification_mints_reusable_account_token_without_replacing_provider_keys() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = UserStore::new(directory.path().join("users").to_string_lossy().to_string())
+            .await
+            .unwrap();
+        let user = store
+            .create_user("owner@example.test", "public".into(), "private".into())
+            .await
+            .unwrap();
+        assert!(store.ensure_user_api_token(&user.id).await.is_err());
+        let link = store.create_magic_link(&user.id).await.unwrap();
+        store.verify_magic_link(&link.token).await.unwrap();
+        let token = store.ensure_user_api_token(&user.id).await.unwrap();
+        assert!(!token.is_empty());
+        store
+            .set_user_api_credentials(
+                &user.id,
+                UserApiCredentials {
+                    token: token.clone(),
+                    gemini_api_key: Some("provider-secret".into()),
+                    anthropic_api_key: None,
+                    openai_api_key: None,
+                    preferred_provider: None,
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(store.ensure_user_api_token(&user.id).await.unwrap(), token);
+        assert_eq!(
+            store
+                .get_user(&user.id)
+                .await
+                .unwrap()
+                .api_credentials
+                .unwrap()
+                .gemini_api_key
+                .as_deref(),
+            Some("provider-secret")
+        );
     }
 }

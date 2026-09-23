@@ -1,0 +1,35 @@
+{
+  "format": "opdbus.opencode-runtime.v1",
+  "binary": "/usr/bin/opencode",
+  "version": "1.18.31",
+  "sha256": "f9dab32248695e9ebd56b16a1921798fd85112cf5a69c7dfd0cabc1e17be4a11",
+  "user": "jeremy",
+  "host": "127.0.0.1",
+  "port": 4096,
+  "username": "opencode",
+  "password_file": "/etc/op-dbus/secrets/opencode-server-password",
+  "auth_file": "/home/jeremy/.local/share/opencode/auth.json",
+  "config_dir": "/var/lib/opencode/config",
+  "work_dir": "/var/lib/opencode/workspace",
+  "agent": "opdbus-completion",
+  "config": {
+    "share": "disabled",
+    "autoshare": false,
+    "mcp": {},
+    "agent": {
+      "opdbus-completion": {
+        "mode": "primary",
+        "description": "Authenticated OP-DBUS completion agent; provider selection only.",
+        "tools": {"*": false},
+        "permission": {
+          "edit": "deny",
+          "bash": "deny",
+          "webfetch": "deny",
+          "doom_loop": "deny",
+          "external_directory": "deny",
+          "*": "deny"
+        }
+      }
+    }
+  }
+}

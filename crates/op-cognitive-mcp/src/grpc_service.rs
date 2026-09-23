@@ -491,6 +491,7 @@ impl CognitiveToolService for CognitiveGrpcService {
         &self,
         request: Request<AddFolderRequest>,
     ) -> Result<Response<AddFolderResponse>, Status> {
+        require_add_folder_admission(&request)?;
         let req = request.into_inner();
         info!(
             notebook_id = %req.notebook_id,
@@ -1079,6 +1080,14 @@ impl CognitiveToolService for CognitiveGrpcService {
     }
 }
 
+/// The compatibility service has no verified caller or approved filesystem root.
+/// A caller-supplied notebook ID or folder path cannot grant host-file access.
+fn require_add_folder_admission<T>(_request: &Request<T>) -> Result<(), Status> {
+    Err(Status::permission_denied(
+        "AddFolder requires a verified caller and approved filesystem root",
+    ))
+}
+
 // ---------------------------------------------------------------------------
 // Filesystem helpers — no shell=True, pure Rust (R13)
 // ---------------------------------------------------------------------------
@@ -1138,6 +1147,24 @@ fn glob_match_inner(pattern: &[char], name: &[char]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use tonic::Code;
+
+    #[test]
+    fn add_folder_denies_untrusted_path_before_filesystem_access() {
+        for path in ["/etc", "../private", "/tmp/linked-root"] {
+            let request = Request::new(AddFolderRequest {
+                notebook_id: "caller-supplied".into(),
+                folder_path: path.into(),
+                patterns: vec![],
+                recursive: true,
+            });
+            assert_eq!(
+                require_add_folder_admission(&request).unwrap_err().code(),
+                Code::PermissionDenied
+            );
+        }
+    }
 
     #[test]
     fn should_glob_match_star() {

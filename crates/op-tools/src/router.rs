@@ -4,6 +4,7 @@
 
 use axum::{
     extract::State,
+    http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -106,25 +107,34 @@ async fn get_tool_handler(
 }
 
 async fn execute_tool_handler(
-    State(state): State<ToolsState>,
-    axum::extract::Path(name): axum::extract::Path<String>,
-    Json(params): Json<Value>,
+    State(_state): State<ToolsState>,
+    axum::extract::Path(_name): axum::extract::Path<String>,
+    Json(_params): Json<Value>,
 ) -> impl IntoResponse {
-    if let Some(tool) = state.registry.get(&name).await {
-        match tool.execute(params).await {
-            Ok(result) => Json(json!({
-                "success": true,
-                "result": result
-            })),
-            Err(e) => Json(json!({
-                "success": false,
-                "error": e.to_string()
-            })),
-        }
-    } else {
+    (
+        StatusCode::FORBIDDEN,
         Json(json!({
             "success": false,
-            "error": "Tool not found"
-        }))
+            "error": "direct HTTP tool execution is disabled; use an admitted caller path"
+        })),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn direct_http_execution_fails_closed() {
+        let state = ToolsState::new(Arc::new(ToolRegistry::new()));
+        let response = execute_tool_handler(
+            State(state),
+            axum::extract::Path("shell_execute".to_string()),
+            Json(json!({ "command": "touch /tmp/should-not-run" })),
+        )
+        .await
+        .into_response();
+
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 }

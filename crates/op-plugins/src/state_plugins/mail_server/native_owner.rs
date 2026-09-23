@@ -431,51 +431,61 @@ impl MailAdminService {
 
 #[zbus::interface(name = "org.opdbus.v1.plugins.mail_server.Native")]
 impl MailAdminService {
-    async fn add_domain(&self, domain: &str) -> zbus::fdo::Result<String> {
-        json_reply(self.add_domain_inner(domain).await)
+    async fn add_domain(&self, _domain: &str) -> zbus::fdo::Result<String> {
+        mutation_requires_grant()
     }
-    async fn remove_domain(&self, domain: &str) -> zbus::fdo::Result<String> {
-        json_reply(self.remove_domain_inner(domain).await)
+    async fn remove_domain(&self, _domain: &str) -> zbus::fdo::Result<String> {
+        mutation_requires_grant()
     }
     async fn add_mailbox(
         &self,
-        domain: &str,
-        user: &str,
-        password_hash: &str,
+        _domain: &str,
+        _user: &str,
+        _password_hash: &str,
     ) -> zbus::fdo::Result<String> {
-        json_reply(self.add_mailbox_inner(domain, user, password_hash).await)
+        mutation_requires_grant()
     }
-    async fn remove_mailbox(&self, domain: &str, user: &str) -> zbus::fdo::Result<String> {
-        json_reply(self.remove_mailbox_inner(domain, user).await)
+    async fn remove_mailbox(&self, _domain: &str, _user: &str) -> zbus::fdo::Result<String> {
+        mutation_requires_grant()
     }
     async fn add_alias(
         &self,
-        domain: &str,
-        alias: &str,
-        destination: &str,
+        _domain: &str,
+        _alias: &str,
+        _destination: &str,
     ) -> zbus::fdo::Result<String> {
-        json_reply(self.add_alias_inner(domain, alias, destination).await)
+        mutation_requires_grant()
     }
-    async fn remove_alias(&self, domain: &str, alias: &str) -> zbus::fdo::Result<String> {
-        json_reply(self.remove_alias_inner(domain, alias).await)
+    async fn remove_alias(&self, _domain: &str, _alias: &str) -> zbus::fdo::Result<String> {
+        mutation_requires_grant()
     }
     async fn set_quota(
         &self,
-        domain: &str,
-        user: &str,
-        quota_mb: u32,
+        _domain: &str,
+        _user: &str,
+        _quota_mb: u32,
     ) -> zbus::fdo::Result<String> {
-        json_reply(self.set_quota_inner(domain, user, quota_mb).await)
+        mutation_requires_grant()
     }
     async fn get_queue(&self) -> zbus::fdo::Result<String> {
         json_reply(self.get_queue_inner().await)
     }
     async fn flush_queue(&self) -> zbus::fdo::Result<String> {
-        json_reply(self.flush_queue_inner().await)
+        mutation_requires_grant()
     }
     async fn get_state(&self) -> zbus::fdo::Result<String> {
         json_reply(self.state().await)
     }
+}
+
+fn mutation_requires_grant() -> zbus::fdo::Result<String> {
+    // The private p2p socket authenticates a Unix UID, not the SID1 principal
+    // and exact mail capability admitted by MutationEngine. Until that
+    // verified context reaches this owner, a same-UID peer must not mutate.
+    Err(zbus::fdo::Error::AccessDenied(
+        "mail mutation requires a verified principal and exact capability grant at the native owner"
+            .to_string(),
+    ))
 }
 
 fn json_reply<T: Serialize>(value: Result<T>) -> zbus::fdo::Result<String> {

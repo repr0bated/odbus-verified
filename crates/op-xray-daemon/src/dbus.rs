@@ -15,7 +15,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, warn};
 use zbus::interface;
 
 /// Status information for the Xray daemon
@@ -103,24 +103,12 @@ impl XrayService {
     /// an instance is already running rather than starting one. Use the
     /// container's systemd unit to actually start xray.
     async fn start(&mut self, config_path: &str) -> (bool, String) {
-        info!("Xray start requested with config: {}", config_path);
-
-        if !find_xray_pids().is_empty() {
-            let mut state = self.state.lock().await;
-            state.config_path = Some(config_path.to_string());
-            return (
-                true,
-                "xray is already running (started by the container's systemd unit, \
-                 not this daemon)"
-                    .to_string(),
-            );
-        }
-
         (
             false,
-            "xray is not running and this daemon cannot start it directly (no subprocess \
-             spawning) — start it via the `xray` container's systemd unit (`xray.service`)"
-                .to_string(),
+            format!(
+                "Xray lifecycle mutation requires an authenticated caller with xray.manage; \
+                 this D-Bus interface cannot verify that capability (requested config: {config_path})"
+            ),
         )
     }
 
@@ -129,28 +117,12 @@ impl XrayService {
     /// deliberate restart-in-place, not to permanently take xray down).
     /// Returns (success, message)
     async fn stop(&mut self) -> (bool, String) {
-        info!("Xray stop requested");
-
-        let pids = find_xray_pids();
-        if pids.is_empty() {
-            warn!("Xray is not running");
-            return (false, "Xray is not running".to_string());
-        }
-
-        let mut errors = Vec::new();
-        for pid in &pids {
-            if let Err(e) = nix::sys::signal::kill(*pid, nix::sys::signal::Signal::SIGTERM) {
-                errors.push(format!("pid {pid}: {e}"));
-            }
-        }
-
-        if errors.is_empty() {
-            info!("Xray process(es) terminated: {:?}", pids);
-            (true, "Xray stopped successfully".to_string())
-        } else {
-            error!("Failed to stop xray: {:?}", errors);
-            (false, format!("Failed to stop xray: {}", errors.join(", ")))
-        }
+        (
+            false,
+            "Xray lifecycle mutation requires an authenticated caller with xray.manage; \
+             this D-Bus interface cannot verify that capability"
+                .to_string(),
+        )
     }
 
     /// Reload xray configuration by sending SIGHUP to the real running
@@ -160,11 +132,13 @@ impl XrayService {
     /// container's own deploy).
     /// Returns (success, message)
     async fn restart(&mut self, config_path: &str) -> (bool, String) {
-        info!("Xray restart (reload) requested");
-        let mut state = self.state.lock().await;
-        state.config_path = Some(config_path.to_string());
-        drop(state);
-        self.reload().await
+        (
+            false,
+            format!(
+                "Xray lifecycle mutation requires an authenticated caller with xray.manage; \
+                 this D-Bus interface cannot verify that capability (requested config: {config_path})"
+            ),
+        )
     }
 
     /// Get current xray status as JSON string
@@ -185,34 +159,12 @@ impl XrayService {
     /// Reload xray configuration by sending SIGHUP
     /// Returns (success, message)
     async fn reload(&self) -> (bool, String) {
-        info!("Xray reload requested");
-
-        let pids = find_xray_pids();
-        if pids.is_empty() {
-            warn!("Cannot reload: Xray is not running");
-            return (false, "Xray is not running".to_string());
-        }
-
-        let mut errors = Vec::new();
-        for pid in &pids {
-            if let Err(e) = nix::sys::signal::kill(*pid, nix::sys::signal::Signal::SIGHUP) {
-                errors.push(format!("pid {pid}: {e}"));
-            }
-        }
-
-        if errors.is_empty() {
-            info!("Sent SIGHUP to xray {:?}", pids);
-            (
-                true,
-                format!("Reload signal sent to xray (PIDs: {:?})", pids),
-            )
-        } else {
-            error!("Failed to send SIGHUP: {:?}", errors);
-            (
-                false,
-                format!("Failed to send reload signal: {}", errors.join(", ")),
-            )
-        }
+        (
+            false,
+            "Xray lifecycle mutation requires an authenticated caller with xray.manage; \
+             this D-Bus interface cannot verify that capability"
+                .to_string(),
+        )
     }
 
     /// Get current config path
@@ -227,6 +179,13 @@ impl XrayService {
     /// e.g. if xray's `api`/`stats` blocks aren't configured, or the socket
     /// isn't up yet.
     async fn query_stats(&self, pattern: &str, reset: bool) -> String {
+        if reset {
+            return serde_json::json!({
+                "error": "resetting Xray statistics requires an authenticated caller with xray.manage"
+            })
+            .to_string();
+        }
+
         let result: anyhow::Result<String> = async {
             let mut client =
                 crate::commander_client::stats_client(crate::commander_client::DEFAULT_API_SOCKET)
@@ -320,5 +279,24 @@ mod tests {
         let service = XrayService::new();
         let status = service.get_status_snapshot().await;
         assert_eq!(status.config_path, None);
+    }
+
+    #[tokio::test]
+    async fn lifecycle_mutations_fail_closed_without_caller_attribution() {
+        let mut service = XrayService::new();
+
+        for result in [
+            service.start("/tmp/untrusted.json").await,
+            service.restart("/tmp/untrusted.json").await,
+            service.stop().await,
+            service.reload().await,
+        ] {
+            assert!(!result.0);
+            assert!(result.1.contains("authenticated caller"));
+        }
+
+        assert_eq!(service.get_config().await, "");
+        let reset = service.query_stats("", true).await;
+        assert!(reset.contains("authenticated caller"));
     }
 }

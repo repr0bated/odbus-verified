@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
 
-use op_core::error::Result;
+use op_core::error::{Error, Result};
 use op_execution_tracker::ExecutionTracker;
 use op_plugins::PluginCatalog;
 use op_tools::registry::ToolRegistry;
@@ -273,6 +273,7 @@ impl Orchestrator {
         input: simd_json::OwnedValue,
         session_id: Option<String>,
     ) -> Result<WorkflowResult> {
+        require_tool_execution_admission(session_id.as_deref())?;
         let request_id = uuid::Uuid::new_v4().to_string();
         let start_time = Instant::now();
 
@@ -340,6 +341,7 @@ impl Orchestrator {
         initial_input: simd_json::OwnedValue,
         session_id: Option<String>,
     ) -> Result<WorkflowResult> {
+        require_tool_execution_admission(session_id.as_deref())?;
         let request_id = uuid::Uuid::new_v4().to_string();
         let start_time = Instant::now();
 
@@ -487,6 +489,47 @@ impl Orchestrator {
         hasher.update(tools.join("→").as_bytes());
         hasher.update(simd_json::to_string(input).unwrap_or_default().as_bytes());
         hex::encode(hasher.finalize())
+    }
+}
+
+/// Session IDs are caller-supplied identifiers, not authenticated principals.
+/// This public facade has no verified caller or capability grant to authorize
+/// registry tools, including cached sequence results.
+fn require_tool_execution_admission(_session_id: Option<&str>) -> Result<()> {
+    Err(Error::PermissionDenied(
+        "tool execution requires a verified caller and exact capability grant".into(),
+    ))
+}
+
+#[cfg(test)]
+mod admission_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn public_tool_execution_denies_caller_supplied_sessions_before_lookup() {
+        let orchestrator = Orchestrator::new(
+            OrchestratorConfig::default(),
+            Arc::new(ToolRegistry::new()),
+            Arc::new(PluginCatalog::new("/unused")),
+        );
+
+        for session in [None, Some("self-asserted-session".to_string())] {
+            let error = orchestrator
+                .execute_tool("missing", simd_json::json!({}), session)
+                .await
+                .unwrap_err();
+            assert!(matches!(error, Error::PermissionDenied(_)));
+        }
+
+        for names in [&[][..], &["one"][..], &["one", "two"][..]] {
+            let error = orchestrator
+                .execute_sequence(names, simd_json::json!({}), Some("claimed".into()))
+                .await
+                .unwrap_err();
+            assert!(matches!(error, Error::PermissionDenied(_)));
+        }
+
+        assert_eq!(orchestrator.stats().await.total_executions, 0);
     }
 }
 

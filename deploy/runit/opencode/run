@@ -1,0 +1,51 @@
+#!/bin/sh
+set -eu
+exec 2>&1
+
+# Re-enter with a minimal environment before reading the password. This keeps
+# inherited service secrets and the password out of the process environment.
+if [ "${OPENCODE_SANITIZED:-}" != 1 ]; then
+    exec env -i OPENCODE_SANITIZED=1 PATH=/usr/local/bin:/usr/bin:/bin \
+        HOME=/home/jeremy USER=jeremy /bin/sh "$0" --sanitized
+fi
+
+RUNTIME=/etc/op-dbus/opencode-runtime.json
+[ -r "$RUNTIME" ] || { echo 'opencode: missing runtime contract' >&2; exit 78; }
+
+binary=$(jq -er '.binary | select(type == "string" and startswith("/usr/bin/"))' "$RUNTIME")
+version=$(jq -er '.version | select(type == "string" and length > 0)' "$RUNTIME")
+digest=$(jq -er '.sha256 | select(test("^[0-9a-f]{64}$"))' "$RUNTIME")
+user=$(jq -er '.user | select(. == "jeremy")' "$RUNTIME")
+host=$(jq -er '.host | select(. == "127.0.0.1")' "$RUNTIME")
+port=$(jq -er '.port | select(type == "number" and floor == . and . >= 1024 and . <= 65535)' "$RUNTIME")
+username=$(jq -er '.username | select(type == "string" and test("^[A-Za-z0-9_-]+$"))' "$RUNTIME")
+password_file=$(jq -er '.password_file | select(. == "/etc/op-dbus/secrets/opencode-server-password")' "$RUNTIME")
+auth_file=$(jq -er '.auth_file | select(. == "/home/jeremy/.local/share/opencode/auth.json")' "$RUNTIME")
+config_dir=$(jq -er '.config_dir | select(. == "/var/lib/opencode/config")' "$RUNTIME")
+work_dir=$(jq -er '.work_dir | select(. == "/var/lib/opencode/workspace")' "$RUNTIME")
+agent=$(jq -er '.agent | select(. == "opdbus-completion")' "$RUNTIME")
+
+[ -x "$binary" ] || { echo 'opencode: pinned binary missing' >&2; exit 78; }
+[ "$($binary --version)" = "$version" ] || { echo 'opencode: version mismatch' >&2; exit 78; }
+[ "$(sha256sum "$binary" | awk '{print $1}')" = "$digest" ] || {
+    echo 'opencode: binary digest mismatch' >&2
+    exit 78
+}
+[ -r "$auth_file" ] || { echo 'opencode: OpenCode auth state is missing' >&2; exit 78; }
+[ -f "$password_file" ] || { echo 'opencode: server password is not provisioned' >&2; exit 78; }
+set -- $(stat -Lc '%u %a' "$password_file")
+[ "$1" = 0 ] && case "$2" in 400|600) ;; *) echo 'opencode: password file must be root-owned 0400/0600' >&2; exit 78 ;; esac
+password=$(cat "$password_file")
+[ -n "$password" ] || { echo 'opencode: server password is empty' >&2; exit 78; }
+
+install -d -o "$user" -g "$user" -m 0700 "$config_dir" "$work_dir"
+config_content=$(jq -ce '.config | select(.share == "disabled" and .autoshare == false and (.mcp | type == "object" and length == 0) and .agent["opdbus-completion"].tools["*"] == false and .agent["opdbus-completion"].permission["*"] == "deny")' "$RUNTIME")
+
+# chpst -d is a data-size limit on this platform, so establish the working
+# directory in the shell and pass the password only through inherited env.
+cd "$work_dir"
+export HOME=/home/jeremy USER=jeremy PATH=/usr/local/bin:/usr/bin:/bin
+export OPENCODE_CONFIG_DIR="$config_dir" OPENCODE_CONFIG_CONTENT="$config_content"
+export OPENCODE_AUTH_FILE="$auth_file" OPENCODE_SERVER_USERNAME="$username"
+export OPENCODE_SERVER_PASSWORD="$password"
+exec chpst -u "$user:$user" "$binary" serve --hostname "$host" --port "$port"

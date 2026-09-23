@@ -70,6 +70,7 @@ pub fn seal_blobs_into_btrfs_image(
         let manifest = blob
             .manifest()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        validate_plugin_component(&manifest.plugin_id)?;
         let dir = blobs_root.join(&manifest.plugin_id);
         std::fs::create_dir_all(&dir)?;
         let file_name = p
@@ -203,4 +204,33 @@ fn staging_dir(image_path: &Path) -> io::Result<PathBuf> {
     }
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
+}
+
+fn validate_plugin_component(plugin_id: &str) -> io::Result<()> {
+    if plugin_id.is_empty()
+        || plugin_id.len() > 128
+        || matches!(plugin_id, "." | "..")
+        || !plugin_id
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-' | b'.'))
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "plugin ID must be a single safe path component",
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod security_tests {
+    use super::validate_plugin_component;
+
+    #[test]
+    fn plugin_id_cannot_escape_staging() {
+        for id in ["../outside", "/outside", "a/b", ".", "a\\b", ""] {
+            assert!(validate_plugin_component(id).is_err(), "{id}");
+        }
+        assert!(validate_plugin_component("valid_plugin-1").is_ok());
+    }
 }

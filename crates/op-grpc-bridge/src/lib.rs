@@ -66,6 +66,7 @@ pub mod mcp_policy;
 mod memory_binding;
 pub(crate) mod method_contract_admission;
 pub mod mutation_engine;
+pub(crate) mod native_sled_identity;
 pub mod nlm_cli;
 mod notebooklm_queries;
 pub mod oracle_assertion;
@@ -75,6 +76,7 @@ pub use oracle_assertion_client::DecoyAssertionClient;
 mod agent_catalog_dispatch;
 mod agent_workflow;
 pub(crate) mod chat_mode_routing;
+pub(crate) mod control_plane_routing;
 mod obfuscation_methods;
 #[cfg(test)]
 mod openflow_canonical_tests;

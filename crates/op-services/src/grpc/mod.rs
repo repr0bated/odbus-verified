@@ -1,5 +1,6 @@
 //! gRPC server
 
+pub mod auth;
 pub mod server;
 
 pub mod proto {

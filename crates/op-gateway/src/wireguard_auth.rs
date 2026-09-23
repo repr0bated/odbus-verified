@@ -127,6 +127,12 @@ pub struct WireGuardAuthManager {
 impl WireGuardAuthManager {
     /// Create new WireGuard authentication manager
     pub async fn new() -> Result<Self> {
+        Self::new_with_storage_config(EncryptedStorageConfig::default()).await
+    }
+
+    pub(crate) async fn new_with_storage_config(
+        storage_config: EncryptedStorageConfig,
+    ) -> Result<Self> {
         info!("Initializing WireGuard authentication manager");
 
         // Initialize separate WireGuard database
@@ -134,7 +140,6 @@ impl WireGuardAuthManager {
         database.migrate().await?;
 
         // Initialize encrypted key storage
-        let storage_config = EncryptedStorageConfig::default();
         let key_storage = Arc::new(tokio::sync::Mutex::new(
             EncryptedKeyStorage::new(storage_config).await?,
         ));

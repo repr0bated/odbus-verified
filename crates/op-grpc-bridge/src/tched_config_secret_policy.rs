@@ -165,19 +165,16 @@ impl ConfigSecretPolicy for PinnedConfigSecretPolicy {
                         return redact_secret(value);
                     }
                     Ok(Classification::Applicable(false)) => {}
-                    Ok(Classification::NotApplicable) | Err(_) if value.is_string() => {
-                        *value = Value::String("***MASKED***".to_string());
-                        return Ok(());
-                    }
                     Ok(Classification::NotApplicable) | Err(_)
                         if value.is_object() || value.is_array() => {}
-                    Ok(Classification::NotApplicable) => {
-                        return Err(anyhow!("config path is absent from pinned contract"))
-                            .context("cannot prove a non-string native config value is public");
-                    }
-                    Err(error) => {
-                        return Err(error)
-                            .context("cannot prove a non-string native config value is public");
+                    Ok(Classification::NotApplicable) | Err(_) => {
+                        // Opaque JSON options can contain scalars of any type.
+                        // None is proven public: mask them just like unknown
+                        // strings rather than reject the entire read snapshot.
+                        // This affects only the returned projection; property
+                        // access and mutation still require is_secret to resolve.
+                        *value = Value::String("***MASKED***".to_owned());
+                        return Ok(());
                     }
                 }
             }
@@ -404,10 +401,69 @@ mod tests {
     }
 
     #[test]
-    fn unknown_non_string_scalar_rejects_the_snapshot() {
+    fn unknown_scalars_are_masked_without_becoming_accessible() {
         let policy = policy();
-        let mut config = json!({"public":"visible", "unknown":42});
-        assert!(policy.redact_config(&mut config).is_err());
+        let mut config = json!({
+            "public":"visible",
+            "unknown":[42, true, false, null, "private", {"nested":17}]
+        });
+        policy.redact_config(&mut config).unwrap();
+        assert_eq!(config["public"], "visible");
+        assert_eq!(
+            config["unknown"],
+            json!([
+                "***MASKED***", "***MASKED***", "***MASKED***", "***MASKED***",
+                "***MASKED***", {"nested":"***MASKED***"}
+            ])
+        );
+        assert!(policy.is_secret("unknown.0").is_err());
+        assert!(policy.is_secret("unknown.5.nested").is_err());
+    }
+
+    #[test]
+    fn opaque_provider_options_do_not_block_catalog_reads_or_expose_values() {
+        let document = op_plugins::state_plugins::tched_router_contract::document().clone();
+        let policy = PinnedConfigSecretPolicy::new(Arc::new(document)).unwrap();
+        for enabled in [false, true] {
+            let mut config = json!({"providers":{"models":{"custom":{"salad":{
+                "model":"example-model", "api_key":"private",
+                "provider_extra":{"chat_template_kwargs":{
+                    "enable_thinking":enabled, "token":"private", "limit":123
+                }}
+            }}}}});
+            policy.redact_config(&mut config).unwrap();
+            let model = &config["providers"]["models"]["custom"]["salad"];
+            assert_eq!(model["model"], "example-model");
+            assert_eq!(model["api_key"], "***MASKED***");
+            assert_eq!(
+                model["provider_extra"]["chat_template_kwargs"],
+                json!({
+                    "enable_thinking":"***MASKED***", "token":"***MASKED***",
+                    "limit":"***MASKED***"
+                })
+            );
+        }
+        assert!(policy
+            .is_secret(
+                "providers.models.custom.salad.provider_extra.chat_template_kwargs.enable_thinking"
+            )
+            .is_err());
+    }
+
+    #[test]
+    fn unresolved_schema_scalars_are_masked_and_declared_invalid_secrets_still_fail() {
+        let policy = PinnedConfigSecretPolicy::new(Arc::new(json!({
+            "type":"object", "properties":{
+                "broken":{"$ref":"#/$defs/Missing"},
+                "secret":{"type":"string", "x-secret":true}
+            }
+        })))
+        .unwrap();
+        let mut config = json!({"broken":42});
+        policy.redact_config(&mut config).unwrap();
+        assert_eq!(config["broken"], "***MASKED***");
+        assert!(policy.is_secret("broken").is_err());
+        assert!(policy.redact_config(&mut json!({"secret":42})).is_err());
     }
 
     #[test]

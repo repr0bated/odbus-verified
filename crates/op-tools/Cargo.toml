@@ -51,9 +51,12 @@ lazy_static = { workspace = true }
 # Async recursion for self-tools
 async-recursion = "1.0"
 dirs = "5"
+shell-words = "1.1"
+libc.workspace = true
 
 # JSON Schema validation
 jsonschema = { workspace = true }
 
 [dev-dependencies]
 tokio-test = "0.4"
+tempfile.workspace = true

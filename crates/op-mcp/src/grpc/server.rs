@@ -99,6 +99,24 @@ impl GrpcConfig {
         self.snowball_path = None;
         self
     }
+
+    fn validate_transport_security(&self) -> Result<()> {
+        if !self.address.ip().is_loopback() {
+            anyhow::bail!(
+                "the optional MCP gRPC transport may only bind to a loopback address; use the canonical authenticated gRPC bridge for remote access"
+            );
+        }
+
+        if self.tls_enabled {
+            anyhow::bail!(
+                "TLS is not implemented by the optional MCP gRPC transport; use the canonical authenticated gRPC bridge"
+            );
+        }
+
+        anyhow::bail!(
+            "the optional MCP gRPC server is disabled until it has canonical identity and per-tool capability admission; use the authenticated gRPC bridge"
+        )
+    }
 }
 
 /// gRPC transport for MCP server
@@ -111,6 +129,7 @@ pub struct GrpcTransport {
 #[cfg(feature = "grpc")]
 impl GrpcTransport {
     pub async fn new(config: GrpcConfig) -> Result<Self> {
+        config.validate_transport_security()?;
         let infrastructure = GrpcInfrastructure::from_paths(
             config.cache_path.clone(),
             config.state_db_path.clone(),
@@ -127,6 +146,7 @@ impl GrpcTransport {
         config: GrpcConfig,
         infrastructure: GrpcInfrastructure,
     ) -> Result<Self> {
+        config.validate_transport_security()?;
         let service = McpGrpcService::with_infrastructure(config.mode, infrastructure);
         Ok(Self { config, service })
     }
@@ -250,10 +270,11 @@ pub async fn run_grpc_server(config: GrpcConfig) -> Result<()> {
 #[cfg(feature = "grpc")]
 #[allow(dead_code)]
 pub async fn run_grpc_server_lightweight(address: SocketAddr, mode: ServerMode) -> Result<()> {
-    let _config = GrpcConfig::default()
+    let config = GrpcConfig::default()
         .with_address(address)
         .with_mode(mode)
         .without_infrastructure();
+    config.validate_transport_security()?;
 
     let service = McpGrpcService::new(mode);
 
@@ -266,4 +287,31 @@ pub async fn run_grpc_server_lightweight(address: SocketAddr, mode: ServerMode) 
         .await?;
 
     Ok(())
+}
+
+#[cfg(all(test, feature = "grpc"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_non_loopback_listener() {
+        let config = GrpcConfig::default().with_address("0.0.0.0:50051".parse().unwrap());
+        let error = config.validate_transport_security().unwrap_err();
+        assert!(error.to_string().contains("loopback"));
+    }
+
+    #[test]
+    fn rejects_tls_flag_instead_of_silently_serving_plaintext() {
+        let config = GrpcConfig::default().with_tls("server.crt", "server.key");
+        let error = config.validate_transport_security().unwrap_err();
+        assert!(error.to_string().contains("TLS is not implemented"));
+    }
+
+    #[test]
+    fn default_listener_fails_closed_without_canonical_admission() {
+        let error = GrpcConfig::default()
+            .validate_transport_security()
+            .unwrap_err();
+        assert!(error.to_string().contains("per-tool capability admission"));
+    }
 }

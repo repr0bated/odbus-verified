@@ -410,6 +410,16 @@ impl CompactServer {
             );
         }
 
+        if !self.can_execute_controller_tools().await {
+            return McpResponse::error(
+                id,
+                JsonRpcError::new(
+                    -32003,
+                    "tool execution requires an authenticated controller session",
+                ),
+            );
+        }
+
         info!(tool = %tool_name, "Executing tool via compact mode");
 
         match self.executor.execute_tool(tool_name, arguments).await {
@@ -570,29 +580,8 @@ pub async fn run_compact_stdio_server() -> Result<()> {
     let peer_pubkey = if let Ok(pubkey) = std::env::var("WG_PUBKEY") {
         info!(pubkey = %pubkey, "WG_PUBKEY configured; using injected WireGuard identity");
         Some(pubkey)
-    } else if let Ok(wg_iface) =
-        std::env::var("WG_INTERFACE").or_else(|_| std::env::var("FABRIC_WG_INTERFACE"))
-    {
-        tracing::warn!(
-            interface = %wg_iface,
-            "WG_INTERFACE/FABRIC_WG_INTERFACE identity path is deprecated; prefer explicit pubkey injection"
-        );
-        let wg_id = op_identity::WireGuardIdentity::with_interface(&wg_iface);
-        match wg_id.get_local_pubkey() {
-            Ok(pubkey) => Some(pubkey),
-            Err(e) => {
-                tracing::warn!(
-                    interface = %wg_iface,
-                    error = %e,
-                    "Could not read WG public key; set WG_PUBKEY env var to override"
-                );
-                None
-            }
-        }
     } else {
-        tracing::info!(
-            "No WG interface or WG_PUBKEY configured; running compact MCP without peer pubkey"
-        );
+        tracing::info!("WG_PUBKEY is not injected; running compact MCP without peer pubkey");
         None
     };
 
@@ -621,32 +610,8 @@ pub async fn run_compact_unix_server(unix_path: &std::path::Path) -> Result<()> 
     let peer_pubkey = if let Ok(pubkey) = std::env::var("WG_PUBKEY") {
         info!(pubkey = %pubkey, "WG_PUBKEY configured; using injected WireGuard identity");
         Some(pubkey)
-    } else if let Ok(wg_iface) =
-        std::env::var("WG_INTERFACE").or_else(|_| std::env::var("FABRIC_WG_INTERFACE"))
-    {
-        tracing::warn!(
-            interface = %wg_iface,
-            "WG_INTERFACE/FABRIC_WG_INTERFACE identity path is deprecated; prefer explicit pubkey injection"
-        );
-        let wg_id = op_identity::WireGuardIdentity::with_interface(&wg_iface);
-        match wg_id.get_local_pubkey() {
-            Ok(pubkey) => {
-                info!(interface = %wg_iface, pubkey = %pubkey, "WG identity resolved");
-                Some(pubkey)
-            }
-            Err(e) => {
-                tracing::warn!(
-                    interface = %wg_iface,
-                    error = %e,
-                    "Could not read WG public key; set WG_PUBKEY env var to override"
-                );
-                None
-            }
-        }
     } else {
-        tracing::info!(
-            "No WG interface or WG_PUBKEY configured; running compact MCP without peer pubkey"
-        );
+        tracing::info!("WG_PUBKEY is not injected; running compact MCP without peer pubkey");
         None
     };
 
@@ -677,5 +642,49 @@ pub async fn run_compact_unix_server(unix_path: &std::path::Path) -> Result<()> 
 impl crate::transport::McpHandler for CompactServer {
     async fn handle_request(&self, request: McpRequest) -> McpResponse {
         self.handle_request(request).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    struct RecordingExecutor(AtomicUsize);
+
+    #[async_trait::async_trait]
+    impl ToolExecutor for RecordingExecutor {
+        async fn list_tools(&self) -> Result<Vec<ToolInfo>> {
+            Ok(Vec::new())
+        }
+
+        async fn execute_tool(&self, _name: &str, _arguments: Value) -> Result<Value> {
+            self.0.fetch_add(1, Ordering::SeqCst);
+            Ok(json!({ "executed": true }))
+        }
+
+        async fn get_tool_schema(&self, _name: &str) -> Result<Option<Value>> {
+            Ok(None)
+        }
+
+        async fn search_tools(&self, _query: &str, _limit: usize) -> Result<Vec<ToolInfo>> {
+            Ok(Vec::new())
+        }
+    }
+
+    #[tokio::test]
+    async fn non_controller_session_cannot_dispatch_compact_tool() {
+        let executor = Arc::new(RecordingExecutor(AtomicUsize::new(0)));
+        let server = CompactServer::new(executor.clone());
+
+        let response = server
+            .meta_execute_tool(
+                Some(json!(1)),
+                json!({ "tool_name": "shell_execute", "arguments": {} }),
+            )
+            .await;
+
+        assert_eq!(response.error.unwrap().code, -32003);
+        assert_eq!(executor.0.load(Ordering::SeqCst), 0);
     }
 }

@@ -180,6 +180,32 @@ impl RunitSystemctlService {
     }
 }
 
+#[cfg(test)]
+mod path_security_tests {
+    use super::RunitSystemctlService;
+
+    #[test]
+    fn service_name_is_one_component() {
+        for name in ["../secret", "a/b", "/absolute", "..", ".", ""] {
+            assert!(RunitSystemctlService::validate_service_name(name).is_err());
+        }
+        assert!(RunitSystemctlService::validate_service_name("op-grpc-bridge").is_ok());
+    }
+
+    #[tokio::test]
+    async fn read_only_methods_reject_traversal() {
+        let service = RunitSystemctlService::new();
+        assert!(service
+            .show("../outside")
+            .await
+            .contains("invalid runit service name"));
+        assert!(service
+            .journalctl("../outside", 10)
+            .await
+            .contains("invalid runit service name"));
+    }
+}
+
 impl Default for RunitSystemctlService {
     fn default() -> Self {
         Self::new()
@@ -480,6 +506,9 @@ impl RunitSystemctlService {
 
     /// Get detailed status of a service (JSON format)
     async fn status(&self, service: &str) -> String {
+        if let Err(error) = Self::validate_service_name(service) {
+            return serde_json::json!({"error": error}).to_string();
+        }
         debug!("Getting status for service: {}", service);
 
         match self.run_sv_status(service) {
@@ -496,6 +525,9 @@ impl RunitSystemctlService {
 
     /// Check if a service is active (returns "active" or "inactive")
     async fn is_active(&self, service: &str) -> String {
+        if let Err(error) = Self::validate_service_name(service) {
+            return serde_json::json!({"error": error}).to_string();
+        }
         match self.run_sv_status(service) {
             Ok(status) => {
                 if status.active_state == "active" {
@@ -510,6 +542,9 @@ impl RunitSystemctlService {
 
     /// Check if a service is enabled (returns "enabled" or "disabled")
     async fn is_enabled(&self, service: &str) -> String {
+        if let Err(error) = Self::validate_service_name(service) {
+            return serde_json::json!({"error": error}).to_string();
+        }
         if self.is_service_enabled(service) {
             "enabled".to_string()
         } else {
@@ -524,6 +559,9 @@ impl RunitSystemctlService {
 
     /// Show service properties as JSON.
     async fn show(&self, service: &str) -> String {
+        if let Err(error) = Self::validate_service_name(service) {
+            return serde_json::json!({"error": error}).to_string();
+        }
         let mut properties = serde_json::Map::new();
         properties.insert("Id".to_string(), serde_json::json!(service));
         properties.insert("Names".to_string(), serde_json::json!(service));
@@ -638,6 +676,9 @@ impl RunitSystemctlService {
 
     /// Retrieve service logs (svlogd `current` file) with tail fallback.
     async fn journalctl(&self, service: &str, lines: u32) -> String {
+        if let Err(error) = Self::validate_service_name(service) {
+            return serde_json::json!({"error": error}).to_string();
+        }
         let lines = lines.max(1).to_string();
         let log_candidates = [
             format!("/var/log/op-dbus/{service}/current"),
@@ -712,6 +753,9 @@ impl RunitSystemctlService {
     /// Return the best-known unit type from an optional `type` marker file
     /// (a repo convention; runit itself has no unit-type metadata).
     async fn get_unit_type(&self, service: &str) -> String {
+        if Self::validate_service_name(service).is_err() {
+            return "longrun".to_string();
+        }
         let type_path = format!("{}/type", self.def_path(service));
         match std::fs::read_to_string(&type_path) {
             Ok(value) => value.trim().to_string(),

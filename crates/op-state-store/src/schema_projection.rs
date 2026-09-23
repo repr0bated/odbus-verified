@@ -66,6 +66,33 @@ fn property_schema<'a>(root: &'a Value, schema: &'a Value, key: &str) -> Option<
     None
 }
 
+/// Treat secrecy as a conservative annotation across every applicable schema
+/// branch. JSON Schema `allOf` combines constraints, so selecting only the
+/// first property declaration must not discard a later `x-secret: true`.
+/// Applying the same rule to alternatives avoids exposing a value when any
+/// accepted shape declares it secret.
+fn property_is_secret(root: &Value, schema: &Value, key: &str) -> bool {
+    let schema = resolve(root, schema);
+    if schema
+        .get("properties")
+        .and_then(|properties| properties.get(key))
+        .is_some_and(|property| is_secret(resolve(root, property)))
+    {
+        return true;
+    }
+
+    ["allOf", "anyOf", "oneOf"].into_iter().any(|combinator| {
+        schema
+            .get(combinator)
+            .and_then(Value::as_array)
+            .is_some_and(|branches| {
+                branches
+                    .iter()
+                    .any(|branch| property_is_secret(root, branch, key))
+            })
+    })
+}
+
 fn description_of(root: &Value, schema: &Value) -> (String, Option<String>) {
     let schema = resolve(root, schema);
     let description = schema
@@ -113,6 +140,9 @@ fn walk(
                 let Some(child_schema) = property_schema(root, schema, key) else {
                     continue;
                 };
+                if property_is_secret(root, schema, key) {
+                    continue;
+                }
                 let child_path = if path.is_empty() {
                     key.clone()
                 } else {
@@ -204,5 +234,33 @@ mod tests {
         assert!(!joined.contains("t0k"));
         assert!(!joined.contains("deadbeef"));
         assert!(!joined.contains("stray"));
+    }
+
+    #[test]
+    fn later_all_of_secret_annotation_suppresses_the_property() {
+        let schema = json!({
+            "type": "object",
+            "allOf": [
+                {
+                    "properties": {
+                        "token": {
+                            "type": "string",
+                            "description": "First declaration"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "token": {
+                            "type": "string",
+                            "x-secret": true
+                        }
+                    }
+                }
+            ]
+        });
+
+        let fields = described_fields(&schema, &json!({"token": "do-not-embed"}));
+        assert!(fields.is_empty());
     }
 }

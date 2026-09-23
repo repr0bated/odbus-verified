@@ -13,8 +13,10 @@
 use async_trait::async_trait;
 use simd_json::prelude::*;
 use simd_json::{json, OwnedValue as Value};
+use std::os::fd::AsRawFd;
 use std::path::Path;
 use std::sync::Arc;
+use tokio::io::AsyncReadExt;
 
 use crate::registry::ToolDefinition;
 use crate::security::get_security_validator;
@@ -203,7 +205,7 @@ impl Tool for SecureFileTool {
                     .ok_or_else(|| anyhow::anyhow!("Missing required parameter: path"))?;
 
                 // Validate path for reading
-                validator
+                let resolved = validator
                     .validate_read_path(path)
                     .await
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -213,7 +215,13 @@ impl Tool for SecureFileTool {
                     .and_then(|v| v.as_u64())
                     .unwrap_or(1000) as usize;
 
-                let content = tokio::fs::read_to_string(path).await?;
+                let mut opened = tokio::fs::File::open(&resolved).await?;
+                validator
+                    .validate_read_path(&format!("/proc/self/fd/{}", opened.as_raw_fd()))
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+                let mut content = String::new();
+                opened.read_to_string(&mut content).await?;
                 let lines: Vec<&str> = content.lines().take(max_lines).collect();
                 let truncated = content.lines().count() > max_lines;
 
@@ -242,22 +250,27 @@ impl Tool for SecureFileTool {
                     .unwrap_or(false);
 
                 // Validate path for writing
-                validator
+                let resolved = validator
                     .validate_write_path(path)
                     .await
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
 
+                let mut options = tokio::fs::OpenOptions::new();
+                options.create(true).write(true);
                 if append {
-                    use tokio::io::AsyncWriteExt;
-                    let mut file = tokio::fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(path)
-                        .await?;
-                    file.write_all(content.as_bytes()).await?;
+                    options.append(true);
                 } else {
-                    tokio::fs::write(path, content).await?;
+                    options.truncate(true);
                 }
+                #[cfg(unix)]
+                options.custom_flags(libc::O_NOFOLLOW);
+                let mut file = options.open(&resolved).await?;
+                validator
+                    .validate_write_path(&format!("/proc/self/fd/{}", file.as_raw_fd()))
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+                use tokio::io::AsyncWriteExt;
+                file.write_all(content.as_bytes()).await?;
 
                 Ok(json!({
                     "path": path,
@@ -274,7 +287,7 @@ impl Tool for SecureFileTool {
                     .ok_or_else(|| anyhow::anyhow!("Missing required parameter: path"))?;
 
                 // Validate path for reading
-                validator
+                let resolved = validator
                     .validate_read_path(path)
                     .await
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -285,7 +298,13 @@ impl Tool for SecureFileTool {
                     .unwrap_or(100)
                     .min(1000) as usize;
 
-                let mut entries = tokio::fs::read_dir(path).await?;
+                let opened = tokio::fs::File::open(&resolved).await?;
+                let fd_path = format!("/proc/self/fd/{}", opened.as_raw_fd());
+                validator
+                    .validate_read_path(&fd_path)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+                let mut entries = tokio::fs::read_dir(&fd_path).await?;
                 let mut files = Vec::new();
                 let mut count = 0;
 
@@ -322,12 +341,26 @@ impl Tool for SecureFileTool {
                     .ok_or_else(|| anyhow::anyhow!("Missing required parameter: path"))?;
 
                 // For exists check, still validate against path traversal
-                validator
-                    .validate_read_path(path)
-                    .await
-                    .map_err(|e| anyhow::anyhow!("{}", e))?;
-
-                let exists = Path::new(path).exists();
+                let exists = if Path::new(path).exists() {
+                    validator
+                        .validate_read_path(path)
+                        .await
+                        .map_err(|e| anyhow::anyhow!("{}", e))?;
+                    true
+                } else {
+                    let parent = Path::new(path)
+                        .parent()
+                        .ok_or_else(|| anyhow::anyhow!("Path has no parent"))?;
+                    validator
+                        .validate_read_path(
+                            parent
+                                .to_str()
+                                .ok_or_else(|| anyhow::anyhow!("Invalid path"))?,
+                        )
+                        .await
+                        .map_err(|e| anyhow::anyhow!("{}", e))?;
+                    false
+                };
 
                 Ok(json!({
                     "path": path,
@@ -342,12 +375,17 @@ impl Tool for SecureFileTool {
                     .ok_or_else(|| anyhow::anyhow!("Missing required parameter: path"))?;
 
                 // Validate path for reading
-                validator
+                let resolved = validator
                     .validate_read_path(path)
                     .await
                     .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-                let metadata = tokio::fs::metadata(path).await?;
+                let opened = tokio::fs::File::open(&resolved).await?;
+                validator
+                    .validate_read_path(&format!("/proc/self/fd/{}", opened.as_raw_fd()))
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
+                let metadata = opened.metadata().await?;
 
                 Ok(json!({
                     "path": path,

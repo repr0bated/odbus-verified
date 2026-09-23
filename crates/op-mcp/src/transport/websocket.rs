@@ -10,7 +10,8 @@ use axum::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         State,
     },
-    response::IntoResponse,
+    http::{HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -57,6 +58,10 @@ impl Transport for WebSocketTransport {
             .with_state(state);
 
         let listener = tokio::net::TcpListener::bind(&self.bind_addr).await?;
+        anyhow::ensure!(
+            listener.local_addr()?.ip().is_loopback(),
+            "unauthenticated MCP WebSocket transport is restricted to loopback"
+        );
         info!(addr = %self.bind_addr, "WebSocket transport listening");
 
         axum::serve(listener, app).await?;
@@ -74,8 +79,26 @@ async fn health_handler() -> impl IntoResponse {
 async fn ws_handler<H: McpHandler + 'static>(
     ws: WebSocketUpgrade,
     State(state): State<Arc<WsState<H>>>,
-) -> impl IntoResponse {
+    headers: HeaderMap,
+) -> Response {
+    if !request_site_is_same_origin(&headers) {
+        return StatusCode::FORBIDDEN.into_response();
+    }
     ws.on_upgrade(move |socket| handle_ws_connection(socket, state))
+        .into_response()
+}
+
+fn request_site_is_same_origin(headers: &HeaderMap) -> bool {
+    let Some(origin) = headers.get("origin") else {
+        return true;
+    };
+    let Some(origin) = origin.to_str().ok() else {
+        return false;
+    };
+    let Some(host) = headers.get("host").and_then(|value| value.to_str().ok()) else {
+        return false;
+    };
+    origin == format!("http://{host}") || origin == format!("https://{host}")
 }
 
 async fn handle_ws_connection<H: McpHandler>(socket: WebSocket, state: Arc<WsState<H>>) {
@@ -140,4 +163,22 @@ async fn handle_ws_connection<H: McpHandler>(socket: WebSocket, state: Arc<WsSta
     }
 
     info!("WebSocket connection closed");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn websocket_browser_origin_must_match_host() {
+        let mut headers = HeaderMap::new();
+        headers.insert("host", "127.0.0.1:9000".parse().unwrap());
+        assert!(request_site_is_same_origin(&headers));
+
+        headers.insert("origin", "https://attacker.example".parse().unwrap());
+        assert!(!request_site_is_same_origin(&headers));
+
+        headers.insert("origin", "http://127.0.0.1:9000".parse().unwrap());
+        assert!(request_site_is_same_origin(&headers));
+    }
 }

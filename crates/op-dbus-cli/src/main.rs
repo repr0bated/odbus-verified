@@ -10,7 +10,6 @@
 
 mod identity;
 mod introspect;
-mod socket;
 
 use anyhow::{bail, Context, Result};
 use identity::CliIdentity;
@@ -280,9 +279,6 @@ async fn cmd_call(plugin_name: &str, method_name: &str, args: &[String]) -> Resu
     if method_name == "get" {
         return cmd_get_property(plugin_name, args).await;
     }
-
-    // Pre-flight: ensure gRPC socket is live and permissions are correct
-    socket::ensure_socket_ready()?;
 
     let normalized = plugin_name.replace('-', "_");
     let service_name = format!("{}.{}", SERVICE_PREFIX, normalized);

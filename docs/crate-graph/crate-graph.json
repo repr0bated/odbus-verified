@@ -340,7 +340,7 @@
         ],
         "has_lib": true,
         "rs_files": 30,
-        "loc": 11109,
+        "loc": 11273,
         "tests": 48,
         "unsafe_refs": 0,
         "todo": 1,
@@ -390,7 +390,7 @@
         ],
         "has_lib": true,
         "rs_files": 9,
-        "loc": 6302,
+        "loc": 6306,
         "tests": 45,
         "unsafe_refs": 1,
         "todo": 0,
@@ -524,12 +524,12 @@
           "op-grpc-bridge"
         ],
         "has_lib": true,
-        "rs_files": 140,
-        "loc": 82066,
-        "tests": 648,
+        "rs_files": 142,
+        "loc": 83085,
+        "tests": 654,
         "unsafe_refs": 3,
         "todo": 0,
-        "unwrap_expect": 1499
+        "unwrap_expect": 1511
       }
     },
     {
@@ -714,11 +714,11 @@
         ],
         "has_lib": true,
         "rs_files": 144,
-        "loc": 113475,
+        "loc": 113599,
         "tests": 514,
         "unsafe_refs": 15,
         "todo": 1,
-        "unwrap_expect": 1228
+        "unwrap_expect": 1230
       }
     },
     {
@@ -768,7 +768,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 8,
-        "loc": 3579,
+        "loc": 3644,
         "tests": 41,
         "unsafe_refs": 3,
         "todo": 0,
@@ -799,9 +799,9 @@
         "description": "MCP Execution State Store - Persistent job ledger and state tracking",
         "bins": [],
         "has_lib": true,
-        "rs_files": 13,
-        "loc": 7626,
-        "tests": 71,
+        "rs_files": 14,
+        "loc": 7835,
+        "tests": 72,
         "unsafe_refs": 2,
         "todo": 0,
         "unwrap_expect": 122
@@ -1862,8 +1862,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-19T18:02:24Z",
-        "commit": "fdaac28178503d5f9d9616cf2e240916231fa497",
+        "generated_at": "2026-09-20T00:37:15Z",
+        "commit": "a14c9cfa61104a8003e5b92143de557ed9ef435a",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -4037,7 +4037,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 656
+        "loc": 808
       }
     },
     {
@@ -4181,7 +4181,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 193
+        "loc": 205
       }
     },
     {
@@ -4478,7 +4478,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 2547
+        "loc": 2551
       }
     },
     {
@@ -4869,6 +4869,15 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/chain_vector_projector.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 403
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/chat_service.rs",
       "label": "module",
       "props": {
@@ -4883,7 +4892,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 783
+        "loc": 824
       }
     },
     {
@@ -4901,7 +4910,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 289
+        "loc": 309
       }
     },
     {
@@ -5180,7 +5189,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 2317
+        "loc": 2321
       }
     },
     {
@@ -5243,7 +5252,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 358
+        "loc": 360
       }
     },
     {
@@ -5292,6 +5301,15 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/memory_binding.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 237
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/method_contract_admission.rs",
       "label": "module",
       "props": {
@@ -5324,7 +5342,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 6211
+        "loc": 6303
       }
     },
     {
@@ -5468,7 +5486,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 474
+        "loc": 607
       }
     },
     {
@@ -5477,7 +5495,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 270
+        "loc": 332
       }
     },
     {
@@ -5594,7 +5612,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 315
+        "loc": 326
       }
     },
     {
@@ -5927,7 +5945,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 344
+        "loc": 358
       }
     },
     {
@@ -7376,7 +7394,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1047
+        "loc": 1067
       }
     },
     {
@@ -7997,7 +8015,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 570
+        "loc": 674
       }
     },
     {
@@ -8546,7 +8564,7 @@
       "props": {
         "crate": "op-snowball",
         "kind": "src",
-        "loc": 1789
+        "loc": 1854
       }
     },
     {
@@ -8600,7 +8618,7 @@
       "props": {
         "crate": "op-state-store",
         "kind": "src",
-        "loc": 67
+        "loc": 68
       }
     },
     {
@@ -8637,6 +8655,15 @@
         "crate": "op-state-store",
         "kind": "src",
         "loc": 868
+      }
+    },
+    {
+      "id": "mod:crates/op-state-store/src/schema_projection.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-state-store",
+        "kind": "src",
+        "loc": 208
       }
     },
     {
@@ -9778,7 +9805,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/ctl_plane_chatbot.rs",
-        "line": 1046,
+        "line": 1066,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/ctl_plane_chatbot"
       }
@@ -10148,7 +10175,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/project.rs",
-        "line": 422,
+        "line": 526,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/project"
       }
@@ -15580,6 +15607,12 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/chain_vector_projector.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/chat_service.rs",
       "props": {}
     },
@@ -15857,6 +15890,12 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/mcp_policy.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/memory_binding.rs",
       "props": {}
     },
     {
@@ -22034,6 +22073,12 @@
     {
       "src": "crate:op-state-store",
       "rel": "contains",
+      "dst": "mod:crates/op-state-store/src/schema_projection.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-state-store",
+      "rel": "contains",
       "dst": "mod:crates/op-state-store/src/schema_validator.rs",
       "props": {}
     },
@@ -24632,6 +24677,46 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/chain_vector_projector.rs",
+      "rel": "imports",
+      "dst": "crate:op-cognitive-mcp",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chain_vector_projector.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chain_vector_projector.rs",
+      "rel": "imports",
+      "dst": "crate:op-snowball",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chain_vector_projector.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chain_vector_projector.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/chat_service.rs",
       "rel": "imports",
       "dst": "crate:op-core",
@@ -25540,7 +25625,7 @@
       "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 12
+        "refs": 13
       }
     },
     {
@@ -25840,6 +25925,14 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/memory_binding.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/method_contract_admission.rs",
       "rel": "imports",
       "dst": "crate:op-state-store",
@@ -25924,7 +26017,7 @@
       "rel": "imports",
       "dst": "crate:op-cozo-store",
       "props": {
-        "refs": 13
+        "refs": 14
       }
     },
     {
@@ -28208,7 +28301,7 @@
       "rel": "imports",
       "dst": "crate:op-state-store",
       "props": {
-        "refs": 7
+        "refs": 9
       }
     },
     {

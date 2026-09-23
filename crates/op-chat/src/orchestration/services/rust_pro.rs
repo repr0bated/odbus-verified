@@ -333,6 +333,7 @@ impl RustProService for OrchestrationServer {
         &self,
         request: Request<CargoRequest>,
     ) -> Result<Response<CargoResponse>, Status> {
+        super::require_canonical_admission(Request::new(()))?;
         let req = request.into_inner();
         info!(path = %req.path, "Running cargo check");
         let resp = run_cargo_unary("check", &req).await?;
@@ -340,6 +341,7 @@ impl RustProService for OrchestrationServer {
     }
 
     async fn fmt(&self, request: Request<CargoRequest>) -> Result<Response<CargoResponse>, Status> {
+        super::require_canonical_admission(Request::new(()))?;
         let req = request.into_inner();
         info!(path = %req.path, "Running cargo fmt");
         let resp = run_cargo_unary("fmt", &req).await?;
@@ -350,6 +352,7 @@ impl RustProService for OrchestrationServer {
         &self,
         _request: Request<VersionRequest>,
     ) -> Result<Response<VersionResponse>, Status> {
+        super::require_canonical_admission(Request::new(()))?;
         debug!("Getting Rust toolchain versions");
 
         let rustc = Command::new("rustc")
@@ -392,6 +395,7 @@ impl RustProService for OrchestrationServer {
         &self,
         request: Request<CargoRequest>,
     ) -> Result<Response<Self::BuildStream>, Status> {
+        super::require_canonical_admission(Request::new(()))?;
         let req = request.into_inner();
         info!(path = %req.path, release = req.release, "Streaming cargo build");
         Ok(Response::new(spawn_streaming_cargo("build", req)))
@@ -401,6 +405,7 @@ impl RustProService for OrchestrationServer {
         &self,
         request: Request<CargoRequest>,
     ) -> Result<Response<Self::TestStream>, Status> {
+        super::require_canonical_admission(Request::new(()))?;
         let req = request.into_inner();
         info!(path = %req.path, filter = %req.filter, "Streaming cargo test");
         Ok(Response::new(spawn_streaming_cargo("test", req)))
@@ -410,6 +415,7 @@ impl RustProService for OrchestrationServer {
         &self,
         request: Request<CargoRequest>,
     ) -> Result<Response<Self::ClippyStream>, Status> {
+        super::require_canonical_admission(Request::new(()))?;
         let req = request.into_inner();
         info!(path = %req.path, fix = req.fix, "Streaming cargo clippy");
         Ok(Response::new(spawn_streaming_cargo("clippy", req)))
@@ -419,6 +425,7 @@ impl RustProService for OrchestrationServer {
         &self,
         request: Request<CargoRequest>,
     ) -> Result<Response<Self::RunStream>, Status> {
+        super::require_canonical_admission(Request::new(()))?;
         let req = request.into_inner();
         info!(path = %req.path, "Streaming cargo run");
         Ok(Response::new(spawn_streaming_cargo("run", req)))
@@ -428,6 +435,7 @@ impl RustProService for OrchestrationServer {
         &self,
         request: Request<CargoRequest>,
     ) -> Result<Response<Self::DocStream>, Status> {
+        super::require_canonical_admission(Request::new(()))?;
         let req = request.into_inner();
         info!(path = %req.path, "Streaming cargo doc");
         Ok(Response::new(spawn_streaming_cargo("doc", req)))
@@ -437,6 +445,7 @@ impl RustProService for OrchestrationServer {
         &self,
         request: Request<CargoRequest>,
     ) -> Result<Response<Self::BenchStream>, Status> {
+        super::require_canonical_admission(Request::new(()))?;
         let req = request.into_inner();
         info!(path = %req.path, "Streaming cargo bench");
         Ok(Response::new(spawn_streaming_cargo("bench", req)))
@@ -446,6 +455,7 @@ impl RustProService for OrchestrationServer {
         &self,
         request: Request<AnalyzeRequest>,
     ) -> Result<Response<AnalyzeResponse>, Status> {
+        super::require_canonical_admission(Request::new(()))?;
         let req = request.into_inner();
         let path = if req.path.is_empty() { "." } else { &req.path };
         info!(path = %path, "Running cargo metadata analysis");

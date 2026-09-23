@@ -83,24 +83,22 @@ impl HttpServer {
                         ))
                     })?;
 
-            // Start HTTP server in background
-            let http_router = self.router.clone();
-            tokio::spawn(async move {
-                let listener = match TcpListener::bind(http_addr).await {
-                    Ok(l) => l,
-                    Err(e) => {
-                        tracing::error!("Failed to bind HTTP: {}", e);
-                        return;
-                    }
-                };
-                info!("HTTP server listening on http://{}", http_addr);
-                let _ = axum::serve(listener, http_router).await;
-            });
-
-            // Start HTTPS server (main thread)
-            let listener = TcpListener::bind(https_addr)
+            // Bind both listeners before starting either service so startup is
+            // atomic and every serve error is observed by the caller.
+            let http_listener = TcpListener::bind(http_addr)
                 .await
                 .map_err(ServerError::BindError)?;
+            let https_listener = TcpListener::bind(https_addr)
+                .await
+                .map_err(ServerError::BindError)?;
+
+            let http_router = self.router.clone();
+            let http_server = async move {
+                info!("HTTP server listening on http://{}", http_addr);
+                axum::serve(http_listener, http_router)
+                    .await
+                    .map_err(|error| ServerError::BindError(std::io::Error::other(error)))
+            };
 
             info!("HTTPS server listening on https://{}", https_addr);
             info!(
@@ -108,30 +106,38 @@ impl HttpServer {
                 self.config.public_host, self.config.https_port
             );
 
-            loop {
-                let (stream, peer_addr) =
-                    listener.accept().await.map_err(ServerError::BindError)?;
-                let acceptor = acceptor.clone();
-                let router = self.router.clone();
+            let https_router = self.router;
+            let https_server = async move {
+                loop {
+                    let (stream, peer_addr) = https_listener
+                        .accept()
+                        .await
+                        .map_err(ServerError::BindError)?;
+                    let acceptor = acceptor.clone();
+                    let router = https_router.clone();
 
-                tokio::spawn(async move {
-                    match acceptor.accept(stream).await {
-                        Ok(tls_stream) => {
-                            let io = TokioIo::new(tls_stream);
-                            let service = TowerToHyperService::new(router);
+                    tokio::spawn(async move {
+                        match acceptor.accept(stream).await {
+                            Ok(tls_stream) => {
+                                let io = TokioIo::new(tls_stream);
+                                let service = TowerToHyperService::new(router);
 
-                            if let Err(e) =
-                                http1::Builder::new().serve_connection(io, service).await
-                            {
-                                tracing::debug!("Connection error from {}: {}", peer_addr, e);
+                                if let Err(e) =
+                                    http1::Builder::new().serve_connection(io, service).await
+                                {
+                                    tracing::debug!("Connection error from {}: {}", peer_addr, e);
+                                }
+                            }
+                            Err(e) => {
+                                tracing::debug!("TLS handshake error from {}: {}", peer_addr, e);
                             }
                         }
-                        Err(e) => {
-                            tracing::debug!("TLS handshake error from {}: {}", peer_addr, e);
-                        }
-                    }
-                });
-            }
+                    });
+                }
+                #[allow(unreachable_code)]
+                Ok::<(), ServerError>(())
+            };
+            tokio::try_join!(http_server, https_server)?;
         } else {
             // HTTP only mode
             let listener = TcpListener::bind(http_addr)

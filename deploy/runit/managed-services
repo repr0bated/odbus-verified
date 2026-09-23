@@ -5,6 +5,7 @@ op-runit-systemctl
 emqx
 mongodb-mcp-server
 unified-execution
+opencode
 op-web
 op-of-controller
 sshd

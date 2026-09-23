@@ -10,9 +10,9 @@
 
 use axum::{
     extract::{ConnectInfo, Request},
-    http::HeaderMap,
+    http::{HeaderMap, StatusCode},
     middleware::Next,
-    response::Response,
+    response::{IntoResponse, Response},
 };
 use op_core::security::AccessZone;
 use std::net::{IpAddr, SocketAddr};
@@ -34,6 +34,67 @@ pub fn extract_auth_token(headers: &HeaderMap) -> Option<String> {
     }
 
     None
+}
+
+/// Admit HTTP admin routes under the already projected human arrival and the
+/// bridge's exact-principal grant document. A forwarded IP or AccessZone is
+/// never an identity proof.
+pub async fn require_mcp_write(request: Request, next: Next) -> Response {
+    require_capability(request, next, "mcp.write").await
+}
+
+pub async fn require_project_admin(request: Request, next: Next) -> Response {
+    require_capability(request, next, "project.admin").await
+}
+
+async fn require_capability(request: Request, next: Next, capability: &str) -> Response {
+    let admitted = request_site_is_same_origin(request.headers())
+        && request
+            .extensions()
+            .get::<ConnectInfo<SocketAddr>>()
+            .and_then(|info| crate::handlers::identity_self::human_session_for_peer(info.0))
+            .is_some_and(|session| {
+                let principal =
+                    op_identity::session::derive_principal_id(&session.wireguard_pubkey);
+                op_grpc_bridge::interceptor::load_capability_grants(&principal).contains(capability)
+            });
+    if !admitted {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+    next.run(request).await
+}
+
+pub async fn no_store(request: Request, next: Next) -> Response {
+    let mut response = next.run(request).await;
+    response.headers_mut().insert(
+        axum::http::header::CACHE_CONTROL,
+        axum::http::HeaderValue::from_static("no-store"),
+    );
+    response.headers_mut().insert(
+        axum::http::header::REFERRER_POLICY,
+        axum::http::HeaderValue::from_static("no-referrer"),
+    );
+    response
+}
+
+pub(crate) fn request_site_is_same_origin(headers: &HeaderMap) -> bool {
+    if headers
+        .get("sec-fetch-site")
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|site| site != "same-origin" && site != "none")
+    {
+        return false;
+    }
+    let Some(origin) = headers.get("origin") else {
+        return true;
+    };
+    let Some(origin) = origin.to_str().ok() else {
+        return false;
+    };
+    let Some(host) = headers.get("host").and_then(|value| value.to_str().ok()) else {
+        return false;
+    };
+    origin == format!("http://{host}") || origin == format!("https://{host}")
 }
 
 fn is_trusted_proxy(addr: &SocketAddr) -> bool {
@@ -218,6 +279,99 @@ pub async fn ip_security_middleware(mut request: Request, next: Next) -> Respons
 mod tests {
     use super::*;
     use axum::http::HeaderValue;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn admin_mutations_deny_without_projected_human_arrival() {
+        for (router, path, body) in [
+            (
+                crate::groups_admin::create_groups_admin_router(),
+                "/api/profiles/default",
+                r#"{"groups":["shell"],"preset":null}"#,
+            ),
+            (
+                crate::routes::admin::admin_routes(),
+                "/prompt/custom",
+                r#"{"content":"attacker prompt"}"#,
+            ),
+        ] {
+            let request = axum::http::Request::builder()
+                .method("POST")
+                .uri(path)
+                .header("content-type", "application/json")
+                .header("x-forwarded-for", "127.0.0.1")
+                .body(axum::body::Body::from(body))
+                .unwrap();
+            let response = router.oneshot(request).await.unwrap();
+            assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        }
+    }
+
+    #[tokio::test]
+    async fn execution_routes_deny_without_projected_human_arrival() {
+        let router = axum::Router::new()
+            .route(
+                "/tool",
+                axum::routing::post(|| async { StatusCode::OK })
+                    .route_layer(axum::middleware::from_fn(require_mcp_write)),
+            )
+            .route(
+                "/agents",
+                axum::routing::post(|| async { StatusCode::OK })
+                    .route_layer(axum::middleware::from_fn(require_mcp_write)),
+            );
+        for path in ["/tool", "/agents"] {
+            let request = axum::http::Request::builder()
+                .method("POST")
+                .uri(path)
+                .header("x-forwarded-for", "127.0.0.1")
+                .body(axum::body::Body::empty())
+                .unwrap();
+            let response = router.clone().oneshot(request).await.unwrap();
+            assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        }
+    }
+
+    #[test]
+    fn admin_admission_rejects_cross_site_browser_requests() {
+        let mut headers = HeaderMap::new();
+        headers.insert("host", HeaderValue::from_static("dashboard.example"));
+        headers.insert("origin", HeaderValue::from_static("https://evil.example"));
+        assert!(!request_site_is_same_origin(&headers));
+        headers.insert(
+            "origin",
+            HeaderValue::from_static("https://dashboard.example"),
+        );
+        assert!(request_site_is_same_origin(&headers));
+        headers.insert("sec-fetch-site", HeaderValue::from_static("cross-site"));
+        assert!(!request_site_is_same_origin(&headers));
+    }
+
+    #[tokio::test]
+    async fn private_response_disables_caching() {
+        let router = axum::Router::new().route(
+            "/",
+            axum::routing::get(|| async { "private" })
+                .route_layer(axum::middleware::from_fn(no_store)),
+        );
+        let response = router
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/")
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            response.headers()[axum::http::header::CACHE_CONTROL],
+            "no-store"
+        );
+        assert_eq!(
+            response.headers()[axum::http::header::REFERRER_POLICY],
+            "no-referrer"
+        );
+    }
 
     fn loopback() -> SocketAddr {
         "127.0.0.1:1234".parse().unwrap()

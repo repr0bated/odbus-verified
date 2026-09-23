@@ -40,6 +40,16 @@ impl Default for GrpcServerConfig {
     }
 }
 
+impl GrpcServerConfig {
+    fn validate_transport_security(&self) -> Result<()> {
+        anyhow::ensure!(
+            self.listen_addr.ip().is_loopback(),
+            "unauthenticated cache gRPC compatibility transport is restricted to loopback"
+        );
+        Ok(())
+    }
+}
+
 /// gRPC server builder
 pub struct GrpcServer {
     config: GrpcServerConfig,
@@ -102,6 +112,7 @@ impl GrpcServer {
 
     /// Start the gRPC server (with gRPC-Web, reflection, and health)
     pub async fn serve(self) -> Result<()> {
+        self.config.validate_transport_security()?;
         let addr = self.config.listen_addr;
 
         info!("Starting gRPC server on {}", addr);
@@ -146,6 +157,7 @@ impl GrpcServer {
         self,
         shutdown: impl std::future::Future<Output = ()>,
     ) -> Result<()> {
+        self.config.validate_transport_security()?;
         let addr = self.config.listen_addr;
 
         info!("Starting gRPC server on {} (with graceful shutdown)", addr);
@@ -189,5 +201,22 @@ impl GrpcServer {
 impl Default for GrpcServer {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod transport_security_tests {
+    use super::*;
+
+    #[test]
+    fn cache_compatibility_listener_is_loopback_only() {
+        GrpcServerConfig::default()
+            .validate_transport_security()
+            .unwrap();
+        let config = GrpcServerConfig {
+            listen_addr: "0.0.0.0:50051".parse().unwrap(),
+            ..GrpcServerConfig::default()
+        };
+        assert!(config.validate_transport_security().is_err());
     }
 }

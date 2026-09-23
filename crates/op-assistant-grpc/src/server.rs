@@ -31,7 +31,7 @@ use tonic::transport::Server;
 use tracing::info;
 
 pub const DEFAULT_GRPC_PORT: u16 = 50051;
-pub const DEFAULT_GRPC_HOST: &str = "0.0.0.0";
+pub const DEFAULT_GRPC_HOST: &str = "127.0.0.1";
 
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
@@ -72,6 +72,7 @@ pub struct AssistantGrpcServer {
 
 impl AssistantGrpcServer {
     pub async fn new(cfg: ServerConfig) -> anyhow::Result<Self> {
+        bind_addr(&cfg)?;
         let client = AssistantClient::new(cfg.transport.clone()).await?;
         let cognitive = Arc::new(CognitivePluginClient::connect(&cfg.cognitive_bus_address).await?);
 
@@ -87,16 +88,13 @@ impl AssistantGrpcServer {
     }
 
     pub async fn serve(self) -> anyhow::Result<()> {
-        let addr: SocketAddr = format!("{}:{}", self.cfg.host, self.cfg.port).parse()?;
+        let addr = bind_addr(&self.cfg)?;
         info!(
             %addr,
             transport = ?self.client.transport().primary_kind(),
             cognitive_bus = %self.cfg.cognitive_bus_address,
             "starting op-assistant-grpc"
         );
-        // Publish D-Bus interface so model calls work over the session bus.
-        let _dbus_conn = crate::dbus_service::serve(Arc::new(self.client.clone())).await?;
-
         let agent = AgentServiceServer::with_interceptor(
             AgentServiceImpl::new(self.client.clone()),
             wireguard_auth_interceptor,
@@ -148,15 +146,23 @@ impl AssistantGrpcServer {
             builder = builder.add_service(tonic_web::enable(reflection));
         }
 
-        let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
-        health_reporter
-            .set_serving::<AgentServiceServer<AgentServiceImpl>>()
-            .await;
+        let (_health_reporter, health_service) = tonic_health::server::health_reporter();
         builder = builder.add_service(tonic_web::enable(health_service));
 
         builder.serve(addr).await?;
         Ok(())
     }
+}
+
+/// The compatibility daemon has no TLS or complete cross-process identity
+/// verifier. Keep even its disabled RPC surface on the local host.
+fn bind_addr(cfg: &ServerConfig) -> anyhow::Result<SocketAddr> {
+    let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port).parse()?;
+    anyhow::ensure!(
+        addr.ip().is_loopback(),
+        "standalone Assistant gRPC listener must bind to loopback"
+    );
+    Ok(addr)
 }
 
 /// Convenience entry-point used by `op-dbus` and integration tests.
@@ -174,12 +180,16 @@ mod tests {
         assert!(cfg.port > 0);
         assert!(!cfg.host.is_empty());
         assert!(!cfg.cognitive_bus_address.is_empty());
-        assert!(
-            cfg.cognitive_bus_address.contains("unix:path=")
-                || cfg.cognitive_bus_address.contains("unix:abstract=")
-                || cfg.cognitive_bus_address.contains("tcp:"),
-            "cognitive bus address should be a D-Bus socket, got {}",
-            cfg.cognitive_bus_address
-        );
+    }
+
+    #[test]
+    fn wildcard_and_nonlocal_listener_configuration_is_rejected() {
+        let mut cfg = ServerConfig::default();
+        cfg.host = "0.0.0.0".into();
+        assert!(bind_addr(&cfg).is_err());
+        cfg.host = "10.200.0.2".into();
+        assert!(bind_addr(&cfg).is_err());
+        cfg.host = "127.0.0.1".into();
+        assert!(bind_addr(&cfg).is_ok());
     }
 }

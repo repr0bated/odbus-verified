@@ -1539,6 +1539,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state_plugins::cognitive_agents;
     use crate::state_plugins::common::oscal::validate_subid;
     use serde_json::Value as JVal;
 
@@ -1655,9 +1656,10 @@ mod tests {
             "code_review_orchestrator",
             "specialist",
         ];
+        let catalog_methods: Vec<_> = cognitive_agents::catalog_agent_methods().collect();
         assert_eq!(
             schema.methods.len(),
-            expected_methods.len(),
+            expected_methods.len() + catalog_methods.len(),
             "sealed bridge-owned cognitive method inventory drifted"
         );
         for retired_static_advisor in [
@@ -1675,6 +1677,13 @@ mod tests {
             assert!(
                 schema.methods.contains_key(method),
                 "bridge-owned cognitive method {method} must remain sealed"
+            );
+        }
+        for method in catalog_methods {
+            assert!(
+                schema.methods.contains_key(&method.declaration.name),
+                "catalog method {} must remain sealed",
+                method.declaration.name
             );
         }
 

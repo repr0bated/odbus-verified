@@ -41,9 +41,10 @@ impl DynamicToolRegistry {
             base_registry,
             execution_tracker,
             loading_strategy,
-            tool_cache: Arc::new(RwLock::new(LruCache::new(
-                NonZeroUsize::new(max_cache_size).unwrap(),
-            ))),
+            // Keep the legacy usize API non-panicking. A zero capacity cannot
+            // be represented by LruCache, so treat it as the smallest useful
+            // cache instead of terminating the caller during construction.
+            tool_cache: Arc::new(RwLock::new(LruCache::new(cache_capacity(max_cache_size)))),
             cache_hits: Arc::new(RwLock::new(0)),
             cache_misses: Arc::new(RwLock::new(0)),
         }
@@ -104,6 +105,23 @@ impl DynamicToolRegistry {
     /// Get execution tracker (for compatibility)
     pub fn execution_tracker(&self) -> Arc<ExecutionTracker> {
         Arc::clone(&self.execution_tracker)
+    }
+}
+
+fn cache_capacity(requested: usize) -> NonZeroUsize {
+    // `NonZeroUsize::new(0)` is None; one entry is the safe minimum.
+    NonZeroUsize::new(requested).unwrap_or(NonZeroUsize::MIN)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::cache_capacity;
+
+    #[test]
+    fn zero_capacity_uses_one_entry_without_panicking() {
+        assert_eq!(cache_capacity(0).get(), 1);
+        assert_eq!(cache_capacity(1).get(), 1);
+        assert_eq!(cache_capacity(8).get(), 8);
     }
 }
 

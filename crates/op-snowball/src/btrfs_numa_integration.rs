@@ -311,13 +311,16 @@ impl OptimizedSnowball {
             .await
             .context("Failed to create snowball snapshot")?;
 
-        if output.status.success() {
-            snapshots.push(snowball_snapshot);
-            info!(
-                "Created snowball snapshot: {}",
-                snapshots.last().unwrap().display()
-            );
-        }
+        ensure_snapshot_command_succeeded(
+            output.status.success(),
+            output.status.code(),
+            &output.stderr,
+        )?;
+        snapshots.push(snowball_snapshot);
+        info!(
+            "Created snowball snapshot: {}",
+            snapshots.last().unwrap().display()
+        );
 
         // Snapshot cache
         let cache_snapshot = self.cache.create_snapshot().await?;
@@ -336,8 +339,32 @@ impl OptimizedSnowball {
     }
 }
 
+fn ensure_snapshot_command_succeeded(
+    success: bool,
+    code: Option<i32>,
+    stderr: &[u8],
+) -> anyhow::Result<()> {
+    if success {
+        return Ok(());
+    }
+    let detail = String::from_utf8_lossy(stderr);
+    anyhow::bail!("btrfs snapshot command failed (status {code:?}): {detail}")
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn nonzero_btrfs_snapshot_exit_is_an_error_with_stderr() {
+        let error = super::ensure_snapshot_command_succeeded(
+            false,
+            Some(1),
+            b"read-only snapshot unsupported",
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("status Some(1)"));
+        assert!(error.to_string().contains("read-only snapshot unsupported"));
+    }
+
     /// The placement hook must run on the writer thread and its pin must
     /// still be in effect when writes execute there — while the caller's
     /// (tokio) thread is left untouched.

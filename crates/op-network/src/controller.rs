@@ -770,6 +770,11 @@ impl OpenFlowController {
     /// that rapid repeated failures (e.g. OVS flapping) are logged with backoff information
     /// rather than silently spinning.
     pub async fn run(self) -> Result<()> {
+        anyhow::ensure!(
+            self.listen_addr.ip().is_loopback(),
+            "refusing unauthenticated OpenFlow listener on non-loopback address {}",
+            self.listen_addr
+        );
         let listener = TcpListener::bind(self.listen_addr)
             .await
             .with_context(|| format!("binding OpenFlow controller on {}", self.listen_addr))?;
@@ -999,5 +1004,14 @@ mod tests {
         assert_eq!(declared_len, msg.len(), "declared length must match actual");
         assert_eq!(msg[0], 0x06); // OF1.5
         assert_eq!(msg[1], 14); // FlowMod
+    }
+
+    #[tokio::test]
+    async fn controller_rejects_non_loopback_listener_before_bind() {
+        let error = OpenFlowController::new("192.0.2.1:6653".parse().unwrap())
+            .run()
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("non-loopback"));
     }
 }

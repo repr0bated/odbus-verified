@@ -247,6 +247,15 @@ impl DbusAgentService {
     pub fn object_path(agent_type: &str) -> String {
         format!("/org/dbusmcp/Agent/{}", to_pascal_case(agent_type))
     }
+
+    fn require_execution_admission() -> zbus::fdo::Result<()> {
+        // The legacy per-agent interface has no verified principal or exact
+        // operation grant. Keep discovery available, but never dispatch work
+        // through this compatibility path.
+        Err(zbus::fdo::Error::AccessDenied(
+            "per-agent execution requires canonical identity and operation-grant admission".into(),
+        ))
+    }
 }
 
 /// D-Bus interface: org.dbusmcp.Agent
@@ -276,6 +285,7 @@ impl DbusAgentService {
     /// # Returns
     /// JSON-encoded TaskResult
     async fn execute(&self, task_json: String) -> Result<String, zbus::fdo::Error> {
+        Self::require_execution_admission()?;
         debug!(
             "[{}] Execute called: {}",
             self.agent_id,
@@ -318,6 +328,7 @@ impl DbusAgentService {
         path: String,
         args: String,
     ) -> Result<String, zbus::fdo::Error> {
+        Self::require_execution_admission()?;
         let task = AgentTask {
             task_type: self.agent_type.clone(),
             operation,
@@ -607,6 +618,69 @@ fn to_kebab_case(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agents::base::TaskResult;
+    use crate::security::SecurityProfile;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    struct RecordingAgent {
+        executions: Arc<AtomicUsize>,
+        profile: SecurityProfile,
+    }
+
+    #[async_trait::async_trait]
+    impl AgentTrait for RecordingAgent {
+        fn agent_type(&self) -> &str {
+            "recording"
+        }
+
+        fn name(&self) -> &str {
+            "Recording"
+        }
+
+        fn description(&self) -> &str {
+            "Records execution attempts"
+        }
+
+        fn operations(&self) -> Vec<String> {
+            vec!["run".into()]
+        }
+
+        fn security_profile(&self) -> &SecurityProfile {
+            &self.profile
+        }
+
+        async fn execute(&self, task: AgentTask) -> Result<TaskResult, String> {
+            self.executions.fetch_add(1, Ordering::SeqCst);
+            Ok(TaskResult::success(&task.operation, String::new()))
+        }
+    }
+
+    #[tokio::test]
+    async fn legacy_execution_methods_deny_before_dispatch() {
+        let executions = Arc::new(AtomicUsize::new(0));
+        let service = DbusAgentService::new(
+            Box::new(RecordingAgent {
+                executions: executions.clone(),
+                profile: SecurityProfile::code_execution("recording", vec!["cargo"]),
+            }),
+            "recording-1".into(),
+        );
+
+        // Even a supported operation and a well-formed task cannot reach the
+        // agent through the unauthenticated compatibility interface.
+        let task = simd_json::to_string(&AgentTask::new("recording", "run")).unwrap();
+        assert!(matches!(
+            service.execute(task).await,
+            Err(zbus::fdo::Error::AccessDenied(_))
+        ));
+        assert!(matches!(
+            service
+                .run_operation("run".into(), "/tmp".into(), String::new())
+                .await,
+            Err(zbus::fdo::Error::AccessDenied(_))
+        ));
+        assert_eq!(executions.load(Ordering::SeqCst), 0);
+    }
 
     #[test]
     fn test_to_pascal_case() {

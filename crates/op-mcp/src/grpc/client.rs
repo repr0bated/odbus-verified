@@ -61,7 +61,10 @@ impl GrpcClient {
     pub async fn connect(config: GrpcClientConfig) -> Result<Self> {
         info!(endpoint = %config.endpoint, "Connecting to gRPC MCP server");
 
-        let endpoint = Endpoint::from_shared(config.endpoint.clone())?
+        let endpoint = Endpoint::from_shared(config.endpoint.clone())?;
+        validate_transport_security(&config, &endpoint)?;
+
+        let endpoint = endpoint
             .connect_timeout(config.connect_timeout)
             .timeout(config.request_timeout);
 
@@ -190,6 +193,35 @@ impl GrpcClient {
     }
 }
 
+#[cfg(feature = "grpc")]
+fn validate_transport_security(config: &GrpcClientConfig, endpoint: &Endpoint) -> Result<()> {
+    if config.tls_enabled {
+        anyhow::bail!(
+            "TLS is not implemented by the optional MCP gRPC client; use the canonical authenticated gRPC bridge"
+        );
+    }
+
+    let host = endpoint
+        .uri()
+        .host()
+        .ok_or_else(|| anyhow::anyhow!("gRPC endpoint is missing a host"))?;
+    let address_host = host
+        .strip_prefix('[')
+        .and_then(|value| value.strip_suffix(']'))
+        .unwrap_or(host);
+    let is_loopback = address_host.eq_ignore_ascii_case("localhost")
+        || address_host
+            .parse::<std::net::IpAddr>()
+            .is_ok_and(|address| address.is_loopback());
+    if !is_loopback {
+        anyhow::bail!(
+            "the optional MCP gRPC client may only connect to a loopback address; use the canonical authenticated gRPC bridge for remote access"
+        );
+    }
+
+    Ok(())
+}
+
 // Minimal conversion helper for client
 fn simd_to_prost_struct(value: &Value) -> Result<ProstStruct> {
     if let Some(obj) = value.as_object() {
@@ -248,5 +280,34 @@ fn simd_to_prost_value(value: &Value) -> ProstValue {
         _ => ProstValue {
             kind: Some(Kind::NullValue(0)),
         },
+    }
+}
+
+#[cfg(all(test, feature = "grpc"))]
+mod tests {
+    use super::*;
+
+    fn endpoint(config: &GrpcClientConfig) -> Endpoint {
+        Endpoint::from_shared(config.endpoint.clone()).unwrap()
+    }
+
+    #[test]
+    fn rejects_remote_plaintext_endpoint() {
+        let config = GrpcClientConfig::default().with_endpoint("http://192.0.2.1:50051");
+        let error = validate_transport_security(&config, &endpoint(&config)).unwrap_err();
+        assert!(error.to_string().contains("loopback"));
+    }
+
+    #[test]
+    fn rejects_tls_flag_instead_of_silently_connecting_in_plaintext() {
+        let config = GrpcClientConfig::default().with_tls(Some("localhost".to_string()));
+        let error = validate_transport_security(&config, &endpoint(&config)).unwrap_err();
+        assert!(error.to_string().contains("TLS is not implemented"));
+    }
+
+    #[test]
+    fn permits_default_loopback_endpoint() {
+        let config = GrpcClientConfig::default();
+        validate_transport_security(&config, &endpoint(&config)).unwrap();
     }
 }

@@ -5,14 +5,14 @@ use aes_gcm::{
     Aes256Gcm, Key, Nonce,
 };
 use anyhow::{bail, Context, Result};
-use argon2::{password_hash::SaltString, Argon2};
+use argon2::Argon2;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 const NONCE_SIZE: usize = 12;
 const KEY_SIZE: usize = 32;
-// Note: Salt is randomly generated and stored alongside the ciphertext if needed
+const PASSWORD_SALT_SIZE: usize = 16;
 
 /// Encrypted state file structure
 #[derive(Debug, Serialize, Deserialize)]
@@ -30,31 +30,67 @@ pub struct EncryptedState {
 /// State encryption manager
 pub struct StateEncryption {
     key: Key<Aes256Gcm>,
+    password_salt: Option<String>,
 }
 
 impl StateEncryption {
     /// Create a new encryption manager with a random key
     pub fn new() -> Result<Self> {
         let key = Aes256Gcm::generate_key(&mut OsRng);
-        Ok(Self { key })
+        Ok(Self {
+            key,
+            password_salt: None,
+        })
     }
 
     /// Create encryption manager from a password
     pub fn from_password(password: &str) -> Result<Self> {
-        let salt = SaltString::generate(&mut OsRng);
+        let mut salt = [0u8; PASSWORD_SALT_SIZE];
+        use rand::RngCore;
+        OsRng.fill_bytes(&mut salt);
+        Self::from_password_salt_bytes(password, &salt)
+    }
+
+    /// Recreate a password-derived encryption manager from a persisted salt.
+    pub fn from_password_and_salt(password: &str, encoded_salt: &str) -> Result<Self> {
+        let salt = BASE64
+            .decode(encoded_salt)
+            .context("Failed to decode password salt")?;
+        if salt.len() != PASSWORD_SALT_SIZE {
+            bail!(
+                "Invalid password salt size: expected {} bytes, got {}",
+                PASSWORD_SALT_SIZE,
+                salt.len()
+            );
+        }
+        Self::from_password_salt_bytes(password, &salt)
+    }
+
+    /// Recreate a password-derived encryption manager for an encrypted payload.
+    pub fn from_password_for(password: &str, encrypted: &EncryptedState) -> Result<Self> {
+        let salt = encrypted
+            .salt
+            .as_deref()
+            .context("Encrypted state does not contain a password salt")?;
+        Self::from_password_and_salt(password, salt)
+    }
+
+    fn from_password_salt_bytes(password: &str, salt: &[u8]) -> Result<Self> {
+        if password.is_empty() {
+            bail!("Password must not be empty");
+        }
         let argon2 = Argon2::default();
 
         let mut key_bytes = [0u8; KEY_SIZE];
         argon2
-            .hash_password_into(
-                password.as_bytes(),
-                salt.as_str().as_bytes(),
-                &mut key_bytes,
-            )
+            .hash_password_into(password.as_bytes(), salt, &mut key_bytes)
             .map_err(|e| anyhow::anyhow!("Failed to derive key: {}", e))?;
 
         let key = *Key::<Aes256Gcm>::from_slice(&key_bytes);
-        Ok(Self { key })
+        Ok(Self {
+            key,
+            password_salt: Some(BASE64.encode(salt)),
+        })
     }
 
     /// Create encryption manager from existing key
@@ -68,7 +104,10 @@ impl StateEncryption {
         }
 
         let key = *Key::<Aes256Gcm>::from_slice(key_bytes);
-        Ok(Self { key })
+        Ok(Self {
+            key,
+            password_salt: None,
+        })
     }
 
     /// Load or generate key from file
@@ -129,7 +168,7 @@ impl StateEncryption {
 
         Ok(EncryptedState {
             nonce: BASE64.encode(nonce_bytes),
-            salt: None,
+            salt: self.password_salt.clone(),
             ciphertext: BASE64.encode(ciphertext),
             version: 1,
         })
@@ -206,6 +245,18 @@ pub mod state_file {
 
         let encrypted: EncryptedState = unsafe { simd_json::from_str(&mut contents) }
             .context("Failed to parse encrypted state")?;
+
+        encryption.decrypt_json(&encrypted)
+    }
+
+    /// Load state encrypted with a password-derived key. The salt is read from
+    /// the envelope so the key can be recreated after a process restart.
+    pub fn load_encrypted_with_password(path: &Path, password: &str) -> Result<State> {
+        let mut contents = std::fs::read_to_string(path).context("Failed to read state file")?;
+
+        let encrypted: EncryptedState = unsafe { simd_json::from_str(&mut contents) }
+            .context("Failed to parse encrypted state")?;
+        let encryption = StateEncryption::from_password_for(password, &encrypted)?;
 
         encryption.decrypt_json(&encrypted)
     }
@@ -298,10 +349,15 @@ mod tests {
         let plaintext = b"Secret data";
         let encrypted = encryption1.encrypt(plaintext).unwrap();
 
-        // Different instance with same password should work
-        // Note: In practice, we'd need to store and reuse the salt
-        // This is just for demonstration
-        let result = encryption1.decrypt(&encrypted).unwrap();
+        assert!(encrypted.salt.is_some());
+
+        // A fresh process can derive the same key from the persisted salt.
+        let encryption2 = StateEncryption::from_password_for(password, &encrypted).unwrap();
+        let result = encryption2.decrypt(&encrypted).unwrap();
         assert_eq!(plaintext.to_vec(), result);
+
+        let wrong_password = StateEncryption::from_password_for("wrong", &encrypted).unwrap();
+        assert!(wrong_password.decrypt(&encrypted).is_err());
+        assert!(StateEncryption::from_password("").is_err());
     }
 }

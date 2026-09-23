@@ -683,8 +683,13 @@ struct PromptAdmission {
     slot: Arc<OwnerSlot>,
     owner: GenerationOwner,
     job_id: String,
+    sealed_identity: String,
 }
 impl NativeGenerationAdmission for PromptAdmission {
+    fn sealed_identity(&self) -> Option<&str> {
+        Some(&self.sealed_identity)
+    }
+
     fn check(&self) -> BoxFuture<'_, std::result::Result<(), NativeGenerationError>> {
         Box::pin(async move {
             let _guard = self.slot.operation.lock().await;
@@ -771,6 +776,11 @@ impl GenerationPublisher {
         id: &str,
         mut cancel: watch::Receiver<bool>,
     ) -> Result<()> {
+        let sealed_identity = crate::native_sled_identity::credential_for(
+            &caller.actor,
+            &caller.session,
+            &caller.genesis,
+        )?;
         let mut changes = engine.change_tx().subscribe();
         {
             let _guard = slot.operation.lock().await;
@@ -823,6 +833,7 @@ impl GenerationPublisher {
             slot: slot.clone(),
             owner: owner.clone(),
             job_id: id.into(),
+            sealed_identity,
         });
         // Never accept a caller-supplied native session or reuse a conversation.
         let native_session = uuid::Uuid::new_v4().to_string();

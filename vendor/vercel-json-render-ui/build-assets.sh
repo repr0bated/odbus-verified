@@ -85,6 +85,7 @@ tar -xzf "$SOURCE_ARCHIVE" -C "$stage"
 source_root="$stage/vercel-json-render-ui"
 asset_base=$(pin asset_base)
 door_default=$(pin door_default)
+issuer_default=$(pin issuer_default)
 [ "$asset_base" = "/" ] || {
     printf 'production UI asset base must be the dashboard root: %s\n' "$asset_base" >&2
     exit 1
@@ -134,7 +135,7 @@ export NPM_CONFIG_USERCONFIG=/dev/null
     npm run type-check
     npm run lint
     npm test
-    VITE_OPDBUS_DOOR="$door_default" npm run build -- --base "$asset_base"
+    VITE_OPDBUS_DOOR="$door_default" VITE_OPDBUS_ISSUER="$issuer_default" npm run build -- --base "$asset_base"
 )
 [ -f "$source_root/dist/index.html" ] || { printf 'Vite omitted dist/index.html\n' >&2; exit 1; }
 grep -Fq '/assets/' "$source_root/dist/index.html" || {
@@ -164,11 +165,12 @@ jq -n \
     --arg npm_version "$npm_version" \
     --arg base "$asset_base" \
     --arg door "$door_default" \
+    --arg issuer "$issuer_default" \
     --arg asset_sha256 "$asset_sha" \
     --argjson asset_bytes "$asset_bytes" \
     '{format:"opdbus.vercel-json-render-ui-assets.v1",
       source:{head:$source_head,worktree:$source_worktree,archive_sha256:$source_archive_sha256,content_manifest_sha256:$content_manifest_sha256,package_lock_sha256:$package_lock_sha256},
-      build:{node_version:$node_version,npm_version:$npm_version,base:$base,door:$door},
+      build:{node_version:$node_version,npm_version:$npm_version,base:$base,door:$door,issuer:$issuer},
       artifact:{name:"assets.tar.gz",sha256:$asset_sha256,bytes:$asset_bytes}}' \
     > "$OUTPUT_DIR/manifest.json"
 printf 'built UI assets: %s\n' "$OUTPUT_DIR"

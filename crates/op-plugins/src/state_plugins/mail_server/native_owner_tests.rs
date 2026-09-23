@@ -1,6 +1,4 @@
 use super::*;
-use crate::state_plugins::mail_server::{mail_server_schema, methods};
-use serde_json::{json, Value};
 use std::{
     fs::File,
     path::Path,
@@ -13,7 +11,6 @@ use tokio::net::UnixListener;
 struct Fixture {
     _root: tempfile::TempDir,
     service: MailAdminService,
-    qmgr_requests: Arc<StdMutex<Vec<Vec<u8>>>>,
     _showq_task: tokio::task::JoinHandle<()>,
     _qmgr_task: tokio::task::JoinHandle<()>,
 }
@@ -83,90 +80,99 @@ impl Fixture {
         Self {
             _root: root,
             service,
-            qmgr_requests,
             _showq_task: showq_task,
             _qmgr_task: qmgr_task,
         }
     }
 }
 
-fn validate_contract(method: &str, input: &Value, output: &Value) {
-    let schema = mail_server_schema();
-    let declaration = &schema.methods[method];
-    let input_schema = serde_json::to_value(&declaration.args).unwrap();
-    jsonschema::validator_for(&input_schema)
-        .unwrap()
-        .validate(input)
-        .unwrap();
-    let output_schema = serde_json::to_value(declaration.returns.as_ref().unwrap()).unwrap();
-    jsonschema::validator_for(&output_schema)
-        .unwrap()
-        .validate(output)
-        .unwrap();
-}
-
 #[tokio::test]
-async fn all_nine_methods_cross_dbus_and_match_the_sealed_typed_contract() {
-    let fixture = Fixture::new().await;
-    let (server_stream, client_stream) = UnixStream::pair().unwrap();
-    let server = zbus::connection::Builder::unix_stream(server_stream)
-        .server(zbus::Guid::generate())
-        .unwrap()
-        .p2p()
-        .serve_at(methods::OBJECT_PATH, fixture.service.clone())
-        .unwrap()
-        .build();
-    let client = zbus::connection::Builder::unix_stream(client_stream)
-        .p2p()
-        .build();
-    let (_server, client) = tokio::time::timeout(Duration::from_secs(5), async {
-        tokio::try_join!(server, client)
-    })
-    .await
-    .unwrap()
+async fn mail_admin_interface_denies_all_mutations_without_verified_grant() {
+    let root = tempfile::tempdir().unwrap();
+    let paths = NativePaths {
+        domains: root.path().join("domains"),
+        mailboxes: root.path().join("vmailbox"),
+        aliases: root.path().join("virtual"),
+        dovecot_users: root.path().join("users"),
+        dovecot_users_gid: None,
+        mail_root: root.path().join("mail"),
+        mail_uid: None,
+        mail_gid: None,
+        showq_socket: root.path().join("absent-showq"),
+        qmgr_socket: root.path().join("absent-qmgr"),
+        postfix_master_pid: None,
+    };
+    std::fs::write(&paths.domains, "example.com\tOK\n").unwrap();
+    std::fs::write(
+        &paths.mailboxes,
+        "owner@example.com example.com/owner/Maildir/\n",
+    )
     .unwrap();
-
-    let calls = [
-        ("add_domain", json!({"domain":"example.net"})),
-        (
-            "add_mailbox",
-            json!({"domain":"example.net","user":"alice","password_hash":"{SHA512-CRYPT}$6$fixture"}),
-        ),
-        (
-            "set_quota",
-            json!({"domain":"example.net","user":"alice","quota_mb":256}),
-        ),
-        (
-            "add_alias",
-            json!({"domain":"example.net","alias":"info","destination":"alice@example.net"}),
-        ),
-        ("get_queue", json!({})),
-        ("flush_queue", json!({})),
-        (
-            "remove_alias",
-            json!({"domain":"example.net","alias":"info"}),
-        ),
-        (
-            "remove_mailbox",
-            json!({"domain":"example.net","user":"alice"}),
-        ),
-        ("remove_domain", json!({"domain":"example.net"})),
-    ];
-    for (method, input) in calls {
-        let receipt = methods::dispatch_mail_server_method_on(&client, method, &input)
-            .await
-            .unwrap_or_else(|error| panic!("{method}: {error:#}"));
-        validate_contract(method, &input, &receipt.output);
-        assert!(receipt
-            .administration
-            .domains
-            .contains(&"example.com".to_string()));
-    }
-    tokio::task::yield_now().await;
-    assert_eq!(
-        fixture.qmgr_requests.lock().unwrap().as_slice(),
-        [b"FADI\0"]
+    std::fs::write(
+        &paths.dovecot_users,
+        "owner@example.com:{SHA512-CRYPT}$6$fixture::::::\n",
+    )
+    .unwrap();
+    std::fs::write(&paths.aliases, "").unwrap();
+    let service = MailAdminService::new(
+        RuntimeDocuments::new(CozoGraphShuttle::new_in_memory().unwrap()),
+        paths,
     );
+    service.adopt_or_reconcile().await.unwrap();
+    let before = service
+        .documents
+        .read_durable(DOCUMENT_ID)
+        .await
+        .unwrap()
+        .unwrap();
+    let before_domains = std::fs::read(&service.paths.domains).unwrap();
+    let before_mailboxes = std::fs::read(&service.paths.mailboxes).unwrap();
+    let before_aliases = std::fs::read(&service.paths.aliases).unwrap();
+    let before_users = std::fs::read(&service.paths.dovecot_users).unwrap();
+    fn denied(result: zbus::fdo::Result<String>) {
+        assert!(matches!(result, Err(zbus::fdo::Error::AccessDenied(_))));
+    }
+    denied(service.add_domain("example.net").await);
+    denied(service.remove_domain("example.com").await);
+    denied(
+        service
+            .add_mailbox("example.net", "alice", "{SHA512-CRYPT}$6$fixture")
+            .await,
+    );
+    denied(service.remove_mailbox("example.com", "owner").await);
+    denied(
+        service
+            .add_alias("example.net", "info", "alice@example.net")
+            .await,
+    );
+    denied(service.remove_alias("example.com", "info").await);
+    denied(service.set_quota("example.com", "owner", 256).await);
+    denied(service.flush_queue().await);
+    let after = service
+        .documents
+        .read_durable(DOCUMENT_ID)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(after.revision, before.revision);
+    assert_eq!(after.document, before.document);
+    assert_eq!(
+        std::fs::read(&service.paths.domains).unwrap(),
+        before_domains
+    );
+    assert_eq!(
+        std::fs::read(&service.paths.mailboxes).unwrap(),
+        before_mailboxes
+    );
+    assert_eq!(
+        std::fs::read(&service.paths.aliases).unwrap(),
+        before_aliases
+    );
+    assert_eq!(
+        std::fs::read(&service.paths.dovecot_users).unwrap(),
+        before_users
+    );
+    assert!(!service.paths.qmgr_socket.exists());
 }
 
 #[tokio::test]

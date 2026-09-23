@@ -221,13 +221,6 @@ async fn wireguard_auth_middleware(
         return Ok(next.run(request).await);
     }
 
-    // WireGuard identity: presence of both xraqy-injected headers is the gate.
-    let has_footprint = headers.contains_key("x-ghostbridge-footprint");
-    let has_trace = headers.contains_key("x-ghostbridge-trace-id");
-    if has_footprint && has_trace {
-        return Ok(next.run(request).await);
-    }
-
     let Some(token) = extract_bearer_token(&headers) else {
         warn!("Rejected HTTP MCP request without bearer token");
         return Err(StatusCode::UNAUTHORIZED);
@@ -713,6 +706,29 @@ async fn sse_handler<H: McpHandler + 'static>(
 mod tests {
     use super::*;
     use axum::http::{HeaderMap, HeaderValue};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn identity_shaped_headers_do_not_bypass_non_loopback_auth() {
+        let validator: Arc<dyn AuthValidator> =
+            Arc::new(EnvAllowListValidator::new(Vec::<String>::new()));
+        let app = Router::new().route("/mcp", post(|| async { "ok" })).layer(
+            middleware::from_fn_with_state(validator, wireguard_auth_middleware),
+        );
+        let mut request = axum::http::Request::builder()
+            .method("POST")
+            .uri("/mcp")
+            .header("x-ghostbridge-footprint", "asserted")
+            .header("x-ghostbridge-trace-id", "asserted")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        request.extensions_mut().insert(ConnectInfo::<SocketAddr>(
+            "192.0.2.10:4567".parse().unwrap(),
+        ));
+
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
 
     #[test]
     fn should_extract_bearer_token() {

@@ -656,6 +656,29 @@ fn redact_identity_credentials_json(value: &mut serde_json::Value) {
     }
 }
 
+/// The authenticated owner's get_identity reply is the credential handoff.
+/// All generic/public state and every other identity in the reply stay redacted.
+fn redact_identity_method_credentials(
+    method: &str,
+    verified_session: Option<&str>,
+    value: &mut serde_json::Value,
+) {
+    let own_credential = verified_session
+        .filter(|session| !session.is_empty() && method == "get_identity")
+        .and_then(|session| {
+            let identity = value.get("identity")?;
+            (identity.get("session_id")?.as_str()? == session)
+                .then(|| identity.get("sealed_id").filter(|v| v.is_string()).cloned())
+                .flatten()
+        });
+    redact_identity_credentials_json(value);
+    if let Some(credential) = own_credential {
+        if let Some(identity) = value.get_mut("identity").and_then(|v| v.as_object_mut()) {
+            identity.insert("sealed_id".to_owned(), credential);
+        }
+    }
+}
+
 /// Generic state publication excludes credentials; identity has a typed durable owner.
 fn write_plugin_projection(plugin_id: &str, json: &[u8]) -> anyhow::Result<()> {
     anyhow::ensure!(
@@ -4309,7 +4332,22 @@ impl MutationEngine {
             ),
         };
         if plugin_id == "identity_sled" {
-            redact_identity_credentials_json(&mut method_result);
+            // The metadata was admitted before dispatch; recheck the durable
+            // session/principal binding before releasing possession material.
+            let own_session = if method == "get_identity" && session_id.is_some() {
+                Some(
+                    crate::project_dispatch::verified_session(
+                        self,
+                        actor_id,
+                        session_id,
+                        session_genesis,
+                    )
+                    .await?,
+                )
+            } else {
+                None
+            };
+            redact_identity_method_credentials(method, own_session.as_deref(), &mut method_result);
         }
 
         // Return a JSON result carrying the event accountability proof and the
@@ -4484,12 +4522,9 @@ impl MutationEngine {
             }
             // Selected model on tched-router (:8084). Tools are compact MCP on
             // that agent; the bridge does not own a second provider state.
-            let output = if matches!(
-                route.mode,
-                op_plugins::state_plugins::project::ChatMode::UiRender
-                    | op_plugins::state_plugins::project::ChatMode::Accountability
-            ) {
-                let before_prompt = crate::specialist::generation_admission(
+            let output = if route.mode == op_plugins::state_plugins::project::ChatMode::ControlPlane
+            {
+                let before_prompt = crate::specialist::generation_admission_with_origin(
                     self,
                     &admitted_schema,
                     crate::specialist::CognitiveCaller {
@@ -4499,6 +4534,25 @@ impl MutationEngine {
                     },
                     "tched_router",
                     method,
+                    facade_origin.clone(),
+                )?;
+                crate::control_plane_routing::complete(args, before_prompt, false).await?
+            } else if matches!(
+                route.mode,
+                op_plugins::state_plugins::project::ChatMode::UiRender
+                    | op_plugins::state_plugins::project::ChatMode::Accountability
+            ) {
+                let before_prompt = crate::specialist::generation_admission_with_origin(
+                    self,
+                    &admitted_schema,
+                    crate::specialist::CognitiveCaller {
+                        actor_id: &caller.actor,
+                        session_id: caller.session.as_deref(),
+                        session_genesis: caller.genesis.as_deref(),
+                    },
+                    "tched_router",
+                    method,
+                    facade_origin.clone(),
                 )?;
                 route
                     .client
@@ -4508,6 +4562,10 @@ impl MutationEngine {
                 route.client.chat_under_guard(args).await?
             };
             if let Some(episode_effect) = episode_effect {
+                let mut provenance = provenance;
+                if let Some(routing) = output.usage.get("routing") {
+                    provenance.push(format!("tched_router.routing:{routing}"));
+                }
                 let episode =
                 op_plugins::state_plugins::ctl_plane_chatbot_methods::build_completed_chat_episode(
                     op_plugins::state_plugins::ctl_plane_chatbot_methods::CompletedChatEpisode {
@@ -6459,7 +6517,33 @@ mod private_method_audit_tests {
 
 #[cfg(test)]
 mod identity_redaction_tests {
-    use super::public_plugin_value;
+    use super::{public_plugin_value, redact_identity_method_credentials};
+
+    #[test]
+    fn credential_handoff_returns_only_the_verified_sessions_credential() {
+        let original = serde_json::json!({
+            "identity":{"session_id":"mine", "sealed_id":"sid1:owned",
+                "nested":{"sealed_id":"sid1:other"}},
+            "sealed_id":"sid1:root", "other":{"sealed_id":"sid1:elsewhere"}
+        });
+        let mut own = original.clone();
+        redact_identity_method_credentials("get_identity", Some("mine"), &mut own);
+        assert_eq!(own["identity"]["sealed_id"], "sid1:owned");
+        assert!(own["identity"]["nested"].get("sealed_id").is_none());
+        assert!(own.get("sealed_id").is_none());
+        assert!(own["other"].get("sealed_id").is_none());
+        for (method, session) in [
+            ("get_identity", Some("someone-else")),
+            ("get_identity", None),
+            ("get_identity", Some("")),
+            ("write_identity", Some("mine")),
+            ("list_identities", Some("mine")),
+        ] {
+            let mut result = original.clone();
+            redact_identity_method_credentials(method, session, &mut result);
+            assert!(!result.to_string().contains("sealed_id"));
+        }
+    }
 
     #[test]
     fn public_identity_value_is_recursive_and_other_plugins_are_unchanged() {

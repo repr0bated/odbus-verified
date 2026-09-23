@@ -114,10 +114,11 @@ impl SessionManager {
         // We use in-memory DashMaps to prevent Btrfs mutation loops; the vault
         // is the only persistent record and is stored under /etc/ghostbridge.
         let path = path.as_ref().to_path_buf();
-        let vault = IdentityVault::load_from(&path).unwrap_or_else(|e| {
-            tracing::warn!("failed to load identity vault, starting empty: {e}");
-            IdentityVault::new(&path)
-        });
+        // An unreadable or corrupt identity authority must fail closed. Treating
+        // it as an empty vault can silently discard account mappings and allow
+        // later writes to replace the only durable identity record.
+        let vault = IdentityVault::load_from(&path)
+            .with_context(|| format!("load identity vault from {}", path.display()))?;
         Ok(Self {
             sessions: Arc::new(DashMap::new()),
             identity_vault: Arc::new(Mutex::new(vault)),
@@ -334,6 +335,15 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let path = dir.path().join("vault.json");
         (SessionManager::with_vault_path(&path).unwrap(), dir)
+    }
+
+    #[test]
+    fn corrupt_identity_vault_fails_closed() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("vault.json");
+        std::fs::write(&path, "not valid JSON").unwrap();
+        assert!(SessionManager::with_vault_path(&path).is_err());
+        assert_eq!(std::fs::read_to_string(path).unwrap(), "not valid JSON");
     }
 
     #[test]

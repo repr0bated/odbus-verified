@@ -110,6 +110,12 @@ impl ExecutionTracker {
     pub async fn complete_execution(&self, id: &str, output: Option<String>) {
         let mut records = self.records.write().await;
         if let Some(record) = records.iter_mut().find(|r| r.id == id) {
+            if !matches!(
+                record.status,
+                ExecutionStatus::Pending | ExecutionStatus::Running
+            ) {
+                return;
+            }
             record.complete(output);
 
             // Update stats
@@ -142,6 +148,12 @@ impl ExecutionTracker {
     pub async fn fail_execution(&self, id: &str, error: String) {
         let mut records = self.records.write().await;
         if let Some(record) = records.iter_mut().find(|r| r.id == id) {
+            if !matches!(
+                record.status,
+                ExecutionStatus::Pending | ExecutionStatus::Running
+            ) {
+                return;
+            }
             record.fail(error.clone());
 
             // Update stats
@@ -219,5 +231,56 @@ impl ExecutionTracker {
 impl Default for ExecutionTracker {
     fn default() -> Self {
         Self::new(1000)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ExecutionEvent, ExecutionTracker};
+    use tokio::sync::broadcast::error::TryRecvError;
+
+    #[tokio::test]
+    async fn terminal_updates_count_and_emit_only_once() {
+        let tracker = ExecutionTracker::new(8);
+        let mut events = tracker.subscribe();
+
+        let completed = tracker.start_execution("demo", None, None).await;
+        assert!(matches!(events.try_recv(), Ok(ExecutionEvent::Started(_))));
+        tracker
+            .complete_execution(&completed.id, Some("first".to_string()))
+            .await;
+        tracker
+            .complete_execution(&completed.id, Some("duplicate".to_string()))
+            .await;
+        tracker
+            .fail_execution(&completed.id, "late failure".to_string())
+            .await;
+        assert!(matches!(
+            events.try_recv(),
+            Ok(ExecutionEvent::Completed(id, true)) if id == completed.id
+        ));
+        assert!(matches!(events.try_recv(), Err(TryRecvError::Empty)));
+
+        let failed = tracker.start_execution("demo", None, None).await;
+        assert!(matches!(events.try_recv(), Ok(ExecutionEvent::Started(_))));
+        tracker
+            .fail_execution(&failed.id, "first failure".to_string())
+            .await;
+        tracker
+            .fail_execution(&failed.id, "duplicate failure".to_string())
+            .await;
+        tracker.complete_execution(&failed.id, None).await;
+        assert!(matches!(
+            events.try_recv(),
+            Ok(ExecutionEvent::Completed(id, false)) if id == failed.id
+        ));
+        assert!(matches!(events.try_recv(), Err(TryRecvError::Empty)));
+
+        let stats = tracker.get_stats().await;
+        assert_eq!(stats.total_executions, 2);
+        assert_eq!(stats.successful_executions, 1);
+        assert_eq!(stats.failed_executions, 1);
+        assert_eq!(stats.executions_by_tool.get("demo"), Some(&2));
+        assert_eq!(stats.failures_by_tool.get("demo"), Some(&1));
     }
 }

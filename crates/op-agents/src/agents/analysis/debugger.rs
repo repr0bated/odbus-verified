@@ -2,6 +2,8 @@
 
 use async_trait::async_trait;
 use std::fs;
+use std::io::Read;
+use std::os::fd::AsRawFd;
 
 use crate::agents::base::{validation, AgentTask, AgentTrait, TaskResult};
 use crate::security::SecurityProfile;
@@ -33,7 +35,17 @@ impl DebuggerAgent {
 
         if let Some(file) = path {
             let validated_path = validation::validate_path(file, ALLOWED_DIRS)?;
-            let content = fs::read_to_string(&validated_path)
+            let mut opened = fs::File::open(&validated_path)
+                .map_err(|e| format!("Failed to open {}: {}", validated_path, e))?;
+            // Validate the opened inode as well as the requested pathname. A link
+            // replaced between resolution and open must not redirect the read.
+            validation::validate_path(
+                &format!("/proc/self/fd/{}", opened.as_raw_fd()),
+                ALLOWED_DIRS,
+            )?;
+            let mut content = String::new();
+            opened
+                .read_to_string(&mut content)
                 .map_err(|e| format!("Failed to read {}: {}", validated_path, e))?;
             let collected: Vec<&str> = content.lines().collect();
             let start = collected.len().saturating_sub(num_lines);

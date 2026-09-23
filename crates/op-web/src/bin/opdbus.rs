@@ -7,12 +7,14 @@
 //!
 //! Listen address override: `OP_DBUS_GRPC_LISTEN` (e.g. "0.0.0.0:50051" for
 //! dev, or an explicit `ip:port`). When unset, op-dbus resolves the first
-//! IPv4 on `OP_DBUS_GRPC_IFACE` (default `ovsbr0`) and binds `<that-ip>:50051`;
-//! if the interface has no IPv4 it falls back to `0.0.0.0:50051`.
+//! IPv4 on `OP_DBUS_GRPC_IFACE` (default `ovsbr0`) and binds `<that-ip>:50051`.
+//! Missing interface addressing is fatal unless the operator supplies an
+//! explicit listen address.
 
+use anyhow::Context;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::info;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use op_grpc_bridge::run_grpc_server;
@@ -30,13 +32,12 @@ const DEFAULT_GRPC_IFACE: &str = "ovsbr0";
 
 /// Resolve the bind address: explicit `OP_DBUS_GRPC_LISTEN` wins; otherwise
 /// discover the first IPv4 on the configured interface and append the port;
-/// otherwise bind all interfaces.
-async fn resolve_listen_addr() -> SocketAddr {
+/// otherwise fail closed instead of unexpectedly exposing every interface.
+async fn resolve_listen_addr() -> anyhow::Result<SocketAddr> {
     if let Ok(listen) = std::env::var("OP_DBUS_GRPC_LISTEN") {
-        if let Ok(addr) = listen.parse::<SocketAddr>() {
-            return addr;
-        }
-        warn!(%listen, "OP_DBUS_GRPC_LISTEN did not parse as SocketAddr; falling back to discovery");
+        return listen
+            .parse::<SocketAddr>()
+            .with_context(|| format!("invalid OP_DBUS_GRPC_LISTEN value: {listen}"));
     }
 
     let port: u16 = std::env::var("OP_DBUS_GRPC_PORT")
@@ -56,16 +57,15 @@ async fn resolve_listen_addr() -> SocketAddr {
             {
                 if let Ok(addr) = format!("{}:{}", ip, port).parse::<SocketAddr>() {
                     info!(iface = %iface, %ip, port, "discovered ovsbr0 bind address");
-                    return addr;
+                    return Ok(addr);
                 }
             }
         }
     }
 
-    warn!(iface = %iface, "no IPv4 on interface; binding 0.0.0.0");
-    format!("0.0.0.0:{}", port)
-        .parse()
-        .expect("0.0.0.0:port always parses")
+    anyhow::bail!(
+        "no IPv4 address found on {iface}; set OP_DBUS_GRPC_LISTEN explicitly if another bind is intended"
+    )
 }
 
 #[tokio::main]
@@ -77,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
         .compact()
         .try_init();
 
-    let addr = resolve_listen_addr().await;
+    let addr = resolve_listen_addr().await?;
 
     let chain = Arc::new(RwLock::new(EventChain::new(ChainConfig::default())));
     let ovsdb = Arc::new(OvsdbDbusClient::new());

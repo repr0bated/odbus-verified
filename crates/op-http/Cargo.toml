@@ -37,3 +37,6 @@ tokio-rustls = { workspace = true }
 # Utils
 chrono = { workspace = true }
 gethostname = { workspace = true }
+
+[dev-dependencies]
+tempfile.workspace = true

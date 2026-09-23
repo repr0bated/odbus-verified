@@ -162,36 +162,31 @@ impl MemoryAgent {
         cache
     }
 
-    /// Serialize memory entries to JSON string using simple JSON construction
+    /// Serialize memory entries with a JSON encoder so caller-controlled keys,
+    /// values, and tags cannot break or reshape the persisted document.
     fn serialize_memory_entries(cache: &HashMap<String, MemoryEntry>) -> Result<String, String> {
-        let mut entries = Vec::new();
+        let mut entries = serde_json::Map::new();
         for (key, entry) in cache.iter() {
             let memory_type_str = match entry.memory_type {
                 MemoryType::Ephemeral => "ephemeral",
                 MemoryType::Persistent => "persistent",
                 MemoryType::Shared => "shared",
             };
-            let tags_json = entry
-                .tags
-                .iter()
-                .map(|t| format!("\"{}\"", t))
-                .collect::<Vec<_>>()
-                .join(",");
-
-            let expires_json = entry
-                .expires_at
-                .map(|e| format!(",\"expires_at\":{}", e))
-                .unwrap_or_default();
-
-            let entry_json = format!(
-                "\"{}\":{{\"value\":\"{}\",\"memory_type\":\"{}\",\"tags\":[{}],\"created_at\":{},\"updated_at\":{},\"access_count\":{},\"last_accessed\":{}{}}}",
-                key, entry.value, memory_type_str, tags_json, entry.created_at, entry.updated_at,
-                entry.access_count, entry.last_accessed, expires_json
+            entries.insert(
+                key.clone(),
+                serde_json::json!({
+                    "value": entry.value,
+                    "memory_type": memory_type_str,
+                    "tags": entry.tags,
+                    "created_at": entry.created_at,
+                    "updated_at": entry.updated_at,
+                    "expires_at": entry.expires_at,
+                    "access_count": entry.access_count,
+                    "last_accessed": entry.last_accessed,
+                }),
             );
-            entries.push(entry_json);
         }
-
-        Ok(format!("{{{}}}", entries.join(",")))
+        serde_json::to_string(&entries).map_err(|error| error.to_string())
     }
 
     /// Migrate from old format (key-value pairs)
@@ -547,5 +542,32 @@ impl AgentTrait for MemoryAgent {
             Ok(data) => Ok(TaskResult::success(&task.operation, data)),
             Err(e) => Ok(TaskResult::failure(&task.operation, e)),
         }
+    }
+}
+
+#[cfg(test)]
+mod serialization_tests {
+    use super::*;
+
+    #[test]
+    fn memory_json_escapes_caller_controlled_fields() {
+        let key = "key\" : {\"injected\":true}, \"rest".to_string();
+        let value = "line one\n\"quoted\"".to_string();
+        let mut entries = HashMap::new();
+        entries.insert(
+            key.clone(),
+            MemoryEntry::new(
+                key.clone(),
+                value.clone(),
+                MemoryType::Persistent,
+                vec!["tag\"with-quote".into()],
+            ),
+        );
+
+        let encoded = MemoryAgent::serialize_memory_entries(&entries).unwrap();
+        let decoded = MemoryAgent::parse_memory_entries(&encoded);
+        assert_eq!(decoded.len(), 1);
+        assert_eq!(decoded.get(&key).unwrap().value, value);
+        assert_eq!(decoded.get(&key).unwrap().tags, vec!["tag\"with-quote"]);
     }
 }

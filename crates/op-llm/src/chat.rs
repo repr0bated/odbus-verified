@@ -597,7 +597,8 @@ impl ChatManager {
         let mut provider_status = simd_json::value::owned::Object::new();
 
         for ptype in self.providers.keys() {
-            let models = self.list_models_for_provider(ptype).await.ok();
+            let (available, model_count, model_list_error) =
+                model_listing_status(self.list_models_for_provider(ptype).await);
             let (auth_type, features) = match ptype {
                 ProviderType::Factory => (
                     "Factory AI endpoint (FACTORY_BASE_URL)",
@@ -650,8 +651,9 @@ impl ChatManager {
             provider_status.insert(
                 ptype.to_string(),
                 simd_json::json!({
-                    "available": true,
-                    "model_count": models.as_ref().map(|m| m.len()).unwrap_or(0),
+                    "available": available,
+                    "model_count": model_count,
+                    "model_list_error": model_list_error,
                     "auth_type": auth_type,
                     "features": features,
                 }),
@@ -663,6 +665,34 @@ impl ChatManager {
             "current_model": current_model,
             "providers": provider_status,
         })
+    }
+}
+
+#[cfg(test)]
+mod detailed_status_tests {
+    use super::model_listing_status;
+    use crate::provider::ModelInfo;
+
+    #[test]
+    fn model_listing_failure_is_not_reported_as_available() {
+        let (available, count, failed) =
+            model_listing_status::<anyhow::Error>(Err(anyhow::anyhow!("provider offline")));
+        assert!(!available);
+        assert_eq!(count, 0);
+        assert!(failed);
+
+        let (available, count, failed) =
+            model_listing_status::<anyhow::Error>(Ok(Vec::<ModelInfo>::new()));
+        assert!(available);
+        assert_eq!(count, 0);
+        assert!(!failed);
+    }
+}
+
+fn model_listing_status<E>(result: Result<Vec<ModelInfo>, E>) -> (bool, usize, bool) {
+    match result {
+        Ok(models) => (true, models.len(), false),
+        Err(_) => (false, 0, true),
     }
 }
 

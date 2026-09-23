@@ -28,9 +28,13 @@ async fn main() -> anyhow::Result<()> {
     // org.opdbus.v1.plugins. This daemon exposes only its gRPC compatibility
     // transport.
     let grpc_server = GrpcServer::new(manager);
-    let addr = std::env::var("OP_SERVICES_GRPC_ADDR")
-        .unwrap_or_else(|_| "[::]:50053".to_string())
+    let addr: std::net::SocketAddr = std::env::var("OP_SERVICES_GRPC_ADDR")
+        .unwrap_or_else(|_| "[::1]:50053".to_string())
         .parse()?;
+    anyhow::ensure!(
+        addr.ip().is_loopback(),
+        "op-services compatibility listener must bind to a loopback address"
+    );
 
     info!("gRPC server listening on {}", addr);
 

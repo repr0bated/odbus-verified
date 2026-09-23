@@ -12,6 +12,7 @@ use op_cozo_store::CozoGraphShuttle;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Mutex,
@@ -51,6 +52,33 @@ pub enum MemoryPolicy {
 const DEFAULT_MEMORY_MAX_ENTRIES: usize = 1000;
 /// Default maximum memory usage for the in-memory fast path (100 MB).
 const DEFAULT_MEMORY_MAX_BYTES: usize = 100 * 1024 * 1024;
+
+fn validate_ssh_destination(destination: &str) -> Result<()> {
+    if destination.is_empty()
+        || destination.starts_with('-')
+        || !destination.chars().all(|character| {
+            character.is_ascii_alphanumeric()
+                || matches!(character, '.' | '-' | '_' | '@' | ':' | '[' | ']' | '%')
+        })
+    {
+        anyhow::bail!("invalid SSH destination");
+    }
+    Ok(())
+}
+
+fn validate_remote_path(path: &str) -> Result<()> {
+    if !path.starts_with('/')
+        || !path.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '/' | '.' | '-' | '_')
+        })
+        || Path::new(path)
+            .components()
+            .any(|component| matches!(component, std::path::Component::ParentDir))
+    {
+        anyhow::bail!("remote Btrfs path must be an absolute path without shell metacharacters");
+    }
+    Ok(())
+}
 
 /// A single entry in the in-memory fast path.
 struct CacheEntry {
@@ -1178,6 +1206,9 @@ impl BtrfsCache {
         remote_host: &str,
         remote_path: &str,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        validate_ssh_destination(remote_host)?;
+        validate_remote_path(remote_path)?;
+
         // Apply NUMA affinity for streaming operations
         self.apply_numa_affinity("cache_streaming").await?;
 
@@ -1191,23 +1222,54 @@ impl BtrfsCache {
             remote_host, remote_path
         );
 
-        let cmd = format!(
-            "btrfs send {} | ssh {} 'btrfs receive {}'",
-            snapshot_path.display(),
-            remote_host,
-            remote_path
+        let mut sender = tokio::process::Command::new("btrfs")
+            .arg("send")
+            .arg(&snapshot_path)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to start btrfs send: {}", e))?;
+        let mut stream = sender
+            .stdout
+            .take()
+            .ok_or("Failed to capture btrfs send output")?;
+        let mut receiver = tokio::process::Command::new("ssh")
+            .arg("--")
+            .arg(remote_host)
+            .arg(format!("btrfs receive {}", remote_path))
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to start remote btrfs receive: {}", e))?;
+        let mut sink = receiver
+            .stdin
+            .take()
+            .ok_or("Failed to capture remote btrfs receive input")?;
+        let transfer = tokio::spawn(async move {
+            let result = tokio::io::copy(&mut stream, &mut sink).await;
+            drop(sink);
+            result
+        });
+
+        let (send_output, receive_output, transfer_output) = tokio::join!(
+            sender.wait_with_output(),
+            receiver.wait_with_output(),
+            transfer
         );
+        let send_output = send_output?;
+        let receive_output = receive_output?;
+        transfer_output.map_err(|e| format!("Btrfs stream forwarding task failed: {}", e))??;
 
-        let output = tokio::process::Command::new("bash")
-            .arg("-c")
-            .arg(&cmd)
-            .output()
-            .await
-            .map_err(|e| format!("Failed to execute btrfs stream command: {}", e))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("Btrfs streaming failed: {}", stderr).into());
+        if !send_output.status.success() || !receive_output.status.success() {
+            return Err(format!(
+                "Btrfs streaming failed (send: {}; receive: {}): {}{}",
+                send_output.status,
+                receive_output.status,
+                String::from_utf8_lossy(&send_output.stderr),
+                String::from_utf8_lossy(&receive_output.stderr)
+            )
+            .into());
         }
 
         info!("Successfully streamed cache snapshot");
@@ -1221,6 +1283,10 @@ impl BtrfsCache {
         remote_snapshot: &str,
         local_path: &str,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        validate_ssh_destination(remote_host)?;
+        validate_remote_path(remote_snapshot)?;
+        validate_remote_path(local_path)?;
+
         // Apply NUMA affinity for receiving operations
         self.apply_numa_affinity("cache_receiving").await?;
 
@@ -1229,21 +1295,54 @@ impl BtrfsCache {
             remote_host, remote_snapshot
         );
 
-        let cmd = format!(
-            "ssh {} 'btrfs send {}' | btrfs receive {}",
-            remote_host, remote_snapshot, local_path
+        let mut sender = tokio::process::Command::new("ssh")
+            .arg("--")
+            .arg(remote_host)
+            .arg(format!("btrfs send {}", remote_snapshot))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to start remote btrfs send: {}", e))?;
+        let mut stream = sender
+            .stdout
+            .take()
+            .ok_or("Failed to capture remote btrfs send output")?;
+        let mut receiver = tokio::process::Command::new("btrfs")
+            .arg("receive")
+            .arg(local_path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to start local btrfs receive: {}", e))?;
+        let mut sink = receiver
+            .stdin
+            .take()
+            .ok_or("Failed to capture local btrfs receive input")?;
+        let transfer = tokio::spawn(async move {
+            let result = tokio::io::copy(&mut stream, &mut sink).await;
+            drop(sink);
+            result
+        });
+
+        let (send_output, receive_output, transfer_output) = tokio::join!(
+            sender.wait_with_output(),
+            receiver.wait_with_output(),
+            transfer
         );
+        let send_output = send_output?;
+        let receive_output = receive_output?;
+        transfer_output.map_err(|e| format!("Btrfs stream forwarding task failed: {}", e))??;
 
-        let output = tokio::process::Command::new("bash")
-            .arg("-c")
-            .arg(&cmd)
-            .output()
-            .await
-            .map_err(|e| format!("Failed to execute btrfs receive command: {}", e))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("Btrfs receive failed: {}", stderr).into());
+        if !send_output.status.success() || !receive_output.status.success() {
+            return Err(format!(
+                "Btrfs receive failed (send: {}; receive: {}): {}{}",
+                send_output.status,
+                receive_output.status,
+                String::from_utf8_lossy(&send_output.stderr),
+                String::from_utf8_lossy(&receive_output.stderr)
+            )
+            .into());
         }
 
         info!("Successfully received cache snapshot");
@@ -1355,6 +1454,18 @@ pub struct NumaInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn remote_stream_arguments_reject_shell_syntax_and_traversal() {
+        assert!(validate_ssh_destination("cache@example.internal").is_ok());
+        assert!(validate_ssh_destination("cache;touch /tmp/pwned").is_err());
+        assert!(validate_ssh_destination("-oProxyCommand=bad").is_err());
+
+        assert!(validate_remote_path("/var/lib/op-dbus/cache").is_ok());
+        assert!(validate_remote_path("/var/lib/op-dbus/../secret").is_err());
+        assert!(validate_remote_path("/tmp/cache;touch_pwned").is_err());
+        assert!(validate_remote_path("relative/cache").is_err());
+    }
 
     #[tokio::test]
     async fn test_text_hashing() {

@@ -172,7 +172,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         )
         .route(
             "/chat/system-prompt",
-            axum::routing::put(handlers::chat::update_system_prompt_handler),
+            axum::routing::put(handlers::chat::update_system_prompt_handler)
+                .route_layer(axum::middleware::from_fn(security::require_project_admin)),
         )
         // Analytics / Accountability
         .route(
@@ -182,14 +183,23 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         // Tool endpoints
         .route("/tools", get(handlers::tools::list_tools_handler))
         .route("/tools/:name", get(handlers::tools::get_tool_handler))
-        .route("/tool", post(handlers::tools::execute_tool_handler))
+        .route(
+            "/tool",
+            post(handlers::tools::execute_tool_handler)
+                .route_layer(axum::middleware::from_fn(security::require_mcp_write)),
+        )
         .route(
             "/tools/:name/execute",
-            post(handlers::tools::execute_named_tool_handler),
+            post(handlers::tools::execute_named_tool_handler)
+                .route_layer(axum::middleware::from_fn(security::require_mcp_write)),
         )
         // Agent endpoints
         .route("/agents", get(handlers::agents::list_agents_handler))
-        .route("/agents", post(handlers::agents::spawn_agent_handler))
+        .route(
+            "/agents",
+            post(handlers::agents::spawn_agent_handler)
+                .route_layer(axum::middleware::from_fn(security::require_mcp_write)),
+        )
         .route(
             "/agents/types",
             get(handlers::agents::list_agent_types_handler),
@@ -197,11 +207,13 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/agents/:id", get(handlers::agents::get_agent_handler))
         .route(
             "/agents/:id/task",
-            post(handlers::agents::agent_task_handler),
+            post(handlers::agents::agent_task_handler)
+                .route_layer(axum::middleware::from_fn(security::require_mcp_write)),
         )
         .route(
             "/agents/:id",
-            axum::routing::delete(handlers::agents::kill_agent_handler),
+            axum::routing::delete(handlers::agents::kill_agent_handler)
+                .route_layer(axum::middleware::from_fn(security::require_mcp_write)),
         )
         // LLM endpoints
         .route("/llm/status", get(handlers::llm::llm_status_handler))
@@ -254,10 +266,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/events", get(sse::sse_handler))
         // Privacy router endpoints
         .route("/privacy/signup", post(handlers::privacy::signup))
-        .route("/privacy/verify", get(handlers::privacy::verify))
+        .route(
+            "/privacy/verify",
+            get(handlers::privacy::verify)
+                .route_layer(axum::middleware::from_fn(security::no_store)),
+        )
         .route(
             "/privacy/config/:user_id",
-            get(handlers::privacy::get_config),
+            get(handlers::privacy::get_config)
+                .route_layer(axum::middleware::from_fn(security::no_store)),
         )
         .route("/privacy/status", get(handlers::privacy::status))
         .route(
@@ -289,10 +306,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             post(handlers::tched_router::tched_router_chat_handler),
         )
         // Human-facing privacy verification flow (magic-link target)
-        .route("/privacy/verify", get(handlers::privacy::verify_redirect))
+        .route(
+            "/privacy/verify",
+            get(handlers::privacy::verify_redirect)
+                .route_layer(axum::middleware::from_fn(security::no_store)),
+        )
         .route(
             "/privacy/access",
-            get(handlers::privacy::privacy_access_message),
+            get(handlers::privacy::privacy_access_message)
+                .route_layer(axum::middleware::from_fn(security::no_store)),
         )
         .merge(ws_route)
         .nest("/groups-admin", groups_admin::create_groups_admin_router())

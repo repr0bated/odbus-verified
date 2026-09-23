@@ -351,7 +351,27 @@ fn truncate_string(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
         s.to_string()
     } else {
-        format!("{}... (truncated)", &s[..max_len])
+        // Walk back from the byte limit to a UTF-8 boundary before slicing.
+        let mut boundary = max_len.min(s.len());
+        while !s.is_char_boundary(boundary) {
+            boundary -= 1;
+        }
+        format!("{}... (truncated)", &s[..boundary])
+    }
+}
+
+#[cfg(test)]
+mod truncate_tests {
+    use super::truncate_string;
+
+    #[test]
+    fn truncates_at_utf8_boundary() {
+        let input = format!("{}é tail", "a".repeat(999));
+        let output = truncate_string(&input, 1000);
+        let prefix = "a".repeat(999);
+        assert!(output.starts_with(prefix.as_str()));
+        assert!(output.ends_with("... (truncated)"));
+        assert!(output.is_char_boundary(output.len()));
     }
 }
 

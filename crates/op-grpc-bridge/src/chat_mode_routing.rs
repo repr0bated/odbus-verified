@@ -18,8 +18,6 @@ use crate::{
 
 pub(crate) const CONTROL_PLANE_AGENT: &str = "control_plane";
 pub(crate) const ACCOUNTABILITY_AGENT: &str = "accountability";
-pub(crate) const OPENROUTER_AUTO_PROVIDER: &str = "openrouter";
-pub(crate) const OPENROUTER_AUTO_MODEL: &str = "openrouter/auto";
 
 pub(crate) struct ResolvedChatRoute {
     pub(crate) mode: ChatMode,
@@ -38,15 +36,18 @@ pub(crate) fn dedicated_alias(mode: ChatMode) -> Option<&'static str> {
 
 fn apply_mode_route(mode: ChatMode, mut input: ChatInput) -> (Option<&'static str>, ChatInput) {
     if dedicated_alias(mode).is_some() {
-        input.provider = OPENROUTER_AUTO_PROVIDER.into();
-        input.model = OPENROUTER_AUTO_MODEL.into();
+        // Role routes are resolved from their native OpenCode profiles or the
+        // control-plane request policy, never from a dashboard override.
+        input.provider.clear();
+        input.model.clear();
     }
     (dedicated_alias(mode), input)
 }
 
 /// Resolve the route after re-reading the caller's persisted mode. Normal
 /// modes retain the caller's explicit provider/model; role modes replace them
-/// with their dedicated alias and pinned OpenRouter Auto route.
+/// with their dedicated native route. Control-plane classification happens
+/// after the caller has supplied its original generation admission.
 pub(crate) async fn resolve(
     engine: &MutationEngine,
     caller: CognitiveCaller<'_>,
@@ -84,9 +85,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn role_route_constants_are_pinned_to_openrouter_auto() {
-        assert_eq!(OPENROUTER_AUTO_PROVIDER, "openrouter");
-        assert_eq!(OPENROUTER_AUTO_MODEL, "openrouter/auto");
+    fn role_routes_have_distinct_native_aliases() {
         assert_ne!(CONTROL_PLANE_AGENT, ACCOUNTABILITY_AGENT);
     }
 
@@ -127,7 +126,7 @@ mod tests {
         };
         let (alias, routed) = apply_mode_route(ChatMode::Accountability, input);
         assert_eq!(alias, Some(ACCOUNTABILITY_AGENT));
-        assert_eq!(routed.provider, OPENROUTER_AUTO_PROVIDER);
-        assert_eq!(routed.model, OPENROUTER_AUTO_MODEL);
+        assert!(routed.provider.is_empty());
+        assert!(routed.model.is_empty());
     }
 }

@@ -1,22 +1,19 @@
 //! D-Bus side of the Assistant gateway. Exposes a generic `call(method,
 //! payload_json) -> response_json` surface so the gRPC side can dispatch
-//! Assistant operations through D-Bus when available.
-//!
-//! Authentication is delegated to the bus policy files (`/usr/share/dbus-1/
-//! system.d/ai.assistant.v1.conf`).
+//! Assistant operations through D-Bus when available. The standalone server
+//! no longer mounts this generic passthrough: a session-bus peer has no
+//! verified principal or per-operation grant at this interface.
 
 use crate::client::AssistantClient;
 use crate::transport::{DEFAULT_DBUS_NAME, DEFAULT_DBUS_PATH};
 use std::sync::Arc;
 use zbus::object_server::SignalEmitter;
 
-pub struct AssistantDbusService {
-    client: Arc<AssistantClient>,
-}
+pub struct AssistantDbusService;
 
 impl AssistantDbusService {
-    pub fn new(client: Arc<AssistantClient>) -> Self {
-        Self { client }
+    pub fn new(_client: Arc<AssistantClient>) -> Self {
+        Self
     }
 }
 
@@ -24,15 +21,10 @@ impl AssistantDbusService {
 impl AssistantDbusService {
     /// Generic JSON-RPC style passthrough. Returns the JSON-encoded response
     /// from the Assistant gateway.
-    async fn call(&self, method: String, payload_json: String) -> zbus::fdo::Result<String> {
-        let params: serde_json::Value = serde_json::from_str(&payload_json)
-            .map_err(|e| zbus::fdo::Error::InvalidArgs(format!("invalid json: {}", e)))?;
-        let result = self
-            .client
-            .call(&method, params)
-            .await
-            .map_err(|e| zbus::fdo::Error::Failed(e.to_string()))?;
-        Ok(result.to_string())
+    async fn call(&self, _method: String, _payload_json: String) -> zbus::fdo::Result<String> {
+        Err(zbus::fdo::Error::AccessDenied(
+            "standalone Assistant D-Bus passthrough is disabled".into(),
+        ))
     }
 
     /// Signal fired whenever an Assistant run emits an event. The gRPC side
@@ -58,4 +50,19 @@ pub async fn serve(client: Arc<AssistantClient>) -> zbus::Result<zbus::Connectio
         .build()
         .await?;
     Ok(conn)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn generic_call_is_denied_before_payload_or_backend_dispatch() {
+        let service = AssistantDbusService;
+        let error = service
+            .call("cron.create".into(), "{".into())
+            .await
+            .unwrap_err();
+        assert!(matches!(error, zbus::fdo::Error::AccessDenied(_)));
+    }
 }

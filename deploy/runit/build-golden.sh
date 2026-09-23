@@ -75,6 +75,8 @@ TCHED_ROUTER_PATCH_INVENTORY="$PROJECT_ROOT/vendor/tched-router/patch-inventory"
 TCHED_ROUTER_BASE_MANIFEST="$PROJECT_ROOT/vendor/tched-router/base-sha256sums"
 TCHED_ROUTER_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/zeroclaw-runtime.toml"
 TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/zeroclaw-skills/default"
+OPENCODE_RUNTIME_CONFIG="$SCRIPT_DIR/../config/opencode-runtime.json"
+OPENCODE_BINARY_SOURCE=${OPENCODE_BINARY_SOURCE:-/usr/bin/opencode}
 UI_SOURCE_DIR="$PROJECT_ROOT/vendor/vercel-json-render-ui"
 UI_SOURCE_PIN="$UI_SOURCE_DIR/source.pin"
 UI_SOURCE_ARCHIVE="$UI_SOURCE_DIR/source.tar.gz"
@@ -306,6 +308,32 @@ jq -e \
     die "tched_router native candidate reports an unexpected version"
 strings "$TCHED_ROUTER_NATIVE_BIN" | grep -Fq 'tched_router.generation.v1' ||
     die "tched_router native candidate lacks the patched generation protocol"
+[ -r "$OPENCODE_RUNTIME_CONFIG" ] ||
+    die "missing OpenCode runtime contract: $OPENCODE_RUNTIME_CONFIG"
+[ -x "$OPENCODE_BINARY_SOURCE" ] ||
+    die "missing OpenCode binary: $OPENCODE_BINARY_SOURCE"
+OPENCODE_VERSION=$(jq -er '.version | select(type == "string" and length > 0)' "$OPENCODE_RUNTIME_CONFIG")
+OPENCODE_SHA256=$(jq -er '.sha256 | select(test("^[0-9a-f]{64}$"))' "$OPENCODE_RUNTIME_CONFIG")
+OPENCODE_BINARY_VERSION=$($OPENCODE_BINARY_SOURCE --version)
+[ "$OPENCODE_BINARY_VERSION" = "$OPENCODE_VERSION" ] ||
+    die "OpenCode binary version does not match runtime contract"
+[ "$(sha256sum "$OPENCODE_BINARY_SOURCE" | cut -d' ' -f1)" = "$OPENCODE_SHA256" ] ||
+    die "OpenCode binary digest does not match runtime contract"
+jq -e '
+    .format == "opdbus.opencode-runtime.v1" and
+    .binary == "/usr/bin/opencode" and
+    .user == "jeremy" and .host == "127.0.0.1" and
+    (.port | type == "number" and floor == . and . >= 1024 and . <= 65535) and
+    .password_file == "/etc/op-dbus/secrets/opencode-server-password" and
+    .auth_file == "/home/jeremy/.local/share/opencode/auth.json" and
+    .agent == "opdbus-completion" and
+    .config.share == "disabled" and .config.autoshare == false and
+    (.config.mcp | type == "object" and length == 0) and
+    .config.agent["opdbus-completion"].tools["*"] == false and
+    .config.agent["opdbus-completion"].permission["*"] == "deny"' \
+    "$OPENCODE_RUNTIME_CONFIG" >/dev/null ||
+    die "OpenCode runtime contract is invalid"
+OPENCODE_RUNTIME_CONFIG_SHA256=$(sha256sum "$OPENCODE_RUNTIME_CONFIG" | cut -d' ' -f1)
 [ -f "$TCHED_ROUTER_BOOTSTRAP_CONFIG" ] ||
     die "missing tched_router bootstrap configuration: $TCHED_ROUTER_BOOTSTRAP_CONFIG"
 [ -d "$TCHED_ROUTER_BOOTSTRAP_SKILLS" ] ||
@@ -540,6 +568,10 @@ build_golden() {
     run install -Dm644 "$TCHED_ROUTER_NATIVE_MANIFEST" \
         "$GOLDEN_DIR/usr/share/op-dbus/native-manifests/tched-router.json"
     ok "staged pinned tched_router native binary and provenance manifest"
+    run install -Dm755 "$OPENCODE_BINARY_SOURCE" "$GOLDEN_DIR/usr/bin/opencode"
+    run install -Dm644 "$OPENCODE_RUNTIME_CONFIG" \
+        "$GOLDEN_DIR/etc/op-dbus/opencode-runtime.json"
+    ok "staged OpenCode ${OPENCODE_VERSION} runtime and provenance contract"
     ui_destination="$GOLDEN_DIR/usr/local/share/op-dbus/dashboard"
     run install -d -m 0755 "$ui_destination"
     [ ! -e "$ui_destination/assets" ] || run rm -r -- "$ui_destination/assets"
@@ -782,6 +814,9 @@ build_golden() {
             printf 'tched-router-manifest-sha256: %s\n' "$TCHED_ROUTER_MANIFEST_SHA256"
             printf 'tched-router-bootstrap-config-sha256: %s\n' "$TCHED_ROUTER_BOOTSTRAP_CONFIG_SHA256"
             printf 'tched-router-bootstrap-skills-sha256: %s\n' "$TCHED_ROUTER_BOOTSTRAP_SKILLS_SHA256"
+            printf 'opencode-version: %s\n' "$OPENCODE_VERSION"
+            printf 'opencode-sha256: %s\n' "$OPENCODE_SHA256"
+            printf 'opencode-runtime-config-sha256: %s\n' "$OPENCODE_RUNTIME_CONFIG_SHA256"
             printf 'ui-source-head: %s\n' "$UI_SOURCE_HEAD"
             printf 'ui-source-worktree: %s\n' "$UI_SOURCE_WORKTREE"
             printf 'ui-source-archive-sha256: %s\n' "$UI_SOURCE_ARCHIVE_SHA256"

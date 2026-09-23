@@ -1,10 +1,11 @@
 format=opdbus.vercel-json-render-ui-source.v1
 source_repository=/srv/git/3tched.com
 source_head=286f6a11d5d6bdef0d29ae8abef518f1ec91a491
-source_worktree=committed
-content_manifest_sha256=f2e7786db621293ca7d166669aa880e86c71d45ac2e2b7fb81a3ac760caaa098
-source_archive_sha256=5583a31ff32569fedccb5d946abac535ff8f741ffbf6d317a5762d7822f64a5a
+source_worktree=modified
+content_manifest_sha256=78ea54d9a1284591d8a07d1331c805bf27453ef2a69fe3bac92f9d2b836ded29
+source_archive_sha256=6701519e3a38bbc89ee66b3e1e5c371a1fb10ffbdc18fb9ba3e2f8090a8f26da
 archive_root=vercel-json-render-ui
 node_engine=>=22.22.2
 asset_base=/
 door_default=https://10.0.0.3:8090
+issuer_default=http://10.0.0.1:51888

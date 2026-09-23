@@ -10,17 +10,13 @@
 //!   OF_FLOW_PRIORITY       flow priority (default: 100)
 //!
 //! Also exposes `org.opdbus.v1.plugins.openflow` at
-//! `/org/opdbus/v1/plugins/openflow` on the system bus so the `openflow`
-//! plugin (crates/op-plugins/src/state_plugins/openflow.rs) can push
-//! schema-driven flows to whichever switch is currently connected.
+//! `/org/opdbus/v1/plugins/openflow` on the system bus. Mutations are denied
+//! until this bus can verify the bridge caller's principal and grant.
 
 use std::net::SocketAddr;
 
 use anyhow::{Context, Result};
-use op_network::{
-    attach_controller_safe, del_controller, ensure_fallback_normal, get_datapath_health,
-    set_controller, set_fail_mode, OpenFlowController, OpenFlowControllerHandle,
-};
+use op_network::{get_datapath_health, OpenFlowController, OpenFlowControllerHandle};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 use zbus::interface;
@@ -29,26 +25,29 @@ struct OpenFlowDbusService {
     handle: OpenFlowControllerHandle,
 }
 
+/// The bridge admits exact `openflow.write` grants, but these native methods
+/// currently receive only a system-bus sender. A bus name, UID, PID, or
+/// caller-supplied argument cannot recover the verified principal/session on
+/// the bridge's separate identity-gated session bus. Deny before any OVS sink
+/// until an authenticated bridge-to-owner attribution protocol exists.
+fn deny_unattributed_mutation() -> zbus::fdo::Error {
+    zbus::fdo::Error::AccessDenied(
+        "OpenFlow mutation requires a verified principal and openflow.write grant".into(),
+    )
+}
+
 #[interface(name = "org.opdbus.v1.plugins.openflow")]
 impl OpenFlowDbusService {
     /// Install an absent entry or replace/remove an exact live entry. Empty
     /// expected_json means absent; native readback is required before success.
     async fn compare_exchange_flow(
         &self,
-        bridge: String,
-        flow_json: String,
-        expected_json: String,
-        delete: bool,
+        _bridge: String,
+        _flow_json: String,
+        _expected_json: String,
+        _delete: bool,
     ) -> zbus::fdo::Result<String> {
-        let expected = if expected_json.is_empty() {
-            None
-        } else {
-            Some(expected_json)
-        };
-        self.handle
-            .compare_exchange_flow(bridge, flow_json, expected, delete)
-            .await
-            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+        Err(deny_unattributed_mutation())
     }
 
     async fn verify_flow(
@@ -63,19 +62,13 @@ impl OpenFlowDbusService {
             .map_err(|error| zbus::fdo::Error::Failed(error.to_string()))
     }
     /// Install a schema-driven flow (JSON-encoded `FlowEntry`).
-    async fn send_flow(&self, flow_json: String) -> zbus::fdo::Result<String> {
-        self.handle
-            .send_flow(flow_json, false)
-            .await
-            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    async fn send_flow(&self, _flow_json: String) -> zbus::fdo::Result<String> {
+        Err(deny_unattributed_mutation())
     }
 
     /// Delete a schema-driven flow (JSON-encoded `FlowEntry`).
-    async fn delete_flow(&self, flow_json: String) -> zbus::fdo::Result<String> {
-        self.handle
-            .send_flow(flow_json, true)
-            .await
-            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    async fn delete_flow(&self, _flow_json: String) -> zbus::fdo::Result<String> {
+        Err(deny_unattributed_mutation())
     }
 
     /// Dump flows this controller has pushed (in-memory tracking, not a live
@@ -85,35 +78,27 @@ impl OpenFlowDbusService {
     }
 
     /// Ensure priority=0 actions=NORMAL is present on `bridge`.
-    async fn ensure_fallback_normal(&self, bridge: String) -> zbus::fdo::Result<String> {
-        ensure_fallback_normal(&bridge)
-            .await
-            .map(|_| format!("ok: fallback NORMAL on {bridge}"))
-            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    async fn ensure_fallback_normal(&self, _bridge: String) -> zbus::fdo::Result<String> {
+        Err(deny_unattributed_mutation())
     }
 
     /// Set Bridge fail_mode (`standalone` or `secure`).
-    async fn set_fail_mode(&self, bridge: String, mode: String) -> zbus::fdo::Result<String> {
-        set_fail_mode(&bridge, &mode)
-            .await
-            .map(|_| format!("ok: {bridge} fail_mode={mode}"))
-            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    async fn set_fail_mode(&self, _bridge: String, _mode: String) -> zbus::fdo::Result<String> {
+        Err(deny_unattributed_mutation())
     }
 
     /// Remove controllers from `bridge`.
-    async fn del_controller(&self, bridge: String) -> zbus::fdo::Result<String> {
-        del_controller(&bridge)
-            .await
-            .map(|_| format!("ok: del-controller {bridge}"))
-            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    async fn del_controller(&self, _bridge: String) -> zbus::fdo::Result<String> {
+        Err(deny_unattributed_mutation())
     }
 
     /// Set controller after ensuring NORMAL fallback. Endpoint e.g. tcp:10.200.0.1:6653.
-    async fn set_controller(&self, bridge: String, endpoint: String) -> zbus::fdo::Result<String> {
-        set_controller(&bridge, &endpoint)
-            .await
-            .map(|_| format!("ok: set-controller {bridge} -> {endpoint}"))
-            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))
+    async fn set_controller(
+        &self,
+        _bridge: String,
+        _endpoint: String,
+    ) -> zbus::fdo::Result<String> {
+        Err(deny_unattributed_mutation())
     }
 
     /// JSON datapath health (fail_mode, controllers, fallback_normal).
@@ -127,13 +112,10 @@ impl OpenFlowDbusService {
     /// Safe attach: standalone + NORMAL + set-controller + verify; rollback on failure.
     async fn attach_controller_safe(
         &self,
-        bridge: String,
-        endpoint: String,
+        _bridge: String,
+        _endpoint: String,
     ) -> zbus::fdo::Result<String> {
-        let h = attach_controller_safe(&bridge, &endpoint)
-            .await
-            .map_err(|e| zbus::fdo::Error::Failed(format!("{e:#}")))?;
-        serde_json::to_string(&h).map_err(|e| zbus::fdo::Error::Failed(e.to_string()))
+        Err(deny_unattributed_mutation())
     }
 }
 
@@ -144,7 +126,7 @@ async fn main() -> Result<()> {
         .init();
 
     let listen: SocketAddr = std::env::var("OF_CONTROLLER_LISTEN")
-        .unwrap_or_else(|_| "10.200.0.1:6653".to_string())
+        .unwrap_or_else(|_| "127.0.0.1:6653".to_string())
         .parse()
         .expect("OF_CONTROLLER_LISTEN must be a valid socket address");
 
@@ -209,4 +191,46 @@ async fn main() -> Result<()> {
     info!("org.opdbus.v1.plugins.openflow registered on the system bus");
 
     controller.run().await
+}
+
+#[cfg(test)]
+mod mutation_admission_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn unattributed_dbus_mutations_are_denied_before_sinks() {
+        let controller = OpenFlowController::new("127.0.0.1:0".parse().unwrap());
+        let service = OpenFlowDbusService {
+            handle: controller.handle(),
+        };
+        let outcomes = [
+            service
+                .compare_exchange_flow("fixture0".into(), "{}".into(), String::new(), false)
+                .await
+                .map(|_| ()),
+            service.send_flow("{}".into()).await.map(|_| ()),
+            service.delete_flow("{}".into()).await.map(|_| ()),
+            service
+                .ensure_fallback_normal("fixture0".into())
+                .await
+                .map(|_| ()),
+            service
+                .set_fail_mode("fixture0".into(), "secure".into())
+                .await
+                .map(|_| ()),
+            service.del_controller("fixture0".into()).await.map(|_| ()),
+            service
+                .set_controller("fixture0".into(), "tcp:127.0.0.1:6653".into())
+                .await
+                .map(|_| ()),
+            service
+                .attach_controller_safe("fixture0".into(), "tcp:127.0.0.1:6653".into())
+                .await
+                .map(|_| ()),
+        ];
+        for outcome in outcomes {
+            assert!(matches!(outcome, Err(zbus::fdo::Error::AccessDenied(_))));
+        }
+        assert!(service.dump_flows().await.is_empty(), "flow owner changed");
+    }
 }

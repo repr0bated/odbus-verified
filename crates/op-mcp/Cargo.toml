@@ -51,7 +51,6 @@ tonic-web = { workspace = true, optional = true }
 # Internal crates
 op-blob = { path = "../op-blob" }
 op-core = { path = "../op-core" }
-op-identity = { path = "../op-identity" }
 op-tools = { path = "../op-tools" }
 op-introspection = { path = "../op-introspection" }
 

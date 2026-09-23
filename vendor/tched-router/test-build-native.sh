@@ -64,6 +64,8 @@ grep -F "base source hash mismatch" "$test_root/base.out" >/dev/null || {
 for path in \
     crates/zeroclaw-gateway/src/ws_stateless.rs \
     crates/zeroclaw-gateway/src/ws_stateless_tests.rs \
+    crates/zeroclaw-providers/src/opencode_session.rs \
+    crates/zeroclaw-providers/src/sled_identity.rs \
     crates/zeroclaw-providers/src/stateless.rs; do
     [ ! -e "$wrong_base/$path" ] || {
         echo "wrong base was mutated before rejection" >&2

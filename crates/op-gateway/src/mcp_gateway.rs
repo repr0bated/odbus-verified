@@ -1,7 +1,7 @@
-//! MCP Gateway - WireGuard authentication and client routing for MCP services
+//! Legacy MCP gateway route selection
 //!
-//! This module provides the WireGuard Gateway that sits between clients and the Compact MCP,
-//! handling authentication and routing decisions based on WireGuard session validation.
+//! This facade has no verified caller principal or grant at its ingress. It
+//! cannot route callers to MCP services until canonical admission is wired.
 
 use serde::{Deserialize, Serialize};
 use simd_json::{json, OwnedValue as Value};
@@ -11,7 +11,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, info};
 use uuid::Uuid;
 
-use crate::wireguard_auth::{SessionFilter, WireGuardAuthManager};
+use crate::wireguard_auth::WireGuardAuthManager;
 use anyhow::Result;
 
 /// Client routing decision
@@ -86,40 +86,16 @@ impl McpGatewayManager {
     pub async fn route_client(&self, client_info: McpClientInfo) -> Result<RoutingDecision> {
         debug!("Routing client: {}", client_info.name);
 
-        // Check authentication status
-        let is_authenticated = self.check_authentication(&client_info).await?;
-
-        let routing_decision = if is_authenticated {
-            // Full access: Compact + Cognitive tools
-            RoutingDecision {
-                endpoint: "grpc://localhost:50051".to_string(),
-                allowed_tools: vec![
-                    "list_tools".to_string(),
-                    "search_tools".to_string(),
-                    "get_tool_schema".to_string(),
-                    "execute_tool".to_string(),
-                    "cognitive_reason".to_string(),
-                    "compact_summarize".to_string(),
-                ],
-                capabilities: vec![
-                    "tools".to_string(),
-                    "resources".to_string(),
-                    "full_access".to_string(),
-                ],
-                has_full_access: true,
-                session_id: Uuid::new_v4().to_string(),
-                access_level: AccessLevel::Full,
-            }
-        } else {
-            // Restricted access: Cognitive only
-            RoutingDecision {
-                endpoint: "grpc://localhost:50052".to_string(),
-                allowed_tools: vec!["cognitive_reason".to_string()],
-                capabilities: vec!["tools".to_string(), "cognitive_only".to_string()],
-                has_full_access: false,
-                session_id: Uuid::new_v4().to_string(),
-                access_level: AccessLevel::CognitiveOnly,
-            }
+        // Neither a caller-supplied public key nor a wristband minted from one
+        // proves peer possession or conveys the canonical verified principal.
+        // Keep this legacy route blocked until that attribution is available.
+        let routing_decision = RoutingDecision {
+            endpoint: String::new(),
+            allowed_tools: Vec::new(),
+            capabilities: Vec::new(),
+            has_full_access: false,
+            session_id: Uuid::new_v4().to_string(),
+            access_level: AccessLevel::Blocked,
         };
 
         // Cache routing decision
@@ -131,7 +107,7 @@ impl McpGatewayManager {
 
         info!(
             client = %client_info.name,
-            authenticated = %is_authenticated,
+            authenticated = false,
             endpoint = %routing_decision.endpoint,
             tools = %routing_decision.allowed_tools.len(),
             "Client routed"
@@ -169,7 +145,9 @@ impl McpGatewayManager {
     pub async fn validate_session(&self, session_id: &str) -> Result<bool> {
         let sessions = self.sessions.read().await;
         if let Some(session) = sessions.get(session_id) {
-            if !session.is_active {
+            if !session.is_active
+                || matches!(session.routing_decision.access_level, AccessLevel::Blocked)
+            {
                 return Ok(false);
             }
 
@@ -204,32 +182,8 @@ impl McpGatewayManager {
         if let Some(session) = self.get_session(session_id).await? {
             Ok(session.routing_decision.capabilities)
         } else {
-            Ok(vec!["cognitive_only".to_string()])
+            Ok(Vec::new())
         }
-    }
-
-    /// Check if client is authenticated via WireGuard
-    async fn check_authentication(&self, client_info: &McpClientInfo) -> Result<bool> {
-        // Check auth token first
-        if let Some(ref auth_token) = client_info.auth_token {
-            return self.wireguard_auth.validate_session(auth_token).await;
-        }
-
-        // Check peer public key
-        if let Some(ref peer_pubkey) = client_info.peer_pubkey {
-            let filter = SessionFilter {
-                active_only: Some(true),
-                peer_pubkey: Some(peer_pubkey.clone()),
-                created_after: None,
-                created_before: None,
-            };
-
-            let sessions = self.wireguard_auth.list_sessions(Some(filter)).await?;
-            return Ok(!sessions.is_empty());
-        }
-
-        // No authentication information provided
-        Ok(false)
     }
 
     /// Generate cache key for routing decisions
@@ -285,6 +239,71 @@ impl McpGatewayManager {
         }
 
         Ok(expired_count)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::encrypted_storage::EncryptedStorageConfig;
+
+    #[tokio::test]
+    async fn stored_peer_key_or_wristband_cannot_select_full_access_route() {
+        let storage_root =
+            std::env::temp_dir().join(format!("op-gateway-route-{}", Uuid::new_v4()));
+        let storage_path = storage_root.join("keys");
+        tokio::fs::create_dir_all(&storage_path).await.unwrap();
+        let mut storage_config = EncryptedStorageConfig::default();
+        storage_config.base_path = storage_root.clone();
+        storage_config.subvolume_name = "keys".into();
+
+        let auth = Arc::new(
+            WireGuardAuthManager::new_with_storage_config(storage_config)
+                .await
+                .unwrap(),
+        );
+        let peer_key = hex::encode([7_u8; 32]);
+        let stored = auth.create_session(&peer_key, None).await.unwrap();
+        let gateway = McpGatewayManager::new(auth).await.unwrap();
+
+        for token in [None, Some(stored.session_id)] {
+            let decision = gateway
+                .route_client(McpClientInfo {
+                    name: "unverified-caller".into(),
+                    version: None,
+                    user_agent: None,
+                    ip_address: None,
+                    auth_token: token,
+                    peer_pubkey: Some(peer_key.clone()),
+                })
+                .await
+                .unwrap();
+            assert!(matches!(decision.access_level, AccessLevel::Blocked));
+            assert!(!decision.has_full_access);
+            assert!(decision.endpoint.is_empty());
+            assert!(decision.allowed_tools.is_empty());
+            assert!(decision.capabilities.is_empty());
+        }
+
+        let session = gateway
+            .create_session(McpClientInfo {
+                name: "unverified-caller".into(),
+                version: None,
+                user_agent: None,
+                ip_address: None,
+                auth_token: None,
+                peer_pubkey: Some(peer_key),
+            })
+            .await
+            .unwrap();
+        assert!(!gateway.validate_session(&session.session_id).await.unwrap());
+        assert!(gateway
+            .get_client_capabilities(&session.session_id)
+            .await
+            .unwrap()
+            .is_empty());
+
+        tokio::fs::remove_dir_all(storage_root).await.unwrap();
     }
 }
 

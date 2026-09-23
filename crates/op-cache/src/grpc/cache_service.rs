@@ -18,8 +18,15 @@ use super::proto::{
     PutStepRequest, PutStepResponse, WorkstackCacheStats,
 };
 
+const MAX_ENTRY_BYTES: usize = 16 * 1024 * 1024;
+const MAX_TOTAL_BYTES: u64 = 256 * 1024 * 1024;
+const MAX_ENTRIES: usize = 10_000;
+const MAX_TTL_SECS: u64 = 30 * 24 * 60 * 60;
+
 /// Cached step entry
 struct CachedEntry {
+    workstack_id: String,
+    step_index: u32,
     output: Vec<u8>,
     created_at: u64,
     expires_at: u64,
@@ -110,20 +117,81 @@ impl CacheServiceImpl {
         input_hash: &str,
         output: &[u8],
     ) {
+        if let Err(error) = self
+            .store_entry(
+                workstack_id,
+                step_index,
+                input_hash,
+                output.to_vec(),
+                self.default_ttl_secs.max(1) as u64,
+            )
+            .await
+        {
+            debug!(%error, "Skipped cache entry that exceeded cache limits");
+        }
+    }
+
+    async fn store_entry(
+        &self,
+        workstack_id: &str,
+        step_index: u32,
+        input_hash: &str,
+        output: Vec<u8>,
+        ttl: u64,
+    ) -> Result<(String, u64), Status> {
+        if output.len() > MAX_ENTRY_BYTES {
+            return Err(Status::resource_exhausted(format!(
+                "cache entry exceeds the {} byte limit",
+                MAX_ENTRY_BYTES
+            )));
+        }
+        if ttl > MAX_TTL_SECS {
+            return Err(Status::invalid_argument(format!(
+                "cache TTL exceeds the {} second limit",
+                MAX_TTL_SECS
+            )));
+        }
+
         let cache_key = Self::make_cache_key(workstack_id, step_index, input_hash);
         let now = Self::now_timestamp();
-
-        let entry = CachedEntry {
-            output: output.to_vec(),
-            created_at: now,
-            expires_at: now + self.default_ttl_secs as u64,
-            access_count: 1,
-            size_bytes: output.len() as u64,
-            compressed: false,
-        };
-
+        let size_bytes = output.len() as u64;
         let mut entries = self.entries.write().await;
-        entries.insert(cache_key, entry);
+        let replaced_size = entries
+            .get(&cache_key)
+            .map(|entry| entry.size_bytes)
+            .unwrap_or(0);
+        let current_size = entries
+            .values()
+            .map(|entry| entry.size_bytes)
+            .sum::<u64>()
+            .saturating_sub(replaced_size);
+        if current_size.saturating_add(size_bytes) > MAX_TOTAL_BYTES {
+            return Err(Status::resource_exhausted(format!(
+                "cache exceeds the {} byte cumulative limit",
+                MAX_TOTAL_BYTES
+            )));
+        }
+        if !entries.contains_key(&cache_key) && entries.len() >= MAX_ENTRIES {
+            return Err(Status::resource_exhausted(format!(
+                "cache exceeds the {} entry limit",
+                MAX_ENTRIES
+            )));
+        }
+
+        entries.insert(
+            cache_key.clone(),
+            CachedEntry {
+                workstack_id: workstack_id.to_string(),
+                step_index,
+                output,
+                created_at: now,
+                expires_at: now.saturating_add(ttl),
+                access_count: 1,
+                size_bytes,
+                compressed: false,
+            },
+        );
+        Ok((cache_key, size_bytes))
     }
 
     /// Get cache statistics (internal)
@@ -233,28 +301,20 @@ impl CacheService for CacheServiceImpl {
         request: Request<PutStepRequest>,
     ) -> Result<Response<PutStepResponse>, Status> {
         let req = request.into_inner();
-        let cache_key = Self::make_cache_key(&req.workstack_id, req.step_index, &req.input_hash);
-        let now = Self::now_timestamp();
-
         let ttl = if req.ttl_seconds > 0 {
             req.ttl_seconds as u64
         } else {
-            self.default_ttl_secs as u64
+            self.default_ttl_secs.max(1) as u64
         };
-
-        let size_bytes = req.output.len() as u64;
-
-        let entry = CachedEntry {
-            output: req.output,
-            created_at: now,
-            expires_at: now + ttl,
-            access_count: 1,
-            size_bytes,
-            compressed: false, // TODO: add compression
-        };
-
-        let mut entries = self.entries.write().await;
-        entries.insert(cache_key.clone(), entry);
+        let (cache_key, size_bytes) = self
+            .store_entry(
+                &req.workstack_id,
+                req.step_index,
+                &req.input_hash,
+                req.output,
+                ttl,
+            )
+            .await?;
 
         debug!(
             "Cached step {} index {} ({} bytes)",
@@ -274,13 +334,9 @@ impl CacheService for CacheServiceImpl {
         request: Request<InvalidateWorkstackRequest>,
     ) -> Result<Response<InvalidateWorkstackResponse>, Status> {
         let req = request.into_inner();
-        let prefix = format!("{}:", req.workstack_id);
-
         let mut entries = self.entries.write().await;
         let before = entries.len();
-
-        // This is inefficient - in production, maintain a workstack->keys index
-        entries.retain(|k, _| !k.starts_with(&prefix));
+        entries.retain(|_, entry| entry.workstack_id != req.workstack_id);
 
         let removed = (before - entries.len()) as u32;
 
@@ -294,11 +350,11 @@ impl CacheService for CacheServiceImpl {
         request: Request<InvalidateStepRequest>,
     ) -> Result<Response<InvalidateStepResponse>, Status> {
         let req = request.into_inner();
-        let prefix = format!("{}:{}:", req.workstack_id, req.step_index);
-
         let mut entries = self.entries.write().await;
         let before = entries.len();
-        entries.retain(|k, _| !k.starts_with(&prefix));
+        entries.retain(|_, entry| {
+            entry.workstack_id != req.workstack_id || entry.step_index != req.step_index
+        });
         let removed = (before - entries.len()) as u32;
 
         Ok(Response::new(InvalidateStepResponse {
@@ -348,11 +404,9 @@ impl CacheService for CacheServiceImpl {
         let entries = self.entries.read().await;
         let stats = self.workstack_stats.read().await;
 
-        // Count entries for this workstack (inefficient without index)
-        let prefix = format!("{}:", req.workstack_id);
         let workstack_entries: Vec<_> = entries
             .iter()
-            .filter(|(k, _)| k.starts_with(&prefix))
+            .filter(|(_, entry)| entry.workstack_id == req.workstack_id)
             .collect();
 
         let total_entries = workstack_entries.len() as u64;
@@ -381,5 +435,54 @@ impl CacheService for CacheServiceImpl {
             miss_count,
             hit_rate,
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn oversized_output_is_rejected_without_insertion() {
+        let service = CacheServiceImpl::new();
+        let result = service
+            .put_step(Request::new(PutStepRequest {
+                workstack_id: "ws".into(),
+                step_index: 1,
+                input_hash: "hash".into(),
+                output: vec![0; MAX_ENTRY_BYTES + 1],
+                ttl_seconds: 1,
+            }))
+            .await;
+        assert_eq!(result.unwrap_err().code(), tonic::Code::ResourceExhausted);
+        assert!(service.entries.read().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn workstack_and_step_invalidation_match_hashed_entries() {
+        let service = CacheServiceImpl::new();
+        service.put_step_internal("one", 0, "a", b"first").await;
+        service.put_step_internal("one", 1, "b", b"second").await;
+        service.put_step_internal("two", 0, "c", b"third").await;
+
+        let response = service
+            .invalidate_step(Request::new(InvalidateStepRequest {
+                workstack_id: "one".into(),
+                step_index: 0,
+            }))
+            .await
+            .unwrap()
+            .into_inner();
+        assert_eq!(response.entries_removed, 1);
+
+        let response = service
+            .invalidate_workstack(Request::new(InvalidateWorkstackRequest {
+                workstack_id: "one".into(),
+            }))
+            .await
+            .unwrap()
+            .into_inner();
+        assert_eq!(response.entries_removed, 1);
+        assert_eq!(service.entries.read().await.len(), 1);
     }
 }

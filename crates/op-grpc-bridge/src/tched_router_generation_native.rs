@@ -38,11 +38,21 @@ pub(crate) struct NativeGenerationRequest {
     /// and terminal attribution must match that ACK.
     pub(crate) expected_provider: Option<String>,
     pub(crate) expected_model: Option<String>,
+    /// Projection-owned canonical SID1 payload, forwarded only as sensitive
+    /// transport metadata and never included in the prompt or logs.
+    pub(crate) sealed_identity: Option<String>,
     /// Recheck the owner's identity, grants and sealed contract before input.
     pub(crate) before_prompt: Arc<dyn NativeGenerationAdmission>,
 }
 
 pub(crate) trait NativeGenerationAdmission: Send + Sync {
+    /// Canonical SID1 payload to forward in native transport metadata.
+    /// Legacy test admissions return `None`; production admissions must carry
+    /// the projection-owned credential.
+    fn sealed_identity(&self) -> Option<&str> {
+        None
+    }
+
     fn check(&self)
         -> Pin<Box<dyn Future<Output = Result<(), NativeGenerationError>> + Send + '_>>;
 }
@@ -176,6 +186,12 @@ async fn run_native(
             .headers_mut()
             .insert("Authorization", authorization);
     }
+    if let Some(sealed_identity) = request.sealed_identity.as_deref() {
+        let mut header = sid1_header_value(sealed_identity)?;
+        handshake
+            .headers_mut()
+            .insert("x-opdbus-sealed-id-bin", header);
+    }
     let config = WebSocketConfig {
         max_message_size: Some(MAX_FRAME_BYTES),
         max_frame_size: Some(MAX_FRAME_BYTES),
@@ -232,6 +248,10 @@ async fn run_native(
     {
         let _ = close_socket(&mut socket).await;
         return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol));
+    }
+    if !identity_ack_is_authenticated(request.sealed_identity.is_some(), &connected) {
+        let _ = close_socket(&mut socket).await;
+        return Err(NativeGenerationError::Terminal(NativeErrorCode::Auth));
     }
     let bound_provider = bounded_label(connected.get("provider"))
         .ok_or(NativeGenerationError::Terminal(NativeErrorCode::Protocol))?;
@@ -385,6 +405,23 @@ async fn run_native(
             _ => return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol)),
         }
     }
+}
+
+fn sid1_header_value(
+    sealed_identity: &str,
+) -> Result<tokio_tungstenite::tungstenite::http::HeaderValue, NativeGenerationError> {
+    let mut header = tokio_tungstenite::tungstenite::http::HeaderValue::from_str(sealed_identity)
+        .map_err(|_| NativeGenerationError::InvalidRequest("invalid SID1 metadata"))?;
+    header.set_sensitive(true);
+    Ok(header)
+}
+
+fn identity_ack_is_authenticated(identity_forwarded: bool, connected: &Value) -> bool {
+    !identity_forwarded
+        || connected
+            .get("identity_authenticated")
+            .and_then(Value::as_str)
+            == Some("SID1")
 }
 
 async fn send_json<S>(
@@ -624,6 +661,7 @@ mod tests {
             prompt: "hello".to_string(),
             expected_provider: Some("fixture-provider".to_string()),
             expected_model: Some("fixture-model".to_string()),
+            sealed_identity: None,
             before_prompt: Arc::new(AllowAdmission),
         }
     }
@@ -635,6 +673,28 @@ mod tests {
         ) -> Pin<Box<dyn Future<Output = Result<(), NativeGenerationError>> + Send + '_>> {
             Box::pin(async { Ok(()) })
         }
+    }
+
+    #[test]
+    fn identity_ack_is_required_when_sid1_was_forwarded() {
+        assert!(identity_ack_is_authenticated(
+            true,
+            &serde_json::json!({"identity_authenticated":"SID1"})
+        ));
+        assert!(!identity_ack_is_authenticated(
+            true,
+            &serde_json::json!({"identity_authenticated":"none"})
+        ));
+        assert!(!identity_ack_is_authenticated(true, &serde_json::json!({})));
+        assert!(identity_ack_is_authenticated(false, &serde_json::json!({})));
+    }
+
+    #[test]
+    fn sid1_header_value_is_sensitive_safe_metadata() {
+        let header = sid1_header_value("AQID-_abc").unwrap();
+        assert_eq!(header.to_str().unwrap(), "AQID-_abc");
+        assert!(header.is_sensitive());
+        assert!(sid1_header_value("\n").is_err());
     }
 
     #[tokio::test]

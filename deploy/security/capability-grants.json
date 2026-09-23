@@ -187,7 +187,8 @@
       "cognitive_mcp.agent.tutorial_engineer",
       "cognitive_mcp.agent.typescript_pro",
       "cognitive_mcp.agent.ui_ux_designer",
-      "cognitive_mcp.agent.unity_developer"
+      "cognitive_mcp.agent.unity_developer",
+      "chat.context"
     ]
   },
   "87b0decc-8464-5abf-05d8-b52ec88ff9f1": {

@@ -9,6 +9,7 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tokio::fs as async_fs;
 use tokio::process::Command;
@@ -43,6 +44,19 @@ pub struct ImageManager {
 }
 
 impl ImageManager {
+    fn validate_image_name(image_name: &str) -> Result<()> {
+        anyhow::ensure!(
+            !image_name.is_empty()
+                && image_name.len() <= 128
+                && image_name
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+                && !matches!(image_name, "." | ".."),
+            "image name must be one safe path component"
+        );
+        Ok(())
+    }
+
     /// Create new image manager
     pub fn new(base_path: impl AsRef<Path>) -> Self {
         let base = base_path.as_ref().to_path_buf();
@@ -95,6 +109,7 @@ impl ImageManager {
         image_name: &str,
         files: Vec<PathBuf>,
     ) -> Result<ImageMetadata> {
+        Self::validate_image_name(image_name)?;
         log::info!("Creating deployment image: {}", image_name);
 
         // Get list of existing images (sorted by creation time)
@@ -102,7 +117,27 @@ impl ImageManager {
 
         // Create image directory
         let image_path = self.images_dir.join(image_name);
-        async_fs::create_dir_all(&image_path).await?;
+        anyhow::ensure!(
+            !image_path.exists(),
+            "deployment image already exists: {image_name}"
+        );
+        let btrfs_enabled = self.is_btrfs(&self.base_path).await?;
+        if btrfs_enabled {
+            let output = Command::new("btrfs")
+                .args(["subvolume", "create"])
+                .arg(&image_path)
+                .output()
+                .await
+                .context("Failed to create deployment image subvolume")?;
+            if !output.status.success() {
+                anyhow::bail!(
+                    "Failed to create deployment image subvolume: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+            }
+        } else {
+            async_fs::create_dir_all(&image_path).await?;
+        }
 
         let mut image_metadata = ImageMetadata {
             name: image_name.to_string(),
@@ -114,18 +149,36 @@ impl ImageManager {
             symlinked_size: 0,
         };
 
+        let mut file_names = HashSet::new();
+
         // Process each file
         for file_path in files {
             let file_name = file_path
                 .file_name()
                 .and_then(|n| n.to_str())
                 .context("Invalid file name")?;
+            anyhow::ensure!(
+                file_names.insert(file_name.to_string()),
+                "image contains duplicate file name: {file_name}"
+            );
+            anyhow::ensure!(
+                async_fs::metadata(&file_path).await?.is_file(),
+                "image input is not a regular file: {}",
+                file_path.display()
+            );
 
             let dest_path = image_path.join(file_name);
+            // Copy first, then hash the bytes that will actually ship. Hashing
+            // the source before copying leaves a race where a changing input can
+            // select an older deduplicated file.
+            async_fs::copy(&file_path, &dest_path)
+                .await
+                .context(format!("Failed to copy file: {}", file_path.display()))?;
+            let source_hash = self.calculate_file_hash(&dest_path).await?;
 
-            // Check if this file exists in any previous image
+            // Reuse a previous file only when both its name and contents match.
             if let Some(previous_file) = self
-                .find_file_in_previous_images(file_name, &existing_images)
+                .find_file_in_previous_images(file_name, &source_hash, &existing_images)
                 .await?
             {
                 // File exists in previous image - create symlink
@@ -137,16 +190,14 @@ impl ImageManager {
 
                 #[cfg(unix)]
                 {
+                    async_fs::remove_file(&dest_path).await?;
                     std::os::unix::fs::symlink(&relative_target, &dest_path)
                         .context(format!("Failed to create symlink: {}", dest_path.display()))?;
                 }
 
                 #[cfg(not(unix))]
                 {
-                    // On non-Unix, just copy the file
-                    async_fs::copy(&previous_file, &dest_path)
-                        .await
-                        .context(format!("Failed to copy file: {}", dest_path.display()))?;
+                    // The content-identical copy already exists at dest_path.
                 }
 
                 let file_size = async_fs::metadata(&previous_file).await?.len();
@@ -156,20 +207,12 @@ impl ImageManager {
                     is_symlink: true,
                     symlink_target: Some(previous_file),
                     size: file_size,
-                    hash: None, // Symlinks don't need hash
+                    hash: Some(source_hash),
                 });
 
                 image_metadata.symlinked_size += file_size;
             } else {
-                // New file - copy it
-                log::debug!("Copying new file: {}", file_name);
-
-                async_fs::copy(&file_path, &dest_path)
-                    .await
-                    .context(format!("Failed to copy file: {}", file_path.display()))?;
-
-                // Calculate hash for deduplication
-                let hash = self.calculate_file_hash(&dest_path).await?;
+                log::debug!("Keeping unique file: {}", file_name);
                 let file_size = async_fs::metadata(&dest_path).await?.len();
 
                 image_metadata.files.push(FileEntry {
@@ -177,7 +220,7 @@ impl ImageManager {
                     is_symlink: false,
                     symlink_target: None,
                     size: file_size,
-                    hash: Some(hash),
+                    hash: Some(source_hash),
                 });
 
                 image_metadata.unique_size += file_size;
@@ -192,7 +235,7 @@ impl ImageManager {
         async_fs::write(&metadata_path, metadata_json).await?;
 
         // Create BTRFS snapshot for streaming
-        if self.is_btrfs(&self.base_path).await? {
+        if btrfs_enabled {
             self.create_image_snapshot(image_name).await?;
         }
 
@@ -246,36 +289,24 @@ impl ImageManager {
     async fn find_file_in_previous_images(
         &self,
         file_name: &str,
+        expected_hash: &str,
         existing_images: &[ImageMetadata],
     ) -> Result<Option<PathBuf>> {
+        let images_root = async_fs::canonicalize(&self.images_dir).await?;
         // Search from most recent to oldest
         for image in existing_images.iter().rev() {
             let file_path = image.path.join(file_name);
 
-            // Check if file exists (following symlinks)
-            if async_fs::metadata(&file_path).await.is_ok() {
-                // Check if it's a symlink
-                let symlink_meta = async_fs::symlink_metadata(&file_path).await?;
-                if symlink_meta.is_symlink() {
-                    // Follow the symlink to find the original file
-                    let target = async_fs::read_link(&file_path).await?;
-                    let resolved = if target.is_absolute() {
-                        target
-                    } else {
-                        file_path.parent().unwrap().join(&target)
-                    };
-
-                    // Check if the resolved path exists and is a real file
-                    if async_fs::metadata(&resolved).await.is_ok() {
-                        let resolved_meta = async_fs::symlink_metadata(&resolved).await?;
-                        if !resolved_meta.is_symlink() {
-                            return Ok(Some(resolved));
-                        }
-                    }
-                } else {
-                    // It's a real file
-                    return Ok(Some(file_path));
-                }
+            let Ok(resolved) = async_fs::canonicalize(&file_path).await else {
+                continue;
+            };
+            if !resolved.starts_with(&images_root)
+                || !async_fs::metadata(&resolved).await?.is_file()
+            {
+                continue;
+            }
+            if self.calculate_file_hash(&resolved).await? == expected_hash {
+                return Ok(Some(resolved));
             }
         }
         Ok(None)
@@ -283,9 +314,18 @@ impl ImageManager {
 
     /// Calculate SHA256 hash of a file
     async fn calculate_file_hash(&self, file_path: &Path) -> Result<String> {
-        let contents = async_fs::read(file_path).await?;
+        use tokio::io::AsyncReadExt;
+
+        let mut file = async_fs::File::open(file_path).await?;
         let mut hasher = Sha256::new();
-        hasher.update(&contents);
+        let mut buffer = [0u8; 64 * 1024];
+        loop {
+            let read = file.read(&mut buffer).await?;
+            if read == 0 {
+                break;
+            }
+            hasher.update(&buffer[..read]);
+        }
         let hash = hasher.finalize();
         Ok(format!("{:x}", hash))
     }
@@ -331,7 +371,16 @@ impl ImageManager {
                 let metadata_path = path.join(".image-metadata.json");
                 if metadata_path.exists() {
                     let content = async_fs::read_to_string(&metadata_path).await?;
-                    if let Ok(metadata) = serde_json::from_str::<ImageMetadata>(&content) {
+                    if let Ok(mut metadata) = serde_json::from_str::<ImageMetadata>(&content) {
+                        let Some(directory_name) = path.file_name().and_then(|name| name.to_str())
+                        else {
+                            continue;
+                        };
+                        if Self::validate_image_name(directory_name).is_err() {
+                            continue;
+                        }
+                        metadata.name = directory_name.to_string();
+                        metadata.path = path.clone();
                         images.push(metadata);
                     }
                 }
@@ -346,6 +395,7 @@ impl ImageManager {
 
     /// Get image metadata
     pub async fn get_image(&self, image_name: &str) -> Result<ImageMetadata> {
+        Self::validate_image_name(image_name)?;
         let image_path = self.images_dir.join(image_name);
         let metadata_path = image_path.join(".image-metadata.json");
 
@@ -357,8 +407,9 @@ impl ImageManager {
     /// Stream an image snapshot for deployment
     /// Returns the path to the snapshot that can be streamed
     pub async fn get_streamable_snapshot(&self, image_name: &str) -> Result<PathBuf> {
+        Self::validate_image_name(image_name)?;
         // Find the most recent snapshot for this image
-        let snapshot_prefix = image_name;
+        let snapshot_prefix = format!("{image_name}-");
         let mut latest_snapshot: Option<PathBuf> = None;
         let mut latest_time: i64 = 0;
 
@@ -371,7 +422,7 @@ impl ImageManager {
             let path = entry.path();
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-            if name.starts_with(snapshot_prefix) {
+            if name.starts_with(&snapshot_prefix) {
                 if let Ok(metadata) = entry.metadata().await {
                     if let Ok(created) = metadata.created() {
                         let timestamp = created
@@ -393,7 +444,9 @@ impl ImageManager {
 
     /// Delete an image and its snapshots
     pub async fn delete_image(&self, image_name: &str) -> Result<()> {
+        Self::validate_image_name(image_name)?;
         let image_path = self.images_dir.join(image_name);
+        let snapshot_prefix = format!("{image_name}-");
 
         // Delete snapshots first
         if self.snapshots_dir.exists() {
@@ -402,7 +455,7 @@ impl ImageManager {
                 let path = entry.path();
                 let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-                if name.starts_with(image_name) {
+                if name.starts_with(&snapshot_prefix) {
                     if self.is_btrfs(&path).await? {
                         let output = Command::new("btrfs")
                             .args(["subvolume", "delete"])
@@ -456,5 +509,47 @@ mod tests {
 
         assert!(temp_dir.path().join("images").exists());
         assert!(temp_dir.path().join("snapshots").exists());
+    }
+
+    #[tokio::test]
+    async fn changed_file_with_same_basename_is_not_reused() {
+        let temp_dir = TempDir::new().unwrap();
+        let first_source = temp_dir.path().join("first");
+        let second_source = temp_dir.path().join("second");
+        async_fs::create_dir_all(&first_source).await.unwrap();
+        async_fs::create_dir_all(&second_source).await.unwrap();
+        async_fs::write(first_source.join("service"), "version one")
+            .await
+            .unwrap();
+        async_fs::write(second_source.join("service"), "version two")
+            .await
+            .unwrap();
+
+        let manager = ImageManager::new(temp_dir.path().join("deployment"));
+        manager.init().await.unwrap();
+        manager
+            .create_image("image-one", vec![first_source.join("service")])
+            .await
+            .unwrap();
+        let second = manager
+            .create_image("image-two", vec![second_source.join("service")])
+            .await
+            .unwrap();
+
+        assert!(!second.files[0].is_symlink);
+        assert_eq!(
+            async_fs::read_to_string(second.path.join("service"))
+                .await
+                .unwrap(),
+            "version two"
+        );
+    }
+
+    #[test]
+    fn image_name_cannot_escape_deployment_root() {
+        for name in ["../image", "/absolute", "a/b", ".", "..", ""] {
+            assert!(ImageManager::validate_image_name(name).is_err(), "{name}");
+        }
+        assert!(ImageManager::validate_image_name("release-1.2_amd64").is_ok());
     }
 }

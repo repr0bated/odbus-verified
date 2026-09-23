@@ -4,8 +4,8 @@
 
 use axum::{
     extract::{Extension, Query},
-    http::StatusCode,
-    response::{Html, Json, Redirect},
+    http::{HeaderMap, StatusCode},
+    response::{Html, IntoResponse, Json, Redirect, Response},
 };
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl, Scope,
@@ -43,6 +43,8 @@ pub struct AccessQuery {
 
 #[derive(Debug, Serialize)]
 pub struct VerifyResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_token: Option<String>,
     pub success: bool,
     pub user_id: Option<String>,
     pub config: Option<String>,
@@ -71,6 +73,59 @@ pub struct SetCredentialsRequest {
 pub struct SetCredentialsResponse {
     pub success: bool,
     pub message: String,
+}
+
+fn privacy_token_matches(user: &PrivacyUser, supplied_token: Option<&str>) -> bool {
+    user.email_verified
+        && supplied_token.is_some_and(|token| {
+            !token.is_empty()
+                && user
+                    .api_credentials
+                    .as_ref()
+                    .is_some_and(|credentials| credentials.token == token)
+        })
+}
+
+#[cfg(test)]
+mod privacy_admission_tests {
+    use super::*;
+    use crate::users::UserApiCredentials;
+
+    #[test]
+    fn privacy_token_is_bound_to_one_verified_user() {
+        let mut owner = PrivacyUser {
+            id: "owner".into(),
+            email: "owner@example.test".into(),
+            email_verified: true,
+            created_at: chrono::Utc::now(),
+            wg_public_key: "public".into(),
+            wg_private_key_encrypted: "private".into(),
+            assigned_ip: "10.100.0.2".into(),
+            privacy_quota_bytes: 0,
+            privacy_quota_used_bytes: 0,
+            privacy_container_name: None,
+            privacy_route_id: None,
+            privacy_network_connected: false,
+            privacy_network_connected_at: None,
+            google_id: None,
+            google_email: None,
+            api_credentials: Some(UserApiCredentials {
+                token: "owner-token".into(),
+                gemini_api_key: None,
+                anthropic_api_key: None,
+                openai_api_key: None,
+                preferred_provider: None,
+            }),
+        };
+        let mut victim = owner.clone();
+        victim.id = "victim".into();
+        victim.api_credentials.as_mut().unwrap().token = "victim-token".into();
+        assert!(privacy_token_matches(&owner, Some("owner-token")));
+        assert!(!privacy_token_matches(&victim, Some("owner-token")));
+        assert!(!privacy_token_matches(&owner, None));
+        owner.email_verified = false;
+        assert!(!privacy_token_matches(&owner, Some("owner-token")));
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -176,15 +231,6 @@ pub async fn signup(
         }
     }
 
-    // Best-effort host fabric check. Magic-link issuance must not block on OVSDB/D-Bus
-    // (list_dbs via org.opdbus.v1/rovs). Full privacy provision still runs on verify.
-    if let Err(e) = crate::privacy_network::ensure_host_privacy_network().await {
-        warn!(
-            "Privacy network not ready at signup (continuing; will retry on verify): {}",
-            e
-        );
-    }
-
     // New user - generate WireGuard keys
     let keypair = generate_keypair();
     // Create user (we'll encrypt the private key later, for now just store it)
@@ -253,6 +299,7 @@ pub async fn verify(
                     return (
                         StatusCode::SERVICE_UNAVAILABLE,
                         Json(VerifyResponse {
+                            access_token: None,
                             success: false,
                             user_id: None,
                             config: None,
@@ -264,10 +311,33 @@ pub async fn verify(
                 }
             };
 
+            let access_token = match state
+                .user_store
+                .ensure_user_api_token(&provisioned_user.id)
+                .await
+            {
+                Ok(token) => token,
+                Err(error) => {
+                    error!(%error, "Failed to prepare privacy access token");
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(VerifyResponse {
+                            access_token: None,
+                            success: false,
+                            user_id: None,
+                            config: None,
+                            qr_code: None,
+                            message: "Failed to prepare privacy access".to_string(),
+                        }),
+                    );
+                }
+            };
+
             if !state.server_config.is_configured() {
                 return (
                     StatusCode::SERVICE_UNAVAILABLE,
                     Json(VerifyResponse {
+                        access_token: None,
                         success: false,
                         user_id: None,
                         config: None,
@@ -295,6 +365,7 @@ pub async fn verify(
             (
                 StatusCode::OK,
                 Json(VerifyResponse {
+                    access_token: Some(access_token),
                     success: true,
                     user_id: Some(provisioned_user.id),
                     config: Some(config),
@@ -309,6 +380,7 @@ pub async fn verify(
             (
                 StatusCode::BAD_REQUEST,
                 Json(VerifyResponse {
+                    access_token: None,
                     success: false,
                     user_id: None,
                     config: None,
@@ -324,7 +396,7 @@ pub async fn verify(
 pub async fn verify_redirect(
     Extension(state): Extension<Arc<AppState>>,
     Query(query): Query<VerifyQuery>,
-) -> Redirect {
+) -> Response {
     match state.user_store.verify_magic_link(&query.token).await {
         Ok(user) => match provision_verified_user(&state, user).await {
             Ok(provisioned_user) => {
@@ -332,16 +404,38 @@ pub async fn verify_redirect(
                     "User {} verified and provisioned via redirect flow",
                     provisioned_user.id
                 );
-                Redirect::to(&format!("/privacy/access?user_id={}", provisioned_user.id))
+                match state
+                    .user_store
+                    .ensure_user_api_token(&provisioned_user.id)
+                    .await
+                {
+                    Ok(token) => {
+                        let mut response = Redirect::to(&format!(
+                            "/privacy/access?user_id={}",
+                            provisioned_user.id
+                        ))
+                        .into_response();
+                        let cookie = format!("privacy_access={token}; HttpOnly; Secure; SameSite=Strict; Path=/privacy/access");
+                        response.headers_mut().insert(
+                            axum::http::header::SET_COOKIE,
+                            cookie.parse().expect("generated token is safe in cookie"),
+                        );
+                        response
+                    }
+                    Err(error) => {
+                        error!(%error, "Failed to prepare privacy access token");
+                        Redirect::to("/privacy/access?status=provisioning_failed").into_response()
+                    }
+                }
             }
             Err(e) => {
                 error!("Provisioning failed in redirect flow: {}", e);
-                Redirect::to("/privacy/access?status=provisioning_failed")
+                Redirect::to("/privacy/access?status=provisioning_failed").into_response()
             }
         },
         Err(e) => {
             error!("Magic link verification failed in redirect flow: {}", e);
-            Redirect::to("/privacy/access?status=verification_failed")
+            Redirect::to("/privacy/access?status=verification_failed").into_response()
         }
     }
 }
@@ -349,8 +443,9 @@ pub async fn verify_redirect(
 /// GET /privacy/access?user_id=xxx - Human-readable access confirmation page
 pub async fn privacy_access_message(
     Extension(state): Extension<Arc<AppState>>,
+    headers: HeaderMap,
     Query(query): Query<AccessQuery>,
-) -> Html<String> {
+) -> (StatusCode, Html<String>) {
     let body = if query.status.as_deref() == Some("verification_failed") {
         r#"<!DOCTYPE html>
 <html>
@@ -372,10 +467,31 @@ pub async fn privacy_access_message(
 </html>"#
             .to_string()
     } else if let Some(user_id) = &query.user_id {
-        match state.user_store.get_user(user_id).await {
+        let cookie_token = headers
+            .get(axum::http::header::COOKIE)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|cookies| {
+                cookies
+                    .split(';')
+                    .map(str::trim)
+                    .find_map(|cookie| cookie.strip_prefix("privacy_access="))
+            });
+        let bearer_token = crate::middleware::security::extract_auth_token(&headers);
+        let supplied_token = bearer_token.as_deref().or(cookie_token);
+        let user = state.user_store.get_user(user_id).await;
+        let authorized = user
+            .as_ref()
+            .is_some_and(|user| privacy_token_matches(user, supplied_token));
+        if !authorized {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Html("Privacy access denied".to_string()),
+            );
+        }
+        match user {
         Some(user) if user.email_verified => {
             if !state.server_config.is_configured() {
-                return Html(
+                return (StatusCode::SERVICE_UNAVAILABLE, Html(
                     r#"<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>WireGuard Not Configured</title></head>
@@ -385,7 +501,7 @@ pub async fn privacy_access_message(
 </body>
 </html>"#
                         .to_string(),
-                );
+                ));
             }
 
             let config = generate_client_config(
@@ -468,7 +584,7 @@ pub async fn privacy_access_message(
             .to_string()
     };
 
-    Html(body)
+    (StatusCode::OK, Html(body))
 }
 
 fn format_quota_gib(bytes: u64) -> String {
@@ -482,22 +598,17 @@ pub async fn get_config(
     axum::extract::Path(user_id): axum::extract::Path<String>,
 ) -> (axum::http::StatusCode, axum::Json<VerifyResponse>) {
     let auth_token = crate::middleware::security::extract_auth_token(&headers);
-    let mut is_authorized = false;
-
-    if let Some(token) = auth_token {
-        if let Some(user) = state.user_store.get_user(&user_id).await {
-            if let Some(creds) = &user.api_credentials {
-                if creds.token == token {
-                    is_authorized = true;
-                }
-            }
-        }
-    }
+    let is_authorized = state
+        .user_store
+        .get_user(&user_id)
+        .await
+        .is_some_and(|user| privacy_token_matches(&user, auth_token.as_deref()));
 
     if !is_authorized {
         return (
             axum::http::StatusCode::UNAUTHORIZED,
             axum::Json(VerifyResponse {
+                access_token: None,
                 success: false,
                 user_id: None,
                 config: None,
@@ -513,6 +624,7 @@ pub async fn get_config(
                 return (
                     StatusCode::SERVICE_UNAVAILABLE,
                     Json(VerifyResponse {
+                        access_token: None,
                         success: false,
                         user_id: None,
                         config: None,
@@ -532,6 +644,7 @@ pub async fn get_config(
             (
                 StatusCode::OK,
                 Json(VerifyResponse {
+                    access_token: None,
                     success: true,
                     user_id: Some(user.id),
                     config: Some(config),
@@ -543,6 +656,7 @@ pub async fn get_config(
         Some(_) => (
             StatusCode::FORBIDDEN,
             Json(VerifyResponse {
+                access_token: None,
                 success: false,
                 user_id: None,
                 config: None,
@@ -553,6 +667,7 @@ pub async fn get_config(
         None => (
             StatusCode::NOT_FOUND,
             Json(VerifyResponse {
+                access_token: None,
                 success: false,
                 user_id: None,
                 config: None,
@@ -582,17 +697,28 @@ pub async fn status(Extension(state): Extension<Arc<AppState>>) -> Json<StatusRe
 /// POST /api/privacy/credentials - Set user API credentials
 pub async fn set_credentials(
     Extension(state): Extension<Arc<AppState>>,
+    headers: HeaderMap,
     Json(request): Json<SetCredentialsRequest>,
 ) -> (StatusCode, Json<SetCredentialsResponse>) {
     use crate::users::UserApiCredentials;
 
-    let existing_token = if let Some(user) = state.user_store.get_user(&request.user_id).await {
-        user.api_credentials.map(|c| c.token)
-    } else {
-        None
+    let supplied_token = crate::middleware::security::extract_auth_token(&headers);
+    let Some(token) = state
+        .user_store
+        .get_user(&request.user_id)
+        .await
+        .filter(|user| privacy_token_matches(user, supplied_token.as_deref()))
+        .and_then(|user| user.api_credentials)
+        .map(|credentials| credentials.token)
+    else {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(SetCredentialsResponse {
+                success: false,
+                message: "Unauthorized".to_string(),
+            }),
+        );
     };
-
-    let token = existing_token.unwrap_or_else(|| op_identity::generate_magic_link_token(32));
 
     let credentials = UserApiCredentials {
         token,
@@ -643,6 +769,7 @@ pub async fn google_auth(
             return Err((
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(VerifyResponse {
+                    access_token: None,
                     success: false,
                     user_id: None,
                     config: None,
@@ -707,6 +834,7 @@ pub async fn google_callback(
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(VerifyResponse {
+                    access_token: None,
                     success: false,
                     user_id: None,
                     config: None,
@@ -723,6 +851,7 @@ pub async fn google_callback(
             return Err((
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(VerifyResponse {
+                    access_token: None,
                     success: false,
                     user_id: None,
                     config: None,
@@ -761,6 +890,7 @@ pub async fn google_callback(
             return Err((
                 StatusCode::BAD_REQUEST,
                 Json(VerifyResponse {
+                    access_token: None,
                     success: false,
                     user_id: None,
                     config: None,
@@ -788,6 +918,7 @@ pub async fn google_callback(
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(VerifyResponse {
+                        access_token: None,
                         success: false,
                         user_id: None,
                         config: None,
@@ -802,6 +933,7 @@ pub async fn google_callback(
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(VerifyResponse {
+                    access_token: None,
                     success: false,
                     user_id: None,
                     config: None,
@@ -817,6 +949,7 @@ pub async fn google_callback(
         return Err((
             StatusCode::FORBIDDEN,
             Json(VerifyResponse {
+                access_token: None,
                 success: false,
                 user_id: None,
                 config: None,
@@ -832,6 +965,7 @@ pub async fn google_callback(
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
             Json(VerifyResponse {
+                access_token: None,
                 success: false,
                 user_id: None,
                 config: None,
@@ -861,6 +995,7 @@ pub async fn google_callback(
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(VerifyResponse {
+                    access_token: None,
                     success: false,
                     user_id: None,
                     config: None,
@@ -878,6 +1013,7 @@ pub async fn google_callback(
             return Err((
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(VerifyResponse {
+                    access_token: None,
                     success: false,
                     user_id: None,
                     config: None,
@@ -893,6 +1029,7 @@ pub async fn google_callback(
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
             Json(VerifyResponse {
+                access_token: None,
                 success: false,
                 user_id: None,
                 config: None,
@@ -922,6 +1059,7 @@ pub async fn google_callback(
     Err((
         StatusCode::OK,
         Json(VerifyResponse {
+            access_token: None,
             success: true,
             user_id: Some(provisioned_user.id),
             config: Some(config),

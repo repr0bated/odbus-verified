@@ -9,6 +9,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 existing='Cargo.lock
 crates/zeroclaw-api/src/model_provider.rs
+crates/zeroclaw-gateway/src/a2a.rs
+crates/zeroclaw-gateway/src/api_sections.rs
 crates/zeroclaw-gateway/Cargo.toml
 crates/zeroclaw-gateway/src/lib.rs
 crates/zeroclaw-gateway/src/sse.rs
@@ -20,9 +22,12 @@ crates/zeroclaw-providers/src/lib.rs
 crates/zeroclaw-providers/src/ollama.rs
 crates/zeroclaw-providers/src/openai.rs
 crates/zeroclaw-providers/src/openrouter.rs
-crates/zeroclaw-providers/src/vision_override.rs'
+crates/zeroclaw-providers/src/vision_override.rs
+crates/zeroclaw-runtime/src/quickstart/mod.rs'
 new='crates/zeroclaw-gateway/src/ws_stateless.rs
 crates/zeroclaw-gateway/src/ws_stateless_tests.rs
+crates/zeroclaw-providers/src/opencode_session.rs
+crates/zeroclaw-providers/src/sled_identity.rs
 crates/zeroclaw-providers/src/stateless.rs'
 
 printf '%s\n' "$existing" | while IFS= read -r path; do
@@ -47,6 +52,10 @@ done
 printf '%s\n' "$new" | while IFS= read -r path; do
     diff -u --label "a/$path" --label "b/$path" /dev/null "$modified/$path" >> "$patch_out" || test $? -eq 1
 done
+# GNU patch accepts an empty physical line for blank context. Normalize those
+# lines so the checked-in patch file itself has no trailing whitespace.
+sed 's/^ $//' "$patch_out" > "$patch_out.normalized"
+mv "$patch_out.normalized" "$patch_out"
 
 printf '%s\n' "$existing" | while IFS= read -r path; do
     (cd "$base" && sha256sum "$path")

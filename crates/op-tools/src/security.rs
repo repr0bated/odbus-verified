@@ -30,7 +30,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -342,35 +342,41 @@ impl SecurityValidator {
             }
             AccessLevel::Restricted => {
                 // Check against the restricted allowlist
-                let base_cmd = command
-                    .split_whitespace()
-                    .next()
+                let words = shell_words::split(command)
+                    .map_err(|e| SecurityError::ValidationFailed(e.to_string()))?;
+                let base_cmd = words
+                    .first()
                     .ok_or_else(|| SecurityError::ValidationFailed("Empty command".to_string()))?;
 
-                if let Some(allowed) = &profile.custom_allowed_commands {
-                    if !allowed.contains(base_cmd) {
-                        return Err(SecurityError::AccessDenied(format!(
-                            "Command '{}' not allowed in restricted mode",
-                            base_cmd
-                        )));
-                    }
+                if !profile
+                    .custom_allowed_commands
+                    .as_ref()
+                    .is_some_and(|allowed| allowed.contains(base_cmd))
+                {
+                    return Err(SecurityError::AccessDenied(format!(
+                        "Command '{}' not allowed in restricted mode",
+                        base_cmd
+                    )));
                 }
                 Ok(None)
             }
             AccessLevel::Custom => {
                 // Check against custom allowlist
-                let base_cmd = command
-                    .split_whitespace()
-                    .next()
+                let words = shell_words::split(command)
+                    .map_err(|e| SecurityError::ValidationFailed(e.to_string()))?;
+                let base_cmd = words
+                    .first()
                     .ok_or_else(|| SecurityError::ValidationFailed("Empty command".to_string()))?;
 
-                if let Some(allowed) = &profile.custom_allowed_commands {
-                    if !allowed.contains(base_cmd) {
-                        return Err(SecurityError::AccessDenied(format!(
-                            "Command '{}' not in custom allowlist",
-                            base_cmd
-                        )));
-                    }
+                if !profile
+                    .custom_allowed_commands
+                    .as_ref()
+                    .is_some_and(|allowed| allowed.contains(base_cmd))
+                {
+                    return Err(SecurityError::AccessDenied(format!(
+                        "Command '{}' not in custom allowlist",
+                        base_cmd
+                    )));
                 }
                 Ok(None)
             }
@@ -383,31 +389,42 @@ impl SecurityValidator {
         let path_buf = PathBuf::from(path);
 
         // Check for path traversal
-        if path.contains("..") {
+        if path_buf
+            .components()
+            .any(|c| matches!(c, Component::ParentDir))
+        {
             return Err(SecurityError::PathTraversal(path.to_string()));
         }
 
+        let canonical = path_buf
+            .canonicalize()
+            .map_err(|e| SecurityError::ValidationFailed(format!("Cannot resolve path: {e}")))?;
+
         // Check critical forbidden paths
         for forbidden in &profile.critical_forbidden_paths {
-            if path_buf.starts_with(forbidden) {
-                return Err(SecurityError::PathForbidden(path_buf));
+            if canonical.starts_with(forbidden) {
+                return Err(SecurityError::PathForbidden(canonical));
             }
         }
 
         // Admins can read anything else
         if profile.access_level == AccessLevel::Unrestricted {
-            return Ok(path_buf);
+            return Ok(canonical);
         }
 
         // Restricted users have limited paths
         let allowed_read = ["/tmp", "/var/log", "/home", "/opt"];
-        let is_allowed = allowed_read.iter().any(|p| path_buf.starts_with(p));
+        let is_allowed = allowed_read.iter().any(|p| {
+            Path::new(p)
+                .canonicalize()
+                .is_ok_and(|root| canonical.starts_with(root))
+        });
 
         if !is_allowed {
-            return Err(SecurityError::PathForbidden(path_buf));
+            return Err(SecurityError::PathForbidden(canonical));
         }
 
-        Ok(path_buf)
+        Ok(canonical)
     }
 
     /// Validate a path for writing
@@ -415,29 +432,64 @@ impl SecurityValidator {
         let profile = self.profile.read().await;
         let path_buf = PathBuf::from(path);
 
-        // Check for path traversal
-        if path.contains("..") {
+        if !profile.access_level.can_write_files() {
+            return Err(SecurityError::AccessDenied(
+                "This security profile is read-only".to_string(),
+            ));
+        }
+
+        if path_buf
+            .components()
+            .any(|component| matches!(component, Component::ParentDir))
+        {
             return Err(SecurityError::PathTraversal(path.to_string()));
         }
 
+        let resolved = if path_buf.exists() {
+            path_buf
+                .canonicalize()
+                .map_err(|e| SecurityError::ValidationFailed(format!("Cannot resolve path: {e}")))?
+        } else {
+            let parent = path_buf.parent().ok_or_else(|| {
+                SecurityError::ValidationFailed("Write path has no parent".to_string())
+            })?;
+            let file_name = path_buf.file_name().ok_or_else(|| {
+                SecurityError::ValidationFailed("Write path has no file name".to_string())
+            })?;
+            parent
+                .canonicalize()
+                .map_err(|e| {
+                    SecurityError::ValidationFailed(format!("Cannot resolve parent path: {e}"))
+                })?
+                .join(file_name)
+        };
+
         // Check critical forbidden paths
         for forbidden in &profile.critical_forbidden_paths {
-            if path_buf.starts_with(forbidden) {
-                return Err(SecurityError::PathForbidden(path_buf));
+            let resolved_forbidden = forbidden
+                .canonicalize()
+                .unwrap_or_else(|_| forbidden.clone());
+            if resolved.starts_with(&resolved_forbidden) {
+                return Err(SecurityError::PathForbidden(resolved));
             }
         }
 
         // Admins can write anywhere (except critical paths)
         if profile.access_level == AccessLevel::Unrestricted {
-            return Ok(path_buf);
+            return Ok(resolved);
         }
 
-        // Restricted users can only write to /tmp
-        if !path_buf.starts_with("/tmp") {
-            return Err(SecurityError::PathForbidden(path_buf));
+        // Custom profiles can create only direct children of the real /tmp
+        // directory. Keeping the parent fixed, together with O_NOFOLLOW at
+        // open, avoids both prefix tricks and symlink substitution.
+        let temporary_root = Path::new("/tmp")
+            .canonicalize()
+            .map_err(|e| SecurityError::ValidationFailed(format!("Cannot resolve /tmp: {e}")))?;
+        if resolved.parent() != Some(temporary_root.as_path()) {
+            return Err(SecurityError::PathForbidden(resolved));
         }
 
-        Ok(path_buf)
+        Ok(resolved)
     }
 
     /// Check rate limit for a session
@@ -579,6 +631,35 @@ mod tests {
 
         // Should allow ls
         assert!(validator.check_command("ls -la").await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn restricted_without_allowlist_fails_closed() {
+        let mut profile = ToolSecurityProfile::restricted();
+        profile.custom_allowed_commands = None;
+        let validator = SecurityValidator::new(profile);
+        assert!(validator.check_command("ls").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn restricted_profile_cannot_write_even_under_tmp() {
+        let validator = SecurityValidator::with_restricted_profile();
+        assert!(matches!(
+            validator.validate_write_path("/tmp/guest-output").await,
+            Err(SecurityError::AccessDenied(_))
+        ));
+    }
+
+    #[tokio::test]
+    async fn restricted_path_rejects_symlink_escape() {
+        let validator = SecurityValidator::with_restricted_profile();
+        let dir = tempfile::tempdir().unwrap();
+        let link = dir.path().join("outside");
+        std::os::unix::fs::symlink("/etc/passwd", &link).unwrap();
+        assert!(validator
+            .validate_read_path(link.to_str().unwrap())
+            .await
+            .is_err());
     }
 
     #[tokio::test]

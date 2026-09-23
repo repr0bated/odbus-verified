@@ -62,11 +62,17 @@ struct SpecialistGenerationAdmission {
     authority_plugin: &'static str,
     authority_method: String,
     capability: String,
+    facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+    sealed_identity: String,
 }
 
 impl crate::tched_router_generation_native::NativeGenerationAdmission
     for SpecialistGenerationAdmission
 {
+    fn sealed_identity(&self) -> Option<&str> {
+        Some(&self.sealed_identity)
+    }
+
     fn check(
         &self,
     ) -> Pin<
@@ -81,21 +87,27 @@ impl crate::tched_router_generation_native::NativeGenerationAdmission
         >,
     > {
         Box::pin(async move {
-            crate::tched_router_admission::readmit_call(
-                &self.engine,
-                &self.schema,
-                self.authority_plugin,
-                &self.authority_method,
-                &crate::tched_router_admission::RouterCaller {
-                    actor: self.actor.clone(),
-                    capability: Some(self.capability.clone()),
-                    session: Some(self.session.clone()),
-                    genesis: Some(self.genesis.clone()),
-                },
-            )
-            .await
-            .map(|_| ())
-            .map_err(|_| {
+            let caller = crate::tched_router_admission::RouterCaller {
+                actor: self.actor.clone(),
+                capability: Some(self.capability.clone()),
+                session: Some(self.session.clone()),
+                genesis: Some(self.genesis.clone()),
+            };
+            let check = async {
+                crate::tched_router_admission::readmit_call(
+                    &self.engine,
+                    &self.schema,
+                    self.authority_plugin,
+                    &self.authority_method,
+                    &caller,
+                )
+                .await?;
+                if let Some(origin) = &self.facade_origin {
+                    origin.readmit(&self.engine, &caller).await?;
+                }
+                anyhow::Ok(())
+            };
+            check.await.map_err(|_| {
                 crate::tched_router_generation_native::NativeGenerationError::Terminal(
                     crate::tched_router_generation_native::NativeErrorCode::Auth,
                 )
@@ -111,26 +123,46 @@ pub(crate) fn generation_admission(
     authority_plugin: &'static str,
     authority_method: &str,
 ) -> anyhow::Result<Arc<dyn crate::tched_router_generation_native::NativeGenerationAdmission>> {
+    generation_admission_with_origin(
+        engine,
+        schema,
+        caller,
+        authority_plugin,
+        authority_method,
+        None,
+    )
+}
+
+pub(crate) fn generation_admission_with_origin(
+    engine: &MutationEngine,
+    schema: &PluginSchema,
+    caller: CognitiveCaller<'_>,
+    authority_plugin: &'static str,
+    authority_method: &str,
+    facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+) -> anyhow::Result<Arc<dyn crate::tched_router_generation_native::NativeGenerationAdmission>> {
     let capability = schema
         .methods
         .get(authority_method)
         .and_then(|method| method.required_capability.as_deref())
         .context("generation authority method has no exact capability")?;
+    let session = caller.session_id.context("verified session is required")?;
+    let genesis = caller
+        .session_genesis
+        .context("verified genesis is required")?;
+    let sealed_identity =
+        crate::native_sled_identity::credential_for(caller.actor_id, session, genesis)?;
     Ok(Arc::new(SpecialistGenerationAdmission {
         engine: engine.clone(),
         schema: schema.clone(),
         actor: caller.actor_id.to_owned(),
-        session: caller
-            .session_id
-            .context("verified session is required")?
-            .to_owned(),
-        genesis: caller
-            .session_genesis
-            .context("verified genesis is required")?
-            .to_owned(),
+        session: session.to_owned(),
+        genesis: genesis.to_owned(),
         authority_plugin,
         authority_method: authority_method.to_owned(),
         capability: capability.to_owned(),
+        facade_origin,
+        sealed_identity,
     }))
 }
 
@@ -322,7 +354,7 @@ async fn consult_input(
             let library = LIBRARY.read().await;
             assemble(&library, &task, PERSONA_BUDGET_CHARS)
         } else {
-            // UI/VUI rendering must not reuse memory-refreshed pieces from a
+            // UI rendering must not reuse memory-refreshed pieces from a
             // prior private consultation in this process.
             let library = PieceLibrary::seeded_from_catalog();
             assemble(&library, &task, PERSONA_BUDGET_CHARS)
@@ -382,11 +414,15 @@ async fn consult_input(
         "cognitive_mcp",
         authority_method,
     )?;
-    let output = route
-        .client
-        .complete_under_guard(route.input, before_prompt)
-        .await
-        .context("specialist: provider-only native completion failed")?;
+    let output = if route.mode == op_plugins::state_plugins::project::ChatMode::ControlPlane {
+        crate::control_plane_routing::complete(route.input, before_prompt, true).await
+    } else {
+        route
+            .client
+            .complete_under_guard(route.input, before_prompt)
+            .await
+    }
+    .context("specialist: provider-only native completion failed")?;
     anyhow::ensure!(
         !output.content.trim().is_empty(),
         "specialist: native completion returned an empty reply"
@@ -399,6 +435,9 @@ async fn consult_input(
         .collect::<Vec<_>>();
     if let Some((agent_type, _)) = catalog_agent {
         sources.push(format!("catalog_agent:{agent_type}"));
+    }
+    if let Some(routing) = output.usage.get("routing") {
+        sources.push(format!("tched_router.routing:{routing}"));
     }
     let result = SpecialistOutput {
         answer: output.content,

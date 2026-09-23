@@ -1990,6 +1990,35 @@ mod tests {
         );
     }
 
+    #[test]
+    fn known_agent_catalog_calls_get_the_long_execution_timeout() {
+        assert_eq!(
+            request_timeout_for(
+                "tools/call",
+                &json!({"name": "plugin.cognitive_mcp.agent_python_executor_run", "arguments": {}})
+            ),
+            AGENT_REQUEST_TIMEOUT
+        );
+        assert_eq!(
+            request_timeout_for(
+                "tools/call",
+                &json!({"name": "specialist", "arguments": {}})
+            ),
+            AGENT_REQUEST_TIMEOUT
+        );
+    }
+
+    #[test]
+    fn unknown_agent_names_keep_the_default_timeout() {
+        assert_eq!(
+            request_timeout_for(
+                "tools/call",
+                &json!({"name": "plugin.cognitive_mcp.agent_invented_run", "arguments": {}})
+            ),
+            REQUEST_TIMEOUT
+        );
+    }
+
     #[derive(Clone)]
     struct TestAuthenticator;
 

@@ -9,6 +9,7 @@
 
 use axum::{
     extract::ConnectInfo,
+    http::StatusCode,
     response::{Html, Json},
     routing::get,
     Router,
@@ -127,6 +128,9 @@ pub fn create_groups_admin_router() -> Router {
             "/api/trusted-networks",
             get(get_trusted_networks).post(add_trusted_network),
         )
+        .layer(axum::middleware::from_fn(
+            crate::middleware::security::require_mcp_write,
+        ))
 }
 
 /// Serve the groups admin HTML page
@@ -259,7 +263,34 @@ struct SaveProfileRequest {
 async fn save_profile(
     axum::extract::Path(name): axum::extract::Path<String>,
     Json(request): Json<SaveProfileRequest>,
-) -> Json<Value> {
+) -> (StatusCode, Json<Value>) {
+    let known_groups: HashSet<String> = op_mcp_aggregator::builtin_groups()
+        .into_iter()
+        .map(|group| group.id)
+        .collect();
+    let known_presets: HashSet<String> = op_mcp_aggregator::builtin_presets()
+        .into_iter()
+        .map(|preset| preset.id)
+        .collect();
+    if name.is_empty()
+        || name.len() > 64
+        || !name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
+        || request
+            .groups
+            .iter()
+            .any(|group| !known_groups.contains(group))
+        || request
+            .preset
+            .as_ref()
+            .is_some_and(|preset| !known_presets.contains(preset))
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "success": false, "error": "Invalid profile, group, or preset" })),
+        );
+    }
     let config = EnabledGroups {
         groups: request.groups.into_iter().collect(),
         preset: request.preset,
@@ -270,11 +301,14 @@ async fn save_profile(
 
     info!("Saved tool groups profile '{}' with {} groups", name, count);
 
-    Json(json!({
-        "success": true,
-        "profile": name,
-        "group_count": count
-    }))
+    (
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "profile": name,
+            "group_count": count
+        })),
+    )
 }
 
 /// Get access zone for client IP

@@ -26,7 +26,7 @@ use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tracing::{debug, error, info, warn};
 
-use crate::security::get_security_validator;
+use crate::security::{get_security_validator, AccessLevel};
 use crate::{Tool, ToolRegistry};
 
 // ============================================================================
@@ -124,6 +124,7 @@ impl Tool for ShellExecuteTool {
             .check_command(command)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
+        let use_shell = validator.get_profile().await.access_level == AccessLevel::Unrestricted;
 
         // Log with warning if applicable
         if let Some(ref warn_msg) = warning {
@@ -145,7 +146,7 @@ impl Tool for ShellExecuteTool {
         // Execute with timeout
         let result = tokio::time::timeout(
             std::time::Duration::from_secs(timeout_secs),
-            execute_command(command, working_dir, max_output),
+            execute_command(command, working_dir, max_output, use_shell),
         )
         .await;
 
@@ -285,6 +286,7 @@ impl Tool for ShellExecuteBatchTool {
 
         let max_timeout = validator.max_timeout().await;
         let max_output = validator.max_output().await;
+        let use_shell = validator.get_profile().await.access_level == AccessLevel::Unrestricted;
         let default_timeout_secs = 60u64.min(max_timeout.as_secs());
 
         let mut results = Vec::new();
@@ -341,7 +343,7 @@ impl Tool for ShellExecuteBatchTool {
             // Execute command
             let run = tokio::time::timeout(
                 std::time::Duration::from_secs(timeout_secs),
-                execute_command(command, working_dir, max_output),
+                execute_command(command, working_dir, max_output, use_shell),
             )
             .await;
 
@@ -408,10 +410,20 @@ async fn execute_command(
     command: &str,
     working_dir: &str,
     max_output: usize,
+    use_shell: bool,
 ) -> Result<(String, String, i32), String> {
-    let mut child = Command::new("bash")
-        .arg("-c")
-        .arg(command)
+    let mut process = if use_shell {
+        let mut cmd = Command::new("bash");
+        cmd.arg("-c").arg(command);
+        cmd
+    } else {
+        let words = shell_words::split(command).map_err(|e| e.to_string())?;
+        let executable = words.first().ok_or_else(|| "Empty command".to_string())?;
+        let mut cmd = Command::new(executable);
+        cmd.args(&words[1..]);
+        cmd
+    };
+    let mut child = process
         .current_dir(working_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -454,6 +466,20 @@ async fn execute_command(
     }
 
     Ok((stdout, stderr, exit_code))
+}
+
+#[cfg(test)]
+mod command_security_tests {
+    use super::execute_command;
+
+    #[tokio::test]
+    async fn restricted_command_does_not_interpret_shell_operators() {
+        let dir = tempfile::tempdir().unwrap();
+        let sentinel = dir.path().join("sentinel");
+        let command = "ls ; touch sentinel";
+        let _ = execute_command(command, dir.path().to_str().unwrap(), 1024, false).await;
+        assert!(!sentinel.exists());
+    }
 }
 
 // ============================================================================

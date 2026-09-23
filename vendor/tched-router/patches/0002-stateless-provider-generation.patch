@@ -11,7 +11,7 @@
 --- a/crates/zeroclaw-api/src/model_provider.rs
 +++ b/crates/zeroclaw-api/src/model_provider.rs
 @@ -441,6 +441,13 @@
- 
+
  #[async_trait]
  pub trait ModelProvider: Send + Sync + crate::attribution::Attributable {
 +    /// Opt in only when an explicit messages-only request has no local agent,
@@ -35,11 +35,111 @@
      fn capabilities(&self) -> ProviderCapabilities {
          self.as_ref().capabilities()
      }
+--- a/crates/zeroclaw-gateway/src/a2a.rs
++++ b/crates/zeroclaw-gateway/src/a2a.rs
+@@ -449,6 +449,19 @@
+     if let Err(e) = require_auth(&state, &headers) {
+         return e.into_response();
+     }
++    let sealed_identity = headers
++        .get(zeroclaw_providers::sled_identity::SEALED_ID_HEADER)
++        .and_then(|value| value.to_str().ok());
++    let verified_identity = match sealed_identity {
++        Some(credential) => {
++            match zeroclaw_providers::sled_identity::VerifiedSledIdentity::verify(credential).await
++            {
++                Ok(identity) => identity,
++                Err(_) => return StatusCode::UNAUTHORIZED.into_response(),
++            }
++        }
++        None => return StatusCode::UNAUTHORIZED.into_response(),
++    };
+
+     {
+         let config = state.config.read();
+@@ -541,7 +554,15 @@
+     }
+
+     let session_id = format!("a2a_{alias}_{}", Uuid::new_v4());
+-    match run_gateway_chat_with_tools(&state, &prompt, Some(&session_id), Some(&alias)).await {
++    match verified_identity
++        .scope(run_gateway_chat_with_tools(
++            &state,
++            &prompt,
++            Some(&session_id),
++            Some(&alias),
++        ))
++        .await
++    {
+         Ok(outcome) => {
+             let task = OutTask {
+                 id: Uuid::new_v4().to_string(),
+@@ -558,7 +579,7 @@
+                 }],
+                 kind: "task".to_string(),
+             };
+-            (
++            let mut response = (
+                 StatusCode::OK,
+                 Json(serde_json::json!({
+                     "jsonrpc": "2.0",
+@@ -566,7 +587,14 @@
+                     "result": task,
+                 })),
+             )
+-                .into_response()
++                .into_response();
++            response.headers_mut().insert(
++                "x-opdbus-identity-authenticated",
++                axum::http::HeaderValue::from_static(
++                    zeroclaw_providers::sled_identity::AUTHENTICATED_IDENTITY,
++                ),
++            );
++            response
+         }
+         Err(e) => (
+             StatusCode::OK,
+--- a/crates/zeroclaw-gateway/src/api_sections.rs
++++ b/crates/zeroclaw-gateway/src/api_sections.rs
+@@ -55,14 +55,30 @@
+     if let Err(e) = require_auth(&state, &headers) {
+         return e.into_response();
+     }
++    let sealed_identity = headers
++        .get(zeroclaw_providers::sled_identity::SEALED_ID_HEADER)
++        .and_then(|value| value.to_str().ok());
++    let verified_identity = match sealed_identity {
++        Some(credential) => {
++            match zeroclaw_providers::sled_identity::VerifiedSledIdentity::verify(credential).await
++            {
++                Ok(identity) => identity,
++                Err(_) => return axum::http::StatusCode::UNAUTHORIZED.into_response(),
++            }
++        }
++        None => return axum::http::StatusCode::UNAUTHORIZED.into_response(),
++    };
+     let local = zeroclaw_runtime::quickstart::model_provider_is_local(&q.model_provider);
+     // Snapshot config so the catalog resolves the alias credential and can reach
+     // the native /models endpoint (surfacing new native-only models that the
+     // models.dev snapshot may not carry yet) instead of silently falling back.
+     let cfg = state.config.read().clone();
+-    let (models, pricing, live) =
+-        zeroclaw_runtime::quickstart::model_catalog_with_config(Some(&cfg), &q.model_provider)
+-            .await;
++    let (models, pricing, live) = verified_identity
++        .scope(zeroclaw_runtime::quickstart::model_catalog_with_config(
++            Some(&cfg),
++            &q.model_provider,
++        ))
++        .await;
+     axum::Json(CatalogModelsResult {
+         model_provider: q.model_provider,
+         models,
 --- a/crates/zeroclaw-gateway/Cargo.toml
 +++ b/crates/zeroclaw-gateway/Cargo.toml
 @@ -82,6 +82,7 @@
  libc = "0.2"
- 
+
  [dev-dependencies]
 +tokio-tungstenite = "=0.29.0"
  rand = "0.10"
@@ -54,7 +154,7 @@
 +mod ws_stateless;
 +#[cfg(test)]
 +mod ws_stateless_tests;
- 
+
  use anyhow::{Context, Result};
  #[cfg(any(
 @@ -7290,7 +7293,7 @@
@@ -101,12 +201,12 @@
 +            },
 +        )
  }
- 
+
  /// Decide the deliverable form of a broadcast frame for an SSE stream with the
 --- a/crates/zeroclaw-gateway/src/ws.rs
 +++ b/crates/zeroclaw-gateway/src/ws.rs
 @@ -68,6 +68,9 @@
- 
+
  #[derive(Deserialize)]
  pub struct WsQuery {
 +    /// Explicit provider-only turn; absent retains the existing agent path.
@@ -115,10 +215,10 @@
      pub token: Option<String>,
      pub session_id: Option<String>,
      /// Optional human-readable name for the session.
-@@ -180,6 +183,60 @@
+@@ -180,6 +183,88 @@
          }
      }
- 
+
 +    if let Some(version) = params.stateless_generation {
 +        const STATELESS_PROTOCOL: &str = "tched_router.generation.v1";
 +        let stateless_protocol = headers
@@ -152,6 +252,32 @@
 +            )
 +                .into_response();
 +        };
++        let sealed_identity = headers
++            .get(zeroclaw_providers::sled_identity::SEALED_ID_HEADER)
++            .and_then(|value| value.to_str().ok());
++        let verified_identity = match sealed_identity {
++            Some(credential) => {
++                match zeroclaw_providers::sled_identity::VerifiedSledIdentity::verify(credential)
++                    .await
++                {
++                    Ok(identity) => identity,
++                    Err(_) => {
++                        return (
++                            axum::http::StatusCode::UNAUTHORIZED,
++                            "stateless_generation_identity_rejected",
++                        )
++                            .into_response();
++                    }
++                }
++            }
++            None => {
++                return (
++                    axum::http::StatusCode::UNAUTHORIZED,
++                    "stateless_generation_identity_required",
++                )
++                    .into_response();
++            }
++        };
 +        let generation = {
 +            let config = state.config.read();
 +            zeroclaw_providers::stateless::StatelessGeneration::from_config(&config, &agent_alias)
@@ -169,7 +295,9 @@
 +            .protocols([STATELESS_PROTOCOL])
 +            .max_message_size(2 * 1024 * 1024)
 +            .max_frame_size(2 * 1024 * 1024)
-+            .on_upgrade(move |socket| crate::ws_stateless::serve(socket, generation, session_id))
++            .on_upgrade(move |socket| {
++                crate::ws_stateless::serve(socket, generation, session_id, verified_identity)
++            })
 +            .into_response();
 +    }
 +
@@ -181,7 +309,7 @@
 @@ -901,8 +901,6 @@
          let mut cached_input_tokens: Option<u64> = None;
          let mut cache_creation_input_tokens: Option<u64> = None;
- 
+
 -        let mut saw_stop_reason = false;
 -
          loop {
@@ -200,13 +328,13 @@
 @@ -1143,12 +1138,16 @@
              }
          }
- 
+
 -        crate::stream_guard::finish_sse_stream(tx, saw_stop_reason, "message_stop").await;
 +        // `message_stop` returns above; a stop reason alone does not complete the SSE stream.
 +        crate::stream_guard::finish_sse_stream(tx, false, "message_stop").await;
      }
  }
- 
+
  #[async_trait]
  impl ModelProvider for AnthropicModelProvider {
 +    fn supports_stateless_generation(&self) -> bool {
@@ -252,13 +380,13 @@
 +        let reader = tokio::io::BufReader::new(Cursor::new(bytes.as_slice()));
 +        let (tx, mut rx) = tokio::sync::mpsc::channel::<StreamResult<StreamEvent>>(64);
 +        AnthropicModelProvider::parse_anthropic_sse_from_reader(reader, &tx).await;
- 
+
          let mut saw_final = false;
          let mut last_err = None;
 --- a/crates/zeroclaw-providers/src/compatible.rs
 +++ b/crates/zeroclaw-providers/src/compatible.rs
 @@ -2484,6 +2484,25 @@
- 
+
  #[async_trait]
  impl ModelProvider for OpenAiCompatibleModelProvider {
 +    fn supports_stateless_generation(&self) -> bool {
@@ -286,7 +414,7 @@
 --- a/crates/zeroclaw-providers/src/gemini.rs
 +++ b/crates/zeroclaw-providers/src/gemini.rs
 @@ -1396,6 +1396,9 @@
- 
+
  #[async_trait]
  impl ModelProvider for GeminiModelProvider {
 +    fn supports_stateless_generation(&self) -> bool {
@@ -305,10 +433,73 @@
  // glm.rs excluded — not compiled in upstream (dead code with known issues)
  pub mod kilocli;
  pub mod model_pin;
+@@ -20,11 +21,13 @@
+ pub mod ollama;
+ pub mod openai;
+ pub mod openai_codex;
++pub mod opencode_session;
+ pub mod openrouter;
+ pub mod openrouter_catalog;
+ pub mod pricing;
+ pub mod reliable;
+ pub mod router;
++pub mod sled_identity;
+ pub(crate) mod stream_guard;
+ pub mod telnyx;
+ pub mod traits;
+@@ -1200,6 +1203,48 @@
+                     .filter(|v| !v.is_empty())
+             });
+
++    if let Some(extra) = options
++        .provider_extra
++        .as_ref()
++        .and_then(serde_json::Value::as_object)
++        .filter(|extra| extra.contains_key("opdbus_transport"))
++    {
++        if extra.len() != 1
++            || extra
++                .get("opdbus_transport")
++                .and_then(serde_json::Value::as_str)
++                != Some("opencode_session")
++        {
++            anyhow::bail!(
++                "OpenCode session provider_extra requires only opdbus_transport = opencode_session; request overrides are forbidden"
++            );
++        }
++        if !matches!(
++            provider_kind,
++            "custom" | "openai-compatible" | "openai_compatible"
++        ) {
++            anyhow::bail!(
++                "OpenCode session transport is available only through a custom OpenAI-compatible provider profile"
++            );
++        }
++        let base_url = resolved_url.ok_or_else(|| {
++            anyhow::Error::msg(
++                "OpenCode session transport requires the local server URI in the provider profile",
++            )
++        })?;
++        let password = key.ok_or_else(|| {
++            anyhow::Error::msg(
++                "OpenCode session transport requires the local server password in api_key",
++            )
++        })?;
++        return Ok(apply_vision_override(
++            Box::new(opencode_session::OpenCodeSessionModelProvider::new(
++                alias, base_url, password,
++            )?),
++            options.vision,
++        ));
++    }
++
+     if legacy_kimi_code {
+         let base_url = match resolved_url {
+             Some(url) => url,
 --- a/crates/zeroclaw-providers/src/ollama.rs
 +++ b/crates/zeroclaw-providers/src/ollama.rs
 @@ -879,6 +879,9 @@
- 
+
  #[async_trait]
  impl ModelProvider for OllamaModelProvider {
 +    fn supports_stateless_generation(&self) -> bool {
@@ -320,7 +511,7 @@
 --- a/crates/zeroclaw-providers/src/openai.rs
 +++ b/crates/zeroclaw-providers/src/openai.rs
 @@ -440,6 +440,9 @@
- 
+
  #[async_trait]
  impl ModelProvider for OpenAiModelProvider {
 +    fn supports_stateless_generation(&self) -> bool {
@@ -330,7 +521,7 @@
      fn default_base_url(&self) -> Option<&str> {
          Some(BASE_URL)
 @@ -1150,6 +1153,9 @@
- 
+
  #[async_trait]
  impl ModelProvider for OpenAiResponsesModelProvider {
 +    fn supports_stateless_generation(&self) -> bool {
@@ -342,7 +533,7 @@
 --- a/crates/zeroclaw-providers/src/openrouter.rs
 +++ b/crates/zeroclaw-providers/src/openrouter.rs
 @@ -540,6 +540,25 @@
- 
+
  #[async_trait]
  impl ModelProvider for OpenRouterModelProvider {
 +    fn supports_stateless_generation(&self) -> bool {
@@ -370,7 +561,7 @@
 --- a/crates/zeroclaw-providers/src/vision_override.rs
 +++ b/crates/zeroclaw-providers/src/vision_override.rs
 @@ -32,6 +32,9 @@
- 
+
  #[async_trait]
  impl ModelProvider for VisionOverrideProvider {
 +    fn supports_stateless_generation(&self) -> bool {
@@ -379,9 +570,234 @@
      fn capabilities(&self) -> super::traits::ProviderCapabilities {
          // Patch the canonical `vision` capability; the default
          // `supports_vision()` reads this, and so does anything that inspects
+--- a/crates/zeroclaw-runtime/src/quickstart/mod.rs
++++ b/crates/zeroclaw-runtime/src/quickstart/mod.rs
+@@ -2043,18 +2043,14 @@
+     bool,
+ ) {
+     let resolved = config.and_then(|cfg| cfg.providers.models.find_by_name(model_provider));
++    let requires_live_catalog = resolved
++        .as_ref()
++        .and_then(|(_family, _alias, base)| base.provider_extra.as_ref())
++        .and_then(serde_json::Value::as_object)
++        .is_some_and(|extra| extra.contains_key("opdbus_transport"));
+     let api_key = resolved
+         .as_ref()
+         .and_then(|(_family, _alias, base)| base.api_key.clone());
+-    // Honor a configured custom endpoint so proxied / self-hosted OpenAI-compatible
+-    // deployments list from their own `/models` rather than the family default.
+-    let api_url = resolved.as_ref().and_then(|(_family, _alias, base)| {
+-        base.uri
+-            .as_deref()
+-            .map(str::trim)
+-            .filter(|u| !u.is_empty())
+-            .map(ToString::to_string)
+-    });
+     // `create_model_provider` and the chat-catalog ranker expect a bare family
+     // name, not a dotted ref. Prefer the family `find_by_name` resolved; when it
+     // could not (no config / unknown alias) strip any `<family>.<alias>` suffix
+@@ -2068,11 +2064,24 @@
+                 .map_or(model_provider, |(f, _)| f)
+         });
+ 
+-    let handle = zeroclaw_providers::create_model_provider_with_url(
+-        family,
+-        api_key.as_deref(),
+-        api_url.as_deref(),
+-    );
++    // Preserve the complete alias options for live discovery. In particular,
++    // locally consumed transport markers must select their dedicated adapter
++    // and must never fall through into an OpenAI-compatible request body.
++    let handle = match (config, resolved.as_ref()) {
++        (Some(cfg), Some((_family, _alias, base))) => {
++            let options =
++                zeroclaw_providers::model_provider_runtime_options_from_model_provider_entry(
++                    cfg,
++                    Some(base),
++                );
++            zeroclaw_providers::create_model_provider_with_options(
++                family,
++                api_key.as_deref(),
++                &options,
++            )
++        }
++        _ => zeroclaw_providers::create_model_provider_with_url(family, api_key.as_deref(), None),
++    };
+     if let Ok(handle) = handle
+         && let Ok(models) = zeroclaw_providers::ProviderDispatch::from_ref(&*handle)
+             .list_models_with_pricing()
+@@ -2102,15 +2111,53 @@
+         };
+         return (ids, pricing, true);
+     }
++    if requires_live_catalog {
++        return (Vec::new(), None, false);
++    }
+     match zeroclaw_providers::catalog::list_models_for_family(family).await {
+-        Ok(models) if !models.is_empty() => (
+-            zeroclaw_providers::catalog::sort_model_catalog_for_chat(family, models)
+-                .unwrap_or_default(),
+-            None,
+-            true,
+-        ),
+-        _ => (Vec::new(), None, false),
++        Ok(models) if !models.is_empty() => {
++            let sorted = zeroclaw_providers::catalog::sort_model_catalog_for_chat(family, models)
++                .unwrap_or_default();
++            if !sorted.is_empty() {
++                return (sorted, None, true);
++            }
++        }
++        _ => {}
++    }
++
++    // An unknown provider family such as `custom` has no built-in catalog. When
++    // its upstream /models request is unavailable, surface only model IDs the
++    // operator already configured for this exact alias or family. This is an
++    // offline fallback, so it must never claim that the list is live.
++    let configured = configured_model_ids(config, model_provider);
++    (configured, None, false)
++}
++
++fn configured_model_ids(config: Option<&Config>, selector: &str) -> Vec<String> {
++    let Some(config) = config else {
++        return Vec::new();
++    };
++    let mut ids = std::collections::BTreeSet::new();
++    for (family, alias, provider) in config.providers.models.iter_entries() {
++        let selected = match selector.split_once('.') {
++            Some((requested_family, requested_alias)) => {
++                family == requested_family && alias == requested_alias
++            }
++            None => family == selector,
++        };
++        if !selected {
++            continue;
++        }
++        if let Some(model) = provider
++            .model
++            .as_deref()
++            .map(str::trim)
++            .filter(|s| !s.is_empty())
++        {
++            ids.insert(model.to_string());
++        }
+     }
++    ids.into_iter().collect()
+ }
+ 
+ /// `true` for model_provider families that need no remote credential.
+@@ -2132,6 +2179,77 @@
+     use zeroclaw_config::schema::Config;
+ 
+     #[test]
++    fn configured_model_ids_resolves_alias_or_family_without_inventing_models() {
++        let mut config = Config::default();
++        for (alias, model) in [
++            ("salad", Some(" qwen3.6-35b-a3b ")),
++            ("second", Some("qwen3.6-35b-a3b")),
++            ("blank", Some("   ")),
++            ("unset", None),
++        ] {
++            config.providers.models.custom.insert(
++                alias.to_string(),
++                zeroclaw_config::schema::CustomModelProviderConfig {
++                    base: zeroclaw_config::schema::ModelProviderConfig {
++                        model: model.map(str::to_string),
++                        ..Default::default()
++                    },
++                },
++            );
++        }
++
++        assert_eq!(
++            configured_model_ids(Some(&config), "custom.salad"),
++            vec!["qwen3.6-35b-a3b"],
++            "a dotted selector should return only that alias's configured model"
++        );
++        assert_eq!(
++            configured_model_ids(Some(&config), "custom"),
++            vec!["qwen3.6-35b-a3b"],
++            "a bare family should aggregate, trim, and deduplicate configured IDs"
++        );
++        assert!(configured_model_ids(Some(&config), "custom.missing").is_empty());
++        assert!(configured_model_ids(Some(&config), "unknown").is_empty());
++        assert!(configured_model_ids(None, "custom").is_empty());
++    }
++
++    #[tokio::test]
++    async fn model_catalog_falls_back_to_configured_custom_id_when_live_fetch_fails() {
++        use wiremock::matchers::{method, path};
++        use wiremock::{Mock, MockServer, ResponseTemplate};
++
++        let server = MockServer::start().await;
++        Mock::given(method("GET"))
++            .and(path("/models"))
++            .respond_with(ResponseTemplate::new(503))
++            .mount(&server)
++            .await;
++
++        let mut config = Config::default();
++        config.providers.models.custom.insert(
++            "salad".to_string(),
++            zeroclaw_config::schema::CustomModelProviderConfig {
++                base: zeroclaw_config::schema::ModelProviderConfig {
++                    api_key: Some("fixture-key".to_string()),
++                    uri: Some(server.uri()),
++                    model: Some("configured-custom-model".to_string()),
++                    ..Default::default()
++                },
++            },
++        );
++
++        let (models, pricing, live) =
++            model_catalog_with_config(Some(&config), "custom.salad").await;
++
++        assert_eq!(models, vec!["configured-custom-model"]);
++        assert!(pricing.is_none());
++        assert!(
++            !live,
++            "configured IDs are an offline fallback, not a live result"
++        );
++    }
++
++    #[test]
+     fn channel_type_options_cover_every_schema_channel() {
+         let cfg = Config::default();
+         let picker = build_channel_type_options(&cfg.channels);
+@@ -3150,4 +3268,29 @@
+              configured endpoint; got {models:?}"
+         );
+     }
++
++    #[tokio::test]
++    async fn opencode_session_catalog_never_falls_back_to_static_models() {
++        let mut config = Config::default();
++        config.providers.models.custom.insert(
++            "opencode".to_string(),
++            zeroclaw_config::schema::CustomModelProviderConfig {
++                base: zeroclaw_config::schema::ModelProviderConfig {
++                    api_key: Some("local-password".to_string()),
++                    uri: Some("http://127.0.0.1:4096".to_string()),
++                    provider_extra: Some(
++                        serde_json::json!({"opdbus_transport": "opencode_session"}),
++                    ),
++                    ..Default::default()
++                },
++            },
++        );
++
++        let (models, pricing, live) =
++            model_catalog_with_config(Some(&config), "custom.opencode").await;
++
++        assert!(!live);
++        assert!(models.is_empty());
++        assert!(pricing.is_none());
++    }
+ }
 --- a/crates/zeroclaw-gateway/src/ws_stateless.rs
 +++ b/crates/zeroclaw-gateway/src/ws_stateless.rs
-@@ -0,0 +1,140 @@
+@@ -0,0 +1,142 @@
 +//! Bounded transport for one explicitly admitted provider-only turn. This
 +//! module never constructs an Agent or accesses session/history/workspace data.
 +use axum::extract::ws::{Message, WebSocket};
@@ -418,12 +834,14 @@
 +    mut socket: WebSocket,
 +    generation: StatelessGeneration,
 +    session_id: String,
++    identity: zeroclaw_providers::sled_identity::VerifiedSledIdentity,
 +) {
-+    let result = tokio::time::timeout(
-+        Duration::from_secs(600),
-+        run(&mut socket, generation, session_id),
-+    )
-+    .await;
++    let result = identity
++        .scope(tokio::time::timeout(
++            Duration::from_secs(600),
++            run(&mut socket, generation, session_id),
++        ))
++        .await;
 +    let code = match result {
 +        Ok(Ok(())) => None,
 +        Ok(Err(code)) => Some(code),
@@ -474,7 +892,7 @@
 +    // provider/model belong to the same consumed one-turn Config resolution.
 +    send(
 +        socket,
-+        json!({"type":"connected","stateless_generation":1,"provider":provider,"model":model}),
++        json!({"type":"connected","stateless_generation":1,"provider":provider,"model":model,"identity_authenticated":"SID1"}),
 +    )
 +    .await?;
 +    let prompt: Prompt = serde_json::from_value(receive(socket).await?).map_err(|_| "PROTOCOL")?;
@@ -524,7 +942,7 @@
 +}
 --- a/crates/zeroclaw-gateway/src/ws_stateless_tests.rs
 +++ b/crates/zeroclaw-gateway/src/ws_stateless_tests.rs
-@@ -0,0 +1,654 @@
+@@ -0,0 +1,796 @@
 +//! Transport-boundary fixtures for the deliberately narrow stateless WS path.
 +//!
 +//! These tests use a real Axum upgrade plus a loopback OpenAI-compatible HTTP
@@ -540,14 +958,20 @@
 +    routing::{get, post},
 +};
 +use futures_util::{SinkExt, Stream, StreamExt, stream};
++use http_body_util::{BodyExt, Full};
++use hyper::{
++    Request, Response, StatusCode, body::Incoming, server::conn::http1, service::service_fn,
++};
++use hyper_util::rt::TokioIo;
 +use serde_json::{Value, json};
-+use std::{convert::Infallible, sync::Arc, time::Duration};
++use std::{convert::Infallible, io::Cursor, sync::Arc, time::Duration};
 +use tokio::{
 +    net::TcpListener,
 +    sync::{Mutex as AsyncMutex, oneshot},
 +    task::JoinHandle,
 +    time::timeout,
 +};
++use tokio_rustls::TlsAcceptor;
 +use tokio_tungstenite::{
 +    MaybeTlsStream, WebSocketStream, connect_async,
 +    tungstenite::{Error as WsError, Message, client::IntoClientRequest},
@@ -567,6 +991,7 @@
 +const MODEL: &str = "fixture-model";
 +const SESSION: &str = "stateless-session";
 +const FRAME_TIMEOUT: Duration = Duration::from_secs(3);
++const TEST_SEALED_ID: &str = "U0lEMQ_native-fixture";
 +
 +type ClientSocket = WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>;
 +
@@ -579,6 +1004,134 @@
 +            handle.abort();
 +        }
 +    }
++}
++
++struct SledAuthFixture {
++    uri: String,
++    ca: tempfile::NamedTempFile,
++}
++
++static SLED_AUTH_FIXTURE: tokio::sync::OnceCell<SledAuthFixture> =
++    tokio::sync::OnceCell::const_new();
++
++#[allow(clippy::disallowed_methods)] // The fixture owns a dedicated test runtime thread.
++async fn sled_auth_fixture() -> &'static SledAuthFixture {
++    SLED_AUTH_FIXTURE
++        .get_or_init(|| async {
++            let _ = rustls::crypto::ring::default_provider().install_default();
++            let ca_key = rcgen::KeyPair::generate().expect("generate fixture CA key");
++            let mut ca_params = rcgen::CertificateParams::new(vec!["OP-DBUS test CA".to_string()])
++                .expect("fixture CA parameters");
++            ca_params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
++            let ca_cert = ca_params
++                .self_signed(&ca_key)
++                .expect("self-sign fixture CA");
++            let mut server_params = rcgen::CertificateParams::new(vec!["127.0.0.1".to_string()])
++                .expect("fixture server parameters");
++            server_params.is_ca = rcgen::IsCa::NoCa;
++            let server_key = rcgen::KeyPair::generate().expect("generate fixture server key");
++            let server_cert = server_params
++                .signed_by(&server_key, &ca_cert, &ca_key)
++                .expect("sign fixture server certificate");
++
++            let mut cert_reader = Cursor::new(server_cert.pem());
++            let certs = rustls_pemfile::certs(&mut cert_reader)
++                .collect::<Result<Vec<_>, _>>()
++                .expect("parse fixture server certificate");
++            let mut key_reader = Cursor::new(server_key.serialize_pem());
++            let key = rustls_pemfile::private_key(&mut key_reader)
++                .expect("parse fixture server key")
++                .expect("fixture server key exists");
++            let tls = TlsAcceptor::from(Arc::new(
++                rustls::ServerConfig::builder()
++                    .with_no_client_auth()
++                    .with_single_cert(certs, key)
++                    .expect("build fixture TLS configuration"),
++            ));
++            let listener =
++                std::net::TcpListener::bind("127.0.0.1:0").expect("bind sled auth fixture");
++            listener
++                .set_nonblocking(true)
++                .expect("configure sled auth fixture listener");
++            let address = listener.local_addr().expect("sled auth fixture address");
++            std::thread::spawn(move || {
++                let runtime = tokio::runtime::Builder::new_current_thread()
++                    .enable_all()
++                    .build()
++                    .expect("build sled auth fixture runtime");
++                runtime.block_on(async move {
++                    let listener =
++                        TcpListener::from_std(listener).expect("adopt sled auth fixture listener");
++                    while let Ok((stream, _)) = listener.accept().await {
++                        let tls = tls.clone();
++                        tokio::spawn(async move {
++                            let Ok(stream) = tls.accept(stream).await else {
++                                return;
++                            };
++                            let service = service_fn(|request: Request<Incoming>| async move {
++                                let header_ok = request
++                                    .headers()
++                                    .get(zeroclaw_providers::sled_identity::SEALED_ID_HEADER)
++                                    .and_then(|value| value.to_str().ok())
++                                    == Some(TEST_SEALED_ID);
++                                let body = request
++                                    .into_body()
++                                    .collect()
++                                    .await
++                                    .ok()
++                                    .map(|b| b.to_bytes());
++                                let ping_ok = body
++                                    .as_deref()
++                                    .and_then(|bytes| serde_json::from_slice::<Value>(bytes).ok())
++                                    .is_some_and(|value| {
++                                        value.get("jsonrpc").and_then(Value::as_str) == Some("2.0")
++                                            && value.get("id").and_then(Value::as_str)
++                                                == Some("sled-auth")
++                                            && value.get("method").and_then(Value::as_str)
++                                                == Some("ping")
++                                    });
++                                let (status, body) = if header_ok && ping_ok {
++                                    (
++                                        StatusCode::OK,
++                                        r#"{"jsonrpc":"2.0","id":"sled-auth","result":{}}"#,
++                                    )
++                                } else {
++                                    (StatusCode::UNAUTHORIZED, r#"{"error":"unauthorized"}"#)
++                                };
++                                Ok::<_, Infallible>(
++                                    Response::builder()
++                                        .status(status)
++                                        .header("content-type", "application/json")
++                                        .body(Full::new(Bytes::from_static(body.as_bytes())))
++                                        .expect("fixture auth response"),
++                                )
++                            });
++                            let _ = http1::Builder::new()
++                                .serve_connection(TokioIo::new(stream), service)
++                                .await;
++                        });
++                    }
++                });
++            });
++            let mut ca = tempfile::NamedTempFile::new().expect("create fixture CA file");
++            std::io::Write::write_all(&mut ca, ca_cert.pem().as_bytes()).expect("write fixture CA");
++            let fixture = SledAuthFixture {
++                uri: format!("https://{address}/mcp"),
++                ca,
++            };
++            // OnceCell serializes these process-global test settings before it
++            // publishes the fixture to concurrent test tasks.
++            unsafe {
++                std::env::set_var("OPDBUS_SLED_AUTH_URL", &fixture.uri);
++                std::env::set_var("OPDBUS_SLED_CA_FILE", fixture.ca.path());
++            }
++            fixture
++        })
++        .await
++}
++
++async fn configure_sled_auth_fixture() {
++    let _ = sled_auth_fixture().await;
 +}
 +
 +async fn provider_fixture() -> MockServer {
@@ -708,6 +1261,7 @@
 +}
 +
 +async fn start_gateway(state: crate::AppState) -> (String, AbortOnDrop) {
++    configure_sled_auth_fixture().await;
 +    let listener = TcpListener::bind("127.0.0.1:0")
 +        .await
 +        .expect("bind loopback gateway fixture");
@@ -737,6 +1291,10 @@
 +            format!("Bearer {TEST_TOKEN}")
 +                .parse()
 +                .expect("valid test bearer header"),
++        );
++        request.headers_mut().insert(
++            zeroclaw_providers::sled_identity::SEALED_ID_HEADER,
++            TEST_SEALED_ID.parse().expect("valid fixture SID1 header"),
 +        );
 +    }
 +    request
@@ -850,6 +1408,7 @@
 +    assert_eq!(connected["type"], "connected");
 +    assert_eq!(connected["provider"], PROVIDER);
 +    assert_eq!(connected["model"], MODEL);
++    assert_eq!(connected["identity_authenticated"], "SID1");
 +    assert_no_provider_effect(&provider).await;
 +
 +    send_json(
@@ -916,7 +1475,8 @@
 +            "type": "connected",
 +            "stateless_generation": 1,
 +            "provider": PROVIDER,
-+            "model": MODEL
++            "model": MODEL,
++            "identity_authenticated": "SID1"
 +        })
 +    );
 +    assert_no_provider_effect(&provider).await;
@@ -1178,6 +1738,1137 @@
 +    assert_eq!(done["input_tokens"], 11);
 +    assert_eq!(done["output_tokens"], 4);
 +    assert_eq!(done["tokens_used"], 15);
++}
+--- a/crates/zeroclaw-providers/src/opencode_session.rs
++++ b/crates/zeroclaw-providers/src/opencode_session.rs
+@@ -0,0 +1,971 @@
++//! Local OpenCode server transport for inference authenticated by OpenCode's
++//! own provider/OAuth store. Each call uses a disposable, deny-all session.
++
++use crate::{ChatMessage, ChatRequest, ChatResponse, ModelProvider};
++use anyhow::{Context, Result, bail};
++use async_trait::async_trait;
++use futures_util::StreamExt;
++use reqwest::{Client, Response, Url, redirect::Policy};
++use serde::{Deserialize, Serialize, de::DeserializeOwned};
++use std::{collections::HashSet, net::IpAddr, time::Duration};
++use zeroclaw_api::{
++    attribution::{Attributable, ModelProviderKind, ProviderKind, Role},
++    model_provider::{ModelInfo, ModelPricing},
++};
++
++const OPENCODE_USERNAME: &str = "opencode";
++const SESSION_TITLE: &str = "OP-DBUS completion";
++const COMPLETION_AGENT: &str = "opdbus-completion";
++const MAX_RESPONSE_BYTES: usize = 1024 * 1024;
++const REQUEST_TIMEOUT: Duration = Duration::from_secs(600);
++
++#[derive(Clone)]
++pub struct OpenCodeSessionModelProvider {
++    alias: String,
++    base_url: Url,
++    password: String,
++    client: Client,
++}
++
++impl OpenCodeSessionModelProvider {
++    pub fn new(alias: &str, base_url: &str, password: &str) -> Result<Self> {
++        let mut parsed = Url::parse(base_url).context("OpenCode session URI is invalid")?;
++        let host = parsed
++            .host_str()
++            .and_then(|value| value.parse::<IpAddr>().ok())
++            .filter(IpAddr::is_loopback)
++            .context("OpenCode session URI must use a literal loopback address")?;
++        if parsed.scheme() != "http"
++            || parsed.port().is_none()
++            || !host.is_loopback()
++            || parsed.username() != ""
++            || parsed.password().is_some()
++            || parsed.query().is_some()
++            || parsed.fragment().is_some()
++            || !matches!(parsed.path(), "" | "/")
++        {
++            bail!(
++                "OpenCode session URI must be an http:// loopback address with an explicit port and no path, credentials, query, or fragment"
++            );
++        }
++        let password = password.trim();
++        if password.is_empty() {
++            bail!("OpenCode session transport requires the local server password in api_key");
++        }
++        parsed.set_path("/");
++        let client = Client::builder()
++            .redirect(Policy::none())
++            .timeout(REQUEST_TIMEOUT)
++            .build()
++            .context("failed to build OpenCode session HTTP client")?;
++        Ok(Self {
++            alias: alias.to_string(),
++            base_url: parsed,
++            password: password.to_string(),
++            client,
++        })
++    }
++
++    fn endpoint(&self, segments: &[&str]) -> Result<Url> {
++        let mut url = self.base_url.clone();
++        {
++            let mut path = url
++                .path_segments_mut()
++                .map_err(|()| anyhow::Error::msg("OpenCode session URI cannot be a base URL"))?;
++            path.clear();
++            for segment in segments {
++                path.push(segment);
++            }
++        }
++        Ok(url)
++    }
++
++    fn authenticated(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
++        request.basic_auth(OPENCODE_USERNAME, Some(&self.password))
++    }
++
++    async fn bounded_json<T: DeserializeOwned>(response: Response) -> Result<T> {
++        let status = response.status();
++        if response
++            .content_length()
++            .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)
++        {
++            bail!("OpenCode response exceeds the 1 MiB limit");
++        }
++        let mut stream = response.bytes_stream();
++        let mut bytes = Vec::new();
++        while let Some(chunk) = stream.next().await {
++            let chunk = chunk.context("failed while reading OpenCode response")?;
++            if bytes.len().saturating_add(chunk.len()) > MAX_RESPONSE_BYTES {
++                bail!("OpenCode response exceeds the 1 MiB limit");
++            }
++            bytes.extend_from_slice(&chunk);
++        }
++        if !status.is_success() {
++            let detail = serde_json::from_slice::<serde_json::Value>(&bytes)
++                .ok()
++                .and_then(|value| {
++                    value
++                        .pointer("/data/message")
++                        .or_else(|| value.get("message"))
++                        .and_then(serde_json::Value::as_str)
++                        .map(str::to_string)
++                })
++                .unwrap_or_else(|| "request failed".to_string());
++            bail!("OpenCode request failed with {status}: {detail}");
++        }
++        serde_json::from_slice(&bytes).context("OpenCode returned invalid JSON")
++    }
++
++    async fn create_session(
++        &self,
++        identity: &crate::sled_identity::VerifiedSledIdentity,
++    ) -> Result<SessionLease> {
++        let url = self.endpoint(&["session"])?;
++        let request = SessionCreateRequest {
++            title: SESSION_TITLE,
++            permission: vec![PermissionRule {
++                permission: "*",
++                pattern: "*",
++                action: "deny",
++            }],
++        };
++        identity.reverify().await?;
++        let response = self
++            .authenticated(self.client.post(url))
++            .json(&request)
++            .send()
++            .await
++            .context("failed to create OpenCode session")?;
++        let session: SessionResponse = Self::bounded_json(response).await?;
++        if !valid_session_id(&session.id) {
++            bail!("OpenCode returned an invalid session id");
++        }
++        Ok(SessionLease {
++            provider: self.clone(),
++            session_id: session.id,
++            cleaned: false,
++        })
++    }
++
++    async fn generate_owned(
++        self,
++        identity: crate::sled_identity::VerifiedSledIdentity,
++        messages: Vec<ChatMessage>,
++        model: String,
++    ) -> Result<ChatResponse> {
++        let (provider_id, model_id) = split_model(&model)?;
++        let (system, prompt) = encode_messages(&messages)?;
++        let mut lease = self.create_session(&identity).await?;
++        let url = self.endpoint(&["session", &lease.session_id, "message"])?;
++        let request = MessageRequest {
++            model: MessageModel {
++                provider_id,
++                model_id,
++            },
++            agent: COMPLETION_AGENT,
++            system,
++            tools: serde_json::json!({"*": false}),
++            parts: vec![TextPartInput {
++                part_type: "text",
++                text: prompt,
++            }],
++        };
++        let result = async {
++            identity.reverify().await?;
++            let response = self
++                .authenticated(self.client.post(url))
++                .json(&request)
++                .send()
++                .await
++                .context("failed to send OpenCode message")?;
++            let output: MessageResponse = Self::bounded_json(response).await?;
++            validate_message_response(output, provider_id, model_id)
++        }
++        .await;
++        let cleanup = lease.cleanup(false).await;
++        match (result, cleanup) {
++            (Ok(response), Ok(())) => Ok(response),
++            (Err(error), _) => Err(error),
++            (Ok(_), Err(error)) => Err(error.context("OpenCode session cleanup failed")),
++        }
++    }
++
++    async fn list_model_info(&self) -> Result<Vec<ModelInfo>> {
++        crate::sled_identity::current()?.reverify().await?;
++        let response = self
++            .authenticated(self.client.get(self.endpoint(&["provider"])?))
++            .send()
++            .await
++            .context("failed to list OpenCode providers")?;
++        let catalog: ProviderCatalog = Self::bounded_json(response).await?;
++        let connected: HashSet<&str> = catalog.connected.iter().map(String::as_str).collect();
++        let mut models = Vec::new();
++        for provider in catalog.all {
++            if provider.id == "openrouter" || !connected.contains(provider.id.as_str()) {
++                continue;
++            }
++            for (model_id, model) in provider.models {
++                if model.provider_id != provider.id
++                    || model.id != model_id
++                    || invalid_provider_id(&provider.id)
++                    || invalid_model_id(&model_id)
++                {
++                    continue;
++                }
++                models.push(ModelInfo {
++                    id: format!("{}/{}", provider.id, model_id),
++                    pricing: Some(ModelPricing {
++                        prompt: rate_per_token(model.cost.input),
++                        completion: rate_per_token(model.cost.output),
++                        input_cache_read: rate_per_token(model.cost.cache.read),
++                        input_cache_write: rate_per_token(model.cost.cache.write),
++                    }),
++                    context_window: model
++                        .limit
++                        .context
++                        .and_then(|value| usize::try_from(value).ok()),
++                });
++            }
++        }
++        models.sort_by(|left, right| left.id.cmp(&right.id));
++        models.dedup_by(|left, right| left.id == right.id);
++        Ok(models)
++    }
++}
++
++fn invalid_provider_id(value: &str) -> bool {
++    value.trim().is_empty() || value.contains('/') || value.chars().any(char::is_control)
++}
++
++fn invalid_model_id(value: &str) -> bool {
++    value.trim().is_empty() || value.chars().any(char::is_control)
++}
++
++fn rate_per_token(value: Option<f64>) -> Option<String> {
++    value
++        .filter(|rate| rate.is_finite() && *rate >= 0.0)
++        .map(|rate| {
++            let rendered = format!("{:.12}", rate / 1_000_000.0);
++            let trimmed = rendered
++                .trim_end_matches('0')
++                .trim_end_matches('.')
++                .to_string();
++            if trimmed.is_empty() {
++                "0".to_string()
++            } else {
++                trimmed
++            }
++        })
++}
++
++fn split_model(model: &str) -> Result<(&str, &str)> {
++    let (provider_id, model_id) = model
++        .split_once('/')
++        .context("OpenCode model must be providerID/modelID")?;
++    if invalid_provider_id(provider_id) || invalid_model_id(model_id) {
++        bail!("OpenCode model must be providerID/modelID");
++    }
++    Ok((provider_id, model_id))
++}
++
++fn encode_messages(messages: &[ChatMessage]) -> Result<(Option<String>, String)> {
++    let system = messages
++        .iter()
++        .filter(|message| message.role == "system")
++        .map(|message| message.content.as_str())
++        .filter(|content| !content.is_empty())
++        .collect::<Vec<_>>()
++        .join("\n\n");
++    let turns: Vec<&ChatMessage> = messages
++        .iter()
++        .filter(|message| message.role != "system")
++        .collect();
++    if turns.is_empty() {
++        bail!("OpenCode request requires at least one non-system message");
++    }
++    let prompt = if turns.len() == 1 && turns[0].role == "user" {
++        turns[0].content.clone()
++    } else {
++        turns
++            .iter()
++            .map(|message| format!("{}:\n{}", message.role.to_uppercase(), message.content))
++            .collect::<Vec<_>>()
++            .join("\n\n")
++    };
++    if prompt.trim().is_empty() {
++        bail!("OpenCode request prompt is empty");
++    }
++    Ok(((!system.is_empty()).then_some(system), prompt))
++}
++
++fn validate_message_response(
++    response: MessageResponse,
++    provider_id: &str,
++    model_id: &str,
++) -> Result<ChatResponse> {
++    if response.info.provider_id != provider_id || response.info.model_id != model_id {
++        bail!("OpenCode response model attribution did not match the request");
++    }
++    if response.info.error.is_some() {
++        bail!("OpenCode reported an inference error");
++    }
++    if response
++        .parts
++        .iter()
++        .any(|part| matches!(part.part_type.as_str(), "tool" | "subtask" | "agent"))
++    {
++        bail!("OpenCode response attempted tool or agent execution");
++    }
++    let text = response
++        .parts
++        .into_iter()
++        .filter(|part| part.part_type == "text")
++        .filter_map(|part| part.text)
++        .collect::<Vec<_>>()
++        .join("");
++    if text.trim().is_empty() {
++        bail!("OpenCode response contained no text");
++    }
++    let usage = response
++        .info
++        .tokens
++        .map(|tokens| zeroclaw_api::model_provider::TokenUsage {
++            input_tokens: number_to_u64(tokens.input),
++            output_tokens: number_to_u64(tokens.output),
++            cached_input_tokens: tokens.cache.and_then(|cache| number_to_u64(cache.read)),
++        });
++    Ok(ChatResponse {
++        text: Some(text),
++        tool_calls: Vec::new(),
++        usage,
++        reasoning_content: None,
++    })
++}
++
++fn number_to_u64(value: f64) -> Option<u64> {
++    (value.is_finite() && value >= 0.0 && value <= u64::MAX as f64).then_some(value as u64)
++}
++
++fn valid_session_id(value: &str) -> bool {
++    value.starts_with("ses")
++        && value.len() <= 256
++        && value
++            .bytes()
++            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
++}
++
++struct SessionLease {
++    provider: OpenCodeSessionModelProvider,
++    session_id: String,
++    cleaned: bool,
++}
++
++impl SessionLease {
++    async fn cleanup(&mut self, abort: bool) -> Result<()> {
++        if self.cleaned {
++            return Ok(());
++        }
++        self.provider
++            .cleanup_session(&self.session_id, abort)
++            .await?;
++        self.cleaned = true;
++        Ok(())
++    }
++}
++
++impl OpenCodeSessionModelProvider {
++    async fn cleanup_session(&self, session_id: &str, abort: bool) -> Result<()> {
++        if abort {
++            let _ = self
++                .authenticated(
++                    self.client
++                        .post(self.endpoint(&["session", session_id, "abort"])?),
++                )
++                .send()
++                .await;
++        }
++        let response = self
++            .authenticated(self.client.delete(self.endpoint(&["session", session_id])?))
++            .send()
++            .await
++            .context("failed to delete OpenCode session")?;
++        if !response.status().is_success() {
++            bail!("OpenCode session delete failed with {}", response.status());
++        }
++        Ok(())
++    }
++}
++
++impl Drop for SessionLease {
++    fn drop(&mut self) {
++        if self.cleaned {
++            return;
++        }
++        self.cleaned = true;
++        let provider = self.provider.clone();
++        let session_id = self.session_id.clone();
++        ::zeroclaw_spawn::spawn!(async move {
++            let _ = provider.cleanup_session(&session_id, true).await;
++        });
++    }
++}
++
++#[async_trait]
++impl ModelProvider for OpenCodeSessionModelProvider {
++    fn supports_stateless_generation(&self) -> bool {
++        true
++    }
++
++    async fn chat_with_system(
++        &self,
++        system_prompt: Option<&str>,
++        message: &str,
++        model: &str,
++        _temperature: Option<f64>,
++    ) -> Result<String> {
++        let mut messages = Vec::new();
++        if let Some(system) = system_prompt {
++            messages.push(ChatMessage::system(system));
++        }
++        messages.push(ChatMessage::user(message));
++        Ok(self
++            .run_owned(messages, model.to_string())
++            .await?
++            .text
++            .unwrap_or_default())
++    }
++
++    async fn chat_with_history(
++        &self,
++        messages: &[ChatMessage],
++        model: &str,
++        _temperature: Option<f64>,
++    ) -> Result<String> {
++        Ok(self
++            .run_owned(messages.to_vec(), model.to_string())
++            .await?
++            .text
++            .unwrap_or_default())
++    }
++
++    async fn chat(
++        &self,
++        request: ChatRequest<'_>,
++        model: &str,
++        _temperature: Option<f64>,
++    ) -> Result<ChatResponse> {
++        if request.tools.is_some_and(|tools| !tools.is_empty()) {
++            bail!("OpenCode session transport is inference-only and rejects tools");
++        }
++        self.run_owned(request.messages.to_vec(), model.to_string())
++            .await
++    }
++
++    async fn list_models(&self) -> Result<Vec<String>> {
++        Ok(self
++            .list_model_info()
++            .await?
++            .into_iter()
++            .map(|model| model.id)
++            .collect())
++    }
++
++    async fn list_models_with_pricing(&self) -> Result<Vec<ModelInfo>> {
++        self.list_model_info().await
++    }
++}
++
++impl OpenCodeSessionModelProvider {
++    async fn run_owned(&self, messages: Vec<ChatMessage>, model: String) -> Result<ChatResponse> {
++        let provider = self.clone();
++        let identity = crate::sled_identity::current()?;
++        let scoped_identity = identity.clone();
++        let handle = ::zeroclaw_spawn::spawn!(async move {
++            scoped_identity
++                .scope(provider.generate_owned(identity, messages, model))
++                .await
++        });
++        let guard = crate::stream_guard::AbortOnDrop::new(handle.abort_handle());
++        let result = handle
++            .await
++            .context("OpenCode inference task was cancelled or failed")?;
++        drop(guard);
++        result
++    }
++}
++
++impl Attributable for OpenCodeSessionModelProvider {
++    fn role(&self) -> Role {
++        Role::Provider(ProviderKind::Model(ModelProviderKind::Plugin))
++    }
++
++    fn alias(&self) -> &str {
++        &self.alias
++    }
++}
++
++#[derive(Serialize)]
++struct SessionCreateRequest<'a> {
++    title: &'a str,
++    permission: Vec<PermissionRule<'a>>,
++}
++
++#[derive(Serialize)]
++struct PermissionRule<'a> {
++    permission: &'a str,
++    pattern: &'a str,
++    action: &'a str,
++}
++
++#[derive(Deserialize)]
++struct SessionResponse {
++    id: String,
++}
++
++#[derive(Serialize)]
++struct MessageRequest<'a> {
++    model: MessageModel<'a>,
++    agent: &'a str,
++    #[serde(skip_serializing_if = "Option::is_none")]
++    system: Option<String>,
++    tools: serde_json::Value,
++    parts: Vec<TextPartInput>,
++}
++
++#[derive(Serialize)]
++struct MessageModel<'a> {
++    #[serde(rename = "providerID")]
++    provider_id: &'a str,
++    #[serde(rename = "modelID")]
++    model_id: &'a str,
++}
++
++#[derive(Serialize)]
++struct TextPartInput {
++    #[serde(rename = "type")]
++    part_type: &'static str,
++    text: String,
++}
++
++#[derive(Deserialize)]
++struct MessageResponse {
++    info: AssistantInfo,
++    parts: Vec<ResponsePart>,
++}
++
++#[derive(Deserialize)]
++struct AssistantInfo {
++    #[serde(rename = "providerID")]
++    provider_id: String,
++    #[serde(rename = "modelID")]
++    model_id: String,
++    #[serde(default)]
++    error: Option<serde_json::Value>,
++    #[serde(default)]
++    tokens: Option<ResponseTokens>,
++}
++
++#[derive(Deserialize)]
++struct ResponseTokens {
++    input: f64,
++    output: f64,
++    #[serde(default)]
++    cache: Option<ResponseCache>,
++}
++
++#[derive(Deserialize)]
++struct ResponseCache {
++    read: f64,
++}
++
++#[derive(Deserialize)]
++struct ResponsePart {
++    #[serde(rename = "type")]
++    part_type: String,
++    #[serde(default)]
++    text: Option<String>,
++}
++
++#[derive(Deserialize)]
++struct ProviderCatalog {
++    all: Vec<ProviderEntry>,
++    connected: Vec<String>,
++}
++
++#[derive(Deserialize)]
++struct ProviderEntry {
++    id: String,
++    models: std::collections::HashMap<String, CatalogModel>,
++}
++
++#[derive(Deserialize)]
++struct CatalogModel {
++    id: String,
++    #[serde(rename = "providerID")]
++    provider_id: String,
++    cost: CatalogCost,
++    limit: CatalogLimit,
++}
++
++#[derive(Deserialize)]
++struct CatalogCost {
++    #[serde(default)]
++    input: Option<f64>,
++    #[serde(default)]
++    output: Option<f64>,
++    #[serde(default)]
++    cache: CatalogCacheCost,
++}
++
++#[derive(Default, Deserialize)]
++struct CatalogCacheCost {
++    #[serde(default)]
++    read: Option<f64>,
++    #[serde(default)]
++    write: Option<f64>,
++}
++
++#[derive(Deserialize)]
++struct CatalogLimit {
++    #[serde(default)]
++    context: Option<u64>,
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use axum::{
++        Json, Router,
++        extract::{Path, State},
++        http::{HeaderMap, StatusCode},
++        response::IntoResponse,
++        routing::{delete, get, post},
++    };
++    use base64::{Engine as _, engine::general_purpose::STANDARD};
++    use parking_lot::Mutex;
++    use serde_json::{Value, json};
++    use std::sync::{
++        Arc,
++        atomic::{AtomicUsize, Ordering},
++    };
++    use tokio::{net::TcpListener, sync::Notify};
++
++    #[derive(Clone, Copy)]
++    enum Mode {
++        Success,
++        Error,
++        Tool,
++        Attribution,
++        Block,
++    }
++
++    #[derive(Clone)]
++    struct FixtureState {
++        mode: Mode,
++        expected_auth: String,
++        requests: Arc<Mutex<Vec<Value>>>,
++        created: Arc<AtomicUsize>,
++        deleted: Arc<AtomicUsize>,
++        aborted: Arc<AtomicUsize>,
++        message_started: Arc<Notify>,
++        block: Arc<Notify>,
++    }
++
++    struct Fixture {
++        uri: String,
++        state: FixtureState,
++        server: tokio::task::JoinHandle<()>,
++    }
++
++    impl Drop for Fixture {
++        fn drop(&mut self) {
++            self.server.abort();
++        }
++    }
++
++    fn authorized(headers: &HeaderMap, state: &FixtureState) -> bool {
++        headers
++            .get("authorization")
++            .and_then(|value| value.to_str().ok())
++            == Some(state.expected_auth.as_str())
++    }
++
++    async fn create_session(
++        State(state): State<FixtureState>,
++        headers: HeaderMap,
++        Json(body): Json<Value>,
++    ) -> impl IntoResponse {
++        if !authorized(&headers, &state) {
++            return StatusCode::UNAUTHORIZED.into_response();
++        }
++        state.created.fetch_add(1, Ordering::SeqCst);
++        state.requests.lock().push(json!({"create": body}));
++        Json(json!({"id":"ses_fixture"})).into_response()
++    }
++
++    async fn send_message(
++        State(state): State<FixtureState>,
++        Path(session): Path<String>,
++        headers: HeaderMap,
++        Json(body): Json<Value>,
++    ) -> impl IntoResponse {
++        if !authorized(&headers, &state) || session != "ses_fixture" {
++            return StatusCode::UNAUTHORIZED.into_response();
++        }
++        state.requests.lock().push(json!({"message": body}));
++        state.message_started.notify_waiters();
++        if matches!(state.mode, Mode::Block) {
++            state.block.notified().await;
++        }
++        let (provider, model) = if matches!(state.mode, Mode::Attribution) {
++            ("wrong", "wrong")
++        } else {
++            ("anthropic", "claude-test")
++        };
++        let error = matches!(state.mode, Mode::Error)
++            .then(|| json!({"name":"APIError","data":{"message":"fixture"}}));
++        let parts = if matches!(state.mode, Mode::Tool) {
++            vec![json!({"type":"tool"})]
++        } else {
++            vec![json!({"type":"text","text":"fixture response"})]
++        };
++        Json(json!({
++            "info": {
++                "providerID": provider,
++                "modelID": model,
++                "error": error,
++                "tokens": {"input": 7, "output": 3, "cache": {"read": 2}}
++            },
++            "parts": parts
++        }))
++        .into_response()
++    }
++
++    async fn delete_session(
++        State(state): State<FixtureState>,
++        Path(session): Path<String>,
++        headers: HeaderMap,
++    ) -> impl IntoResponse {
++        if !authorized(&headers, &state) || session != "ses_fixture" {
++            return StatusCode::UNAUTHORIZED.into_response();
++        }
++        state.deleted.fetch_add(1, Ordering::SeqCst);
++        Json(true).into_response()
++    }
++
++    async fn abort_session(
++        State(state): State<FixtureState>,
++        Path(session): Path<String>,
++        headers: HeaderMap,
++    ) -> impl IntoResponse {
++        if !authorized(&headers, &state) || session != "ses_fixture" {
++            return StatusCode::UNAUTHORIZED.into_response();
++        }
++        state.aborted.fetch_add(1, Ordering::SeqCst);
++        Json(true).into_response()
++    }
++
++    async fn providers(State(state): State<FixtureState>, headers: HeaderMap) -> impl IntoResponse {
++        if !authorized(&headers, &state) {
++            return StatusCode::UNAUTHORIZED.into_response();
++        }
++        Json(json!({
++            "connected": ["anthropic", "openrouter"],
++            "all": [
++                {"id":"anthropic","models": {
++                    "claude-test": {
++                        "id":"claude-test", "providerID":"anthropic",
++                        "cost":{"input":3.0,"output":15.0,"cache":{"read":0.3,"write":3.75}},
++                        "limit":{"context":200000}
++                    }
++                }},
++                {"id":"openrouter","models": {
++                    "openai/hidden": {
++                        "id":"openai/hidden", "providerID":"openrouter",
++                        "cost":{"input":1.0,"output":1.0,"cache":{}}, "limit":{}
++                    }
++                }},
++                {"id":"disconnected","models": {
++                    "offline": {
++                        "id":"offline", "providerID":"disconnected",
++                        "cost":{"input":0.0,"output":0.0,"cache":{}}, "limit":{}
++                    }
++                }}
++            ]
++        }))
++        .into_response()
++    }
++
++    async fn fixture(mode: Mode) -> Fixture {
++        let expected_auth = format!("Basic {}", STANDARD.encode("opencode:fixture-password"));
++        let state = FixtureState {
++            mode,
++            expected_auth,
++            requests: Arc::new(Mutex::new(Vec::new())),
++            created: Arc::new(AtomicUsize::new(0)),
++            deleted: Arc::new(AtomicUsize::new(0)),
++            aborted: Arc::new(AtomicUsize::new(0)),
++            message_started: Arc::new(Notify::new()),
++            block: Arc::new(Notify::new()),
++        };
++        let app = Router::new()
++            .route("/session", post(create_session))
++            .route("/session/{session}/message", post(send_message))
++            .route("/session/{session}", delete(delete_session))
++            .route("/session/{session}/abort", post(abort_session))
++            .route("/provider", get(providers))
++            .with_state(state.clone());
++        let listener = TcpListener::bind("127.0.0.1:0")
++            .await
++            .expect("bind OpenCode fixture");
++        let address = listener.local_addr().expect("fixture address");
++        let server = ::zeroclaw_spawn::spawn!(async move {
++            let _ = axum::serve(listener, app).await;
++        });
++        Fixture {
++            uri: format!("http://{address}"),
++            state,
++            server,
++        }
++    }
++
++    fn provider(uri: &str) -> OpenCodeSessionModelProvider {
++        OpenCodeSessionModelProvider::new("fixture", uri, "fixture-password")
++            .expect("construct fixture provider")
++    }
++
++    async fn chat(provider: &OpenCodeSessionModelProvider) -> Result<ChatResponse> {
++        crate::sled_identity::VerifiedSledIdentity::native_fixture()
++            .scope(provider.chat(
++                ChatRequest {
++                    messages: &[
++                        ChatMessage::system("preserved system"),
++                        ChatMessage::user("first"),
++                        ChatMessage::assistant("second"),
++                        ChatMessage::user("third"),
++                    ],
++                    tools: None,
++                    thinking: None,
++                },
++                "anthropic/claude-test",
++                None,
++            ))
++            .await
++    }
++
++    #[tokio::test]
++    async fn known_response_preserves_input_and_deletes_session() {
++        let fixture = fixture(Mode::Success).await;
++        let response = chat(&provider(&fixture.uri)).await.expect("chat succeeds");
++        assert_eq!(response.text.as_deref(), Some("fixture response"));
++        assert_eq!(
++            response.usage.as_ref().and_then(|u| u.input_tokens),
++            Some(7)
++        );
++        assert_eq!(fixture.state.created.load(Ordering::SeqCst), 1);
++        assert_eq!(fixture.state.deleted.load(Ordering::SeqCst), 1);
++        let requests = fixture.state.requests.lock();
++        assert_eq!(requests[0]["create"]["title"], SESSION_TITLE);
++        assert_eq!(requests[0]["create"]["permission"][0]["action"], "deny");
++        let message = &requests[1]["message"];
++        assert_eq!(message["model"]["providerID"], "anthropic");
++        assert_eq!(message["model"]["modelID"], "claude-test");
++        assert_eq!(message["agent"], COMPLETION_AGENT);
++        assert_eq!(message["tools"]["*"], false);
++        assert_eq!(message["system"], "preserved system");
++        let prompt = message["parts"][0]["text"].as_str().expect("prompt");
++        assert!(prompt.contains("USER:\nfirst"));
++        assert!(prompt.contains("ASSISTANT:\nsecond"));
++        assert!(prompt.contains("USER:\nthird"));
++    }
++
++    #[tokio::test]
++    async fn models_are_connected_priced_exact_and_exclude_openrouter() {
++        let fixture = fixture(Mode::Success).await;
++        let models = crate::sled_identity::VerifiedSledIdentity::native_fixture()
++            .scope(provider(&fixture.uri).list_models_with_pricing())
++            .await
++            .expect("catalog succeeds");
++        assert_eq!(models.len(), 1);
++        assert_eq!(models[0].id, "anthropic/claude-test");
++        assert_eq!(models[0].context_window, Some(200_000));
++        let pricing = models[0].pricing.as_ref().expect("pricing");
++        assert_eq!(pricing.prompt.as_deref(), Some("0.000003"));
++        assert_eq!(pricing.completion.as_deref(), Some("0.000015"));
++    }
++
++    #[tokio::test]
++    async fn inference_error_tool_attempt_and_attribution_mismatch_fail_and_cleanup() {
++        for mode in [Mode::Error, Mode::Tool, Mode::Attribution] {
++            let fixture = fixture(mode).await;
++            assert!(chat(&provider(&fixture.uri)).await.is_err());
++            assert_eq!(fixture.state.deleted.load(Ordering::SeqCst), 1);
++        }
++    }
++
++    #[tokio::test]
++    async fn cancellation_aborts_and_deletes_session() {
++        let fixture = fixture(Mode::Block).await;
++        let provider = provider(&fixture.uri);
++        let identity = crate::sled_identity::VerifiedSledIdentity::native_fixture();
++        let task = ::zeroclaw_spawn::spawn!(async move { identity.scope(chat(&provider)).await });
++        fixture.state.message_started.notified().await;
++        task.abort();
++        for _ in 0..50 {
++            if fixture.state.deleted.load(Ordering::SeqCst) == 1 {
++                break;
++            }
++            tokio::time::sleep(Duration::from_millis(10)).await;
++        }
++        assert_eq!(fixture.state.aborted.load(Ordering::SeqCst), 1);
++        assert_eq!(fixture.state.deleted.load(Ordering::SeqCst), 1);
++    }
++
++    #[test]
++    fn rejects_non_loopback_and_request_overrides() {
++        assert!(
++            OpenCodeSessionModelProvider::new("fixture", "https://example.com:4096", "password")
++                .is_err()
++        );
++        assert!(
++            OpenCodeSessionModelProvider::new("fixture", "http://localhost:4096", "password")
++                .is_err()
++        );
++
++        let options = crate::ModelProviderRuntimeOptions {
++            provider_api_url: Some("http://127.0.0.1:4096".to_string()),
++            provider_extra: Some(json!({
++                "opdbus_transport": "opencode_session",
++                "messages": [{"role":"system","content":"forbidden"}]
++            })),
++            ..Default::default()
++        };
++        assert!(
++            crate::create_model_provider_with_options("custom", Some("fixture-password"), &options)
++                .is_err(),
++            "the local marker must never permit request overrides"
++        );
++
++        let options = crate::ModelProviderRuntimeOptions {
++            provider_api_url: Some("http://127.0.0.1:4096".to_string()),
++            provider_extra: Some(json!({"opdbus_transport": "unexpected"})),
++            ..Default::default()
++        };
++        assert!(
++            crate::create_model_provider_with_options("custom", Some("fixture-password"), &options)
++                .is_err(),
++            "an invalid local marker must never fall through into an API body"
++        );
++
++        let options = crate::ModelProviderRuntimeOptions {
++            provider_api_url: Some("http://127.0.0.1:4096".to_string()),
++            provider_extra: Some(json!({"opdbus_transport": "opencode_session"})),
++            ..Default::default()
++        };
++        let selected =
++            crate::create_model_provider_with_options("custom", Some("fixture-password"), &options)
++                .expect("select OpenCode session adapter");
++        assert!(selected.supports_stateless_generation());
++    }
++}
+--- a/crates/zeroclaw-providers/src/sled_identity.rs
++++ b/crates/zeroclaw-providers/src/sled_identity.rs
+@@ -0,0 +1,154 @@
++//! Verification bridge for identity-sled-authored SID1 credentials.
++//!
++//! Native code treats the credential as opaque. Authority remains in the
++//! OP-DBUS MCP door, which validates the current sled/session/revocation state.
++
++use anyhow::{Context, Result, bail};
++use futures_util::StreamExt;
++use reqwest::{Client, Url, redirect::Policy};
++use serde_json::json;
++use std::{future::Future, net::IpAddr, sync::Arc, time::Duration};
++
++pub const SEALED_ID_HEADER: &str = "x-opdbus-sealed-id-bin";
++pub const AUTHENTICATED_IDENTITY: &str = "SID1";
++const AUTH_URL_ENV: &str = "OPDBUS_SLED_AUTH_URL";
++const CA_FILE_ENV: &str = "OPDBUS_SLED_CA_FILE";
++const MAX_AUTH_RESPONSE_BYTES: usize = 64 * 1024;
++const AUTH_TIMEOUT: Duration = Duration::from_secs(10);
++
++tokio::task_local! {
++    static VERIFIED_IDENTITY: VerifiedSledIdentity;
++}
++
++#[derive(Clone)]
++pub struct VerifiedSledIdentity {
++    sealed_id: Arc<str>,
++}
++
++impl VerifiedSledIdentity {
++    pub async fn verify(sealed_id: &str) -> Result<Self> {
++        validate_opaque_credential(sealed_id)?;
++        let identity = Self {
++            sealed_id: Arc::from(sealed_id),
++        };
++        identity.reverify().await?;
++        Ok(identity)
++    }
++
++    pub async fn reverify(&self) -> Result<()> {
++        #[cfg(test)]
++        if self.sealed_id.as_ref() == "U0lEMQ_native-fixture" {
++            return Ok(());
++        }
++        let auth_url = std::env::var(AUTH_URL_ENV)
++            .with_context(|| format!("{AUTH_URL_ENV} is required for SID1 verification"))?;
++        let url = Url::parse(&auth_url).context("OP-DBUS sled auth URL is invalid")?;
++        let literal_ip = url
++            .host_str()
++            .and_then(|host| host.parse::<IpAddr>().ok())
++            .is_some();
++        if url.scheme() != "https"
++            || !literal_ip
++            || url.port().is_none()
++            || url.username() != ""
++            || url.password().is_some()
++            || url.path() != "/mcp"
++            || url.query().is_some()
++            || url.fragment().is_some()
++        {
++            bail!(
++                "OP-DBUS sled auth URL must be an HTTPS literal-IP /mcp URL with an explicit port and no credentials, query, or fragment"
++            );
++        }
++        let ca_file = std::env::var(CA_FILE_ENV)
++            .with_context(|| format!("{CA_FILE_ENV} is required for SID1 verification"))?;
++        let ca_pem = std::fs::read(&ca_file).context("failed to read OP-DBUS sled CA file")?;
++        let certificate = reqwest::Certificate::from_pem(&ca_pem)
++            .context("OP-DBUS sled CA file is not a PEM certificate")?;
++        let client = Client::builder()
++            .redirect(Policy::none())
++            .timeout(AUTH_TIMEOUT)
++            .add_root_certificate(certificate)
++            .build()
++            .context("failed to build OP-DBUS sled auth client")?;
++        let response = client
++            .post(url)
++            .header(SEALED_ID_HEADER, self.sealed_id.as_ref())
++            .header("accept", "application/json, text/event-stream")
++            .header("mcp-protocol-version", "2025-06-18")
++            .json(&json!({
++                "jsonrpc": "2.0",
++                "id": "sled-auth",
++                "method": "ping",
++                "params": {}
++            }))
++            .send()
++            .await
++            .context("OP-DBUS sled auth request failed")?;
++        if !response.status().is_success() {
++            bail!("OP-DBUS sled auth rejected the credential");
++        }
++        let mut body = Vec::new();
++        let mut stream = response.bytes_stream();
++        while let Some(chunk) = stream.next().await {
++            let chunk = chunk.context("failed while reading OP-DBUS sled auth response")?;
++            if body.len().saturating_add(chunk.len()) > MAX_AUTH_RESPONSE_BYTES {
++                bail!("OP-DBUS sled auth response exceeded its size limit");
++            }
++            body.extend_from_slice(&chunk);
++        }
++        let value: serde_json::Value =
++            serde_json::from_slice(&body).context("OP-DBUS sled auth returned invalid JSON")?;
++        if value.get("jsonrpc").and_then(serde_json::Value::as_str) != Some("2.0")
++            || value.get("id").and_then(serde_json::Value::as_str) != Some("sled-auth")
++            || value.get("error").is_some()
++            || value.get("result").is_none()
++        {
++            bail!("OP-DBUS sled auth returned an invalid ping response");
++        }
++        Ok(())
++    }
++
++    #[cfg(test)]
++    pub(crate) fn native_fixture() -> Self {
++        Self {
++            sealed_id: Arc::from("U0lEMQ_native-fixture"),
++        }
++    }
++
++    pub async fn scope<F: Future>(&self, future: F) -> F::Output {
++        VERIFIED_IDENTITY.scope(self.clone(), future).await
++    }
++}
++
++pub fn current() -> Result<VerifiedSledIdentity> {
++    VERIFIED_IDENTITY
++        .try_with(Clone::clone)
++        .context("verified SID1 context is required for native inference")
++}
++
++fn validate_opaque_credential(value: &str) -> Result<()> {
++    if value.is_empty()
++        || value.len() > 64 * 1024
++        || value.contains('=')
++        || !value
++            .bytes()
++            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
++    {
++        bail!("sealed identity credential must be unpadded base64url");
++    }
++    Ok(())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::validate_opaque_credential;
++
++    #[test]
++    fn opaque_credential_shape_is_fail_closed() {
++        assert!(validate_opaque_credential("U0lEMQ_test-opaque").is_ok());
++        for invalid in ["", "padded=", "spaces are forbidden", "slash/forbidden"] {
++            assert!(validate_opaque_credential(invalid).is_err());
++        }
++    }
 +}
 --- a/crates/zeroclaw-providers/src/stateless.rs
 +++ b/crates/zeroclaw-providers/src/stateless.rs
