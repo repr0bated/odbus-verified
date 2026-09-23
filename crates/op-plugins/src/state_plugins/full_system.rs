@@ -265,8 +265,10 @@ impl FullSystemPlugin {
         }
     }
 
-    /// Capture complete system state
-    pub async fn capture_full_state(&self) -> Result<FullSystemState> {
+    /// Capture complete system state inside the admitted full_system owner.
+    /// Request callers enter through the schema-declared `capture_state`
+    /// capability and MutationEngine dispatch below.
+    async fn capture_full_state(&self) -> Result<FullSystemState> {
         let now = chrono::Utc::now().to_rfc3339();
 
         info!("Capturing full system state...");

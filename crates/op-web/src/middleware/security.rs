@@ -36,9 +36,8 @@ pub fn extract_auth_token(headers: &HeaderMap) -> Option<String> {
     None
 }
 
-/// Admit HTTP admin routes under the already projected human arrival and the
-/// bridge's exact-principal grant document. A forwarded IP or AccessZone is
-/// never an identity proof.
+/// HTTP mutation routes remain unavailable until this host can verify a
+/// caller-presented credential bound to the exact principal and grant.
 pub async fn require_mcp_write(request: Request, next: Next) -> Response {
     require_capability(request, next, "mcp.write").await
 }
@@ -47,21 +46,8 @@ pub async fn require_project_admin(request: Request, next: Next) -> Response {
     require_capability(request, next, "project.admin").await
 }
 
-async fn require_capability(request: Request, next: Next, capability: &str) -> Response {
-    let admitted = request_site_is_same_origin(request.headers())
-        && request
-            .extensions()
-            .get::<ConnectInfo<SocketAddr>>()
-            .and_then(|info| crate::handlers::identity_self::human_session_for_peer(info.0))
-            .is_some_and(|session| {
-                let principal =
-                    op_identity::session::derive_principal_id(&session.wireguard_pubkey);
-                op_grpc_bridge::interceptor::load_capability_grants(&principal).contains(capability)
-            });
-    if !admitted {
-        return StatusCode::FORBIDDEN.into_response();
-    }
-    next.run(request).await
+async fn require_capability(_request: Request, _next: Next, _capability: &str) -> Response {
+    StatusCode::FORBIDDEN.into_response()
 }
 
 pub async fn no_store(request: Request, next: Next) -> Response {
@@ -95,6 +81,24 @@ pub(crate) fn request_site_is_same_origin(headers: &HeaderMap) -> bool {
         return false;
     };
     origin == format!("http://{host}") || origin == format!("https://{host}")
+}
+
+/// A loopback TCP peer with an attacker-controlled Host is a DNS rebinding
+/// request, not a local browser origin.
+pub(crate) fn request_site_is_local_same_origin(headers: &HeaderMap) -> bool {
+    let Some(host) = headers.get("host").and_then(|value| value.to_str().ok()) else {
+        return false;
+    };
+    let Ok(authority) = host.parse::<axum::http::uri::Authority>() else {
+        return false;
+    };
+    let name = authority
+        .host()
+        .trim_start_matches('[')
+        .trim_end_matches(']');
+    let local_host = name.eq_ignore_ascii_case("localhost")
+        || name.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback());
+    local_host && request_site_is_same_origin(headers)
 }
 
 fn is_trusted_proxy(addr: &SocketAddr) -> bool {
@@ -332,6 +336,29 @@ mod tests {
         }
     }
 
+    #[tokio::test]
+    async fn loopback_and_claimed_local_origin_do_not_grant_admin() {
+        let router = axum::Router::new().route(
+            "/admin",
+            axum::routing::post(|| async { StatusCode::OK })
+                .route_layer(axum::middleware::from_fn(require_project_admin)),
+        );
+        let mut request = axum::http::Request::builder()
+            .method("POST")
+            .uri("/admin")
+            .header("host", "localhost:8080")
+            .header("origin", "http://localhost:8080")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        request
+            .extensions_mut()
+            .insert(ConnectInfo("127.0.0.1:1234".parse::<SocketAddr>().unwrap()));
+        assert_eq!(
+            router.oneshot(request).await.unwrap().status(),
+            StatusCode::FORBIDDEN
+        );
+    }
+
     #[test]
     fn admin_admission_rejects_cross_site_browser_requests() {
         let mut headers = HeaderMap::new();
@@ -345,6 +372,17 @@ mod tests {
         assert!(request_site_is_same_origin(&headers));
         headers.insert("sec-fetch-site", HeaderValue::from_static("cross-site"));
         assert!(!request_site_is_same_origin(&headers));
+    }
+
+    #[test]
+    fn local_admission_rejects_rebound_host() {
+        let mut headers = HeaderMap::new();
+        headers.insert("host", HeaderValue::from_static("attacker.example:8080"));
+        assert!(!request_site_is_local_same_origin(&headers));
+        headers.insert("host", HeaderValue::from_static("localhost:8080"));
+        assert!(request_site_is_local_same_origin(&headers));
+        headers.insert("host", HeaderValue::from_static("127.0.0.1:8080"));
+        assert!(request_site_is_local_same_origin(&headers));
     }
 
     #[tokio::test]

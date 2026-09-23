@@ -66,14 +66,10 @@ impl AccessZone {
             return Self::TrustedMesh;
         }
 
-        // 3. Optional legacy address heuristics. These are disabled by
-        // default because an address range alone is not proof of mesh
-        // membership; deployments that retain them must opt in explicitly.
-        if Self::is_mesh_network(ip, config) {
-            return Self::TrustedMesh;
-        }
-
-        // 4. Standard private networks (RFC 1918)
+        // Automatic VPN address ranges are never proof of peer identity, even
+        // when legacy auto-detection flags are set in a stored configuration.
+        // Only an explicit trusted range above may select TrustedMesh.
+        // 3. Standard private networks (RFC 1918)
         if Self::is_private_network(ip) {
             return Self::PrivateNetwork;
         }
@@ -86,58 +82,6 @@ impl AccessZone {
             || ip
                 .parse::<std::net::IpAddr>()
                 .is_ok_and(|address| address.is_loopback())
-    }
-
-    /// Check for known VPN/mesh network ranges
-    fn is_mesh_network(ip: &str, config: &NetworkConfig) -> bool {
-        // Netmaker default ranges (commonly 10.x.x.x but checking specific patterns)
-        // Netmaker often uses: 10.101.0.0/16, 10.102.0.0/16, etc.
-        if config.auto_wireguard
-            && (ip.starts_with("10.101.") || ip.starts_with("10.102.") || ip.starts_with("10.103."))
-        {
-            return true;
-        }
-
-        // Tailscale CGNAT range: 100.64.0.0/10 (100.64.x.x - 100.127.x.x)
-        if config.auto_tailscale {
-            if let Some(first) = ip.split('.').next() {
-                if first == "100" {
-                    if let Some(second) = ip.split('.').nth(1) {
-                        if let Ok(n) = second.parse::<u8>() {
-                            if (64..=127).contains(&n) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // ZeroTier default range: often 10.147.x.x, 10.244.x.x
-        if config.auto_zerotier && (ip.starts_with("10.147.") || ip.starts_with("10.244.")) {
-            return true;
-        }
-
-        // WireGuard common ranges: often 10.0.0.x, 10.200.x.x, 10.66.66.x
-        if config.auto_wireguard
-            && (ip.starts_with("10.0.0.")
-                || ip.starts_with("10.200.")
-                || ip.starts_with("10.66.66."))
-        {
-            return true;
-        }
-
-        // Nebula default: often 10.42.x.x
-        if config.auto_wireguard && ip.starts_with("10.42.") {
-            return true;
-        }
-
-        // IPv6 ULA for mesh (fd00::/8)
-        if config.auto_wireguard && ip.starts_with("fd") {
-            return true;
-        }
-
-        false
     }
 
     fn is_private_network(ip: &str) -> bool {
@@ -213,15 +157,15 @@ pub struct NetworkConfig {
     #[serde(default)]
     pub trusted_ips: Vec<String>,
 
-    /// Auto-detect Tailscale networks  
+    /// Retained for configuration compatibility; never grants TrustedMesh.
     #[serde(default)]
     pub auto_tailscale: bool,
 
-    /// Auto-detect ZeroTier networks
+    /// Retained for configuration compatibility; never grants TrustedMesh.
     #[serde(default)]
     pub auto_zerotier: bool,
 
-    /// Auto-detect WireGuard common ranges
+    /// Retained for configuration compatibility; never grants TrustedMesh.
     #[serde(default)]
     pub auto_wireguard: bool,
 }
@@ -378,11 +322,25 @@ mod tests {
 
         let legacy = NetworkConfig {
             auto_wireguard: true,
+            auto_tailscale: true,
+            auto_zerotier: true,
             ..NetworkConfig::default()
         };
-        assert_eq!(
-            AccessZone::from_ip_with_config("10.0.0.5", &legacy),
-            AccessZone::TrustedMesh
-        );
+        for ip in [
+            "10.0.0.5",
+            "10.200.0.17",
+            "10.66.66.1",
+            "10.101.0.5",
+            "10.147.1.1",
+        ] {
+            let zone = AccessZone::from_ip_with_config(ip, &legacy);
+            assert_eq!(zone, AccessZone::PrivateNetwork, "{ip}");
+            assert!(!zone.can_access(SecurityLevel::Restricted), "{ip}");
+        }
+        for ip in ["100.100.50.1", "fd00::1"] {
+            let zone = AccessZone::from_ip_with_config(ip, &legacy);
+            assert_ne!(zone, AccessZone::TrustedMesh, "{ip}");
+            assert!(!zone.can_access(SecurityLevel::Restricted), "{ip}");
+        }
     }
 }

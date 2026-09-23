@@ -188,24 +188,6 @@ pub fn audit_source_with_coverage(
     Ok(report)
 }
 
-#[cfg(test)]
-mod inventory_detection_tests {
-    use super::audit_source;
-
-    #[test]
-    fn inventory_comment_does_not_satisfy_registration_check() {
-        let source = r#"
-            // inventory::submit! is only a comment, not a registration.
-            struct Example;
-        "#;
-        let report = audit_source("comment_only.rs", source).unwrap();
-        assert!(report
-            .findings
-            .iter()
-            .any(|finding| finding.code == "missing_inventory_submit"));
-    }
-}
-
 fn apply_gadget_coverage(
     report: &mut Report,
     source: &str,
@@ -685,5 +667,23 @@ fn type_string(ty: &syn::Type) -> String {
             .map(|s| s.ident.to_string())
             .unwrap_or_default(),
         _ => String::new(),
+    }
+}
+
+#[cfg(test)]
+mod inventory_detection_tests {
+    use super::audit_source;
+
+    #[test]
+    fn inventory_comment_does_not_satisfy_registration_check() {
+        let source = r#"
+            // inventory::submit! is only a comment, not a registration.
+            struct Example;
+        "#;
+        let report = audit_source("comment_only.rs", source).unwrap();
+        assert!(report
+            .findings
+            .iter()
+            .any(|finding| finding.code == "missing_inventory_submit"));
     }
 }

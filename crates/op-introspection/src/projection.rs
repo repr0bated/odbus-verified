@@ -1,7 +1,7 @@
 use anyhow::Result;
-use futures::{stream::iter, StreamExt};
 use sha2::{Digest, Sha256};
 use simd_json::OwnedValue as Value;
+use std::collections::{HashSet, VecDeque};
 use std::sync::Arc;
 use tokio::sync::RwLock as AsyncRwLock;
 
@@ -148,49 +148,54 @@ impl DbusProjection {
         service: &str,
     ) -> Result<Vec<ObjectSchemaRef>> {
         let root_info = self.introspect_object(bus_type, service, "/").await?;
-        let schemas = Arc::new(tokio::sync::Mutex::new(Vec::new()));
+        let mut schemas = vec![self.introspect_and_persist(bus_type, service, "/").await?];
+        let mut pending = VecDeque::from(
+            root_info
+                .children
+                .iter()
+                .map(|child| child_object_path("/", child))
+                .collect::<Vec<_>>(),
+        );
+        let mut visited = HashSet::from(["/".to_string()]);
 
-        // Persist root
-        if let Ok(schema) = self.introspect_and_persist(bus_type, service, "/").await {
-            schemas.lock().await.push(schema);
+        while let Some(path) = pending.pop_front() {
+            if !visited.insert(path.clone()) {
+                continue;
+            }
+
+            let info = self.introspect_object(bus_type, service, &path).await?;
+            schemas.push(
+                self.introspect_and_persist(bus_type, service, &path)
+                    .await?,
+            );
+            pending.extend(
+                info.children
+                    .iter()
+                    .map(|child| child_object_path(&path, child)),
+            );
         }
 
-        let self_clone = self.clone();
-
-        // Recursively discover children in parallel
-        iter(root_info.children)
-            .for_each_concurrent(None, |child: String| {
-                let child_path = if child.starts_with('/') {
-                    child.clone()
-                } else {
-                    format!("/{}", child)
-                };
-                let schemas = schemas.clone();
-                let self_clone = self_clone.clone();
-
-                async move {
-                    if let Ok(schema) = self_clone
-                        .introspect_and_persist(bus_type, service, &child_path)
-                        .await
-                    {
-                        schemas.lock().await.push(schema);
-                    }
-                }
-            })
-            .await;
-
-        let final_schemas = Arc::try_unwrap(schemas).unwrap().into_inner();
         tracing::info!(
             "Discovered {} schemas for service {} (BTRFS state + snowball trigger)",
-            final_schemas.len(),
+            schemas.len(),
             service
         );
-        Ok(final_schemas)
+        Ok(schemas)
     }
 
     /// Get access to underlying introspection service
     pub fn introspection_service(&self) -> Arc<IntrospectionService> {
         Arc::clone(&self.introspection)
+    }
+}
+
+fn child_object_path(parent: &str, child: &str) -> String {
+    if child.starts_with('/') {
+        child.to_string()
+    } else if parent == "/" {
+        format!("/{child}")
+    } else {
+        format!("{parent}/{child}")
     }
 }
 
@@ -212,5 +217,18 @@ mod tests {
     fn test_bus_type_display() {
         assert_eq!(format!("{}", BusType::System), "system");
         assert_eq!(format!("{}", BusType::Session), "session");
+    }
+
+    #[test]
+    fn descendant_paths_are_normalized() {
+        assert_eq!(child_object_path("/", "child"), "/child");
+        assert_eq!(
+            child_object_path("/child", "grandchild"),
+            "/child/grandchild"
+        );
+        assert_eq!(
+            child_object_path("/child", "/child/grandchild"),
+            "/child/grandchild"
+        );
     }
 }

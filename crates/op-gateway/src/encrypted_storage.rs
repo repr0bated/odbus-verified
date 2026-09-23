@@ -251,22 +251,9 @@ impl EncryptedKeyStorage {
         Ok(())
     }
 
-    /// Create regular Btrfs subvolume (fallback)
+    /// Keep key storage in an ordinary service-owned directory.
     async fn create_regular_subvolume(&self) -> Result<()> {
-        info!("Creating regular Btrfs subvolume: {:?}", self.storage_path);
-
-        let path_str = self.storage_path_str()?;
-        let output = Command::new("btrfs")
-            .args(["subvolume", "create", path_str])
-            .output()
-            .map_err(|e| anyhow::anyhow!("Failed to execute btrfs command: {}", e))?;
-
-        if !output.status.success() {
-            // Fallback to regular directory
-            warn!("Btrfs not available, using regular directory");
-            async_fs::create_dir_all(&self.storage_path).await?;
-        }
-
+        async_fs::create_dir_all(&self.storage_path).await?;
         self.set_secure_permissions().await?;
         Ok(())
     }
@@ -550,32 +537,7 @@ impl EncryptedKeyStorage {
 
     /// Get filesystem information
     async fn get_filesystem_info(&self) -> anyhow::Result<FilesystemInfo> {
-        let path_str = self.storage_path_str()?;
-        let output = Command::new("df")
-            .args(["-T", path_str])
-            .output()
-            .map_err(|e| anyhow::anyhow!("Failed to get filesystem info: {}", e))?;
-
-        if !output.status.success() {
-            return Ok(FilesystemInfo::default());
-        }
-
-        let output_str = String::from_utf8_lossy(&output.stdout);
-        let lines: Vec<&str> = output_str.lines().collect();
-
-        if lines.len() >= 2 {
-            let fields: Vec<&str> = lines[1].split_whitespace().collect();
-            if fields.len() >= 6 {
-                return Ok(FilesystemInfo {
-                    filesystem_type: fields[1].to_string(),
-                    total_space: fields[2].parse().unwrap_or(0),
-                    used_space: fields[3].parse().unwrap_or(0),
-                    available_space: fields[4].parse().unwrap_or(0),
-                });
-            }
-        }
-
-        Ok(FilesystemInfo::default())
+        anyhow::bail!("Storage capacity is unavailable through this legacy gateway; request filesystem_usage from the sealed btrfs plugin through the canonical door")
     }
 }
 

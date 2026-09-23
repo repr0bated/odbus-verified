@@ -157,6 +157,9 @@ impl OrchestrationServer {
 /// The standalone compatibility listener has no canonical principal and
 /// operation-grant verifier. All RPCs remain unavailable until the bridge's
 /// admission authority can be shared with this process.
+// Tonic's interceptor signature requires Status directly; retaining it here
+// preserves the exact unavailable status at the admission boundary.
+#[allow(clippy::result_large_err)]
 fn require_canonical_admission(_request: Request<()>) -> Result<Request<()>, Status> {
     Err(Status::unavailable(
         "standalone orchestration RPCs require canonical identity and operation-grant admission",

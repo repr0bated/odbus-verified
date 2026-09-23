@@ -145,7 +145,7 @@ impl PluginTreeAdapter {
             .await
             .context("Failed to introspect /org/opdbus/v1/plugins")?;
 
-        let children = parse_child_nodes(&xml);
+        let children = parse_child_nodes(&xml)?;
         if children.is_empty() {
             return Ok(PluginTree {
                 plugins: BTreeMap::new(),
@@ -195,8 +195,9 @@ impl PluginTreeAdapter {
         let xml = proxy.introspect().await?;
 
         let plugin_name = object_path.rsplit('/').next().unwrap_or("").to_string();
-        let interfaces = parse_interfaces(&xml);
-        let children: Vec<String> = parse_child_nodes(&xml)
+        let interfaces = parse_interfaces(&xml)?;
+        let child_nodes = parse_child_nodes(&xml)?;
+        let children: Vec<String> = child_nodes
             .iter()
             .map(|c| format!("{}/{}", object_path, c))
             .collect();
@@ -228,7 +229,7 @@ impl Default for PluginTreeAdapter {
 // ---------------------------------------------------------------------------
 
 /// Parse child <node name="..."/> entries from introspection XML
-fn parse_child_nodes(xml: &str) -> Vec<String> {
+fn parse_child_nodes(xml: &str) -> Result<Vec<String>> {
     use quick_xml::events::Event;
     use quick_xml::Reader;
 
@@ -239,20 +240,34 @@ fn parse_child_nodes(xml: &str) -> Vec<String> {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) if e.name().as_ref() == b"node" => {
-                if depth == 1 {
-                    for attr in e.attributes().flatten() {
+            Ok(Event::Start(ref e)) => {
+                // Validate attributes on every element, including elements whose
+                // attributes this particular projection does not otherwise use.
+                for attr in e.attributes() {
+                    attr.context("invalid D-Bus introspection XML attribute")?;
+                }
+                if e.name().as_ref() == b"node" {
+                    if depth == 1 {
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
+                            if attr.key.as_ref() == b"name" {
+                                children.push(String::from_utf8_lossy(&attr.value).to_string());
+                            }
+                        }
+                    }
+                    depth += 1;
+                }
+            }
+            Ok(Event::Empty(ref e)) => {
+                for attr in e.attributes() {
+                    attr.context("invalid D-Bus introspection XML attribute")?;
+                }
+                if e.name().as_ref() == b"node" && depth == 1 {
+                    for attr in e.attributes() {
+                        let attr = attr.context("invalid D-Bus introspection XML attribute")?;
                         if attr.key.as_ref() == b"name" {
                             children.push(String::from_utf8_lossy(&attr.value).to_string());
                         }
-                    }
-                }
-                depth += 1;
-            }
-            Ok(Event::Empty(ref e)) if e.name().as_ref() == b"node" && depth == 1 => {
-                for attr in e.attributes().flatten() {
-                    if attr.key.as_ref() == b"name" {
-                        children.push(String::from_utf8_lossy(&attr.value).to_string());
                     }
                 }
             }
@@ -260,15 +275,16 @@ fn parse_child_nodes(xml: &str) -> Vec<String> {
                 depth = depth.saturating_sub(1);
             }
             Ok(Event::Eof) => break,
+            Err(error) => return Err(error).context("parse D-Bus child-node introspection XML"),
             _ => {}
         }
         buf.clear();
     }
-    children
+    Ok(children)
 }
 
 /// Parse interfaces from introspection XML
-fn parse_interfaces(xml: &str) -> Vec<InterfaceInfo> {
+fn parse_interfaces(xml: &str) -> Result<Vec<InterfaceInfo>> {
     use quick_xml::events::Event;
     use quick_xml::Reader;
 
@@ -290,7 +306,8 @@ fn parse_interfaces(xml: &str) -> Vec<InterfaceInfo> {
                 match tag {
                     "node" => depth += 1,
                     "interface" if depth == 1 => {
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
                             if attr.key.as_ref() == b"name" {
                                 current_iface = Some(InterfaceInfo {
                                     name: String::from_utf8_lossy(&attr.value).to_string(),
@@ -303,7 +320,8 @@ fn parse_interfaces(xml: &str) -> Vec<InterfaceInfo> {
                     }
                     "method" if depth == 1 => {
                         in_method = true;
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
                             if attr.key.as_ref() == b"name" {
                                 current_method = Some(MethodInfo {
                                     name: String::from_utf8_lossy(&attr.value).to_string(),
@@ -316,7 +334,8 @@ fn parse_interfaces(xml: &str) -> Vec<InterfaceInfo> {
                     }
                     "signal" if depth == 1 => {
                         in_signal = true;
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
                             if attr.key.as_ref() == b"name" {
                                 current_signal = Some(SignalInfo {
                                     name: String::from_utf8_lossy(&attr.value).to_string(),
@@ -329,7 +348,8 @@ fn parse_interfaces(xml: &str) -> Vec<InterfaceInfo> {
                         let mut name = String::new();
                         let mut sig = String::new();
                         let mut access = String::new();
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
                             match attr.key.as_ref() {
                                 b"name" => name = String::from_utf8_lossy(&attr.value).to_string(),
                                 b"type" => sig = String::from_utf8_lossy(&attr.value).to_string(),
@@ -356,7 +376,8 @@ fn parse_interfaces(xml: &str) -> Vec<InterfaceInfo> {
                         let mut name = String::new();
                         let mut sig = String::new();
                         let mut dir = "in".to_string();
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
                             match attr.key.as_ref() {
                                 b"name" => name = String::from_utf8_lossy(&attr.value).to_string(),
                                 b"type" => sig = String::from_utf8_lossy(&attr.value).to_string(),
@@ -396,11 +417,59 @@ fn parse_interfaces(xml: &str) -> Vec<InterfaceInfo> {
                 let name_bytes = e.name();
                 let tag = std::str::from_utf8(name_bytes.as_ref()).unwrap_or("");
                 match tag {
+                    "interface" if depth == 1 => {
+                        let mut iface = InterfaceInfo {
+                            name: String::new(),
+                            methods: Vec::new(),
+                            signals: Vec::new(),
+                            properties: Vec::new(),
+                        };
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
+                            if attr.key.as_ref() == b"name" {
+                                iface.name = String::from_utf8_lossy(&attr.value).to_string();
+                            }
+                        }
+                        interfaces.push(iface);
+                    }
+                    "method" if depth == 1 => {
+                        let mut method = MethodInfo {
+                            name: String::new(),
+                            in_args: Vec::new(),
+                            out_args: Vec::new(),
+                            annotations: std::collections::HashMap::new(),
+                        };
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
+                            if attr.key.as_ref() == b"name" {
+                                method.name = String::from_utf8_lossy(&attr.value).to_string();
+                            }
+                        }
+                        if let Some(ref mut iface) = current_iface {
+                            iface.methods.push(method);
+                        }
+                    }
+                    "signal" if depth == 1 => {
+                        let mut signal = SignalInfo {
+                            name: String::new(),
+                            args: Vec::new(),
+                        };
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
+                            if attr.key.as_ref() == b"name" {
+                                signal.name = String::from_utf8_lossy(&attr.value).to_string();
+                            }
+                        }
+                        if let Some(ref mut iface) = current_iface {
+                            iface.signals.push(signal);
+                        }
+                    }
                     "property" if depth == 1 => {
                         let mut name = String::new();
                         let mut sig = String::new();
                         let mut access = String::new();
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
                             match attr.key.as_ref() {
                                 b"name" => name = String::from_utf8_lossy(&attr.value).to_string(),
                                 b"type" => sig = String::from_utf8_lossy(&attr.value).to_string(),
@@ -427,7 +496,8 @@ fn parse_interfaces(xml: &str) -> Vec<InterfaceInfo> {
                         let mut name = String::new();
                         let mut sig = String::new();
                         let mut dir = "in".to_string();
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.context("invalid D-Bus introspection XML attribute")?;
                             match attr.key.as_ref() {
                                 b"name" => name = String::from_utf8_lossy(&attr.value).to_string(),
                                 b"type" => sig = String::from_utf8_lossy(&attr.value).to_string(),
@@ -496,11 +566,12 @@ fn parse_interfaces(xml: &str) -> Vec<InterfaceInfo> {
                 }
             }
             Ok(Event::Eof) => break,
+            Err(error) => return Err(error).context("parse D-Bus interface introspection XML"),
             _ => {}
         }
         buf.clear();
     }
-    interfaces
+    Ok(interfaces)
 }
 
 // ---------------------------------------------------------------------------
@@ -635,5 +706,31 @@ pub fn dbus_signature_to_human(sig: &str) -> String {
         _ if sig.starts_with('a') => format!("Array<{}>", dbus_signature_to_human(&sig[1..])),
         _ if sig.starts_with('(') && sig.ends_with(')') => format!("Struct{}", sig),
         _ => sig.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod parsing_tests {
+    use super::{parse_child_nodes, parse_interfaces};
+
+    #[test]
+    fn valid_introspection_tree_is_parsed() {
+        let xml = r#"<node><node name="child"/><interface name="org.example"><method name="Read"/></interface></node>"#;
+        assert_eq!(parse_child_nodes(xml).unwrap(), vec!["child"]);
+        let interfaces = parse_interfaces(xml).unwrap();
+        assert_eq!(interfaces.len(), 1);
+        assert_eq!(interfaces[0].name, "org.example");
+        assert_eq!(interfaces[0].methods[0].name, "Read");
+    }
+
+    #[test]
+    fn malformed_or_truncated_xml_is_not_returned_as_a_partial_tree() {
+        let bad_attribute = r#"<node><interface name=broken/></node>"#;
+        assert!(parse_child_nodes(bad_attribute).is_err());
+        assert!(parse_interfaces(bad_attribute).is_err());
+
+        let truncated = r#"<node><node name="valid"/><"#;
+        assert!(parse_child_nodes(truncated).is_err());
+        assert!(parse_interfaces(truncated).is_err());
     }
 }

@@ -1,7 +1,6 @@
 //! gRPC Server - Implements the Operation gRPC services (shared-server topology)
 
 use std::collections::{BTreeMap, HashMap};
-use std::convert::TryFrom;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -9,7 +8,6 @@ use std::sync::OnceLock;
 
 use async_stream::stream;
 use chrono::{DateTime, Utc};
-use futures::StreamExt as _;
 use op_cognitive_mcp::QdrantSemanticShuttle;
 use prost::Message;
 use prost_reflect::{DescriptorPool, DynamicMessage, SerializeOptions};
@@ -63,8 +61,7 @@ use crate::proto::{
     SubscribeSignalsRequest, TagLock as ProtoTagLock, VerifyChainRequest, VerifyChainResponse,
 };
 use op_state_store::{Decision, DenyReason, PluginSchema};
-use zbus::zvariant::{Array as ZArray, OwnedValue as ZOwnedValue, Str as ZStr, Value as ZValue};
-use zbus::{Connection, Proxy};
+use zbus::Proxy;
 
 /// Plugin schema provider.
 ///
@@ -325,9 +322,156 @@ fn enforce_human_principal_self_service(
 fn plugin_id_from_dbus_path(path: &str) -> Option<String> {
     let prefix = "/org/opdbus/v1/plugins/";
     path.strip_prefix(prefix)
-        .and_then(|rest| rest.split('/').next())
-        .filter(|id| !id.is_empty())
-        .map(|id| id.replace('/', "."))
+        .filter(|id| !id.is_empty() && !id.contains('/'))
+        .map(str::to_string)
+}
+
+/// Legacy D-Bus transport may address only the canonical plugin object on
+/// the system bus. Check the complete tuple before constructing a proxy.
+// This helper returns tonic's wire status directly to the legacy RPC boundary.
+#[allow(clippy::result_large_err)]
+fn passthrough_plugin_id(
+    bus: &str,
+    destination: &str,
+    path: &str,
+    interface: &str,
+) -> Result<String, Status> {
+    let plugin_id = plugin_id_from_dbus_path(path)
+        .ok_or_else(|| Status::permission_denied("D-Bus target is not a canonical plugin"))?;
+    if bus != "system"
+        || destination != op_plugins::canonical::BASE_SERVICE_NAME
+        || interface != op_plugins::canonical::PLUGIN_INTERFACE
+        || path != op_plugins::canonical::plugin_path(&plugin_id)
+    {
+        return Err(Status::permission_denied(
+            "D-Bus target is not a canonical plugin",
+        ));
+    }
+    Ok(plugin_id)
+}
+
+fn declared_capability<T>(request: &Request<T>) -> Option<&str> {
+    request
+        .metadata()
+        .get(DECLARED_CAPABILITY_HEADER)?
+        .to_str()
+        .ok()
+}
+
+// Component registration denies with tonic's unimplemented wire status.
+#[allow(clippy::result_large_err)]
+fn authorize_component_registration<T>(_: &Request<T>) -> Result<(), Status> {
+    Err(Status::unimplemented(
+        "component registration has no sealed method declaration; use PluginService",
+    ))
+}
+
+#[cfg(test)]
+mod legacy_route_admission_tests {
+    use super::*;
+
+    #[test]
+    fn passthrough_requires_exact_canonical_target_before_proxy_creation() {
+        let path = op_plugins::canonical::plugin_path("hardware");
+        assert_eq!(
+            passthrough_plugin_id(
+                "system",
+                op_plugins::canonical::BASE_SERVICE_NAME,
+                &path,
+                op_plugins::canonical::PLUGIN_INTERFACE
+            )
+            .unwrap(),
+            "hardware"
+        );
+        for (bus, destination, path, interface) in [
+            (
+                "session",
+                op_plugins::canonical::BASE_SERVICE_NAME,
+                path.as_str(),
+                op_plugins::canonical::PLUGIN_INTERFACE,
+            ),
+            (
+                "system",
+                "org.freedesktop.systemd1",
+                path.as_str(),
+                op_plugins::canonical::PLUGIN_INTERFACE,
+            ),
+            (
+                "system",
+                op_plugins::canonical::BASE_SERVICE_NAME,
+                "/org/freedesktop/DBus",
+                op_plugins::canonical::PLUGIN_INTERFACE,
+            ),
+            (
+                "system",
+                op_plugins::canonical::BASE_SERVICE_NAME,
+                "/org/opdbus/v1/plugins/hardware/child",
+                op_plugins::canonical::PLUGIN_INTERFACE,
+            ),
+            (
+                "system",
+                op_plugins::canonical::BASE_SERVICE_NAME,
+                path.as_str(),
+                "org.freedesktop.DBus.Properties",
+            ),
+        ] {
+            assert_eq!(
+                passthrough_plugin_id(bus, destination, path, interface)
+                    .unwrap_err()
+                    .code(),
+                tonic::Code::PermissionDenied
+            );
+        }
+    }
+
+    #[test]
+    fn legacy_effect_routes_are_unsupported_before_handler_execution() {
+        assert_eq!(
+            unsupported_legacy_domain(Request::new(()))
+                .unwrap_err()
+                .code(),
+            tonic::Code::Unimplemented,
+        );
+        let mut bootstrap = Request::new(());
+        bootstrap.extensions_mut().insert(tonic::GrpcMethod::new(
+            "operation.registration.v1.RegistrationService",
+            "SendMagicLink",
+        ));
+        assert!(compatibility_registration_interceptor(bootstrap).is_ok());
+        let mut admin = Request::new(());
+        admin.extensions_mut().insert(tonic::GrpcMethod::new(
+            "operation.registration.v1.RegistrationService",
+            "ListUsers",
+        ));
+        assert_eq!(
+            compatibility_registration_interceptor(admin)
+                .unwrap_err()
+                .code(),
+            tonic::Code::Unimplemented,
+        );
+    }
+}
+
+// Tonic interceptors require this exact Status-bearing signature.
+#[allow(clippy::result_large_err)]
+fn unsupported_legacy_domain(_: Request<()>) -> Result<Request<()>, Status> {
+    Err(Status::unimplemented(
+        "legacy domain RPC has no sealed method admission; use PluginService",
+    ))
+}
+
+// Tonic interceptors require this exact Status-bearing signature.
+#[allow(clippy::result_large_err)]
+fn compatibility_registration_interceptor(req: Request<()>) -> Result<Request<()>, Status> {
+    match req.extensions().get::<tonic::GrpcMethod<'_>>() {
+        Some(method)
+            if method.service() == "operation.registration.v1.RegistrationService"
+                && matches!(method.method(), "SendMagicLink" | "VerifyMagicLink") =>
+        {
+            Ok(req)
+        }
+        _ => unsupported_legacy_domain(req),
+    }
 }
 
 #[tonic::async_trait]
@@ -434,6 +578,8 @@ struct RegistryInner {
 }
 
 impl RegistryInner {
+    // The registry handler returns this exact permission-denied Status to gRPC.
+    #[allow(clippy::result_large_err)]
     fn ensure_registration_vacant(&self, component_id: &str) -> Result<(), Status> {
         if self.components.contains_key(component_id) {
             return Err(Status::permission_denied(
@@ -919,12 +1065,10 @@ pub fn build_operation_routes_with_validator(
 
     let reflection_v1 = DynamicReflectionService::new(server.active_reflection()).into_v1_server();
 
-    // StateSync mutations, PluginService and EventChainService enforce exact
-    // schema-declared capabilities after strict credential validation. State
-    // reads expose only the sealed public projection. Other legacy domain
-    // RPCs must not accept assertions until their own authorization is closed.
+    // Only PluginService and its canonical forwarding adapters remain live.
+    // Domain implementations without a sealed PluginSchema method cannot
+    // acquire an exact grant, so their compatibility routes fail closed.
     let assertion_intercept = interceptor::make_ghostbridge_interceptor(validator.clone());
-    let legacy_intercept = interceptor::GhostbridgeInterceptor;
 
     let routes = tonic::service::Routes::new(crate::grpc_web::enable(
         StateSyncServer::with_interceptor(server.clone(), assertion_intercept.clone()),
@@ -933,36 +1077,36 @@ pub fn build_operation_routes_with_validator(
         PluginServiceServer::with_interceptor(server.clone(), assertion_intercept.clone()),
     ))
     .add_service(crate::grpc_web::enable(
-        EventChainServiceServer::with_interceptor(server.clone(), assertion_intercept),
+        EventChainServiceServer::with_interceptor(server.clone(), assertion_intercept.clone()),
     ))
     .add_service(crate::grpc_web::enable(
-        OvsdbMirrorServer::with_interceptor(server.clone(), legacy_intercept.clone()),
+        OvsdbMirrorServer::with_interceptor(server.clone(), unsupported_legacy_domain),
     ))
     .add_service(crate::grpc_web::enable(
-        RuntimeMirrorServer::with_interceptor(server.clone(), legacy_intercept.clone()),
+        RuntimeMirrorServer::with_interceptor(server.clone(), unsupported_legacy_domain),
     ))
     .add_service(crate::grpc_web::enable(
-        ComponentRegistryServer::with_interceptor(server.clone(), legacy_intercept.clone()),
+        ComponentRegistryServer::with_interceptor(server.clone(), unsupported_legacy_domain),
     ))
     .add_service(crate::grpc_web::enable(
-        MailServiceServer::with_interceptor(server.clone(), legacy_intercept.clone()),
+        MailServiceServer::with_interceptor(server.clone(), unsupported_legacy_domain),
     ))
     .add_service(crate::grpc_web::enable(
-        PrivacyNetworkServiceServer::with_interceptor(server.clone(), legacy_intercept.clone()),
+        PrivacyNetworkServiceServer::with_interceptor(server.clone(), unsupported_legacy_domain),
     ))
     .add_service(crate::grpc_web::enable(
         RegistrationServiceServer::with_interceptor(
             server.clone(),
-            interceptor::registration_interceptor,
+            compatibility_registration_interceptor,
         ),
     ))
     .add_service(crate::grpc_web::enable(
-        DbusPassthroughServer::with_interceptor(server.clone(), legacy_intercept.clone()),
+        DbusPassthroughServer::with_interceptor(server.clone(), assertion_intercept.clone()),
     ))
     .add_service(crate::grpc_web::enable(
         crate::proto::chat::chat_service_server::ChatServiceServer::with_interceptor(
             crate::chat_service::ChatServiceImpl::new(server.mutation_engine.clone()),
-            legacy_intercept,
+            unsupported_legacy_domain,
         ),
     ));
 
@@ -2447,88 +2591,6 @@ fn prost_value_to_simd(value: &ProstValue) -> simd_json::OwnedValue {
     }
 }
 
-fn simd_json_to_zvariant(value: &simd_json::OwnedValue) -> Result<ZOwnedValue, anyhow::Error> {
-    if let Some(obj) = value.as_object() {
-        if let (Some(sig_val), Some(inner)) = (obj.get("sig"), obj.get("value")) {
-            if let Some(sig) = sig_val.as_str() {
-                return zvariant_from_sig(sig, inner);
-            }
-        }
-    }
-
-    if let Some(s) = value.as_str() {
-        return Ok(ZOwnedValue::from(ZStr::from(s)));
-    }
-    if let Some(b) = value.as_bool() {
-        return Ok(ZOwnedValue::from(b));
-    }
-    if let Some(i) = value.as_i64() {
-        return Ok(ZOwnedValue::from(i));
-    }
-    if let Some(u) = value.as_u64() {
-        return Ok(ZOwnedValue::from(u));
-    }
-    if let Some(f) = value.as_f64() {
-        return Ok(ZOwnedValue::from(f));
-    }
-
-    Err(anyhow::anyhow!(
-        "Unsupported argument type; use tagged {{sig,value}} or primitives"
-    ))
-}
-
-fn zvariant_from_sig(
-    sig: &str,
-    value: &simd_json::OwnedValue,
-) -> Result<ZOwnedValue, anyhow::Error> {
-    match sig {
-        "s" => value
-            .as_str()
-            .map(|v| ZOwnedValue::from(ZStr::from(v)))
-            .ok_or_else(|| anyhow::anyhow!("Expected string for sig 's'")),
-        "b" => value
-            .as_bool()
-            .map(ZOwnedValue::from)
-            .ok_or_else(|| anyhow::anyhow!("Expected bool for sig 'b'")),
-        "i" => value
-            .as_i64()
-            .map(|v| ZOwnedValue::from(v as i32))
-            .ok_or_else(|| anyhow::anyhow!("Expected i32 for sig 'i'")),
-        "u" => value
-            .as_u64()
-            .map(|v| ZOwnedValue::from(v as u32))
-            .ok_or_else(|| anyhow::anyhow!("Expected u32 for sig 'u'")),
-        "x" => value
-            .as_i64()
-            .map(ZOwnedValue::from)
-            .ok_or_else(|| anyhow::anyhow!("Expected i64 for sig 'x'")),
-        "t" => value
-            .as_u64()
-            .map(ZOwnedValue::from)
-            .ok_or_else(|| anyhow::anyhow!("Expected u64 for sig 't'")),
-        "d" => value
-            .as_f64()
-            .map(ZOwnedValue::from)
-            .ok_or_else(|| anyhow::anyhow!("Expected f64 for sig 'd'")),
-        "ay" => {
-            let arr = value
-                .as_array()
-                .ok_or_else(|| anyhow::anyhow!("Expected array for sig 'ay'"))?;
-            let bytes: Result<Vec<u8>, anyhow::Error> = arr
-                .iter()
-                .map(|v| {
-                    v.as_u64()
-                        .map(|n| n as u8)
-                        .ok_or_else(|| anyhow::anyhow!("Expected u8 in ay array"))
-                })
-                .collect();
-            ZOwnedValue::try_from(ZValue::Array(ZArray::from(bytes?)))
-                .map_err(|e| anyhow::anyhow!("Array conversion error: {}", e))
-        }
-        _ => Err(anyhow::anyhow!("Unsupported signature '{}'", sig)),
-    }
-}
-
 // =============================================================================
 // OvsdbMirror Service — RFC 7047 gRPC bridge
 // =============================================================================
@@ -3184,34 +3246,11 @@ impl RuntimeMirror for OperationGrpcServer {
 
     async fn stream_metrics(
         &self,
-        request: Request<RuntimeStreamMetricsRequest>,
+        _request: Request<RuntimeStreamMetricsRequest>,
     ) -> Result<Response<Self::StreamMetricsStream>, Status> {
-        let interval = std::cmp::max(request.get_ref().interval_seconds, 1) as u64;
-
-        let stream = stream! {
-            let mut ticker = tokio::time::interval(std::time::Duration::from_secs(interval));
-            loop {
-                ticker.tick().await;
-
-                // Read /proc/meminfo
-                if let Ok(meminfo) = tokio::fs::read_to_string("/proc/meminfo").await {
-                    let total = OperationGrpcServer::parse_meminfo_kb(&meminfo, "MemTotal") * 1024;
-                    let available = OperationGrpcServer::parse_meminfo_kb(&meminfo, "MemAvailable") * 1024;
-                    yield Ok(RuntimeMetricUpdate {
-                        category: "memory".to_string(),
-                        name: "used_bytes".to_string(),
-                        value: (total - available) as f64,
-                        unit: "bytes".to_string(),
-                        labels: Default::default(),
-                        timestamp: Some(ProstTimestamp {
-                            seconds: chrono::Utc::now().timestamp(),
-                            nanos: 0,
-                        }),
-                    });
-                }
-            }
-        };
-        Ok(Response::new(Box::pin(stream)))
+        Err(Status::unimplemented(
+            "runtime metrics require a canonical state subscription",
+        ))
     }
 
     async fn list_interfaces(
@@ -3387,6 +3426,7 @@ impl ComponentRegistry for OperationGrpcServer {
         &self,
         request: Request<RegisterRequest>,
     ) -> Result<Response<RegisterResponse>, Status> {
+        authorize_component_registration(&request)?;
         let req = request.into_inner();
         if req.component_id.is_empty() {
             return Err(Status::invalid_argument("component_id must not be empty"));
@@ -5787,48 +5827,49 @@ impl crate::proto::dbus_passthrough_server::DbusPassthrough for OperationGrpcSer
         &self,
         request: Request<crate::proto::DbusCallRequest>,
     ) -> Result<Response<crate::proto::DbusCallResponse>, Status> {
-        let identity = interceptor::bridge_capability_identity(request.extensions());
-        let req = request.into_inner();
-        if let Some(plugin_id) = plugin_id_from_dbus_path(&req.path) {
-            if let Err(error) =
-                enforce_bridge_capability(&plugin_id, &req.method, None, identity.as_ref())
-            {
-                return Err(Status::permission_denied(error.message));
-            }
+        let target = request.get_ref();
+        let plugin_id = passthrough_plugin_id(
+            &target.bus,
+            &target.destination,
+            &target.path,
+            &target.interface,
+        )?;
+        let capability = declared_capability(&request)
+            .ok_or_else(|| Status::permission_denied("declared plugin capability is required"))?
+            .to_string();
+        let body: JsonValue = serde_json::from_str(&target.json_body)
+            .map_err(|error| Status::invalid_argument(format!("invalid JSON body: {error}")))?;
+        let body = simd_json::serde::to_owned_value(&body)
+            .map_err(|error| Status::invalid_argument(error.to_string()))?;
+        let request = request.map(|req| CallMethodRequest {
+            plugin_id,
+            object_path: req.path,
+            interface_name: req.interface,
+            method_name: req.method,
+            arguments: vec![simd_to_prost_value(&body)],
+            actor_id: String::new(),
+            capability_id: capability,
+        });
+        let result = <Self as PluginService>::call_method(self, request)
+            .await?
+            .into_inner();
+        if !result.success {
+            return Err(Status::permission_denied(
+                result
+                    .error
+                    .map(|error| error.message)
+                    .unwrap_or_else(|| "plugin method was denied".to_string()),
+            ));
         }
-        let conn = self
-            .mutation_engine
-            .dbus_connection()
-            .await
-            .map_err(|e| Status::unavailable(format!("D-Bus not available: {e}")))?;
-
-        let bus_conn = match req.bus.as_str() {
-            "session" => {
-                let session = Connection::session()
-                    .await
-                    .map_err(|e| Status::unavailable(format!("session bus unavailable: {e}")))?;
-                session
-            }
-            _ => conn,
-        };
-
-        let proxy = Proxy::new(
-            &bus_conn,
-            req.destination.clone(),
-            req.path.clone(),
-            req.interface.clone(),
-        )
-        .await
-        .map_err(|e| Status::internal(format!("proxy build failed: {e}")))?;
-
-        let result: String = proxy
-            .call(req.method.clone(), &(req.json_body.clone(),))
-            .await
-            .map_err(|e| Status::internal(format!("D-Bus call '{}' failed: {e}", req.method)))?;
+        let value = result
+            .result
+            .ok_or_else(|| Status::internal("plugin result is missing"))?;
+        let json_result = simd_json::to_string(&prost_value_to_simd(&value))
+            .map_err(|error| Status::internal(error.to_string()))?;
 
         Ok(Response::new(crate::proto::DbusCallResponse {
             success: true,
-            json_result: result,
+            json_result,
             error: String::new(),
         }))
     }
@@ -5837,33 +5878,27 @@ impl crate::proto::dbus_passthrough_server::DbusPassthrough for OperationGrpcSer
         &self,
         request: Request<crate::proto::DbusGetPropertyRequest>,
     ) -> Result<Response<crate::proto::DbusGetPropertyResponse>, Status> {
-        let req = request.into_inner();
-        let bus_conn = match req.bus.as_str() {
-            "session" => Connection::session()
-                .await
-                .map_err(|e| Status::unavailable(format!("session bus: {e}")))?,
-            _ => Connection::system()
-                .await
-                .map_err(|e| Status::unavailable(format!("system bus: {e}")))?,
-        };
-
-        let props = zbus::fdo::PropertiesProxy::builder(&bus_conn)
-            .destination(req.destination.clone())
-            .map_err(|e| Status::invalid_argument(e.to_string()))?
-            .path(req.path.as_str())
-            .map_err(|e| Status::invalid_argument(e.to_string()))?
-            .build()
-            .await
-            .map_err(|e| Status::internal(e.to_string()))?;
-
-        let iface = zbus::names::InterfaceName::try_from(req.interface.as_str())
-            .map_err(|e| Status::invalid_argument(e.to_string()))?;
-        let val: ZOwnedValue = props
-            .get(iface, &req.property)
-            .await
-            .map_err(|e| Status::internal(e.to_string()))?;
-
-        let json = serde_json::to_string(&val).map_err(|e| Status::internal(e.to_string()))?;
+        let target = request.get_ref();
+        let plugin_id = passthrough_plugin_id(
+            &target.bus,
+            &target.destination,
+            &target.path,
+            &target.interface,
+        )?;
+        let request = request.map(|req| GetPropertyRequest {
+            plugin_id,
+            object_path: req.path,
+            interface_name: req.interface,
+            property_name: req.property,
+        });
+        let result = <Self as PluginService>::get_property(self, request)
+            .await?
+            .into_inner();
+        let value = result
+            .value
+            .ok_or_else(|| Status::internal("property value is missing"))?;
+        let json = simd_json::to_string(&prost_value_to_simd(&value))
+            .map_err(|error| Status::internal(error.to_string()))?;
 
         Ok(Response::new(crate::proto::DbusGetPropertyResponse {
             success: true,
@@ -5876,48 +5911,40 @@ impl crate::proto::dbus_passthrough_server::DbusPassthrough for OperationGrpcSer
         &self,
         request: Request<crate::proto::DbusSetPropertyRequest>,
     ) -> Result<Response<crate::proto::DbusSetPropertyResponse>, Status> {
-        let identity = interceptor::bridge_capability_identity(request.extensions());
-        let req = request.into_inner();
-        if let Some(plugin_id) = plugin_id_from_dbus_path(&req.path) {
-            let setter = format!("set_{}", req.property);
-            if let Err(error) =
-                enforce_bridge_capability(&plugin_id, &setter, None, identity.as_ref())
-            {
-                return Err(Status::permission_denied(error.message));
-            }
-        }
-        let bus_conn = match req.bus.as_str() {
-            "session" => Connection::session()
-                .await
-                .map_err(|e| Status::unavailable(format!("session bus: {e}")))?,
-            _ => Connection::system()
-                .await
-                .map_err(|e| Status::unavailable(format!("system bus: {e}")))?,
-        };
-
-        let props = zbus::fdo::PropertiesProxy::builder(&bus_conn)
-            .destination(req.destination.clone())
-            .map_err(|e| Status::invalid_argument(e.to_string()))?
-            .path(req.path.as_str())
-            .map_err(|e| Status::invalid_argument(e.to_string()))?
-            .build()
-            .await
-            .map_err(|e| Status::internal(e.to_string()))?;
-
-        let iface = zbus::names::InterfaceName::try_from(req.interface.as_str())
-            .map_err(|e| Status::invalid_argument(e.to_string()))?;
-        let value: serde_json::Value = serde_json::from_str(&req.json_value)
+        let target = request.get_ref();
+        let plugin_id = passthrough_plugin_id(
+            &target.bus,
+            &target.destination,
+            &target.path,
+            &target.interface,
+        )?;
+        let capability = declared_capability(&request)
+            .ok_or_else(|| Status::permission_denied("declared plugin capability is required"))?
+            .to_string();
+        let value: serde_json::Value = serde_json::from_str(&target.json_value)
             .map_err(|e| Status::invalid_argument(format!("bad JSON: {e}")))?;
-        let zval = simd_json_to_zvariant(
-            &simd_json::serde::to_owned_value(&value)
-                .map_err(|e| Status::internal(e.to_string()))?,
-        )
-        .map_err(|e| Status::invalid_argument(e.to_string()))?;
-
-        props
-            .set(iface, &req.property, zval.into())
-            .await
-            .map_err(|e| Status::internal(e.to_string()))?;
+        let value = simd_json::serde::to_owned_value(&value)
+            .map_err(|error| Status::invalid_argument(error.to_string()))?;
+        let request = request.map(|req| SetPropertyRequest {
+            plugin_id,
+            object_path: req.path,
+            interface_name: req.interface,
+            property_name: req.property,
+            value: Some(simd_to_prost_value(&value)),
+            actor_id: String::new(),
+            capability_id: capability,
+        });
+        let result = <Self as PluginService>::set_property(self, request)
+            .await?
+            .into_inner();
+        if !result.success {
+            return Err(Status::permission_denied(
+                result
+                    .error
+                    .map(|error| error.message)
+                    .unwrap_or_else(|| "property write was denied".to_string()),
+            ));
+        }
 
         Ok(Response::new(crate::proto::DbusSetPropertyResponse {
             success: true,
@@ -5927,69 +5954,10 @@ impl crate::proto::dbus_passthrough_server::DbusPassthrough for OperationGrpcSer
 
     async fn watch(
         &self,
-        request: Request<crate::proto::DbusWatchRequest>,
+        _request: Request<crate::proto::DbusWatchRequest>,
     ) -> Result<Response<Self::WatchStream>, Status> {
-        let req = request.into_inner();
-        let bus_conn = match req.bus.as_str() {
-            "session" => Connection::session()
-                .await
-                .map_err(|e| Status::unavailable(format!("session bus: {e}")))?,
-            _ => Connection::system()
-                .await
-                .map_err(|e| Status::unavailable(format!("system bus: {e}")))?,
-        };
-
-        let proxy = Proxy::new(
-            &bus_conn,
-            req.destination.clone(),
-            req.path.clone(),
-            req.interface.clone(),
-        )
-        .await
-        .map_err(|e| Status::internal(format!("proxy build failed: {e}")))?;
-
-        // zbus v5: receive_all_signals() or receive_signal(name) -> SignalStream
-        // SignalStream implements futures::Stream<Item = Message>
-        let mut sig_stream = if req.signal_names.is_empty() {
-            proxy
-                .receive_all_signals()
-                .await
-                .map_err(|e| Status::internal(format!("signal subscribe failed: {e}")))?
-        } else {
-            // Subscribe to the first named signal; filter others in-stream
-            let sig_name = zbus::names::MemberName::try_from(req.signal_names[0].clone())
-                .map_err(|e| Status::invalid_argument(format!("invalid signal name: {e}")))?;
-            proxy
-                .receive_signal(sig_name)
-                .await
-                .map_err(|e| Status::internal(format!("signal subscribe failed: {e}")))?
-        };
-
-        let signal_names = req.signal_names.clone();
-        let stream = stream! {
-            while let Some(msg) = sig_stream.next().await {
-                let hdr = msg.header();
-                let member = hdr.member().map(|m| m.as_str().to_string()).unwrap_or_default();
-                if !signal_names.is_empty() && !signal_names.contains(&member) { continue; }
-                let iface = hdr.interface().map(|i| i.as_str().to_string()).unwrap_or_default();
-                let path = hdr.path().map(|p| p.as_str().to_string()).unwrap_or_default();
-                let body: String = msg.body()
-                    .deserialize::<zbus::zvariant::OwnedValue>()
-                    .map(|b| format!("{b:?}"))
-                    .unwrap_or_default();
-                yield Ok(crate::proto::DbusSignalEvent {
-                    signal_name: member,
-                    path,
-                    interface: iface,
-                    json_body: body,
-                    timestamp: Some(ProstTimestamp {
-                        seconds: Utc::now().timestamp(),
-                        nanos: Utc::now().timestamp_subsec_nanos() as i32,
-                    }),
-                });
-            }
-        };
-
-        Ok(Response::new(Box::pin(stream)))
+        Err(Status::unimplemented(
+            "legacy signal watch has no sealed capability declaration; use PluginService",
+        ))
     }
 }

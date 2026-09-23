@@ -668,27 +668,6 @@ impl ChatManager {
     }
 }
 
-#[cfg(test)]
-mod detailed_status_tests {
-    use super::model_listing_status;
-    use crate::provider::ModelInfo;
-
-    #[test]
-    fn model_listing_failure_is_not_reported_as_available() {
-        let (available, count, failed) =
-            model_listing_status::<anyhow::Error>(Err(anyhow::anyhow!("provider offline")));
-        assert!(!available);
-        assert_eq!(count, 0);
-        assert!(failed);
-
-        let (available, count, failed) =
-            model_listing_status::<anyhow::Error>(Ok(Vec::<ModelInfo>::new()));
-        assert!(available);
-        assert_eq!(count, 0);
-        assert!(!failed);
-    }
-}
-
 fn model_listing_status<E>(result: Result<Vec<ModelInfo>, E>) -> (bool, usize, bool) {
     match result {
         Ok(models) => (true, models.len(), false),
@@ -757,5 +736,26 @@ impl LlmProvider for ChatManager {
 impl Default for ChatManager {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod detailed_status_tests {
+    use super::model_listing_status;
+    use crate::provider::ModelInfo;
+
+    #[test]
+    fn model_listing_failure_is_not_reported_as_available() {
+        let (available, count, failed) =
+            model_listing_status::<anyhow::Error>(Err(anyhow::anyhow!("provider offline")));
+        assert!(!available);
+        assert_eq!(count, 0);
+        assert!(failed);
+
+        let (available, count, failed) =
+            model_listing_status::<anyhow::Error>(Ok(Vec::<ModelInfo>::new()));
+        assert!(available);
+        assert_eq!(count, 0);
+        assert!(!failed);
     }
 }

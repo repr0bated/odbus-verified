@@ -601,40 +601,8 @@ pub async fn run_compact_stdio_server() -> Result<()> {
 }
 
 /// Run compact server on a Unix domain socket
-pub async fn run_compact_unix_server(unix_path: &std::path::Path) -> Result<()> {
-    use crate::transport::{HttpSseTransport, Transport};
-
-    // ── WireGuard identity ────────────────────────────────────────────────────
-    // Read the local WG pubkey and resolve its projected identity session,
-    // and stamp peer_pubkey into the session so tools can use it for auth.
-    let peer_pubkey = if let Ok(pubkey) = std::env::var("WG_PUBKEY") {
-        info!(pubkey = %pubkey, "WG_PUBKEY configured; using injected WireGuard identity");
-        Some(pubkey)
-    } else {
-        tracing::info!("WG_PUBKEY is not injected; running compact MCP without peer pubkey");
-        None
-    };
-
-    // Load the authoritative op-tools registry lazily per request so the
-    // chatbot sees five stable meta-tools while retaining access to every
-    // live system, D-Bus, OVS, and PluginSchema projection tool.
-    let executor: Arc<dyn ToolExecutor> = Arc::new(PrewarmedOpToolsExecutor::new().await?);
-    let server = Arc::new(CompactServer::new(executor));
-
-    // Stamp the WG identity into the session context.
-    server
-        .set_session(SessionContext {
-            peer_pubkey,
-            ..Default::default()
-        })
-        .await;
-
-    info!(path = %unix_path.display(), "Starting compact MCP server (unix socket)");
-
-    let transport = HttpSseTransport::new(String::new())
-        .with_unix_path(unix_path.to_path_buf())
-        .with_base_path("/mcp/compact");
-    transport.serve(server).await
+pub async fn run_compact_unix_server(_unix_path: &std::path::Path) -> Result<()> {
+    anyhow::bail!("Standalone compact MCP socket is retired; use the canonical plugin door")
 }
 
 // Implement McpHandler for CompactServer

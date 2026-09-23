@@ -85,6 +85,10 @@ impl Aggregator {
         );
 
         // Create clients for each configured server
+        // Reject unsupported configuration before partially initializing any upstream.
+        for server in self.config.servers.iter().filter(|server| server.enabled) {
+            McpClient::validate_transport(server)?;
+        }
         for server_config in &self.config.servers {
             if !server_config.enabled {
                 info!("Skipping disabled server: {}", server_config.name);
@@ -142,6 +146,9 @@ impl Aggregator {
     /// List tools for a specific profile
     pub async fn list_tools(&self, profile_name: &str) -> Result<Vec<ToolDefinition>> {
         self.ensure_initialized().await?;
+        if self.profiles.get_profile(profile_name).await.is_none() {
+            return Err(anyhow!("Unknown profile '{}'", profile_name));
+        }
         Ok(self.profiles.get_tools_for_profile(profile_name).await)
     }
 
@@ -163,6 +170,15 @@ impl Aggregator {
             .await
             .ok_or_else(|| anyhow!("Tool '{}' not found in any server", name))?;
 
+        self.call_tool_on_server(name, arguments, server_id).await
+    }
+
+    async fn call_tool_on_server(
+        &self,
+        name: &str,
+        arguments: Value,
+        server_id: String,
+    ) -> Result<ToolCallResult> {
         let client = self
             .clients
             .get_client(&server_id)
@@ -171,16 +187,11 @@ impl Aggregator {
 
         // Call the tool
         let result = client
-            .call_tool(name, arguments.clone())
+            .call_tool(name, arguments)
             .await
             .with_context(|| format!("Failed to call tool '{}' on server '{}'", name, server_id))?;
 
-        Ok(ToolCallResult {
-            tool_name: name.to_string(),
-            server_id,
-            result,
-            is_error: false,
-        })
+        Ok(ToolCallResult::from_upstream(name, server_id, result))
     }
 
     /// Call a tool with profile validation
@@ -190,20 +201,20 @@ impl Aggregator {
         arguments: Value,
         profile_name: &str,
     ) -> Result<ToolCallResult> {
-        // Validate tool is available in profile
-        if !self
+        self.ensure_initialized().await?;
+        let (_, server_id) = self
             .profiles
-            .tool_available_in_profile(name, profile_name)
+            .authorized_tool_in_profile(name, profile_name)
             .await
-        {
-            return Err(anyhow!(
-                "Tool '{}' not available in profile '{}'",
-                name,
-                profile_name
-            ));
-        }
+            .ok_or_else(|| {
+                anyhow!(
+                    "Tool '{}' not available in profile '{}'",
+                    name,
+                    profile_name
+                )
+            })?;
 
-        self.call_tool(name, arguments).await
+        self.call_tool_on_server(name, arguments, server_id).await
     }
 
     /// Get available profiles
@@ -479,20 +490,35 @@ impl Aggregator {
         tool_name: &str,
         arguments: Value,
     ) -> Result<Value> {
+        self.handle_compact_tool_call_in_profile(tool_name, arguments, self.default_profile())
+            .await
+    }
+
+    /// The embedding application selects the profile after authenticating its caller.
+    /// A profile supplied inside tool arguments never changes this selection.
+    pub async fn handle_compact_tool_call_in_profile(
+        &self,
+        tool_name: &str,
+        arguments: Value,
+        profile: &str,
+    ) -> Result<Value> {
+        self.list_tools(profile).await?;
         match tool_name {
-            "list_tools" => self.compact_list_tools(arguments).await,
-            "search_tools" => self.compact_search_tools(arguments).await,
-            "get_tool_schema" => self.compact_get_schema(arguments).await,
-            "execute_tool" => self.compact_execute_tool(arguments).await,
+            "list_tools" => self.compact_list_tools(arguments, profile).await,
+            "search_tools" => self.compact_search_tools(arguments, profile).await,
+            "get_tool_schema" => self.compact_get_schema(arguments, profile).await,
+            "execute_tool" => self.compact_execute_tool(arguments, profile).await,
             _ => {
                 // Not a meta-tool, try direct execution
-                let result = self.call_tool(tool_name, arguments).await?;
+                let result = self
+                    .call_tool_in_profile(tool_name, arguments, profile)
+                    .await?;
                 Ok(result.result)
             }
         }
     }
 
-    async fn compact_list_tools(&self, args: Value) -> Result<Value> {
+    async fn compact_list_tools(&self, args: Value, profile: &str) -> Result<Value> {
         let category = args
             .as_object()
             .and_then(|obj| obj.get("category"))
@@ -507,7 +533,7 @@ impl Aggregator {
             .and_then(|v| v.as_u64())
             .unwrap_or(20) as usize;
 
-        let all_tools = self.list_default_tools().await?;
+        let all_tools = self.list_tools(profile).await?;
 
         let filtered: Vec<Value> = all_tools
             .iter()
@@ -559,7 +585,7 @@ impl Aggregator {
         }))
     }
 
-    async fn compact_search_tools(&self, args: Value) -> Result<Value> {
+    async fn compact_search_tools(&self, args: Value, profile: &str) -> Result<Value> {
         let query = args
             .get("query")
             .and_then(|v| v.as_str())
@@ -567,7 +593,7 @@ impl Aggregator {
             .to_lowercase();
         let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
 
-        let all_tools = self.list_default_tools().await?;
+        let all_tools = self.list_tools(profile).await?;
 
         let mut scored: Vec<(i32, &ToolDefinition)> = all_tools
             .iter()
@@ -614,17 +640,23 @@ impl Aggregator {
         }))
     }
 
-    async fn compact_get_schema(&self, args: Value) -> Result<Value> {
+    async fn compact_get_schema(&self, args: Value, profile: &str) -> Result<Value> {
         let tool_name = args
             .get("tool_name")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow!("tool_name is required"))?;
 
         let (tool_def, server_id) = self
-            .cache
-            .get(tool_name)
+            .profiles
+            .authorized_tool_in_profile(tool_name, profile)
             .await
-            .ok_or_else(|| anyhow!("Tool '{}' not found", tool_name))?;
+            .ok_or_else(|| {
+                anyhow!(
+                    "Tool '{}' not available in profile '{}'",
+                    tool_name,
+                    profile
+                )
+            })?;
 
         Ok(json!({
             "tool": tool_name,
@@ -634,7 +666,7 @@ impl Aggregator {
         }))
     }
 
-    async fn compact_execute_tool(&self, args: Value) -> Result<Value> {
+    async fn compact_execute_tool(&self, args: Value, profile: &str) -> Result<Value> {
         let tool_name = args
             .get("tool_name")
             .and_then(|v| v.as_str())
@@ -642,7 +674,9 @@ impl Aggregator {
 
         let arguments = args.get("arguments").cloned().unwrap_or(json!({}));
 
-        let result = self.call_tool(tool_name, arguments).await?;
+        let result = self
+            .call_tool_in_profile(tool_name, arguments, profile)
+            .await?;
 
         Ok(json!({
             "tool": tool_name,
@@ -687,6 +721,20 @@ pub struct ToolCallResult {
     pub is_error: bool,
 }
 
+impl ToolCallResult {
+    fn from_upstream(name: &str, server_id: String, result: Value) -> Self {
+        Self {
+            tool_name: name.to_string(),
+            server_id,
+            is_error: result
+                .get("isError")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
+            result,
+        }
+    }
+}
+
 /// Aggregator statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AggregatorStats {
@@ -725,14 +773,14 @@ pub struct McpToolDefinition {
 impl Aggregator {
     /// Register aggregated tools with an op-tools ToolRegistry
     pub async fn register_with_tool_registry(
-        &self,
+        self: &Arc<Self>,
         registry: &op_tools::ToolRegistry,
         profile_name: &str,
     ) -> Result<()> {
         let tools = self.list_tools(profile_name).await?;
 
         for tool_def in tools {
-            let aggregator = self.clone_arc();
+            let aggregator = Arc::clone(self);
             let tool_name = tool_def.name.clone();
 
             // Create a tool that proxies to the aggregator
@@ -741,6 +789,7 @@ impl Aggregator {
                 description: tool_def.description.clone(),
                 input_schema: tool_def.input_schema.clone(),
                 aggregator,
+                profile: profile_name.to_string(),
             };
 
             registry.register_tool(Arc::new(proxy_tool)).await?;
@@ -748,12 +797,6 @@ impl Aggregator {
         }
 
         Ok(())
-    }
-
-    fn clone_arc(&self) -> Arc<Aggregator> {
-        // This is a bit awkward - in practice you'd store Arc<Self>
-        // For now, return a placeholder
-        unimplemented!("Use Arc<Aggregator> directly")
     }
 }
 
@@ -763,6 +806,7 @@ struct AggregatorProxyTool {
     description: String,
     input_schema: Value,
     aggregator: Arc<Aggregator>,
+    profile: String,
 }
 
 #[async_trait::async_trait]
@@ -780,7 +824,10 @@ impl op_tools::tool::Tool for AggregatorProxyTool {
     }
 
     async fn execute(&self, input: Value) -> Result<Value> {
-        let result = self.aggregator.call_tool(&self.name, input).await?;
+        let result = self
+            .aggregator
+            .call_tool_in_profile(&self.name, input, &self.profile)
+            .await?;
         Ok(result.result)
     }
 
@@ -796,6 +843,174 @@ impl op_tools::tool::Tool for AggregatorProxyTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{ProfileConfig, UpstreamServer};
+
+    #[test]
+    fn mcp_tool_error_survives_successful_rpc_envelope() {
+        let response = ToolCallResult::from_upstream(
+            "tool",
+            "server".into(),
+            json!({"isError":true,"content":[]}),
+        );
+        assert!(response.is_error);
+        let success = ToolCallResult::from_upstream("tool", "server".into(), json!({"content":[]}));
+        assert!(!success.is_error);
+    }
+
+    async fn seeded_aggregator() -> Arc<Aggregator> {
+        let aggregator = Arc::new(Aggregator::new(AggregatorConfig::default()).await.unwrap());
+        aggregator.initialize().await.unwrap();
+        for name in ["allowed", "excluded"] {
+            aggregator
+                .cache
+                .insert(
+                    ToolDefinition {
+                        name: name.into(),
+                        description: "test".into(),
+                        input_schema: json!({}),
+                        schema_version: String::new(),
+                        category: String::new(),
+                        tags: vec![],
+                        namespace: String::new(),
+                        annotations: None,
+                    },
+                    "upstream",
+                )
+                .await;
+        }
+        aggregator
+            .profiles
+            .set_profile(
+                "default",
+                ProfileConfig {
+                    include_tools: vec!["allowed".into()],
+                    ..Default::default()
+                },
+            )
+            .await;
+        aggregator
+    }
+
+    #[tokio::test]
+    async fn profile_authorization_pins_server_before_same_name_replacement() {
+        let aggregator = seeded_aggregator().await;
+        aggregator
+            .profiles
+            .set_profile(
+                "trusted",
+                ProfileConfig {
+                    servers: vec!["trusted-server".into()],
+                    include_tools: vec!["allowed".into()],
+                    ..Default::default()
+                },
+            )
+            .await;
+        let (tool, _) = aggregator.cache.get("allowed").await.unwrap();
+        aggregator
+            .cache
+            .insert(tool.clone(), "trusted-server")
+            .await;
+        let pinned = aggregator
+            .profiles
+            .authorized_tool_in_profile("allowed", "trusted")
+            .await
+            .unwrap();
+        aggregator.cache.insert(tool, "untrusted-server").await;
+        assert_eq!(pinned.1, "trusted-server");
+        assert!(aggregator
+            .profiles
+            .authorized_tool_in_profile("allowed", "trusted")
+            .await
+            .is_none());
+        assert!(aggregator
+            .compact_get_schema(json!({"tool_name":"allowed"}), "trusted")
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn compact_calls_and_schema_enforce_selected_profile() {
+        let aggregator = seeded_aggregator().await;
+        for (name, args) in [
+            (
+                "execute_tool",
+                json!({"tool_name":"excluded", "profile":"full"}),
+            ),
+            ("get_tool_schema", json!({"tool_name":"excluded"})),
+            ("excluded", json!({})),
+        ] {
+            let error = aggregator
+                .handle_compact_tool_call(name, args)
+                .await
+                .unwrap_err();
+            assert!(
+                error.to_string().contains("not available in profile"),
+                "{error}"
+            );
+        }
+        assert!(aggregator
+            .handle_compact_tool_call_in_profile("allowed", json!({}), "typo")
+            .await
+            .is_err());
+        assert!(
+            !aggregator
+                .profiles
+                .tool_available_in_profile("allowed", "typo")
+                .await
+        );
+        let listed = aggregator
+            .handle_compact_tool_call("list_tools", json!({}))
+            .await
+            .unwrap();
+        assert_eq!(listed["count"].as_u64(), Some(1));
+        assert!(aggregator
+            .handle_compact_tool_call("get_tool_schema", json!({"tool_name":"allowed"}))
+            .await
+            .is_ok());
+    }
+
+    #[tokio::test]
+    async fn nonempty_registration_retains_profile_for_execution() {
+        let aggregator = seeded_aggregator().await;
+        let registry = op_tools::ToolRegistry::new();
+        aggregator
+            .register_with_tool_registry(&registry, "default")
+            .await
+            .unwrap();
+        let proxy = registry.get("allowed").await.unwrap();
+        assert!(registry.get("excluded").await.is_none());
+        aggregator
+            .profiles
+            .set_profile(
+                "default",
+                ProfileConfig {
+                    exclude_tools: vec!["allowed".into()],
+                    ..Default::default()
+                },
+            )
+            .await;
+        let error = proxy.execute(json!({})).await.unwrap_err();
+        assert!(
+            error.to_string().contains("not available in profile"),
+            "{error}"
+        );
+    }
+
+    #[tokio::test]
+    async fn unsupported_upstream_configuration_fails_before_initialization() {
+        let config = AggregatorConfig {
+            servers: vec![UpstreamServer::stdio("fixture", "fixture", "unused")],
+            ..Default::default()
+        };
+        let aggregator = Aggregator::new(config).await.unwrap();
+        assert!(aggregator
+            .initialize()
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("Unsupported MCP transport"));
+        assert!(aggregator.ensure_initialized().await.is_err());
+    }
 
     #[tokio::test]
     async fn test_aggregator_creation() {

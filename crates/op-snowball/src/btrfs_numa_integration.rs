@@ -425,31 +425,38 @@ mod tests {
     }
 
     use super::*;
-    use tempfile::tempdir;
-
     #[tokio::test]
+    #[ignore = "requires an isolated Btrfs fixture at OPDBUS_TEST_BTRFS_ROOT"]
     async fn test_optimized_snowball_creation_and_caching() {
-        let snowball_parent = tempdir().unwrap();
-        let cache_parent = tempdir().unwrap();
-        let snowball_path = snowball_parent.path().join("snowball");
-        let cache_path = cache_parent.path().join("cache");
+        let btrfs_root = std::path::PathBuf::from(
+            std::env::var_os("OPDBUS_TEST_BTRFS_ROOT")
+                .expect("set OPDBUS_TEST_BTRFS_ROOT to an isolated Btrfs directory"),
+        );
+        let fixture = tempfile::Builder::new()
+            .prefix("opdbus-optimized-snowball-")
+            .tempdir_in(&btrfs_root)
+            .expect("create isolated Btrfs fixture");
+        let snowball_path = fixture.path().join("snowball");
+        let cache_path = fixture.path().join("cache");
 
-        let opt_bc = OptimizedSnowball::new(snowball_path, cache_path).await;
-        assert!(opt_bc.is_ok(), "Failed to create OptimizedSnowball");
-        let opt_bc = opt_bc.unwrap();
+        let opt_bc = OptimizedSnowball::new(snowball_path, cache_path)
+            .await
+            .expect("create OptimizedSnowball on Btrfs fixture");
 
         let footprint = PluginFootprint::new(
             "systemd",
             "unit_started",
             &simd_json::json!({"unit": "nginx.service"}),
         );
-        let hash_result = opt_bc.add_footprint(footprint).await;
-        assert!(hash_result.is_ok(), "Failed to add footprint with NUMA");
-        let hash = hash_result.unwrap();
+        let hash = opt_bc
+            .add_footprint(footprint)
+            .await
+            .expect("add footprint with NUMA");
 
-        let cached = opt_bc.get_cached_block(&hash).await;
-        assert!(cached.is_ok(), "Failed to get cached block");
-        let cached = cached.unwrap();
+        let cached = opt_bc
+            .get_cached_block(&hash)
+            .await
+            .expect("read cached block");
         assert!(cached.is_some(), "Block should be found in cache");
         let cached_footprint = cached.unwrap();
         assert_eq!(cached_footprint.plugin_id, "systemd");

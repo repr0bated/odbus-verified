@@ -113,18 +113,6 @@ fn cache_capacity(requested: usize) -> NonZeroUsize {
     NonZeroUsize::new(requested).unwrap_or(NonZeroUsize::MIN)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::cache_capacity;
-
-    #[test]
-    fn zero_capacity_uses_one_entry_without_panicking() {
-        assert_eq!(cache_capacity(0).get(), 1);
-        assert_eq!(cache_capacity(1).get(), 1);
-        assert_eq!(cache_capacity(8).get(), 8);
-    }
-}
-
 /// Enhanced tool registry trait
 #[async_trait]
 pub trait EnhancedToolRegistry: Send + Sync {
@@ -150,5 +138,17 @@ impl EnhancedToolRegistry for DynamicToolRegistry {
 
     async fn get_cache_size(&self) -> usize {
         self.get_cache_size().await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::cache_capacity;
+
+    #[test]
+    fn zero_capacity_uses_one_entry_without_panicking() {
+        assert_eq!(cache_capacity(0).get(), 1);
+        assert_eq!(cache_capacity(1).get(), 1);
+        assert_eq!(cache_capacity(8).get(), 8);
     }
 }

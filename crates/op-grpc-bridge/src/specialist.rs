@@ -195,6 +195,8 @@ pub async fn consult(
 /// Consult one catalog persona through the authenticated bridge and the model
 /// selected by the chat UI. The agent contributes its role and knowledge to
 /// the shared dynamic persona; it never owns a provider client or credentials.
+// Preserve the existing caller contract for authenticated specialist routing.
+#[allow(clippy::too_many_arguments)]
 pub async fn consult_catalog_agent(
     engine: &MutationEngine,
     caller: CognitiveCaller<'_>,
@@ -224,10 +226,7 @@ pub async fn consult_catalog_agent(
         "specialist: catalog agent '{agent_type}' is not a Persona agent"
     );
     anyhow::ensure!(
-        agent
-            .operations()
-            .iter()
-            .any(|candidate| *candidate == operation),
+        agent.operations().contains(&operation),
         "specialist: Persona agent '{agent_type}' does not support operation '{operation}'"
     );
     let advisor_operation: op_plugins::state_plugins::cognitive_mcp::AdvisorOperation =

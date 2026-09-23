@@ -2100,6 +2100,8 @@ mod tests {
         }
     }
 
+    // Tungstenite fixes the handshake callback's error type to a large HTTP response.
+    #[allow(clippy::result_large_err)]
     async fn complete_fixture(
         alias: &str,
         provider_ref: &str,
@@ -2140,8 +2142,8 @@ mod tests {
                     let connect = incoming.next().await.unwrap().unwrap();
                     let connect: Value = serde_json::from_str(connect.to_text().unwrap()).unwrap();
                     assert_eq!(connect["type"], "connect");
-                    sink.send(Message::Text(json!({"type":"session_start","session_id":connect["session_id"],"resumed":false,"message_count":0,"stateless_generation":1}).to_string().into())).await.unwrap();
-                    sink.send(Message::Text(format!(r#"{{"type":"connected","stateless_generation":1,"provider":"{}","model":"fixture-model"}}"#, ack_provider).into())).await.unwrap();
+                    sink.send(Message::Text(json!({"type":"session_start","session_id":connect["session_id"],"resumed":false,"message_count":0,"stateless_generation":1}).to_string())).await.unwrap();
+                    sink.send(Message::Text(format!(r#"{{"type":"connected","stateless_generation":1,"provider":"{}","model":"fixture-model"}}"#, ack_provider))).await.unwrap();
                     let prompt =
                         tokio::time::timeout(Duration::from_secs(2), incoming.next()).await;
                     if ack_provider != provider_ref {
@@ -2160,7 +2162,7 @@ mod tests {
                     ))
                     .await
                     .unwrap();
-                    sink.send(Message::Text(format!(r#"{{"type":"done","full_response":"fixture answer","provider":"{}","model":"fixture-model","tokens_used":4}}"#, ack_provider).into())).await.unwrap();
+                    sink.send(Message::Text(format!(r#"{{"type":"done","full_response":"fixture answer","provider":"{}","model":"fixture-model","tokens_used":4}}"#, ack_provider))).await.unwrap();
                 } else {
                     let mut buffer = vec![0u8; 4096];
                     let n = stream.read(&mut buffer).await.unwrap();

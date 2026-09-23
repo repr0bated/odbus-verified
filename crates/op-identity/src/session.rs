@@ -12,7 +12,9 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::gcloud_auth::GCloudAuth;
-use crate::identity_vault::{IdentityVault, UserRecord};
+use crate::identity_vault::IdentityVault;
+#[cfg(test)]
+use crate::identity_vault::UserRecord;
 use crate::wireguard::WireGuardIdentity;
 
 const SESSION_TIMEOUT_SECS: i64 = 3600; // 1 hour
@@ -254,8 +256,10 @@ impl SessionManager {
         Ok(token)
     }
 
-    /// Register a WireGuard user mapping in the persistent identity vault.
-    pub async fn register_wireguard_user(
+    /// Legacy local vault writer. Public registration belongs to the
+    /// authenticated identity owner, not this compatibility session API.
+    #[cfg(test)]
+    pub(crate) async fn register_wireguard_user(
         &self,
         pubkey: &str,
         user_email: &str,

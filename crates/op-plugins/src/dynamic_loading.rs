@@ -124,81 +124,18 @@ impl DynamicLoadingPlugin {
     pub async fn get_config(&self) -> Result<DynamicLoadingConfig> {
         Ok(self.config.read().await.clone())
     }
-    /// Ensure plugin storage directory exists
-    async fn ensure_btrfs_subvolume(&self) -> Result<()> {
-        // Check if the path is on a btrfs filesystem by reading mountinfo
-        let path_str = self.storage_path.to_string_lossy();
-        let mounts = tokio::fs::read_to_string("/proc/self/mountinfo")
-            .await
-            .unwrap_or_default();
 
-        let is_btrfs = mounts.lines().any(|line| {
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() > 8 {
-                let fstype = parts.get(8).unwrap_or(&"");
-                let mountpoint = parts.get(4).unwrap_or(&"");
-                *fstype == "btrfs" && path_str.starts_with(mountpoint)
-            } else {
-                false
-            }
-        });
-
-        if is_btrfs {
-            tracing::info!("Storage path is on BTRFS: {}", self.storage_path.display());
-        }
-
-        // Ensure directory exists (regular directory ops regardless of filesystem)
+    async fn ensure_storage_directory(&self) -> Result<()> {
         tokio::fs::create_dir_all(&self.storage_path).await?;
-
         Ok(())
     }
 
-    /// Get BTRFS filesystem information via sysfs
+    /// Live mount and Btrfs inventory belongs to the storage projection.
     pub async fn get_btrfs_info(&self) -> Result<Value> {
-        let path_str = self.storage_path.to_string_lossy();
-        let mounts = tokio::fs::read_to_string("/proc/self/mountinfo")
-            .await
-            .unwrap_or_default();
-
-        let mut info = json!({
-            "subvolume": self.storage_path.display().to_string(),
-            "info": "Not on a BTRFS filesystem"
-        });
-
-        for line in mounts.lines() {
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() > 8 && parts[8] == "btrfs" {
-                let mountpoint = parts.get(4).unwrap_or(&"").to_string();
-                if path_str.starts_with(&mountpoint) {
-                    // Read btrfs sysfs info if available
-                    let mut btrfs_sysfs = json!({
-                        "mountpoint": mountpoint,
-                        "device": parts.get(3).unwrap_or(&"").to_string(),
-                        "filesystem": "btrfs"
-                    });
-
-                    // Try to read btrfs UUID from sysfs
-                    if let Ok(entries) = tokio::fs::read_dir("/sys/fs/btrfs").await {
-                        let mut uuids = Vec::new();
-                        let mut dir = entries;
-                        while let Ok(Some(entry)) = dir.next_entry().await {
-                            let name = entry.file_name().to_string_lossy().to_string();
-                            if !name.starts_with('.') {
-                                uuids.push(name);
-                            }
-                        }
-                        if !uuids.is_empty() {
-                            btrfs_sysfs["uuids"] = json!(uuids);
-                        }
-                    }
-
-                    info = btrfs_sysfs;
-                    break;
-                }
-            }
-        }
-
-        Ok(info)
+        Err(anyhow::anyhow!(
+            "Btrfs inventory for {} requires the canonical storage projection",
+            self.storage_path.display()
+        ))
     }
 }
 
@@ -299,8 +236,8 @@ impl Plugin for DynamicLoadingPlugin {
         state["storage_path"] = simd_json::json!(self.storage_path.to_string_lossy());
         state["numa_node"] = simd_json::json!(self.numa_node);
 
-        // Ensure BTRFS subvolume exists
-        self.ensure_btrfs_subvolume().await?;
+        // This plugin needs an ordinary directory, not a new Btrfs subvolume.
+        self.ensure_storage_directory().await?;
 
         Ok(())
     }
@@ -346,10 +283,9 @@ impl Plugin for DynamicLoadingPlugin {
                 let info = self.get_btrfs_info().await?;
                 Ok(info)
             }
-            "ensure_btrfs" => {
-                self.ensure_btrfs_subvolume().await?;
-                Ok(json!({"status": "btrfs_subvolume_ensured"}))
-            }
+            "ensure_btrfs" => Err(anyhow::anyhow!(
+                "Btrfs subvolume creation is not provided by dynamic_loading"
+            )),
             _ => Err(anyhow::anyhow!(
                 "Command '{}' not supported by plugin '{}'",
                 command,
@@ -374,5 +310,16 @@ impl Plugin for DynamicLoadingPlugin {
 impl Default for DynamicLoadingPlugin {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DynamicLoadingPlugin;
+
+    #[tokio::test]
+    async fn btrfs_inventory_requires_storage_projection() {
+        let plugin = DynamicLoadingPlugin::new();
+        assert!(plugin.get_btrfs_info().await.is_err());
     }
 }

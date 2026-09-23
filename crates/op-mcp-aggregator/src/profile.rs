@@ -83,32 +83,48 @@ impl ProfileManager {
         let profile = match profile {
             Some(p) => p,
             None => {
-                warn!("Profile '{}' not found, using default", profile_name);
-                self.profiles
-                    .read()
-                    .await
-                    .get(&self.default_profile)
-                    .cloned()
-                    .unwrap_or_default()
+                warn!("Profile '{}' not found", profile_name);
+                return Vec::new();
             }
         };
 
-        self.filter_tools(&profile).await
+        self.filter_tools_with_sources(&profile)
+            .await
+            .into_iter()
+            .map(|(tool, _)| tool)
+            .collect()
     }
 
-    /// Filter tools based on profile configuration
-    async fn filter_tools(&self, profile: &ProfileConfig) -> Vec<ToolDefinition> {
+    /// Resolve a tool and its owner from the same cache snapshot used for the
+    /// profile decision. Callers must dispatch to this returned owner, never
+    /// perform a second name-to-server lookup after authorization.
+    pub async fn authorized_tool_in_profile(
+        &self,
+        tool_name: &str,
+        profile_name: &str,
+    ) -> Option<(ToolDefinition, String)> {
+        let profile = self.profiles.read().await.get(profile_name).cloned()?;
+        self.filter_tools_with_sources(&profile)
+            .await
+            .into_iter()
+            .find(|(tool, _)| tool.name == tool_name)
+    }
+
+    /// Filter tools with their exact owners from one cache snapshot.
+    async fn filter_tools_with_sources(
+        &self,
+        profile: &ProfileConfig,
+    ) -> Vec<(ToolDefinition, String)> {
         let all_tools = self.cache.list_all().await;
         let max = profile.max_tools.unwrap_or(self.max_tools);
 
-        let mut filtered: Vec<ToolDefinition> = all_tools
+        let mut filtered: Vec<(ToolDefinition, String)> = all_tools
             .into_iter()
             .filter(|(tool, server_id)| self.matches_profile(tool, server_id, profile))
-            .map(|(tool, _)| tool)
             .collect();
 
         // Sort by priority/relevance (for now, just alphabetically)
-        filtered.sort_by(|a, b| a.name.cmp(&b.name));
+        filtered.sort_by(|a, b| a.0.name.cmp(&b.0.name));
 
         // Apply max limit
         if filtered.len() > max {

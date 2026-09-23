@@ -120,7 +120,10 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                     "node" => {
                         // Capture only direct children of the current node.
                         if node_depth == 1 {
-                            for attr in e.attributes().flatten() {
+                            for attr in e.attributes() {
+                                let attr = attr.map_err(|e| {
+                                    Error::introspection(format!("invalid XML attribute: {e}"))
+                                })?;
                                 if attr.key.as_ref() == b"name" {
                                     let child_name =
                                         String::from_utf8_lossy(&attr.value).to_string();
@@ -141,7 +144,10 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                         if node_depth != 1 {
                             continue;
                         }
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.map_err(|e| {
+                                Error::introspection(format!("invalid XML attribute: {e}"))
+                            })?;
                             if attr.key.as_ref() == b"name" {
                                 let iface_name = String::from_utf8_lossy(&attr.value).to_string();
                                 current_interface = Some(InterfaceInfo {
@@ -158,7 +164,10 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                             continue;
                         }
                         in_method = true;
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.map_err(|e| {
+                                Error::introspection(format!("invalid XML attribute: {e}"))
+                            })?;
                             if attr.key.as_ref() == b"name" {
                                 current_method = Some(MethodInfo {
                                     name: String::from_utf8_lossy(&attr.value).to_string(),
@@ -174,7 +183,10 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                             continue;
                         }
                         in_signal = true;
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.map_err(|e| {
+                                Error::introspection(format!("invalid XML attribute: {e}"))
+                            })?;
                             if attr.key.as_ref() == b"name" {
                                 current_signal = Some(SignalInfo {
                                     name: String::from_utf8_lossy(&attr.value).to_string(),
@@ -191,7 +203,10 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                         let mut prop_type = String::new();
                         let mut prop_access = String::new();
 
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.map_err(|e| {
+                                Error::introspection(format!("invalid XML attribute: {e}"))
+                            })?;
                             match attr.key.as_ref() {
                                 b"name" => {
                                     prop_name = String::from_utf8_lossy(&attr.value).to_string()
@@ -229,7 +244,10 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                         let mut arg_type = String::new();
                         let mut arg_direction = "in".to_string();
 
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.map_err(|e| {
+                                Error::introspection(format!("invalid XML attribute: {e}"))
+                            })?;
                             match attr.key.as_ref() {
                                 b"name" => {
                                     arg_name = String::from_utf8_lossy(&attr.value).to_string()
@@ -281,7 +299,10 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
 
                 match name {
                     "node" if node_depth == 1 => {
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.map_err(|e| {
+                                Error::introspection(format!("invalid XML attribute: {e}"))
+                            })?;
                             if attr.key.as_ref() == b"name" {
                                 let child_name = String::from_utf8_lossy(&attr.value).to_string();
                                 let child_path = if child_name.starts_with('/') {
@@ -304,7 +325,10 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                         let mut prop_type = String::new();
                         let mut prop_access = String::new();
 
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.map_err(|e| {
+                                Error::introspection(format!("invalid XML attribute: {e}"))
+                            })?;
                             match attr.key.as_ref() {
                                 b"name" => {
                                     prop_name = String::from_utf8_lossy(&attr.value).to_string()
@@ -342,7 +366,10 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                         let mut arg_type = String::new();
                         let mut arg_direction = "in".to_string();
 
-                        for attr in e.attributes().flatten() {
+                        for attr in e.attributes() {
+                            let attr = attr.map_err(|e| {
+                                Error::introspection(format!("invalid XML attribute: {e}"))
+                            })?;
                             match attr.key.as_ref() {
                                 b"name" => {
                                     arg_name = String::from_utf8_lossy(&attr.value).to_string()
@@ -435,4 +462,22 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
         interfaces,
         children,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_introspection_xml;
+
+    #[test]
+    fn malformed_interface_attribute_is_an_error_not_a_partial_object() {
+        let xml = r#"<node><interface name="org.example.Valid" broken></interface></node>"#;
+        let error = parse_introspection_xml(xml, "/").unwrap_err();
+        assert!(error.to_string().contains("invalid XML attribute"));
+    }
+
+    #[test]
+    fn truncated_xml_is_an_error() {
+        let error = parse_introspection_xml("<node><interface", "/").unwrap_err();
+        assert!(error.to_string().contains("XML parse error"));
+    }
 }

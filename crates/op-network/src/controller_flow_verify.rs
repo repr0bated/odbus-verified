@@ -1,14 +1,11 @@
 //! OpenFlow 1.5 flow-description readback, used inside the sole connection
 //! command queue. Layout: OVS include/openflow/openflow-1.5.h ofp15_flow_desc.
 //! A successful socket write is never an installation receipt.
-use super::{build_barrier_request, build_echo_reply, recv_msg, send_msg, OF_VERSION};
+use super::{build_barrier_request, build_echo_reply, recv_msg, send_msg, OfIo, OF_VERSION};
 use anyhow::{ensure, Context, Result};
 use rovs_openflow::{Flow, FlowStatsRequest, InstructionList, Match};
 use std::time::Duration;
-use tokio::{
-    net::TcpStream,
-    time::{timeout_at, Instant},
-};
+use tokio::time::{timeout_at, Instant};
 
 #[derive(Debug)]
 pub(crate) struct Description {
@@ -75,7 +72,7 @@ fn descriptions(payload: &[u8]) -> Result<(Vec<Description>, bool)> {
 }
 
 pub(crate) async fn query(
-    stream: &mut TcpStream,
+    stream: &mut impl OfIo,
     flow: &Flow,
     xid: &mut u32,
 ) -> Result<Vec<Description>> {
@@ -162,7 +159,7 @@ pub(crate) fn verify(
     Ok(())
 }
 
-pub(crate) async fn apply(stream: &mut TcpStream, flow: &Flow, xid: &mut u32) -> Result<()> {
+pub(crate) async fn apply(stream: &mut impl OfIo, flow: &Flow, xid: &mut u32) -> Result<()> {
     let operation = *xid;
     *xid = xid.wrapping_add(1);
     send_msg(stream, &flow.to_message(OF_VERSION, operation).encode()).await?;
@@ -193,6 +190,7 @@ pub(crate) async fn apply(stream: &mut TcpStream, flow: &Flow, xid: &mut u32) ->
 mod tests {
     use super::*;
     use rovs_openflow::ActionList;
+    use tokio::net::TcpStream;
 
     fn reply(flow: &Flow) -> Vec<u8> {
         let mut entry = vec![0u8; 24];

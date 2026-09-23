@@ -1,4 +1,4 @@
-//! OpenFlow 1.3 controller for ovsbr0
+//! OpenFlow 1.5 mTLS controller for ovsbr0
 //!
 //! Listens on OF_CONTROLLER_LISTEN (default 10.200.0.1:6653) for OVS to
 //! connect, then installs bidirectional flows between the configured port pairs.
@@ -8,6 +8,9 @@
 //!   OF_FLOW_PAIRS          comma-separated port pairs, e.g. "grpc-bridge:ovsbr0-sock"
 //!                          defaults to "grpc-bridge:ovsbr0-sock"
 //!   OF_FLOW_PRIORITY       flow priority (default: 100)
+//!   OF_CONTROLLER_TLS_CA   PEM CA for authorized OVS client certificates
+//!   OF_CONTROLLER_TLS_CERT PEM controller server certificate
+//!   OF_CONTROLLER_TLS_KEY  PEM controller server private key
 //!
 //! Also exposes `org.opdbus.v1.plugins.openflow` at
 //! `/org/opdbus/v1/plugins/openflow` on the system bus. Mutations are denied
@@ -92,7 +95,7 @@ impl OpenFlowDbusService {
         Err(deny_unattributed_mutation())
     }
 
-    /// Set controller after ensuring NORMAL fallback. Endpoint e.g. tcp:10.200.0.1:6653.
+    /// Set controller after ensuring NORMAL fallback. Endpoint e.g. ssl:10.200.0.1:6653.
     async fn set_controller(
         &self,
         _bridge: String,

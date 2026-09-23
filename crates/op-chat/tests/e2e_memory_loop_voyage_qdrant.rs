@@ -100,7 +100,8 @@ async fn run_probe(url: &str, collection: &str) -> Result<()> {
             Vec::new(),
         )
         .await
-        .context("joining Rust preference memory task")?;
+        .context("joining Rust preference memory task")?
+        .context("persisting Rust preference memory")?;
 
     // This newer entry is first in Cozo's recency order. A successful semantic
     // query must move the older Rust preference ahead of it during injection.
@@ -112,7 +113,8 @@ async fn run_probe(url: &str, collection: &str) -> Result<()> {
             Vec::new(),
         )
         .await
-        .context("joining mail project memory task")?;
+        .context("joining mail project memory task")?
+        .context("persisting mail project memory")?;
 
     let injected = memory_loop
         .inject_session_memory(

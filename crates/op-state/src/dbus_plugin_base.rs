@@ -14,7 +14,6 @@ use crate::plugin::StatePlugin;
 use anyhow::{Context, Result};
 use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
-use simd_json::ValueBuilder;
 use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
 use zbus::{Connection, Proxy};
@@ -61,9 +60,8 @@ pub trait DbusStatePluginBase: StatePlugin {
             .await
             .context(format!("Failed to get property {}", property))?;
 
-        // Convert zbus::zvariant::Value to simd_json::OwnedValue
-        let mut json_str = format!("{:?}", value); // Simplified - would need proper conversion
-        Ok(unsafe { simd_json::from_str(&mut json_str) }.unwrap_or(Value::null()))
+        conversion::zvariant_to_json(&value)
+            .with_context(|| format!("Failed to convert property {property}"))
     }
 
     /// Set a D-Bus property value
@@ -107,9 +105,10 @@ pub trait DbusStatePluginBase: StatePlugin {
 
         // Convert to simd_json::OwnedValue HashMap
         let mut result = HashMap::new();
-        for (key, _value) in all_props {
-            // Simplified conversion - would need proper zvariant to serde_json conversion
-            result.insert(key, Value::null());
+        for (key, value) in all_props {
+            let converted = conversion::zvariant_to_json(&value)
+                .with_context(|| format!("Failed to convert property {key}"))?;
+            result.insert(key, converted);
         }
 
         Ok(result)
@@ -262,43 +261,76 @@ pub mod conversion {
     /// Convert zbus::zvariant::Value to simd_json::OwnedValue
     #[allow(dead_code)]
     pub fn zvariant_to_json(value: &zvariant::Value) -> Result<Value, anyhow::Error> {
-        // Simplified - full implementation would handle all zvariant types
-        match value.value_signature().to_string().as_str() {
-            "s" => {
-                if let Ok(s) = <&str>::try_from(value) {
-                    Ok(Value::from(s.to_string()))
-                } else {
-                    Ok(Value::null())
+        use zvariant::Value as Z;
+        Ok(match value {
+            Z::U8(v) => Value::from(*v),
+            Z::Bool(v) => Value::from(*v),
+            Z::I16(v) => Value::from(*v),
+            Z::U16(v) => Value::from(*v),
+            Z::I32(v) => Value::from(*v),
+            Z::U32(v) => Value::from(*v),
+            Z::I64(v) => Value::from(*v),
+            Z::U64(v) => Value::from(*v),
+            Z::F64(v) if v.is_finite() => Value::from(*v),
+            Z::Str(v) => Value::from(v.as_str()),
+            Z::ObjectPath(v) => Value::from(v.as_str()),
+            Z::Signature(v) => Value::from(v.to_string()),
+            Z::Value(v) => zvariant_to_json(v)?,
+            Z::Array(v) => Value::from(
+                v.inner()
+                    .iter()
+                    .map(zvariant_to_json)
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            Z::Structure(v) => Value::from(
+                v.fields()
+                    .iter()
+                    .map(zvariant_to_json)
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            Z::Dict(v) => {
+                let mut object = Value::object();
+                for (key, value) in v.iter() {
+                    let key = match key {
+                        Z::Str(v) => v.as_str(),
+                        _ => {
+                            return Err(anyhow::anyhow!(
+                                "JSON object requires string D-Bus dictionary keys"
+                            ))
+                        }
+                    };
+                    object.insert(key, zvariant_to_json(value)?)?;
                 }
-            }
-            "b" => {
-                if let Ok(b) = bool::try_from(value) {
-                    Ok(Value::from(b))
-                } else {
-                    Ok(Value::null())
-                }
-            }
-            "i" | "u" | "x" | "t" => {
-                // Try various integer types
-                if let Ok(i) = i64::try_from(value) {
-                    Ok(Value::from(i))
-                } else if let Ok(u) = u64::try_from(value) {
-                    Ok(Value::from(u))
-                } else {
-                    Ok(Value::null())
-                }
-            }
-            "d" => {
-                if let Ok(f) = f64::try_from(value) {
-                    Ok(Value::from(f))
-                } else {
-                    Ok(Value::null())
-                }
+                object
             }
             _ => {
-                // For complex types, use debug representation
-                Ok(Value::from(format!("{:?}", value)))
+                return Err(anyhow::anyhow!(
+                    "Unsupported D-Bus JSON value with signature {}",
+                    value.value_signature()
+                ))
             }
+        })
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        #[test]
+        fn preserves_values_instead_of_parsing_debug_text() {
+            for value in [
+                zvariant::Value::from(42i32),
+                zvariant::Value::from(42u32),
+                zvariant::Value::from(42i64),
+            ] {
+                assert_eq!(zvariant_to_json(&value).unwrap().as_i64(), Some(42));
+            }
+            assert_eq!(
+                zvariant_to_json(&zvariant::Value::from(true)).unwrap(),
+                Value::from(true)
+            );
+            let array = zvariant::Value::from(vec![1u32, 2u32]);
+            assert_eq!(zvariant_to_json(&array).unwrap(), simd_json::json!([1, 2]));
+            assert!(zvariant_to_json(&zvariant::Value::from(f64::NAN)).is_err());
         }
     }
 }

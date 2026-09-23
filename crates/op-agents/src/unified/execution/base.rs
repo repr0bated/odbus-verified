@@ -163,37 +163,6 @@ impl ExecutionAgent {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn shell_agent() -> ExecutionAgent {
-        ExecutionAgent::new("test-shell", "test shell", "", "shell", vec!["sh"])
-    }
-
-    #[tokio::test]
-    async fn output_limit_kills_chatty_child() {
-        let result = shell_agent()
-            .execute_command("sh", &["-c", "while :; do printf x; done"], None, 5)
-            .await;
-        assert!(result
-            .expect_err("chatty child must hit output bound")
-            .contains("1MiB bound"));
-    }
-
-    #[tokio::test]
-    async fn timeout_kills_looping_child() {
-        let started = tokio::time::Instant::now();
-        let result = shell_agent()
-            .execute_command("sh", &["-c", "while :; do :; done"], None, 1)
-            .await;
-        assert!(result
-            .expect_err("looping child must time out")
-            .contains("timed out"));
-        assert!(started.elapsed() < Duration::from_secs(5));
-    }
-}
-
 #[async_trait]
 impl UnifiedAgent for ExecutionAgent {
     fn id(&self) -> &str {
@@ -255,5 +224,36 @@ impl UnifiedAgent for ExecutionAgent {
         // Never return a soft success / stub payload for unimplemented work.
         let _ = request;
         AgentResponse::failure("unsupported operation")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn shell_agent() -> ExecutionAgent {
+        ExecutionAgent::new("test-shell", "test shell", "", "shell", vec!["sh"])
+    }
+
+    #[tokio::test]
+    async fn output_limit_kills_chatty_child() {
+        let result = shell_agent()
+            .execute_command("sh", &["-c", "while :; do printf x; done"], None, 5)
+            .await;
+        assert!(result
+            .expect_err("chatty child must hit output bound")
+            .contains("1MiB bound"));
+    }
+
+    #[tokio::test]
+    async fn timeout_kills_looping_child() {
+        let started = tokio::time::Instant::now();
+        let result = shell_agent()
+            .execute_command("sh", &["-c", "while :; do :; done"], None, 1)
+            .await;
+        assert!(result
+            .expect_err("looping child must time out")
+            .contains("timed out"));
+        assert!(started.elapsed() < Duration::from_secs(5));
     }
 }

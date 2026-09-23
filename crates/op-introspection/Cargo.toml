@@ -20,8 +20,12 @@ tracing = { workspace = true }
 futures = { workspace = true }
 async-trait = { workspace = true }
 quick-xml = { workspace = true }
-rusqlite = { workspace = true, features = ["bundled"] }
+op-cozo-store = { workspace = true }
+serde_json = { workspace = true }
 chrono = { workspace = true }
 parking_lot = "0.12"
 sha2 = { workspace = true }
 hex = "0.4"
+
+[dev-dependencies]
+tempfile = { workspace = true }

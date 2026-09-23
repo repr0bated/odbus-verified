@@ -32,16 +32,8 @@ use crate::mutation_engine::MutationEngine;
 
 use op_plugins::canonical::{self, BASE_SERVICE_NAME};
 
-/// The sealed plugin-blob catalog in shared memory. The blob catalog IS the
-/// plugin set: routes are derived from the canonical schema JSON sealed in
-/// each blob — never from a monolith file or a plugin registry.
-const BLOB_CATALOG_DIR: &str = op_blob::catalog::DEFAULT_SHM_DIR;
-
-/// The blob catalog's manifest. Carries the Blake3 `catalog_hash`
-/// (`{ "catalog_hash": "<hex>", "generation": n, "plugins": {...} }`)
-/// written by the sealer as the atomic commit point. The bridge reads this
-/// hash, never re-computes it.
-const MANIFEST_PATH: &str = "/dev/shm/opdbus/plugin-blobs/.manifest.json";
+// The blob catalog path is resolved by sealed_schema_reader, which also
+// supplies the exact manifest-pinned schemas used by method admission.
 
 /// A schema-derived route entry for a plugin.
 #[derive(Debug, Clone)]
@@ -68,11 +60,11 @@ pub struct SchemaRouter {
     routes: Arc<RwLock<HashMap<String, PluginRoute>>>,
     /// D-Bus system connection (shared with MutationEngine).
     dbus_connection: Arc<tokio::sync::OnceCell<Connection>>,
-    /// Catalog path: blob-catalog dir in production (default [`BLOB_CATALOG_DIR`]), or a monolith file in tests.
+    /// Catalog path: blob-catalog dir in production, or a monolith file in tests.
     monolith_path: PathBuf,
     /// Directory containing MutationEngine's committed public projections.
     state_dir: PathBuf,
-    /// Producer manifest path (default [`MANIFEST_PATH`]).
+    /// Producer manifest path within the configured catalog.
     manifest_path: PathBuf,
     /// Last-seen `catalog_hash` read from the manifest. Compared on each
     /// inbound connection; a change triggers a reload. `None` when no manifest
@@ -96,11 +88,12 @@ impl SchemaRouter {
     /// so the first inbound connection only reloads if the catalog actually
     /// changed since startup.
     pub fn new(dbus_connection: Arc<tokio::sync::OnceCell<Connection>>) -> Self {
+        let catalog_dir = crate::sealed_schema_reader::blob_catalog_dir_from_env();
         Self::with_paths(
             dbus_connection,
-            PathBuf::from(BLOB_CATALOG_DIR),
+            catalog_dir.clone(),
             PathBuf::from(DEFAULT_SHM_STATE_DIR),
-            PathBuf::from(MANIFEST_PATH),
+            catalog_dir.join(".manifest.json"),
         )
     }
 
@@ -607,7 +600,12 @@ impl SchemaBackedInterface {
         route: PluginRoute,
         shm_state_dir: impl AsRef<Path>,
     ) -> Self {
-        Self::with_storage_paths(plugin_id, route, shm_state_dir, BLOB_CATALOG_DIR)
+        Self::with_storage_paths(
+            plugin_id,
+            route,
+            shm_state_dir,
+            crate::sealed_schema_reader::blob_catalog_dir_from_env(),
+        )
     }
 
     /// Creates an interface with isolated committed-state and sealed-catalog

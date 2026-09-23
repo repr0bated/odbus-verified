@@ -1,5 +1,6 @@
 //! gRPC server implementation
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -11,6 +12,11 @@ use super::proto::service_manager_server::ServiceManager as ServiceManagerTrait;
 use super::proto::*;
 use crate::manager::ServiceManager;
 use crate::schema::{self, ServiceName};
+
+/// An empty selection watches all services; otherwise names are exact.
+fn matches_watch_filter(filter: &HashSet<ServiceName>, name: &ServiceName) -> bool {
+    filter.is_empty() || filter.contains(name)
+}
 
 pub struct GrpcServer {
     manager: Arc<ServiceManager>,
@@ -220,13 +226,28 @@ impl ServiceManagerTrait for GrpcServer {
         req: Request<WatchRequest>,
     ) -> Result<Response<Self::WatchStatusStream>, Status> {
         self.authorize(&req, "service_manager.watch_status").await?;
+        let filter: HashSet<ServiceName> = req
+            .get_ref()
+            .names
+            .iter()
+            .map(ServiceName::new)
+            .collect::<Result<_, _>>()
+            .map_err(|error| Status::invalid_argument(error.to_string()))?;
         let (tx, rx) = mpsc::channel(128);
         let mut sub = self.manager.subscribe();
 
         tokio::spawn(async move {
-            while let Ok(event) = sub.recv().await {
-                if tx.send(Ok(event.into())).await.is_err() {
-                    break;
+            loop {
+                match sub.recv().await {
+                    Ok(event) => {
+                        if matches_watch_filter(&filter, &event.name)
+                            && tx.send(Ok(event.into())).await.is_err()
+                        {
+                            break;
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }
             }
         });
@@ -487,5 +508,15 @@ mod tests {
             }))
             .await;
         assert_eq!(stop.unwrap_err().code(), Code::PermissionDenied);
+    }
+
+    #[test]
+    fn watch_filter_selects_exact_names_and_empty_means_all() {
+        let a = ServiceName::new("svc-a").unwrap();
+        let b = ServiceName::new("svc-b").unwrap();
+        let filter = HashSet::from([a.clone()]);
+        assert!(matches_watch_filter(&filter, &a));
+        assert!(!matches_watch_filter(&filter, &b));
+        assert!(matches_watch_filter(&HashSet::new(), &b));
     }
 }

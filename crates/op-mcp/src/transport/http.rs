@@ -8,12 +8,11 @@
 //!
 //! Authentication (audit item #3):
 //!   - `/health` is always open.
-//!   - Real socket-loopback callers bypass auth (Host header is NEVER trusted).
-//!   - All other callers must present `Authorization: Bearer <token>` AND the
+//!   - All callers, including loopback and Unix sockets, present a credential AND the
 //!     token must be accepted by the configured [`AuthValidator`].
-//!   - The default validator is fail-secure: it only accepts tokens listed in
-//!     `OPDBUS_MCP_ALLOWED_PEERS`. If that env var is unset/empty, every
-//!     bearer token is rejected.
+//!   - The default compatibility validator rejects every credential. Embedders
+//!     must install a canonical identity/operation verifier; public peer IDs
+//!     never authorize a request.
 //!   - Additionally, the `User-Agent` must match a known MCP client pattern
 //!     (Codex, Cursor, Claude Desktop, etc.) unless `OPDBUS_MCP_ANY_AGENT=1`
 //!     is set (for development). Unknown agents are logged and rejected.
@@ -22,7 +21,7 @@ use super::{McpHandler, Transport};
 use crate::McpRequest;
 use anyhow::Result;
 use axum::{
-    extract::{ConnectInfo, State},
+    extract::State,
     http::{HeaderMap, StatusCode},
     middleware,
     response::{
@@ -49,8 +48,7 @@ use uuid::Uuid;
 // The previous implementation accepted ANY token that matched the *shape* of a
 // WireGuard pubkey or a UUID. That was not authentication; it was a regex.
 // Real authorization now goes through an `AuthValidator`. The default
-// `EnvAllowListValidator` is fail-secure: with no entries, it rejects every
-// bearer token, and only loopback callers can reach the handlers.
+// `EnvAllowListValidator` rejects every request, including local callers.
 // =============================================================================
 
 /// Validates an opaque bearer token against an authoritative source
@@ -60,72 +58,35 @@ pub trait AuthValidator: Send + Sync + 'static {
     async fn validate(&self, token: &str) -> bool;
 }
 
-/// Default validator backed by the `OPDBUS_MCP_ALLOWED_PEERS` env var
-/// (comma-separated list of allowed pubkeys and/or session UUIDs).
-///
-/// * If the env var is unset or empty, **every** bearer token is rejected.
-/// * Comparisons are constant-time over the candidate's length to prevent
-///   timing oracles on partial matches.
-pub struct EnvAllowListValidator {
-    allowed: Vec<String>,
-}
+/// Retired peer allow-list validator. Public keys and session IDs cannot prove
+/// possession. It denies every request until an embedding application supplies
+/// a verifier for authenticated principals and its exposed operations.
+pub struct EnvAllowListValidator;
 
 impl EnvAllowListValidator {
-    /// Read the allow-list from `OPDBUS_MCP_ALLOWED_PEERS`.
+    /// Compatibility constructor; environment peer identifiers never grant access.
     pub fn from_env() -> Self {
-        let raw = std::env::var("OPDBUS_MCP_ALLOWED_PEERS").unwrap_or_default();
-        let allowed: Vec<String> = raw
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
-        if allowed.is_empty() {
-            warn!(
-                "OPDBUS_MCP_ALLOWED_PEERS is empty; bearer-token auth will reject all tokens. \
-                 Only loopback callers will be accepted."
-            );
-        } else {
-            info!(count = allowed.len(), "Loaded MCP peer allow-list");
-        }
-        Self { allowed }
+        Self
     }
 
-    /// Construct an allow-list directly (primarily for tests and embedders).
+    /// Compatibility constructor; listed identifiers also remain denied.
     #[allow(dead_code)]
-    pub fn new<I, S>(entries: I) -> Self
+    pub fn new<I, S>(_entries: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        Self {
-            allowed: entries.into_iter().map(Into::into).collect(),
-        }
+        Self
     }
 }
 
 #[async_trait::async_trait]
 impl AuthValidator for EnvAllowListValidator {
-    async fn validate(&self, token: &str) -> bool {
-        let token_bytes = token.as_bytes();
-        let mut matched = false;
-        for entry in &self.allowed {
-            matched |= ct_eq(token_bytes, entry.as_bytes());
-        }
-        matched
+    async fn validate(&self, _token: &str) -> bool {
+        // Public peer keys and session IDs are identifiers, not credentials.
+        // An embedding application must install its canonical credential verifier.
+        false
     }
-}
-
-/// Constant-time byte-slice equality. Returns false on length mismatch
-/// (length is not considered secret; the contents are).
-fn ct_eq(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    let mut diff: u8 = 0;
-    for (x, y) in a.iter().zip(b.iter()) {
-        diff |= x ^ y;
-    }
-    diff == 0
 }
 
 fn extract_bearer_token(headers: &HeaderMap) -> Option<&str> {
@@ -151,19 +112,15 @@ fn is_wireguard_session_id_shape(token: &str) -> bool {
     Uuid::parse_str(token).is_ok()
 }
 
-/// **Shape check only.** Used as a cheap pre-filter inside the validator.
+/// Legacy shape recognition for diagnostics and tests only.
 /// MUST NOT be used as an authorization decision on its own.
 #[allow(dead_code)]
 fn is_wireguard_auth_token_shape(token: &str) -> bool {
     is_wireguard_pubkey_shape(token) || is_wireguard_session_id_shape(token)
 }
 
-fn is_loopback_addr(addr: &SocketAddr) -> bool {
-    addr.ip().is_loopback()
-}
-
 /// Known MCP client User-Agent substrings.
-/// A request must match at least one to be accepted from a non-loopback peer.
+/// A request must match at least one after credential verification.
 /// Set `OPDBUS_MCP_ANY_AGENT=1` to bypass this check during development.
 const KNOWN_MCP_AGENTS: &[&str] = &[
     "codex",      // OpenAI Codex CLI
@@ -192,32 +149,17 @@ fn is_known_mcp_agent(headers: &HeaderMap) -> bool {
 
 /// Authentication middleware.
 ///
-/// Loopback bypass uses the **actual socket peer address**, not the
-/// attacker-controlled `Host` header. Any non-loopback caller must present a
+/// Every caller must present a
 /// bearer token accepted by the configured [`AuthValidator`] AND a User-Agent
 /// matching a known MCP client (Codex, Cursor, Claude, etc.).
-async fn wireguard_auth_middleware(
+pub(super) async fn wireguard_auth_middleware(
     State(validator): State<Arc<dyn AuthValidator>>,
     mut request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> Result<axum::response::Response, StatusCode> {
-    let connect_info = request
-        .extensions()
-        .get::<ConnectInfo<SocketAddr>>()
-        .copied();
     let headers = request.headers().clone();
     // /health is always open
     if request.uri().path() == "/health" {
-        return Ok(next.run(request).await);
-    }
-
-    // Loopback bypass uses the real peer IP. The Host header is never trusted.
-    if let Some(ConnectInfo(peer)) = connect_info {
-        if is_loopback_addr(&peer) {
-            return Ok(next.run(request).await);
-        }
-    } else {
-        // Unix-domain listener: no TCP peer. The socket ACL is the auth.
         return Ok(next.run(request).await);
     }
 
@@ -231,8 +173,8 @@ async fn wireguard_auth_middleware(
         return Err(StatusCode::UNAUTHORIZED);
     }
 
-    // Require a known MCP client User-Agent — blocks random token holders
-    // that aren't actual MCP clients (curl probes, port scanners, etc.)
+    // Optional client compatibility filter, after credential verification.
+    // User-Agent is caller controlled and is never an identity proof.
     if !is_known_mcp_agent(&headers) {
         let ua = headers
             .get("user-agent")
@@ -705,8 +647,37 @@ async fn sse_handler<H: McpHandler + 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::extract::ConnectInfo;
     use axum::http::{HeaderMap, HeaderValue};
     use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn local_and_missing_peers_do_not_bypass_credentials() {
+        for peer in [None, Some("127.0.0.1:4567"), Some("[::1]:4567")] {
+            let validator: Arc<dyn AuthValidator> = Arc::new(EnvAllowListValidator::from_env());
+            let app = Router::new()
+                .route("/ws", get(|| async { "must not run" }))
+                .layer(middleware::from_fn_with_state(
+                    validator,
+                    wireguard_auth_middleware,
+                ));
+            let mut request = axum::http::Request::builder()
+                .uri("/ws")
+                .header("host", "localhost")
+                .header("origin", "http://localhost")
+                .body(axum::body::Body::empty())
+                .unwrap();
+            if let Some(peer) = peer {
+                request
+                    .extensions_mut()
+                    .insert(ConnectInfo::<SocketAddr>(peer.parse().unwrap()));
+            }
+            assert_eq!(
+                app.oneshot(request).await.unwrap().status(),
+                StatusCode::UNAUTHORIZED
+            );
+        }
+    }
 
     #[tokio::test]
     async fn identity_shaped_headers_do_not_bypass_non_loopback_auth() {
@@ -756,19 +727,10 @@ mod tests {
         assert!(!is_wireguard_auth_token_shape("not-a-wireguard-token"));
     }
 
-    #[test]
-    fn ct_eq_matches_only_identical_inputs() {
-        assert!(ct_eq(b"abc", b"abc"));
-        assert!(!ct_eq(b"abc", b"abd"));
-        assert!(!ct_eq(b"abc", b"abcd"));
-        assert!(!ct_eq(b"", b"a"));
-        assert!(ct_eq(b"", b""));
-    }
-
     #[tokio::test]
-    async fn validator_accepts_listed_token_and_rejects_others() {
+    async fn identifiers_remain_denied_even_if_allowlisted() {
         let v = EnvAllowListValidator::new(vec!["123e4567-e89b-12d3-a456-426614174000"]);
-        assert!(v.validate("123e4567-e89b-12d3-a456-426614174000").await);
+        assert!(!v.validate("123e4567-e89b-12d3-a456-426614174000").await);
         assert!(!v.validate("00000000-0000-0000-0000-000000000000").await);
         assert!(!v.validate("garbage").await);
         // wrong shape is rejected even though it would be exactly equal to no

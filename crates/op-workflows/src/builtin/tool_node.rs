@@ -59,24 +59,13 @@ impl WorkflowNode for ToolNode {
         self.state = state;
     }
 
-    async fn execute(&mut self, inputs: HashMap<String, Value>) -> Result<NodeResult> {
+    async fn execute(&mut self, _inputs: HashMap<String, Value>) -> Result<NodeResult> {
         let start = std::time::Instant::now();
-        let arguments = inputs.get("arguments").cloned().unwrap_or(json!({}));
-
-        // In a real implementation, this would execute the tool via ToolRegistry
-        // For now, return mock data
-        let mut outputs = HashMap::new();
-        outputs.insert(
-            "result".to_string(),
-            json!({
-                "tool": self.tool_name,
-                "arguments": arguments,
-                "output": null,
-                "success": true
-            }),
-        );
-
-        Ok(NodeResult::success(outputs).with_duration(start.elapsed().as_millis() as u64))
+        Ok(NodeResult::failure(format!(
+            "tool node '{}' has no authorized ToolRegistry executor",
+            self.tool_name
+        ))
+        .with_duration(start.elapsed().as_millis() as u64))
     }
 
     fn config_schema(&self) -> Value {
@@ -91,5 +80,36 @@ impl WorkflowNode for ToolNode {
             },
             "required": ["tool_name"]
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::builtin::dbus_node::DbusMethodNode;
+    use crate::builtin::plugin_node::{PluginNode, PluginOperation};
+
+    #[tokio::test]
+    async fn unconfigured_execution_nodes_fail_instead_of_claiming_work() {
+        let mut nodes: Vec<Box<dyn WorkflowNode>> = vec![
+            Box::new(ToolNode::new("tool", "cargo_build")),
+            Box::new(PluginNode::new("plugin", "network", PluginOperation::Apply)),
+            Box::new(DbusMethodNode::new(
+                "dbus",
+                "org.example",
+                "/x",
+                "org.example.X",
+                "Apply",
+            )),
+        ];
+        for node in &mut nodes {
+            let result = node.execute(HashMap::new()).await.unwrap();
+            assert!(!result.success, "{} claimed success", node.name());
+            assert!(result.outputs.is_empty());
+            assert!(result
+                .error
+                .as_deref()
+                .is_some_and(|message| message.contains("no authorized")));
+        }
     }
 }

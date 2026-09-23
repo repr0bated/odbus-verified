@@ -1082,6 +1082,9 @@ impl CognitiveToolService for CognitiveGrpcService {
 
 /// The compatibility service has no verified caller or approved filesystem root.
 /// A caller-supplied notebook ID or folder path cannot grant host-file access.
+// Keep tonic::Status here so the gRPC handler and focused denial test observe
+// the same permission-denied status without translating through another error.
+#[allow(clippy::result_large_err)]
 fn require_add_folder_admission<T>(_request: &Request<T>) -> Result<(), Status> {
     Err(Status::permission_denied(
         "AddFolder requires a verified caller and approved filesystem root",

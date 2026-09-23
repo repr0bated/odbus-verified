@@ -68,7 +68,7 @@
 //!
 //! ## Connection mode
 //!
-//! OF endpoint `tcp:10.200.0.1:6653` is on the bridge IP → keep
+//! OF endpoint `ssl:10.200.0.1:6653` is on the bridge IP → keep
 //! `connection_mode=in-band` (default). Do **not** set
 //! `other_config:disable-in-band=true`. Host SSH still needs NORMAL; in-band
 //! hidden flows only cover controller/manager remotes.
@@ -221,16 +221,20 @@ pub async fn del_controller(bridge: &str) -> Result<()> {
 }
 
 pub async fn set_controller(bridge: &str, endpoint: &str) -> Result<()> {
+    let ep = authenticated_controller_endpoint(endpoint)?;
     ensure_fallback_normal(bridge).await?;
-    let ep = if endpoint.starts_with("tcp:") {
-        endpoint.to_string()
-    } else {
-        format!("tcp:{endpoint}")
-    };
     run_ok("ovs-vsctl", &["--no-wait", "set-controller", bridge, &ep]).await?;
     ensure_controller_in_band(bridge).await?;
     log::info!("SetController: {bridge} -> {ep} (connection_mode=in-band)");
     Ok(())
+}
+
+fn authenticated_controller_endpoint(endpoint: &str) -> Result<String> {
+    anyhow::ensure!(
+        endpoint.starts_with("ssl:") && endpoint.len() > 4,
+        "OpenFlow controller endpoint must use ssl: with configured OVS client credentials"
+    );
+    Ok(endpoint.to_string())
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -291,6 +295,7 @@ pub async fn get_datapath_health(bridge: &str) -> Result<DatapathHealth> {
 }
 
 pub async fn attach_controller_safe(bridge: &str, endpoint: &str) -> Result<DatapathHealth> {
+    authenticated_controller_endpoint(endpoint)?;
     set_fail_mode(bridge, "standalone").await?;
     ensure_fallback_normal(bridge).await?;
 
@@ -327,4 +332,20 @@ pub async fn attach_controller_safe(bridge: &str, endpoint: &str) -> Result<Data
         health.controllers
     );
     Ok(health)
+}
+
+#[cfg(test)]
+mod authenticated_endpoint_tests {
+    use super::authenticated_controller_endpoint;
+
+    #[test]
+    fn plaintext_endpoint_has_no_fallback() {
+        assert!(authenticated_controller_endpoint("tcp:127.0.0.1:6653").is_err());
+        assert!(authenticated_controller_endpoint("127.0.0.1:6653").is_err());
+        assert!(authenticated_controller_endpoint("ssl:").is_err());
+        assert_eq!(
+            authenticated_controller_endpoint("ssl:127.0.0.1:6653").unwrap(),
+            "ssl:127.0.0.1:6653"
+        );
+    }
 }

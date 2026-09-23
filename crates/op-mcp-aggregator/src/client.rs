@@ -1,6 +1,6 @@
 //! MCP Client for connecting to upstream servers
 //!
-//! Supports SSE and stdio transports for communicating with MCP servers.
+//! Supports HTTP/SSE upstreams. Unsupported transports are rejected at construction.
 
 use crate::config::{ServerAuth, TransportType, UpstreamServer};
 use anyhow::{anyhow, Context, Result};
@@ -105,6 +105,7 @@ pub struct McpClient {
 impl McpClient {
     /// Create a new MCP client for the given server
     pub fn new(config: UpstreamServer) -> Result<Self> {
+        Self::validate_transport(&config)?;
         let mut client_builder = reqwest::Client::builder().timeout(config.timeout());
 
         // Add auth if configured
@@ -156,6 +157,16 @@ impl McpClient {
             cached_tools: RwLock::new(vec![]),
             initialized: RwLock::new(false),
         })
+    }
+
+    pub(crate) fn validate_transport(config: &UpstreamServer) -> Result<()> {
+        if !matches!(config.transport, TransportType::Sse) {
+            return Err(anyhow!(
+                "Unsupported MCP transport for '{}'; configure an HTTP/SSE upstream",
+                config.id
+            ));
+        }
+        Ok(())
     }
 
     /// Get the server ID
@@ -215,10 +226,7 @@ impl McpClient {
     }
 
     async fn initialize_stdio(&self) -> Result<()> {
-        // For stdio, we'd spawn a child process
-        // This is a simplified implementation
-        warn!("Stdio transport initialization not fully implemented");
-        Ok(())
+        Err(anyhow!("Stdio transport is unsupported"))
     }
 
     /// Send a request to the upstream server

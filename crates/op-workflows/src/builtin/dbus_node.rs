@@ -69,27 +69,13 @@ impl WorkflowNode for DbusMethodNode {
         self.state = state;
     }
 
-    async fn execute(&mut self, inputs: HashMap<String, Value>) -> Result<NodeResult> {
+    async fn execute(&mut self, _inputs: HashMap<String, Value>) -> Result<NodeResult> {
         let start = std::time::Instant::now();
-        let args = inputs.get("args").cloned().unwrap_or(json!([]));
-
-        // In a real implementation, this would call the D-Bus method
-        // For now, return mock data
-        let mut outputs = HashMap::new();
-        outputs.insert(
-            "result".to_string(),
-            json!({
-                "service": self.service,
-                "path": self.path,
-                "interface": self.interface,
-                "method": self.method,
-                "args": args,
-                "response": null,
-                "success": true
-            }),
-        );
-
-        Ok(NodeResult::success(outputs).with_duration(start.elapsed().as_millis() as u64))
+        Ok(NodeResult::failure(format!(
+            "D-Bus node '{} {}.{}' has no authorized method executor",
+            self.service, self.interface, self.method
+        ))
+        .with_duration(start.elapsed().as_millis() as u64))
     }
 
     fn config_schema(&self) -> Value {

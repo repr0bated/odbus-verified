@@ -84,9 +84,13 @@ impl RunitSystemctlService {
         Ok(())
     }
 
-    fn remove_symlink(&self, service: &str, target_dir: &str) {
+    fn remove_symlink(&self, service: &str, target_dir: &str) -> Result<(), String> {
         let link = format!("{}/{}", target_dir, service);
-        let _ = std::fs::remove_file(&link);
+        match std::fs::remove_file(&link) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(format!("Failed to remove {link}: {error}")),
+        }
     }
 
     fn validate_service_name(service: &str) -> Result<(), String> {
@@ -183,6 +187,21 @@ impl RunitSystemctlService {
 #[cfg(test)]
 mod path_security_tests {
     use super::RunitSystemctlService;
+
+    #[test]
+    fn disable_unlink_failure_is_not_success() {
+        let root = std::env::temp_dir().join(format!("runit-unlink-test-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("service")).unwrap();
+        let service = RunitSystemctlService::new();
+        assert!(service
+            .remove_symlink("service", root.to_str().unwrap())
+            .is_err());
+        std::fs::remove_dir(root.join("service")).unwrap();
+        assert!(service
+            .remove_symlink("service", root.to_str().unwrap())
+            .is_ok());
+        std::fs::remove_dir(root).unwrap();
+    }
 
     #[test]
     fn service_name_is_one_component() {
@@ -495,10 +514,15 @@ impl RunitSystemctlService {
 
         let live = self.live_path(service);
         if std::path::Path::new(&live).exists() {
-            let _ = self.run_sv(&["down", &live]);
+            let result = self.run_sv(&["down", &live]);
+            if !result.0 {
+                return result;
+            }
         }
 
-        self.remove_symlink(service, &self.enable_dir);
+        if let Err(error) = self.remove_symlink(service, &self.enable_dir) {
+            return (false, error);
+        }
 
         info!("Service {} disabled", service);
         (true, format!("Service {service} disabled"))

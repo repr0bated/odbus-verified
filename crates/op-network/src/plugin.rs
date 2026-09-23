@@ -10,7 +10,6 @@ use std::time::Duration;
 use tokio::time::sleep;
 use tracing::{info, warn};
 
-use crate::openflow::OpenFlowClient;
 use crate::ovsdb::OvsdbClient;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -65,7 +64,7 @@ fn default_datapath_type() -> String {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenFlowConfig {
-    /// Controller address (default: tcp:127.0.0.1:6653)
+    /// Mutual-TLS controller address (default: ssl:127.0.0.1:6653).
     #[serde(default = "default_controller")]
     pub controller: String,
 
@@ -83,7 +82,7 @@ pub struct OpenFlowConfig {
 }
 
 fn default_controller() -> String {
-    "tcp:10.200.0.1:6653".to_string()
+    "ssl:127.0.0.1:6653".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -188,7 +187,10 @@ impl NetworkPlugin {
         let client = OvsdbClient::new();
 
         // Get list of bridges
-        let bridges = client.list_bridges().await.unwrap_or_default();
+        let bridges = client
+            .list_bridges()
+            .await
+            .context("Failed to query OVSDB bridges")?;
 
         // Get details for each bridge
         let mut bridge_details = Vec::new();
@@ -196,7 +198,7 @@ impl NetworkPlugin {
             let ports = client
                 .list_bridge_ports(bridge_name)
                 .await
-                .unwrap_or_default();
+                .with_context(|| format!("Failed to query ports for bridge {bridge_name}"))?;
             bridge_details.push(serde_json::json!({
                 "name": bridge_name,
                 "ports": ports,
@@ -272,6 +274,9 @@ impl NetworkPlugin {
     }
 
     async fn create_ovs_bridge(&self, bridge: &OvsBridge) -> Result<()> {
+        if let Some(openflow) = &bridge.openflow {
+            admit_default_flow_rules(openflow)?;
+        }
         info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         info!("Creating OVS bridge: {}", bridge.name);
         info!("  Datapath type: {}", bridge.datapath_type);
@@ -319,14 +324,6 @@ impl NetworkPlugin {
         if bridge.dhcp {
             info!("  Enabling DHCP");
             self.enable_dhcp(&bridge.name).await?;
-        }
-
-        // Apply OpenFlow rules if configured
-        if let Some(ref openflow) = bridge.openflow {
-            if openflow.auto_apply_defaults && !openflow.default_rules.is_empty() {
-                info!("  Applying OpenFlow default rules");
-                self.apply_openflow_rules(&bridge.name, openflow).await?;
-            }
         }
 
         info!("✓ Bridge '{}' configured successfully", bridge.name);
@@ -429,47 +426,38 @@ impl NetworkPlugin {
         );
         Ok(())
     }
+}
 
-    async fn apply_openflow_rules(&self, bridge: &str, config: &OpenFlowConfig) -> Result<()> {
-        info!(
-            "    Applying {} OpenFlow rules to {}",
-            config.default_rules.len(),
-            bridge
-        );
-
-        // Parse controller address
-        let addr = if config.controller.starts_with("tcp:") {
-            let addr_str = config.controller.trim_start_matches("tcp:");
-            addr_str
-                .parse()
-                .unwrap_or_else(|_| std::net::SocketAddr::from(([10, 200, 0, 1], 6653)))
-        } else {
-            std::net::SocketAddr::from(([10, 200, 0, 1], 6653))
-        };
-
-        // Connect to OpenFlow switch
-        let mut client = OpenFlowClient::connect(addr).await.context(format!(
-            "Failed to connect to OpenFlow switch for bridge {}",
-            bridge
-        ))?;
-
-        // Clear existing flows first
-        client.delete_all_flows().await?;
-
-        // Apply each rule
-        for rule in &config.default_rules {
-            client.add_flow_rule(rule).await?;
-            info!("      Applied rule: {}", rule);
-        }
-
-        info!("    ✓ OpenFlow rules applied to {}", bridge);
-        Ok(())
-    }
+/// The old default-rule path was a plaintext outbound switch connection that
+/// deleted all flows before calling an unimplemented string-rule parser.
+/// Require an owner-backed, schema-declared flow operation instead.
+fn admit_default_flow_rules(config: &OpenFlowConfig) -> Result<()> {
+    anyhow::ensure!(
+        !(config.auto_apply_defaults && !config.default_rules.is_empty()),
+        "automatic OpenFlow rules require the admitted controller owner; direct switch TCP is retired"
+    );
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn direct_default_flow_mutation_fails_before_bridge_changes() {
+        let config = OpenFlowConfig {
+            controller: "ssl:127.0.0.1:6653".into(),
+            auto_apply_defaults: true,
+            default_rules: vec!["priority=1,actions=NORMAL".into()],
+            fail_secure: false,
+        };
+        assert!(admit_default_flow_rules(&config).is_err());
+        assert!(admit_default_flow_rules(&OpenFlowConfig {
+            default_rules: Vec::new(),
+            ..config
+        })
+        .is_ok());
+    }
 
     #[test]
     fn test_parse_network_config() {

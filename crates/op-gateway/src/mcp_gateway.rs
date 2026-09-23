@@ -242,71 +242,6 @@ impl McpGatewayManager {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::encrypted_storage::EncryptedStorageConfig;
-
-    #[tokio::test]
-    async fn stored_peer_key_or_wristband_cannot_select_full_access_route() {
-        let storage_root =
-            std::env::temp_dir().join(format!("op-gateway-route-{}", Uuid::new_v4()));
-        let storage_path = storage_root.join("keys");
-        tokio::fs::create_dir_all(&storage_path).await.unwrap();
-        let mut storage_config = EncryptedStorageConfig::default();
-        storage_config.base_path = storage_root.clone();
-        storage_config.subvolume_name = "keys".into();
-
-        let auth = Arc::new(
-            WireGuardAuthManager::new_with_storage_config(storage_config)
-                .await
-                .unwrap(),
-        );
-        let peer_key = hex::encode([7_u8; 32]);
-        let stored = auth.create_session(&peer_key, None).await.unwrap();
-        let gateway = McpGatewayManager::new(auth).await.unwrap();
-
-        for token in [None, Some(stored.session_id)] {
-            let decision = gateway
-                .route_client(McpClientInfo {
-                    name: "unverified-caller".into(),
-                    version: None,
-                    user_agent: None,
-                    ip_address: None,
-                    auth_token: token,
-                    peer_pubkey: Some(peer_key.clone()),
-                })
-                .await
-                .unwrap();
-            assert!(matches!(decision.access_level, AccessLevel::Blocked));
-            assert!(!decision.has_full_access);
-            assert!(decision.endpoint.is_empty());
-            assert!(decision.allowed_tools.is_empty());
-            assert!(decision.capabilities.is_empty());
-        }
-
-        let session = gateway
-            .create_session(McpClientInfo {
-                name: "unverified-caller".into(),
-                version: None,
-                user_agent: None,
-                ip_address: None,
-                auth_token: None,
-                peer_pubkey: Some(peer_key),
-            })
-            .await
-            .unwrap();
-        assert!(!gateway.validate_session(&session.session_id).await.unwrap());
-        assert!(gateway
-            .get_client_capabilities(&session.session_id)
-            .await
-            .unwrap()
-            .is_empty());
-
-        tokio::fs::remove_dir_all(storage_root).await.unwrap();
-    }
-}
-
 /// D-Bus interface implementation for MCP Gateway
 impl McpGatewayManager {
     /// Handle D-Bus method call for client routing
@@ -359,5 +294,72 @@ impl McpGatewayManager {
             "capabilities": capabilities,
             "session_id": session_id
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::encrypted_storage::EncryptedStorageConfig;
+
+    #[tokio::test]
+    async fn stored_peer_key_or_wristband_cannot_select_full_access_route() {
+        let storage_root =
+            std::env::temp_dir().join(format!("op-gateway-route-{}", Uuid::new_v4()));
+        let storage_path = storage_root.join("keys");
+        tokio::fs::create_dir_all(&storage_path).await.unwrap();
+        let storage_config = EncryptedStorageConfig {
+            base_path: storage_root.clone(),
+            subvolume_name: "keys".into(),
+            ..Default::default()
+        };
+
+        let auth = Arc::new(
+            WireGuardAuthManager::new_with_storage_config(storage_config)
+                .await
+                .unwrap(),
+        );
+        let peer_key = hex::encode([7_u8; 32]);
+        let stored = auth.create_session(&peer_key, None).await.unwrap();
+        let gateway = McpGatewayManager::new(auth).await.unwrap();
+
+        for token in [None, Some(stored.session_id)] {
+            let decision = gateway
+                .route_client(McpClientInfo {
+                    name: "unverified-caller".into(),
+                    version: None,
+                    user_agent: None,
+                    ip_address: None,
+                    auth_token: token,
+                    peer_pubkey: Some(peer_key.clone()),
+                })
+                .await
+                .unwrap();
+            assert!(matches!(decision.access_level, AccessLevel::Blocked));
+            assert!(!decision.has_full_access);
+            assert!(decision.endpoint.is_empty());
+            assert!(decision.allowed_tools.is_empty());
+            assert!(decision.capabilities.is_empty());
+        }
+
+        let session = gateway
+            .create_session(McpClientInfo {
+                name: "unverified-caller".into(),
+                version: None,
+                user_agent: None,
+                ip_address: None,
+                auth_token: None,
+                peer_pubkey: Some(peer_key),
+            })
+            .await
+            .unwrap();
+        assert!(!gateway.validate_session(&session.session_id).await.unwrap());
+        assert!(gateway
+            .get_client_capabilities(&session.session_id)
+            .await
+            .unwrap()
+            .is_empty());
+
+        tokio::fs::remove_dir_all(storage_root).await.unwrap();
     }
 }

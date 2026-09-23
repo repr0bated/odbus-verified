@@ -68,9 +68,8 @@ use op_plugins::state_plugins::project::namespace_prefix_for_session;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::sync::{broadcast, mpsc, RwLock};
-use tokio::time::{interval, timeout};
 use tracing::{info, trace, warn};
 
 /// Maximum activity window to keep per session
@@ -79,8 +78,6 @@ const ACTIVITY_WINDOW_SIZE: usize = 50;
 const MIN_PUSH_INTERVAL_SECS: u64 = 30;
 /// Idle threshold for context refresh (seconds)
 const IDLE_REFRESH_THRESHOLD_SECS: u64 = 300; // 5 minutes
-/// Trigger evaluation interval (milliseconds)
-const EVALUATION_INTERVAL_MS: u64 = 5000;
 /// Minimum relevance score to push knowledge
 const MIN_RELEVANCE_SCORE: f32 = 0.75;
 
@@ -514,83 +511,67 @@ impl ContextAwarenessEngine {
         }))
     }
 
-    /// Start the background context monitoring task
+    /// Process context only when activity arrives; idle sessions cause no work.
     pub fn start_monitoring(self: Arc<Self>) {
         tokio::spawn(async move {
             info!("Context awareness monitoring started");
-
-            let mut eval_interval = interval(Duration::from_millis(EVALUATION_INTERVAL_MS));
-
             loop {
-                eval_interval.tick().await;
-
-                // Process any pending activity events
-                self.process_activity_events().await;
-
-                // Evaluate all sessions for proactive pushes
-                if self.config.proactive_enabled {
-                    self.evaluate_all_sessions().await;
-                }
+                let event = { self.activity_rx.write().await.recv().await };
+                let Some(event) = event else { break };
+                self.process_activity_event(event).await;
             }
         });
     }
 
-    async fn process_activity_events(&self) {
-        let mut rx = self.activity_rx.write().await;
+    async fn process_activity_event(&self, event: ActivityEvent) {
+        trace!(
+            session_id = %event.session_id,
+            activity_type = ?event.activity_type,
+            "Processing activity event"
+        );
 
-        while let Ok(Some(event)) = timeout(Duration::from_millis(10), rx.recv()).await {
-            trace!(
-                session_id = %event.session_id,
-                activity_type = ?event.activity_type,
-                "Processing activity event"
-            );
-
-            // Additional processing if needed
-            if event.activity_type == ActivityType::Error {
-                // Immediately evaluate for error assistance
-                if let Some(state) = self.session_states.get(&event.session_id) {
-                    let state = state.read().await;
-                    if state.can_push() && !state.is_suppressed(PushTrigger::ErrorAssistance) {
-                        drop(state);
-                        if let Err(e) = self.evaluate_error_assistance(&event.session_id).await {
-                            warn!(error = %e, "Error assistance evaluation failed");
-                        }
-                    }
+        if event.activity_type == ActivityType::Error {
+            let should_assist = if let Some(entry) = self.session_states.get(&event.session_id) {
+                let state = entry.read().await;
+                state.can_push() && !state.is_suppressed(PushTrigger::ErrorAssistance)
+            } else {
+                false
+            };
+            if should_assist {
+                if let Err(e) = self.evaluate_error_assistance(&event.session_id).await {
+                    warn!(error = %e, "Error assistance evaluation failed");
                 }
             }
         }
+        if self.config.proactive_enabled {
+            self.evaluate_session_by_id(&event.session_id).await;
+        }
     }
 
-    async fn evaluate_all_sessions(&self) {
-        for entry in self.session_states.iter() {
-            let session_id = entry.key().clone();
-            let state = entry.value().read().await;
-
+    async fn evaluate_session_by_id(&self, session_id: &str) {
+        let evaluation = if let Some(entry) = self.session_states.get(session_id) {
+            let state = entry.read().await;
             if !state.can_push() {
-                continue;
+                return;
             }
+            self.evaluate_session(&state).await
+        } else {
+            return;
+        };
 
-            // Check various trigger conditions
-            let evaluation = self.evaluate_session(&state).await;
-
-            if evaluation.should_push
-                && evaluation.relevance_score >= self.config.min_relevance_score
-            {
-                if let Some(trigger) = evaluation.trigger {
-                    drop(state);
-
-                    if let Err(e) = self
-                        .generate_and_push(
-                            &session_id,
-                            trigger,
-                            evaluation.trigger_reason,
-                            evaluation.relevance_score,
-                            evaluation.context_query,
-                        )
-                        .await
-                    {
-                        warn!(error = %e, session_id = %session_id, "Failed to generate knowledge push");
-                    }
+        if evaluation.should_push && evaluation.relevance_score >= self.config.min_relevance_score {
+            if let Some(trigger) = evaluation.trigger {
+                if let Err(e) = self
+                    .generate_and_push(
+                        session_id,
+                        trigger,
+                        evaluation.trigger_reason,
+                        evaluation.relevance_score,
+                        evaluation.context_query,
+                    )
+                    .await
+                {
+                    warn!(error = %e, %session_id, "Failed to generate knowledge push");
                 }
             }
         }

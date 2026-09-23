@@ -56,6 +56,13 @@ fn committed(result: RuntimeDocumentCommit) -> RuntimeDocumentRecord {
     }
 }
 
+fn restart_document() -> RuntimeDocumentRecord {
+    RuntimeDocumentRecord {
+        revision: 1,
+        document: json!({"page":{"items":[null,0,false,"x"]}}),
+    }
+}
+
 #[test]
 fn uncertain_debug_keeps_candidate_and_native_values_private() {
     let result = RuntimeDocumentCommit::Uncertain {
@@ -157,14 +164,11 @@ fn drifted_document_column_rejects_without_leaking_the_bound_private_workspace()
 #[test]
 fn persistent_exact_row_returns_after_barrier_and_survives_reopen() {
     reset();
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("runtime");
-    let expected = RuntimeDocumentRecord {
-        revision: 1,
-        document: json!({"page":{"items":[null,0,false,"x"]}}),
-    };
-    {
-        let store = CozoGraphShuttle::new_persistent(path.clone()).unwrap();
+    if let Some(path) = std::env::var_os("OP_COZO_RUNTIME_RESTART_CHILD_PATH") {
+        let marker = std::env::var_os("OP_COZO_RUNTIME_RESTART_CHILD_MARKER")
+            .expect("writer completion marker path");
+        let store = CozoGraphShuttle::new_persistent(std::path::PathBuf::from(path)).unwrap();
+        let expected = restart_document();
         assert_eq!(
             committed(
                 store
@@ -173,18 +177,44 @@ fn persistent_exact_row_returns_after_barrier_and_survives_reopen() {
             ),
             expected
         );
-        assert_eq!(barrier_calls(), 1);
-        assert_eq!(
-            store.read_runtime_document("ui").unwrap(),
-            Some(expected.clone())
-        );
+        assert_eq!(barrier_calls(), 1, "writer commit must cross its barrier");
+        assert_eq!(store.read_runtime_document("ui").unwrap(), Some(expected));
+        std::fs::write(std::path::PathBuf::from(marker), b"completed")
+            .expect("mark writer test completion");
+        return;
     }
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("runtime");
+    let marker = dir.path().join("writer-completed");
+    // Cozo's multi_transaction worker can retain a DbInstance briefly after
+    // the shuttle drops. A completed child process is a real close boundary.
+    let child = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "runtime_document_transactions::tests::persistent_exact_row_returns_after_barrier_and_survives_reopen",
+        ])
+        .env("OP_COZO_RUNTIME_RESTART_CHILD_PATH", &path)
+        .env("OP_COZO_RUNTIME_RESTART_CHILD_MARKER", &marker)
+        .output()
+        .expect("run isolated runtime document writer");
+    assert!(
+        child.status.success(),
+        "isolated runtime document writer failed: {}",
+        String::from_utf8_lossy(&child.stderr)
+    );
+    assert!(marker.is_file(), "isolated writer test did not execute");
+
     let store = CozoGraphShuttle::new_persistent(path).unwrap();
     assert_eq!(
         store.read_runtime_document_durable("ui").unwrap(),
-        Some(expected)
+        Some(restart_document())
     );
-    assert_eq!(barrier_calls(), 2);
+    assert_eq!(
+        barrier_calls(),
+        1,
+        "parent durable read must cross its barrier"
+    );
 }
 
 #[test]

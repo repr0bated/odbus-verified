@@ -45,7 +45,8 @@ tracing = { workspace = true }
 futures = { workspace = true }
 async-trait = { workspace = true }
 quick-xml = { workspace = true }
-rusqlite = { workspace = true, features = ["bundled"] }
+op-cozo-store = { workspace = true }
+serde_json = { workspace = true }
 chrono = { workspace = true }
 parking_lot = "0.12"
 sha2 = { workspace = true }
@@ -82,6 +83,18 @@ cache
 ## Purpose
 DBus introspection capabilities for op-dbus-v2
 
+## Persistent search index
+
+The derived index uses the shared Cozo store and native full-text search. A
+configured index path opens a sibling `<path>.cozo` directory; any existing
+SQLite file remains untouched. Rebuild the derived index from D-Bus to populate
+the new store. `:memory:` remains available for transient indexes and tests.
+
+Search accepts Cozo FTS terms, quoted phrases, Boolean operators, and prefix
+`*` queries. Prefix terms are case-normalized, and results rank by Cozo TF-IDF.
+Invalid queries and corrupt stored records return errors. SQLite-specific FTS
+syntax is not a compatibility contract.
+
 ## Build Information
 - **Edition**: edition.workspace = true
 - **Version**: version.workspace = true
@@ -90,6 +103,7 @@ DBus introspection capabilities for op-dbus-v2
 ## Related Crates
 Internal dependencies:
 - op-snowball
+- op-cozo-store
 
 ---
 *Generated from crate analysis*

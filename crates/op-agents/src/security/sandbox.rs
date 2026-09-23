@@ -18,6 +18,26 @@ use tokio::process::Command;
 use super::profiles::SecurityProfile;
 use super::validation::{validate_command, validate_path, SecurityError};
 
+/// Drain to EOF even after the retention cap, so a full pipe cannot stall a child.
+async fn read_capped<R: tokio::io::AsyncRead + Unpin>(
+    reader: &mut R,
+    cap: usize,
+) -> std::io::Result<(Vec<u8>, bool)> {
+    let mut output = Vec::with_capacity(cap.min(8192));
+    let mut chunk = [0u8; 8192];
+    let mut truncated = false;
+    loop {
+        let count = reader.read(&mut chunk).await?;
+        if count == 0 {
+            break;
+        }
+        let keep = count.min(cap.saturating_sub(output.len()));
+        output.extend_from_slice(&chunk[..keep]);
+        truncated |= keep < count;
+    }
+    Ok((output, truncated))
+}
+
 /// Resource limits for sandboxed execution
 #[derive(Debug, Clone)]
 pub struct ResourceLimits {
@@ -176,6 +196,7 @@ impl SandboxExecutor {
         cmd.stdin(Stdio::null());
         cmd.stdout(Stdio::piped());
         cmd.stderr(Stdio::piped());
+        cmd.kill_on_drop(true);
 
         // Spawn the process
         let mut child = cmd
@@ -198,63 +219,36 @@ impl SandboxExecutor {
         let max_output = self.limits.max_output;
 
         let result = tokio::time::timeout(timeout, async {
-            let mut stdout_buf = Vec::with_capacity(max_output.min(1024 * 1024));
-            let mut stderr_buf = Vec::with_capacity(max_output.min(1024 * 1024));
-
-            // Read output (with size limits)
-            let read_limited = async {
-                let mut tmp_stdout = vec![0u8; max_output];
-                let mut tmp_stderr = vec![0u8; max_output];
-
-                let (stdout_n, stderr_n) = tokio::join!(
-                    stdout_handle.read(&mut tmp_stdout),
-                    stderr_handle.read(&mut tmp_stderr),
-                );
-
-                let stdout_n = stdout_n.unwrap_or(0);
-                let stderr_n = stderr_n.unwrap_or(0);
-
-                stdout_buf.extend_from_slice(&tmp_stdout[..stdout_n]);
-                stderr_buf.extend_from_slice(&tmp_stderr[..stderr_n]);
-            };
-
-            read_limited.await;
-
-            // Wait for process to complete
-            let status = child.wait().await;
-
-            (stdout_buf, stderr_buf, status)
+            tokio::try_join!(
+                read_capped(&mut stdout_handle, max_output),
+                read_capped(&mut stderr_handle, max_output),
+                child.wait(),
+            )
         })
         .await;
 
         let duration = start.elapsed();
 
         match result {
-            Ok((stdout_buf, stderr_buf, status)) => {
+            Ok(Ok(((stdout_buf, stdout_truncated), (stderr_buf, stderr_truncated), status))) => {
                 let stdout = String::from_utf8_lossy(&stdout_buf).to_string();
                 let stderr = String::from_utf8_lossy(&stderr_buf).to_string();
-                let truncated = stdout_buf.len() >= max_output || stderr_buf.len() >= max_output;
+                let truncated = stdout_truncated || stderr_truncated;
                 let duration_ms = duration.as_millis() as u64;
 
-                match status {
-                    Ok(s) if s.success() => {
-                        let mut result = SandboxResult::success(stdout, stderr, duration_ms);
-                        result.truncated = truncated;
-                        Ok(result)
-                    }
-                    Ok(s) => {
-                        let mut result =
-                            SandboxResult::failure(s.code(), stdout, stderr, duration_ms);
-                        result.truncated = truncated;
-                        Ok(result)
-                    }
-                    Err(e) => Ok(SandboxResult::failure(
-                        None,
-                        stdout,
-                        format!("{}\n{}", stderr, e),
-                        duration_ms,
-                    )),
-                }
+                let mut result = if status.success() {
+                    SandboxResult::success(stdout, stderr, duration_ms)
+                } else {
+                    SandboxResult::failure(status.code(), stdout, stderr, duration_ms)
+                };
+                result.truncated = truncated;
+                Ok(result)
+            }
+            Ok(Err(error)) => {
+                let _ = child.kill().await;
+                Err(SecurityError::Unauthorized(format!(
+                    "Failed to collect child output/status: {error}"
+                )))
             }
             Err(_) => {
                 // Timeout - kill the process
@@ -341,6 +335,31 @@ impl Default for SandboxBuilder {
 mod tests {
     use super::*;
     use crate::security::profiles::presets;
+
+    #[tokio::test]
+    async fn bounded_output_drains_multiple_writes_without_stalling() {
+        use tokio::io::AsyncWriteExt;
+        let (mut read, mut write) = tokio::io::duplex(32);
+        let producer = tokio::spawn(async move {
+            for _ in 0..100 {
+                write.write_all(&[b'x'; 100]).await.unwrap();
+            }
+        });
+        let (bytes, truncated) =
+            tokio::time::timeout(Duration::from_secs(2), read_capped(&mut read, 64))
+                .await
+                .unwrap()
+                .unwrap();
+        producer.await.unwrap();
+        assert_eq!(bytes, vec![b'x'; 64]);
+        assert!(truncated);
+    }
+
+    #[tokio::test]
+    async fn bounded_output_propagates_read_failure() {
+        let mut directory = tokio::fs::File::open(std::env::temp_dir()).await.unwrap();
+        assert!(read_capped(&mut directory, 64).await.is_err());
+    }
 
     #[tokio::test]
     async fn test_sandbox_allowed_command() {

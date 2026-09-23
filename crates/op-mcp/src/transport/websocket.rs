@@ -2,6 +2,7 @@
 //!
 //! Full-duplex WebSocket transport for MCP.
 
+use super::http::{wireguard_auth_middleware, AuthValidator, EnvAllowListValidator};
 use super::{McpHandler, Transport};
 use crate::{JsonRpcError, McpRequest, McpResponse};
 use anyhow::Result;
@@ -24,13 +25,21 @@ use tracing::{debug, error, info, warn};
 /// WebSocket transport
 pub struct WebSocketTransport {
     bind_addr: String,
+    auth_validator: Arc<dyn AuthValidator>,
 }
 
 impl WebSocketTransport {
     pub fn new(bind_addr: impl Into<String>) -> Self {
         Self {
             bind_addr: bind_addr.into(),
+            auth_validator: Arc::new(EnvAllowListValidator::from_env()),
         }
+    }
+
+    /// Install the embedding application's canonical credential verifier.
+    pub fn with_auth_validator(mut self, validator: Arc<dyn AuthValidator>) -> Self {
+        self.auth_validator = validator;
+        self
     }
 }
 
@@ -49,6 +58,10 @@ impl Transport for WebSocketTransport {
             .route("/", get(ws_handler::<H>))
             .route("/ws", get(ws_handler::<H>))
             .route("/health", get(health_handler))
+            .layer(axum::middleware::from_fn_with_state(
+                self.auth_validator,
+                wireguard_auth_middleware,
+            ))
             .layer(
                 CorsLayer::new()
                     .allow_origin(Any)

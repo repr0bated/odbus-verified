@@ -20,7 +20,7 @@
 //! 5. Add to knowledge base for future use
 //! 6. Create templates for similar objects
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use base64::engine::general_purpose;
 use base64::Engine;
 use regex::Regex;
@@ -177,83 +177,11 @@ impl IntrospectiveGadget {
     /// Inspect a Docker container (specialized method)
     pub async fn inspect_docker_container(
         &self,
-        container_name: &str,
+        _container_name: &str,
     ) -> Result<ContainerInspectionWithKnowledge> {
-        // Get container info
-        let inspect_output = tokio::process::Command::new("docker")
-            .args(["inspect", container_name])
-            .output()
-            .await
-            .context("Failed to run docker inspect")?;
-
-        let mut inspect_json = String::from_utf8_lossy(&inspect_output.stdout).to_string();
-
-        // Parse the JSON
-        let container_data: Value = unsafe { simd_json::from_str(&mut inspect_json) }
-            .context("Failed to parse docker inspect JSON")?;
-
-        // Extract key information
-        let config = container_data[0]["Config"].clone();
-        let network_settings = container_data[0]["NetworkSettings"].clone();
-        let mounts = container_data[0]["Mounts"]
-            .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .map(|m| ContainerMount {
-                source: m["Source"].as_str().unwrap_or("").to_string(),
-                destination: m["Destination"].as_str().unwrap_or("").to_string(),
-                mode: m["Mode"].as_str().unwrap_or("").to_string(),
-                rw: m["RW"].as_bool().unwrap_or(false),
-            })
-            .collect();
-
-        // Get running processes
-        let top_output = tokio::process::Command::new("docker")
-            .args(["top", container_name])
-            .output()
-            .await;
-
-        let processes = if let Ok(output) = top_output {
-            let top_text = String::from_utf8_lossy(&output.stdout);
-            self.parse_docker_top(&top_text)
-        } else {
-            vec![]
-        };
-
-        let inspection = ContainerInspection {
-            name: container_name.to_string(),
-            id: container_data[0]["Id"].as_str().unwrap_or("").to_string(),
-            image: container_data[0]["Config"]["Image"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
-            status: container_data[0]["State"]["Status"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
-            config: config.clone(),
-            network_settings: network_settings.clone(),
-            mounts,
-            processes,
-            ports: self.extract_container_ports(&network_settings),
-            environment: self.extract_container_env(&config),
-            labels: self.extract_container_labels(&config),
-        };
-
-        // Add to knowledge base
-        let input = InspectionInput {
-            source: InspectionSource::DockerContainer(container_name.to_string()),
-            data: Some(inspect_json.to_string()),
-            metadata: HashMap::new(),
-        };
-
-        let result = self.inspect_object(input).await?;
-        let kb_entry_name = result.knowledge_base_entry;
-
-        Ok(ContainerInspectionWithKnowledge {
-            inspection,
-            knowledge_base_entry: kb_entry_name,
-        })
+        Err(anyhow::anyhow!(
+            "live Docker inspection requires an admitted container projection; provide captured JSON to inspect_object"
+        ))
     }
 
     /// Inspect random XML data (as mentioned)
@@ -523,6 +451,7 @@ impl IntrospectiveGadget {
         patterns
     }
 
+    #[allow(dead_code)]
     fn parse_docker_top(&self, top_output: &str) -> Vec<ContainerProcess> {
         let mut processes = Vec::new();
         let lines: Vec<&str> = top_output.lines().collect();
@@ -554,6 +483,7 @@ impl IntrospectiveGadget {
         processes
     }
 
+    #[allow(dead_code)]
     fn extract_container_ports(&self, network_settings: &Value) -> HashMap<String, Vec<String>> {
         let mut ports = HashMap::new();
 
@@ -583,6 +513,7 @@ impl IntrospectiveGadget {
         ports
     }
 
+    #[allow(dead_code)]
     fn extract_container_env(&self, config: &Value) -> HashMap<String, String> {
         let mut env = HashMap::new();
 
@@ -601,6 +532,7 @@ impl IntrospectiveGadget {
         env
     }
 
+    #[allow(dead_code)]
     fn extract_container_labels(&self, config: &Value) -> HashMap<String, String> {
         let mut labels = HashMap::new();
 
@@ -988,14 +920,11 @@ struct DockerParser;
 #[async_trait::async_trait]
 impl ObjectParser for DockerParser {
     async fn parse(&self, input: &InspectionInput) -> Result<ParsedObject> {
-        if let InspectionSource::DockerContainer(name) = &input.source {
-            // Run docker inspect
-            let output = tokio::process::Command::new("docker")
-                .args(["inspect", name])
-                .output()
-                .await?;
-
-            let mut json_str = String::from_utf8_lossy(&output.stdout).to_string();
+        if let InspectionSource::DockerContainer(_) = &input.source {
+            let mut json_str = input
+                .data
+                .clone()
+                .ok_or_else(|| anyhow::anyhow!("Docker inspection requires captured JSON data"))?;
             let parsed: Value = unsafe { simd_json::from_str(&mut json_str)? };
 
             Ok(ParsedObject {
@@ -1143,4 +1072,28 @@ fn calculate_entropy(data: &[u8]) -> f64 {
     }
 
     entropy
+}
+
+#[cfg(test)]
+mod docker_projection_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn docker_parser_uses_supplied_capture_and_rejects_live_lookup() {
+        let mut input = InspectionInput {
+            source: InspectionSource::DockerContainer("sample".to_string()),
+            data: None,
+            metadata: HashMap::new(),
+        };
+        assert!(DockerParser.parse(&input).await.is_err());
+        input.data = Some("[{\"Id\":\"captured\"}]".to_string());
+        let parsed = DockerParser.parse(&input).await.expect("captured JSON");
+        assert_eq!(parsed.data[0]["Id"].as_str(), Some("captured"));
+        let gadget = IntrospectiveGadget::new(std::sync::Arc::new(tokio::sync::RwLock::new(
+            KnowledgeBase::default(),
+        )))
+        .await
+        .unwrap();
+        assert!(gadget.inspect_docker_container("sample").await.is_err());
+    }
 }

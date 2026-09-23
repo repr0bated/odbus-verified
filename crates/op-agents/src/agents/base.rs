@@ -248,6 +248,27 @@ pub mod validation {
     }
 }
 
+/// Macro for implementing common agent boilerplate
+#[macro_export]
+macro_rules! impl_agent_common {
+    ($agent:ty, $type:expr, $name:expr, $desc:expr, $ops:expr) => {
+        impl $agent {
+            pub fn agent_type(&self) -> &str {
+                $type
+            }
+            pub fn name(&self) -> &str {
+                $name
+            }
+            pub fn description(&self) -> &str {
+                $desc
+            }
+            pub fn operations(&self) -> Vec<String> {
+                $ops.iter().map(|s| s.to_string()).collect()
+            }
+        }
+    };
+}
+
 #[cfg(test)]
 mod path_security_tests {
     use super::validation::validate_path;
@@ -268,25 +289,4 @@ mod path_security_tests {
         assert!(validate_path(allowed.join("link").to_str().unwrap(), &[root_str]).is_err());
         assert!(validate_path(outside.to_str().unwrap(), &[root_str]).is_err());
     }
-}
-
-/// Macro for implementing common agent boilerplate
-#[macro_export]
-macro_rules! impl_agent_common {
-    ($agent:ty, $type:expr, $name:expr, $desc:expr, $ops:expr) => {
-        impl $agent {
-            pub fn agent_type(&self) -> &str {
-                $type
-            }
-            pub fn name(&self) -> &str {
-                $name
-            }
-            pub fn description(&self) -> &str {
-                $desc
-            }
-            pub fn operations(&self) -> Vec<String> {
-                $ops.iter().map(|s| s.to_string()).collect()
-            }
-        }
-    };
 }

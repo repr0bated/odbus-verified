@@ -989,7 +989,7 @@ async fn generated_plugin_route_preserves_integer_arguments() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn oracle_assertion_cannot_authenticate_unguarded_ovsdb_transact() {
+async fn oracle_assertion_cannot_restore_retired_ovsdb_transact() {
     let (srv, env) = start_server(false).await;
     let ch = tls_channel(srv.addr, &srv.ca_pem).await;
     let pubkey = pk(61);
@@ -1007,10 +1007,10 @@ async fn oracle_assertion_cannot_authenticate_unguarded_ovsdb_transact() {
     );
 
     let status = client.transact(request).await.unwrap_err();
-    assert_eq!(status.code(), Code::Unauthenticated);
+    assert_eq!(status.code(), Code::Unimplemented);
     assert!(status
         .message()
-        .contains("Missing Ghostbridge session identity"));
+        .contains("legacy domain RPC has no sealed method admission; use PluginService"));
 }
 
 #[tokio::test(flavor = "multi_thread")]

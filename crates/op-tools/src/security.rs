@@ -358,6 +358,54 @@ impl SecurityValidator {
                         base_cmd
                     )));
                 }
+                // Executing argv directly prevents shell expansion, but some allowed
+                // utilities can themselves spawn programs or write files.
+                if base_cmd == "find"
+                    && words.iter().skip(1).any(|arg| {
+                        matches!(
+                            arg.as_str(),
+                            "-exec"
+                                | "-execdir"
+                                | "-ok"
+                                | "-okdir"
+                                | "-delete"
+                                | "-fls"
+                                | "-fprint"
+                                | "-fprint0"
+                                | "-fprintf"
+                        )
+                    })
+                {
+                    return Err(SecurityError::AccessDenied(
+                        "Mutating find actions are not allowed in restricted mode".into(),
+                    ));
+                }
+                if base_cmd == "date"
+                    && words.iter().skip(1).any(|arg| {
+                        !arg.starts_with('+')
+                            && !matches!(
+                                arg.as_str(),
+                                "-u" | "--utc"
+                                    | "--universal"
+                                    | "-R"
+                                    | "--rfc-email"
+                                    | "-I"
+                                    | "--iso-8601"
+                                    | "--iso-8601=date"
+                                    | "--iso-8601=hours"
+                                    | "--iso-8601=minutes"
+                                    | "--iso-8601=seconds"
+                                    | "--iso-8601=ns"
+                                    | "--rfc-3339=date"
+                                    | "--rfc-3339=seconds"
+                                    | "--rfc-3339=ns"
+                            )
+                    })
+                {
+                    return Err(SecurityError::AccessDenied(
+                        "Setting the clock is not allowed in restricted mode".into(),
+                    ));
+                }
                 Ok(None)
             }
             AccessLevel::Custom => {
@@ -631,6 +679,30 @@ mod tests {
 
         // Should allow ls
         assert!(validator.check_command("ls -la").await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn restricted_utilities_cannot_execute_or_mutate() {
+        let validator = SecurityValidator::with_restricted_profile();
+        for command in [
+            "find /tmp -exec sh -c id ';'",
+            "find /tmp -execdir id +",
+            "find /tmp -delete",
+            "find /tmp -fprint /tmp/output",
+            "find /tmp -fprintf /tmp/output '%p'",
+            "find /tmp -ok sh ';'",
+            "date --set=2030-01-01",
+            "date -us2030-01-01",
+            "date -s2030-01-01",
+            "date 010100002030",
+        ] {
+            assert!(validator.check_command(command).await.is_err(), "{command}");
+        }
+        assert!(validator
+            .check_command("find /tmp -name '*.log' -print")
+            .await
+            .is_ok());
+        assert!(validator.check_command("date +%s").await.is_ok());
     }
 
     #[tokio::test]

@@ -327,20 +327,6 @@ fn missing_token_guidance(path: &Path) -> String {
     )
 }
 
-#[cfg(test)]
-mod token_guidance_tests {
-    use super::missing_token_guidance;
-    use std::path::Path;
-
-    #[test]
-    fn missing_token_guidance_uses_no_stale_systemd_command() {
-        let guidance = missing_token_guidance(Path::new("/tmp/token.json"));
-        assert!(guidance.contains("configured Antigravity OAuth flow"));
-        assert!(guidance.contains("/tmp/token.json"));
-        assert!(!guidance.contains("systemctl"));
-    }
-}
-
 impl Default for HeadlessOAuthProvider {
     fn default() -> Self {
         Self::from_env().unwrap_or_else(|_| {
@@ -352,5 +338,19 @@ impl Default for HeadlessOAuthProvider {
                 "",
             )
         })
+    }
+}
+
+#[cfg(test)]
+mod token_guidance_tests {
+    use super::missing_token_guidance;
+    use std::path::Path;
+
+    #[test]
+    fn missing_token_guidance_uses_no_stale_systemd_command() {
+        let guidance = missing_token_guidance(Path::new("/tmp/token.json"));
+        assert!(guidance.contains("configured Antigravity OAuth flow"));
+        assert!(guidance.contains("/tmp/token.json"));
+        assert!(!guidance.contains("systemctl"));
     }
 }

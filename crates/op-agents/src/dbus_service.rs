@@ -78,6 +78,25 @@ struct CatalogExecutionRequest {
     session_genesis: String,
 }
 
+fn catalog_execution_result(
+    agent_type: &str,
+    operation: &str,
+    stdout: &str,
+    stderr: &str,
+    exit_code: i64,
+) -> serde_json::Value {
+    let success = exit_code == 0;
+    serde_json::json!({
+        "agent_type": agent_type,
+        "operation": operation,
+        "stdout": stdout,
+        "stderr": stderr,
+        "exit_code": exit_code,
+        "success": success,
+        "error": (!success).then(|| format!("child exited with status {exit_code}")),
+    })
+}
+
 pub struct UnifiedExecutionService;
 
 impl UnifiedExecutionService {
@@ -184,15 +203,13 @@ impl UnifiedExecutionService {
             .or_else(|| data.get("errors"))
             .and_then(serde_json::Value::as_str)
             .unwrap_or_default();
-        serde_json::to_string(&serde_json::json!({
-            "agent_type": request.agent_type,
-            "operation": request.operation,
-            "stdout": stdout,
-            "stderr": stderr,
-            "exit_code": exit_code,
-            "success": response.success,
-            "error": (!response.success).then_some(response.message),
-        }))
+        serde_json::to_string(&catalog_execution_result(
+            &request.agent_type,
+            &request.operation,
+            stdout,
+            stderr,
+            exit_code,
+        ))
         .map_err(|e| zbus::fdo::Error::Failed(format!("response serialization failed: {e}")))
     }
 }
@@ -621,6 +638,19 @@ mod tests {
     use crate::agents::base::TaskResult;
     use crate::security::SecurityProfile;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn catalog_result_uses_child_exit_status_and_keeps_diagnostics() {
+        let failed = catalog_execution_result("shell-executor", "exec", "partial", "error", 7);
+        assert_eq!(failed["exit_code"], 7);
+        assert_eq!(failed["success"], false);
+        assert_eq!(failed["stdout"], "partial");
+        assert_eq!(failed["stderr"], "error");
+        assert_eq!(failed["error"], "child exited with status 7");
+        let passed = catalog_execution_result("shell-executor", "exec", "done", "", 0);
+        assert_eq!(passed["success"], true);
+        assert!(passed["error"].is_null());
+    }
 
     struct RecordingAgent {
         executions: Arc<AtomicUsize>,

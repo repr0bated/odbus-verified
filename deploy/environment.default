@@ -42,7 +42,9 @@ OP_DECOY_NATIVE_CERT_FILE=/etc/op-dbus/decoy-native/bridge.pem
 OP_DECOY_NATIVE_KEY_FILE=/etc/op-dbus/decoy-native/bridge-key.pem
 
 # OpenFlow controller on ovsbr0
-OPENFLOW_CONTROLLER=tcp:10.200.0.1:6653
+# Provision OF_CONTROLLER_TLS_CA/CERT/KEY for the controller and configure
+# OVS's client certificate/key/CA before enabling this authenticated endpoint.
+OPENFLOW_CONTROLLER=ssl:10.200.0.1:6653
 
 # Email Configuration for Magic Links
 SMTP_HOST=10.149.181.121

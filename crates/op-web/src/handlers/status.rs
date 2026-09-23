@@ -4,7 +4,6 @@ use axum::{extract::Extension, response::Json};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
-use sysinfo::System;
 
 use crate::state::AppState;
 
@@ -38,12 +37,13 @@ fn categorize_tool(name: &str) -> &'static str {
 
 #[derive(Serialize)]
 pub struct StatusResponse {
-    pub system: SystemInfo,
+    pub app_uptime_secs: u64,
+    pub system: Option<SystemInfo>,
     pub tools: ToolsInfo,
     pub llm: LlmInfo,
     pub agents: AgentsInfo,
-    pub services: Vec<ServiceStatus>,
-    pub network: NetworkInfo,
+    pub services: Option<Vec<ServiceStatus>>,
+    pub network: Option<NetworkInfo>,
 }
 
 #[derive(Serialize)]
@@ -98,36 +98,6 @@ pub struct InterfaceInfo {
 
 /// GET /api/status - Comprehensive system status
 pub async fn status_handler(Extension(state): Extension<Arc<AppState>>) -> Json<StatusResponse> {
-    // Get system info
-    let mut sys = System::new_all();
-    sys.refresh_all();
-
-    let hostname = gethostname::gethostname().to_string_lossy().to_string();
-    let kernel = System::kernel_version().unwrap_or_else(|| "unknown".to_string());
-
-    let load_avg = System::load_average();
-    let memory_total_mb = sys.total_memory() / 1024 / 1024;
-    let memory_used_mb = sys.used_memory() / 1024 / 1024;
-    let memory_percent = if memory_total_mb > 0 {
-        (memory_used_mb as f64 / memory_total_mb as f64) * 100.0
-    } else {
-        0.0
-    };
-
-    let cpu_usage = sys.global_cpu_info().cpu_usage();
-
-    let system = SystemInfo {
-        hostname,
-        kernel,
-        uptime_secs: state.uptime_secs(),
-        load_average: [load_avg.one, load_avg.five, load_avg.fifteen],
-        memory_total_mb,
-        memory_used_mb,
-        memory_percent,
-        cpu_count: sys.cpus().len(),
-        cpu_usage,
-    };
-
     // Get tools info
     let tools_list = state.tool_registry.list().await;
     let mut by_category: HashMap<String, usize> = HashMap::new();
@@ -165,89 +135,13 @@ pub async fn status_handler(Extension(state): Extension<Arc<AppState>>) -> Json<
         instances_running: agent_instances,
     };
 
-    // Get key services status
-    let services = get_key_services(&state.grpc_client).await;
-
-    // Get network interfaces
-    let network = get_network_info().await;
-
     Json(StatusResponse {
-        system,
+        app_uptime_secs: state.uptime_secs(),
+        system: None,
         tools,
         llm,
         agents,
-        services,
-        network,
+        services: None,
+        network: None,
     })
-}
-
-async fn get_key_services(_client: &op_grpc_bridge::RemoteOperationClient) -> Vec<ServiceStatus> {
-    let mut services = Vec::new();
-
-    let key_services = [
-        "nginx",
-        "docker",
-        "sshd",
-        "openvswitch-switch",
-        "ovsdb-server",
-        "ovs-vswitchd",
-        "op-dbus",
-        "op-web",
-    ];
-
-    for name in key_services {
-        let status = if is_sv_service_running(name).await {
-            "active".to_string()
-        } else {
-            "inactive".to_string()
-        };
-        services.push(ServiceStatus {
-            name: name.to_string(),
-            status,
-        });
-    }
-
-    services
-}
-
-async fn is_sv_service_running(name: &str) -> bool {
-    let stat_path = op_core::runit::supervise_stat_path(name);
-    if let Ok(content) = tokio::fs::read_to_string(&stat_path).await {
-        content.trim() == "run"
-    } else {
-        // Fallback: check /proc for process with the service name
-        false
-    }
-}
-
-async fn get_network_info() -> NetworkInfo {
-    let mut interfaces = Vec::new();
-
-    if let Ok(mut entries) = tokio::fs::read_dir("/sys/class/net").await {
-        while let Ok(Some(entry)) = entries.next_entry().await {
-            let name = entry.file_name().to_string_lossy().to_string();
-
-            let state_path = format!("/sys/class/net/{}/operstate", name);
-            let state = tokio::fs::read_to_string(&state_path)
-                .await
-                .unwrap_or_else(|_| "unknown".to_string())
-                .trim()
-                .to_string();
-
-            let mac_path = format!("/sys/class/net/{}/address", name);
-            let mac_address = tokio::fs::read_to_string(&mac_path)
-                .await
-                .ok()
-                .map(|m| m.trim().to_string())
-                .filter(|m| m != "00:00:00:00:00:00");
-
-            interfaces.push(InterfaceInfo {
-                name,
-                state,
-                mac_address,
-            });
-        }
-    }
-
-    NetworkInfo { interfaces }
 }

@@ -15,6 +15,13 @@ use crate::orchestration::proto::op_chat_orchestration::{
 
 use super::{OrchestrationServer, SessionInfo};
 
+fn status_event_matches_session(event: &AgentStatusEvent, session_id: &str) -> bool {
+    event
+        .metadata
+        .get("session_id")
+        .is_some_and(|id| id == session_id)
+}
+
 #[tonic::async_trait]
 impl AgentLifecycle for OrchestrationServer {
     /// Start a session: delegates to pool.init_session(), records session info,
@@ -79,7 +86,9 @@ impl AgentLifecycle for OrchestrationServer {
                         status: AgentStatus::Running.into(),
                         timestamp_ms: now_ms,
                         message: "Agent started".to_string(),
-                        metadata: Default::default(),
+                        metadata: [("session_id".to_string(), session_id.clone())]
+                            .into_iter()
+                            .collect(),
                     });
                 }
 
@@ -121,7 +130,9 @@ impl AgentLifecycle for OrchestrationServer {
                         status: AgentStatus::Stopped.into(),
                         timestamp_ms: now_ms,
                         message: "Session ended".to_string(),
-                        metadata: Default::default(),
+                        metadata: [("session_id".to_string(), req.session_id.clone())]
+                            .into_iter()
+                            .collect(),
                     });
                 }
 
@@ -200,7 +211,14 @@ impl AgentLifecycle for OrchestrationServer {
         request: Request<WatchAgentsRequest>,
     ) -> Result<Response<Self::WatchAgentsStream>, Status> {
         let req = request.into_inner();
+        if req.session_id.is_empty() {
+            return Err(Status::invalid_argument("session_id is required"));
+        }
+        if !self.sessions.read().await.contains_key(&req.session_id) {
+            return Err(Status::not_found("session not found"));
+        }
         let mut rx = self.agent_events.subscribe();
+        let filter_session = req.session_id;
         let filter_agents: Vec<String> = req.agent_ids;
         let include_heartbeats = req.include_heartbeats;
 
@@ -210,6 +228,9 @@ impl AgentLifecycle for OrchestrationServer {
             loop {
                 match rx.recv().await {
                     Ok(event) => {
+                        if !status_event_matches_session(&event, &filter_session) {
+                            continue;
+                        }
                         // Filter by agent ID if requested
                         if !filter_agents.is_empty() && !filter_agents.contains(&event.agent_id) {
                             continue;
@@ -285,5 +306,25 @@ impl AgentLifecycle for OrchestrationServer {
             agents_stopped,
             errors,
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn watch_filters_shared_agent_by_session() {
+        let event = AgentStatusEvent {
+            agent_id: "rust_pro".to_string(),
+            status: AgentStatus::Running.into(),
+            timestamp_ms: 0,
+            message: "Agent started".to_string(),
+            metadata: [("session_id".to_string(), "session-b".to_string())]
+                .into_iter()
+                .collect(),
+        };
+        assert!(!status_event_matches_session(&event, "session-a"));
+        assert!(status_event_matches_session(&event, "session-b"));
     }
 }

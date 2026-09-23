@@ -43,6 +43,7 @@ impl CandidateKey {
         Self::ClaudeFable51,
     ];
 
+    #[cfg(test)]
     pub(crate) const fn model(self) -> &'static str {
         match self {
             Self::Grok47 => "xai/grok-4.7",

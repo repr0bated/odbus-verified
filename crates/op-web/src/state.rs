@@ -186,20 +186,11 @@ impl AppState {
 
         // Initialize privacy router components
         // User database in CozoDB — graph-native, no JSON drift.
-        let user_store = match UserStore::new("/var/lib/op-dbus/users-cozo").await {
-            Ok(store) => Arc::new(store),
-            Err(e) => {
-                warn!(
-                    "Failed to open CozoDB user store: {}, falling back to in-memory",
-                    e
-                );
-                Arc::new(
-                    UserStore::new("")
-                        .await
-                        .expect("Failed to create in-memory user store"),
-                )
-            }
-        };
+        let user_store = Arc::new(
+            UserStore::new("/var/lib/op-dbus/users-cozo")
+                .await
+                .context("opening durable CozoDB user store")?,
+        );
 
         let email_config = EmailConfig::from_env().unwrap_or_else(|e| {
             warn!("Failed to load email config: {}", e);

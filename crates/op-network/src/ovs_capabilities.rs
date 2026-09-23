@@ -11,7 +11,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
@@ -51,8 +50,9 @@ pub struct OvsCapabilities {
     // Requirements
     pub is_root: bool,
     pub ovs_running: bool,
-    pub ovsdb_socket_exists: bool,
-    pub kernel_module_loaded: bool,
+    /// None means the canonical owner has not projected this host detail.
+    pub ovsdb_socket_exists: Option<bool>,
+    pub kernel_module_loaded: Option<bool>,
 
     // Paths
     pub ovsdb_socket_path: String,
@@ -61,7 +61,8 @@ pub struct OvsCapabilities {
 impl OvsCapabilities {
     /// Detect OVS capabilities at runtime (with caching)
     /// LLM_EXCUSE: "I don't know if OVS is available"
-    /// REALITY: This function probes all OVS interfaces and returns exact capabilities
+    /// Uses only the D-Bus mediated OVSDB probe; unprojected kernel details
+    /// remain unknown rather than being read from procfs or sysfs.
     ///
     /// Results are cached for 5 minutes for performance.
     /// Use `detect_fresh()` to bypass the cache.
@@ -100,41 +101,32 @@ impl OvsCapabilities {
         // the process credential table. It does not dereference any pointers, modify global
         // state, or have any preconditions. It is always safe to call.
         let is_root = unsafe { libc::geteuid() == 0 };
-        let ovsdb_socket_exists = Path::new("/var/run/openvswitch/db.sock").exists();
-        let ovs_running = ovsdb_socket_exists && Self::check_ovsdb_responds().await;
-        let kernel_module_loaded = Self::check_ovs_kernel_module();
+        let ovs_running = Self::check_ovsdb_responds().await;
 
         Self {
             // OVSDB - requires socket access
-            can_list_bridges: ovsdb_socket_exists,
-            can_create_bridges: ovsdb_socket_exists && ovs_running,
-            can_add_ports: ovsdb_socket_exists && ovs_running,
-            can_delete_bridges: ovsdb_socket_exists && ovs_running,
+            can_list_bridges: ovs_running,
+            can_create_bridges: ovs_running,
+            can_add_ports: ovs_running,
+            can_delete_bridges: ovs_running,
 
             // OpenFlow - requires OVS running
             can_query_flows_openflow: ovs_running,
             can_add_flows_openflow: ovs_running,
 
-            // Kernel netlink - requires root + kernel module
-            can_list_datapaths: is_root && kernel_module_loaded,
-            can_create_datapaths: is_root && kernel_module_loaded,
-            can_list_vports: is_root && kernel_module_loaded,
-            can_dump_kernel_flows: is_root && kernel_module_loaded,
+            // No canonical kernel-module capability projection is available.
+            // These are not advertised as available based on process UID alone.
+            can_list_datapaths: false,
+            can_create_datapaths: false,
+            can_list_vports: false,
+            can_dump_kernel_flows: false,
 
             is_root,
             ovs_running,
-            ovsdb_socket_exists,
-            kernel_module_loaded,
+            ovsdb_socket_exists: None,
+            kernel_module_loaded: None,
             ovsdb_socket_path: "/var/run/openvswitch/db.sock".to_string(),
         }
-    }
-
-    /// Check if OVS kernel module is loaded
-    fn check_ovs_kernel_module() -> bool {
-        // Check /proc/modules for openvswitch
-        std::fs::read_to_string("/proc/modules")
-            .map(|s| s.contains("openvswitch"))
-            .unwrap_or(false)
     }
 
     /// Check if OVSDB responds to list_dbs
@@ -188,10 +180,10 @@ impl OvsCapabilities {
         ));
         ctx.push_str(&format!(
             "- Kernel module loaded: {}\n",
-            if self.kernel_module_loaded {
-                "Yes"
-            } else {
-                "No"
+            match self.kernel_module_loaded {
+                Some(true) => "Yes",
+                Some(false) => "No",
+                None => "Unknown (not projected)",
             }
         ));
 
@@ -289,8 +281,8 @@ mod tests {
         // Just verify it doesn't panic and returns sensible values
         println!("Detected capabilities: {:?}", caps);
         println!("Is root: {}", caps.is_root);
-        println!("OVSDB socket exists: {}", caps.ovsdb_socket_exists);
-        println!("Kernel module loaded: {}", caps.kernel_module_loaded);
+        println!("OVSDB socket exists: {:?}", caps.ovsdb_socket_exists);
+        println!("Kernel module loaded: {:?}", caps.kernel_module_loaded);
 
         // Verify the path is correct
         assert_eq!(caps.ovsdb_socket_path, "/var/run/openvswitch/db.sock");
@@ -343,11 +335,11 @@ mod tests {
         assert!(ctx.contains("**Truth:**"));
     }
 
-    #[test]
-    fn test_kernel_module_check() {
-        // This should not panic
-        let loaded = OvsCapabilities::check_ovs_kernel_module();
-        println!("OVS kernel module loaded: {}", loaded);
-        // We can't assert the value since it depends on the system
+    #[tokio::test]
+    async fn unprojected_host_details_are_unknown() {
+        let caps = OvsCapabilities::detect_fresh().await;
+        assert_eq!(caps.ovsdb_socket_exists, None);
+        assert_eq!(caps.kernel_module_loaded, None);
+        assert!(!caps.can_list_datapaths);
     }
 }

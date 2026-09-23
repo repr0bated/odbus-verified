@@ -2145,16 +2145,14 @@ pub(crate) mod tests {
         }
     }
 
-    fn refresh_test_lock() -> std::sync::MutexGuard<'static, ()> {
-        static LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
-        LOCK.get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    fn refresh_test_lock() -> &'static tokio::sync::Mutex<()> {
+        static LOCK: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
+        LOCK.get_or_init(|| tokio::sync::Mutex::new(()))
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn refresh_migrates_legacy_sid1_and_replaces_transport_auth() {
-        let _refresh_lock = refresh_test_lock();
+        let _refresh_lock = refresh_test_lock().lock().await;
         let (engine, _shm, identity, _grants_dir, previous, _registry) =
             refresh_test_fixture_with_claims(0x81, Some("dbus,grpc,mcp"), 0).await;
         let key = identity.wireguard_pubkey.clone();
@@ -2226,7 +2224,7 @@ pub(crate) mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn refresh_is_idempotent_and_rejects_unverified_inputs() {
-        let _refresh_lock = refresh_test_lock();
+        let _refresh_lock = refresh_test_lock().lock().await;
         let (engine, _shm, identity, _grants_dir, previous, _registry) =
             refresh_test_fixture(0x82).await;
         let actor = op_identity::session::derive_principal_id(&identity.wireguard_pubkey);
@@ -2333,7 +2331,7 @@ pub(crate) mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn refresh_rejects_invalid_scope_expiry_revocation_and_missing_grant() {
-        let _refresh_lock = refresh_test_lock();
+        let _refresh_lock = refresh_test_lock().lock().await;
         {
             let (bad_engine, _bad_shm, bad_identity, _bad_grants, bad_previous, _bad_registry) =
                 refresh_test_fixture_with_claims(0x84, Some("dbus,mqtt"), 0).await;
@@ -2377,7 +2375,7 @@ pub(crate) mod tests {
         let (engine, _shm, identity, grants_dir, previous, _registry) =
             refresh_test_fixture(0x83).await;
         let actor = op_identity::session::derive_principal_id(&identity.wireguard_pubkey);
-        std::fs::write(&grants_dir.path().join("capability-grants.json"), b"{}").unwrap();
+        std::fs::write(grants_dir.path().join("capability-grants.json"), b"{}").unwrap();
         assert!(dispatch_identity_sled_method_for_verified_session(
             &engine,
             "refresh_credential",
@@ -2389,7 +2387,7 @@ pub(crate) mod tests {
         .await
         .is_err());
         std::fs::write(
-            &grants_dir.path().join("capability-grants.json"),
+            grants_dir.path().join("capability-grants.json"),
             serde_json::to_vec(
                 &serde_json::json!({actor.clone(): {"capabilities": ["identity_sled.credential.refresh"]}}),
             )

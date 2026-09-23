@@ -451,6 +451,7 @@ pub async fn is_package_installed(package_name: &str) -> Result<bool> {
 
 /// Restore system from DR export using PackageKit D-Bus
 pub async fn restore_from_export(export: &DisasterRecoveryExport) -> Result<RestoreResult> {
+    validate_export_dependencies(export)?;
     let mut result = RestoreResult {
         success: true,
         plugins_restored: Vec::new(),
@@ -548,9 +549,57 @@ pub async fn restore_from_export(export: &DisasterRecoveryExport) -> Result<Rest
     Ok(result)
 }
 
+/// Imported metadata cannot extend the package policy compiled into the owner.
+fn validate_export_dependencies(export: &DisasterRecoveryExport) -> Result<()> {
+    fn validate(dependencies: &[SystemDependency], allowed: Vec<SystemDependency>) -> Result<()> {
+        for dependency in dependencies {
+            anyhow::ensure!(
+                allowed
+                    .iter()
+                    .any(|trusted| trusted.name == dependency.name)
+                    && dependency.package_manager == "packagekit"
+                    && dependency.install_command.is_none(),
+                "Recovery dependency '{}' is not authorized by local package policy",
+                dependency.name
+            );
+        }
+        Ok(())
+    }
+    validate(&export.global_dependencies, get_global_dependencies())?;
+    for (name, plugin) in &export.plugins {
+        anyhow::ensure!(
+            name == &plugin.plugin_name,
+            "Recovery plugin name does not match its key"
+        );
+        validate(&plugin.dependencies, get_plugin_dependencies(name))?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn imported_packages_require_local_policy_before_dbus() {
+        let mut export = DisasterRecoveryExport::new();
+        export
+            .global_dependencies
+            .push(SystemDependency::required("untrusted-package"));
+        assert!(restore_from_export(&export)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("not authorized"));
+        export.global_dependencies = get_global_dependencies();
+        assert!(validate_export_dependencies(&export).is_ok());
+        let mut plugin = PluginStateExport::new("btrfs", "1", simd_json::json!({}));
+        plugin
+            .dependencies
+            .push(SystemDependency::required("untrusted-package"));
+        export.add_plugin(plugin);
+        assert!(validate_export_dependencies(&export).is_err());
+    }
 
     #[test]
     fn test_dr_export_creation() {

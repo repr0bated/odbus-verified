@@ -1,7 +1,18 @@
-//! WireGuard identity detection and peer management.
+//! Compatibility identity API for callers that inject a verified pubkey.
+//! The host does not terminate the human WireGuard tunnel; live peer state is
+//! owned by the decoy issuer and must not be inferred from host interfaces.
 
-use std::process::Command;
 use tracing::debug;
+
+fn injected_pubkey(value: Option<String>) -> anyhow::Result<String> {
+    match value {
+        Some(pubkey) if !pubkey.trim().is_empty() => Ok(pubkey),
+        Some(_) => anyhow::bail!("WG_PUBKEY is empty"),
+        None => anyhow::bail!(
+            "WG_PUBKEY unset; host WireGuard interface discovery is not identity proof"
+        ),
+    }
+}
 
 /// WireGuard identity provider
 #[derive(Debug, Clone)]
@@ -31,210 +42,39 @@ impl WireGuardIdentity {
         }
     }
 
-    /// Get the local WireGuard public key (this machine's identity)
+    /// Get the explicitly injected public key. Host interface discovery is
+    /// not an identity proof in the decoy/WARP topology.
     pub fn get_local_pubkey(&self) -> anyhow::Result<String> {
-        // Try environment variable first
-        if let Ok(pubkey) = std::env::var("WG_PUBKEY") {
-            debug!("Using WG_PUBKEY from environment");
-            return Ok(pubkey);
-        }
-
-        let interface = self
-            .interface
-            .as_ref()
-            .filter(|v| !v.is_empty())
-            .map(String::as_str)
-            .ok_or_else(|| anyhow::anyhow!("WG_PUBKEY unset and WG interface not configured"))?;
-
-        // Fall back to live interface state (wg show <iface> public-key).
-        let output = Command::new("wg")
-            .args(["show", interface, "public-key"])
-            .output()?;
-        if output.status.success() {
-            let pubkey = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !pubkey.is_empty() {
-                debug!(iface = %interface, "Using WireGuard pubkey from wg show");
-                return Ok(pubkey);
-            }
-        }
-
-        anyhow::bail!(
-            "WG_PUBKEY unset and `wg show {} public-key` failed; cannot resolve local identity",
-            interface
-        );
+        let pubkey = injected_pubkey(std::env::var("WG_PUBKEY").ok())?;
+        debug!("Using WG_PUBKEY from environment");
+        Ok(pubkey)
     }
 
-    /// True when `pubkey` is a peer on this interface with a recent handshake.
-    pub fn is_recent_peer(&self, pubkey: &str, max_age_secs: u64) -> anyhow::Result<bool> {
-        let interface = self
-            .interface
-            .as_ref()
-            .filter(|v| !v.is_empty())
-            .map(String::as_str)
-            .ok_or_else(|| anyhow::anyhow!("WG interface not configured"))?;
-
-        let output = Command::new("wg")
-            .args(["show", interface, "latest-handshakes"])
-            .output()?;
-        if !output.status.success() {
-            return Ok(false);
-        }
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
-        for line in stdout.lines() {
-            let mut parts = line.split('\t');
-            let Some(peer) = parts.next() else { continue };
-            let Some(ts) = parts.next() else { continue };
-            if peer != pubkey {
-                continue;
-            }
-            let timestamp: u64 = ts.parse().unwrap_or(0);
-            return Ok(timestamp > 0 && now.saturating_sub(timestamp) <= max_age_secs);
-        }
-        Ok(false)
+    fn decoy_only_error(&self) -> anyhow::Error {
+        anyhow::anyhow!(
+            "live WireGuard peer discovery for {:?} belongs to the decoy issuer",
+            self.interface
+        )
     }
 
-    /// Get peer's pubkey from their IP address
-    pub fn get_pubkey_for_ip(&self, peer_ip: &str) -> anyhow::Result<Option<String>> {
-        let interface = self
-            .interface
-            .as_ref()
-            .filter(|v| !v.is_empty())
-            .map(String::as_str)
-            .ok_or_else(|| anyhow::anyhow!("WG interface not configured"))?;
-
-        let output = Command::new("wg")
-            .args(["show", interface, "allowed-ips"])
-            .output()?;
-
-        if !output.status.success() {
-            return Ok(None);
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-
-        // Format: pubkey\tallowed_ip1, allowed_ip2
-        for line in stdout.lines() {
-            let parts: Vec<&str> = line.split('\t').collect();
-            if parts.len() >= 2 {
-                let pubkey = parts[0];
-                let ips = parts[1];
-
-                if ips.contains(peer_ip) {
-                    return Ok(Some(pubkey.to_string()));
-                }
-            }
-        }
-
-        Ok(None)
+    /// Peer freshness must come from a decoy-signed assertion.
+    pub fn is_recent_peer(&self, _pubkey: &str, _max_age_secs: u64) -> anyhow::Result<bool> {
+        Err(self.decoy_only_error())
     }
 
-    /// Get all connected peers with their latest handshake times
+    /// Exact peer mapping must come from the decoy-signed assertion.
+    pub fn get_pubkey_for_ip(&self, _peer_ip: &str) -> anyhow::Result<Option<String>> {
+        Err(self.decoy_only_error())
+    }
+
+    /// Connected peer inventory belongs to the decoy.
     pub fn get_connected_peers(&self) -> anyhow::Result<Vec<PeerInfo>> {
-        let interface = self
-            .interface
-            .as_ref()
-            .filter(|v| !v.is_empty())
-            .map(String::as_str)
-            .ok_or_else(|| anyhow::anyhow!("WG interface not configured"))?;
-
-        let output = Command::new("wg")
-            .args(["show", interface, "latest-handshakes"])
-            .output()?;
-
-        if !output.status.success() {
-            return Ok(Vec::new());
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let mut peers = Vec::new();
-
-        // Format: pubkey\ttimestamp
-        for line in stdout.lines() {
-            let parts: Vec<&str> = line.split('\t').collect();
-            if parts.len() >= 2 {
-                let pubkey = parts[0].to_string();
-                let timestamp: u64 = parts[1].parse().unwrap_or(0);
-
-                // Only include peers with recent handshakes (within 3 minutes)
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or(0);
-
-                if timestamp > 0 && now - timestamp < 180 {
-                    peers.push(PeerInfo {
-                        pubkey,
-                        last_handshake: timestamp,
-                        allowed_ips: self.get_allowed_ips_for_peer(parts[0]).unwrap_or_default(),
-                    });
-                }
-            }
-        }
-
-        Ok(peers)
+        Err(self.decoy_only_error())
     }
 
-    /// Get the primary IPv4 address of the WireGuard interface.
-    ///
-    /// Uses `ip -4 addr show <iface>` and parses the first `inet` address.
-    /// Returns `None` if the interface has no IPv4 address or the command fails.
+    /// The host has no WireGuard interface address for identity pickup.
     pub fn get_local_ip(&self) -> Option<String> {
-        let interface = self.interface.as_deref()?;
-
-        let output = Command::new("ip")
-            .args(["-4", "addr", "show", interface])
-            .output()
-            .ok()?;
-
-        if !output.status.success() {
-            return None;
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        for line in stdout.lines() {
-            let trimmed = line.trim();
-            if let Some(rest) = trimmed.strip_prefix("inet ") {
-                // rest is e.g. "100.90.37.254/32 scope global wg0"
-                let ip = rest.split('/').next()?.trim();
-                if !ip.is_empty() {
-                    return Some(ip.to_string());
-                }
-            }
-        }
         None
-    }
-
-    /// Get allowed IPs for a specific peer
-    fn get_allowed_ips_for_peer(&self, pubkey: &str) -> anyhow::Result<Vec<String>> {
-        let interface = self
-            .interface
-            .as_ref()
-            .filter(|v| !v.is_empty())
-            .map(String::as_str)
-            .ok_or_else(|| anyhow::anyhow!("WG interface not configured"))?;
-
-        let output = Command::new("wg")
-            .args(["show", interface, "allowed-ips"])
-            .output()?;
-
-        if !output.status.success() {
-            return Ok(Vec::new());
-        }
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-
-        for line in stdout.lines() {
-            let parts: Vec<&str> = line.split('\t').collect();
-            if parts.len() >= 2 && parts[0] == pubkey {
-                return Ok(parts[1].split(',').map(|s| s.trim().to_string()).collect());
-            }
-        }
-
-        Ok(Vec::new())
     }
 }
 
@@ -250,4 +90,24 @@ pub struct PeerInfo {
     pub pubkey: String,
     pub last_handshake: u64,
     pub allowed_ips: Vec<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn host_identity_requires_explicit_injected_pubkey() {
+        assert!(injected_pubkey(None).is_err());
+        assert!(injected_pubkey(Some(" ".into())).is_err());
+        assert_eq!(
+            injected_pubkey(Some("verified-key".into())).unwrap(),
+            "verified-key"
+        );
+        let legacy = WireGuardIdentity::with_interface("wg-opdbus");
+        assert!(legacy.is_recent_peer("peer", 180).is_err());
+        assert!(legacy.get_pubkey_for_ip("10.0.0.5").is_err());
+        assert!(legacy.get_connected_peers().is_err());
+        assert_eq!(legacy.get_local_ip(), None);
+    }
 }

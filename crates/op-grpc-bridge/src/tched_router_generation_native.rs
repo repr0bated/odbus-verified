@@ -187,7 +187,7 @@ async fn run_native(
             .insert("Authorization", authorization);
     }
     if let Some(sealed_identity) = request.sealed_identity.as_deref() {
-        let mut header = sid1_header_value(sealed_identity)?;
+        let header = sid1_header_value(sealed_identity)?;
         handshake
             .headers_mut()
             .insert("x-opdbus-sealed-id-bin", header);

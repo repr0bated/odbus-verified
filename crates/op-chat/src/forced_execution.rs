@@ -166,12 +166,17 @@ impl ForcedExecutionOrchestrator {
                 all_succeeded = false;
             }
 
+            let (value, error) = match result {
+                Ok(value) => (Some(value), None),
+                Err(error) => (None, Some(error.to_string())),
+            };
+
             results.push(ToolCallResult {
                 tool_name: call.name,
                 arguments: call.arguments,
                 success,
-                result: result.ok(),
-                error: None,
+                result: value,
+                error,
             });
         }
 

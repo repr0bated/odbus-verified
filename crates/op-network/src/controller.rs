@@ -24,12 +24,17 @@ use bytes::Bytes;
 use rovs_openflow::{ActionList, Flow, Match, Message, MessageType, OutputPort, Version};
 use rovs_transport::Reconnect;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::BufReader;
 use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{mpsc, oneshot};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::net::TcpListener;
+use tokio::sync::{mpsc, oneshot, Semaphore};
+use tokio_rustls::rustls::{self, RootCertStore};
+use tokio_rustls::TlsAcceptor;
 
 use crate::datapath_safe::{FALLBACK_COOKIE, MANAGED_COOKIE};
 use crate::openflow_translate::{json_flow_to_add, json_flow_to_delete};
@@ -41,6 +46,93 @@ mod flow_verify;
 #[cfg(test)]
 #[path = "controller_native_tests.rs"]
 mod native_tests;
+
+/// All OpenFlow wire operations use the authenticated TLS stream. Tests may
+/// supply an in-memory or TCP stream to exercise frame encoding alone.
+trait OfIo: AsyncRead + AsyncWrite + Unpin + Send {}
+impl<T: AsyncRead + AsyncWrite + Unpin + Send> OfIo for T {}
+
+const TLS_CA_ENV: &str = "OF_CONTROLLER_TLS_CA";
+const TLS_CERT_ENV: &str = "OF_CONTROLLER_TLS_CERT";
+const TLS_KEY_ENV: &str = "OF_CONTROLLER_TLS_KEY";
+
+#[derive(Clone, Debug)]
+struct TlsPaths {
+    client_ca: PathBuf,
+    server_cert: PathBuf,
+    server_key: PathBuf,
+}
+
+impl TlsPaths {
+    fn from_env() -> Result<Self> {
+        Self::from_values(
+            std::env::var(TLS_CA_ENV).ok().as_deref(),
+            std::env::var(TLS_CERT_ENV).ok().as_deref(),
+            std::env::var(TLS_KEY_ENV).ok().as_deref(),
+        )
+    }
+
+    fn from_values(ca: Option<&str>, cert: Option<&str>, key: Option<&str>) -> Result<Self> {
+        fn required(name: &str, value: Option<&str>) -> Result<PathBuf> {
+            let value = value.with_context(|| format!("{name} is required"))?;
+            anyhow::ensure!(!value.trim().is_empty(), "{name} must not be empty");
+            Ok(PathBuf::from(value))
+        }
+        Ok(Self {
+            client_ca: required(TLS_CA_ENV, ca)?,
+            server_cert: required(TLS_CERT_ENV, cert)?,
+            server_key: required(TLS_KEY_ENV, key)?,
+        })
+    }
+
+    fn server_config(&self) -> Result<rustls::ServerConfig> {
+        let mut ca = RootCertStore::empty();
+        let mut reader =
+            BufReader::new(File::open(&self.client_ca).with_context(|| {
+                format!("opening OpenFlow client CA {}", self.client_ca.display())
+            })?);
+        let ca_certs = rustls_pemfile::certs(&mut reader)
+            .collect::<std::io::Result<Vec<_>>>()
+            .context("parsing OpenFlow client CA")?;
+        anyhow::ensure!(
+            !ca_certs.is_empty(),
+            "OpenFlow client CA contains no certificates"
+        );
+        for cert in ca_certs {
+            ca.add(cert)
+                .context("invalid OpenFlow client CA certificate")?;
+        }
+        let verifier = rustls::server::WebPkiClientVerifier::builder(Arc::new(ca))
+            .build()
+            .context("configuring OpenFlow client certificate verifier")?;
+        let certs = read_certs(&self.server_cert)?;
+        let mut key_reader = BufReader::new(File::open(&self.server_key).with_context(|| {
+            format!("opening OpenFlow server key {}", self.server_key.display())
+        })?);
+        let key = rustls_pemfile::private_key(&mut key_reader)
+            .context("parsing OpenFlow server key")?
+            .context("OpenFlow server key contains no private key")?;
+        rustls::ServerConfig::builder()
+            .with_client_cert_verifier(verifier)
+            .with_single_cert(certs, key)
+            .context("configuring OpenFlow mTLS server certificate")
+    }
+}
+
+fn read_certs(path: &Path) -> Result<Vec<rustls::pki_types::CertificateDer<'static>>> {
+    let mut reader = BufReader::new(
+        File::open(path)
+            .with_context(|| format!("opening OpenFlow server cert {}", path.display()))?,
+    );
+    let certs = rustls_pemfile::certs(&mut reader)
+        .collect::<std::io::Result<Vec<_>>>()
+        .context("parsing OpenFlow server certificate")?;
+    anyhow::ensure!(
+        !certs.is_empty(),
+        "OpenFlow server certificate file is empty"
+    );
+    Ok(certs)
+}
 
 /// A request to install or delete a schema-driven flow on the currently
 /// connected switch, submitted via `OpenFlowControllerHandle::send_flow`.
@@ -198,7 +290,7 @@ struct RawMsg {
 }
 
 /// Read one complete OpenFlow message from `stream`.
-async fn recv_msg(stream: &mut TcpStream) -> Result<RawMsg> {
+async fn recv_msg(stream: &mut impl OfIo) -> Result<RawMsg> {
     let mut first = [0];
     stream
         .read_exact(&mut first)
@@ -207,7 +299,7 @@ async fn recv_msg(stream: &mut TcpStream) -> Result<RawMsg> {
     recv_msg_after_first(stream, first[0]).await
 }
 
-async fn recv_msg_after_first(stream: &mut TcpStream, first: u8) -> Result<RawMsg> {
+async fn recv_msg_after_first(stream: &mut impl OfIo, first: u8) -> Result<RawMsg> {
     let mut hdr = [0u8; 8];
     hdr[0] = first;
     stream
@@ -240,7 +332,7 @@ async fn recv_msg_after_first(stream: &mut TcpStream, first: u8) -> Result<RawMs
 }
 
 /// Write raw bytes to `stream`.
-async fn send_msg(stream: &mut TcpStream, bytes: &[u8]) -> Result<()> {
+async fn send_msg(stream: &mut impl OfIo, bytes: &[u8]) -> Result<()> {
     stream.write_all(bytes).await.context("sending OF message")
 }
 
@@ -253,7 +345,7 @@ async fn send_msg(stream: &mut TcpStream, bytes: &[u8]) -> Result<()> {
 /// instead of hard-coding the bridge's MAC in config — it comes free with the
 /// reply we already have to parse, with no OVSDB round trip.
 async fn discover_ports(
-    stream: &mut TcpStream,
+    stream: &mut impl OfIo,
     xid: u32,
 ) -> Result<(HashMap<String, u32>, HashMap<String, [u8; 6]>)> {
     send_msg(stream, &build_port_desc_request(xid)).await?;
@@ -328,7 +420,7 @@ async fn discover_ports(
 
 /// Handle one inbound OVS connection: handshake → port discovery → flow install → keepalive.
 async fn handle_connection(
-    mut stream: TcpStream,
+    mut stream: impl OfIo + 'static,
     flows: Arc<Vec<(String, String, u16)>>,
     static_flows: Arc<Vec<String>>,
     static_fdb: Arc<Vec<StaticFdbEntry>>,
@@ -529,6 +621,7 @@ async fn handle_connection(
     let mut echo_tick = tokio::time::interval(Duration::from_secs(5));
     echo_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     let result = loop {
+        let mut first = [0u8; 1];
         tokio::select! {
             _ = echo_tick.tick() => {
                 // Proactive echo (design: do not rely on kernel TCP RTO alone).
@@ -537,19 +630,15 @@ async fn handle_connection(
                 }
                 xid = xid.wrapping_add(1);
             }
-            ready = stream.readable() => {
-                if let Err(error) = ready { break Err(error.into()); }
-                // Readiness can be stale after a prior successful read. Clear
-                // it with try_read before committing to a whole-frame wait.
-                let mut first = [0];
-                match stream.try_read(&mut first) {
+            read = stream.read(&mut first) => {
+                // A one-byte AsyncReadExt::read is cancellation safe. Once the
+                // first byte arrives, finish the entire frame without select!
+                // cancellation, so TLS and TCP preserve the same framing.
+                match read {
                     Ok(0) => break Err(anyhow::anyhow!("OpenFlow peer closed")),
                     Ok(_) => {},
-                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => continue,
                     Err(error) => break Err(error.into()),
                 }
-                // Readiness is cancellation safe. Never cancel recv_msg after
-                // it has consumed part of a frame to handle another command.
                 let msg = match tokio::time::timeout(Duration::from_secs(10), recv_msg_after_first(&mut stream, first[0])).await {
                     Ok(message) => message,
                     Err(error) => break Err(error.into()),
@@ -602,7 +691,7 @@ async fn handle_connection(
 
 /// Translate and push one schema-driven flow ADD to the connected switch.
 async fn push_flow_add(
-    stream: &mut TcpStream,
+    stream: &mut impl OfIo,
     flow_json: &str,
     port_map: &HashMap<String, u32>,
     port_macs: &HashMap<String, [u8; 6]>,
@@ -617,7 +706,7 @@ async fn push_flow_add(
 
 /// Translate and push one schema-driven flow DELETE to the connected switch.
 async fn push_flow_delete(
-    stream: &mut TcpStream,
+    stream: &mut impl OfIo,
     flow_json: &str,
     port_map: &HashMap<String, u32>,
     port_macs: &HashMap<String, [u8; 6]>,
@@ -631,7 +720,7 @@ async fn push_flow_delete(
 }
 
 async fn compare_exchange_flow(
-    stream: &mut TcpStream,
+    stream: &mut impl OfIo,
     request: &FlowRequest,
     ports: &HashMap<String, u32>,
     macs: &HashMap<String, [u8; 6]>,
@@ -670,7 +759,7 @@ async fn compare_exchange_flow(
 }
 
 async fn verify_owned_flow(
-    stream: &mut TcpStream,
+    stream: &mut impl OfIo,
     request: &FlowRequest,
     ports: &HashMap<String, u32>,
     macs: &HashMap<String, [u8; 6]>,
@@ -700,7 +789,8 @@ async fn verify_owned_flow(
 /// OpenFlow 1.3 controller — accepts connections from OVS and installs flows.
 ///
 /// OVS connects *to* the controller (not the other way around).
-/// Configure OVS with: `attach-controller-safe ovsbr0 tcp:<listen_addr>`
+/// Configure OVS with a client certificate signed by the configured CA and
+/// `attach-controller-safe ovsbr0 ssl:<listen_addr>`.
 /// (or D-Bus `AttachControllerSafe`) — never bare `ovs-vsctl set-controller`.
 pub struct OpenFlowController {
     listen_addr: SocketAddr,
@@ -770,31 +860,75 @@ impl OpenFlowController {
     /// that rapid repeated failures (e.g. OVS flapping) are logged with backoff information
     /// rather than silently spinning.
     pub async fn run(self) -> Result<()> {
-        anyhow::ensure!(
-            self.listen_addr.ip().is_loopback(),
-            "refusing unauthenticated OpenFlow listener on non-loopback address {}",
-            self.listen_addr
-        );
+        // Validate the complete mTLS trust bundle before opening any socket.
+        // Source IP (including loopback) is never a switch identity.
+        let tls_paths = TlsPaths::from_env()?;
+        let acceptor = TlsAcceptor::from(Arc::new(tls_paths.server_config()?));
         let listener = TcpListener::bind(self.listen_addr)
             .await
             .with_context(|| format!("binding OpenFlow controller on {}", self.listen_addr))?;
 
-        log::info!("OpenFlow controller listening on {}", self.listen_addr);
+        log::info!("OpenFlow mTLS controller listening on {}", self.listen_addr);
 
         let flows = Arc::new(self.flows);
         let static_flows = Arc::new(self.static_flows);
         let static_fdb = Arc::new(self.static_fdb);
         let active_conn = self.active_conn;
+        // A client without a certificate must not retain an unbounded number
+        // of handshake tasks while it waits for the ten-second timeout.
+        let handshake_slots = Arc::new(Semaphore::new(64));
 
         loop {
             let (stream, peer) = listener.accept().await?;
+            let slot = match Arc::clone(&handshake_slots).try_acquire_owned() {
+                Ok(slot) => slot,
+                Err(_) => {
+                    log::warn!("OpenFlow controller: TLS handshake capacity reached");
+                    continue;
+                }
+            };
             let flows = flows.clone();
             let static_flows = static_flows.clone();
             let static_fdb = static_fdb.clone();
             let active_conn = active_conn.clone();
-            log::info!("OpenFlow controller: OVS connected from {}", peer);
+            let acceptor = acceptor.clone();
 
             tokio::spawn(async move {
+                let stream =
+                    match tokio::time::timeout(Duration::from_secs(10), acceptor.accept(stream))
+                        .await
+                    {
+                        Ok(Ok(stream)) => stream,
+                        Ok(Err(error)) => {
+                            log::warn!(
+                                "OpenFlow controller: rejected unauthenticated switch {}: {}",
+                                peer,
+                                error
+                            );
+                            return;
+                        }
+                        Err(_) => {
+                            log::warn!("OpenFlow controller: TLS handshake timed out for {}", peer);
+                            return;
+                        }
+                    };
+                if !stream
+                    .get_ref()
+                    .1
+                    .peer_certificates()
+                    .is_some_and(|chain| !chain.is_empty())
+                {
+                    log::warn!(
+                        "OpenFlow controller: rejected switch {} without client certificate",
+                        peer
+                    );
+                    return;
+                }
+                drop(slot);
+                log::info!(
+                    "OpenFlow controller: authenticated OVS connection from {}",
+                    peer
+                );
                 // Per-connection reconnection tracker.  OVS is the active side so
                 // we don't drive the reconnect loop ourselves — we just record state
                 // and log when failures come in rapidly so operators see backoff hints.
@@ -959,6 +1093,99 @@ impl OpenFlowControllerHandle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rcgen::{BasicConstraints, CertificateParams, IsCa, KeyPair};
+    use rustls::pki_types::{PrivateKeyDer, ServerName};
+    use rustls::ClientConfig;
+    use tokio_rustls::TlsConnector;
+
+    async fn handshake(server: Arc<rustls::ServerConfig>, client: Arc<ClientConfig>) -> bool {
+        let (client_io, server_io) = tokio::io::duplex(64 * 1024);
+        let (accepted, _) = tokio::time::timeout(Duration::from_secs(3), async {
+            tokio::join!(
+                TlsAcceptor::from(server).accept(server_io),
+                TlsConnector::from(client).connect(
+                    ServerName::try_from("controller.fixture").unwrap(),
+                    client_io
+                )
+            )
+        })
+        .await
+        .unwrap();
+        accepted.is_ok()
+    }
+
+    #[tokio::test]
+    async fn controller_mtls_accepts_only_dedicated_ca_client_certificate() {
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+        let ca_key = KeyPair::generate().unwrap();
+        let mut ca_params = CertificateParams::new(vec![]).unwrap();
+        ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+        let ca = ca_params.self_signed(&ca_key).unwrap();
+        let server_key = KeyPair::generate().unwrap();
+        let server_cert = CertificateParams::new(vec!["controller.fixture".into()])
+            .unwrap()
+            .signed_by(&server_key, &ca, &ca_key)
+            .unwrap();
+        let client_key = KeyPair::generate().unwrap();
+        let client_cert = CertificateParams::new(vec!["switch.fixture".into()])
+            .unwrap()
+            .signed_by(&client_key, &ca, &ca_key)
+            .unwrap();
+        let wrong_ca_key = KeyPair::generate().unwrap();
+        let mut wrong_ca_params = CertificateParams::new(vec![]).unwrap();
+        wrong_ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+        let wrong_ca = wrong_ca_params.self_signed(&wrong_ca_key).unwrap();
+        let wrong_key = KeyPair::generate().unwrap();
+        let wrong_cert = CertificateParams::new(vec!["wrong-switch.fixture".into()])
+            .unwrap()
+            .signed_by(&wrong_key, &wrong_ca, &wrong_ca_key)
+            .unwrap();
+
+        let dir = tempfile::tempdir().unwrap();
+        let ca_path = dir.path().join("client-ca.pem");
+        let cert_path = dir.path().join("server.pem");
+        let key_path = dir.path().join("server-key.pem");
+        std::fs::write(&ca_path, ca.pem()).unwrap();
+        std::fs::write(&cert_path, server_cert.pem()).unwrap();
+        std::fs::write(&key_path, server_key.serialize_pem()).unwrap();
+        let server = Arc::new(
+            TlsPaths {
+                client_ca: ca_path,
+                server_cert: cert_path,
+                server_key: key_path,
+            }
+            .server_config()
+            .unwrap(),
+        );
+        let mut roots = RootCertStore::empty();
+        roots.add(ca.der().clone()).unwrap();
+        let anonymous = Arc::new(
+            ClientConfig::builder()
+                .with_root_certificates(roots.clone())
+                .with_no_client_auth(),
+        );
+        let wrong = Arc::new(
+            ClientConfig::builder()
+                .with_root_certificates(roots.clone())
+                .with_client_auth_cert(
+                    vec![wrong_cert.der().clone()],
+                    PrivateKeyDer::Pkcs8(wrong_key.serialize_der().into()),
+                )
+                .unwrap(),
+        );
+        let valid = Arc::new(
+            ClientConfig::builder()
+                .with_root_certificates(roots)
+                .with_client_auth_cert(
+                    vec![client_cert.der().clone()],
+                    PrivateKeyDer::Pkcs8(client_key.serialize_der().into()),
+                )
+                .unwrap(),
+        );
+        assert!(!handshake(server.clone(), anonymous).await);
+        assert!(!handshake(server.clone(), wrong).await);
+        assert!(handshake(server, valid).await);
+    }
 
     #[test]
     fn test_flow_mod_add_length() {
@@ -1006,12 +1233,25 @@ mod tests {
         assert_eq!(msg[1], 14); // FlowMod
     }
 
-    #[tokio::test]
-    async fn controller_rejects_non_loopback_listener_before_bind() {
-        let error = OpenFlowController::new("192.0.2.1:6653".parse().unwrap())
-            .run()
-            .await
-            .unwrap_err();
-        assert!(error.to_string().contains("non-loopback"));
+    #[test]
+    fn controller_requires_complete_mtls_bundle_before_bind() {
+        for (ca, cert, key, missing) in [
+            (None, Some("cert.pem"), Some("key.pem"), TLS_CA_ENV),
+            (Some("ca.pem"), None, Some("key.pem"), TLS_CERT_ENV),
+            (Some("ca.pem"), Some("cert.pem"), None, TLS_KEY_ENV),
+            (Some("ca.pem"), Some(" "), Some("key.pem"), TLS_CERT_ENV),
+        ] {
+            assert!(TlsPaths::from_values(ca, cert, key)
+                .unwrap_err()
+                .to_string()
+                .contains(missing));
+        }
+        let paths = TlsPaths::from_values(
+            Some("/missing/ca.pem"),
+            Some("/missing/server.pem"),
+            Some("/missing/key.pem"),
+        )
+        .unwrap();
+        assert!(paths.server_config().is_err());
     }
 }

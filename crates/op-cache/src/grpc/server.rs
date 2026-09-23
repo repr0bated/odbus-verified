@@ -46,7 +46,7 @@ impl GrpcServerConfig {
             self.listen_addr.ip().is_loopback(),
             "unauthenticated cache gRPC compatibility transport is restricted to loopback"
         );
-        Ok(())
+        anyhow::bail!("Standalone cache gRPC ingress is retired; use the canonical :8090 plugin door with verified identity and workstack grants")
     }
 }
 
@@ -209,10 +209,10 @@ mod transport_security_tests {
     use super::*;
 
     #[test]
-    fn cache_compatibility_listener_is_loopback_only() {
-        GrpcServerConfig::default()
+    fn cache_compatibility_listener_cannot_bypass_plugin_admission() {
+        assert!(GrpcServerConfig::default()
             .validate_transport_security()
-            .unwrap();
+            .is_err());
         let config = GrpcServerConfig {
             listen_addr: "0.0.0.0:50051".parse().unwrap(),
             ..GrpcServerConfig::default()

@@ -62,7 +62,6 @@ pub fn seal_blobs_into_btrfs_image(
 
     let mut index = Vec::new();
     let mut total: u64 = 0;
-    let mut subvol_paths = Vec::new();
     for p in blob_paths {
         let bytes = std::fs::read(p)?;
         let blob =
@@ -78,7 +77,6 @@ pub fn seal_blobs_into_btrfs_image(
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "blob path has no name"))?;
         std::fs::copy(p, dir.join(file_name))?;
         total += bytes.len() as u64;
-        subvol_paths.push(format!("blobs/{}", manifest.plugin_id));
         index.push(serde_json::json!({
             "plugin_id": manifest.plugin_id,
             "schema_version": manifest.schema_version,
@@ -105,38 +103,22 @@ pub fn seal_blobs_into_btrfs_image(
     f.set_len(size)?;
     drop(f);
 
-    // Try one-subvolume-per-plugin first (btrfs-progs >= 6.x --subvol),
-    // fall back to plain directories. `-f`: we own the just-created image, and
+    // Plugins are ordinary directories inside the single image. `-f`: we own the just-created image, and
     // without it mkfs aborts when any loop device's backing file is
     // unreadable (e.g. root-owned incus disks) during its mount-status scan.
-    let mut subvolumes = true;
-    let mut args: Vec<String> = vec![
+    let subvolumes = false;
+    let args: Vec<String> = vec![
         "-q".into(),
         "-f".into(),
         "--rootdir".into(),
         staging.to_string_lossy().into_owned(),
         "--shrink".into(),
+        image_path.to_string_lossy().into_owned(),
     ];
-    for sv in &subvol_paths {
-        args.push("--subvol".into());
-        args.push(sv.clone());
-    }
-    args.push(image_path.to_string_lossy().into_owned());
     let ok = run_mkfs(&args)?;
     if !ok {
-        subvolumes = false;
-        let args: Vec<String> = vec![
-            "-q".into(),
-            "-f".into(),
-            "--rootdir".into(),
-            staging.to_string_lossy().into_owned(),
-            "--shrink".into(),
-            image_path.to_string_lossy().into_owned(),
-        ];
-        if !run_mkfs(&args)? {
-            let _ = std::fs::remove_dir_all(&staging);
-            return Err(io::Error::other("mkfs.btrfs failed"));
-        }
+        let _ = std::fs::remove_dir_all(&staging);
+        return Err(io::Error::other("mkfs.btrfs failed"));
     }
     let _ = std::fs::remove_dir_all(&staging);
 

@@ -53,7 +53,6 @@ const DEFAULT_EMQX_EXHOOK_CLIENT_CERT: &str = "/etc/op-dbus/tls/emqx-exhook-clie
 /// is a directory the loader reads the plugin's own blob from it (a blob in
 /// the catalog IS the plugin); a file path is still accepted for tests and
 /// plugin-owned schema files.
-const DEFAULT_SCHEMA_PATH: &str = op_blob::catalog::DEFAULT_SHM_DIR;
 const DEFAULT_UI_WORKSPACE_SHM_DIR: &str = "/dev/shm/opdbus/ui-workspaces";
 const DEFAULT_GENERATION_SHM_DIR: &str = "/dev/shm/opdbus/generation-jobs";
 
@@ -112,7 +111,7 @@ impl Default for ServerConfig {
     fn default() -> Self {
         Self {
             plugin_id: DEFAULT_SCHEMA_PLUGIN_ID.to_string(),
-            schema_path: PathBuf::from(DEFAULT_SCHEMA_PATH),
+            schema_path: crate::sealed_schema_reader::blob_catalog_dir_from_env(),
             ui_workspace_shm_dir: PathBuf::from(DEFAULT_UI_WORKSPACE_SHM_DIR),
             generation_shm_dir: PathBuf::from(DEFAULT_GENERATION_SHM_DIR),
             unix_socket: PathBuf::from(DEFAULT_UNIX_SOCKET),
@@ -129,10 +128,7 @@ impl ServerConfig {
     pub fn from_env() -> Self {
         Self {
             plugin_id: configured_schema_plugin_id(|key| std::env::var(key).ok()),
-            schema_path: PathBuf::from(
-                std::env::var("TCHED_ROUTER_SCHEMA_PATH")
-                    .unwrap_or_else(|_| DEFAULT_SCHEMA_PATH.to_string()),
-            ),
+            schema_path: crate::sealed_schema_reader::blob_catalog_dir_from_env(),
             ui_workspace_shm_dir: PathBuf::from(
                 std::env::var("OP_UI_WORKSPACE_SHM_DIR")
                     .unwrap_or_else(|_| DEFAULT_UI_WORKSPACE_SHM_DIR.to_string()),
@@ -533,6 +529,9 @@ fn build_tonic_routes(
 /// Returns only when both listeners exit (which should not happen under normal
 /// operation).
 pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()> {
+    let catalog_dir = crate::sealed_schema_reader::blob_catalog_dir_from_env();
+    let legacy_path = std::env::var_os("TCHED_ROUTER_SCHEMA_PATH").map(PathBuf::from);
+    validate_catalog_selection(&config.schema_path, &catalog_dir, legacy_path.as_deref())?;
     let loader = Arc::new(SchemaLoader::new_for_plugin(
         &config.schema_path,
         config.plugin_id.clone(),
@@ -976,6 +975,38 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         result = shared_fut => result,
         result = tcp_fut => result,
         result = emqx_exhook_fut => result,
+    }
+}
+
+fn validate_catalog_selection(
+    discovery: &std::path::Path,
+    admission: &std::path::Path,
+    legacy_override: Option<&std::path::Path>,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        discovery == admission,
+        "schema discovery and method admission must use the same sealed catalog"
+    );
+    anyhow::ensure!(
+        legacy_override.is_none_or(|path| path == admission),
+        "TCHED_ROUTER_SCHEMA_PATH conflicts with OP_BLOB_CATALOG_DIR"
+    );
+    Ok(())
+}
+
+#[cfg(test)]
+mod catalog_selection_tests {
+    use super::validate_catalog_selection;
+    use std::path::Path;
+
+    #[test]
+    fn discovery_rejects_conflicting_catalogs_before_server_start() {
+        let canonical = Path::new("/tmp/sealed-a");
+        let conflicting = Path::new("/tmp/sealed-b");
+        assert!(validate_catalog_selection(canonical, canonical, None).is_ok());
+        assert!(validate_catalog_selection(canonical, canonical, Some(canonical)).is_ok());
+        assert!(validate_catalog_selection(conflicting, canonical, None).is_err());
+        assert!(validate_catalog_selection(canonical, canonical, Some(conflicting)).is_err());
     }
 }
 

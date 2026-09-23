@@ -26,7 +26,9 @@
 //! `mkdrt` link is retired); the decoy's `10.0.0.1` VIP reaches the host over
 //! the WARP/Xray leg.
 
+use std::ffi::CString;
 use std::net::{IpAddr, SocketAddr};
+use std::os::fd::AsRawFd;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
@@ -36,7 +38,7 @@ use base64::Engine;
 use ed25519_dalek::SigningKey;
 use op_identity::oracle_assertion::DecoyIssuer;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::{TcpSocket, TcpStream};
 
 const DEFAULT_LISTEN: &str = "10.0.0.1:51888";
 const DEFAULT_IFACE: &str = "wg-opdbus";
@@ -131,6 +133,97 @@ fn pubkey_for_ip(iface: &str, peer_ip: IpAddr) -> Result<String> {
     found.ok_or_else(|| anyhow!("no peer holds {peer_ip} as a host route on {iface}"))
 }
 
+/// Require the configured address to be on the selected interface itself.
+/// A host route or an address on another device is not evidence of WG ingress.
+fn matches_interface_address(
+    iface: &[u8],
+    listen: IpAddr,
+    observed_iface: &[u8],
+    assigned: Option<IpAddr>,
+) -> bool {
+    iface == observed_iface && assigned == Some(listen)
+}
+
+fn verify_listen_interface(iface: &str, listen: IpAddr) -> Result<()> {
+    let name = CString::new(iface).context("interface name contains NUL")?;
+    if unsafe { libc::if_nametoindex(name.as_ptr()) } == 0 {
+        bail!("WireGuard interface {iface} does not exist");
+    }
+    let mut addresses: *mut libc::ifaddrs = std::ptr::null_mut();
+    if unsafe { libc::getifaddrs(&mut addresses) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("enumerating interface addresses");
+    }
+    let mut current = addresses;
+    let mut found = false;
+    while !current.is_null() {
+        let entry = unsafe { &*current };
+        if !entry.ifa_addr.is_null() && !entry.ifa_name.is_null() {
+            let address = unsafe { &*entry.ifa_addr };
+            let assigned = match address.sa_family as i32 {
+                libc::AF_INET => {
+                    let addr = unsafe { &*(entry.ifa_addr as *const libc::sockaddr_in) };
+                    Some(IpAddr::V4(std::net::Ipv4Addr::from(
+                        addr.sin_addr.s_addr.to_ne_bytes(),
+                    )))
+                }
+                libc::AF_INET6 => {
+                    let addr = unsafe { &*(entry.ifa_addr as *const libc::sockaddr_in6) };
+                    Some(IpAddr::V6(std::net::Ipv6Addr::from(addr.sin6_addr.s6_addr)))
+                }
+                _ => None,
+            };
+            let observed_iface = unsafe { std::ffi::CStr::from_ptr(entry.ifa_name) };
+            if matches_interface_address(
+                name.as_bytes(),
+                listen,
+                observed_iface.to_bytes(),
+                assigned,
+            ) {
+                found = true;
+                break;
+            }
+        }
+        current = entry.ifa_next;
+    }
+    unsafe { libc::freeifaddrs(addresses) };
+    if !found {
+        bail!("listen address {listen} is not assigned to WireGuard interface {iface}");
+    }
+    Ok(())
+}
+
+/// Constrain accepted packets to the selected WG device as well as its IP.
+fn bind_wireguard_listener(cfg: &Config) -> Result<TcpSocket> {
+    verify_listen_interface(&cfg.iface, cfg.listen.ip())?;
+    let wg = Command::new("wg")
+        .args(["show", cfg.iface.as_str(), "public-key"])
+        .output()
+        .context("checking selected WireGuard interface")?;
+    if !wg.status.success() || wg.stdout.is_empty() {
+        bail!("{} is not an available WireGuard interface", cfg.iface);
+    }
+    let name = CString::new(cfg.iface.as_str()).context("interface name contains NUL")?;
+    let socket = if cfg.listen.is_ipv4() {
+        TcpSocket::new_v4()?
+    } else {
+        TcpSocket::new_v6()?
+    };
+    let result = unsafe {
+        libc::setsockopt(
+            socket.as_raw_fd(),
+            libc::SOL_SOCKET,
+            libc::SO_BINDTODEVICE,
+            name.as_ptr().cast(),
+            (name.as_bytes_with_nul().len()) as libc::socklen_t,
+        )
+    };
+    if result != 0 {
+        return Err(std::io::Error::last_os_error())
+            .with_context(|| format!("binding listener to WireGuard interface {}", cfg.iface));
+    }
+    Ok(socket)
+}
+
 async fn respond(stream: &mut TcpStream, status: &str, body: &str) -> Result<()> {
     respond_with(stream, status, "text/plain", None, body).await
 }
@@ -170,6 +263,16 @@ fn allowed_origin<'a>(req: &str, cfg: &'a Config) -> Option<&'a str> {
         .map(String::as_str)
 }
 
+/// Reject rebinding to the tunnel address through an attacker-owned hostname.
+/// A browser on the tunnel must address the issuer by its configured IP.
+fn request_host_matches_listener(req: &str, cfg: &Config) -> bool {
+    let expected = cfg.listen.to_string();
+    req.lines().find_map(|line| {
+        let (name, value) = line.split_once(':')?;
+        name.eq_ignore_ascii_case("host").then(|| value.trim())
+    }) == Some(expected.as_str())
+}
+
 async fn handle(mut stream: TcpStream, peer: SocketAddr, issuer: &DecoyIssuer, cfg: &Config) {
     let mut buf = [0u8; 1024];
     let n = match stream.read(&mut buf).await {
@@ -193,6 +296,10 @@ async fn handle(mut stream: TcpStream, peer: SocketAddr, issuer: &DecoyIssuer, c
     let json_pickup = path.starts_with("/identity/self");
     if !path.starts_with("/assertion") && !json_pickup {
         let _ = respond(&mut stream, "404 Not Found", "not found\n").await;
+        return;
+    }
+    if !request_host_matches_listener(&req, cfg) {
+        let _ = respond(&mut stream, "403 Forbidden", "invalid issuer host\n").await;
         return;
     }
     let cors_origin = json_pickup.then(|| allowed_origin(&req, cfg)).flatten();
@@ -310,9 +417,13 @@ async fn main() -> Result<()> {
     let verifying =
         base64::engine::general_purpose::STANDARD.encode(issuer.verifying_key().to_bytes());
 
-    let listener = TcpListener::bind(cfg.listen)
-        .await
+    let socket = bind_wireguard_listener(&cfg)?;
+    socket
+        .bind(cfg.listen)
         .with_context(|| format!("binding {}", cfg.listen))?;
+    let listener = socket
+        .listen(128)
+        .context("listening on WireGuard socket")?;
     println!(
         "op-decoy-issuer listening on {} iface={} key_id={} ttl={}s door={} pickup_origins={:?}",
         cfg.listen,
@@ -366,5 +477,41 @@ mod tests {
         let none = "GET /identity/self HTTP/1.1\r\nHost: x\r\n\r\n";
         assert_eq!(allowed_origin(none, &config), None);
         assert_eq!(allowed_origin(req, &cfg(&[])), None);
+    }
+
+    #[test]
+    fn issuer_requires_literal_listen_host() {
+        let config = cfg(&[]);
+        assert!(request_host_matches_listener(
+            "GET /identity/self HTTP/1.1\r\nHost: 10.0.0.1:51888\r\n\r\n",
+            &config,
+        ));
+        assert!(!request_host_matches_listener(
+            "GET /identity/self HTTP/1.1\r\nHost: attacker.example:51888\r\n\r\n",
+            &config,
+        ));
+    }
+
+    #[test]
+    fn listener_address_must_be_assigned_to_selected_interface() {
+        let ip = "10.0.0.1".parse().unwrap();
+        assert!(matches_interface_address(
+            b"wg-opdbus",
+            ip,
+            b"wg-opdbus",
+            Some(ip),
+        ));
+        assert!(!matches_interface_address(
+            b"wg-opdbus",
+            ip,
+            b"eth0",
+            Some(ip),
+        ));
+        assert!(!matches_interface_address(
+            b"wg-opdbus",
+            ip,
+            b"wg-opdbus",
+            Some("10.0.0.2".parse().unwrap()),
+        ));
     }
 }

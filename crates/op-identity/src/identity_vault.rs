@@ -15,9 +15,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+#[cfg(test)]
 use std::io::Write;
+#[cfg(test)]
 use std::os::unix::fs::OpenOptionsExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(test)]
+use std::path::PathBuf;
+#[cfg(test)]
 use tracing::info;
 
 pub const DEFAULT_VAULT_PATH: &str = "/etc/ghostbridge/user-vault.json";
@@ -42,6 +47,7 @@ struct VaultFile {
 /// Identity vault: pubkey → user record.
 #[derive(Debug, Clone)]
 pub struct IdentityVault {
+    #[cfg(test)]
     path: PathBuf,
     users: HashMap<String, UserRecord>,
 }
@@ -63,6 +69,7 @@ impl IdentityVault {
         let file: VaultFile =
             serde_json::from_str(&raw).with_context(|| "failed to parse identity vault as JSON")?;
         Ok(Self {
+            #[cfg(test)]
             path,
             users: file.users,
         })
@@ -70,14 +77,20 @@ impl IdentityVault {
 
     /// Create an empty vault at the given path.
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
+        #[cfg(test)]
+        let path = path.as_ref().to_path_buf();
+        #[cfg(not(test))]
+        let _ = path;
         Self {
-            path: path.as_ref().to_path_buf(),
+            #[cfg(test)]
+            path,
             users: HashMap::new(),
         }
     }
 
     /// Store a user record, overwriting any existing record for the pubkey.
-    pub fn store(&mut self, record: UserRecord) -> Result<()> {
+    #[cfg(test)]
+    pub(crate) fn store(&mut self, record: UserRecord) -> Result<()> {
         self.users.insert(record.pubkey.clone(), record);
         self.flush()
     }
@@ -87,13 +100,8 @@ impl IdentityVault {
         self.users.get(pubkey)
     }
 
-    /// Remove a user record.
-    pub fn remove(&mut self, pubkey: &str) -> Result<()> {
-        self.users.remove(pubkey);
-        self.flush()
-    }
-
     /// Persist the vault to disk atomically with owner-only permissions.
+    #[cfg(test)]
     fn flush(&self) -> Result<()> {
         let file = VaultFile {
             version: 1,

@@ -91,6 +91,12 @@ pub struct McpGrpcService {
 }
 
 impl McpGrpcService {
+    fn ensure_supported_mode(&self) -> Result<(), Status> {
+        if matches!(self.mode, ServerMode::BlobSchema) {
+            return Err(Status::unimplemented("BlobSchema is served by the canonical sealed-plugin door; the compatibility registry cannot represent this mode"));
+        }
+        Ok(())
+    }
     pub fn new(mode: ServerMode) -> Self {
         let (event_tx, _) = broadcast::channel(256);
         Self {
@@ -257,6 +263,7 @@ fn simd_to_prost_struct(value: &Value) -> Result<ProstStruct, Status> {
 #[tonic::async_trait]
 impl McpService for McpGrpcService {
     async fn call(&self, request: Request<McpRequest>) -> Result<Response<McpResponse>, Status> {
+        self.ensure_supported_mode()?;
         self.request_counter.fetch_add(1, Ordering::Relaxed);
         let proto_req = request.into_inner();
 
@@ -309,6 +316,7 @@ impl McpService for McpGrpcService {
         &self,
         request: Request<SubscribeRequest>,
     ) -> Result<Response<Self::SubscribeStream>, Status> {
+        self.ensure_supported_mode()?;
         let req = request.into_inner();
         let _session_id = req.session_id.unwrap_or_else(|| Uuid::new_v4().to_string());
         let event_filter: Vec<String> = req.event_types;
@@ -374,6 +382,7 @@ impl McpService for McpGrpcService {
         &self,
         request: Request<tonic::Streaming<McpRequest>>,
     ) -> Result<Response<Self::StreamStream>, Status> {
+        self.ensure_supported_mode()?;
         let mut stream = request.into_inner();
         let (tx, rx) = mpsc::channel(32);
         let mcp_server = self.build_mcp_server();
@@ -448,6 +457,7 @@ impl McpService for McpGrpcService {
         &self,
         request: Request<InitializeRequest>,
     ) -> Result<Response<InitializeResponse>, Status> {
+        self.ensure_supported_mode()?;
         let req = request.into_inner();
         let session_id = req.session_id.unwrap_or_else(|| Uuid::new_v4().to_string());
         Ok(Response::new(InitializeResponse {
@@ -464,6 +474,7 @@ impl McpService for McpGrpcService {
         &self,
         _request: Request<ListToolsRequest>,
     ) -> Result<Response<ListToolsResponse>, Status> {
+        self.ensure_supported_mode()?;
         let tools = if let Some(ref registry) = self.infrastructure.tool_registry {
             let all = registry.list().await;
             all.into_iter()
@@ -494,6 +505,7 @@ impl McpService for McpGrpcService {
         &self,
         request: Request<CallToolRequest>,
     ) -> Result<Response<CallToolResponse>, Status> {
+        self.ensure_supported_mode()?;
         let req = request.into_inner();
         let start = Instant::now();
 
@@ -541,6 +553,7 @@ impl McpService for McpGrpcService {
         &self,
         request: Request<CallToolRequest>,
     ) -> Result<Response<Self::CallToolStreamingStream>, Status> {
+        self.ensure_supported_mode()?;
         let req = request.into_inner();
         let tool_name = req.tool_name.clone();
 
@@ -646,6 +659,7 @@ impl McpService for McpGrpcService {
         &self,
         request: Request<GetToolSchemaRequest>,
     ) -> Result<Response<GetToolSchemaResponse>, Status> {
+        self.ensure_supported_mode()?;
         let req = request.into_inner();
         let registry = self
             .infrastructure
@@ -696,5 +710,24 @@ fn convert_json_schema_to_tool_schema(schema: &Value) -> ToolSchema {
     ToolSchema {
         parameters,
         required: vec![],
+    }
+}
+
+#[cfg(test)]
+mod mode_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn blob_schema_mode_never_claims_registry_is_sealed_catalog() {
+        let service = McpGrpcService::new(ServerMode::BlobSchema);
+        let status = service
+            .list_tools(Request::new(ListToolsRequest::default()))
+            .await
+            .unwrap_err();
+        assert_eq!(status.code(), tonic::Code::Unimplemented);
+        assert!(service
+            .call_tool(Request::new(CallToolRequest::default()))
+            .await
+            .is_err());
     }
 }

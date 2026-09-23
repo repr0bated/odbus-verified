@@ -84,7 +84,14 @@ impl ServiceManager {
 
         self.set_state(name, ManagerState::Starting).await;
 
-        let out = sv("start", name).await?;
+        let out = match sv("start", name).await {
+            Ok(out) => out,
+            Err(error) => {
+                self.set_state_with_error(name, ManagerState::Failed, error.to_string())
+                    .await;
+                return Err(error);
+            }
+        };
         let result: anyhow::Result<u32> = if out.status.success() {
             let status = String::from_utf8_lossy(&out.stdout);
             Ok(parse_runit_pid(&status).unwrap_or(0))
@@ -110,7 +117,14 @@ impl ServiceManager {
     pub async fn stop(&self, name: &ServiceName) -> anyhow::Result<ServiceStatus> {
         self.set_state(name, ManagerState::Stopping).await;
 
-        let out = sv("stop", name).await?;
+        let out = match sv("stop", name).await {
+            Ok(out) => out,
+            Err(error) => {
+                self.set_state_with_error(name, ManagerState::Failed, error.to_string())
+                    .await;
+                return Err(error);
+            }
+        };
         let result: anyhow::Result<()> = if out.status.success() {
             Ok(())
         } else {
@@ -130,7 +144,15 @@ impl ServiceManager {
     }
 
     pub async fn restart(&self, name: &ServiceName) -> anyhow::Result<ServiceStatus> {
-        let out = sv("restart", name).await?;
+        self.set_state(name, ManagerState::Starting).await;
+        let out = match sv("restart", name).await {
+            Ok(out) => out,
+            Err(error) => {
+                self.set_state_with_error(name, ManagerState::Failed, error.to_string())
+                    .await;
+                return Err(error);
+            }
+        };
         if !out.status.success() {
             let error = String::from_utf8_lossy(&out.stderr).trim().to_string();
             self.set_state_with_error(name, ManagerState::Failed, error.clone())
@@ -181,13 +203,30 @@ impl ServiceManager {
     }
 
     pub async fn create(&self, service: &ServiceDef) -> anyhow::Result<()> {
-        // Persist to the store and install the runit run script.
+        self.create_with_install(service, ServiceDef::install).await
+    }
+
+    async fn create_with_install(
+        &self,
+        service: &ServiceDef,
+        install: impl FnOnce(&ServiceDef) -> std::io::Result<()>,
+    ) -> anyhow::Result<()> {
+        let previous = self.store.get_service(&service.name).await?;
         self.store.save_service(service).await?;
-        if let Err(e) = service.install() {
-            warn!(
-                "Failed to install runit service files for {}: {}",
-                service.name, e
-            );
+        if let Err(error) = install(service) {
+            let rollback = match previous {
+                Some(previous) => self.store.save_service(&previous).await,
+                None => self.store.delete_service(&service.name).await,
+            };
+            rollback.map_err(|rollback_error| {
+                anyhow::anyhow!(
+                    "installing {} failed: {}; catalog rollback failed: {}",
+                    service.name,
+                    error,
+                    rollback_error
+                )
+            })?;
+            return Err(error.into());
         }
         Ok(())
     }
@@ -288,6 +327,10 @@ impl ServiceManager {
 
     async fn set_state_with_pid(&self, name: &ServiceName, state: ManagerState, pid: u32) {
         let mut statuses = self.statuses.write().await;
+        let old_state = statuses
+            .get(name)
+            .map(|status| status.state.clone())
+            .unwrap_or(ManagerState::Stopped);
         let status = statuses
             .entry(name.clone())
             .or_insert_with(|| ServiceStatus {
@@ -297,13 +340,23 @@ impl ServiceManager {
                 error: None,
                 started_at: None,
             });
-        status.state = state;
+        status.state = state.clone();
         status.pid = Some(pid);
+        status.error = None;
         status.started_at = Some(chrono::Utc::now());
+        let _ = self.events.send(ServiceEvent {
+            name: name.clone(),
+            old_state,
+            new_state: state,
+        });
     }
 
     async fn set_state_with_error(&self, name: &ServiceName, state: ManagerState, error: String) {
         let mut statuses = self.statuses.write().await;
+        let old_state = statuses
+            .get(name)
+            .map(|status| status.state.clone())
+            .unwrap_or(ManagerState::Stopped);
         let status = statuses
             .entry(name.clone())
             .or_insert_with(|| ServiceStatus {
@@ -313,14 +366,28 @@ impl ServiceManager {
                 error: None,
                 started_at: None,
             });
-        status.state = state;
+        status.state = state.clone();
+        status.pid = None;
         status.error = Some(error);
+        let _ = self.events.send(ServiceEvent {
+            name: name.clone(),
+            old_state,
+            new_state: state,
+        });
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_runit_pid;
+    use super::*;
+
+    fn service(name: &str) -> ServiceDef {
+        serde_json::from_value(serde_json::json!({
+            "name": name,
+            "exec_start": { "program": "/bin/true", "args": [] }
+        }))
+        .unwrap()
+    }
 
     #[test]
     fn parses_sv_status_pid() {
@@ -332,5 +399,47 @@ mod tests {
             parse_runit_pid("down: /etc/runit/runsvdir/default/op-web: 2s"),
             None
         );
+    }
+
+    #[tokio::test]
+    async fn terminal_transitions_reach_watchers() {
+        let dir = tempfile::tempdir().unwrap();
+        let manager = ServiceManager::for_test(Arc::new(
+            Store::new(dir.path().join("services.json")).await.unwrap(),
+        ));
+        let name = ServiceName::new("fixture").unwrap();
+        let mut events = manager.subscribe();
+        manager.set_state(&name, ManagerState::Starting).await;
+        manager
+            .set_state_with_pid(&name, ManagerState::Running, 42)
+            .await;
+        manager
+            .set_state_with_error(&name, ManagerState::Failed, "boom".into())
+            .await;
+        assert_eq!(
+            events.recv().await.unwrap().new_state,
+            ManagerState::Starting
+        );
+        assert_eq!(
+            events.recv().await.unwrap().new_state,
+            ManagerState::Running
+        );
+        assert_eq!(events.recv().await.unwrap().new_state, ManagerState::Failed);
+        let status = manager.statuses.read().await.get(&name).cloned().unwrap();
+        assert_eq!(status.state, ManagerState::Failed);
+        assert_eq!(status.error.as_deref(), Some("boom"));
+    }
+
+    #[tokio::test]
+    async fn create_does_not_persist_failed_installation() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Arc::new(Store::new(dir.path().join("services.json")).await.unwrap());
+        let manager = ServiceManager::for_test(store.clone());
+        let def = service("fixture");
+        let result = manager
+            .create_with_install(&def, |_| Err(std::io::Error::other("install denied")))
+            .await;
+        assert!(result.is_err());
+        assert!(store.get_service(&def.name).await.unwrap().is_none());
     }
 }

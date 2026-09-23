@@ -2,6 +2,7 @@
 
 use axum::{
     extract::{Extension, Path},
+    http::StatusCode,
     response::{
         sse::{Event, Sse},
         Json,
@@ -15,7 +16,7 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
-use tracing::info;
+use tracing::{error, info};
 
 use crate::orchestrator::OrchestratorEvent;
 use crate::state::AppState;
@@ -369,35 +370,59 @@ pub async fn list_sessions_handler(Extension(state): Extension<Arc<AppState>>) -
 pub async fn create_session_handler(
     Extension(state): Extension<Arc<AppState>>,
     Json(payload): Json<CreateSessionRequest>,
-) -> Json<Value> {
+) -> (StatusCode, Json<Value>) {
     let session_id = uuid::Uuid::new_v4().to_string();
     let title = payload.title.unwrap_or_else(|| "New Chat".to_string());
 
-    let _ = state
+    if let Err(err) = state
         .conversations
         .create_session(session_id.clone(), Some(title.clone()))
-        .await;
+        .await
+    {
+        error!(%err, "Failed to create chat session");
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": "Failed to persist chat session"})),
+        );
+    }
 
-    Json(json!({
-        "id": session_id,
-        "title": title,
-        "created_at": chrono::Utc::now().to_rfc3339(),
-        "updated_at": chrono::Utc::now().to_rfc3339(),
-        "message_count": 0
-    }))
+    (
+        StatusCode::OK,
+        Json(json!({
+            "id": session_id,
+            "title": title,
+            "created_at": chrono::Utc::now().to_rfc3339(),
+            "updated_at": chrono::Utc::now().to_rfc3339(),
+            "message_count": 0
+        })),
+    )
 }
 
 /// DELETE /api/chat/sessions/:id - Delete a chat session
 pub async fn delete_session_handler(
     Extension(state): Extension<Arc<AppState>>,
     Path(session_id): Path<String>,
-) -> Json<Value> {
-    let _ = state.conversations.delete_session(&session_id).await;
-
-    Json(json!({
-        "success": true,
-        "message": format!("Session {} deleted", session_id)
-    }))
+) -> (StatusCode, Json<Value>) {
+    match state.conversations.delete_session(&session_id).await {
+        Ok(true) => (
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "message": format!("Session {} deleted", session_id)
+            })),
+        ),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "Session not found"})),
+        ),
+        Err(err) => {
+            error!(%err, %session_id, "Failed to delete chat session");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": "Failed to persist chat session deletion"})),
+            )
+        }
+    }
 }
 
 /// POST /api/chat/message - Send a message (creates new session if no session_id provided)

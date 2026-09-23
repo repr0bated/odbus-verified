@@ -14,56 +14,20 @@ use op_state_store::PluginSchema;
 use simd_json::prelude::*;
 use simd_json::{json, OwnedValue as Value};
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-/// Auto-creator for systemd-based plugins
+/// Legacy service auto-discovery entry point. Service inventory is owned by
+/// the canonical service projection, not the host supervisor directory.
 pub struct SystemdAutoCreator;
 
 impl SystemdAutoCreator {
-    /// Discover system/host service units and create plugins
+    /// The old filesystem discovery API is retired until a projected service
+    /// catalog adapter is supplied by the service owner.
     pub async fn discover_units() -> Result<Vec<(String, Value)>> {
-        let mut plugins = Vec::new();
-
-        // Discover active host services from runit supervisor if available
-        let sv_dir = Path::new("/run/runit/service");
-        if sv_dir.exists() {
-            if let Ok(entries) = std::fs::read_dir(sv_dir) {
-                for entry in entries.flatten() {
-                    let file_name = entry.file_name();
-                    let name = file_name.to_string_lossy();
-                    if !name.starts_with('.') {
-                        plugins.push((
-                            name.to_string(),
-                            json!({
-                                "type": "runit",
-                                "name": name.to_string(),
-                                "state": "active",
-                                "enabled": true
-                            }),
-                        ));
-                    }
-                }
-            }
-        }
-
-        if plugins.is_empty() {
-            let fallback_units = ["op-grpc-bridge", "op-web"];
-            for unit in fallback_units {
-                plugins.push((
-                    unit.to_string(),
-                    json!({
-                        "type": "service",
-                        "name": unit,
-                        "state": "active",
-                        "enabled": true
-                    }),
-                ));
-            }
-        }
-
-        Ok(plugins)
+        Err(anyhow!(
+            "service auto-discovery requires the canonical service projection"
+        ))
     }
 }
 
@@ -327,5 +291,15 @@ impl StatePlugin for AutoPlugin {
             supports_verification: true,
             atomic_operations: true,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SystemdAutoCreator;
+
+    #[tokio::test]
+    async fn legacy_discovery_does_not_invent_active_services() {
+        assert!(SystemdAutoCreator::discover_units().await.is_err());
     }
 }

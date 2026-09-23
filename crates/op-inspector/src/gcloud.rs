@@ -36,6 +36,7 @@ use anyhow::{Context, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, info, warn};
@@ -122,6 +123,13 @@ pub struct GCloudParser {
     cache: Arc<Mutex<HashMap<String, String>>>,
 }
 
+struct HelpOutput {
+    success: bool,
+    code: Option<i32>,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+}
+
 impl Default for GCloudParser {
     fn default() -> Self {
         Self::new()
@@ -165,6 +173,31 @@ impl GCloudParser {
 
     /// Run gcloud help for a command path
     async fn run_help(&self, command_path: &[String]) -> Result<String> {
+        let command_path = command_path.to_vec();
+        self.run_help_with(command_path, |command_path| async move {
+            let mut cmd = tokio::process::Command::new("gcloud");
+            for part in command_path {
+                cmd.arg(part);
+            }
+            cmd.arg("--help");
+            cmd.env("CLOUDSDK_CORE_DISABLE_PROMPTS", "1");
+
+            let output = cmd.output().await.context("Failed to run gcloud help")?;
+            Ok(HelpOutput {
+                success: output.status.success(),
+                code: output.status.code(),
+                stdout: output.stdout,
+                stderr: output.stderr,
+            })
+        })
+        .await
+    }
+
+    async fn run_help_with<F, Fut>(&self, command_path: Vec<String>, run: F) -> Result<String>
+    where
+        F: FnOnce(Vec<String>) -> Fut,
+        Fut: Future<Output = Result<HelpOutput>>,
+    {
         let cache_key = command_path.join(".");
 
         // Check cache
@@ -175,20 +208,8 @@ impl GCloudParser {
             }
         }
 
-        let mut cmd = tokio::process::Command::new("gcloud");
-        for part in command_path {
-            cmd.arg(part);
-        }
-        cmd.arg("--help");
-        cmd.env("CLOUDSDK_CORE_DISABLE_PROMPTS", "1");
-
-        let output = cmd.output().await.context("Failed to run gcloud help")?;
-
-        let help_text = format!(
-            "{}{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
+        let output = run(command_path).await?;
+        let help_text = checked_help_text(output)?;
 
         // Cache the result
         {
@@ -525,6 +546,22 @@ impl GCloudParser {
     }
 }
 
+fn checked_help_text(output: HelpOutput) -> Result<String> {
+    if !output.success {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!(
+            "gcloud help exited with status {:?}: {}",
+            output.code,
+            stderr
+        );
+    }
+    Ok(format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    ))
+}
+
 /// Convenience function to introspect gcloud and return schema
 pub async fn introspect_gcloud(max_depth: usize) -> Result<GCloudSchema> {
     let parser = GCloudParser::new();
@@ -539,6 +576,40 @@ mod tests {
     async fn test_gcloud_parser_creation() {
         let parser = GCloudParser::new();
         assert!(parser.cache.lock().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn failed_help_is_not_returned_or_cached() {
+        let parser = GCloudParser::new();
+        let path = vec!["compute".to_string()];
+        let result = parser
+            .run_help_with(path.clone(), |_| async {
+                Ok(HelpOutput {
+                    success: false,
+                    code: Some(2),
+                    stdout: Vec::new(),
+                    stderr: b"gcloud failed".to_vec(),
+                })
+            })
+            .await;
+        let error = result.unwrap_err().to_string();
+        assert!(error.contains("status Some(2)"));
+        assert!(error.contains("gcloud failed"));
+        assert!(parser.cache.lock().await.is_empty());
+
+        let help = parser
+            .run_help_with(path.clone(), |_| async {
+                Ok(HelpOutput {
+                    success: true,
+                    code: Some(0),
+                    stdout: b"valid help".to_vec(),
+                    stderr: Vec::new(),
+                })
+            })
+            .await
+            .unwrap();
+        assert_eq!(help, "valid help");
+        assert_eq!(parser.cache.lock().await.get("compute"), Some(&help));
     }
 
     #[test]

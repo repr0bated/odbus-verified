@@ -63,7 +63,7 @@ impl WorkflowEngine {
 
     /// Set maximum parallel node executions
     pub fn with_max_parallel(mut self, max: usize) -> Self {
-        self.max_parallel = max;
+        self.max_parallel = max.max(1);
         self
     }
 
@@ -172,6 +172,10 @@ impl WorkflowEngine {
 
             // Execute ready nodes (in parallel up to max_parallel)
             let batch: Vec<_> = ready_nodes.into_iter().take(self.max_parallel).collect();
+            if batch.is_empty() {
+                workflow.state = WorkflowState::Failed;
+                break;
+            }
 
             for node_id in batch {
                 debug!(workflow_id = %workflow_id, node_id = %node_id, "Executing node");
@@ -239,6 +243,8 @@ impl WorkflowEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::flow::WorkflowNodeDef;
+    use simd_json::json;
 
     struct MockNodeFactory;
 
@@ -262,5 +268,41 @@ mod tests {
         engine.register(def).await.unwrap();
 
         assert!(engine.get_definition("test").await.is_some());
+    }
+
+    struct LogNodeFactory;
+
+    impl NodeFactory for LogNodeFactory {
+        fn create_node(
+            &self,
+            _node_type: &str,
+            node_id: &str,
+            _config: &Value,
+        ) -> Result<Box<dyn WorkflowNode>> {
+            Ok(Box::new(crate::builtin::LogNode::new(node_id, "ran")))
+        }
+    }
+
+    #[tokio::test]
+    async fn zero_parallelism_still_executes_ready_node() {
+        let engine = WorkflowEngine::new(Arc::new(LogNodeFactory)).with_max_parallel(0);
+        assert_eq!(engine.max_parallel, 1);
+        let definition =
+            WorkflowDefinition::new("once", "Once", "One node").with_node(WorkflowNodeDef {
+                id: "log".into(),
+                node_type: "log".into(),
+                name: "Log".into(),
+                config: json!({}),
+                position: None,
+            });
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(1),
+            engine.execute_definition(definition, HashMap::new()),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(result.success);
+        assert!(result.node_results.contains_key("log"));
     }
 }

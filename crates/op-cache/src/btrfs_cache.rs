@@ -11,6 +11,7 @@ use anyhow::{Context, Result};
 use op_cozo_store::CozoGraphShuttle;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::os::fd::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::{
@@ -21,6 +22,16 @@ use tracing::{debug, info, warn};
 
 use super::numa::{NumaMemoryPolicy, NumaNode, NumaOptimizer, NumaStats, NumaTopology};
 use super::snapshot_manager::{SnapshotConfig, SnapshotManager};
+
+fn is_btrfs_filesystem(path: &Path) -> Result<bool> {
+    let file = std::fs::File::open(path)
+        .with_context(|| format!("opening cache filesystem probe {}", path.display()))?;
+    let mut stat = std::mem::MaybeUninit::<libc::statfs>::uninit();
+    if unsafe { libc::fstatfs(file.as_raw_fd(), stat.as_mut_ptr()) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("probing cache filesystem type");
+    }
+    Ok(unsafe { stat.assume_init() }.f_type as u64 == libc::BTRFS_SUPER_MAGIC as u64)
+}
 
 /// NUMA-aware cache placement strategy
 #[derive(Debug, Clone)]
@@ -217,8 +228,21 @@ pub struct BtrfsCache {
 
 #[allow(dead_code)]
 impl BtrfsCache {
-    /// Create BTRFS subvolume at specified path
+    /// Create a Btrfs cache subvolume on Btrfs. Ordinary filesystems use a
+    /// regular directory; Btrfs failures are never interpreted as fallback.
     async fn create_btrfs_subvolume(path: &Path) -> Result<()> {
+        let probe = if path.exists() {
+            path
+        } else {
+            path.parent()
+                .context("Cache subvolume path has no parent")?
+        };
+        if !is_btrfs_filesystem(probe)? {
+            tokio::fs::create_dir_all(path)
+                .await
+                .context("Failed to create ordinary cache directory")?;
+            return Ok(());
+        }
         if path.exists() {
             let output = tokio::process::Command::new("btrfs")
                 .args(["subvolume", "show"])
@@ -232,12 +256,6 @@ impl BtrfsCache {
             }
 
             let stderr = String::from_utf8_lossy(&output.stderr);
-            if stderr
-                .to_ascii_lowercase()
-                .contains("not a btrfs filesystem")
-            {
-                return Ok(());
-            }
             anyhow::bail!(
                 "existing cache path is not a usable Btrfs subvolume ({}): {}",
                 path.display(),
@@ -254,17 +272,7 @@ impl BtrfsCache {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            if stderr.contains("command not found") || stderr.contains("not a btrfs filesystem") {
-                warn!(
-                    "BTRFS not available, creating regular directory: {:?}",
-                    path
-                );
-                tokio::fs::create_dir_all(path)
-                    .await
-                    .context("Failed to create cache directory")?;
-            } else {
-                anyhow::bail!("btrfs subvolume create failed: {}", stderr);
-            }
+            anyhow::bail!("btrfs subvolume create failed: {}", stderr);
         } else {
             Self::enable_compression(path).await?;
         }
@@ -292,18 +300,36 @@ impl BtrfsCache {
 
     /// Create new BTRFS cache with proper subvolumes
     pub async fn new(cache_dir: PathBuf) -> Result<Self> {
+        let snapshot_config = SnapshotConfig {
+            snapshot_dir: cache_dir
+                .parent()
+                .unwrap_or(Path::new("/var/lib/op-dbus"))
+                .to_path_buf(),
+            max_snapshots: std::env::var("OPDBUS_MAX_CACHE_SNAPSHOTS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(2),
+            prefix: std::env::var("OPDBUS_CACHE_SNAPSHOT_PREFIX")
+                .unwrap_or_else(|_| "SNP-cache".to_string()),
+        };
+        anyhow::ensure!(
+            (1..=2).contains(&snapshot_config.max_snapshots),
+            "Cache rotation supports one or two snapshots"
+        );
+        let snapshot_manager = SnapshotManager::new(cache_dir.clone(), snapshot_config);
+        snapshot_manager.validate_layout().await?;
+
         // Ensure parent directory exists (not as subvolume)
         if let Some(parent) = cache_dir.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
 
-        // Create directory structure (BTRFS subvolumes stubbed as regular dirs)
+        // One cache subvolume; category paths are ordinary directories so
+        // snapshots include their contents without adding nested subvolumes.
         Self::create_btrfs_subvolume(&cache_dir).await?;
-        Self::create_btrfs_subvolume(&cache_dir.join("embeddings")).await?;
-        Self::create_btrfs_subvolume(&cache_dir.join("blocks")).await?;
-        Self::create_btrfs_subvolume(&cache_dir.join("queries")).await?;
-        Self::create_btrfs_subvolume(&cache_dir.join("diffs")).await?;
-        Self::create_btrfs_subvolume(&cache_dir.join("kv")).await?;
+        for category in ["embeddings", "blocks", "queries", "diffs", "kv"] {
+            tokio::fs::create_dir_all(cache_dir.join(category)).await?;
+        }
 
         // Create regular directories within subvolumes
         tokio::fs::create_dir_all(cache_dir.join("embeddings/vectors")).await?;
@@ -345,22 +371,6 @@ impl BtrfsCache {
             }"#,
             None,
         );
-
-        // Initialize snapshot manager
-        let snapshot_config = SnapshotConfig {
-            snapshot_dir: cache_dir
-                .parent()
-                .unwrap_or(Path::new("/var/lib/op-dbus"))
-                .join("@cache-snapshots"),
-            max_snapshots: std::env::var("OPDBUS_MAX_CACHE_SNAPSHOTS")
-                .ok()
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(24),
-            prefix: std::env::var("OPDBUS_CACHE_SNAPSHOT_PREFIX")
-                .unwrap_or_else(|_| "SNP-cache".to_string()),
-        };
-
-        let snapshot_manager = SnapshotManager::new(cache_dir.clone(), snapshot_config);
 
         // Detect NUMA topology
         let numa_topology = NumaTopology::detect()?;
@@ -873,14 +883,23 @@ impl BtrfsCache {
         // Remove the backing file
         if let Some(ref file) = file_path {
             let path = self.cache_dir.join(file);
-            let _ = tokio::fs::remove_file(path).await;
+            match tokio::fs::remove_file(&path).await {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    return Err(error)
+                        .with_context(|| format!("Failed to delete cache file {}", path.display()))
+                }
+            }
         }
 
         // Remove from CozoDB index
-        let _ = self.index.run_query(
-            "?[key_hash] <- [[$hash]] :rm kv_cache { key_hash }",
-            Some(serde_json::json!({"hash": key_hash})),
-        );
+        self.index
+            .run_query(
+                "?[key_hash] <- [[$hash]] :rm kv_cache { key_hash }",
+                Some(serde_json::json!({"hash": key_hash})),
+            )
+            .map_err(|error| anyhow::anyhow!("Failed to delete cache index entry: {error}"))?;
 
         if existed {
             debug!(key = %key, "KV cache entry deleted");
@@ -1455,6 +1474,18 @@ pub struct NumaInfo {
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn ordinary_filesystem_creates_cache_directory_without_btrfs_command() {
+        let parent = tempfile::tempdir().unwrap();
+        if is_btrfs_filesystem(parent.path()).unwrap() {
+            return; // This fixture only exercises the ordinary-filesystem branch.
+        }
+        let cache = parent.path().join("cache");
+        BtrfsCache::create_btrfs_subvolume(&cache).await.unwrap();
+        assert!(cache.is_dir());
+        assert!(!is_btrfs_filesystem(&cache).unwrap());
+    }
+
     #[test]
     fn remote_stream_arguments_reject_shell_syntax_and_traversal() {
         assert!(validate_ssh_destination("cache@example.internal").is_ok());
@@ -1563,6 +1594,28 @@ mod tests {
         // delete again — not found
         let existed = cache.delete("hello").await.unwrap();
         assert!(!existed);
+    }
+
+    #[tokio::test]
+    async fn failed_backing_file_delete_is_reported_and_retains_index() {
+        let parent = tempfile::tempdir().unwrap();
+        let cache = BtrfsCache::new(parent.path().join("cache")).await.unwrap();
+        cache.put_raw("key", b"value").await.unwrap();
+        let backing = cache
+            .cache_dir
+            .join("kv")
+            .join(format!("{}.dat", cache.hash_key("key")));
+        tokio::fs::remove_file(&backing).await.unwrap();
+        tokio::fs::create_dir(&backing).await.unwrap();
+        assert!(cache
+            .delete("key")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("Failed to delete cache file"));
+        tokio::fs::remove_dir(&backing).await.unwrap();
+        // The failed removal did not pretend that its index row was deleted.
+        assert!(cache.delete("key").await.unwrap());
     }
 
     #[tokio::test]

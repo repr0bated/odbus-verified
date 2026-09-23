@@ -3,15 +3,21 @@
 //! Manages cache snapshots with configurable retention policy
 
 use anyhow::{Context, Result};
+use std::os::fd::AsRawFd;
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
 
+fn is_nested_btrfs_subvolume(fs_type: u64, inode: u64) -> bool {
+    fs_type == libc::BTRFS_SUPER_MAGIC as u64 && inode == 256
+}
+
 #[derive(Debug, Clone)]
 pub struct SnapshotConfig {
-    /// Base path for snapshots (e.g., /var/lib/op-dbus/@cache-snapshots)
+    /// Directory containing cache rotation peers.
     pub snapshot_dir: PathBuf,
 
-    /// Maximum number of snapshots to keep (default: 24)
+    /// Maximum cache rotation snapshots (1–2; source is the third cache subvolume).
     pub max_snapshots: usize,
 
     /// Snapshot name prefix (default: "cache")
@@ -21,8 +27,8 @@ pub struct SnapshotConfig {
 impl Default for SnapshotConfig {
     fn default() -> Self {
         Self {
-            snapshot_dir: PathBuf::from("/var/lib/op-dbus/@cache-snapshots"),
-            max_snapshots: 24, // Keep 24 hourly snapshots = 1 day
+            snapshot_dir: PathBuf::from("/var/lib/op-dbus"),
+            max_snapshots: 2,
             prefix: "SNP-cache".to_string(),
         }
     }
@@ -31,6 +37,7 @@ impl Default for SnapshotConfig {
 pub struct SnapshotManager {
     config: SnapshotConfig,
     source_subvol: PathBuf,
+    rotation: tokio::sync::Mutex<()>,
 }
 
 impl SnapshotManager {
@@ -39,14 +46,84 @@ impl SnapshotManager {
         Self {
             config,
             source_subvol,
+            rotation: tokio::sync::Mutex::new(()),
         }
+    }
+
+    /// Refuse a legacy layout that cannot be represented by one complete
+    /// source snapshot and two sibling rotation peers. Migration must be an
+    /// explicit operator action; never delete historical cache data here.
+    pub async fn validate_layout(&self) -> Result<()> {
+        let parent = self.source_subvol.parent().ok_or_else(|| {
+            anyhow::anyhow!(
+                "cache subvolume has no parent: {}",
+                self.source_subvol.display()
+            )
+        })?;
+        let legacy = parent.join("@cache-snapshots");
+        match tokio::fs::symlink_metadata(&legacy).await {
+            Ok(metadata) => {
+                anyhow::ensure!(
+                    metadata.is_dir() && !metadata.file_type().is_symlink(),
+                    "legacy snapshot path {} needs manual migration",
+                    legacy.display()
+                );
+                let mut entries = tokio::fs::read_dir(&legacy).await?;
+                if entries.next_entry().await?.is_some() {
+                    anyhow::bail!(
+                        "legacy snapshots in {} need manual migration before cache rotation",
+                        legacy.display()
+                    );
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+        for category in ["embeddings", "blocks", "queries", "diffs", "kv"] {
+            let path = self.source_subvol.join(category);
+            let metadata = match tokio::fs::symlink_metadata(&path).await {
+                Ok(metadata) => metadata,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(error) => return Err(error.into()),
+            };
+            anyhow::ensure!(
+                metadata.is_dir() && !metadata.file_type().is_symlink(),
+                "cache category {} is not an ordinary directory; migrate it before snapshotting",
+                path.display()
+            );
+            let file = std::fs::File::open(&path)?;
+            let mut stat = std::mem::MaybeUninit::<libc::statfs>::uninit();
+            if unsafe { libc::fstatfs(file.as_raw_fd(), stat.as_mut_ptr()) } != 0 {
+                return Err(std::io::Error::last_os_error().into());
+            }
+            let stat = unsafe { stat.assume_init() };
+            anyhow::ensure!(
+                !is_nested_btrfs_subvolume(stat.f_type as u64, metadata.ino()),
+                "legacy nested cache subvolume {} needs manual migration before snapshotting",
+                path.display()
+            );
+        }
+        Ok(())
     }
 
     /// Create snapshot with automatic rotation
     pub async fn create_snapshot(&self) -> Result<PathBuf> {
+        anyhow::ensure!(
+            (1..=2).contains(&self.config.max_snapshots),
+            "Cache rotation supports one or two snapshots"
+        );
+        let _rotation = self.rotation.lock().await;
+        self.validate_layout().await?;
         // Create snapshot directory if it doesn't exist
         tokio::fs::create_dir_all(&self.config.snapshot_dir).await?;
 
+        let existing = self.list_snapshots().await?;
+        anyhow::ensure!(
+            existing.len() <= self.config.max_snapshots,
+            "existing cache snapshot count {} exceeds configured limit {}; migrate excess snapshots manually",
+            existing.len(),
+            self.config.max_snapshots
+        );
         let snapshot_counter = self.next_snapshot_counter().await?;
         let snapshot_name = format!("{}-{:06}", self.config.prefix, snapshot_counter);
         let snapshot_path = self.config.snapshot_dir.join(&snapshot_name);
@@ -69,8 +146,11 @@ impl SnapshotManager {
 
         log::info!("Created snapshot: {}", snapshot_path.display());
 
-        // Rotate old snapshots
-        self.rotate_snapshots().await?;
+        // Preserve existing recovery points if creation fails. With two
+        // retained snapshots this briefly permits three cache snapshots
+        // (five total subvolumes including source and golden), then prunes to
+        // two cache snapshots (four total).
+        self.rotate_snapshots(self.config.max_snapshots).await?;
 
         Ok(snapshot_path)
     }
@@ -121,25 +201,21 @@ impl SnapshotManager {
     }
 
     /// Rotate snapshots, keeping only max_snapshots
-    async fn rotate_snapshots(&self) -> Result<()> {
+    async fn rotate_snapshots(&self, limit: usize) -> Result<()> {
         let snapshots = self.list_snapshots().await?;
 
-        if snapshots.len() <= self.config.max_snapshots {
-            log::debug!(
-                "Snapshot count {} within limit {}",
-                snapshots.len(),
-                self.config.max_snapshots
-            );
+        if snapshots.len() <= limit {
+            log::debug!("Snapshot count {} within limit {}", snapshots.len(), limit);
             return Ok(());
         }
 
         // Calculate how many to delete
-        let to_delete = snapshots.len() - self.config.max_snapshots;
+        let to_delete = snapshots.len() - limit;
 
         log::info!(
             "Rotating snapshots: {} total, keeping {}, deleting {}",
             snapshots.len(),
-            self.config.max_snapshots,
+            limit,
             to_delete
         );
 
@@ -230,7 +306,93 @@ mod tests {
     #[test]
     fn test_snapshot_config_defaults() {
         let config = SnapshotConfig::default();
-        assert_eq!(config.max_snapshots, 24);
+        assert_eq!(config.max_snapshots, 2);
         assert_eq!(config.prefix, "SNP-cache");
+    }
+
+    #[tokio::test]
+    async fn rejects_unbounded_or_empty_rotation_before_filesystem_work() {
+        for count in [0, 3, 24] {
+            let manager = SnapshotManager::new(
+                PathBuf::from("/unused"),
+                SnapshotConfig {
+                    max_snapshots: count,
+                    ..Default::default()
+                },
+            );
+            assert!(manager
+                .create_snapshot()
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("one or two snapshots"));
+        }
+    }
+
+    #[tokio::test]
+    async fn legacy_snapshots_are_refused_without_deletion_and_ordinary_dirs_pass() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("cache");
+        let manager = SnapshotManager::new(
+            source.clone(),
+            SnapshotConfig {
+                snapshot_dir: root.path().to_path_buf(),
+                ..Default::default()
+            },
+        );
+        tokio::fs::create_dir_all(source.join("embeddings"))
+            .await
+            .unwrap();
+        manager.validate_layout().await.unwrap();
+        let legacy = root.path().join("@cache-snapshots");
+        tokio::fs::create_dir(&legacy).await.unwrap();
+        tokio::fs::write(legacy.join("SNP-cache-000001"), b"old snapshot")
+            .await
+            .unwrap();
+        assert!(manager
+            .validate_layout()
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("manual migration"));
+        assert!(legacy.join("SNP-cache-000001").exists());
+    }
+
+    #[test]
+    fn nested_subvolume_identity_requires_btrfs_and_root_inode() {
+        assert!(is_nested_btrfs_subvolume(
+            libc::BTRFS_SUPER_MAGIC as u64,
+            256
+        ));
+        assert!(!is_nested_btrfs_subvolume(0, 256));
+        assert!(!is_nested_btrfs_subvolume(
+            libc::BTRFS_SUPER_MAGIC as u64,
+            257
+        ));
+    }
+
+    #[tokio::test]
+    async fn excess_rotation_is_refused_without_deleting_recovery_points() {
+        let root = tempfile::tempdir().unwrap();
+        for counter in 1..=3 {
+            tokio::fs::create_dir(root.path().join(format!("SNP-cache-{counter:06}")))
+                .await
+                .unwrap();
+        }
+        let manager = SnapshotManager::new(
+            root.path().join("cache"),
+            SnapshotConfig {
+                snapshot_dir: root.path().to_path_buf(),
+                max_snapshots: 2,
+                ..Default::default()
+            },
+        );
+        assert!(manager
+            .create_snapshot()
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("migrate excess snapshots manually"));
+        assert_eq!(manager.list_snapshots().await.unwrap().len(), 3);
     }
 }

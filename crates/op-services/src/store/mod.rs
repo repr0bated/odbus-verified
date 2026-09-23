@@ -77,20 +77,34 @@ impl Store {
 
     pub async fn save_service(&self, service: &ServiceDef) -> Result<()> {
         let mut guard = self.data.write().await;
-        guard
+        let previous = guard
             .services
             .insert(service.name.as_str().to_string(), service.clone());
-        drop(guard);
-        self.flush().await?;
+        // Keep the mutation lock through rename: every persisted snapshot now
+        // commits in the same order as the in-memory catalog mutations.
+        if let Err(error) = self.flush_catalog(&guard).await {
+            match previous {
+                Some(previous) => {
+                    guard
+                        .services
+                        .insert(service.name.as_str().to_string(), previous);
+                }
+                None => {
+                    guard.services.remove(service.name.as_str());
+                }
+            }
+            return Err(error);
+        }
         Ok(())
     }
 
     pub async fn delete_service(&self, name: &ServiceName) -> Result<()> {
         let mut guard = self.data.write().await;
-        let removed = guard.services.remove(name.as_str()).is_some();
-        drop(guard);
-        if removed {
-            self.flush().await?;
+        if let Some(removed) = guard.services.remove(name.as_str()) {
+            if let Err(error) = self.flush_catalog(&guard).await {
+                guard.services.insert(name.as_str().to_string(), removed);
+                return Err(error);
+            }
         }
         Ok(())
     }
@@ -124,10 +138,8 @@ impl Store {
     }
 
     /// Atomic flush: write to temp file, then rename.
-    async fn flush(&self) -> Result<()> {
-        let guard = self.data.read().await;
-        let json = serde_json::to_string_pretty(&*guard)?;
-        drop(guard);
+    async fn flush_catalog(&self, catalog: &ServicesCatalog) -> Result<()> {
+        let json = serde_json::to_string_pretty(catalog)?;
 
         let tmp = self.services_path.with_extension("tmp");
         tokio::fs::write(&tmp, json).await?;
@@ -135,5 +147,47 @@ impl Store {
 
         debug!(path = %self.services_path.display(), "Flushed services to JSON");
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn service(name: &str) -> ServiceDef {
+        serde_json::from_value(serde_json::json!({
+            "name": name,
+            "exec_start": { "program": "/bin/true", "args": [] }
+        }))
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn concurrent_mutations_commit_in_order_without_tmp_races() {
+        let dir = tempfile::tempdir().unwrap();
+        let store =
+            std::sync::Arc::new(Store::new(dir.path().join("services.json")).await.unwrap());
+        let mut saves = Vec::new();
+        for i in 0..16 {
+            let store = store.clone();
+            saves.push(tokio::spawn(async move {
+                store.save_service(&service(&format!("svc-{i}"))).await
+            }));
+        }
+        for save in saves {
+            save.await.unwrap().unwrap();
+        }
+        store
+            .delete_service(&ServiceName::new("svc-0").unwrap())
+            .await
+            .unwrap();
+        store.save_service(&service("svc-0")).await.unwrap();
+        let reopened = Store::new(dir.path().join("services.json")).await.unwrap();
+        assert_eq!(reopened.list_services().await.unwrap().len(), 16);
+        assert!(reopened
+            .get_service(&ServiceName::new("svc-0").unwrap())
+            .await
+            .unwrap()
+            .is_some());
     }
 }

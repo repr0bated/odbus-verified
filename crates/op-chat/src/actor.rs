@@ -534,33 +534,12 @@ impl ChatActor {
 
     async fn handle_execute_tool(
         &self,
-        name: &str,
-        arguments: Value,
-        session_id: Option<String>,
+        _name: &str,
+        _arguments: Value,
+        _session_id: Option<String>,
     ) -> RpcResponse {
-        info!(tool = %name, "Executing tool");
-
-        match self
-            .tool_executor
-            .execute(name, arguments, session_id)
-            .await
-        {
-            Ok(tracked) => {
-                if tracked.success() {
-                    RpcResponse::success(tracked.result.result.clone().unwrap_or_default())
-                        .with_execution_id(&tracked.execution_id)
-                } else {
-                    RpcResponse::error(
-                        tracked
-                            .error()
-                            .cloned()
-                            .unwrap_or_else(|| "Unknown error".to_string()),
-                    )
-                    .with_execution_id(&tracked.execution_id)
-                }
-            }
-            Err(e) => RpcResponse::error(format!("Execution failed: {}", e)),
-        }
+        // A chat session string is not a verified identity or an operation grant.
+        RpcResponse::error("Legacy actor ExecuteTool lacks canonical admission; use PluginService/CallMethod with a verified SID1/OIA1 and declared capability")
     }
 
     async fn handle_get_tool(&self, name: &str) -> RpcResponse {

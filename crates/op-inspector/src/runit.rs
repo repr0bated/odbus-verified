@@ -353,6 +353,54 @@ mod tests {
 mod regression_tests {
     use super::*;
 
+    fn fixture_root() -> std::path::PathBuf {
+        let unique = format!(
+            "op-inspector-runit-fixture-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let root = std::env::temp_dir().join(unique);
+        let man = root.join("man");
+        std::fs::create_dir_all(&man).unwrap();
+        std::fs::write(
+            man.join("sv.8"),
+            r#".TH sv 8
+.SH NAME
+sv \- control services
+.SH COMMANDS
+.TP
+.B up
+Start the service.
+.TP
+.B start
+Same as
+.BR up
+but wait until the service is up.
+.TP
+.B pause cont hup alarm interrupt quit 1 2 term kill
+Send STOP CONT HUP ALRM INT QUIT USR1 USR2 TERM KILL respectively.
+.TP
+.B status
+Report service status.
+.TP
+.B status
+Duplicate status entry.
+.SH SEE ALSO
+sv(8)
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            man.join("runsv.8"),
+            ".SH NAME\nrunsv \\- supervise a service\n.SH DESCRIPTION\n",
+        )
+        .unwrap();
+        root
+    }
+
     fn schema() -> Option<RunitSchema> {
         let root = std::path::PathBuf::from("/home/admin/git/runit");
         root.join("man/sv.8")
@@ -415,5 +463,67 @@ mod regression_tests {
         for nw in ["up", "down", "once", "status"] {
             assert!(!by[nw].waits, "`{nw}` should not be flagged as waiting");
         }
+    }
+
+    #[test]
+    fn checked_in_fixture_exercises_parser_without_external_runit_checkout() {
+        let root = fixture_root();
+        let schema = RunitParser::new().introspect_source(&root).unwrap();
+        let by_name: BTreeMap<_, _> = schema
+            .commands
+            .iter()
+            .map(|command| (command.name.as_str(), command))
+            .collect();
+
+        assert!(by_name.contains_key("up"));
+        assert!(by_name["start"].waits);
+        assert!(!by_name["up"].waits);
+        assert_eq!(
+            by_name["start"].description,
+            "Same as up but wait until the service is up."
+        );
+        for (name, signal) in [
+            ("pause", "STOP"),
+            ("cont", "CONT"),
+            ("hup", "HUP"),
+            ("alarm", "ALRM"),
+            ("interrupt", "INT"),
+            ("quit", "QUIT"),
+            ("1", "USR1"),
+            ("2", "USR2"),
+            ("term", "TERM"),
+            ("kill", "KILL"),
+        ] {
+            assert_eq!(by_name[name].signal.as_deref(), Some(signal));
+        }
+        assert_eq!(
+            schema
+                .commands
+                .iter()
+                .filter(|c| c.name == "status")
+                .count(),
+            1
+        );
+        assert_eq!(
+            schema.binaries.get("runsv").map(String::as_str),
+            Some("supervise a service")
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn missing_sv_man_page_is_reported_as_input_error() {
+        let root = std::env::temp_dir().join(format!(
+            "op-inspector-runit-missing-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(root.join("man")).unwrap();
+        assert!(RunitParser::new().introspect_source(&root).is_err());
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

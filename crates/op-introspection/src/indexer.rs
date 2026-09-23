@@ -1,21 +1,22 @@
-//! DBus Hierarchical Indexer with FTS5 Full-Text Search
+//! Persistent D-Bus introspection index backed by CozoDB.
 //!
-//! Builds a persistent, searchable index of all DBus services, objects, methods, and properties.
-//! Enables semantic queries like "find all network-related methods" without real-time DBus calls.
+//! Search uses Cozo's native full-text index over service, path, interface,
+//! member, description, and signature. Query syntax follows Cozo FTS (including
+//! terms, phrases, Boolean operators, and prefix `*`); invalid syntax is an error.
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
-use op_core::types::{BusType, ObjectInfo};
-use rusqlite::{params, Connection};
+use op_core::types::{BusType, ObjectInfo, PropertyAccess};
+use op_cozo_store::CozoGraphShuttle;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use std::sync::{Arc, RwLock};
+use serde_json::{json, Value};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 use crate::scanner::ServiceScanner;
 
-/// Statistics about the indexed DBus system
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IndexStatistics {
     pub total_services: usize,
     pub total_objects: usize,
@@ -27,728 +28,385 @@ pub struct IndexStatistics {
     pub indexed_at: i64,
 }
 
-/// Search result for FTS queries
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {
     pub service: String,
     pub object_path: String,
     pub interface: String,
-    pub item_type: String, // "method", "property", "signal", "interface"
+    pub item_type: String,
     pub item_name: String,
     pub description: String,
+    /// Cozo full-text TF-IDF score; higher values rank first.
     pub relevance_score: f64,
 }
 
-/// DBus FTS Indexer - builds searchable index of entire DBus system
+#[derive(Debug, Serialize, Deserialize)]
+struct IndexRecord {
+    service: String,
+    object_path: String,
+    interface: String,
+    item_type: String,
+    item_name: String,
+    description: String,
+    signature: String,
+}
+
+#[derive(Deserialize)]
+struct FtsHit {
+    #[serde(flatten)]
+    record: IndexRecord,
+    score: f64,
+}
+
+/// A derived index. A supplied legacy SQLite file remains untouched; CozoDB
+/// lives in the sibling `<db_path>.cozo` directory and is rebuilt on demand.
 pub struct DbusIndexer {
-    #[allow(clippy::arc_with_non_send_sync)]
-    conn: Arc<RwLock<Connection>>,
+    store: CozoGraphShuttle,
     scanner: Arc<ServiceScanner>,
 }
 
+const ITEMS: &str = "?[service, object_path, interface, item_type, item_name, description, signature, search_text] := *dbus_index_items{service, object_path, interface, item_type, item_name, description, signature, search_text} :limit 1";
+const KEY_SELECT: &str = "?[service, object_path, interface, item_type, item_name] := *dbus_index_items{service, object_path, interface, item_type, item_name}";
+
+// Cozo 0.7.6 applies the index's Lowercase filter to ordinary terms but leaves
+// prefix literals unchanged. Fold only unquoted prefix terms here, so operators
+// and quoted phrase syntax retain their original meaning.
+fn normalize_prefix_terms(query: &str) -> String {
+    let mut output = String::with_capacity(query.len());
+    let mut term = String::new();
+    let mut quote = None;
+    let mut escaped = false;
+    for ch in query.chars() {
+        if let Some(delimiter) = quote {
+            output.push(ch);
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == delimiter {
+                quote = None;
+            }
+        } else if ch == '\'' || ch == '"' {
+            output.push_str(&term);
+            term.clear();
+            output.push(ch);
+            quote = Some(ch);
+        } else if ch.is_alphanumeric() || ch == '_' {
+            term.push(ch);
+        } else if ch == '*' {
+            output.push_str(&term.to_lowercase());
+            term.clear();
+            output.push(ch);
+        } else {
+            output.push_str(&term);
+            term.clear();
+            output.push(ch);
+        }
+    }
+    output.push_str(&term);
+    output
+}
+
 impl DbusIndexer {
-    /// Create new indexer with SQLite database
-    #[allow(clippy::arc_with_non_send_sync)]
     pub async fn new<P: AsRef<Path>>(db_path: P) -> Result<Self> {
-        let conn = Connection::open(db_path.as_ref()).context("Failed to open indexer database")?;
-
-        // Create schema with FTS5 virtual tables
-        conn.execute_batch(
-            r#"
-            -- Core index tables
-            CREATE TABLE IF NOT EXISTS services (
-                service_name TEXT PRIMARY KEY,
-                indexed_at INTEGER NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS objects (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                service_name TEXT NOT NULL,
-                object_path TEXT NOT NULL,
-                indexed_at INTEGER NOT NULL,
-                UNIQUE(service_name, object_path)
-            );
-
-            CREATE TABLE IF NOT EXISTS interfaces (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                object_id INTEGER NOT NULL,
-                interface_name TEXT NOT NULL,
-                indexed_at INTEGER NOT NULL,
-                FOREIGN KEY(object_id) REFERENCES objects(id),
-                UNIQUE(object_id, interface_name)
-            );
-
-            CREATE TABLE IF NOT EXISTS methods (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                interface_id INTEGER NOT NULL,
-                method_name TEXT NOT NULL,
-                input_signature TEXT,
-                output_signature TEXT,
-                description TEXT,
-                FOREIGN KEY(interface_id) REFERENCES interfaces(id),
-                UNIQUE(interface_id, method_name)
-            );
-
-            CREATE TABLE IF NOT EXISTS properties (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                interface_id INTEGER NOT NULL,
-                property_name TEXT NOT NULL,
-                type_signature TEXT NOT NULL,
-                access TEXT NOT NULL,
-                description TEXT,
-                FOREIGN KEY(interface_id) REFERENCES interfaces(id),
-                UNIQUE(interface_id, property_name)
-            );
-
-            CREATE TABLE IF NOT EXISTS signals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                interface_id INTEGER NOT NULL,
-                signal_name TEXT NOT NULL,
-                signature TEXT,
-                description TEXT,
-                FOREIGN KEY(interface_id) REFERENCES interfaces(id),
-                UNIQUE(interface_id, signal_name)
-            );
-
-            -- FTS5 virtual tables for full-text search
-            CREATE VIRTUAL TABLE IF NOT EXISTS methods_fts USING fts5(
-                service_name,
-                object_path,
-                interface_name,
-                method_name,
-                description,
-                input_signature,
-                output_signature,
-                content=methods,
-                content_rowid=id
-            );
-
-            CREATE VIRTUAL TABLE IF NOT EXISTS properties_fts USING fts5(
-                service_name,
-                object_path,
-                interface_name,
-                property_name,
-                description,
-                type_signature,
-                access,
-                content=properties,
-                content_rowid=id
-            );
-
-            CREATE VIRTUAL TABLE IF NOT EXISTS signals_fts USING fts5(
-                service_name,
-                object_path,
-                interface_name,
-                signal_name,
-                description,
-                signature,
-                content=signals,
-                content_rowid=id
-            );
-
-            CREATE VIRTUAL TABLE IF NOT EXISTS interfaces_fts USING fts5(
-                service_name,
-                object_path,
-                interface_name,
-                content=interfaces,
-                content_rowid=id
-            );
-
-            -- Triggers to keep FTS tables in sync
-            CREATE TRIGGER IF NOT EXISTS methods_ai AFTER INSERT ON methods BEGIN
-                INSERT INTO methods_fts(rowid, service_name, object_path, interface_name,
-                                       method_name, description, input_signature, output_signature)
-                SELECT m.id,
-                       o.service_name,
-                       o.object_path,
-                       i.interface_name,
-                       m.method_name,
-                       m.description,
-                       m.input_signature,
-                       m.output_signature
-                FROM methods m
-                JOIN interfaces i ON m.interface_id = i.id
-                JOIN objects o ON i.object_id = o.id
-                WHERE m.id = NEW.id;
-            END;
-
-            CREATE TRIGGER IF NOT EXISTS methods_au AFTER UPDATE ON methods BEGIN
-                INSERT INTO methods_fts(methods_fts, rowid) VALUES('delete', OLD.id);
-                INSERT INTO methods_fts(rowid, service_name, object_path, interface_name,
-                                       method_name, description, input_signature, output_signature)
-                SELECT m.id,
-                       o.service_name,
-                       o.object_path,
-                       i.interface_name,
-                       m.method_name,
-                       m.description,
-                       m.input_signature,
-                       m.output_signature
-                FROM methods m
-                JOIN interfaces i ON m.interface_id = i.id
-                JOIN objects o ON i.object_id = o.id
-                WHERE m.id = NEW.id;
-            END;
-
-            CREATE TRIGGER IF NOT EXISTS properties_ai AFTER INSERT ON properties BEGIN
-                INSERT INTO properties_fts(rowid, service_name, object_path, interface_name,
-                                          property_name, description, type_signature, access)
-                SELECT p.id,
-                       o.service_name,
-                       o.object_path,
-                       i.interface_name,
-                       p.property_name,
-                       p.description,
-                       p.type_signature,
-                       p.access
-                FROM properties p
-                JOIN interfaces i ON p.interface_id = i.id
-                JOIN objects o ON i.object_id = o.id
-                WHERE p.id = NEW.id;
-            END;
-
-            CREATE TRIGGER IF NOT EXISTS properties_au AFTER UPDATE ON properties BEGIN
-                INSERT INTO properties_fts(properties_fts, rowid) VALUES('delete', OLD.id);
-                INSERT INTO properties_fts(rowid, service_name, object_path, interface_name,
-                                          property_name, description, type_signature, access)
-                SELECT p.id,
-                       o.service_name,
-                       o.object_path,
-                       i.interface_name,
-                       p.property_name,
-                       p.description,
-                       p.type_signature,
-                       p.access
-                FROM properties p
-                JOIN interfaces i ON p.interface_id = i.id
-                JOIN objects o ON i.object_id = o.id
-                WHERE p.id = NEW.id;
-            END;
-
-            CREATE TRIGGER IF NOT EXISTS signals_ai AFTER INSERT ON signals BEGIN
-                INSERT INTO signals_fts(rowid, service_name, object_path, interface_name,
-                                       signal_name, description, signature)
-                SELECT s.id,
-                       o.service_name,
-                       o.object_path,
-                       i.interface_name,
-                       s.signal_name,
-                       s.description,
-                       s.signature
-                FROM signals s
-                JOIN interfaces i ON s.interface_id = i.id
-                JOIN objects o ON i.object_id = o.id
-                WHERE s.id = NEW.id;
-            END;
-
-            CREATE TRIGGER IF NOT EXISTS signals_au AFTER UPDATE ON signals BEGIN
-                INSERT INTO signals_fts(signals_fts, rowid) VALUES('delete', OLD.id);
-                INSERT INTO signals_fts(rowid, service_name, object_path, interface_name,
-                                       signal_name, description, signature)
-                SELECT s.id,
-                       o.service_name,
-                       o.object_path,
-                       i.interface_name,
-                       s.signal_name,
-                       s.description,
-                       s.signature
-                FROM signals s
-                JOIN interfaces i ON s.interface_id = i.id
-                JOIN objects o ON i.object_id = o.id
-                WHERE s.id = NEW.id;
-            END;
-
-            CREATE TRIGGER IF NOT EXISTS interfaces_ai AFTER INSERT ON interfaces BEGIN
-                INSERT INTO interfaces_fts(rowid, service_name, object_path, interface_name)
-                SELECT i.id,
-                       o.service_name,
-                       o.object_path,
-                       i.interface_name
-                FROM interfaces i
-                JOIN objects o ON i.object_id = o.id
-                WHERE i.id = NEW.id;
-            END;
-
-            CREATE TRIGGER IF NOT EXISTS interfaces_au AFTER UPDATE ON interfaces BEGIN
-                INSERT INTO interfaces_fts(interfaces_fts, rowid) VALUES('delete', OLD.id);
-                INSERT INTO interfaces_fts(rowid, service_name, object_path, interface_name)
-                SELECT i.id,
-                       o.service_name,
-                       o.object_path,
-                       i.interface_name
-                FROM interfaces i
-                JOIN objects o ON i.object_id = o.id
-                WHERE i.id = NEW.id;
-            END;
-
-            -- Index for performance
-            CREATE INDEX IF NOT EXISTS idx_objects_service ON objects(service_name);
-            CREATE INDEX IF NOT EXISTS idx_interfaces_object ON interfaces(object_id);
-            CREATE INDEX IF NOT EXISTS idx_methods_interface ON methods(interface_id);
-            CREATE INDEX IF NOT EXISTS idx_properties_interface ON properties(interface_id);
-            CREATE INDEX IF NOT EXISTS idx_signals_interface ON signals(interface_id);
-
-            -- Statistics table
-            CREATE TABLE IF NOT EXISTS index_stats (
-                id INTEGER PRIMARY KEY CHECK (id = 1),
-                total_services INTEGER NOT NULL,
-                total_objects INTEGER NOT NULL,
-                total_interfaces INTEGER NOT NULL,
-                total_methods INTEGER NOT NULL,
-                total_properties INTEGER NOT NULL,
-                total_signals INTEGER NOT NULL,
-                scan_duration_seconds REAL NOT NULL,
-                indexed_at INTEGER NOT NULL
-            );
-            "#,
-        )?;
-
-        let scanner = Arc::new(ServiceScanner::new());
-
+        let path = db_path.as_ref();
+        let store = if path == Path::new(":memory:") {
+            CozoGraphShuttle::new_in_memory()?
+        } else {
+            let mut sibling = path.as_os_str().to_os_string();
+            sibling.push(".cozo");
+            CozoGraphShuttle::new_persistent(PathBuf::from(sibling))
+                .context("open introspection Cozo index")?
+        };
+        for schema in [
+            ":create dbus_index_items { service: String, object_path: String, interface: String, item_type: String, item_name: String => description: String, signature: String, search_text: String }",
+            ":create dbus_index_stats { id: String => document: String }",
+            "::fts create dbus_index_items:search { extractor: search_text, tokenizer: Simple, filters: [Lowercase] }",
+        ] {
+            if let Err(error) = store.run_query(schema, None) {
+                let message = error.to_string();
+                if !message.contains("already exists")
+                    && !message.contains("AlreadyExists")
+                    && !message.contains("conflicts with an existing")
+                {
+                    return Err(error.into());
+                }
+            }
+        }
+        // Existing relations must have the expected shape. A corrupt or unrelated
+        // database is an error, not an apparently empty index.
+        store
+            .run_query(ITEMS, None)
+            .context("validate introspection item relation")?;
+        store
+            .run_query("?[id, document] := *dbus_index_stats{id, document}", None)
+            .context("validate introspection statistics relation")?;
         Ok(Self {
-            conn: Arc::new(RwLock::new(conn)),
-            scanner,
+            store,
+            scanner: Arc::new(ServiceScanner::new()),
         })
     }
 
-    /// Build complete index of DBus system
     pub async fn build_index(&self, bus_type: BusType) -> Result<IndexStatistics> {
-        info!("🔍 Starting DBus index build for {:?} bus", bus_type);
+        info!("Starting D-Bus index build for {:?} bus", bus_type);
         let start = std::time::Instant::now();
-
-        // Discover all services
         let services = self.scanner.list_services(bus_type).await?;
-        info!("   Found {} services to index", services.len());
-
-        let mut total_objects = 0;
-        let mut total_interfaces = 0;
-        let mut total_methods = 0;
-        let mut total_properties = 0;
-        let mut total_signals = 0;
-
         let timestamp = Utc::now().timestamp();
-
-        for (idx, service_info) in services.iter().enumerate() {
-            if (idx + 1) % 10 == 0 {
-                info!("   Progress: {}/{} services", idx + 1, services.len());
-            }
-
-            match self
-                .index_service(bus_type, &service_info.name, timestamp)
-                .await
-            {
-                Ok(stats) => {
-                    total_objects += stats.0;
-                    total_interfaces += stats.1;
-                    total_methods += stats.2;
-                    total_properties += stats.3;
-                    total_signals += stats.4;
-                }
-                Err(e) => {
-                    warn!("Failed to index service {}: {}", service_info.name, e);
-                }
-            }
-        }
-
-        let duration = start.elapsed().as_secs_f64();
-
-        let stats = IndexStatistics {
+        let mut stats = IndexStatistics {
             total_services: services.len(),
-            total_objects,
-            total_interfaces,
-            total_methods,
-            total_properties,
-            total_signals,
-            scan_duration_seconds: duration,
+            total_objects: 0,
+            total_interfaces: 0,
+            total_methods: 0,
+            total_properties: 0,
+            total_signals: 0,
+            scan_duration_seconds: 0.0,
             indexed_at: timestamp,
         };
-
-        // Store statistics
+        self.clear_index()?;
+        for service in &services {
+            if let Err(error) = self
+                .index_service(bus_type, &service.name, timestamp, &mut stats)
+                .await
+            {
+                warn!(service = %service.name, %error, "failed to index D-Bus service");
+            }
+        }
+        stats.scan_duration_seconds = start.elapsed().as_secs_f64();
         self.store_statistics(&stats)?;
-
-        info!("✅ Index build complete in {:.2}s", duration);
-        info!("   Services: {}", stats.total_services);
-        info!("   Objects: {}", stats.total_objects);
-        info!("   Methods: {}", stats.total_methods);
-        info!("   Properties: {}", stats.total_properties);
-
+        info!(
+            services = stats.total_services,
+            objects = stats.total_objects,
+            "D-Bus index build complete"
+        );
         Ok(stats)
     }
 
-    /// Index a single service
     async fn index_service(
         &self,
         bus_type: BusType,
-        service_name: &str,
+        service: &str,
         timestamp: i64,
-    ) -> Result<(usize, usize, usize, usize, usize)> {
-        let mut total_objects = 0;
-        let mut total_interfaces = 0;
-        let mut total_methods = 0;
-        let mut total_properties = 0;
-        let mut total_signals = 0;
-
-        // Store service
-        {
-            let conn = self.conn.write().map_err(|e| anyhow::anyhow!("{}", e))?;
-            conn.execute(
-                "INSERT OR REPLACE INTO services (service_name, indexed_at) VALUES (?1, ?2)",
-                params![service_name, timestamp],
-            )?;
-        }
-
-        // Try common root paths (most services expose objects at "/" or service-specific paths)
-        let service_path = format!("/{}", service_name.replace('.', "/"));
-        let common_paths = vec!["/".to_string(), service_path];
-
-        for object_path in &common_paths {
-            match self
-                .scanner
-                .introspect(bus_type, service_name, object_path)
-                .await
-            {
-                Ok(object_info) => {
-                    self.store_object(service_name, &object_info, timestamp)?;
-                    total_objects += 1;
-                    total_interfaces += object_info.interfaces.len();
-
-                    for interface in &object_info.interfaces {
-                        total_methods += interface.methods.len();
-                        total_properties += interface.properties.len();
-                        total_signals += interface.signals.len();
+        stats: &mut IndexStatistics,
+    ) -> Result<()> {
+        let service_path = format!("/{}", service.replace('.', "/"));
+        for path in ["/", service_path.as_str()] {
+            match self.scanner.introspect(bus_type, service, path).await {
+                Ok(object) => {
+                    self.store_object(service, &object, timestamp)?;
+                    stats.total_objects += 1;
+                    stats.total_interfaces += object.interfaces.len();
+                    for interface in &object.interfaces {
+                        stats.total_methods += interface.methods.len();
+                        stats.total_properties += interface.properties.len();
+                        stats.total_signals += interface.signals.len();
                     }
                 }
-                Err(e) => {
-                    debug!(
-                        "Failed to introspect {}:{}: {}",
-                        service_name, object_path, e
-                    );
-                }
+                Err(error) => debug!(service, path, %error, "D-Bus introspection skipped"),
             }
         }
-
-        Ok((
-            total_objects,
-            total_interfaces,
-            total_methods,
-            total_properties,
-            total_signals,
-        ))
+        Ok(())
     }
 
-    /// Store object and its interfaces in the database
-    fn store_object(
-        &self,
-        service_name: &str,
-        object_info: &ObjectInfo,
-        timestamp: i64,
-    ) -> Result<()> {
-        let conn = self.conn.write().map_err(|e| anyhow::anyhow!("{}", e))?;
-
-        // Insert object
-        conn.execute(
-            "INSERT INTO objects (service_name, object_path, indexed_at)
-             VALUES (?1, ?2, ?3)
-             ON CONFLICT(service_name, object_path)
-             DO UPDATE SET indexed_at = excluded.indexed_at",
-            params![service_name, &object_info.path, timestamp],
+    fn store_object(&self, service: &str, object: &ObjectInfo, _timestamp: i64) -> Result<()> {
+        // Re-indexing an object removes members that disappeared from its schema.
+        self.store.run_query(
+            "?[service, object_path, interface, item_type, item_name] := *dbus_index_items{service, object_path, interface, item_type, item_name}, service = $service, object_path = $path :rm dbus_index_items {service, object_path, interface, item_type, item_name}",
+            Some(json!({"service": service, "path": object.path})),
         )?;
-
-        let object_id: i64 = conn.query_row(
-            "SELECT id FROM objects WHERE service_name = ?1 AND object_path = ?2",
-            params![service_name, &object_info.path],
-            |row| row.get(0),
-        )?;
-
-        // Insert interfaces and their members
-        for interface in &object_info.interfaces {
-            conn.execute(
-                "INSERT INTO interfaces (object_id, interface_name, indexed_at)
-                 VALUES (?1, ?2, ?3)
-                 ON CONFLICT(object_id, interface_name)
-                 DO UPDATE SET indexed_at = excluded.indexed_at",
-                params![object_id, &interface.name, timestamp],
-            )?;
-
-            let interface_id: i64 = conn.query_row(
-                "SELECT id FROM interfaces WHERE object_id = ?1 AND interface_name = ?2",
-                params![object_id, &interface.name],
-                |row| row.get(0),
-            )?;
-
-            // Insert methods
+        for interface in &object.interfaces {
+            self.put(IndexRecord {
+                service: service.into(),
+                object_path: object.path.clone(),
+                interface: interface.name.clone(),
+                item_type: "interface".into(),
+                item_name: interface.name.clone(),
+                description: interface.name.clone(),
+                signature: String::new(),
+            })?;
             for method in &interface.methods {
-                let input_sig = method
+                let signature = method
                     .in_args
                     .iter()
-                    .map(|a| format!("{}:{}", a.name.as_deref().unwrap_or("arg"), a.signature))
+                    .chain(&method.out_args)
+                    .map(|arg| {
+                        format!("{}:{}", arg.name.as_deref().unwrap_or("arg"), arg.signature)
+                    })
                     .collect::<Vec<_>>()
                     .join(", ");
-                let output_sig = method
-                    .out_args
-                    .iter()
-                    .map(|a| format!("{}:{}", a.name.as_deref().unwrap_or("arg"), a.signature))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-
-                conn.execute(
-                    "INSERT INTO methods
-                     (interface_id, method_name, input_signature, output_signature, description)
-                     VALUES (?1, ?2, ?3, ?4, ?5)
-                     ON CONFLICT(interface_id, method_name)
-                     DO UPDATE SET
-                        input_signature = excluded.input_signature,
-                        output_signature = excluded.output_signature,
-                        description = excluded.description",
-                    params![
-                        interface_id,
-                        &method.name,
-                        &input_sig,
-                        &output_sig,
-                        format!("{}.{}", interface.name, method.name)
-                    ],
-                )?;
+                self.put(IndexRecord {
+                    service: service.into(),
+                    object_path: object.path.clone(),
+                    interface: interface.name.clone(),
+                    item_type: "method".into(),
+                    item_name: method.name.clone(),
+                    description: format!("{}.{}", interface.name, method.name),
+                    signature,
+                })?;
             }
-
-            // Insert properties
             for property in &interface.properties {
-                let access_str = match property.access {
-                    op_core::types::PropertyAccess::Read => "read",
-                    op_core::types::PropertyAccess::Write => "write",
-                    op_core::types::PropertyAccess::ReadWrite => "readwrite",
+                let access = match property.access {
+                    PropertyAccess::Read => "read",
+                    PropertyAccess::Write => "write",
+                    PropertyAccess::ReadWrite => "readwrite",
                 };
-
-                conn.execute(
-                    "INSERT INTO properties
-                     (interface_id, property_name, type_signature, access, description)
-                     VALUES (?1, ?2, ?3, ?4, ?5)
-                     ON CONFLICT(interface_id, property_name)
-                     DO UPDATE SET
-                        type_signature = excluded.type_signature,
-                        access = excluded.access,
-                        description = excluded.description",
-                    params![
-                        interface_id,
-                        &property.name,
-                        &property.signature,
-                        access_str,
-                        format!("{}.{}", interface.name, property.name)
-                    ],
-                )?;
+                self.put(IndexRecord {
+                    service: service.into(),
+                    object_path: object.path.clone(),
+                    interface: interface.name.clone(),
+                    item_type: "property".into(),
+                    item_name: property.name.clone(),
+                    description: format!("{}.{}", interface.name, property.name),
+                    signature: format!("{} {}", property.signature, access),
+                })?;
             }
-
-            // Insert signals
             for signal in &interface.signals {
-                let sig = signal
+                let signature = signal
                     .args
                     .iter()
-                    .map(|a| format!("{}:{}", a.name.as_deref().unwrap_or("arg"), a.signature))
+                    .map(|arg| {
+                        format!("{}:{}", arg.name.as_deref().unwrap_or("arg"), arg.signature)
+                    })
                     .collect::<Vec<_>>()
                     .join(", ");
-
-                conn.execute(
-                    "INSERT INTO signals
-                     (interface_id, signal_name, signature, description)
-                     VALUES (?1, ?2, ?3, ?4)
-                     ON CONFLICT(interface_id, signal_name)
-                     DO UPDATE SET
-                        signature = excluded.signature,
-                        description = excluded.description",
-                    params![
-                        interface_id,
-                        &signal.name,
-                        &sig,
-                        format!("{}.{}", interface.name, signal.name)
-                    ],
-                )?;
+                self.put(IndexRecord {
+                    service: service.into(),
+                    object_path: object.path.clone(),
+                    interface: interface.name.clone(),
+                    item_type: "signal".into(),
+                    item_name: signal.name.clone(),
+                    description: format!("{}.{}", interface.name, signal.name),
+                    signature,
+                })?;
             }
         }
-
         Ok(())
     }
 
-    /// Store index statistics
-    fn store_statistics(&self, stats: &IndexStatistics) -> Result<()> {
-        let conn = self.conn.write().map_err(|e| anyhow::anyhow!("{}", e))?;
-
-        conn.execute(
-            "INSERT OR REPLACE INTO index_stats
-             (id, total_services, total_objects, total_interfaces, total_methods,
-              total_properties, total_signals, scan_duration_seconds, indexed_at)
-             VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![
-                stats.total_services,
-                stats.total_objects,
-                stats.total_interfaces,
-                stats.total_methods,
-                stats.total_properties,
-                stats.total_signals,
-                stats.scan_duration_seconds,
-                stats.indexed_at,
-            ],
+    fn put(&self, record: IndexRecord) -> Result<()> {
+        let search_text = [
+            record.service.as_str(),
+            record.object_path.as_str(),
+            record.interface.as_str(),
+            record.item_name.as_str(),
+            record.description.as_str(),
+            record.signature.as_str(),
+        ]
+        .join(" ");
+        self.store.run_query(
+            "?[service, object_path, interface, item_type, item_name, description, signature, search_text] <- [[$service, $path, $interface, $type, $name, $description, $signature, $search_text]] :put dbus_index_items {service, object_path, interface, item_type, item_name => description, signature, search_text}",
+            Some(json!({
+                "service": record.service, "path": record.object_path,
+                "interface": record.interface, "type": record.item_type,
+                "name": record.item_name, "description": record.description,
+                "signature": record.signature, "search_text": search_text,
+            })),
         )?;
-
         Ok(())
     }
 
-    /// Get index statistics
+    fn store_statistics(&self, stats: &IndexStatistics) -> Result<()> {
+        self.store.run_query(
+            "?[id, document] <- [['current', $document]] :put dbus_index_stats {id => document}",
+            Some(json!({"document": serde_json::to_string(stats)?})),
+        )?;
+        Ok(())
+    }
+
     pub fn get_statistics(&self) -> Result<Option<IndexStatistics>> {
-        let conn = self.conn.read().map_err(|e| anyhow::anyhow!("{}", e))?;
-
-        let result = conn.query_row(
-            "SELECT total_services, total_objects, total_interfaces, total_methods,
-                    total_properties, total_signals, scan_duration_seconds, indexed_at
-             FROM index_stats WHERE id = 1",
-            [],
-            |row| {
-                Ok(IndexStatistics {
-                    total_services: row.get(0)?,
-                    total_objects: row.get(1)?,
-                    total_interfaces: row.get(2)?,
-                    total_methods: row.get(3)?,
-                    total_properties: row.get(4)?,
-                    total_signals: row.get(5)?,
-                    scan_duration_seconds: row.get(6)?,
-                    indexed_at: row.get(7)?,
-                })
-            },
-        );
-
-        match result {
-            Ok(stats) => Ok(Some(stats)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e.into()),
+        let rows = self.store.run_query(
+            "?[document] := *dbus_index_stats{id: 'current', document}",
+            None,
+        )?;
+        let rows = rows
+            .as_array()
+            .ok_or_else(|| anyhow!("invalid Cozo statistics result"))?;
+        match rows.first() {
+            Some(row) => {
+                let document = row
+                    .get("document")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| anyhow!("malformed persisted index statistics"))?;
+                Ok(Some(
+                    serde_json::from_str(document).context("decode index statistics")?,
+                ))
+            }
+            None => Ok(None),
         }
     }
 
-    /// Search methods using FTS5
-    pub fn search_methods(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
-        let conn = self.conn.read().map_err(|e| anyhow::anyhow!("{}", e))?;
-
-        let mut stmt = conn.prepare(
-            "SELECT service_name, object_path, interface_name, method_name,
-                    description, rank
-             FROM methods_fts
-             WHERE methods_fts MATCH ?1
-             ORDER BY rank
-             LIMIT ?2",
-        )?;
-
-        let results = stmt
-            .query_map(params![query, limit], |row| {
-                Ok(SearchResult {
-                    service: row.get(0)?,
-                    object_path: row.get(1)?,
-                    interface: row.get(2)?,
-                    item_name: row.get(3)?,
-                    item_type: "method".to_string(),
-                    description: row.get(4)?,
-                    relevance_score: row.get::<_, f64>(5)?,
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(results)
-    }
-
-    /// Search properties using FTS5
-    pub fn search_properties(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
-        let conn = self.conn.read().map_err(|e| anyhow::anyhow!("{}", e))?;
-
-        let mut stmt = conn.prepare(
-            "SELECT service_name, object_path, interface_name, property_name,
-                    description, rank
-             FROM properties_fts
-             WHERE properties_fts MATCH ?1
-             ORDER BY rank
-             LIMIT ?2",
-        )?;
-
-        let results = stmt
-            .query_map(params![query, limit], |row| {
-                Ok(SearchResult {
-                    service: row.get(0)?,
-                    object_path: row.get(1)?,
-                    interface: row.get(2)?,
-                    item_name: row.get(3)?,
-                    item_type: "property".to_string(),
-                    description: row.get(4)?,
-                    relevance_score: row.get::<_, f64>(5)?,
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(results)
-    }
-
-    /// Search everything (methods, properties, signals, interfaces)
-    pub fn search_all(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
-        let mut results = Vec::new();
-
-        // Search methods
-        results.extend(self.search_methods(query, limit / 4)?);
-
-        // Search properties
-        results.extend(self.search_properties(query, limit / 4)?);
-
-        // Search signals
-        let conn = self.conn.read().map_err(|e| anyhow::anyhow!("{}", e))?;
-        let mut stmt = conn.prepare(
-            "SELECT service_name, object_path, interface_name, signal_name,
-                    description, rank
-             FROM signals_fts
-             WHERE signals_fts MATCH ?1
-             ORDER BY rank
-             LIMIT ?2",
-        )?;
-
-        let signals = stmt
-            .query_map(params![query, limit / 4], |row| {
-                Ok(SearchResult {
-                    service: row.get(0)?,
-                    object_path: row.get(1)?,
-                    interface: row.get(2)?,
-                    item_name: row.get(3)?,
-                    item_type: "signal".to_string(),
-                    description: row.get(4)?,
-                    relevance_score: row.get::<_, f64>(5)?,
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        results.extend(signals);
-
-        // Sort by relevance
+    fn search(
+        &self,
+        query: &str,
+        limit: usize,
+        item_type: Option<&str>,
+    ) -> Result<Vec<SearchResult>> {
+        if limit == 0 {
+            return Ok(Vec::new());
+        }
+        if query.trim().is_empty() {
+            return Ok(Vec::new());
+        }
+        let k = i64::try_from(limit).unwrap_or(i64::MAX);
+        let query = normalize_prefix_terms(query);
+        let (script, params) = match item_type {
+            Some(kind) => (
+                "?[service, object_path, interface, item_type, item_name, description, signature, score] := ~dbus_index_items:search{service, object_path, interface, item_type, item_name, description, signature | query: $query, k: $k, bind_score: score, filter: item_type == $kind}",
+                json!({"query": query, "k": k, "kind": kind}),
+            ),
+            None => (
+                "?[service, object_path, interface, item_type, item_name, description, signature, score] := ~dbus_index_items:search{service, object_path, interface, item_type, item_name, description, signature | query: $query, k: $k, bind_score: score}",
+                json!({"query": query, "k": k}),
+            ),
+        };
+        let rows = self.store.run_query(script, Some(params))?;
+        let hits: Vec<FtsHit> =
+            serde_json::from_value(rows).context("decode Cozo full-text index results")?;
+        let mut results = Vec::with_capacity(hits.len());
+        for FtsHit { record, score } in hits {
+            results.push(SearchResult {
+                service: record.service,
+                object_path: record.object_path,
+                interface: record.interface,
+                item_type: record.item_type,
+                item_name: record.item_name,
+                description: record.description,
+                relevance_score: score,
+            });
+        }
         results.sort_by(|a, b| {
             b.relevance_score
-                .partial_cmp(&a.relevance_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
+                .total_cmp(&a.relevance_score)
+                .then_with(|| a.service.cmp(&b.service))
+                .then_with(|| a.object_path.cmp(&b.object_path))
+                .then_with(|| a.interface.cmp(&b.interface))
+                .then_with(|| a.item_type.cmp(&b.item_type))
+                .then_with(|| a.item_name.cmp(&b.item_name))
         });
-
-        // Trim to limit
         results.truncate(limit);
-
         Ok(results)
     }
 
-    /// Clear the entire index
+    pub fn search_methods(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
+        self.search(query, limit, Some("method"))
+    }
+
+    pub fn search_properties(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
+        self.search(query, limit, Some("property"))
+    }
+
+    pub fn search_all(&self, query: &str, limit: usize) -> Result<Vec<SearchResult>> {
+        self.search(query, limit, None)
+    }
+
     pub fn clear_index(&self) -> Result<()> {
-        let conn = self.conn.write().map_err(|e| anyhow::anyhow!("{}", e))?;
-
-        conn.execute_batch(
-            "DELETE FROM methods_fts;
-             DELETE FROM properties_fts;
-             DELETE FROM signals_fts;
-             DELETE FROM interfaces_fts;
-             DELETE FROM signals;
-             DELETE FROM properties;
-             DELETE FROM methods;
-             DELETE FROM interfaces;
-             DELETE FROM objects;
-             DELETE FROM services;
-             DELETE FROM index_stats;",
+        self.store.run_query(
+            &format!("{KEY_SELECT} :rm dbus_index_items {{service, object_path, interface, item_type, item_name}}"),
+            None,
         )?;
-
+        self.store.run_query(
+            "?[id] := *dbus_index_stats{id} :rm dbus_index_stats {id}",
+            None,
+        )?;
         Ok(())
     }
 }
@@ -756,11 +414,118 @@ impl DbusIndexer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use op_core::types::{InterfaceInfo, MethodInfo, PropertyInfo, SignalInfo};
+
+    #[test]
+    fn prefix_normalization_preserves_boolean_and_phrase_syntax() {
+        assert_eq!(
+            normalize_prefix_terms("Conn* AND \"Changed Signal\" OR Net*"),
+            "conn* AND \"Changed Signal\" OR net*"
+        );
+    }
+
+    fn fixture() -> ObjectInfo {
+        ObjectInfo {
+            path: "/org/example/Network".into(),
+            children: vec![],
+            interfaces: vec![InterfaceInfo {
+                name: "org.example.Network".into(),
+                methods: vec![MethodInfo {
+                    name: "Connect".into(),
+                    in_args: vec![],
+                    out_args: vec![],
+                    annotations: Default::default(),
+                }],
+                properties: vec![PropertyInfo {
+                    name: "Connected".into(),
+                    signature: "b".into(),
+                    access: PropertyAccess::Read,
+                }],
+                signals: vec![SignalInfo {
+                    name: "Changed".into(),
+                    args: vec![],
+                }],
+            }],
+        }
+    }
 
     #[tokio::test]
-    async fn test_indexer_creation() {
-        let indexer = DbusIndexer::new(":memory:").await.unwrap();
-        let stats = indexer.get_statistics().unwrap();
-        assert!(stats.is_none());
+    async fn cozo_index_reopens_with_all_member_kinds_and_statistics() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("index.db");
+        let legacy = b"SQLite format 3\0legacy data";
+        std::fs::write(&path, legacy).unwrap();
+        {
+            let index = DbusIndexer::new(&path).await.unwrap();
+            assert!(index.get_statistics().unwrap().is_none());
+            index
+                .store_object("org.example.Network", &fixture(), 1)
+                .unwrap();
+            index
+                .store_statistics(&IndexStatistics {
+                    total_services: 1,
+                    total_objects: 1,
+                    total_interfaces: 1,
+                    total_methods: 1,
+                    total_properties: 1,
+                    total_signals: 1,
+                    scan_duration_seconds: 0.5,
+                    indexed_at: 1,
+                })
+                .unwrap();
+            assert_eq!(index.search_methods("connect", 10).unwrap().len(), 1);
+            assert_eq!(index.search_methods("Conn*", 10).unwrap().len(), 1);
+        }
+        let index = DbusIndexer::new(&path).await.unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), legacy);
+        assert_eq!(index.get_statistics().unwrap().unwrap().total_signals, 1);
+        let results = index.search_all("network", 10).unwrap();
+        assert_eq!(results.len(), 4);
+        assert!(results.iter().any(|row| row.item_type == "interface"));
+        assert!(results.iter().any(|row| row.item_type == "signal"));
+        assert_eq!(index.search_properties("CONNECTED", 10).unwrap().len(), 1);
+        assert!(index.search_methods("missing", 10).unwrap().is_empty());
+        assert!(index.search_all("\"unterminated", 10).is_err());
+    }
+
+    #[tokio::test]
+    async fn cozo_reindex_removes_stale_members_and_clear_removes_stats() {
+        let index = DbusIndexer::new(":memory:").await.unwrap();
+        let mut object = fixture();
+        index
+            .store_object("org.example.Network", &object, 1)
+            .unwrap();
+        object.interfaces[0].methods.clear();
+        index
+            .store_object("org.example.Network", &object, 2)
+            .unwrap();
+        assert!(index.search_methods("Connect", 10).unwrap().is_empty());
+        assert_eq!(index.search_all("network", 10).unwrap().len(), 3);
+        index.clear_index().unwrap();
+        assert!(index.search_all("network", 10).unwrap().is_empty());
+        assert!(index.get_statistics().unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn malformed_cozo_path_fails_without_touching_legacy_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("index.db");
+        std::fs::write(&path, b"legacy").unwrap();
+        std::fs::write(dir.path().join("index.db.cozo"), b"not a directory").unwrap();
+        assert!(DbusIndexer::new(&path).await.is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"legacy");
+    }
+
+    #[tokio::test]
+    async fn malformed_persisted_statistics_return_error() {
+        let index = DbusIndexer::new(":memory:").await.unwrap();
+        index
+            .store
+            .run_query(
+                "?[id, document] <- [['current', '{broken']] :put dbus_index_stats {id => document}",
+                None,
+            )
+            .unwrap();
+        assert!(index.get_statistics().is_err());
     }
 }

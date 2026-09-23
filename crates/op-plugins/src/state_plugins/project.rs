@@ -662,6 +662,18 @@ mod tests {
                 true,
                 "obs.service.project.resolve-context@v1",
             ),
+            (
+                "select_context",
+                SideEffect::Mutation,
+                false,
+                "mut.service.project.select-context@v1",
+            ),
+            (
+                "get_context",
+                SideEffect::Read,
+                true,
+                "obs.service.project.get-context@v1",
+            ),
         ];
         assert_eq!(schema.methods.len(), expected.len());
         for (name, effect, idempotent, subid) in expected {

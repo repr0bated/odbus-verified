@@ -744,7 +744,8 @@ impl GrpcAgentPool {
         }))
     }
 
-    /// Internal execution logic
+    /// No production agent RPC is wired here yet. Fail closed instead of
+    /// returning a completion-shaped object for work that never ran.
     async fn do_execute(
         &self,
         agent_id: &str,
@@ -753,33 +754,10 @@ impl GrpcAgentPool {
     ) -> OrchestrationResult<Value> {
         debug!(agent = %agent_id, operation = %operation, "Executing operation");
 
-        // Update connection stats
-        {
-            let mut connections = self.connections.write().await;
-            if let Some(conn) = connections.get_mut(agent_id) {
-                conn.last_used = Some(Instant::now());
-                conn.request_count.fetch_add(1, Ordering::Relaxed);
-            }
-        }
-
-        // TODO: Replace with actual gRPC call
-        // let request = tonic::Request::new(ExecuteRequest {
-        //     agent_id: agent_id.to_string(),
-        //     operation: operation.to_string(),
-        //     arguments_json: simd_json::to_string(arguments)?,
-        //     timeout_ms: self.config.request_timeout.as_millis() as i64,
-        //     ..Default::default()
-        // });
-        // let response = client.execute(request).await?;
-        // let result: Value = simd_json::from_str(&response.into_inner().result_json)?;
-
-        // Simulated successful execution
-        Ok(simd_json::json!({
-            "agent": agent_id,
-            "operation": operation,
-            "success": true,
-            "timestamp": chrono::Utc::now().to_rfc3339(),
-        }))
+        Err(OrchestrationError::new(
+            ErrorCode::OperationNotSupported,
+            format!("agent RPC execution is not wired: {agent_id}.{operation}"),
+        ))
     }
 
     /// Acquire semaphore permit for an agent
@@ -857,58 +835,17 @@ impl GrpcAgentPool {
         agent_id: &str,
         operation: &str,
         _arguments: &Value,
-        mut on_chunk: F,
+        _on_chunk: F,
     ) -> OrchestrationResult<Value>
     where
         F: FnMut(StreamChunk) + Send + 'static,
     {
         debug!(agent = %agent_id, operation = %operation, "Starting streaming execution");
 
-        // TODO: Replace with actual gRPC streaming call
-        // let request = tonic::Request::new(ExecuteRequest { ... });
-        // let mut stream = client.execute_stream(request).await?.into_inner();
-        // while let Some(chunk) = stream.next().await {
-        //     on_chunk(chunk.into());
-        // }
-
-        // Simulated streaming
-        let mut sequence = 0u32;
-
-        on_chunk(StreamChunk {
-            content: format!("Starting {} {}...\n", agent_id, operation),
-            stream_type: StreamType::Progress,
-            sequence,
-            is_final: false,
-            timestamp: Instant::now(),
-        });
-        sequence += 1;
-
-        // Simulate some work
-        tokio::time::sleep(Duration::from_millis(100)).await;
-
-        on_chunk(StreamChunk {
-            content: format!("Executing {}...\n", operation),
-            stream_type: StreamType::Stdout,
-            sequence,
-            is_final: false,
-            timestamp: Instant::now(),
-        });
-        sequence += 1;
-
-        on_chunk(StreamChunk {
-            content: "Operation complete.\n".to_string(),
-            stream_type: StreamType::Stdout,
-            sequence,
-            is_final: true,
-            timestamp: Instant::now(),
-        });
-
-        Ok(simd_json::json!({
-            "agent": agent_id,
-            "operation": operation,
-            "success": true,
-            "streamed": true,
-        }))
+        Err(OrchestrationError::new(
+            ErrorCode::OperationNotSupported,
+            format!("agent streaming RPC is not wired: {agent_id}.{operation}"),
+        ))
     }
 
     // ========================================================================
@@ -1359,7 +1296,7 @@ mod tests {
         let pool = GrpcAgentPool::with_defaults();
         pool.init_session("test", "test", None).await.unwrap();
 
-        let result = pool
+        let error = pool
             .execute(
                 "test",
                 "memory",
@@ -1367,12 +1304,9 @@ mod tests {
                 simd_json::json!({ "key": "test", "value": "hello" }),
             )
             .await
-            .unwrap();
+            .unwrap_err();
 
-        assert!(result
-            .get("success")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false));
+        assert_eq!(error.code, ErrorCode::OperationNotSupported);
     }
 
     #[tokio::test]
@@ -1396,7 +1330,7 @@ mod tests {
         let results = pool.batch_execute("test", operations, true).await.unwrap();
 
         assert_eq!(results.len(), 2);
-        assert!(results.iter().all(|r| r.success));
+        assert!(results.iter().all(|r| !r.success));
     }
 
     #[tokio::test]

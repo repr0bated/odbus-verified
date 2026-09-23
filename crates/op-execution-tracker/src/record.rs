@@ -360,6 +360,16 @@ fn truncate_string(s: &str, max_len: usize) -> String {
     }
 }
 
+/// Compute execution hash for deterministic fingerprinting
+pub fn hash_execution(tool_name: &str, input: &Value, output: &Value, prev_hash: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(tool_name.as_bytes());
+    hasher.update(simd_json::to_vec(input).unwrap_or_default());
+    hasher.update(simd_json::to_vec(output).unwrap_or_default());
+    hasher.update(prev_hash.as_bytes());
+    hex::encode(hasher.finalize())
+}
+
 #[cfg(test)]
 mod truncate_tests {
     use super::truncate_string;
@@ -373,14 +383,4 @@ mod truncate_tests {
         assert!(output.ends_with("... (truncated)"));
         assert!(output.is_char_boundary(output.len()));
     }
-}
-
-/// Compute execution hash for deterministic fingerprinting
-pub fn hash_execution(tool_name: &str, input: &Value, output: &Value, prev_hash: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(tool_name.as_bytes());
-    hasher.update(simd_json::to_vec(input).unwrap_or_default());
-    hasher.update(simd_json::to_vec(output).unwrap_or_default());
-    hasher.update(prev_hash.as_bytes());
-    hex::encode(hasher.finalize())
 }

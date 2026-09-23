@@ -286,13 +286,13 @@ impl MemoryLoop {
         user_message: String,
         assistant_response: String,
         tool_calls: Vec<(String, Value)>,
-    ) -> JoinHandle<()> {
+    ) -> JoinHandle<Result<()>> {
         let cozo = Arc::clone(&self.cozo);
         let qdrant = self.qdrant.as_ref().map(Arc::clone);
         let regex = self.memorable_regex.clone();
 
         tokio::spawn(async move {
-            if let Err(e) = Self::post_turn_memory(
+            let result = Self::post_turn_memory(
                 &cozo,
                 qdrant.as_ref(),
                 &regex,
@@ -301,10 +301,11 @@ impl MemoryLoop {
                 &assistant_response,
                 &tool_calls,
             )
-            .await
-            {
+            .await;
+            if let Err(e) = &result {
                 warn!("Post-turn memory task failed: {}", e);
             }
+            result
         })
     }
 

@@ -42,6 +42,7 @@ impl Drop for GrantsEnvironment {
 struct NativeFixture {
     endpoint: String,
     frames: tokio::sync::mpsc::Sender<Option<Value>>,
+    identity_header: tokio::sync::oneshot::Receiver<String>,
     prompt: tokio::sync::oneshot::Receiver<Value>,
     closed: tokio::sync::oneshot::Receiver<()>,
     task: tokio::task::JoinHandle<()>,
@@ -56,12 +57,14 @@ impl NativeFixture {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let endpoint = format!("http://{}", listener.local_addr().unwrap());
         let (frames, mut received) = tokio::sync::mpsc::channel::<Option<Value>>(128);
+        let (identity_tx, identity_header) = tokio::sync::oneshot::channel();
         let (prompt_tx, prompt) = tokio::sync::oneshot::channel();
         let (closed_tx, closed) = tokio::sync::oneshot::channel();
         let task = tokio::spawn(async move {
             let (stream, _) = listener.accept().await.unwrap();
-            let mut socket =
-                accept_hdr_async(stream, |request: &WsRequest, mut response: WsResponse| {
+            let mut socket = accept_hdr_async(
+                stream,
+                move |request: &WsRequest, mut response: WsResponse| {
                     assert_eq!(request.uri().path(), "/ws/chat");
                     assert!(request
                         .uri()
@@ -74,21 +77,41 @@ impl NativeFixture {
                         .unwrap()
                         .contains("stateless_generation=1"));
                     assert_eq!(request.headers()["authorization"], "Bearer fixture-token");
+                    let forwarded = request.headers()["x-opdbus-sealed-id-bin"]
+                        .to_str()
+                        .expect("forwarded SID1 header must be text");
+                    assert!(
+                        op_identity::sealed_id::SealedId::from_inline_ref(&format!(
+                            "{}{}",
+                            op_identity::sealed_id::INLINE_PREFIX,
+                            forwarded
+                        ))
+                        .is_ok(),
+                        "forwarded identity must be an authored SID1"
+                    );
+                    let _ = identity_tx.send(forwarded.to_owned());
                     response.headers_mut().insert(
                         "Sec-WebSocket-Protocol",
                         "tched_router.generation.v1".parse().unwrap(),
                     );
                     Ok(response)
-                })
-                .await
-                .unwrap();
+                },
+            )
+            .await
+            .unwrap();
             let connect = socket.next().await.unwrap().unwrap();
             let connect: Value = serde_json::from_str(connect.to_text().unwrap()).unwrap();
             let session = connect["session_id"].as_str().unwrap();
             socket.send(Message::Text(json!({"type":"session_start","session_id":session,"resumed":false,"message_count":0,"stateless_generation":1}).to_string())).await.unwrap();
-            socket.send(Message::Text(json!({"type":"connected","stateless_generation":1,"provider":"fixture.direct","model":"fixture-model"}).to_string())).await.unwrap();
+            socket.send(Message::Text(json!({"type":"connected","stateless_generation":1,"provider":"fixture.direct","model":"fixture-model","identity_authenticated":"SID1"}).to_string())).await.unwrap();
             let prompt = socket.next().await.unwrap().unwrap();
-            let _ = prompt_tx.send(serde_json::from_str(prompt.to_text().unwrap()).unwrap());
+            assert!(
+                matches!(&prompt, Message::Text(_)),
+                "native prompt must be a text frame"
+            );
+            let prompt: Value = serde_json::from_str(prompt.to_text().unwrap()).unwrap();
+            assert_eq!(prompt["type"], "message");
+            let _ = prompt_tx.send(prompt);
             loop {
                 tokio::select! {
                     frame=received.recv()=>match frame {Some(Some(frame))=>if socket.send(Message::Text(frame.to_string())).await.is_err(){break},_=>break},
@@ -101,6 +124,7 @@ impl NativeFixture {
         Self {
             endpoint,
             frames,
+            identity_header,
             prompt,
             closed,
             task,
@@ -362,7 +386,22 @@ async fn llm_stream_facade_and_job_listing_use_private_committed_state() {
         .await
         .unwrap()
         .unwrap();
-    assert!(prompt.to_string().contains("PRIVATE_FACADE_PROMPT"));
+    let forwarded = tokio::time::timeout(LIMIT, &mut native.identity_header)
+        .await
+        .unwrap()
+        .unwrap();
+    let expected = crate::native_sled_identity::credential_for(
+        &fixture.first.principal_id,
+        &fixture.first.session_id,
+        &fixture.first.session_genesis,
+    )
+    .unwrap();
+    assert!(
+        forwarded == expected,
+        "native request forwarded a different SID1"
+    );
+    assert_eq!(prompt["type"], "message");
+    assert_eq!(prompt["content"], "PRIVATE_FACADE_PROMPT");
     native.chunk("facade output").await;
     let running = fixture.wait_committed_chunks(id, 1).await;
     assert_eq!(running.output, "facade output");

@@ -1,60 +1,50 @@
-/// Network Authority Enforcement
-///
-/// This module ensures the plugin system remains the ultimate authoritative source
-/// for all network configuration, preventing interference from legacy systems.
-use anyhow::Result;
-use std::process::Command;
+//! Network-manager authority through the runit D-Bus lifecycle gate.
+use anyhow::{ensure, Context, Result};
+use zbus::{Connection, Proxy};
 
 pub struct NetworkAuthority;
 
 impl NetworkAuthority {
-    /// Services that would fight the plugin system for control of the network.
-    /// Named as runit services (`/etc/runit/sv/<name>`).
     const COMPETING_MANAGERS: &'static [&'static str] =
         &["NetworkManager", "connmand", "dhcpcd", "wicd"];
 
-    /// Ensure no competing network managers are active.
-    ///
-    /// This host runs runit, so control is `sv down` plus removal of the
-    /// boot-enablement symlink; there is no systemd and no `systemctl`.
-    /// Services that are not defined on this host are simply absent, and `sv`
-    /// failing for them is expected and ignored.
-    pub fn enforce_authority() -> Result<()> {
-        for service in Self::COMPETING_MANAGERS {
-            // Stop it now.
-            let _ = Command::new(op_core::runit::SV_BIN)
-                .args(["down", service])
-                .output();
-            // Keep it from coming back at boot: drop the runlevel symlink and
-            // leave a `down` marker in the definition.
-            let _ = std::fs::remove_file(op_core::runit::enabled_path(service));
-            let definition = op_core::runit::definition_path(service);
-            if std::path::Path::new(&definition).is_dir() {
-                let _ = std::fs::write(format!("{definition}/down"), "");
-            }
-        }
+    async fn proxy(connection: &Connection) -> Result<Proxy<'_>> {
+        Ok(Proxy::new(
+            connection,
+            "org.opdbus.v1.Runit.Systemctl",
+            "/org/opdbus/v1/plugins/runit/systemctl",
+            "org.opdbus.v1.Runit.Systemctl",
+        )
+        .await?)
+    }
 
-        log::info!("Network authority enforced - plugin system is sole controller");
+    /// Stop and disable competing managers through the owner service. The owner
+    /// authenticates the D-Bus sender; denied or failed transitions stay errors.
+    pub async fn enforce_authority() -> Result<()> {
+        let connection = Connection::system()
+            .await
+            .context("Connect to runit owner")?;
+        let proxy = Self::proxy(&connection).await?;
+        for service in Self::COMPETING_MANAGERS {
+            let (success, message): (bool, String) = proxy.call("Disable", &(service,)).await?;
+            ensure!(success, "Failed to disable {service}: {message}");
+        }
         Ok(())
     }
 
-    /// Check for authority violations.
-    pub fn check_authority() -> Result<Vec<String>> {
+    /// Read manager status from the D-Bus owner, never from host processes/files.
+    pub async fn check_authority() -> Result<Vec<String>> {
+        let connection = Connection::system()
+            .await
+            .context("Connect to runit owner")?;
+        let proxy = Self::proxy(&connection).await?;
         let mut violations = Vec::new();
-
         for service in Self::COMPETING_MANAGERS {
-            if let Ok(output) = Command::new(op_core::runit::SV_BIN)
-                .args(["status", service])
-                .output()
-            {
-                // `sv status` prints e.g. "run: NetworkManager: (pid 123) 4s".
-                let status = String::from_utf8_lossy(&output.stdout);
-                if status.trim_start().starts_with("run:") {
-                    violations.push(format!("{service} is active"));
-                }
+            let status: String = proxy.call("IsActive", &(service,)).await?;
+            if status == "active" {
+                violations.push(format!("{service} is active"));
             }
         }
-
         Ok(violations)
     }
 }

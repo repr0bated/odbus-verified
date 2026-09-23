@@ -22,7 +22,6 @@ use std::sync::{
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixListener,
-    sync::Notify,
 };
 
 struct Environment {
@@ -57,7 +56,6 @@ struct NativeFixture {
     socket: std::path::PathBuf,
     accepted: Arc<AtomicUsize>,
     qmgr_requests: Arc<StdMutex<Vec<Vec<u8>>>>,
-    qmgr_request: Arc<Notify>,
     tasks: Vec<tokio::task::JoinHandle<()>>,
 }
 
@@ -113,14 +111,11 @@ impl NativeFixture {
         let qmgr = UnixListener::bind(&paths.qmgr_socket).unwrap();
         let qmgr_requests = Arc::new(StdMutex::new(Vec::new()));
         let requests = qmgr_requests.clone();
-        let qmgr_request = Arc::new(Notify::new());
-        let request_ready = qmgr_request.clone();
         let qmgr_task = tokio::spawn(async move {
             while let Ok((mut stream, _)) = qmgr.accept().await {
                 let mut request = Vec::new();
                 let _ = stream.read_to_end(&mut request).await;
                 requests.lock().unwrap().push(request);
-                request_ready.notify_one();
             }
         });
 
@@ -159,19 +154,7 @@ impl NativeFixture {
             socket,
             accepted,
             qmgr_requests,
-            qmgr_request,
             tasks: vec![showq_task, qmgr_task, dbus_task],
-        }
-    }
-
-    async fn wait_for_flush(&self) {
-        if self.qmgr_requests.lock().unwrap().is_empty() {
-            tokio::time::timeout(
-                std::time::Duration::from_secs(3),
-                self.qmgr_request.notified(),
-            )
-            .await
-            .expect("qmgr fixture received flush request");
         }
     }
 }
@@ -185,7 +168,7 @@ fn validate_json(schema: &impl serde::Serialize, value: &Value) {
 }
 
 #[tokio::test]
-async fn all_nine_mail_methods_cross_mutation_engine_dbus_and_commit_complete_state() {
+async fn mail_owner_admits_queue_read_and_rejects_eight_unattributed_mutations() {
     let _cozo = temp_cozo();
     let schema = MailServerPlugin::new().schema().unwrap();
     let _shm = temp_shm_with_schemas(&[
@@ -283,10 +266,15 @@ async fn all_nine_mail_methods_cross_mutation_engine_dbus_and_commit_complete_st
         ),
         ("remove_domain", json!({"domain":"example.net"})),
     ];
+    // Only the read method remains available on this private p2p owner.
+    // The transport authenticates a Unix peer, but cannot carry the bridge's
+    // verified principal plus exact grant. All eight mutations must therefore
+    // fail at the owner without changing native files or SHM projection.
+    let mut expected_projection = before;
     for (method, arguments) in calls {
         let declaration = &schema.methods[method];
         validate_json(&declaration.args, &arguments);
-        let response = engine
+        let result = engine
             .dispatch_method_call_with_identity(
                 "mail_server",
                 method,
@@ -296,83 +284,29 @@ async fn all_nine_mail_methods_cross_mutation_engine_dbus_and_commit_complete_st
                 Some(&identity.session_id),
                 identity.genesis.as_deref(),
             )
-            .await
-            .unwrap_or_else(|error| panic!("mail_server.{method}: {error:#}"));
-        validate_json(declaration.returns.as_ref().unwrap(), &response["result"]);
-
+            .await;
         let bytes = op_core::projection_shm::read_projection_bytes("mail_server").unwrap();
-        let state: Value = serde_json::from_slice(&bytes).unwrap();
+        if method == "get_queue" {
+            let response = result.expect("get_queue remains an admitted read");
+            validate_json(declaration.returns.as_ref().unwrap(), &response["result"]);
+            assert_eq!(response["result"]["summary"]["messages"], 1);
+            assert_eq!(response["result"]["entries"][0]["queue_id"], "Q1");
+            expected_projection = bytes.clone();
+        } else {
+            let error = result.expect_err("native mail mutation has no verified grant");
+            assert!(
+                format!("{error:#}").contains("AccessDenied"),
+                "mail_server.{method}: {error:#}"
+            );
+            assert_eq!(bytes, expected_projection, "{method} changed SHM state");
+        }
         let mut exact_bytes = bytes.clone();
         let exact = simd_json::to_owned_value(&mut exact_bytes).unwrap();
         schema.validate_exact_schema_fields(&exact).unwrap();
-        assert_eq!(state["container_name"], "fixture-mail");
-        assert_eq!(state["container_status"], "Running");
-        assert_eq!(state["domain"], "preserved.example");
-        assert_eq!(state["healthy"], true);
-        assert!(state["administration"]["domains"]
-            .as_array()
-            .unwrap()
-            .contains(&json!("example.com")));
-        let administration = &state["administration"];
-        match method {
-            "add_domain" => assert!(administration["domains"]
-                .as_array()
-                .unwrap()
-                .contains(&json!("example.net"))),
-            "add_mailbox" => assert!(administration["mailboxes"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|mailbox| mailbox["address"] == "alice@example.net")),
-            "set_quota" => {
-                assert!(administration["mailboxes"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .any(|mailbox| {
-                        mailbox["address"] == "alice@example.net"
-                            && mailbox["quota_bytes"] == 256 * 1024 * 1024
-                    }))
-            }
-            "add_alias" => {
-                assert!(administration["aliases"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .any(|alias| {
-                        alias["address"] == "info@example.net"
-                            && alias["destination"] == "alice@example.net"
-                    }))
-            }
-            "get_queue" => {
-                assert_eq!(response["result"]["summary"]["messages"], 1);
-                assert_eq!(response["result"]["entries"][0]["queue_id"], "Q1");
-            }
-            "flush_queue" => assert_eq!(response["result"]["accepted"], true),
-            "remove_alias" => assert!(administration["aliases"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .all(|alias| alias["address"] != "info@example.net")),
-            "remove_mailbox" => assert!(administration["mailboxes"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .all(|mailbox| mailbox["address"] != "alice@example.net")),
-            "remove_domain" => assert!(!administration["domains"]
-                .as_array()
-                .unwrap()
-                .contains(&json!("example.net"))),
-            _ => unreachable!("fixture lists every canonical mail method"),
-        }
     }
 
-    fixture.wait_for_flush().await;
     assert_eq!(fixture.accepted.load(Ordering::SeqCst), 9);
-    assert_eq!(
-        fixture.qmgr_requests.lock().unwrap().as_slice(),
-        [b"FADI\0"]
-    );
+    assert!(fixture.qmgr_requests.lock().unwrap().is_empty());
     let final_state: Value = serde_json::from_slice(
         &op_core::projection_shm::read_projection_bytes("mail_server").unwrap(),
     )
@@ -409,9 +343,9 @@ async fn all_nine_mail_methods_cross_mutation_engine_dbus_and_commit_complete_st
         std::fs::read_to_string(&fixture.paths.dovecot_users).unwrap(),
         "owner@example.com:{SHA512-CRYPT}$6$fixture::::::\n"
     );
-    assert!(fixture
+    assert!(!fixture
         .paths
         .mail_root
         .join("example.net/alice/Maildir")
-        .is_dir());
+        .exists());
 }

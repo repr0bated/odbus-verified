@@ -184,8 +184,10 @@ mod tests {
 
     #[test]
     fn wildcard_and_nonlocal_listener_configuration_is_rejected() {
-        let mut cfg = ServerConfig::default();
-        cfg.host = "0.0.0.0".into();
+        let mut cfg = ServerConfig {
+            host: "0.0.0.0".into(),
+            ..Default::default()
+        };
         assert!(bind_addr(&cfg).is_err());
         cfg.host = "10.200.0.2".into();
         assert!(bind_addr(&cfg).is_err());

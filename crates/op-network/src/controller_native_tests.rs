@@ -1,6 +1,7 @@
 //! Isolated native OVS userspace datapath. Every socket and database is private;
 //! no command addresses the host OVS database or kernel network interfaces.
 use super::*;
+use rcgen::{BasicConstraints, CertificateParams, IsCa, KeyPair};
 use std::{
     path::Path,
     process::{Child, Command, Stdio},
@@ -38,6 +39,71 @@ impl Drop for OvsEnvironment {
     }
 }
 
+struct TlsEnvironment(Vec<(&'static str, Option<std::ffi::OsString>)>);
+
+impl TlsEnvironment {
+    fn set(ca: &Path, cert: &Path, key: &Path) -> Self {
+        let mut previous = Vec::new();
+        for (name, path) in [(TLS_CA_ENV, ca), (TLS_CERT_ENV, cert), (TLS_KEY_ENV, key)] {
+            previous.push((name, std::env::var_os(name)));
+            std::env::set_var(name, path);
+        }
+        Self(previous)
+    }
+}
+
+impl Drop for TlsEnvironment {
+    fn drop(&mut self) {
+        for (name, value) in self.0.drain(..) {
+            match value {
+                Some(value) => std::env::set_var(name, value),
+                None => std::env::remove_var(name),
+            }
+        }
+    }
+}
+
+struct TlsFixture {
+    ca: std::path::PathBuf,
+    server_cert: std::path::PathBuf,
+    server_key: std::path::PathBuf,
+    switch_cert: std::path::PathBuf,
+    switch_key: std::path::PathBuf,
+}
+
+impl TlsFixture {
+    fn new(root: &Path) -> Self {
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+        let ca_key = KeyPair::generate().unwrap();
+        let mut ca_params = CertificateParams::new(vec![]).unwrap();
+        ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+        let ca = ca_params.self_signed(&ca_key).unwrap();
+        let server_key = KeyPair::generate().unwrap();
+        let server_cert = CertificateParams::new(vec!["127.0.0.1".into()])
+            .unwrap()
+            .signed_by(&server_key, &ca, &ca_key)
+            .unwrap();
+        let switch_key = KeyPair::generate().unwrap();
+        let switch_cert = CertificateParams::new(vec!["switch.fixture".into()])
+            .unwrap()
+            .signed_by(&switch_key, &ca, &ca_key)
+            .unwrap();
+        let fixture = Self {
+            ca: root.join("openflow-ca.pem"),
+            server_cert: root.join("controller.pem"),
+            server_key: root.join("controller-key.pem"),
+            switch_cert: root.join("switch.pem"),
+            switch_key: root.join("switch-key.pem"),
+        };
+        std::fs::write(&fixture.ca, ca.pem()).unwrap();
+        std::fs::write(&fixture.server_cert, server_cert.pem()).unwrap();
+        std::fs::write(&fixture.server_key, server_key.serialize_pem()).unwrap();
+        std::fs::write(&fixture.switch_cert, switch_cert.pem()).unwrap();
+        std::fs::write(&fixture.switch_key, switch_key.serialize_pem()).unwrap();
+        fixture
+    }
+}
+
 fn command(binary: &str, arguments: &[String], root: &Path) -> Command {
     let mut command = Command::new(binary);
     command
@@ -69,11 +135,13 @@ async fn wait_socket(path: &Path) {
 }
 
 #[tokio::test]
-#[ignore = "runs installed OVS binaries with a private dummy datapath"]
+#[ignore = "requires installed OVS binaries; runs private dummy datapath and ephemeral mTLS fixture"]
 async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
     let root = tempfile::tempdir().unwrap();
     let path = root.path();
     let _ovs_environment = OvsEnvironment::set(path);
+    let tls = TlsFixture::new(path);
+    let _tls_environment = TlsEnvironment::set(&tls.ca, &tls.server_cert, &tls.server_key);
     let database = path.join("db");
     let socket = path.join("db.sock");
     run(
@@ -106,6 +174,17 @@ async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
     run(
         "/usr/bin/ovs-vsctl",
         &[db.clone(), "--no-wait".into(), "init".into()],
+        path,
+    );
+    run(
+        "/usr/bin/ovs-vsctl",
+        &[
+            db.clone(),
+            "set-ssl".into(),
+            tls.switch_key.display().to_string(),
+            tls.switch_cert.display().to_string(),
+            tls.ca.display().to_string(),
+        ],
         path,
     );
 
@@ -150,7 +229,7 @@ async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
             "--".into(),
             "set-controller".into(),
             "fixture0".into(),
-            format!("tcp:{address}"),
+            format!("ssl:{address}"),
         ],
         path,
     );
@@ -192,11 +271,11 @@ async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
     assert!(String::from_utf8_lossy(&controllers.stdout)
         .trim()
         .is_empty());
-    crate::datapath_safe::set_controller("fixture0", &format!("tcp:{address}"))
+    crate::datapath_safe::set_controller("fixture0", &format!("ssl:{address}"))
         .await
         .unwrap();
     let attached =
-        crate::datapath_safe::attach_controller_safe("fixture0", &format!("tcp:{address}"))
+        crate::datapath_safe::attach_controller_safe("fixture0", &format!("ssl:{address}"))
             .await
             .unwrap();
     assert_eq!(attached.bridge, "fixture0");

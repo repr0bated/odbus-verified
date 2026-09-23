@@ -99,53 +99,13 @@ impl WorkflowNode for PluginNode {
         self.state = state;
     }
 
-    async fn execute(&mut self, inputs: HashMap<String, Value>) -> Result<NodeResult> {
+    async fn execute(&mut self, _inputs: HashMap<String, Value>) -> Result<NodeResult> {
         let start = std::time::Instant::now();
-
-        // In a real implementation, this would call the actual plugin
-        // For now, return mock data
-        let result = match self.operation {
-            PluginOperation::Query => {
-                let mut outputs = HashMap::new();
-                outputs.insert(
-                    "current_state".to_string(),
-                    json!({
-                        "plugin": self.plugin_name,
-                        "state": "queried",
-                        "timestamp": chrono::Utc::now().to_rfc3339()
-                    }),
-                );
-                NodeResult::success(outputs)
-            }
-            PluginOperation::Diff => {
-                let desired = inputs.get("desired_state").cloned().unwrap_or(json!({}));
-                let mut outputs = HashMap::new();
-                outputs.insert(
-                    "diff".to_string(),
-                    json!({
-                        "plugin": self.plugin_name,
-                        "desired": desired,
-                        "changes": [],
-                        "has_changes": false
-                    }),
-                );
-                NodeResult::success(outputs)
-            }
-            PluginOperation::Apply => {
-                let mut outputs = HashMap::new();
-                outputs.insert(
-                    "result".to_string(),
-                    json!({
-                        "plugin": self.plugin_name,
-                        "applied": true,
-                        "changes_made": 0
-                    }),
-                );
-                NodeResult::success(outputs)
-            }
-        };
-
-        Ok(result.with_duration(start.elapsed().as_millis() as u64))
+        Ok(NodeResult::failure(format!(
+            "plugin node '{}' {:?} has no authorized plugin executor",
+            self.plugin_name, self.operation
+        ))
+        .with_duration(start.elapsed().as_millis() as u64))
     }
 
     fn config_schema(&self) -> Value {

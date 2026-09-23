@@ -110,9 +110,9 @@ nothing to recompile: edit the `run` script, then restart the service.
 
 ### Adding a new service (exact pattern)
 
-Service sources live in `deploy/runit/` (git-tracked), then install to
-`/etc/runit/sv/`. A service is one directory with a `run` script, plus an
-optional `log/run` companion:
+Service sources live in `deploy/runit/` (git-tracked) and are staged into the
+golden filesystem during release preparation. A service is one directory with
+a `run` script, plus an optional `log/run` companion:
 
 ```sh
 #!/bin/sh
@@ -143,19 +143,18 @@ The process **must stay in the foreground** — runit supervises the process it
 starts, so a daemonising binary gets restarted in a loop. Pass the binary's
 no-fork flag when it has one.
 
-**Deploy sequence:**
-```bash
-sudo install -Dm755 deploy/runit/<name>/run /etc/runit/sv/<name>/run
-sudo ln -sfn /etc/runit/sv/<name> /etc/runit/runsvdir/default/<name>
-sudo sv start <name>          # runsvdir picks up the symlink on its own
-```
-
-Deployment is **btrfs send/receive** of subvolume snapshots (see
-`deploy/btrfs-layout.sh`) — never a hand-copy onto a live host. Publish a build
-to the golden subvolume and to this host with:
+**Release sequence:** `build-golden.sh` prepares `/opt/op-dbus/golden` from
+already built artifacts and a persisted sealed catalog. It does not deploy,
+activate, install into the running host, or restart services:
 ```bash
 sudo deploy/runit/build-golden.sh
 ```
+Create a read-only release snapshot from the prepared golden filesystem,
+transfer it with **btrfs send/receive**, then activate the received release
+through the atomic `/opt/op-dbus/current` selection. Follow
+`docs/src/getting-started/local-release-activation.md` for the activation and
+rollback contract. Any target service action is a separate, deliberate
+operator step using `sudo sv <command> <service>`.
 
 **DO NOT:**
 - edit `/run/runit/service/` directly — that is the supervisor's runtime view
@@ -546,6 +545,10 @@ mod tests {
         let fixed = get_fixed_prompt();
         assert!(fixed.contains("CRITICAL:"));
         assert!(fixed.contains("TOPOLOGY"));
+        assert!(fixed.contains("build-golden.sh` prepares"));
+        assert!(fixed.contains("btrfs send/receive"));
+        assert!(fixed.contains("local-release-activation.md"));
+        assert!(!fixed.contains("Publish a build"));
     }
 
     #[tokio::test]
