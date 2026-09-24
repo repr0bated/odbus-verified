@@ -15,5 +15,15 @@ until incus exec "$NAME" -- test -r "$CONFIG" >/dev/null 2>&1; do
     sleep 1
 done
 
+# Xray creates /run/ghostbridge/xray-reality.sock and the adjacent lock as
+# the container root (host subuid). Group write lets it create those two
+# files. The sticky bit keeps host-owned sockets in the same directory.
+gb=/run/ghostbridge
+ct_gid=$(stat -c %g "$gb/xray" 2>/dev/null || true)
+if [ -n "$ct_gid" ]; then
+    chgrp "$ct_gid" "$gb"
+    chmod 1775 "$gb"
+fi
+
 echo "starting Xray in $NAME with $CONFIG"
 exec incus exec "$NAME" -- /usr/local/bin/xray run -config "$CONFIG"

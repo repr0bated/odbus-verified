@@ -129,6 +129,14 @@
       }
     },
     {
+      "id": "bin:op-identity-storage",
+      "label": "bin",
+      "props": {
+        "crate": "op-network",
+        "src": "crates/op-network/src/bin/op-identity-storage.rs"
+      }
+    },
+    {
       "id": "bin:op-mail-admin",
       "label": "bin",
       "props": {
@@ -253,11 +261,11 @@
         ],
         "has_lib": true,
         "rs_files": 146,
-        "loc": 21518,
-        "tests": 41,
+        "loc": 21672,
+        "tests": 50,
         "unsafe_refs": 0,
         "todo": 2,
-        "unwrap_expect": 25
+        "unwrap_expect": 44
       }
     },
     {
@@ -271,11 +279,11 @@
         ],
         "has_lib": true,
         "rs_files": 21,
-        "loc": 3214,
-        "tests": 21,
-        "unsafe_refs": 3,
+        "loc": 3123,
+        "tests": 22,
+        "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 18
+        "unwrap_expect": 8
       }
     },
     {
@@ -287,8 +295,8 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 15,
-        "loc": 4296,
-        "tests": 32,
+        "loc": 4329,
+        "tests": 33,
         "unsafe_refs": 0,
         "todo": 0,
         "unwrap_expect": 33
@@ -303,11 +311,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 20,
-        "loc": 9620,
-        "tests": 57,
-        "unsafe_refs": 10,
-        "todo": 4,
-        "unwrap_expect": 169
+        "loc": 10416,
+        "tests": 67,
+        "unsafe_refs": 14,
+        "todo": 3,
+        "unwrap_expect": 215
       }
     },
     {
@@ -321,11 +329,11 @@
         ],
         "has_lib": true,
         "rs_files": 31,
-        "loc": 21220,
-        "tests": 34,
+        "loc": 21287,
+        "tests": 36,
         "unsafe_refs": 1,
-        "todo": 6,
-        "unwrap_expect": 28
+        "todo": 4,
+        "unwrap_expect": 33
       }
     },
     {
@@ -340,11 +348,11 @@
         ],
         "has_lib": true,
         "rs_files": 30,
-        "loc": 11273,
-        "tests": 48,
+        "loc": 11702,
+        "tests": 54,
         "unsafe_refs": 0,
         "todo": 1,
-        "unwrap_expect": 47
+        "unwrap_expect": 65
       }
     },
     {
@@ -372,8 +380,8 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 19,
-        "loc": 4984,
-        "tests": 52,
+        "loc": 4942,
+        "tests": 53,
         "unsafe_refs": 4,
         "todo": 0,
         "unwrap_expect": 19
@@ -390,11 +398,11 @@
         ],
         "has_lib": true,
         "rs_files": 9,
-        "loc": 6306,
-        "tests": 45,
+        "loc": 7855,
+        "tests": 55,
         "unsafe_refs": 1,
         "todo": 0,
-        "unwrap_expect": 126
+        "unwrap_expect": 144
       }
     },
     {
@@ -423,12 +431,12 @@
           "dbus-plugin-cli"
         ],
         "has_lib": false,
-        "rs_files": 4,
-        "loc": 1406,
-        "tests": 0,
+        "rs_files": 3,
+        "loc": 1449,
+        "tests": 2,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 1
+        "unwrap_expect": 3
       }
     },
     {
@@ -456,11 +464,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 2,
-        "loc": 474,
-        "tests": 1,
+        "loc": 694,
+        "tests": 5,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 6
+        "unwrap_expect": 27
       }
     },
     {
@@ -472,11 +480,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 5,
-        "loc": 388,
-        "tests": 0,
+        "loc": 406,
+        "tests": 1,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 1
+        "unwrap_expect": 0
       }
     },
     {
@@ -488,8 +496,8 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 6,
-        "loc": 947,
-        "tests": 0,
+        "loc": 1030,
+        "tests": 2,
         "unsafe_refs": 0,
         "todo": 0,
         "unwrap_expect": 1
@@ -504,11 +512,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 5,
-        "loc": 1832,
-        "tests": 0,
+        "loc": 1874,
+        "tests": 4,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 2
+        "unwrap_expect": 9
       }
     },
     {
@@ -524,12 +532,12 @@
           "op-grpc-bridge"
         ],
         "has_lib": true,
-        "rs_files": 142,
-        "loc": 83085,
-        "tests": 654,
-        "unsafe_refs": 3,
+        "rs_files": 152,
+        "loc": 92826,
+        "tests": 729,
+        "unsafe_refs": 12,
         "todo": 0,
-        "unwrap_expect": 1511
+        "unwrap_expect": 1739
       }
     },
     {
@@ -541,11 +549,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 5,
-        "loc": 1018,
-        "tests": 0,
+        "loc": 1040,
+        "tests": 1,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 5
+        "unwrap_expect": 9
       }
     },
     {
@@ -560,11 +568,11 @@
         ],
         "has_lib": true,
         "rs_files": 17,
-        "loc": 4105,
-        "tests": 65,
-        "unsafe_refs": 0,
+        "loc": 4338,
+        "tests": 74,
+        "unsafe_refs": 9,
         "todo": 1,
-        "unwrap_expect": 60
+        "unwrap_expect": 88
       }
     },
     {
@@ -576,11 +584,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 4,
-        "loc": 2207,
-        "tests": 12,
-        "unsafe_refs": 3,
+        "loc": 2341,
+        "tests": 16,
+        "unsafe_refs": 2,
         "todo": 0,
-        "unwrap_expect": 16
+        "unwrap_expect": 28
       }
     },
     {
@@ -592,11 +600,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 7,
-        "loc": 1726,
-        "tests": 2,
-        "unsafe_refs": 2,
+        "loc": 1480,
+        "tests": 9,
+        "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 3
+        "unwrap_expect": 28
       }
     },
     {
@@ -608,8 +616,8 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 4,
-        "loc": 1212,
-        "tests": 7,
+        "loc": 1230,
+        "tests": 10,
         "unsafe_refs": 4,
         "todo": 0,
         "unwrap_expect": 12
@@ -624,8 +632,8 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 17,
-        "loc": 8355,
-        "tests": 24,
+        "loc": 8406,
+        "tests": 26,
         "unsafe_refs": 19,
         "todo": 1,
         "unwrap_expect": 79
@@ -640,11 +648,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 19,
-        "loc": 6631,
-        "tests": 25,
+        "loc": 6742,
+        "tests": 35,
         "unsafe_refs": 12,
         "todo": 0,
-        "unwrap_expect": 52
+        "unwrap_expect": 65
       }
     },
     {
@@ -656,11 +664,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 8,
-        "loc": 4786,
-        "tests": 28,
+        "loc": 5025,
+        "tests": 33,
         "unsafe_refs": 1,
         "todo": 0,
-        "unwrap_expect": 9
+        "unwrap_expect": 17
       }
     },
     {
@@ -670,17 +678,18 @@
         "path": "crates/op-network",
         "description": "Native networking: OpenFlow (all versions, pure Rust), OVSDB JSON-RPC, rtnetlink, Proxmox API, container networking",
         "bins": [
+          "op-identity-storage",
           "op-of-controller",
           "op-ovsbr0-setup",
           "op-rtnetlink-init"
         ],
         "has_lib": true,
-        "rs_files": 25,
-        "loc": 12385,
-        "tests": 60,
-        "unsafe_refs": 8,
+        "rs_files": 31,
+        "loc": 16032,
+        "tests": 74,
+        "unsafe_refs": 77,
         "todo": 5,
-        "unwrap_expect": 101
+        "unwrap_expect": 170
       }
     },
     {
@@ -694,11 +703,11 @@
         ],
         "has_lib": true,
         "rs_files": 15,
-        "loc": 5037,
-        "tests": 17,
+        "loc": 5050,
+        "tests": 18,
         "unsafe_refs": 1,
         "todo": 0,
-        "unwrap_expect": 15
+        "unwrap_expect": 16
       }
     },
     {
@@ -713,12 +722,12 @@
           "opblob"
         ],
         "has_lib": true,
-        "rs_files": 144,
-        "loc": 113599,
-        "tests": 514,
+        "rs_files": 145,
+        "loc": 114902,
+        "tests": 522,
         "unsafe_refs": 15,
         "todo": 1,
-        "unwrap_expect": 1230
+        "unwrap_expect": 1242
       }
     },
     {
@@ -733,11 +742,11 @@
         ],
         "has_lib": false,
         "rs_files": 3,
-        "loc": 925,
-        "tests": 0,
+        "loc": 993,
+        "tests": 3,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 0
+        "unwrap_expect": 5
       }
     },
     {
@@ -751,12 +760,12 @@
           "op-svctl"
         ],
         "has_lib": true,
-        "rs_files": 10,
-        "loc": 1029,
-        "tests": 1,
+        "rs_files": 11,
+        "loc": 1434,
+        "tests": 9,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 0
+        "unwrap_expect": 28
       }
     },
     {
@@ -768,11 +777,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 8,
-        "loc": 3644,
-        "tests": 41,
-        "unsafe_refs": 3,
+        "loc": 4321,
+        "tests": 47,
+        "unsafe_refs": 7,
         "todo": 0,
-        "unwrap_expect": 92
+        "unwrap_expect": 150
       }
     },
     {
@@ -784,11 +793,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 9,
-        "loc": 1957,
-        "tests": 9,
+        "loc": 2035,
+        "tests": 10,
         "unsafe_refs": 5,
         "todo": 1,
-        "unwrap_expect": 15
+        "unwrap_expect": 20
       }
     },
     {
@@ -800,8 +809,8 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 14,
-        "loc": 7835,
-        "tests": 72,
+        "loc": 7942,
+        "tests": 74,
         "unsafe_refs": 2,
         "todo": 0,
         "unwrap_expect": 122
@@ -818,11 +827,11 @@
         ],
         "has_lib": true,
         "rs_files": 28,
-        "loc": 12347,
-        "tests": 33,
+        "loc": 11859,
+        "tests": 40,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 44
+        "unwrap_expect": 49
       }
     },
     {
@@ -837,11 +846,11 @@
         ],
         "has_lib": true,
         "rs_files": 58,
-        "loc": 13418,
-        "tests": 53,
+        "loc": 13272,
+        "tests": 61,
         "unsafe_refs": 0,
-        "todo": 14,
-        "unwrap_expect": 66
+        "todo": 5,
+        "unwrap_expect": 89
       }
     },
     {
@@ -853,11 +862,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 13,
-        "loc": 2651,
-        "tests": 3,
+        "loc": 2702,
+        "tests": 6,
         "unsafe_refs": 0,
         "todo": 1,
-        "unwrap_expect": 2
+        "unwrap_expect": 5
       }
     },
     {
@@ -871,8 +880,8 @@
         ],
         "has_lib": true,
         "rs_files": 5,
-        "loc": 683,
-        "tests": 2,
+        "loc": 661,
+        "tests": 3,
         "unsafe_refs": 0,
         "todo": 0,
         "unwrap_expect": 1
@@ -1163,6 +1172,13 @@
       "label": "ext_crate",
       "props": {
         "req": "^0.3"
+      }
+    },
+    {
+      "id": "ext:ipnet",
+      "label": "ext_crate",
+      "props": {
+        "req": "^2"
       }
     },
     {
@@ -1862,8 +1878,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-20T00:37:15Z",
-        "commit": "a14c9cfa61104a8003e5b92143de557ed9ef435a",
+        "generated_at": "2026-09-24T23:01:05Z",
+        "commit": "76bd0b948125c3dd893778e8d3bb295dea242ded",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -1985,7 +2001,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 185
+        "loc": 43
       }
     },
     {
@@ -2057,7 +2073,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 255
+        "loc": 292
       }
     },
     {
@@ -2327,7 +2343,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 148
+        "loc": 78
       }
     },
     {
@@ -2597,7 +2613,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 551
+        "loc": 573
       }
     },
     {
@@ -2858,7 +2874,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "bin",
-        "loc": 248
+        "loc": 260
       }
     },
     {
@@ -2876,7 +2892,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 502
+        "loc": 772
       }
     },
     {
@@ -2975,7 +2991,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 368
+        "loc": 387
       }
     },
     {
@@ -3002,7 +3018,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 223
+        "loc": 244
       }
     },
     {
@@ -3011,7 +3027,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 167
+        "loc": 259
       }
     },
     {
@@ -3047,7 +3063,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 291
+        "loc": 322
       }
     },
     {
@@ -3092,7 +3108,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 192
+        "loc": 235
       }
     },
     {
@@ -3137,7 +3153,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 455
+        "loc": 274
       }
     },
     {
@@ -3209,7 +3225,7 @@
       "props": {
         "crate": "op-assistant-grpc",
         "kind": "src",
-        "loc": 187
+        "loc": 105
       }
     },
     {
@@ -3263,7 +3279,7 @@
       "props": {
         "crate": "op-assistant-grpc",
         "kind": "src",
-        "loc": 61
+        "loc": 68
       }
     },
     {
@@ -3326,7 +3342,7 @@
       "props": {
         "crate": "op-assistant-grpc",
         "kind": "src",
-        "loc": 185
+        "loc": 197
       }
     },
     {
@@ -3362,7 +3378,7 @@
       "props": {
         "crate": "op-assistant-grpc",
         "kind": "src",
-        "loc": 209
+        "loc": 181
       }
     },
     {
@@ -3398,7 +3414,7 @@
       "props": {
         "crate": "op-blob",
         "kind": "src",
-        "loc": 206
+        "loc": 223
       }
     },
     {
@@ -3488,7 +3504,7 @@
       "props": {
         "crate": "op-blob",
         "kind": "test",
-        "loc": 217
+        "loc": 233
       }
     },
     {
@@ -3542,7 +3558,7 @@
       "props": {
         "crate": "op-cache",
         "kind": "src",
-        "loc": 1512
+        "loc": 1974
       }
     },
     {
@@ -3569,7 +3585,7 @@
       "props": {
         "crate": "op-cache",
         "kind": "src",
-        "loc": 385
+        "loc": 488
       }
     },
     {
@@ -3605,7 +3621,7 @@
       "props": {
         "crate": "op-cache",
         "kind": "src",
-        "loc": 193
+        "loc": 222
       }
     },
     {
@@ -3650,7 +3666,7 @@
       "props": {
         "crate": "op-cache",
         "kind": "src",
-        "loc": 236
+        "loc": 438
       }
     },
     {
@@ -3704,7 +3720,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 749
+        "loc": 728
       }
     },
     {
@@ -3740,7 +3756,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 483
+        "loc": 488
       }
     },
     {
@@ -3767,7 +3783,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 523
+        "loc": 524
       }
     },
     {
@@ -3794,7 +3810,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 1442
+        "loc": 1376
       }
     },
     {
@@ -3848,7 +3864,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 289
+        "loc": 330
       }
     },
     {
@@ -3884,7 +3900,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 208
+        "loc": 300
       }
     },
     {
@@ -3893,7 +3909,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 474
+        "loc": 484
       }
     },
     {
@@ -3947,7 +3963,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 557
+        "loc": 560
       }
     },
     {
@@ -3965,7 +3981,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "test",
-        "loc": 140
+        "loc": 142
       }
     },
     {
@@ -3992,7 +4008,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 134
+        "loc": 136
       }
     },
     {
@@ -4046,7 +4062,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 399
+        "loc": 541
       }
     },
     {
@@ -4064,7 +4080,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 1038
+        "loc": 1165
       }
     },
     {
@@ -4109,7 +4125,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 1160
+        "loc": 1190
       }
     },
     {
@@ -4172,7 +4188,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 1189
+        "loc": 1317
       }
     },
     {
@@ -4379,7 +4395,7 @@
       "props": {
         "crate": "op-core",
         "kind": "src",
-        "loc": 388
+        "loc": 346
       }
     },
     {
@@ -4460,7 +4476,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 943
+        "loc": 1654
       }
     },
     {
@@ -4469,7 +4485,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 745
+        "loc": 1388
       }
     },
     {
@@ -4478,7 +4494,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 2551
+        "loc": 2716
       }
     },
     {
@@ -4496,7 +4512,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 400
+        "loc": 430
       }
     },
     {
@@ -4514,7 +4530,7 @@
       "props": {
         "crate": "op-dbus-cli",
         "kind": "src",
-        "loc": 639
+        "loc": 736
       }
     },
     {
@@ -4523,16 +4539,7 @@
       "props": {
         "crate": "op-dbus-cli",
         "kind": "src",
-        "loc": 664
-      }
-    },
-    {
-      "id": "mod:crates/op-dbus-cli/src/socket.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-dbus-cli",
-        "kind": "src",
-        "loc": 50
+        "loc": 660
       }
     },
     {
@@ -4559,7 +4566,7 @@
       "props": {
         "crate": "op-deployment",
         "kind": "src",
-        "loc": 460
+        "loc": 680
       }
     },
     {
@@ -4577,7 +4584,7 @@
       "props": {
         "crate": "op-dynamic-loader",
         "kind": "src",
-        "loc": 136
+        "loc": 154
       }
     },
     {
@@ -4631,7 +4638,7 @@
       "props": {
         "crate": "op-execution-tracker",
         "kind": "src",
-        "loc": 223
+        "loc": 286
       }
     },
     {
@@ -4658,7 +4665,7 @@
       "props": {
         "crate": "op-execution-tracker",
         "kind": "src",
-        "loc": 366
+        "loc": 386
       }
     },
     {
@@ -4676,7 +4683,7 @@
       "props": {
         "crate": "op-gateway",
         "kind": "src",
-        "loc": 622
+        "loc": 672
       }
     },
     {
@@ -4703,7 +4710,7 @@
       "props": {
         "crate": "op-gateway",
         "kind": "src",
-        "loc": 344
+        "loc": 331
       }
     },
     {
@@ -4712,7 +4719,7 @@
       "props": {
         "crate": "op-gateway",
         "kind": "src",
-        "loc": 814
+        "loc": 819
       }
     },
     {
@@ -4797,12 +4804,21 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/agent_catalog_dispatch.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 257
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
       "label": "module",
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 835
+        "loc": 841
       }
     },
     {
@@ -4812,6 +4828,15 @@
         "crate": "op-grpc-bridge",
         "kind": "src",
         "loc": 94
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/agent_workflow.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 416
       }
     },
     {
@@ -4878,6 +4903,15 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/chat_mode_routing.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 142
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/chat_service.rs",
       "label": "module",
       "props": {
@@ -4910,7 +4944,16 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 309
+        "loc": 321
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/control_plane_routing.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 250
       }
     },
     {
@@ -4973,7 +5016,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1587
+        "loc": 1584
       }
     },
     {
@@ -5009,7 +5052,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 918
+        "loc": 919
       }
     },
     {
@@ -5081,7 +5124,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1175
+        "loc": 1186
       }
     },
     {
@@ -5108,7 +5151,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1214
+        "loc": 1253
       }
     },
     {
@@ -5144,7 +5187,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 5960
+        "loc": 5963
       }
     },
     {
@@ -5166,12 +5209,21 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/identity_nextdns.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 116
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/identity_publication.rs",
       "label": "module",
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 349
+        "loc": 407
       }
     },
     {
@@ -5184,12 +5236,39 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/identity_root_repair.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 2582
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 1237
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
       "label": "module",
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 2321
+        "loc": 3136
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/identity_sled_private_fixture_tests.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 602
       }
     },
     {
@@ -5198,7 +5277,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 211
+        "loc": 250
       }
     },
     {
@@ -5243,7 +5322,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 159
+        "loc": 161
       }
     },
     {
@@ -5252,7 +5331,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 360
+        "loc": 367
       }
     },
     {
@@ -5261,7 +5340,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 417
+        "loc": 351
       }
     },
     {
@@ -5288,7 +5367,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 3044
+        "loc": 3622
       }
     },
     {
@@ -5297,7 +5376,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 794
+        "loc": 831
       }
     },
     {
@@ -5306,7 +5385,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 237
+        "loc": 364
       }
     },
     {
@@ -5315,7 +5394,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 211
+        "loc": 231
       }
     },
     {
@@ -5337,12 +5416,30 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/mqtt_doorbell_relay.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 311
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/mutation_engine.rs",
       "label": "module",
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 6303
+        "loc": 6592
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/native_sled_identity.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 58
       }
     },
     {
@@ -5432,7 +5529,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 145
+        "loc": 208
       }
     },
     {
@@ -5558,7 +5655,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 2781
+        "loc": 2779
       }
     },
     {
@@ -5585,7 +5682,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1001
+        "loc": 1464
       }
     },
     {
@@ -5594,7 +5691,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 638
+        "loc": 644
       }
     },
     {
@@ -5603,7 +5700,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 354
+        "loc": 374
       }
     },
     {
@@ -5612,7 +5709,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 326
+        "loc": 621
       }
     },
     {
@@ -5648,7 +5745,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 228
+        "loc": 231
       }
     },
     {
@@ -5657,7 +5754,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 426
+        "loc": 482
       }
     },
     {
@@ -5684,7 +5781,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1036
+        "loc": 1096
       }
     },
     {
@@ -5693,7 +5790,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 350
+        "loc": 357
       }
     },
     {
@@ -5711,7 +5808,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 2682
+        "loc": 3419
       }
     },
     {
@@ -5810,7 +5907,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 445
+        "loc": 451
       }
     },
     {
@@ -5972,7 +6069,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 1490
+        "loc": 1564
       }
     },
     {
@@ -5981,7 +6078,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 328
+        "loc": 335
       }
     },
     {
@@ -6026,7 +6123,7 @@
       "props": {
         "crate": "op-http",
         "kind": "src",
-        "loc": 288
+        "loc": 294
       }
     },
     {
@@ -6035,7 +6132,7 @@
       "props": {
         "crate": "op-http",
         "kind": "src",
-        "loc": 303
+        "loc": 319
       }
     },
     {
@@ -6044,7 +6141,7 @@
       "props": {
         "crate": "op-identity",
         "kind": "bin",
-        "loc": 370
+        "loc": 548
       }
     },
     {
@@ -6089,7 +6186,7 @@
       "props": {
         "crate": "op-identity",
         "kind": "src",
-        "loc": 149
+        "loc": 157
       }
     },
     {
@@ -6143,7 +6240,7 @@
       "props": {
         "crate": "op-identity",
         "kind": "src",
-        "loc": 279
+        "loc": 442
       }
     },
     {
@@ -6152,7 +6249,7 @@
       "props": {
         "crate": "op-identity",
         "kind": "src",
-        "loc": 457
+        "loc": 471
       }
     },
     {
@@ -6170,7 +6267,7 @@
       "props": {
         "crate": "op-identity",
         "kind": "src",
-        "loc": 583
+        "loc": 593
       }
     },
     {
@@ -6188,7 +6285,7 @@
       "props": {
         "crate": "op-identity",
         "kind": "src",
-        "loc": 253
+        "loc": 113
       }
     },
     {
@@ -6197,7 +6294,7 @@
       "props": {
         "crate": "op-inspector",
         "kind": "src",
-        "loc": 599
+        "loc": 670
       }
     },
     {
@@ -6206,7 +6303,7 @@
       "props": {
         "crate": "op-inspector",
         "kind": "src",
-        "loc": 1146
+        "loc": 1099
       }
     },
     {
@@ -6224,7 +6321,7 @@
       "props": {
         "crate": "op-inspector",
         "kind": "src",
-        "loc": 419
+        "loc": 529
       }
     },
     {
@@ -6242,7 +6339,7 @@
       "props": {
         "crate": "op-introspection",
         "kind": "src",
-        "loc": 766
+        "loc": 531
       }
     },
     {
@@ -6251,7 +6348,7 @@
       "props": {
         "crate": "op-introspection",
         "kind": "src",
-        "loc": 126
+        "loc": 52
       }
     },
     {
@@ -6278,7 +6375,7 @@
       "props": {
         "crate": "op-introspection",
         "kind": "src",
-        "loc": 216
+        "loc": 234
       }
     },
     {
@@ -6287,7 +6384,7 @@
       "props": {
         "crate": "op-introspection",
         "kind": "src",
-        "loc": 438
+        "loc": 483
       }
     },
     {
@@ -6323,7 +6420,7 @@
       "props": {
         "crate": "op-jsonrpc",
         "kind": "src",
-        "loc": 347
+        "loc": 365
       }
     },
     {
@@ -6359,7 +6456,7 @@
       "props": {
         "crate": "op-llm",
         "kind": "src",
-        "loc": 731
+        "loc": 761
       }
     },
     {
@@ -6404,7 +6501,7 @@
       "props": {
         "crate": "op-llm",
         "kind": "src",
-        "loc": 335
+        "loc": 356
       }
     },
     {
@@ -6485,7 +6582,7 @@
       "props": {
         "crate": "op-mcp-aggregator",
         "kind": "src",
-        "loc": 821
+        "loc": 1036
       }
     },
     {
@@ -6503,7 +6600,7 @@
       "props": {
         "crate": "op-mcp-aggregator",
         "kind": "src",
-        "loc": 482
+        "loc": 490
       }
     },
     {
@@ -6548,7 +6645,7 @@
       "props": {
         "crate": "op-mcp-aggregator",
         "kind": "src",
-        "loc": 414
+        "loc": 430
       }
     },
     {
@@ -6584,7 +6681,7 @@
       "props": {
         "crate": "op-mcp",
         "kind": "src",
-        "loc": 291
+        "loc": 251
       }
     },
     {
@@ -6593,7 +6690,7 @@
       "props": {
         "crate": "op-mcp",
         "kind": "src",
-        "loc": 681
+        "loc": 658
       }
     },
     {
@@ -6611,7 +6708,7 @@
       "props": {
         "crate": "op-mcp",
         "kind": "src",
-        "loc": 252
+        "loc": 313
       }
     },
     {
@@ -6629,7 +6726,7 @@
       "props": {
         "crate": "op-mcp",
         "kind": "src",
-        "loc": 269
+        "loc": 317
       }
     },
     {
@@ -6638,7 +6735,7 @@
       "props": {
         "crate": "op-mcp",
         "kind": "src",
-        "loc": 700
+        "loc": 733
       }
     },
     {
@@ -6692,7 +6789,7 @@
       "props": {
         "crate": "op-mcp",
         "kind": "src",
-        "loc": 772
+        "loc": 750
       }
     },
     {
@@ -6719,7 +6816,25 @@
       "props": {
         "crate": "op-mcp",
         "kind": "src",
-        "loc": 143
+        "loc": 197
+      }
+    },
+    {
+      "id": "mod:crates/op-network/examples/ensure_seeded_root.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-network",
+        "kind": "example",
+        "loc": 35
+      }
+    },
+    {
+      "id": "mod:crates/op-network/src/bin/op-identity-storage.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-network",
+        "kind": "bin",
+        "loc": 31
       }
     },
     {
@@ -6728,7 +6843,7 @@
       "props": {
         "crate": "op-network",
         "kind": "bin",
-        "loc": 212
+        "loc": 239
       }
     },
     {
@@ -6755,7 +6870,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 143
+        "loc": 241
       }
     },
     {
@@ -6764,7 +6879,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 1003
+        "loc": 1271
       }
     },
     {
@@ -6773,7 +6888,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 323
+        "loc": 321
       }
     },
     {
@@ -6782,7 +6897,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 250
+        "loc": 329
       }
     },
     {
@@ -6791,7 +6906,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 330
+        "loc": 351
       }
     },
     {
@@ -6804,12 +6919,21 @@
       }
     },
     {
+      "id": "mod:crates/op-network/src/incus_root_subvolume.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-network",
+        "kind": "src",
+        "loc": 526
+      }
+    },
+    {
       "id": "mod:crates/op-network/src/lib.rs",
       "label": "module",
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 52
+        "loc": 56
       }
     },
     {
@@ -6836,7 +6960,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 353
+        "loc": 345
       }
     },
     {
@@ -6890,7 +7014,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 511
+        "loc": 499
       }
     },
     {
@@ -6930,6 +7054,33 @@
       }
     },
     {
+      "id": "mod:crates/op-network/src/seeded_boot.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-network",
+        "kind": "src",
+        "loc": 382
+      }
+    },
+    {
+      "id": "mod:crates/op-network/src/seeded_prepare.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-network",
+        "kind": "src",
+        "loc": 308
+      }
+    },
+    {
+      "id": "mod:crates/op-network/src/seeded_root.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-network",
+        "kind": "src",
+        "loc": 1890
+      }
+    },
+    {
       "id": "mod:crates/op-network/src/unixctl.rs",
       "label": "module",
       "props": {
@@ -6953,7 +7104,7 @@
       "props": {
         "crate": "op-plugin-lint",
         "kind": "src",
-        "loc": 676
+        "loc": 689
       }
     },
     {
@@ -7124,7 +7275,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 331
+        "loc": 305
       }
     },
     {
@@ -7196,7 +7347,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 378
+        "loc": 325
       }
     },
     {
@@ -7299,12 +7450,21 @@
       }
     },
     {
+      "id": "mod:crates/op-plugins/src/state_plugins/cognitive_agents.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-plugins",
+        "kind": "src",
+        "loc": 458
+      }
+    },
+    {
       "id": "mod:crates/op-plugins/src/state_plugins/cognitive_mcp.rs",
       "label": "module",
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1573
+        "loc": 1783
       }
     },
     {
@@ -7484,7 +7644,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1505
+        "loc": 1567
       }
     },
     {
@@ -7493,7 +7653,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 563
+        "loc": 622
       }
     },
     {
@@ -7538,7 +7698,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1160
+        "loc": 1162
       }
     },
     {
@@ -7601,7 +7761,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 756
+        "loc": 915
       }
     },
     {
@@ -7619,7 +7779,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 3748
+        "loc": 4096
       }
     },
     {
@@ -7781,7 +7941,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1054
+        "loc": 1064
       }
     },
     {
@@ -7790,7 +7950,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 656
+        "loc": 662
       }
     },
     {
@@ -7835,7 +7995,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 158
+        "loc": 159
       }
     },
     {
@@ -7979,7 +8139,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 650
+        "loc": 649
       }
     },
     {
@@ -8015,7 +8175,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 674
+        "loc": 686
       }
     },
     {
@@ -8159,7 +8319,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 396
+        "loc": 452
       }
     },
     {
@@ -8393,7 +8553,7 @@
       "props": {
         "crate": "op-runit-systemctl",
         "kind": "src",
-        "loc": 721
+        "loc": 789
       }
     },
     {
@@ -8420,7 +8580,7 @@
       "props": {
         "crate": "op-services",
         "kind": "bin",
-        "loc": 43
+        "loc": 47
       }
     },
     {
@@ -8433,12 +8593,21 @@
       }
     },
     {
+      "id": "mod:crates/op-services/src/grpc/auth.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-services",
+        "kind": "src",
+        "loc": 97
+      }
+    },
+    {
       "id": "mod:crates/op-services/src/grpc/mod.rs",
       "label": "module",
       "props": {
         "crate": "op-services",
         "kind": "src",
-        "loc": 7
+        "loc": 8
       }
     },
     {
@@ -8447,7 +8616,7 @@
       "props": {
         "crate": "op-services",
         "kind": "src",
-        "loc": 392
+        "loc": 522
       }
     },
     {
@@ -8474,7 +8643,7 @@
       "props": {
         "crate": "op-services",
         "kind": "src",
-        "loc": 326
+        "loc": 445
       }
     },
     {
@@ -8492,7 +8661,7 @@
       "props": {
         "crate": "op-services",
         "kind": "src",
-        "loc": 139
+        "loc": 193
       }
     },
     {
@@ -8510,7 +8679,7 @@
       "props": {
         "crate": "op-snowball",
         "kind": "src",
-        "loc": 431
+        "loc": 461
       }
     },
     {
@@ -8564,7 +8733,7 @@
       "props": {
         "crate": "op-snowball",
         "kind": "src",
-        "loc": 1854
+        "loc": 2501
       }
     },
     {
@@ -8573,7 +8742,7 @@
       "props": {
         "crate": "op-state-store",
         "kind": "src",
-        "loc": 596
+        "loc": 645
       }
     },
     {
@@ -8663,7 +8832,7 @@
       "props": {
         "crate": "op-state-store",
         "kind": "src",
-        "loc": 208
+        "loc": 266
       }
     },
     {
@@ -8699,7 +8868,7 @@
       "props": {
         "crate": "op-state",
         "kind": "src",
-        "loc": 60
+        "loc": 50
       }
     },
     {
@@ -8708,7 +8877,7 @@
       "props": {
         "crate": "op-state",
         "kind": "src",
-        "loc": 307
+        "loc": 363
       }
     },
     {
@@ -8717,7 +8886,7 @@
       "props": {
         "crate": "op-state",
         "kind": "src",
-        "loc": 304
+        "loc": 336
       }
     },
     {
@@ -8798,7 +8967,7 @@
       "props": {
         "crate": "op-tools",
         "kind": "src",
-        "loc": 802
+        "loc": 147
       }
     },
     {
@@ -8825,7 +8994,7 @@
       "props": {
         "crate": "op-tools",
         "kind": "src",
-        "loc": 411
+        "loc": 449
       }
     },
     {
@@ -8879,7 +9048,7 @@
       "props": {
         "crate": "op-tools",
         "kind": "src",
-        "loc": 553
+        "loc": 579
       }
     },
     {
@@ -8888,7 +9057,7 @@
       "props": {
         "crate": "op-tools",
         "kind": "src",
-        "loc": 304
+        "loc": 244
       }
     },
     {
@@ -8996,7 +9165,7 @@
       "props": {
         "crate": "op-tools",
         "kind": "src",
-        "loc": 130
+        "loc": 140
       }
     },
     {
@@ -9005,7 +9174,7 @@
       "props": {
         "crate": "op-tools",
         "kind": "src",
-        "loc": 620
+        "loc": 773
       }
     },
     {
@@ -9086,7 +9255,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 980
+        "loc": 1014
       }
     },
     {
@@ -9113,7 +9282,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 586
+        "loc": 732
       }
     },
     {
@@ -9149,7 +9318,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 176
+        "loc": 57
       }
     },
     {
@@ -9167,7 +9336,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 212
+        "loc": 50
       }
     },
     {
@@ -9176,7 +9345,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 84
+        "loc": 48
       }
     },
     {
@@ -9212,7 +9381,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 964
+        "loc": 1102
       }
     },
     {
@@ -9230,7 +9399,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 253
+        "loc": 147
       }
     },
     {
@@ -9275,7 +9444,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 219
+        "loc": 68
       }
     },
     {
@@ -9320,7 +9489,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 374
+        "loc": 566
       }
     },
     {
@@ -9410,7 +9579,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 178
+        "loc": 8
       }
     },
     {
@@ -9437,7 +9606,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 262
+        "loc": 265
       }
     },
     {
@@ -9464,7 +9633,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 321
+        "loc": 342
       }
     },
     {
@@ -9491,7 +9660,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 622
+        "loc": 613
       }
     },
     {
@@ -9527,7 +9696,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 595
+        "loc": 668
       }
     },
     {
@@ -9554,7 +9723,7 @@
       "props": {
         "crate": "op-workflows",
         "kind": "src",
-        "loc": 123
+        "loc": 109
       }
     },
     {
@@ -9581,7 +9750,7 @@
       "props": {
         "crate": "op-workflows",
         "kind": "src",
-        "loc": 168
+        "loc": 128
       }
     },
     {
@@ -9590,7 +9759,7 @@
       "props": {
         "crate": "op-workflows",
         "kind": "src",
-        "loc": 95
+        "loc": 115
       }
     },
     {
@@ -9608,7 +9777,7 @@
       "props": {
         "crate": "op-workflows",
         "kind": "src",
-        "loc": 266
+        "loc": 308
       }
     },
     {
@@ -9653,7 +9822,7 @@
       "props": {
         "crate": "op-workflows",
         "kind": "src",
-        "loc": 502
+        "loc": 545
       }
     },
     {
@@ -9689,7 +9858,7 @@
       "props": {
         "crate": "op-xray-daemon",
         "kind": "src",
-        "loc": 324
+        "loc": 302
       }
     },
     {
@@ -9765,7 +9934,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/cognitive_mcp.rs",
-        "line": 1572,
+        "line": 1782,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/cognitive_mcp"
       }
@@ -9845,7 +10014,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/emqx.rs",
-        "line": 1225,
+        "line": 1287,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/emqx"
       }
@@ -9885,7 +10054,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/full_system.rs",
-        "line": 1159,
+        "line": 1161,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/full_system"
       }
@@ -9945,7 +10114,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/identity_sled.rs",
-        "line": 755,
+        "line": 914,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/identity_sled"
       }
@@ -9955,7 +10124,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/incus.rs",
-        "line": 2776,
+        "line": 3124,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/incus"
       }
@@ -10145,7 +10314,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/persona.rs",
-        "line": 578,
+        "line": 583,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/persona"
       }
@@ -10459,6 +10628,15 @@
       }
     },
     {
+      "id": "runit:incusd",
+      "label": "runit_service",
+      "props": {
+        "run": "deploy/runit/incusd/run",
+        "enabled": false,
+        "retired": false
+      }
+    },
+    {
       "id": "runit:op-grpc-bridge",
       "label": "runit_service",
       "props": {
@@ -10599,6 +10777,12 @@
       "src": "bin:op-identity-headers",
       "rel": "bin_entry",
       "dst": "mod:crates/op-identity/src/bin/op-identity-headers.rs",
+      "props": {}
+    },
+    {
+      "src": "bin:op-identity-storage",
+      "rel": "bin_entry",
+      "dst": "mod:crates/op-network/src/bin/op-identity-storage.rs",
       "props": {}
     },
     {
@@ -11726,7 +11910,7 @@
       "rel": "uses_ext",
       "dst": "ext:tempfile",
       "props": {
-        "kind": "dev",
+        "kind": "normal",
         "optional": false
       }
     },
@@ -13954,6 +14138,15 @@
     {
       "src": "crate:op-core",
       "rel": "uses_ext",
+      "dst": "ext:ipnet",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-core",
+      "rel": "uses_ext",
       "dst": "ext:nix",
       "props": {
         "kind": "normal",
@@ -14094,6 +14287,14 @@
       "rel": "contains",
       "dst": "mod:crates/op-cozo-store/src/runtime_document_transactions_tests.rs",
       "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "depends_on",
+      "dst": "crate:op-identity",
+      "props": {
+        "optional": false
+      }
     },
     {
       "src": "crate:op-cozo-store",
@@ -14674,12 +14875,6 @@
       "src": "crate:op-dbus-cli",
       "rel": "contains",
       "dst": "mod:crates/op-dbus-cli/src/main.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-dbus-cli",
-      "rel": "contains",
-      "dst": "mod:crates/op-dbus-cli/src/socket.rs",
       "props": {}
     },
     {
@@ -15559,6 +15754,12 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/agent_catalog_dispatch.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
       "props": {}
     },
@@ -15566,6 +15767,12 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/agent_triggers.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/agent_workflow.rs",
       "props": {}
     },
     {
@@ -15613,6 +15820,12 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/chat_mode_routing.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/chat_service.rs",
       "props": {}
     },
@@ -15632,6 +15845,12 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/context_bundle.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/control_plane_routing.rs",
       "props": {}
     },
     {
@@ -15805,6 +16024,12 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/identity_nextdns.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/identity_publication.rs",
       "props": {}
     },
@@ -15817,7 +16042,25 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/identity_root_repair.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/identity_sled_private_fixture_tests.rs",
       "props": {}
     },
     {
@@ -15919,7 +16162,19 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/mqtt_doorbell_relay.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/mutation_engine.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/native_sled_identity.rs",
       "props": {}
     },
     {
@@ -16667,6 +16922,24 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "uses_ext",
+      "dst": "ext:hyper",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "uses_ext",
+      "dst": "ext:hyper-util",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "uses_ext",
       "dst": "ext:jsonschema",
       "props": {
         "kind": "normal",
@@ -16875,6 +17148,15 @@
       "src": "crate:op-grpc-bridge",
       "rel": "uses_ext",
       "dst": "ext:tokio",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "uses_ext",
+      "dst": "ext:tokio-rustls",
       "props": {
         "kind": "normal",
         "optional": false
@@ -17132,6 +17414,15 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-http",
+      "rel": "uses_ext",
+      "dst": "ext:tempfile",
+      "props": {
+        "kind": "dev",
         "optional": false
       }
     },
@@ -17405,6 +17696,15 @@
       "src": "crate:op-identity",
       "rel": "uses_ext",
       "dst": "ext:hostname",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-identity",
+      "rel": "uses_ext",
+      "dst": "ext:libc",
       "props": {
         "kind": "normal",
         "optional": false
@@ -17738,6 +18038,14 @@
     {
       "src": "crate:op-introspection",
       "rel": "depends_on",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-introspection",
+      "rel": "depends_on",
       "dst": "crate:op-snowball",
       "props": {
         "optional": false
@@ -17809,7 +18117,7 @@
     {
       "src": "crate:op-introspection",
       "rel": "uses_ext",
-      "dst": "ext:rusqlite",
+      "dst": "ext:serde",
       "props": {
         "kind": "normal",
         "optional": false
@@ -17818,7 +18126,7 @@
     {
       "src": "crate:op-introspection",
       "rel": "uses_ext",
-      "dst": "ext:serde",
+      "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
         "optional": false
@@ -17839,6 +18147,15 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-introspection",
+      "rel": "uses_ext",
+      "dst": "ext:tempfile",
+      "props": {
+        "kind": "dev",
         "optional": false
       }
     },
@@ -18395,14 +18712,6 @@
     {
       "src": "crate:op-mcp",
       "rel": "depends_on",
-      "dst": "crate:op-identity",
-      "props": {
-        "optional": false
-      }
-    },
-    {
-      "src": "crate:op-mcp",
-      "rel": "depends_on",
       "dst": "crate:op-introspection",
       "props": {
         "optional": false
@@ -18870,6 +19179,18 @@
     {
       "src": "crate:op-network",
       "rel": "contains",
+      "dst": "mod:crates/op-network/examples/ensure_seeded_root.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-network",
+      "rel": "contains",
+      "dst": "mod:crates/op-network/src/bin/op-identity-storage.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-network",
+      "rel": "contains",
       "dst": "mod:crates/op-network/src/bin/op-of-controller.rs",
       "props": {}
     },
@@ -18919,6 +19240,12 @@
       "src": "crate:op-network",
       "rel": "contains",
       "dst": "mod:crates/op-network/src/dbus_tls.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-network",
+      "rel": "contains",
+      "dst": "mod:crates/op-network/src/incus_root_subvolume.rs",
       "props": {}
     },
     {
@@ -19008,6 +19335,24 @@
     {
       "src": "crate:op-network",
       "rel": "contains",
+      "dst": "mod:crates/op-network/src/seeded_boot.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-network",
+      "rel": "contains",
+      "dst": "mod:crates/op-network/src/seeded_prepare.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-network",
+      "rel": "contains",
+      "dst": "mod:crates/op-network/src/seeded_root.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-network",
+      "rel": "contains",
       "dst": "mod:crates/op-network/src/unixctl.rs",
       "props": {}
     },
@@ -19024,6 +19369,12 @@
       "props": {
         "optional": false
       }
+    },
+    {
+      "src": "crate:op-network",
+      "rel": "provides_bin",
+      "dst": "bin:op-identity-storage",
+      "props": {}
     },
     {
       "src": "crate:op-network",
@@ -19694,6 +20045,12 @@
       "src": "crate:op-plugins",
       "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "contains",
+      "dst": "mod:crates/op-plugins/src/state_plugins/cognitive_agents.rs",
       "props": {}
     },
     {
@@ -21348,6 +21705,12 @@
     {
       "src": "crate:op-services",
       "rel": "contains",
+      "dst": "mod:crates/op-services/src/grpc/auth.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-services",
+      "rel": "contains",
       "dst": "mod:crates/op-services/src/grpc/mod.rs",
       "props": {}
     },
@@ -21386,6 +21749,14 @@
       "rel": "contains",
       "dst": "mod:crates/op-services/src/store/mod.rs",
       "props": {}
+    },
+    {
+      "src": "crate:op-services",
+      "rel": "depends_on",
+      "dst": "crate:op-identity",
+      "props": {
+        "optional": false
+      }
     },
     {
       "src": "crate:op-services",
@@ -21476,6 +21847,15 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-services",
+      "rel": "uses_ext",
+      "dst": "ext:tempfile",
+      "props": {
+        "kind": "dev",
         "optional": false
       }
     },
@@ -22598,6 +22978,15 @@
     {
       "src": "crate:op-tools",
       "rel": "uses_ext",
+      "dst": "ext:libc",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-tools",
+      "rel": "uses_ext",
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
@@ -22625,9 +23014,27 @@
     {
       "src": "crate:op-tools",
       "rel": "uses_ext",
+      "dst": "ext:shell-words",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-tools",
+      "rel": "uses_ext",
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-tools",
+      "rel": "uses_ext",
+      "dst": "ext:tempfile",
+      "props": {
+        "kind": "dev",
         "optional": false
       }
     },
@@ -23951,17 +24358,9 @@
     {
       "src": "mod:crates/op-assistant-grpc/src/auth.rs",
       "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-assistant-grpc/src/auth.rs",
-      "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 1
+        "refs": 3
       }
     },
     {
@@ -24269,6 +24668,14 @@
       }
     },
     {
+      "src": "mod:crates/op-cognitive-mcp/src/agent_tools.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-cognitive-mcp/src/bin/op-chain-vectors.rs",
       "rel": "imports",
       "dst": "crate:op-snowball",
@@ -24329,13 +24736,21 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {
       "src": "mod:crates/op-cognitive-mcp/src/cognitive_tools.rs",
       "rel": "imports",
       "dst": "crate:op-mcp",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-cognitive-mcp/src/context_awareness.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
       "props": {
         "refs": 1
       }
@@ -24437,6 +24852,22 @@
       }
     },
     {
+      "src": "mod:crates/op-cozo-store/src/identity_transactions.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 4
+      }
+    },
+    {
+      "src": "mod:crates/op-cozo-store/src/identity_transactions_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 16
+      }
+    },
+    {
       "src": "mod:crates/op-dbus-cli/src/identity.rs",
       "rel": "imports",
       "dst": "crate:op-identity",
@@ -24525,6 +24956,38 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/agent_catalog_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-agents",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_catalog_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-cognitive-mcp",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_catalog_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_catalog_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/agent_runs.rs",
       "rel": "imports",
       "dst": "crate:op-agents",
@@ -24578,6 +25041,22 @@
       "dst": "crate:op-plugins",
       "props": {
         "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_workflow.rs",
+      "rel": "imports",
+      "dst": "crate:op-agents",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/agent_workflow.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
       }
     },
     {
@@ -24714,6 +25193,14 @@
       "dst": "crate:op-state-store",
       "props": {
         "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_mode_routing.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
       }
     },
     {
@@ -24925,6 +25412,22 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/context_bundle.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/control_plane_routing.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/cron_dispatch.rs",
       "rel": "imports",
       "dst": "crate:op-state-store",
@@ -24993,7 +25496,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 9
+        "refs": 8
       }
     },
     {
@@ -25385,7 +25888,7 @@
       "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 1
+        "refs": 3
       }
     },
     {
@@ -25449,7 +25952,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 9
+        "refs": 23
       }
     },
     {
@@ -25517,6 +26020,14 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/identity_nextdns.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/identity_publication.rs",
       "rel": "imports",
       "dst": "crate:op-core",
@@ -25537,7 +26048,7 @@
       "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 2
+        "refs": 4
       }
     },
     {
@@ -25545,7 +26056,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 4
+        "refs": 5
       }
     },
     {
@@ -25605,6 +26116,78 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/identity_root_repair.rs",
+      "rel": "imports",
+      "dst": "crate:op-blob",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_root_repair.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_root_repair.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 5
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_root_repair.rs",
+      "rel": "imports",
+      "dst": "crate:op-network",
+      "props": {
+        "refs": 36
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_root_repair.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 4
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "rel": "imports",
+      "dst": "crate:op-blob",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 4
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "rel": "imports",
+      "dst": "crate:op-network",
+      "props": {
+        "refs": 24
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_seed_provision.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 4
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
       "rel": "imports",
       "dst": "crate:op-core",
@@ -25625,7 +26208,7 @@
       "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 13
+        "refs": 32
       }
     },
     {
@@ -25641,7 +26224,39 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 2
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_sled_private_fixture_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 4
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_sled_private_fixture_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-network",
+      "props": {
+        "refs": 6
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_sled_private_fixture_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 5
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_sled_private_fixture_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
       }
     },
     {
@@ -25887,9 +26502,17 @@
     {
       "src": "mod:crates/op-grpc-bridge/src/mcp_frontend.rs",
       "rel": "imports",
+      "dst": "crate:op-mcp",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/mcp_frontend.rs",
+      "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 6
+        "refs": 7
       }
     },
     {
@@ -25897,7 +26520,7 @@
       "rel": "imports",
       "dst": "crate:op-state-store",
       "props": {
-        "refs": 1
+        "refs": 4
       }
     },
     {
@@ -25913,13 +26536,37 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 2
+        "refs": 4
       }
     },
     {
       "src": "mod:crates/op-grpc-bridge/src/mcp_policy.rs",
       "rel": "imports",
       "dst": "crate:op-state",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/memory_binding.rs",
+      "rel": "imports",
+      "dst": "crate:op-cognitive-mcp",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/memory_binding.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/memory_binding.rs",
+      "rel": "imports",
+      "dst": "crate:op-mcp",
       "props": {
         "refs": 1
       }
@@ -25929,7 +26576,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {
@@ -25997,6 +26644,14 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/mqtt_doorbell_relay.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/mutation_engine.rs",
       "rel": "imports",
       "dst": "crate:op-cognitive-mcp",
@@ -26025,7 +26680,7 @@
       "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 7
+        "refs": 8
       }
     },
     {
@@ -26057,7 +26712,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 118
+        "refs": 126
       }
     },
     {
@@ -26073,7 +26728,15 @@
       "rel": "imports",
       "dst": "crate:op-state-store",
       "props": {
-        "refs": 4
+        "refs": 5
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/native_sled_identity.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 3
       }
     },
     {
@@ -26226,6 +26889,14 @@
       "dst": "crate:op-blob",
       "props": {
         "refs": 5
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/ovsdb_observer.rs",
+      "rel": "imports",
+      "dst": "crate:op-core",
+      "props": {
+        "refs": 1
       }
     },
     {
@@ -26489,7 +27160,7 @@
       "rel": "imports",
       "dst": "crate:op-blob",
       "props": {
-        "refs": 7
+        "refs": 6
       }
     },
     {
@@ -26583,14 +27254,6 @@
     {
       "src": "mod:crates/op-grpc-bridge/src/server.rs",
       "rel": "imports",
-      "dst": "crate:op-blob",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-grpc-bridge/src/server.rs",
-      "rel": "imports",
       "dst": "crate:op-cognitive-mcp",
       "props": {
         "refs": 1
@@ -26649,7 +27312,7 @@
       "rel": "imports",
       "dst": "crate:op-agents",
       "props": {
-        "refs": 1
+        "refs": 4
       }
     },
     {
@@ -26665,7 +27328,15 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 2
+        "refs": 4
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/specialist.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 1
       }
     },
     {
@@ -26737,7 +27408,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {
@@ -26825,7 +27496,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 4
+        "refs": 6
       }
     },
     {
@@ -27481,7 +28152,7 @@
       "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 5
+        "refs": 6
       }
     },
     {
@@ -27633,7 +28304,15 @@
       "rel": "imports",
       "dst": "crate:op-core",
       "props": {
-        "refs": 4
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-introspection/src/indexer.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
       }
     },
     {
@@ -27721,7 +28400,7 @@
       "rel": "imports",
       "dst": "crate:op-tools",
       "props": {
-        "refs": 2
+        "refs": 3
       }
     },
     {
@@ -27768,22 +28447,6 @@
       "src": "mod:crates/op-mcp/src/blob_schema.rs",
       "rel": "imports",
       "dst": "crate:op-blob",
-      "props": {
-        "refs": 2
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/cognitive_bridge.rs",
-      "rel": "imports",
-      "dst": "crate:op-tools",
-      "props": {
-        "refs": 3
-      }
-    },
-    {
-      "src": "mod:crates/op-mcp/src/compact.rs",
-      "rel": "imports",
-      "dst": "crate:op-identity",
       "props": {
         "refs": 2
       }
@@ -28163,6 +28826,22 @@
       }
     },
     {
+      "src": "mod:crates/op-plugins/src/state_plugins/cognitive_agents.rs",
+      "rel": "imports",
+      "dst": "crate:op-agents",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/cognitive_agents.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
       "src": "mod:crates/op-plugins/src/state_plugins/cognitive_mcp.rs",
       "rel": "defines_plugin",
       "dst": "plugin:cognitive_mcp",
@@ -28181,7 +28860,7 @@
       "rel": "imports",
       "dst": "crate:op-state-store",
       "props": {
-        "refs": 8
+        "refs": 9
       }
     },
     {
@@ -28713,7 +29392,7 @@
       "rel": "imports",
       "dst": "crate:op-state-store",
       "props": {
-        "refs": 4
+        "refs": 6
       }
     },
     {
@@ -28721,6 +29400,14 @@
       "rel": "defines_plugin",
       "dst": "plugin:incus",
       "props": {}
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/incus.rs",
+      "rel": "imports",
+      "dst": "crate:op-network",
+      "props": {
+        "refs": 4
+      }
     },
     {
       "src": "mod:crates/op-plugins/src/state_plugins/incus.rs",
@@ -30001,6 +30688,14 @@
       }
     },
     {
+      "src": "mod:crates/op-services/src/grpc/auth.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
       "src": "mod:crates/op-services/src/schema/mod.rs",
       "rel": "imports",
       "dst": "crate:op-plugins",
@@ -30014,14 +30709,6 @@
       "dst": "crate:op-cache",
       "props": {
         "refs": 3
-      }
-    },
-    {
-      "src": "mod:crates/op-state/src/authority.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 4
       }
     },
     {
@@ -30094,14 +30781,6 @@
       "dst": "crate:op-network",
       "props": {
         "refs": 9
-      }
-    },
-    {
-      "src": "mod:crates/op-tools/src/builtin/sv.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 5
       }
     },
     {
@@ -30189,7 +30868,7 @@
       "rel": "imports",
       "dst": "crate:op-mcp-aggregator",
       "props": {
-        "refs": 2
+        "refs": 4
       }
     },
     {
@@ -30213,7 +30892,7 @@
       "rel": "imports",
       "dst": "crate:op-llm",
       "props": {
-        "refs": 3
+        "refs": 6
       }
     },
     {
@@ -30233,14 +30912,6 @@
       }
     },
     {
-      "src": "mod:crates/op-web/src/handlers/identity_self.rs",
-      "rel": "imports",
-      "dst": "crate:op-identity",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-web/src/handlers/llm.rs",
       "rel": "imports",
       "dst": "crate:op-llm",
@@ -30257,33 +30928,9 @@
       }
     },
     {
-      "src": "mod:crates/op-web/src/handlers/privacy.rs",
-      "rel": "imports",
-      "dst": "crate:op-identity",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-web/src/handlers/status.rs",
       "rel": "imports",
       "dst": "crate:op-agents",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-web/src/handlers/status.rs",
-      "rel": "imports",
-      "dst": "crate:op-core",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-web/src/handlers/status.rs",
-      "rel": "imports",
-      "dst": "crate:op-grpc-bridge",
       "props": {
         "refs": 1
       }
@@ -30374,14 +31021,6 @@
       "dst": "crate:op-llm",
       "props": {
         "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-web/src/privacy_network.rs",
-      "rel": "imports",
-      "dst": "crate:op-network",
-      "props": {
-        "refs": 3
       }
     },
     {
@@ -30591,6 +31230,12 @@
       "props": {
         "refs": 1
       }
+    },
+    {
+      "src": "runit:incusd",
+      "rel": "runs_bin",
+      "dst": "bin:op-identity-storage",
+      "props": {}
     },
     {
       "src": "runit:op-grpc-bridge",

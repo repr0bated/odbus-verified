@@ -173,24 +173,30 @@ Run `/verify` before reporting work complete. CI won't catch fmt drift, clippy w
 
 ## Subagent and model selection
 
-**Owner preference (2026-09-13): assess task difficulty and required reasoning
-before delegation, and use the cheapest available model that can complete it
-reliably. Do not inherit an expensive parent model by default.** For the current
-model pool, use the low-cost `gpt-5.6-luna` for lookups, inventory extraction,
-documentation assembly, builds/tests and routine checks; choose low effort for
-mechanical work and medium effort for bounded reasoning. Escalate only when
-specific complexity or a failed attempt warrants it, and briefly state why.
+**Owner preference (2026-09-13, model names withdrawn 2026-09-24): assess task
+difficulty and required reasoning before delegation, and use the cheapest
+available model that can complete it at the same quality.** A lower price must
+not thin the answer, skip evidence, or weaken a judgment. If the cheaper model
+would lose accuracy, completeness, or care, use the more capable model. Pick
+from the models the session can actually launch. Do not inherit an expensive
+parent model by default, and do not pin a product or model id in this file.
+Use a low-cost model for lookups, inventory extraction, documentation
+assembly, builds, tests, and routine checks when that model can match the
+quality of a more capable one. Choose low effort for mechanical work and
+medium effort for bounded reasoning. Escalate when the task's quality needs
+it or a cheaper attempt falls short, and briefly state why.
 
 Keep the primary agent available for user communication and coordination.
-Delegate longer execution/research jobs, use nonblocking progress checks, and
-avoid long blocking tool calls on the primary. User messages steer active work;
-answer them promptly while delegated work continues. Small immediate edits and
-decisions can remain with the primary when delegation would add overhead.
+Delegate longer execution and research jobs, use nonblocking progress checks,
+and avoid long blocking tool calls on the primary. User messages steer active
+work; answer them promptly while delegated work continues. Small immediate
+edits and decisions can remain with the primary when delegation would add
+overhead.
 
-Prefer the **least-expensive subagent that preserves quality** for builds and tests:
+Prefer the **least-expensive subagent whose output matches a more capable model** for builds and tests:
 
 - `Explore` (fast read-only) for locating code, grepping symbols, answering "where is X."
-- `Plan` for architecture/design before writing code.
-- `general-purpose` only when the task needs multi-step reasoning or execution that Explore/Plan cannot cover.
-- Reserve expensive model overrides (Opus-class) for tasks that genuinely require them — complex cross-crate reasoning, security review, or ambiguous architectural decisions. Standard edits, build fixes, and test work belong on the default agent.
+- `Plan` for architecture and design before writing code.
+- `general-purpose` only when the task needs multi-step reasoning or execution that Explore or Plan cannot cover.
+- Use a more capable model for complex cross-crate reasoning, security review, or ambiguous architectural decisions, and for any standard edit, build fix, or test whose quality would drop on the low-cost agent.
 - Do not spawn a subagent for a single-file edit or a direct grep you can do yourself.

@@ -46,3 +46,8 @@ notebooklm-mcp
 # decoy's user-facing 10.0.0.1 VIP reaches the host through the WARP/Xray leg.
 mkdrt
 zeroclaw
+
+# Incus cozo container. Host Cozo stores under /var/lib/op-dbus are opened by
+# op-grpc-bridge. The container disk only held chat-memory-rocksdb, copied to
+# the host on 2026-09-24 before the instance and volume were deleted.
+incus-ct-cozo
