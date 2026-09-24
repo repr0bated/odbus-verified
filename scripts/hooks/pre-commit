@@ -5,7 +5,7 @@
 set -eu
 root=$(git rev-parse --show-toplevel)
 cd "$root"
-git diff --cached --name-only --diff-filter=ACMR |
+git diff --cached --name-only --diff-filter=ACMRD |
     grep -Eq '^(crates/|deploy/runit/|Cargo\.toml$|Cargo\.lock$|scripts/crate-graph\.sh$)' ||
     exit 0
 scripts/crate-graph.sh
