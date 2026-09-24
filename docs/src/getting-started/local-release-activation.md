@@ -15,12 +15,13 @@ paths then reference the received filesystem through one `current` symlink.
 | `/opt/op-dbus/current` | Atomic symlink selecting the received release |
 | `/opt/op-dbus/recovery/<activation-id>` | Ordinary directory holding first-migration originals and an activation receipt |
 
-Keep at most five release/cache subvolumes, including temporary send and
-receive copies. Count paths under the release root explicitly: `btrfs
+Retention is configurable per storage owner; there is no global five-subvolume
+cap. Budget free bytes for preparation, send/receive and a recovery reserve
+before starting writes. Count paths under the release root explicitly: `btrfs
 subvolume list -o` on an ordinary directory lists descendants of its
 containing subvolume, including unrelated Incus storage. Existing unrelated
-subvolumes are migration debt, not permission to delete storage. Do not add
-subvolumes for recovery records or runtime state. Retain the previous active
+subvolumes are not permission to delete storage. Preserve the category,
+timing, vector and state subvolumes owned by cache/Snowball. Retain the previous active
 release for rollback; retire only explicitly identified obsolete releases.
 
 ## Prepare
@@ -30,6 +31,13 @@ artifacts, and explicitly seal/persist with the freshly built `opblob` and
 the service's schema-shaping environment. Preserve the previous catalogs and
 review additions/removals before a live reseal. `build-golden.sh` accepts
 `OP_PERSISTED_CATALOG_SOURCE` for isolated release preparation.
+
+After extracting deterministic UI assets into the prepared tree, set
+`dashboard/index.html` to the preparation timestamp before taking the read-only
+snapshot. Archive timestamps are epoch-based; preserving them on this HTTP
+entry point can cause a browser's old `If-Modified-Since` request to receive
+304 and retain an obsolete bundle. Keep the archive and content hashes intact,
+and verify an old conditional request returns 200 after activation.
 
 For the first clean baseline, move the previous golden contents into an
 ordinary recovery directory before repopulating the existing golden
@@ -46,14 +54,39 @@ with its corresponding native token hash. A token from a temporary gateway
 is not valid for the production gateway. This native backend provisioning
 does not introduce OP-DBUS UI pairing.
 
+Control Plane inherits its provider from the native `control_plane` agent.
+Set the public service variable `TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER`
+in the prepared service environment to an existing native `family.alias`
+profile, for example `openai.control_plane`, `anthropic.control_plane`, or
+`custom.opencode_control_plane` (the default). The referenced profile owns
+the model and credentials and must already be configured through the native
+configuration owner; the variable contains no credential. Startup rejects an
+unknown profile before changing the current role. Control Plane does not
+require OpenCode inventory or a fixed model list. The dashboard inherits this
+selection without showing its Personal model picker. Personal's provider and
+model are independent. Named chatbot roles retain the `chatbot_500` runtime
+profile regardless of provider selection.
+
 ## Transfer
 
-Run these as deliberate operator steps after checking the subvolume budget
+Run these as deliberate operator steps after checking the capacity budget
 and the golden manifest. The release ID contains only letters, digits,
 hyphens and underscores, and must not already exist at either destination.
+Use a root Bash shell (`sudo bash`) from the repository root for this block,
+including creation of the transfer lock under `/run`.
 
 ```sh
 release_id="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD)"
+# Budget the complete receive, temporary overhead and a 16 GiB reserve.
+# Serialize local transfers so they cannot both spend the same free space.
+exec 9>/run/opdbus-release-transfer.lock
+flock -n 9
+candidate_bytes=$(sudo du -sb /opt/op-dbus/golden | awk '{print $1}')
+available_bytes=$(df -B1 --output=avail /opt/op-dbus | tail -1)
+[ "$available_bytes" -ge "$((candidate_bytes * 2 + 17179869184))" ] || {
+  echo 'Insufficient free space; no snapshot or receive started' >&2
+  exit 1
+}
 sudo install -d -m 0755 /opt/op-dbus/send /opt/op-dbus/releases
 sudo btrfs subvolume snapshot -r /opt/op-dbus/golden "/opt/op-dbus/send/$release_id"
 set -o pipefail
@@ -114,7 +147,12 @@ before retiring it. Five managed subvolumes remain, including both compatible
 preceding releases. Full `/verify` remains cancelled by the owner; historical
 Qdrant recovery (OD-68) and exhaustive retained-method audit are separate work.
 
-When only one subvolume slot is free, send the read-only source snapshot to
+The following historical release used a five-subvolume cap. The owner withdrew
+that global cap on 2026-09-23: cache and Snowball retain their own Btrfs
+subvolumes and configured snapshot retention. Never flatten runtime storage
+or delete history to satisfy that former cap.
+
+For a transfer that avoids retaining a temporary source snapshot, send it to
 a protected ordinary stream file first. After successful send, record the
 stream digest and source UUID, remove only that temporary source snapshot,
 then receive the completed stream. Verify the received UUID, read-only flag

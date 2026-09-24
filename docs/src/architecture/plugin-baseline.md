@@ -433,7 +433,7 @@ Owner-provided topology note: WireGuard terminates at the decoy; there is no Wir
 
 **Test evidence.** No local test block found in the inspected plugin module.
 
-**Uncertainty.** The schema's backup/DR model conflicts with the owner's transport-only, at-most-five-subvolumes rule. Source registration establishes eligibility, not presence in the sealed catalog or usable filesystem management.
+**Uncertainty.** The owner withdrew the global five-subvolume rule on 2026-09-23 and reaffirmed the original Btrfs cache/NUMA/timing design. This does not establish an implemented backend for these plugin methods. Source registration establishes eligibility, not presence in the sealed catalog or usable filesystem management.
 
 **Source evidence.**
 

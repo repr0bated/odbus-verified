@@ -447,26 +447,11 @@
  pub(crate) mod stream_guard;
  pub mod telnyx;
  pub mod traits;
-@@ -1200,6 +1203,48 @@
+@@ -1200,6 +1203,33 @@
                      .filter(|v| !v.is_empty())
              });
 
-+    if let Some(extra) = options
-+        .provider_extra
-+        .as_ref()
-+        .and_then(serde_json::Value::as_object)
-+        .filter(|extra| extra.contains_key("opdbus_transport"))
-+    {
-+        if extra.len() != 1
-+            || extra
-+                .get("opdbus_transport")
-+                .and_then(serde_json::Value::as_str)
-+                != Some("opencode_session")
-+        {
-+            anyhow::bail!(
-+                "OpenCode session provider_extra requires only opdbus_transport = opencode_session; request overrides are forbidden"
-+            );
-+        }
++    if opencode_session_marker(options.provider_extra.as_ref())? {
 +        if !matches!(
 +            provider_kind,
 +            "custom" | "openai-compatible" | "openai_compatible"
@@ -496,6 +481,52 @@
      if legacy_kimi_code {
          let base_url = match resolved_url {
              Some(url) => url,
+@@ -1218,6 +1248,45 @@
+         .map(|provider| apply_vision_override(provider, options.vision))
+ }
+
++/// Recognize the dedicated transport marker in both native object config and
++/// legacy JSON text persisted by the config property setter. Other arbitrary
++/// provider extras retain their existing shape and dispatch behavior.
++pub fn opencode_session_marker(extra: Option<&serde_json::Value>) -> anyhow::Result<bool> {
++    fn classify(map: &serde_json::Map<String, serde_json::Value>) -> anyhow::Result<bool> {
++        let Some(marker) = map.get("opdbus_transport") else {
++            return Ok(false);
++        };
++        if map.len() != 1 || marker.as_str() != Some("opencode_session") {
++            anyhow::bail!(
++                "OpenCode session provider_extra requires only opdbus_transport = opencode_session; request overrides are forbidden"
++            );
++        }
++        Ok(true)
++    }
++
++    match extra {
++        None => Ok(false),
++        Some(serde_json::Value::Object(map)) => classify(map),
++        Some(serde_json::Value::String(raw)) => {
++            let parsed = match serde_json::from_str::<serde_json::Value>(raw) {
++                Ok(parsed) => parsed,
++                Err(_) if raw.contains("opdbus_transport") => {
++                    anyhow::bail!("malformed OpenCode session provider_extra marker")
++                }
++                Err(_) => return Ok(false),
++            };
++            match parsed {
++                serde_json::Value::Object(map) => classify(&map),
++                _ if raw.contains("opdbus_transport") => {
++                    anyhow::bail!("OpenCode session provider_extra marker must be a JSON object")
++                }
++                _ => Ok(false),
++            }
++        }
++        Some(_) => Ok(false),
++    }
++}
++
+ pub fn create_resilient_model_provider_with_options(
+     primary_name: &str,
+     api_key: Option<&str>,
 --- a/crates/zeroclaw-providers/src/ollama.rs
 +++ b/crates/zeroclaw-providers/src/ollama.rs
 @@ -879,6 +879,9 @@
@@ -579,8 +610,8 @@
 +    let requires_live_catalog = resolved
 +        .as_ref()
 +        .and_then(|(_family, _alias, base)| base.provider_extra.as_ref())
-+        .and_then(serde_json::Value::as_object)
-+        .is_some_and(|extra| extra.contains_key("opdbus_transport"));
++        .map(|extra| zeroclaw_providers::opencode_session_marker(Some(extra)).unwrap_or(true))
++        .unwrap_or(false);
      let api_key = resolved
          .as_ref()
          .and_then(|(_family, _alias, base)| base.api_key.clone());
@@ -599,7 +630,7 @@
 @@ -2068,11 +2064,24 @@
                  .map_or(model_provider, |(f, _)| f)
          });
- 
+
 -    let handle = zeroclaw_providers::create_model_provider_with_url(
 -        family,
 -        api_key.as_deref(),
@@ -626,7 +657,7 @@
      if let Ok(handle) = handle
          && let Ok(models) = zeroclaw_providers::ProviderDispatch::from_ref(&*handle)
              .list_models_with_pricing()
-@@ -2102,15 +2111,53 @@
+@@ -2102,6 +2111,9 @@
          };
          return (ids, pricing, true);
      }
@@ -634,165 +665,41 @@
 +        return (Vec::new(), None, false);
 +    }
      match zeroclaw_providers::catalog::list_models_for_family(family).await {
--        Ok(models) if !models.is_empty() => (
--            zeroclaw_providers::catalog::sort_model_catalog_for_chat(family, models)
--                .unwrap_or_default(),
--            None,
--            true,
--        ),
--        _ => (Vec::new(), None, false),
-+        Ok(models) if !models.is_empty() => {
-+            let sorted = zeroclaw_providers::catalog::sort_model_catalog_for_chat(family, models)
-+                .unwrap_or_default();
-+            if !sorted.is_empty() {
-+                return (sorted, None, true);
-+            }
-+        }
-+        _ => {}
-+    }
-+
-+    // An unknown provider family such as `custom` has no built-in catalog. When
-+    // its upstream /models request is unavailable, surface only model IDs the
-+    // operator already configured for this exact alias or family. This is an
-+    // offline fallback, so it must never claim that the list is live.
-+    let configured = configured_model_ids(config, model_provider);
-+    (configured, None, false)
-+}
-+
-+fn configured_model_ids(config: Option<&Config>, selector: &str) -> Vec<String> {
-+    let Some(config) = config else {
-+        return Vec::new();
-+    };
-+    let mut ids = std::collections::BTreeSet::new();
-+    for (family, alias, provider) in config.providers.models.iter_entries() {
-+        let selected = match selector.split_once('.') {
-+            Some((requested_family, requested_alias)) => {
-+                family == requested_family && alias == requested_alias
-+            }
-+            None => family == selector,
-+        };
-+        if !selected {
-+            continue;
-+        }
-+        if let Some(model) = provider
-+            .model
-+            .as_deref()
-+            .map(str::trim)
-+            .filter(|s| !s.is_empty())
-+        {
-+            ids.insert(model.to_string());
-+        }
-     }
-+    ids.into_iter().collect()
- }
- 
- /// `true` for model_provider families that need no remote credential.
-@@ -2132,6 +2179,77 @@
-     use zeroclaw_config::schema::Config;
- 
-     #[test]
-+    fn configured_model_ids_resolves_alias_or_family_without_inventing_models() {
-+        let mut config = Config::default();
-+        for (alias, model) in [
-+            ("salad", Some(" qwen3.6-35b-a3b ")),
-+            ("second", Some("qwen3.6-35b-a3b")),
-+            ("blank", Some("   ")),
-+            ("unset", None),
-+        ] {
-+            config.providers.models.custom.insert(
-+                alias.to_string(),
-+                zeroclaw_config::schema::CustomModelProviderConfig {
-+                    base: zeroclaw_config::schema::ModelProviderConfig {
-+                        model: model.map(str::to_string),
-+                        ..Default::default()
-+                    },
-+                },
-+            );
-+        }
-+
-+        assert_eq!(
-+            configured_model_ids(Some(&config), "custom.salad"),
-+            vec!["qwen3.6-35b-a3b"],
-+            "a dotted selector should return only that alias's configured model"
-+        );
-+        assert_eq!(
-+            configured_model_ids(Some(&config), "custom"),
-+            vec!["qwen3.6-35b-a3b"],
-+            "a bare family should aggregate, trim, and deduplicate configured IDs"
-+        );
-+        assert!(configured_model_ids(Some(&config), "custom.missing").is_empty());
-+        assert!(configured_model_ids(Some(&config), "unknown").is_empty());
-+        assert!(configured_model_ids(None, "custom").is_empty());
-+    }
-+
-+    #[tokio::test]
-+    async fn model_catalog_falls_back_to_configured_custom_id_when_live_fetch_fails() {
-+        use wiremock::matchers::{method, path};
-+        use wiremock::{Mock, MockServer, ResponseTemplate};
-+
-+        let server = MockServer::start().await;
-+        Mock::given(method("GET"))
-+            .and(path("/models"))
-+            .respond_with(ResponseTemplate::new(503))
-+            .mount(&server)
-+            .await;
-+
-+        let mut config = Config::default();
-+        config.providers.models.custom.insert(
-+            "salad".to_string(),
-+            zeroclaw_config::schema::CustomModelProviderConfig {
-+                base: zeroclaw_config::schema::ModelProviderConfig {
-+                    api_key: Some("fixture-key".to_string()),
-+                    uri: Some(server.uri()),
-+                    model: Some("configured-custom-model".to_string()),
-+                    ..Default::default()
-+                },
-+            },
-+        );
-+
-+        let (models, pricing, live) =
-+            model_catalog_with_config(Some(&config), "custom.salad").await;
-+
-+        assert_eq!(models, vec!["configured-custom-model"]);
-+        assert!(pricing.is_none());
-+        assert!(
-+            !live,
-+            "configured IDs are an offline fallback, not a live result"
-+        );
-+    }
-+
-+    #[test]
-     fn channel_type_options_cover_every_schema_channel() {
-         let cfg = Config::default();
-         let picker = build_channel_type_options(&cfg.channels);
-@@ -3150,4 +3268,29 @@
+         Ok(models) if !models.is_empty() => (
+             zeroclaw_providers::catalog::sort_model_catalog_for_chat(family, models)
+@@ -3150,4 +3162,34 @@
               configured endpoint; got {models:?}"
          );
      }
 +
 +    #[tokio::test]
 +    async fn opencode_session_catalog_never_falls_back_to_static_models() {
-+        let mut config = Config::default();
-+        config.providers.models.custom.insert(
-+            "opencode".to_string(),
-+            zeroclaw_config::schema::CustomModelProviderConfig {
-+                base: zeroclaw_config::schema::ModelProviderConfig {
-+                    api_key: Some("local-password".to_string()),
-+                    uri: Some("http://127.0.0.1:4096".to_string()),
-+                    provider_extra: Some(
-+                        serde_json::json!({"opdbus_transport": "opencode_session"}),
-+                    ),
-+                    ..Default::default()
++        for extra in [
++            serde_json::json!({"opdbus_transport": "opencode_session"}),
++            serde_json::json!(r#"{"opdbus_transport":"opencode_session"}"#),
++            serde_json::json!(r#"{"opdbus_transport":"opencode_session","messages":[]}"#),
++            serde_json::json!(r#"{"opdbus_transport":"opencode_session""#),
++        ] {
++            let mut config = Config::default();
++            config.providers.models.custom.insert(
++                "opencode".to_string(),
++                zeroclaw_config::schema::CustomModelProviderConfig {
++                    base: zeroclaw_config::schema::ModelProviderConfig {
++                        api_key: Some("local-password".to_string()),
++                        uri: Some("http://127.0.0.1:9".to_string()),
++                        provider_extra: Some(extra),
++                        ..Default::default()
++                    },
 +                },
-+            },
-+        );
++            );
 +
-+        let (models, pricing, live) =
-+            model_catalog_with_config(Some(&config), "custom.opencode").await;
++            let (models, pricing, live) =
++                model_catalog_with_config(Some(&config), "custom.opencode").await;
 +
-+        assert!(!live);
-+        assert!(models.is_empty());
-+        assert!(pricing.is_none());
++            assert!(!live);
++            assert!(models.is_empty());
++            assert!(pricing.is_none());
++        }
 +    }
  }
 --- a/crates/zeroclaw-gateway/src/ws_stateless.rs
@@ -1741,7 +1648,7 @@
 +}
 --- a/crates/zeroclaw-providers/src/opencode_session.rs
 +++ b/crates/zeroclaw-providers/src/opencode_session.rs
-@@ -0,0 +1,971 @@
+@@ -0,0 +1,1092 @@
 +//! Local OpenCode server transport for inference authenticated by OpenCode's
 +//! own provider/OAuth store. Each call uses a disposable, deny-all session.
 +
@@ -1761,6 +1668,7 @@
 +const SESSION_TITLE: &str = "OP-DBUS completion";
 +const COMPLETION_AGENT: &str = "opdbus-completion";
 +const MAX_RESPONSE_BYTES: usize = 1024 * 1024;
++const MAX_CATALOG_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
 +const REQUEST_TIMEOUT: Duration = Duration::from_secs(600);
 +
 +#[derive(Clone)]
@@ -1829,19 +1737,32 @@
 +    }
 +
 +    async fn bounded_json<T: DeserializeOwned>(response: Response) -> Result<T> {
++        Self::bounded_json_with_limit(response, MAX_RESPONSE_BYTES).await
++    }
++
++    async fn bounded_json_with_limit<T: DeserializeOwned>(
++        response: Response,
++        limit: usize,
++    ) -> Result<T> {
 +        let status = response.status();
 +        if response
 +            .content_length()
-+            .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)
++            .is_some_and(|length| length > limit as u64)
 +        {
-+            bail!("OpenCode response exceeds the 1 MiB limit");
++            bail!(
++                "OpenCode response exceeds the {} MiB limit",
++                limit / (1024 * 1024)
++            );
 +        }
 +        let mut stream = response.bytes_stream();
 +        let mut bytes = Vec::new();
 +        while let Some(chunk) = stream.next().await {
 +            let chunk = chunk.context("failed while reading OpenCode response")?;
-+            if bytes.len().saturating_add(chunk.len()) > MAX_RESPONSE_BYTES {
-+                bail!("OpenCode response exceeds the 1 MiB limit");
++            if bytes.len().saturating_add(chunk.len()) > limit {
++                bail!(
++                    "OpenCode response exceeds the {} MiB limit",
++                    limit / (1024 * 1024)
++                );
 +            }
 +            bytes.extend_from_slice(&chunk);
 +        }
@@ -1942,7 +1863,8 @@
 +            .send()
 +            .await
 +            .context("failed to list OpenCode providers")?;
-+        let catalog: ProviderCatalog = Self::bounded_json(response).await?;
++        let catalog: ProviderCatalog =
++            Self::bounded_json_with_limit(response, MAX_CATALOG_RESPONSE_BYTES).await?;
 +        let connected: HashSet<&str> = catalog.connected.iter().map(String::as_str).collect();
 +        let mut models = Vec::new();
 +        for provider in catalog.all {
@@ -2381,6 +2303,7 @@
 +    use super::*;
 +    use axum::{
 +        Json, Router,
++        body::Body,
 +        extract::{Path, State},
 +        http::{HeaderMap, StatusCode},
 +        response::IntoResponse,
@@ -2640,6 +2563,73 @@
 +    }
 +
 +    #[tokio::test]
++    async fn large_catalog_has_its_own_finite_http_bound() {
++        let app = Router::new()
++            .route(
++                "/provider",
++                get(|| async {
++                    Json(json!({
++                        "connected": ["anthropic"],
++                        "all": [{"id":"anthropic","models": {
++                            "claude-test": {"id":"claude-test", "providerID":"anthropic",
++                                "cost":{}, "limit":{}}
++                        }}],
++                        "padding": "x".repeat(MAX_RESPONSE_BYTES + 1)
++                    }))
++                }),
++            )
++            .route(
++                "/oversize-known",
++                get(|| async { Body::from(vec![b'x'; MAX_CATALOG_RESPONSE_BYTES + 1]) }),
++            )
++            .route(
++                "/oversize-stream",
++                get(|| async {
++                    Body::from_stream(futures_util::stream::iter(
++                        (0..17).map(|_| Ok::<_, std::io::Error>(vec![b'x'; 1024 * 1024])),
++                    ))
++                }),
++            );
++        let listener = TcpListener::bind("127.0.0.1:0")
++            .await
++            .expect("bind fixture");
++        let uri = format!("http://{}", listener.local_addr().expect("fixture address"));
++        let server = ::zeroclaw_spawn::spawn!(async move {
++            let _ = axum::serve(listener, app).await;
++        });
++        let client = Client::new();
++
++        let models = crate::sled_identity::VerifiedSledIdentity::native_fixture()
++            .scope(provider(&uri).list_models_with_pricing())
++            .await
++            .expect("catalog larger than 1 MiB is accepted");
++        assert_eq!(models.len(), 1);
++        assert_eq!(models[0].id, "anthropic/claude-test");
++
++        let response = client.get(format!("{uri}/provider")).send().await.unwrap();
++        assert!(response.content_length().unwrap() > MAX_RESPONSE_BYTES as u64);
++        assert!(
++            OpenCodeSessionModelProvider::bounded_json::<serde_json::Value>(response)
++                .await
++                .is_err(),
++            "generation responses retain their 1 MiB bound"
++        );
++
++        for (path, known_length) in [("oversize-known", true), ("oversize-stream", false)] {
++            let response = client.get(format!("{uri}/{path}")).send().await.unwrap();
++            assert_eq!(response.content_length().is_some(), known_length);
++            let error = OpenCodeSessionModelProvider::bounded_json_with_limit::<serde_json::Value>(
++                response,
++                MAX_CATALOG_RESPONSE_BYTES,
++            )
++            .await
++            .expect_err("catalog above 16 MiB must be refused");
++            assert!(error.to_string().contains("16 MiB limit"));
++        }
++        server.abort();
++    }
++
++    #[tokio::test]
 +    async fn inference_error_tool_attempt_and_attribution_mismatch_fail_and_cleanup() {
 +        for mode in [Mode::Error, Mode::Tool, Mode::Attribution] {
 +            let fixture = fixture(mode).await;
@@ -2711,6 +2701,44 @@
 +            crate::create_model_provider_with_options("custom", Some("fixture-password"), &options)
 +                .expect("select OpenCode session adapter");
 +        assert!(selected.supports_stateless_generation());
++
++        let persisted = crate::ModelProviderRuntimeOptions {
++            provider_api_url: Some("http://127.0.0.1:4096".to_string()),
++            provider_extra: Some(json!(r#"{"opdbus_transport":"opencode_session"}"#)),
++            ..Default::default()
++        };
++        let selected = crate::create_model_provider_with_options(
++            "custom",
++            Some("fixture-password"),
++            &persisted,
++        )
++        .expect("select OpenCode session adapter from persisted JSON text");
++        assert!(selected.supports_stateless_generation());
++
++        for extra in [
++            json!(r#"{"opdbus_transport":"opencode_session","messages":[]}"#),
++            json!(r#"{"opdbus_transport":"unexpected"}"#),
++            json!(r#"{"opdbus_transport":"opencode_session""#),
++        ] {
++            let invalid = crate::ModelProviderRuntimeOptions {
++                provider_api_url: Some("http://127.0.0.1:4096".to_string()),
++                provider_extra: Some(extra),
++                ..Default::default()
++            };
++            assert!(
++                crate::create_model_provider_with_options(
++                    "custom",
++                    Some("fixture-password"),
++                    &invalid,
++                )
++                .is_err(),
++                "invalid encoded marker must not reach generic dispatch"
++            );
++        }
++
++        for extra in [json!({"temperature": 0.2}), json!("plain text")] {
++            assert!(!crate::opencode_session_marker(Some(&extra)).unwrap());
++        }
 +    }
 +}
 --- a/crates/zeroclaw-providers/src/sled_identity.rs

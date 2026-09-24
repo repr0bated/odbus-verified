@@ -1,4 +1,4 @@
-//! Streaming snowball with data directories for timing, vectors, and state
+//! Streaming snowball with Btrfs timing, vector, and state subvolumes
 //!
 //! Architecture:
 //! - timing: Immutable audit trail (append-only)
@@ -12,9 +12,13 @@ use std::cmp::Reverse;
 use std::collections::{BTreeMap, HashSet};
 use std::fs::{File as StdFile, OpenOptions as StdOpenOptions};
 use std::io::Write as _;
+use std::os::fd::AsRawFd;
+use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::{mpsc, Arc};
+use std::time::Duration;
 use std::time::SystemTime;
 use tokio::sync::{oneshot, Mutex, RwLock};
 use tokio::time::Instant;
@@ -24,9 +28,17 @@ use crate::footprint::{BlockEvent, PluginFootprint};
 use crate::retention::RetentionPolicy;
 use crate::snapshot::SnapshotInterval;
 
-/// The three data directories that make up one committed logical recovery set.
+/// The three Btrfs subvolumes that make up one committed recovery set.
 /// Order is stable for deterministic snapshot construction.
 pub const SNAPSHOT_LABELS: [&str; 3] = ["timing", "vectors", "state"];
+
+/// All three received members are reported only after every native transfer
+/// has succeeded. The destination directory is one prepared remote set path.
+#[derive(Debug)]
+pub struct SnowballTransferReport {
+    pub snapshot_name: String,
+    pub members: Vec<crate::replication::PreparedSnapshotReport>,
+}
 
 /// Cap on a single flattened field's length in embedding text, so one large
 /// payload cannot dominate a block's vector.
@@ -127,9 +139,10 @@ type WriterJob = Box<dyn FnOnce() + Send + 'static>;
 /// The single thread that owns every durable write of a snowball.
 ///
 /// Timing blocks, vector files and Btrfs cache blocks for one event are
-/// produced by the same pinned thread, so the embedding buffer, the page-cache
-/// pages and the block file stay on one NUMA node for the whole stream. The
-/// thread is also the serialization point that the writer flock assumes.
+/// produced by the same dedicated thread. CPU affinity pins its execution,
+/// while the requested NUMA memory policy is best effort and does not guarantee
+/// page or filesystem placement. This is also the serialization point that
+/// the writer flock assumes.
 struct SnowballWriter {
     jobs: std::sync::Mutex<mpsc::Sender<WriterJob>>,
 }
@@ -182,7 +195,7 @@ impl SnowballWriter {
     }
 }
 
-/// Streaming snowball with data directories for timing, vectors, and state
+/// Streaming snowball with Btrfs subvolumes for timing, vectors, and state
 pub struct StreamingSnowball {
     base_path: PathBuf,
     timing_subvol: PathBuf,
@@ -227,10 +240,11 @@ impl StreamingSnowball {
         // symlinked root could redirect durable state outside the golden tree.
         Self::ensure_data_dir(&base_path).await?;
 
-        // Ensure data directories exist
-        Self::ensure_data_dir(&timing_subvol).await?;
-        Self::ensure_data_dir(&vector_subvol).await?;
-        Self::ensure_data_dir(&state_subvol).await?;
+        // Existing data is never flattened or migrated implicitly. A plain
+        // directory at any of these paths needs an explicit offline migration.
+        Self::ensure_source_subvolume(&timing_subvol).await?;
+        Self::ensure_source_subvolume(&vector_subvol).await?;
+        Self::ensure_source_subvolume(&state_subvol).await?;
 
         // Create snapshots directory
         let snapshots_dir = base_path.join("snapshots");
@@ -294,6 +308,33 @@ impl StreamingSnowball {
             path.display()
         );
         Ok(())
+    }
+
+    async fn ensure_source_subvolume(path: &Path) -> Result<()> {
+        match tokio::fs::symlink_metadata(path).await {
+            Ok(_) => verify_subvolume_root(path).with_context(|| {
+                format!(
+                    "existing Snowball data path requires a Btrfs subvolume: {}",
+                    path.display()
+                )
+            }),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                let output = tokio::process::Command::new("btrfs")
+                    .args(["subvolume", "create"])
+                    .arg(path)
+                    .output()
+                    .await
+                    .with_context(|| format!("create Snowball subvolume {}", path.display()))?;
+                ensure!(
+                    output.status.success(),
+                    "btrfs subvolume create {} failed: {}",
+                    path.display(),
+                    String::from_utf8_lossy(&output.stderr).trim()
+                );
+                verify_subvolume_root(path)
+            }
+            Err(error) => Err(error.into()),
+        }
     }
 
     async fn writer_transaction<T, F>(&self, transaction: F) -> Result<T>
@@ -549,9 +590,9 @@ impl StreamingSnowball {
 
     /// Snapshot all three data directories under one aligned counter.
     ///
-    /// These are ordinary directories inside the Snowball data tree. The
-    /// enclosing golden filesystem snapshot is the Btrfs send/receive unit;
-    /// Snowball snapshots never create additional subvolumes.
+    /// Each published set is an ordinary directory containing three aligned,
+    /// read-only Btrfs subvolume snapshots. The enclosing directory and its
+    /// commit marker give readers one complete recovery point.
     ///
     /// Returns the aligned counter used in the committed snapshot-set name.
     pub async fn create_snapshot(&self) -> Result<String> {
@@ -606,6 +647,68 @@ impl StreamingSnowball {
     /// Name of one committed logical snapshot set inside the golden tree.
     pub fn snapshot_set_name(counter: u64) -> String {
         format!("SNP-{counter:06}")
+    }
+
+    /// Send a complete read-only Btrfs triple to an operator-prepared remote
+    /// directory dedicated to this counter. No remote set is advertised by
+    /// this method after a partial receive; the caller must publish it only
+    /// after the returned three-member report. The parent, when supplied,
+    /// must be a complete local native triple already present remotely. Both
+    /// local sets are pinned against retention for the transfer's duration;
+    /// the caller remains responsible for the remote parent's existence.
+    pub async fn transfer_snapshot_set(
+        &self,
+        snapshot_name: &str,
+        parent_name: Option<&str>,
+        host: &str,
+        remote_set_directory: &str,
+        timeout: Duration,
+    ) -> Result<SnowballTransferReport> {
+        Self::parse_snapshot_set_counter(snapshot_name)
+            .with_context(|| format!("invalid Btrfs Snowball set name: {snapshot_name}"))?;
+        let directory = self.base_path.join("snapshots");
+        let set = directory.join(snapshot_name);
+        let parent = parent_name.map(|name| directory.join(name));
+        if let Some(name) = parent_name {
+            Self::parse_snapshot_set_counter(name)
+                .with_context(|| format!("invalid Btrfs parent set name: {name}"))?;
+        }
+        let lock_set = set.clone();
+        let lock_parent = parent.clone();
+        let _pins = self
+            .writer_transaction(move || {
+                complete_btrfs_snapshot_set(&lock_set)?;
+                if let Some(parent) = &lock_parent {
+                    complete_btrfs_snapshot_set(parent)?;
+                }
+                SnapshotTransferPins::create(&lock_set, lock_parent.as_deref())
+            })
+            .await?;
+
+        let mut members = Vec::with_capacity(SNAPSHOT_LABELS.len());
+        for label in SNAPSHOT_LABELS {
+            let request = crate::replication::PreparedSnapshotTransfer {
+                snapshot: set.join(label),
+                parent: parent.as_ref().map(|path| path.join(label)),
+                host: host.to_owned(),
+                remote_directory: remote_set_directory.to_owned(),
+                on_receive: None,
+                timeout,
+            };
+            match crate::replication::transfer_prepared_snapshot(request).await {
+                Ok(report) => members.push(report),
+                Err(error) => {
+                    return Err(error).with_context(|| format!(
+                        "Snowball set {snapshot_name} is incomplete at remote destination; {} member(s) transferred before {label} failed",
+                        members.len()
+                    ));
+                }
+            }
+        }
+        Ok(SnowballTransferReport {
+            snapshot_name: snapshot_name.to_owned(),
+            members,
+        })
     }
 
     fn data_dir_for_label(&self, label: &str) -> &Path {
@@ -701,21 +804,20 @@ impl StreamingSnowball {
         let mut snapshots = Vec::new();
         while let Some(entry) = entries.next_entry().await? {
             let name = entry.file_name().to_string_lossy().to_string();
-            if Self::parse_snapshot_set_counter(&name).is_none() {
-                continue;
-            }
-
             let file_type = entry.file_type().await?;
             if !file_type.is_dir() || file_type.is_symlink() {
                 continue;
             }
-            let committed = match tokio::fs::symlink_metadata(entry.path().join(".committed")).await
-            {
-                Ok(metadata) => metadata.is_file() && !metadata.file_type().is_symlink(),
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
-                Err(error) => return Err(error.into()),
+            let valid = if Self::parse_snapshot_set_counter(&name).is_some() {
+                // A marker alone is insufficient: all three aligned members
+                // must exist and have one consistent storage form.
+                complete_snapshot_set(&entry.path()).is_ok()
+            } else if let Some(counter) = parse_legacy_state_counter(&name) {
+                complete_legacy_snapshot_triple(&snapshot_dir, counter).is_ok()
+            } else {
+                false
             };
-            if !committed {
+            if !valid {
                 continue;
             }
 
@@ -748,7 +850,13 @@ impl StreamingSnowball {
         snapshot_name: &str,
     ) -> Result<Option<simd_json::OwnedValue>> {
         self.validate_state_snapshot_name(snapshot_name)?;
-        let snapshot_set = self.base_path.join("snapshots").join(snapshot_name);
+        let snapshot_dir = self.base_path.join("snapshots");
+        if let Some(counter) = parse_legacy_state_counter(snapshot_name) {
+            complete_legacy_snapshot_triple(&snapshot_dir, counter)?;
+            let state_file = snapshot_dir.join(snapshot_name).join("current.json");
+            return read_state_file_async(&state_file).await;
+        }
+        let snapshot_set = snapshot_dir.join(snapshot_name);
         let set_metadata = tokio::fs::symlink_metadata(&snapshot_set)
             .await
             .with_context(|| format!("read snapshot metadata {}", snapshot_set.display()))?;
@@ -761,6 +869,7 @@ impl StreamingSnowball {
             committed.is_file() && !committed.file_type().is_symlink(),
             "Snowball snapshot is not committed: {snapshot_name}"
         );
+        complete_snapshot_set(&snapshot_set)?;
         let state_file = snapshot_set.join("state/current.json");
         let snapshot_path = state_file
             .parent()
@@ -819,6 +928,7 @@ impl StreamingSnowball {
 
     fn validate_state_snapshot_name(&self, snapshot_name: &str) -> Result<u64> {
         let counter = Self::parse_snapshot_set_counter(snapshot_name)
+            .or_else(|| parse_legacy_state_counter(snapshot_name))
             .with_context(|| format!("invalid Snowball snapshot name: {snapshot_name}"))?;
         Ok(counter)
     }
@@ -1181,7 +1291,7 @@ fn atomic_write_sync(directory: &Path, target: &Path, prefix: &str, data: &[u8])
         .context("system clock is before the Unix epoch")?
         .as_nanos();
     let staging = directory.join(format!("{prefix}-{}-{nonce}.tmp", std::process::id()));
-    let result = (|| {
+    let result: Result<()> = (|| {
         let mut file = StdOpenOptions::new()
             .create_new(true)
             .write(true)
@@ -1236,9 +1346,294 @@ fn open_writer_lock(path: &Path) -> Result<StdFile> {
     Ok(file)
 }
 
+fn verify_subvolume_root(path: &Path) -> Result<()> {
+    let metadata = std::fs::symlink_metadata(path)?;
+    ensure!(
+        metadata.is_dir() && !metadata.file_type().is_symlink() && metadata.ino() == 256,
+        "Snowball path is not a Btrfs subvolume root: {}",
+        path.display()
+    );
+    let file = StdFile::open(path)?;
+    let mut stat = std::mem::MaybeUninit::<nix::libc::statfs>::uninit();
+    if unsafe { nix::libc::fstatfs(file.as_raw_fd(), stat.as_mut_ptr()) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("probe Snowball filesystem");
+    }
+    ensure!(
+        unsafe { stat.assume_init() }.f_type as u64 == nix::libc::BTRFS_SUPER_MAGIC as u64,
+        "Snowball path is not on Btrfs: {}",
+        path.display()
+    );
+    Ok(())
+}
+
+fn verify_readonly_snapshot(path: &Path) -> Result<()> {
+    verify_subvolume_root(path)?;
+    let output = Command::new("btrfs")
+        .args(["property", "get", "-ts"])
+        .arg(path)
+        .arg("ro")
+        .output()
+        .with_context(|| format!("inspect Btrfs snapshot {}", path.display()))?;
+    ensure!(
+        output.status.success() && String::from_utf8_lossy(&output.stdout).trim() == "ro=true",
+        "Snowball snapshot is not read-only: {}: {}",
+        path.display(),
+        String::from_utf8_lossy(&output.stderr).trim()
+    );
+    Ok(())
+}
+
+fn btrfs_snapshot_readonly(source: &Path, target: &Path) -> Result<()> {
+    verify_subvolume_root(source)?;
+    // State may later be restored by key. Reject indirections there before a
+    // recovery point is published; Btrfs itself never follows source links.
+    if source.file_name().is_some_and(|name| name == "state") {
+        reject_state_symlinks(source)?;
+    }
+    let output = Command::new("btrfs")
+        .args(["subvolume", "snapshot", "-r"])
+        .arg(source)
+        .arg(target)
+        .output()
+        .with_context(|| format!("snapshot Snowball subvolume {}", source.display()))?;
+    ensure!(
+        output.status.success(),
+        "Btrfs snapshot {} failed: {}",
+        target.display(),
+        String::from_utf8_lossy(&output.stderr).trim()
+    );
+    verify_readonly_snapshot(target)
+}
+
+fn reject_state_symlinks(directory: &Path) -> Result<()> {
+    for entry in std::fs::read_dir(directory)? {
+        let entry = entry?;
+        let kind = entry.file_type()?;
+        ensure!(
+            !kind.is_symlink(),
+            "Snowball state snapshot refuses symlink {}",
+            entry.path().display()
+        );
+        if kind.is_dir() {
+            reject_state_symlinks(&entry.path())?;
+        } else {
+            ensure!(
+                kind.is_file(),
+                "Snowball state snapshot refuses special file {}",
+                entry.path().display()
+            );
+        }
+    }
+    Ok(())
+}
+
+fn delete_snapshot_member(path: &Path) -> Result<()> {
+    verify_readonly_snapshot(path)?;
+    // Btrfs rejects deletion of a read-only subvolume for its unprivileged
+    // owner. The set has already been uncommitted before this transition.
+    let writable = Command::new("btrfs")
+        .args(["property", "set", "-ts"])
+        .arg(path)
+        .args(["ro", "false"])
+        .output()
+        .with_context(|| {
+            format!(
+                "make Snowball snapshot writable for deletion {}",
+                path.display()
+            )
+        })?;
+    ensure!(
+        writable.status.success(),
+        "Btrfs snapshot property update {} failed: {}",
+        path.display(),
+        String::from_utf8_lossy(&writable.stderr).trim()
+    );
+    let output = Command::new("btrfs")
+        .args(["subvolume", "delete"])
+        .arg(path)
+        .output()
+        .with_context(|| format!("delete Snowball snapshot {}", path.display()))?;
+    ensure!(
+        output.status.success(),
+        "Btrfs snapshot delete {} failed: {}",
+        path.display(),
+        String::from_utf8_lossy(&output.stderr).trim()
+    );
+    Ok(())
+}
+
+fn remove_btrfs_snapshot_set(path: &Path) -> Result<()> {
+    remove_btrfs_snapshot_set_with(path, delete_snapshot_member)
+}
+
+fn remove_btrfs_snapshot_set_with(
+    path: &Path,
+    delete_member: impl Fn(&Path) -> Result<()>,
+) -> Result<()> {
+    let marker = path.join(".committed");
+    match std::fs::symlink_metadata(&marker) {
+        Ok(metadata) => {
+            ensure!(
+                metadata.is_file() && !metadata.file_type().is_symlink(),
+                "invalid Snowball snapshot marker"
+            );
+            // A committed set must have all three owned, read-only members
+            // before any destructive step. Withdraw it durably first so a
+            // failed member deletion cannot leave an advertised partial set.
+            complete_btrfs_snapshot_set(path)?;
+            std::fs::remove_file(&marker)?;
+            StdFile::open(path)?.sync_all()?;
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            // Constructor cleanup may contain only a partial, uncommitted
+            // staging triple; validate each existing member below.
+        }
+        Err(error) => return Err(error.into()),
+    }
+    for label in SNAPSHOT_LABELS {
+        let member = path.join(label);
+        match std::fs::symlink_metadata(&member) {
+            Ok(_) => delete_member(&member)?,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    std::fs::remove_dir(path)?;
+    Ok(())
+}
+
+fn complete_btrfs_snapshot_set(path: &Path) -> Result<()> {
+    ensure!(
+        complete_snapshot_set(path)?,
+        "Snowball set is a legacy copied snapshot, not Btrfs"
+    );
+    Ok(())
+}
+
+/// True for a complete native Btrfs triple; false for a complete historical
+/// copied set. A missing or mixed member is never a valid recovery point.
+fn complete_snapshot_set(path: &Path) -> Result<bool> {
+    let metadata = std::fs::symlink_metadata(path)?;
+    ensure!(
+        metadata.is_dir() && !metadata.file_type().is_symlink(),
+        "invalid Snowball snapshot set {}",
+        path.display()
+    );
+    let marker = std::fs::symlink_metadata(path.join(".committed"))?;
+    ensure!(
+        marker.is_file() && !marker.file_type().is_symlink(),
+        "Snowball snapshot set is incomplete: {}",
+        path.display()
+    );
+    let mut native = 0;
+    for label in SNAPSHOT_LABELS {
+        let member = path.join(label);
+        let metadata = std::fs::symlink_metadata(&member)?;
+        ensure!(
+            metadata.is_dir() && !metadata.file_type().is_symlink(),
+            "Snowball snapshot member is missing or unsafe: {}",
+            member.display()
+        );
+        if metadata.ino() == 256 {
+            verify_readonly_snapshot(&member)?;
+            native += 1;
+        }
+    }
+    ensure!(
+        native == 0 || native == 3,
+        "mixed copied/Btrfs Snowball snapshot set"
+    );
+    Ok(native == 3)
+}
+
+struct SnapshotTransferPins(Vec<PathBuf>);
+
+impl SnapshotTransferPins {
+    fn create(set: &Path, parent: Option<&Path>) -> Result<Self> {
+        ensure!(
+            parent != Some(set),
+            "Snowball transfer parent must differ from source"
+        );
+        let mut pins = Self(Vec::new());
+        for directory in std::iter::once(set).chain(parent) {
+            let nonce = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)?
+                .as_nanos();
+            let path = directory.join(format!(".in-transfer-{}-{nonce}", std::process::id()));
+            let file = StdOpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(0o600)
+                .custom_flags(nix::libc::O_NOFOLLOW)
+                .open(&path)?;
+            pins.0.push(path);
+            file.sync_all()?;
+            StdFile::open(directory)?.sync_all()?;
+        }
+        Ok(pins)
+    }
+}
+
+impl Drop for SnapshotTransferPins {
+    fn drop(&mut self) {
+        for path in &self.0 {
+            let _ = std::fs::remove_file(path);
+            if let Some(parent) = path.parent() {
+                let _ = StdFile::open(parent).and_then(|file| file.sync_all());
+            }
+        }
+    }
+}
+
+fn snapshot_transfer_in_progress(path: &Path) -> Result<bool> {
+    for entry in std::fs::read_dir(path)? {
+        let name = entry?.file_name();
+        if name.to_string_lossy().starts_with(".in-transfer-") {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 fn parse_snapshot_set_counter(name: &str) -> Option<u64> {
     let counter = name.strip_prefix("SNP-")?.parse::<u64>().ok()?;
     (name == StreamingSnowball::snapshot_set_name(counter)).then_some(counter)
+}
+
+fn parse_legacy_state_counter(name: &str) -> Option<u64> {
+    parse_legacy_member_counter(name, "state")
+}
+
+fn parse_legacy_member_counter(name: &str, label: &str) -> Option<u64> {
+    let counter = name
+        .strip_prefix(&format!("SNP-{label}-"))?
+        .parse::<u64>()
+        .ok()?;
+    (name == format!("SNP-{label}-{counter:06}")).then_some(counter)
+}
+
+fn complete_legacy_snapshot_triple(snapshot_dir: &Path, counter: u64) -> Result<()> {
+    for label in SNAPSHOT_LABELS {
+        verify_readonly_snapshot(&snapshot_dir.join(format!("SNP-{label}-{counter:06}")))?;
+    }
+    Ok(())
+}
+
+async fn read_state_file_async(path: &Path) -> Result<Option<simd_json::OwnedValue>> {
+    let metadata = match tokio::fs::symlink_metadata(path).await {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error.into()),
+    };
+    ensure!(
+        metadata.is_file() && !metadata.file_type().is_symlink(),
+        "Snowball snapshot current state is not a regular file"
+    );
+    let mut data = tokio::fs::read_to_string(path).await?;
+    Ok(Some(
+        unsafe { simd_json::from_str(&mut data) }
+            .with_context(|| format!("invalid snapshot state {}", path.display()))?,
+    ))
 }
 
 fn next_snapshot_counter_sync(snapshot_dir: &Path) -> Result<u64> {
@@ -1247,7 +1642,11 @@ fn next_snapshot_counter_sync(snapshot_dir: &Path) -> Result<u64> {
         let entry = entry?;
         let name = entry.file_name();
         let name = name.to_string_lossy();
-        if let Some(counter) = parse_snapshot_set_counter(&name) {
+        if let Some(counter) = parse_snapshot_set_counter(&name).or_else(|| {
+            SNAPSHOT_LABELS
+                .iter()
+                .find_map(|label| parse_legacy_member_counter(&name, label))
+        }) {
             max_counter = max_counter.max(counter);
         }
     }
@@ -1257,6 +1656,19 @@ fn next_snapshot_counter_sync(snapshot_dir: &Path) -> Result<u64> {
 }
 
 fn read_snapshot_state_sync(snapshot_set: &Path) -> Result<Option<simd_json::OwnedValue>> {
+    if let Some(counter) = snapshot_set
+        .file_name()
+        .and_then(|name| name.to_str())
+        .and_then(parse_legacy_state_counter)
+    {
+        let snapshot_dir = snapshot_set
+            .parent()
+            .context("legacy snapshot has no parent")?;
+        complete_legacy_snapshot_triple(snapshot_dir, counter)?;
+        let state_file = snapshot_set.join("current.json");
+        return read_snapshot_state_file_sync(&state_file);
+    }
+    complete_snapshot_set(snapshot_set)?;
     let set_metadata = std::fs::symlink_metadata(snapshot_set)
         .with_context(|| format!("inspect snapshot {}", snapshot_set.display()))?;
     ensure!(
@@ -1281,7 +1693,11 @@ fn read_snapshot_state_sync(snapshot_set: &Path) -> Result<Option<simd_json::Own
         state_dir.display()
     );
     let state_file = state_dir.join("current.json");
-    let state_metadata = match std::fs::symlink_metadata(&state_file) {
+    read_snapshot_state_file_sync(&state_file)
+}
+
+fn read_snapshot_state_file_sync(state_file: &Path) -> Result<Option<simd_json::OwnedValue>> {
+    let state_metadata = match std::fs::symlink_metadata(state_file) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error.into()),
@@ -1290,7 +1706,7 @@ fn read_snapshot_state_sync(snapshot_set: &Path) -> Result<Option<simd_json::Own
         state_metadata.is_file() && !state_metadata.file_type().is_symlink(),
         "Snowball snapshot current state is not a regular file"
     );
-    let data = std::fs::read(&state_file)
+    let data = std::fs::read(state_file)
         .with_context(|| format!("read snapshot state {}", state_file.display()))?;
     Ok(Some(serde_json::from_slice(&data).with_context(|| {
         format!("invalid snapshot state {}", state_file.display())
@@ -1318,6 +1734,15 @@ fn prune_snapshot_sets_sync(snapshot_dir: &Path, policy: &RetentionPolicy) -> Re
         if !committed {
             continue;
         }
+        // Existing copied logical sets remain readable but are never silently
+        // deleted by Btrfs retention. Only complete native triples are owned
+        // by the current snapshot lifecycle.
+        if complete_btrfs_snapshot_set(&entry.path()).is_err() {
+            continue;
+        }
+        if snapshot_transfer_in_progress(&entry.path())? {
+            continue;
+        }
         let metadata = entry.metadata()?;
         let created = metadata
             .created()
@@ -1339,7 +1764,7 @@ fn prune_snapshot_sets_sync(snapshot_dir: &Path, policy: &RetentionPolicy) -> Re
         if keep.contains(&snapshot.name) {
             continue;
         }
-        std::fs::remove_dir_all(snapshot_dir.join(&snapshot.name))?;
+        remove_btrfs_snapshot_set(&snapshot_dir.join(&snapshot.name))?;
         deleted += 1;
         debug!("Pruned snapshot: {}", snapshot.name);
     }
@@ -1371,10 +1796,18 @@ fn commit_snapshot_set_sync(
         .context("system clock is before the Unix epoch")?
         .as_nanos();
     let staging = snapshot_dir.join(format!(".{name}-{}-{nonce}.tmp", std::process::id()));
+    // Validate state before creating any read-only member. A recoverable
+    // validation failure must not leave an undeletable partial set when the
+    // writer lacks privileges to delete read-only Btrfs snapshots.
+    for (label, source) in sources {
+        if label == "state" {
+            reject_state_symlinks(source)?;
+        }
+    }
     std::fs::create_dir(&staging)?;
-    let result = (|| {
+    let result: Result<()> = (|| {
         for (label, source) in sources {
-            copy_dir_recursive_sync(source, &staging.join(label))?;
+            btrfs_snapshot_readonly(source, &staging.join(label))?;
         }
         let marker = staging.join(".committed");
         let marker_file = StdOpenOptions::new()
@@ -1385,59 +1818,74 @@ fn commit_snapshot_set_sync(
         StdFile::open(&staging)?.sync_all()?;
         std::fs::rename(&staging, snapshot_dir.join(&name))?;
         StdFile::open(snapshot_dir)?.sync_all()?;
-        info!("Committed Snowball logical snapshot: {name}");
+        info!("Committed Snowball Btrfs snapshot triple: {name}");
         Ok(())
     })();
-    if result.is_err() {
-        let _ = std::fs::remove_dir_all(&staging);
-    }
-    result
-}
-
-fn copy_dir_recursive_sync(src: &Path, dst: &Path) -> Result<()> {
-    let source_metadata = std::fs::symlink_metadata(src)
-        .with_context(|| format!("inspect Snowball snapshot source {}", src.display()))?;
-    ensure!(
-        source_metadata.is_dir() && !source_metadata.file_type().is_symlink(),
-        "Snowball snapshot source is not a real directory: {}",
-        src.display()
-    );
-    std::fs::create_dir(dst)?;
-    for entry in std::fs::read_dir(src)? {
-        let entry = entry?;
-        let file_name = entry.file_name();
-        let displayed_name = file_name.to_string_lossy();
-        if displayed_name.starts_with('.') && displayed_name.ends_with(".tmp") {
-            continue;
+    if let Err(error) = result {
+        if let Err(cleanup_error) = remove_btrfs_snapshot_set(&staging) {
+            return Err(error.context(format!(
+                "incomplete Btrfs snapshot staging remains at {}: {cleanup_error:#}",
+                staging.display()
+            )));
         }
-        let src_path = entry.path();
-        let dst_path = dst.join(file_name);
-        let file_type = entry.file_type()?;
-        ensure!(
-            !file_type.is_symlink(),
-            "Snowball snapshots do not follow symlinks: {}",
-            src_path.display()
-        );
-        if file_type.is_dir() {
-            copy_dir_recursive_sync(&src_path, &dst_path)?;
-        } else if file_type.is_file() {
-            std::fs::copy(&src_path, &dst_path)?;
-            StdFile::open(&dst_path)?.sync_all()?;
-        } else {
-            anyhow::bail!(
-                "Snowball snapshot source is not a regular file: {}",
-                src_path.display()
-            );
-        }
+        return Err(error);
     }
-    StdFile::open(dst)?.sync_all()?;
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
+    use tempfile::TempDir;
+
+    struct BtrfsFixture(TempDir);
+
+    impl BtrfsFixture {
+        fn path(&self) -> &Path {
+            self.0.path()
+        }
+    }
+
+    impl Drop for BtrfsFixture {
+        fn drop(&mut self) {
+            fn collect(path: &Path, subvolumes: &mut Vec<PathBuf>) {
+                let Ok(entries) = std::fs::read_dir(path) else {
+                    return;
+                };
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    let Ok(metadata) = std::fs::symlink_metadata(&path) else {
+                        continue;
+                    };
+                    if metadata.is_dir() && !metadata.file_type().is_symlink() {
+                        collect(&path, subvolumes);
+                        if metadata.ino() == 256 {
+                            subvolumes.push(path);
+                        }
+                    }
+                }
+            }
+            let mut subvolumes = Vec::new();
+            collect(self.path(), &mut subvolumes);
+            // Children precede parents. A test-created read-only snapshot is
+            // made writable solely to let an unprivileged test delete itself.
+            for path in subvolumes {
+                let _ = Command::new("btrfs")
+                    .args(["property", "set", "-ts"])
+                    .arg(&path)
+                    .args(["ro", "false"])
+                    .output();
+                let _ = Command::new("btrfs")
+                    .args(["subvolume", "delete"])
+                    .arg(&path)
+                    .output();
+            }
+        }
+    }
+
+    fn tempdir() -> Result<BtrfsFixture> {
+        Ok(BtrfsFixture(tempfile::tempdir()?))
+    }
 
     struct StrictStateKeysEnvironment {
         previous: Option<std::ffi::OsString>,
@@ -1508,6 +1956,210 @@ mod tests {
         names.sort();
         assert_eq!(names, ["SNP-000001", "SNP-000002"]);
         assert_eq!(first.list_snapshots().await.unwrap().len(), 2);
+        for name in names {
+            let set = path.join("snapshots").join(name);
+            complete_btrfs_snapshot_set(&set).unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn failed_native_set_deletion_withdraws_commit_before_touching_members() {
+        let fixture = tempdir().unwrap();
+        let chain = StreamingSnowball::new(fixture.path().join("snowball"))
+            .await
+            .unwrap();
+        chain
+            .write_current_state(&simd_json::json!({"generation": 1}))
+            .await
+            .unwrap();
+        let name = chain.create_snapshot().await.unwrap();
+        let set = fixture.path().join("snowball/snapshots").join(&name);
+        let error = remove_btrfs_snapshot_set_with(&set, |_| {
+            anyhow::bail!("injected member deletion failure")
+        })
+        .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("injected member deletion failure"));
+        assert!(!set.join(".committed").exists());
+        for label in SNAPSHOT_LABELS {
+            verify_readonly_snapshot(&set.join(label)).unwrap();
+        }
+        assert!(chain.list_snapshots().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn existing_plain_data_directory_requires_explicit_migration() {
+        let fixture = tempdir().unwrap();
+        let path = fixture.path().join("snowball");
+        std::fs::create_dir_all(path.join("timing")).unwrap();
+        std::fs::write(path.join("timing/block-000000000001.json"), b"important").unwrap();
+        let error = StreamingSnowball::new(&path).await.err().unwrap();
+        assert!(error.to_string().contains("requires a Btrfs subvolume"));
+        assert_eq!(
+            std::fs::read(path.join("timing/block-000000000001.json")).unwrap(),
+            b"important"
+        );
+    }
+
+    #[tokio::test]
+    async fn incomplete_and_legacy_snapshot_sets_are_handled_without_pruning_history() {
+        let fixture = tempdir().unwrap();
+        let chain = StreamingSnowball::new(fixture.path().join("snowball"))
+            .await
+            .unwrap();
+        let snapshots = chain.base_path().join("snapshots");
+        let incomplete = snapshots.join("SNP-000003");
+        std::fs::create_dir(&incomplete).unwrap();
+        std::fs::create_dir(incomplete.join("timing")).unwrap();
+        std::fs::write(incomplete.join(".committed"), b"").unwrap();
+        assert!(chain.read_snapshot_state("SNP-000003").await.is_err());
+        assert!(!chain
+            .list_snapshots()
+            .await
+            .unwrap()
+            .iter()
+            .any(|(name, _)| name == "SNP-000003"));
+
+        let copied = snapshots.join("SNP-000004");
+        std::fs::create_dir(&copied).unwrap();
+        for label in SNAPSHOT_LABELS {
+            std::fs::create_dir(copied.join(label)).unwrap();
+        }
+        std::fs::write(copied.join("state/current.json"), br#"{"generation":4}"#).unwrap();
+        std::fs::write(copied.join(".committed"), b"").unwrap();
+        assert_eq!(
+            chain
+                .read_snapshot_state("SNP-000004")
+                .await
+                .unwrap()
+                .unwrap()["generation"],
+            4
+        );
+        chain
+            .set_retention_policy(RetentionPolicy::minimal())
+            .await
+            .unwrap();
+        assert!(copied.exists(), "historical copied set must not be pruned");
+
+        let partial_legacy = snapshots.join("SNP-timing-000042");
+        btrfs_snapshot_readonly(chain.timing_subvolume_path(), &partial_legacy).unwrap();
+        assert!(!chain
+            .list_snapshots()
+            .await
+            .unwrap()
+            .iter()
+            .any(|(name, _)| name == "SNP-state-000042"));
+        assert!(chain.read_snapshot_state("SNP-state-000042").await.is_err());
+        assert_eq!(chain.create_snapshot().await.unwrap(), "SNP-000043");
+        assert!(
+            partial_legacy.exists(),
+            "incomplete historical triple stays untouched"
+        );
+    }
+
+    #[tokio::test]
+    async fn complete_historical_flat_triple_remains_readable() {
+        let fixture = tempdir().unwrap();
+        let chain = StreamingSnowball::new(fixture.path().join("snowball"))
+            .await
+            .unwrap();
+        chain
+            .write_current_state(&simd_json::json!({"generation": 9}))
+            .await
+            .unwrap();
+        let snapshots = chain.base_path().join("snapshots");
+        for label in SNAPSHOT_LABELS {
+            let source = chain.data_dir_for_label(label);
+            btrfs_snapshot_readonly(source, &snapshots.join(format!("SNP-{label}-000009")))
+                .unwrap();
+        }
+        assert!(chain
+            .list_snapshots()
+            .await
+            .unwrap()
+            .iter()
+            .any(|(name, _)| name == "SNP-state-000009"));
+        assert_eq!(
+            chain
+                .read_snapshot_state("SNP-state-000009")
+                .await
+                .unwrap()
+                .unwrap()["generation"],
+            9
+        );
+        assert_eq!(chain.create_snapshot().await.unwrap(), "SNP-000010");
+    }
+
+    #[tokio::test]
+    async fn active_transfer_pin_prevents_native_snapshot_pruning() {
+        let fixture = tempdir().unwrap();
+        let chain = StreamingSnowball::new(fixture.path().join("snowball"))
+            .await
+            .unwrap();
+        let first = chain.create_snapshot().await.unwrap();
+        let first_path = chain.base_path().join("snapshots").join(&first);
+        let _pins = SnapshotTransferPins::create(&first_path, None).unwrap();
+        let second = chain.create_snapshot().await.unwrap();
+        chain
+            .set_retention_policy(RetentionPolicy::minimal())
+            .await
+            .unwrap();
+        assert!(first_path.exists(), "in-flight source was pruned");
+        assert!(chain.base_path().join("snapshots").join(second).exists());
+    }
+
+    #[tokio::test]
+    #[ignore = "native Btrfs send/receive requires root; isolated fixture deletes only its own subvolumes"]
+    async fn native_snapshot_triple_send_receive_round_trip() {
+        let fixture = tempdir().unwrap();
+        let chain = StreamingSnowball::new(fixture.path().join("snowball"))
+            .await
+            .unwrap();
+        chain
+            .write_current_state(&simd_json::json!({"generation": 1}))
+            .await
+            .unwrap();
+        chain
+            .add_event(
+                BlockEvent::new("fixture", "write", simd_json::json!({"id": 1}))
+                    .with_vector(vec![0.25]),
+            )
+            .await
+            .unwrap();
+        let name = chain.create_snapshot().await.unwrap();
+        let set = chain.base_path().join("snapshots").join(name);
+        complete_btrfs_snapshot_set(&set).unwrap();
+        let received = fixture.path().join("received");
+        std::fs::create_dir(&received).unwrap();
+        for label in SNAPSHOT_LABELS {
+            let mut send = Command::new("btrfs")
+                .arg("send")
+                .arg(set.join(label))
+                .stdout(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            let stream = send.stdout.take().unwrap();
+            let receive = Command::new("btrfs")
+                .arg("receive")
+                .arg(&received)
+                .stdin(std::process::Stdio::from(stream))
+                .output()
+                .unwrap();
+            assert!(send.wait().unwrap().success(), "Btrfs send failed");
+            assert!(
+                receive.status.success(),
+                "Btrfs receive: {}",
+                String::from_utf8_lossy(&receive.stderr)
+            );
+            verify_readonly_snapshot(&received.join(label)).unwrap();
+        }
+        assert_eq!(
+            std::fs::read(received.join("state/current.json")).unwrap(),
+            br#"{"generation":1}"#
+        );
+        assert!(received.join("timing/block-000000000001.json").exists());
+        assert!(received.join("vectors/vec-000000000001.bin").exists());
     }
 
     #[tokio::test]
@@ -1784,9 +2436,10 @@ mod tests {
 
     #[tokio::test]
     async fn write_state_validated_allows_declared_keys() {
-        let dir =
-            std::env::temp_dir().join(format!("op-snowball-wsv-test-{}", uuid::Uuid::new_v4()));
-        let snowball = StreamingSnowball::new(&dir).await.unwrap();
+        let fixture = tempdir().unwrap();
+        let snowball = StreamingSnowball::new(fixture.path().join("snowball"))
+            .await
+            .unwrap();
 
         let declared = vec!["plugin_foo".to_string(), "plugin_bar/*".to_string()];
         let value = simd_json::OwnedValue::Static(simd_json::StaticNode::Bool(true));
@@ -1802,18 +2455,15 @@ mod tests {
             .write_state_validated("plugin_bar_baz", &value, &declared)
             .await
             .is_ok());
-
-        tokio::fs::remove_dir_all(&dir).await.ok();
     }
 
     #[tokio::test]
     async fn write_state_validated_warns_but_allows_undeclared_in_non_strict() {
         let _environment = StrictStateKeysEnvironment::set(false).await;
-        let dir = std::env::temp_dir().join(format!(
-            "op-snowball-wsv-nonstrict-{}",
-            uuid::Uuid::new_v4()
-        ));
-        let snowball = StreamingSnowball::new(&dir).await.unwrap();
+        let fixture = tempdir().unwrap();
+        let snowball = StreamingSnowball::new(fixture.path().join("snowball"))
+            .await
+            .unwrap();
 
         let declared = vec!["plugin_foo".to_string()];
         let value = simd_json::OwnedValue::Static(simd_json::StaticNode::Bool(true));
@@ -1823,16 +2473,15 @@ mod tests {
             .write_state_validated("undeclared_key", &value, &declared)
             .await
             .is_ok());
-
-        tokio::fs::remove_dir_all(&dir).await.ok();
     }
 
     #[tokio::test]
     async fn write_state_validated_rejects_undeclared_in_strict_mode() {
         let _environment = StrictStateKeysEnvironment::set(true).await;
-        let dir =
-            std::env::temp_dir().join(format!("op-snowball-wsv-strict-{}", uuid::Uuid::new_v4()));
-        let snowball = StreamingSnowball::new(&dir).await.unwrap();
+        let fixture = tempdir().unwrap();
+        let snowball = StreamingSnowball::new(fixture.path().join("snowball"))
+            .await
+            .unwrap();
 
         let declared = vec!["plugin_foo".to_string()];
         let value = simd_json::OwnedValue::Static(simd_json::StaticNode::Bool(true));
@@ -1848,7 +2497,5 @@ mod tests {
             .write_state_validated("plugin_foo", &value, &declared)
             .await
             .is_ok());
-
-        tokio::fs::remove_dir_all(&dir).await.ok();
     }
 }

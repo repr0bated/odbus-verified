@@ -1,0 +1,8 @@
+Resolved 2026-09-23 on Artix Linux x86_64 with Python 3.14.7 and uv 0.5.9.
+Direct requirements: certbot==5.8.0, certbot-dns-cloudflare==5.8.0.
+Full transitive pin and SHA-256 distribution hashes: requirements.lock.
+Plugin probe: dns-cloudflare, standalone, webroot; dns-cloudflare available.
+Relocation probe: copied venv invoked as bin/python bin/certbot --version;
+reported certbot 5.8.0 from the alternate venv path.
+No source commit recorded; runtime reproduced from the pinned package lock.
+requirements.lock sha256: df0a07c4de8ffe08fcaf87237b66f1e613f1aec4917d187c5bd80763e97671d9

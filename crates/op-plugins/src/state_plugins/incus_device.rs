@@ -151,17 +151,17 @@ pub struct NicDevice {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub host_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub mtu: Option<StrInt>,
     #[serde(
         rename = "boot.priority",
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub boot_priority: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub vlan: Option<StrInt>,
     #[serde(
         rename = "vlan.tagged",
@@ -242,22 +242,22 @@ pub struct NicDevice {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub limits_priority: Option<StrInt>,
     #[serde(
         rename = "queue.tx.length",
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub queue_tx_length: Option<StrInt>,
     #[serde(rename = "io.bus", default, skip_serializing_if = "Option::is_none")]
     pub io_bus: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub gvrp: Option<StrBool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub connected: Option<StrBool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub acceleration: Option<String>,
@@ -274,28 +274,28 @@ pub struct NicDevice {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub security_mac_filtering: Option<StrBool>,
     #[serde(
         rename = "security.ipv4_filtering",
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub security_ipv4_filtering: Option<StrBool>,
     #[serde(
         rename = "security.ipv6_filtering",
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub security_ipv6_filtering: Option<StrBool>,
     #[serde(
         rename = "security.port_isolation",
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub security_port_isolation: Option<StrBool>,
     #[serde(
         rename = "security.acls",
@@ -314,16 +314,16 @@ pub struct DiskDevice {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pool: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub readonly: Option<StrBool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub required: Option<StrBool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub recursive: Option<StrBool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub shift: Option<StrBool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub size: Option<String>,
@@ -338,7 +338,7 @@ pub struct DiskDevice {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub boot_priority: Option<StrInt>,
     #[serde(
         rename = "limits.read",
@@ -394,21 +394,21 @@ pub struct UnixDevice {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub uid: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub gid: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub major: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub minor: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub required: Option<StrBool>,
 }
 
@@ -419,23 +419,23 @@ pub struct UsbDevice {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub productid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub busnum: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub devnum: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub serial: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub uid: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub gid: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub required: Option<StrBool>,
 }
 
@@ -453,20 +453,20 @@ pub struct GpuDevice {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub productid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub uid: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub gid: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mdev: Option<String>,
     #[serde(rename = "mig.ci", default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub mig_ci: Option<StrInt>,
     #[serde(rename = "mig.gi", default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub mig_gi: Option<StrInt>,
     #[serde(rename = "mig.uuid", default, skip_serializing_if = "Option::is_none")]
     pub mig_uuid: Option<String>,
@@ -484,7 +484,7 @@ pub struct InfinibandDevice {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hwaddr: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub mtu: Option<StrInt>,
 }
 
@@ -498,16 +498,16 @@ pub struct ProxyDevice {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bind: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub nat: Option<StrBool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub proxy_protocol: Option<StrBool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub uid: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub gid: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
@@ -516,14 +516,14 @@ pub struct ProxyDevice {
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub security_uid: Option<StrInt>,
     #[serde(
         rename = "security.gid",
         default,
         skip_serializing_if = "Option::is_none"
     )]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub security_gid: Option<StrInt>,
 }
 
@@ -536,15 +536,15 @@ pub struct UnixHotplugDevice {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pci: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub uid: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<i64>")]
+    #[schemars(with = "Option<String>")]
     pub gid: Option<StrInt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub required: Option<StrBool>,
 }
 
@@ -563,7 +563,7 @@ pub struct PciDevice {
     /// Required. PCI address of the device, e.g. `0000:00:1f.0`.
     pub address: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Option<bool>")]
+    #[schemars(with = "Option<String>")]
     pub firmware: Option<StrBool>,
 }
 

@@ -192,7 +192,13 @@ impl IncusPlugin {
         etag: Option<&str>,
     ) -> Result<IncusHttpResponse> {
         const RESPONSE_LIMIT: usize = 16 * 1024 * 1024;
-        if !(path == "/1.0" || path.starts_with("/1.0/") || path.starts_with("/1.0?"))
+        if !(path == "/1.0"
+            || path.starts_with("/1.0/")
+            || path.starts_with("/1.0?")
+            || matches!(
+                path,
+                "/internal/recover/validate" | "/internal/recover/import"
+            ))
             || path.chars().any(|c| c.is_whitespace() || c.is_control())
             || path.contains(['#', '\\'])
             || path.split('?').next().is_some_and(|p| {
@@ -973,7 +979,7 @@ impl StatePlugin for IncusPlugin {
     }
 
     fn version(&self) -> &str {
-        "2.0.0"
+        "3.0.0"
     }
 
     fn schema(&self) -> Option<op_state_store::PluginSchema> {
@@ -1200,7 +1206,7 @@ impl StatePlugin for IncusPlugin {
 mod tests {
     use super::*;
 
-    use super::super::incus_device::NicDevice;
+    use super::super::incus_device::{DiskDevice, NicDevice, StrBool, StrInt};
 
     fn nic(parent: &str) -> NamedDevice {
         NamedDevice {
@@ -1211,6 +1217,58 @@ mod tests {
                 ..Default::default()
             }),
         }
+    }
+
+    #[test]
+    fn serialized_device_strings_conform_to_derived_state_schema() {
+        let devices = vec![
+            NamedDevice {
+                name: "root".into(),
+                device: Device::Disk(DiskDevice {
+                    path: Some("/".into()),
+                    pool: Some("seedpool".into()),
+                    shift: Some(StrBool(true)),
+                    boot_priority: Some(StrInt(1)),
+                    ..Default::default()
+                }),
+            },
+            NamedDevice {
+                name: "eth0".into(),
+                device: Device::Nic(NicDevice {
+                    nictype: Some("bridged".into()),
+                    parent: Some("ovsbr0".into()),
+                    connected: Some(StrBool(true)),
+                    mtu: Some(StrInt(1500)),
+                    ..Default::default()
+                }),
+            },
+        ];
+        let state = IncusState {
+            instances: vec![IncusInstance {
+                name: "fixture".into(),
+                status: "Stopped".into(),
+                instance_type: "container".into(),
+                devices: devices.clone(),
+                expanded_devices: devices,
+                ..Default::default()
+            }],
+        };
+        let value = simd_json::serde::to_owned_value(&state).unwrap();
+        assert_eq!(
+            value["instances"][0]["devices"][0]["device"]["shift"],
+            "true"
+        );
+        assert_eq!(
+            value["instances"][0]["devices"][0]["device"]["boot.priority"],
+            "1"
+        );
+        assert_eq!(
+            value["instances"][0]["devices"][1]["device"]["connected"],
+            "true"
+        );
+        assert_eq!(value["instances"][0]["devices"][1]["device"]["mtu"], "1500");
+        let validation = IncusPlugin::new().schema().unwrap().validate(&value);
+        assert!(validation.valid, "{:?}", validation.errors);
     }
 
     #[test]
@@ -1483,6 +1541,290 @@ struct IncusHttpStatusError {
 pub(crate) struct IncusApi {
     socket: std::path::PathBuf,
     deadline: Duration,
+}
+
+/// Narrow native effects for a stopped identity root repair. The caller is the
+/// identity owner, which binds these values to a root-owned plan and a verified
+/// SID1 session. There is deliberately no arbitrary REST-path/body method.
+pub struct IncusRootRepairBackend {
+    api: IncusApi,
+    state_dir: std::path::PathBuf,
+}
+
+impl IncusRootRepairBackend {
+    pub fn local() -> Self {
+        Self {
+            api: IncusApi::local(),
+            state_dir: "/var/lib/incus".into(),
+        }
+    }
+
+    #[cfg(test)]
+    fn on_socket(socket: std::path::PathBuf) -> Self {
+        Self {
+            api: IncusApi::on_socket(socket, Duration::from_secs(5)),
+            state_dir: "/nonexistent-test-incus".into(),
+        }
+    }
+
+    pub async fn instance(&self, name: &str) -> Result<(serde_json::Value, String)> {
+        self.api.instance(name).await
+    }
+
+    pub async fn pool(&self, name: &str) -> Result<Option<serde_json::Value>> {
+        validate_segment(name, "storage pool name")?;
+        let path = format!("/1.0/storage-pools/{name}");
+        match self.api.call("GET", &path, None, None).await {
+            Ok(pool) => Ok(Some(pool)),
+            Err(error)
+                if error
+                    .downcast_ref::<IncusHttpStatusError>()
+                    .is_some_and(|error| error.status == 404) =>
+            {
+                Ok(None)
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    pub async fn root_volume_present(&self, pool: &str, name: &str) -> Result<bool> {
+        validate_segment(pool, "storage pool name")?;
+        validate_segment(name, "instance name")?;
+        let path = format!("/1.0/storage-pools/{pool}/volumes/container/{name}");
+        match self.api.call("GET", &path, None, None).await {
+            Ok(volume) => {
+                anyhow::ensure!(
+                    volume["name"] == name && volume["type"] == "container",
+                    "Incus root volume readback differs from target"
+                );
+                Ok(true)
+            }
+            Err(error)
+                if error
+                    .downcast_ref::<IncusHttpStatusError>()
+                    .is_some_and(|error| error.status == 404) =>
+            {
+                Ok(false)
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    /// The Incus volume API can return 200 for a backup.yaml-only directory
+    /// after the actual Btrfs root subvolume is gone. Inspect the exact pinned
+    /// mounted pool in a blocking native probe before rebuild or activation.
+    pub async fn root_subvolume_state(
+        &self,
+        pool: &str,
+        expected_source: &str,
+        name: &str,
+    ) -> Result<op_network::incus_root_subvolume::RootSubvolumeState> {
+        let state_dir = self.state_dir.clone();
+        let pool = pool.to_owned();
+        let source = std::path::PathBuf::from(expected_source);
+        let name = name.to_owned();
+        tokio::task::spawn_blocking(move || {
+            op_network::incus_root_subvolume::inspect_root_subvolume(
+                &state_dir, &pool, &source, &name,
+            )
+        })
+        .await?
+    }
+
+    /// Preserve an exact backup.yaml-only missing-root stub outside Incus's
+    /// container volume directory before a same-image rebuild. The owner must
+    /// durably journal the intent and bind this call to its trusted plan.
+    pub async fn prepare_missing_root_for_rebuild(
+        &self,
+        pool: &str,
+        expected_source: &str,
+        name: &str,
+        operation_id: &str,
+    ) -> Result<op_network::incus_root_subvolume::MissingRootPreparation> {
+        validate_root_repair_pool_name(pool)?;
+        instance_path(name)?;
+        let state_dir = self.state_dir.clone();
+        let pool = pool.to_owned();
+        let source = std::path::PathBuf::from(expected_source);
+        let name = name.to_owned();
+        let operation_id = operation_id.to_owned();
+        tokio::task::spawn_blocking(move || {
+            op_network::incus_root_subvolume::prepare_missing_root_for_rebuild(
+                &state_dir,
+                &pool,
+                &source,
+                &name,
+                &operation_id,
+            )
+        })
+        .await?
+    }
+
+    /// Import a pre-existing populated Btrfs pool. `validate` is a native
+    /// scanning operation, not a pure query; the owner journals its intent
+    /// before either call. No Create/mkfs endpoint is used.
+    pub async fn recover_existing_pool(&self, name: &str, source: &str) -> Result<()> {
+        validate_segment(name, "storage pool name")?;
+        anyhow::ensure!(
+            std::path::Path::new(source).is_absolute() && !source.contains(['\n', '\r', '\0']),
+            "invalid absolute storage pool source"
+        );
+        let body = serde_json::json!({"pools":[{
+            "name":name,
+            "driver":"btrfs",
+            "config":{"source":source}
+        }]});
+        let body = body.to_string();
+        let validation = self
+            .api
+            .call("POST", "/internal/recover/validate", Some(&body), None)
+            .await?;
+        for field in ["UnknownVolumes", "DependencyErrors"] {
+            let value = validation
+                .get(field)
+                .context("Incus recovery validation response is incomplete")?;
+            anyhow::ensure!(
+                value.is_null() || value.as_array().is_some_and(Vec::is_empty),
+                "Incus recovery found unexpected volumes or dependency errors"
+            );
+        }
+        let _ = self
+            .api
+            .call("POST", "/internal/recover/import", Some(&body), None)
+            .await?;
+        let pool = self.pool(name).await?.context("recovered pool is absent")?;
+        anyhow::ensure!(
+            pool["name"] == name
+                && pool["driver"] == "btrfs"
+                && pool["config"]["source"] == source
+                && pool["status"] == "Created",
+            "recovered pool readback differs from trusted plan"
+        );
+        Ok(())
+    }
+
+    /// Create the one parked identity CT from an owner-validated, root-owned
+    /// seeded provision plan. This is called while the identity owner holds
+    /// its session and host observation locks; it is not a new plugin method.
+    pub async fn create_seeded_identity(&self, instance: &IncusInstance) -> Result<()> {
+        instance_path(&instance.name)?;
+        let fingerprint = instance
+            .image
+            .as_deref()
+            .context("seeded image is absent")?;
+        anyhow::ensure!(
+            fingerprint.len() == 64
+                && fingerprint.bytes().all(|byte| byte.is_ascii_hexdigit())
+                && instance.instance_type == "container"
+                && instance.status == "Stopped"
+                && instance
+                    .config
+                    .as_ref()
+                    .and_then(|config| config.get("boot.autostart"))
+                    .map(String::as_str)
+                    == Some("false")
+                && instance
+                    .config
+                    .as_ref()
+                    .and_then(|config| config.get("security.privileged"))
+                    .map(String::as_str)
+                    == Some("false"),
+            "seeded identity create policy differs from trusted plan"
+        );
+        let args = serde_json::json!({
+            "name": instance.name, "instance_type": "container", "image": fingerprint,
+            "profiles": instance.profiles, "config": instance.config,
+            "devices": instance.devices,
+        });
+        let _ = dispatch_incus_with_api(&self.api, "create_instance", &args).await?;
+        Ok(())
+    }
+
+    pub async fn rebuild_from_image(&self, name: &str, image_fingerprint: &str) -> Result<()> {
+        let path = format!("{}/rebuild", instance_path(name)?);
+        anyhow::ensure!(
+            image_fingerprint.len() == 64
+                && image_fingerprint
+                    .bytes()
+                    .all(|byte| byte.is_ascii_hexdigit()),
+            "invalid pinned image fingerprint"
+        );
+        let body = serde_json::json!({
+            "source":{"type":"image","fingerprint":image_fingerprint}
+        });
+        let _ = self
+            .api
+            .call("POST", &path, Some(&body.to_string()), None)
+            .await?;
+        Ok(())
+    }
+
+    /// Incus 7.4 honors If-Match for this PATCH (unlike rebuild/move POSTs).
+    /// The owner must still verify the complete stopped native readback.
+    pub async fn redirect_persist_source(
+        &self,
+        name: &str,
+        old_source: &str,
+        new_source: &str,
+        etag: &str,
+    ) -> Result<()> {
+        anyhow::ensure!(!etag.is_empty(), "missing instance ETag for persist update");
+        for source in [old_source, new_source] {
+            anyhow::ensure!(
+                std::path::Path::new(source).is_absolute() && !source.contains(['\n', '\r', '\0']),
+                "invalid persist disk source"
+            );
+        }
+        let (current, actual_etag) = self.instance(name).await?;
+        anyhow::ensure!(
+            actual_etag == etag && current["status"] == "Stopped",
+            "persist update precondition changed"
+        );
+        let mut persist = current["devices"]["persist"]
+            .as_object()
+            .context("identity persist disk is absent")?
+            .clone();
+        anyhow::ensure!(
+            persist.get("type").and_then(|value| value.as_str()) == Some("disk")
+                && persist.get("source").and_then(|value| value.as_str()) == Some(old_source)
+                && !persist.contains_key("shift"),
+            "identity persist disk differs from the trusted source"
+        );
+        persist.insert("source".into(), new_source.into());
+        persist.insert("shift".into(), "true".into());
+        let body = serde_json::json!({"devices":{"persist":persist}});
+        let _ = self
+            .api
+            .call(
+                "PATCH",
+                &instance_path(name)?,
+                Some(&body.to_string()),
+                Some(etag),
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn move_to_pool(&self, name: &str, pool: &str) -> Result<()> {
+        validate_segment(pool, "storage pool name")?;
+        let body = serde_json::json!({
+            "name":name,
+            "migration":true,
+            "instance_only":false,
+            "pool":pool,
+            "live":true,
+            "refresh":false
+        });
+        let _ = self
+            .api
+            .call("POST", &instance_path(name)?, Some(&body.to_string()), None)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn default_project_state(&self) -> Result<IncusState> {
+        self.api.default_project_state().await
+    }
 }
 
 const INCUS_LIFECYCLE_EVENTS_PATH: &str = "/1.0/events?type=lifecycle&project=default";
@@ -1883,6 +2225,12 @@ pub(crate) fn validate_segment(value: &str, kind: &str) -> Result<()> {
         "invalid Incus {kind}: expected a single safe name"
     );
     Ok(())
+}
+
+/// Used only to validate a root-owned identity repair plan before constructing
+/// fixed Incus recovery/move requests.
+pub fn validate_root_repair_pool_name(name: &str) -> Result<()> {
+    validate_segment(name, "storage pool name")
 }
 
 pub(crate) fn instance_path(name: &str) -> Result<String> {
@@ -2465,7 +2813,7 @@ pub(crate) fn incus_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "incus",
-        "2.0.0",
+        "3.0.0",
         "Incus instance management",
         &root,
     );

@@ -175,6 +175,16 @@ struct NativeMigrateResponse {
     schema_version: u32,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NativeMapKeyResponse {
+    path: String,
+    key: String,
+    created: bool,
+    #[serde(default)]
+    warnings: Option<Vec<String>>,
+}
+
 impl TchedRouterRuntimeClient {
     /// Serialize upstream changes through the caller's projection commit.
     pub(crate) async fn selection_guard() -> tokio::sync::MutexGuard<'static, ()> {
@@ -231,7 +241,6 @@ impl TchedRouterRuntimeClient {
         }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn with_sealed_identity(mut self, sealed_identity: Option<&str>) -> Self {
         self.sealed_identity = sealed_identity.map(ToOwned::to_owned);
         self
@@ -314,8 +323,11 @@ impl TchedRouterRuntimeClient {
             dyn crate::tched_router_generation_native::NativeGenerationAdmission,
         >,
     ) -> anyhow::Result<ChatOutput> {
+        let client = self
+            .clone()
+            .with_sealed_identity(before_prompt.sealed_identity());
         let prompt = conversation_prompt(&input)?;
-        let observed = self.current_provider().await?;
+        let observed = client.current_provider().await?;
         if !input.provider.trim().is_empty()
             && !input.provider.eq_ignore_ascii_case(&observed.family)
             && !input.provider.eq_ignore_ascii_case(&observed.reference)
@@ -345,7 +357,7 @@ impl TchedRouterRuntimeClient {
                 agent_alias: self.agent_alias.clone(),
                 prompt,
             };
-        let mut task = self.spawn_stateless_generation_with_expectations(
+        let mut task = client.spawn_stateless_generation_with_expectations(
             task_input,
             uuid::Uuid::new_v4().to_string(),
             before_prompt,
@@ -858,8 +870,9 @@ impl TchedRouterRuntimeClient {
             }
             readback_paths.insert(dotted);
         }
-        let operations = serde_json::to_value(&input.operations)
+        let mut operations = serde_json::to_value(&input.operations)
             .context("serialize admitted config patch operations")?;
+        normalize_config_patch_numbers(&mut operations);
         let mut result: Value = self
             .send_gateway_json(GatewayJsonRequest {
                 method: GatewayMethod::Patch,
@@ -886,7 +899,7 @@ impl TchedRouterRuntimeClient {
                     })?,
             );
         }
-        verify_patch_readbacks(&result, &readback)?;
+        verify_patch_readbacks(&result, &readback, &input.operations)?;
         Ok(NativeConfigMutation {
             result,
             readback: Value::Array(readback),
@@ -899,7 +912,59 @@ impl TchedRouterRuntimeClient {
         secrets: &dyn ConfigSecretPolicy,
     ) -> anyhow::Result<NativeConfigMutation> {
         if let Some(section) = input.section.as_deref() {
-            anyhow::ensure!(valid_config_segment(section), "invalid config init section");
+            validate_config_path(section)?;
+            if section == "mcp.servers" || section.starts_with("mcp.servers.") {
+                let alias = section
+                    .strip_prefix("mcp.servers.")
+                    .filter(|alias| valid_config_segment(alias))
+                    .context("MCP server init requires one valid alias")?;
+                // The plugin-owned, sealed config contract must recognize this
+                // natural-key entry before the native owner creates it.
+                anyhow::ensure!(
+                    !secrets.is_secret(&format!("mcp.servers.{alias}.name"))?,
+                    "MCP server name must be public in the pinned config contract"
+                );
+                self.health().await?;
+                let receipt: NativeMapKeyResponse = self
+                    .send_gateway_json(GatewayJsonRequest {
+                        method: GatewayMethod::Post,
+                        relative_path: "/api/config/map-key",
+                        query: &[("path", "mcp.servers"), ("key", alias)],
+                        body: None,
+                        operation: "initialize MCP server config entry",
+                        profile: GatewayProfile::Config,
+                        mutation: true,
+                    })
+                    .await
+                    .map_err(config_gateway_error)?;
+                anyhow::ensure!(
+                    receipt.path == "mcp.servers"
+                        && receipt.key == alias
+                        && receipt.warnings.as_ref().is_none_or(Vec::is_empty),
+                    "native MCP server creation receipt is invalid; reconcile before retry"
+                );
+                let readback = self
+                    .read_masked_config(secrets)
+                    .await
+                    .context("native MCP server creation succeeded but readback failed; reconcile before retry")?;
+                let matching = readback
+                    .pointer("/mcp/servers")
+                    .and_then(Value::as_array)
+                    .context(
+                        "native MCP server readback has no servers array; reconcile before retry",
+                    )?
+                    .iter()
+                    .filter(|entry| entry.get("name").and_then(Value::as_str) == Some(alias))
+                    .count();
+                anyhow::ensure!(
+                    matching == 1,
+                    "native MCP server entry did not appear exactly once; reconcile before retry"
+                );
+                return Ok(NativeConfigMutation {
+                    result: json!({"initialized": if receipt.created { vec![section] } else { vec![] }}),
+                    readback,
+                });
+            }
         }
         self.health().await?;
         let query = input
@@ -1000,7 +1065,9 @@ impl TchedRouterRuntimeClient {
             )
             .await?;
         let mut providers = parse_configured_providers(response.entries)?;
-        if std::env::var("TCHED_ROUTER_REQUIRE_OPENCODE").as_deref() == Ok("1") {
+        if std::env::var("TCHED_ROUTER_REQUIRE_OPENCODE").as_deref() == Ok("1")
+            && self.agent_alias != crate::chat_mode_routing::CONTROL_PLANE_AGENT
+        {
             providers.retain(|provider| provider.reference.starts_with("custom.opencode_"));
         }
         Ok(providers)
@@ -1029,12 +1096,12 @@ impl TchedRouterRuntimeClient {
         Ok(format!("agents.{}.model_provider", self.agent_alias))
     }
 
-    async fn model_catalog(&self, family: &str) -> anyhow::Result<ModelCatalogResponse> {
+    async fn model_catalog(&self, reference: &str) -> anyhow::Result<ModelCatalogResponse> {
         self.send_config_json(
             self.http()?
                 .get(format!("{}/api/config/catalog/models", self.endpoint))
-                .query(&[("model_provider", family)]),
-            &format!("list {family} models"),
+                .query(&[("model_provider", reference)]),
+            &format!("list {reference} models"),
         )
         .await
     }
@@ -1070,16 +1137,6 @@ impl TchedRouterRuntimeClient {
         })
     }
 
-    /// Observe the connected OpenCode model inventory through the native
-    /// provider. A fallback/static catalog is not proof of account access.
-    pub(crate) async fn connected_opencode_models(
-        &self,
-    ) -> anyhow::Result<std::collections::BTreeSet<String>> {
-        let catalog = self.model_catalog("custom").await?;
-        anyhow::ensure!(catalog.live, "OpenCode model inventory is not live");
-        Ok(catalog.models.into_iter().collect())
-    }
-
     #[allow(dead_code)] // Runtime catalog projection helper; selection dispatch reads its own inputs.
     pub(crate) async fn project_state(
         &self,
@@ -1110,26 +1167,45 @@ impl TchedRouterRuntimeClient {
         let mut providers = Vec::with_capacity(families.len());
         let mut routes = Vec::new();
         for (family, aliases) in families {
-            let catalog = self.model_catalog(&family).await?;
-            anyhow::ensure!(
-                !catalog.models.is_empty(),
-                "tched_router '{}' model catalog is empty",
-                family
-            );
-            let mut observed_models = std::collections::BTreeSet::new();
-            anyhow::ensure!(
-                catalog.models.iter().all(|model| {
-                    !model.trim().is_empty() && observed_models.insert(model.as_str())
-                }),
-                "tched_router '{}' model catalog contains an empty or duplicate model",
-                family
-            );
             let route = aliases
                 .iter()
                 .find(|reference| reference.as_str() == selected_ref)
                 .or_else(|| aliases.first())
                 .context("tched_router provider family has no configured aliases")?
                 .clone();
+            let mut observed_models = BTreeMap::<String, bool>::new();
+            let mut selected_alias_has_model = false;
+            for reference in &aliases {
+                let catalog = self.model_catalog(reference).await?;
+                let mut alias_models = std::collections::BTreeSet::new();
+                anyhow::ensure!(
+                    catalog.models.iter().all(|model| {
+                        !model.trim().is_empty() && alias_models.insert(model.as_str())
+                    }),
+                    "tched_router '{}' model catalog contains an empty or duplicate model",
+                    reference
+                );
+                if reference == &selected_ref {
+                    anyhow::ensure!(
+                        !catalog.models.is_empty(),
+                        "tched_router selected '{}' model catalog is empty",
+                        reference
+                    );
+                    selected_alias_has_model = alias_models.contains(selected_model.as_str());
+                }
+                for model in catalog.models {
+                    observed_models
+                        .entry(model)
+                        .and_modify(|live| *live |= catalog.live)
+                        .or_insert(catalog.live);
+                }
+            }
+            if family == selected_family {
+                anyhow::ensure!(
+                    selected_alias_has_model,
+                    "tched_router selected model is absent from its configured alias catalog"
+                );
+            }
             providers.push(Provider {
                 id: family.clone(),
                 route,
@@ -1139,7 +1215,7 @@ impl TchedRouterRuntimeClient {
                 description: format!("Configured tched_router provider family '{family}'."),
                 ..Default::default()
             });
-            for model in catalog.models {
+            for (model, live) in observed_models {
                 routes.push(ModelRoute {
                     hint: "runtime".to_string(),
                     provider: family.clone(),
@@ -1147,13 +1223,13 @@ impl TchedRouterRuntimeClient {
                     transport: "tched-router-loopback".to_string(),
                     model,
                     kind: "chat".to_string(),
-                    status: if catalog.live {
+                    status: if live {
                         "available".to_string()
                     } else {
                         "catalogued".to_string()
                     },
-                    available: catalog.live,
-                    status_reason: if catalog.live {
+                    available: live,
+                    status_reason: if live {
                         "Discovered through the live tched_router model catalog.".to_string()
                     } else {
                         "Returned by tched_router's cached model catalog.".to_string()
@@ -1308,7 +1384,7 @@ impl TchedRouterRuntimeClient {
     pub(crate) async fn set_model(&self, model_id: &str) -> anyhow::Result<RuntimeSelection> {
         self.health().await?;
         let provider = self.current_provider().await?;
-        let catalog = self.model_catalog(&provider.family).await?;
+        let catalog = self.model_catalog(&provider.reference).await?;
         if !catalog.models.iter().any(|model| model == model_id) {
             return Err(anyhow!(
                 "tched_router model '{model_id}' is not present in the observed '{}' catalog",
@@ -1356,7 +1432,7 @@ impl TchedRouterRuntimeClient {
     ) -> anyhow::Result<RuntimeSelection> {
         self.health().await?;
         let provider = self.resolve_provider(provider_id).await?;
-        let catalog = self.model_catalog(&provider.family).await?;
+        let catalog = self.model_catalog(&provider.reference).await?;
         if !catalog.models.iter().any(|model| model == model_id) {
             return Err(anyhow!(
                 "tched_router model '{model_id}' is not present in the observed '{}' catalog",
@@ -1647,7 +1723,19 @@ fn patch_operation_name(operation: &ConfigPatchOperation) -> &'static str {
 /// final result for each path to the independently obtained target readback.
 /// Native remove returns a reset marker (null), not the resulting default; it
 /// establishes a reset receipt plus a current value, not equality to null.
-fn verify_patch_readbacks(response: &Value, readbacks: &[Value]) -> anyhow::Result<()> {
+fn verify_patch_readbacks(
+    response: &Value,
+    readbacks: &[Value],
+    operations: &[ConfigPatchOperation],
+) -> anyhow::Result<()> {
+    let mut structured_paths = BTreeMap::new();
+    for operation in operations {
+        let (pointer, value, _) = patch_operation_parts(operation);
+        structured_paths.insert(
+            validate_patch_pointer(pointer)?,
+            value.is_some_and(|value| value.is_array() || value.is_object()),
+        );
+    }
     let results = response
         .get("results")
         .and_then(Value::as_array)
@@ -1675,22 +1763,70 @@ fn verify_patch_readbacks(response: &Value, readbacks: &[Value]) -> anyhow::Resu
             .get(path)
             .context("patch readback is not a submitted target")?;
         if result.get("populated").is_some() {
-            anyhow::ensure!(result.get("populated") == readback.get("populated") && !readback.as_object().is_some_and(|o|o.contains_key("value")),
-                "native secret patch completion disagrees with target readback; reconcile before retry");
-        } else if result.get("op").and_then(Value::as_str) == Some("remove") {
-            anyhow::ensure!(result.get("value") == Some(&Value::Null) && readback.get("value").is_some_and(Value::is_string),
-                "native reset receipt or current target readback is invalid; reconcile before retry");
-        } else {
             anyhow::ensure!(
-                result.get("value") == readback.get("value")
+                result.get("populated") == readback.get("populated")
                     && !readback
                         .as_object()
-                        .is_some_and(|o| o.contains_key("populated")),
+                        .is_some_and(|o| o.contains_key("value")),
+                "native secret patch completion disagrees with target readback; reconcile before retry"
+            );
+        } else if result.get("op").and_then(Value::as_str) == Some("remove") {
+            anyhow::ensure!(
+                result.get("value") == Some(&Value::Null)
+                    && readback.get("value").is_some_and(Value::is_string),
+                "native reset receipt or current target readback is invalid; reconcile before retry"
+            );
+        } else {
+            anyhow::ensure!(
+                config_patch_display_values_agree(
+                    result.get("value"),
+                    readback.get("value"),
+                    structured_paths.get(path).copied().unwrap_or(false),
+                ) && !readback
+                    .as_object()
+                    .is_some_and(|o| o.contains_key("populated")),
                 "native patch completion disagrees with target readback; reconcile before retry"
             );
         }
     }
     Ok(())
+}
+
+// Protobuf Struct carries all numbers as doubles. Preserve their value while
+// restoring exact, safely representable integers for the native typed setter.
+fn normalize_config_patch_numbers(value: &mut Value) {
+    match value {
+        Value::Number(number) if number.is_f64() => {
+            if let Some(number) = number.as_f64() {
+                if number.fract() == 0.0 && number.abs() <= 9_007_199_254_740_991.0 {
+                    *value = Value::Number((number as i64).into());
+                }
+            }
+        }
+        Value::Array(values) => values.iter_mut().for_each(normalize_config_patch_numbers),
+        Value::Object(values) => values.values_mut().for_each(normalize_config_patch_numbers),
+        _ => {}
+    }
+}
+
+fn config_patch_display_values_agree(
+    receipt: Option<&Value>,
+    readback: Option<&Value>,
+    structured: bool,
+) -> bool {
+    if !structured {
+        return receipt == readback;
+    }
+    let decode = |value: Option<&Value>| {
+        value
+            .and_then(Value::as_str)
+            .and_then(|value| serde_json::from_str::<Value>(value).ok())
+            .filter(|value| value.is_array() || value.is_object())
+    };
+    match (decode(receipt), decode(readback)) {
+        (Some(receipt), Some(readback)) => receipt == readback,
+        _ => false,
+    }
 }
 
 fn validate_init_response(response: &Value) -> anyhow::Result<()> {
@@ -1702,12 +1838,14 @@ fn validate_init_response(response: &Value) -> anyhow::Result<()> {
         initialized.len() <= 256,
         "too many initialized config sections"
     );
-    anyhow::ensure!(
-        initialized
-            .iter()
-            .all(|value| value.as_str().is_some_and(valid_config_segment)),
-        "tched_router config init response contains an invalid section"
-    );
+    for value in initialized {
+        validate_config_path(
+            value
+                .as_str()
+                .context("tched_router config init response contains a non-string section")?,
+        )
+        .context("tched_router config init response contains an invalid section")?;
+    }
     Ok(())
 }
 
@@ -2081,6 +2219,58 @@ mod tests {
         },
     };
 
+    #[tokio::test]
+    async fn a2a_forwards_canonical_sid1_and_requires_native_ack() {
+        use axum::{http::HeaderMap, response::IntoResponse, routing::post, Json, Router};
+
+        for acknowledge in [false, true] {
+            let app = Router::new().route(
+                "/a2a/dashboard",
+                post(move |headers: HeaderMap| async move {
+                    assert_eq!(
+                        headers
+                            .get("x-opdbus-sealed-id-bin")
+                            .and_then(|value| value.to_str().ok()),
+                        Some("canonical-fixture-sid1")
+                    );
+                    let mut response = Json(serde_json::json!({"result":"ok"})).into_response();
+                    if acknowledge {
+                        response.headers_mut().insert(
+                            "x-opdbus-identity-authenticated",
+                            axum::http::HeaderValue::from_static("SID1"),
+                        );
+                    }
+                    response
+                }),
+            );
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let endpoint = format!("http://{}", listener.local_addr().unwrap());
+            let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+            let runtime = TchedRouterRuntimeClient::new(endpoint.clone(), "dashboard".into(), None)
+                .with_sealed_identity(Some("canonical-fixture-sid1"));
+            let response: anyhow::Result<Value> = runtime
+                .send_json(
+                    runtime
+                        .http()
+                        .unwrap()
+                        .post(format!("{endpoint}/a2a/dashboard")),
+                    "chat",
+                    Duration::from_secs(2),
+                    1024,
+                )
+                .await;
+            if acknowledge {
+                assert_eq!(response.unwrap(), serde_json::json!({"result":"ok"}));
+            } else {
+                assert!(response
+                    .unwrap_err()
+                    .to_string()
+                    .contains("did not authenticate"));
+            }
+            server.abort();
+        }
+    }
+
     struct AllowGenerationAdmission;
     impl crate::tched_router_generation_native::NativeGenerationAdmission for AllowGenerationAdmission {
         fn check(
@@ -2188,7 +2378,11 @@ mod tests {
                             provider_ref
                         )
                     };
-                    let response = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", body.len(), body);
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        body.len(),
+                        body
+                    );
                     stream.write_all(response.as_bytes()).await.unwrap();
                 }
             }
@@ -2628,6 +2822,49 @@ mod tests {
     }
 
     #[test]
+    fn config_patch_preserves_integral_struct_numbers_for_native_integer_fields() {
+        let mut value = json!({"value": [600.0, -12.0, 1.5, 9_007_199_254_740_992.0]});
+        normalize_config_patch_numbers(&mut value);
+        assert_eq!(value["value"][0].as_u64(), Some(600));
+        assert_eq!(value["value"][1].as_i64(), Some(-12));
+        assert_eq!(value["value"][2].as_f64(), Some(1.5));
+        assert!(value["value"][3].as_number().unwrap().is_f64());
+    }
+
+    #[test]
+    fn patch_readback_compares_structured_values_without_relaxing_scalar_strings() {
+        let operations = vec![ConfigPatchOperation::Add {
+            path: "/risk_profiles/control_plane/allowed_tools".into(),
+            value: json!(["one", "two"]),
+        }];
+        let response = json!({"results":[{
+            "op":"add", "path":"risk_profiles.control_plane.allowed_tools",
+            "value":"[\"one\",\"two\"]"
+        }]});
+        let readback = json!({
+            "path":"risk_profiles.control_plane.allowed_tools", "kind":"value",
+            "value":"[\"one\", \"two\"]"
+        });
+        verify_patch_readbacks(&response, std::slice::from_ref(&readback), &operations).unwrap();
+        let changed = json!({
+            "path":"risk_profiles.control_plane.allowed_tools", "kind":"value",
+            "value":"[\"two\", \"one\"]"
+        });
+        assert!(verify_patch_readbacks(&response, &[changed], &operations).is_err());
+        let scalar_operations = vec![ConfigPatchOperation::Add {
+            path: "/risk_profiles/control_plane/allowed_tools".into(),
+            value: json!("[\"one\",\"two\"]"),
+        }];
+        assert!(verify_patch_readbacks(&response, &[readback], &scalar_operations).is_err());
+        assert!(!config_patch_display_values_agree(None, None, true));
+        assert!(!config_patch_display_values_agree(
+            Some(&json!("invalid")),
+            Some(&json!("invalid")),
+            true
+        ));
+    }
+
+    #[test]
     fn patch_receipt_is_bound_to_ordered_operations_and_final_readback() {
         let operations = vec![
             ConfigPatchOperation::Test {
@@ -2648,16 +2885,19 @@ mod tests {
         verify_patch_readbacks(
             &sanitized,
             &[json!({"path":"gateway.port","kind":"value","value":"8085"})],
+            &operations,
         )
         .unwrap();
         assert!(verify_patch_readbacks(
             &sanitized,
-            &[json!({"path":"gateway.port","kind":"value","value":"8084"})]
+            &[json!({"path":"gateway.port","kind":"value","value":"8084"})],
+            &operations,
         )
         .is_err());
         assert!(verify_patch_readbacks(
             &sanitized,
-            &[json!({"path":"gateway.host","kind":"value","value":"8085"})]
+            &[json!({"path":"gateway.host","kind":"value","value":"8085"})],
+            &operations,
         )
         .is_err());
         for mismatch in ["order", "path", "op"] {
@@ -2681,6 +2921,7 @@ mod tests {
         verify_patch_readbacks(
             &reset_response,
             &[json!({"path":"gateway.port","kind":"value","value":"8084"})],
+            &reset,
         )
         .unwrap();
     }
@@ -2825,8 +3066,8 @@ mod tests {
         })).collect::<Vec<_>>();
             Json(json!({"saved":true,"results":results,"warnings":[]}))
         }
-        async fn init() -> Json<Value> {
-            Json(json!({"initialized":["gateway"]}))
+        async fn init(Query(q): Query<HashMap<String, String>>) -> Json<Value> {
+            Json(json!({"initialized":[q.get("section").cloned().unwrap_or_default()]}))
         }
         async fn migrate() -> Json<Value> {
             Json(json!({"migrated":false,"schema_version":4}))
@@ -2947,6 +3188,20 @@ mod tests {
             assert_eq!(init.result["initialized"], json!(["gateway"]));
             assert_eq!(init.readback["gateway"]["port"], 8084);
 
+            let nested_init = runtime
+                .init_config(
+                    &ConfigInitInput {
+                        section: Some("memory.settings".into()),
+                    },
+                    &policy,
+                )
+                .await
+                .unwrap();
+            assert_eq!(
+                nested_init.result["initialized"],
+                json!(["memory.settings"])
+            );
+
             let migrate = runtime
                 .migrate_config(&ConfigMigrateInput {}, &policy)
                 .await
@@ -2954,6 +3209,161 @@ mod tests {
             assert_eq!(migrate.result, json!({"migrated":false,"schema_version":4}));
             assert!(migrate.result.get("backup_path").is_none());
             task.abort();
+        }
+
+        #[derive(Clone, Copy)]
+        enum McpFixtureMode {
+            Honest,
+            WrongReceipt,
+            MissingReadback,
+        }
+
+        #[derive(Clone)]
+        struct McpFixtureState {
+            names: Arc<Mutex<Vec<String>>>,
+            writes: Arc<AtomicUsize>,
+            mode: McpFixtureMode,
+        }
+
+        struct McpFixturePolicy;
+
+        impl ConfigSecretPolicy for McpFixturePolicy {
+            fn is_secret(&self, path: &str) -> anyhow::Result<bool> {
+                anyhow::ensure!(
+                    path == "mcp.servers.opdbus_compact.name",
+                    "path absent from fixture contract"
+                );
+                Ok(false)
+            }
+
+            fn redact_config(&self, _: &mut Value) -> anyhow::Result<()> {
+                Ok(())
+            }
+        }
+
+        async fn mcp_full(State(state): State<McpFixtureState>) -> Json<Value> {
+            let names = state.names.lock().await.clone();
+            Json(json!({"mcp":{"servers":names.into_iter().map(|name| json!({
+                "name":name,"transport":"stdio"
+            })).collect::<Vec<_>>()}}))
+        }
+
+        async fn mcp_map_key(
+            State(state): State<McpFixtureState>,
+            Query(q): Query<HashMap<String, String>>,
+        ) -> Json<Value> {
+            assert_eq!(q.get("path").map(String::as_str), Some("mcp.servers"));
+            assert_eq!(q.get("key").map(String::as_str), Some("opdbus_compact"));
+            state.writes.fetch_add(1, Ordering::SeqCst);
+            let mut names = state.names.lock().await;
+            let created = !names.iter().any(|name| name == "opdbus_compact");
+            if created && !matches!(state.mode, McpFixtureMode::MissingReadback) {
+                names.push("opdbus_compact".into());
+            }
+            Json(json!({
+                "path":if matches!(state.mode, McpFixtureMode::WrongReceipt) { "agents" } else { "mcp.servers" },
+                "key":"opdbus_compact","created":created,"warnings":null
+            }))
+        }
+
+        async fn mcp_fixture(
+            mode: McpFixtureMode,
+        ) -> (
+            TchedRouterRuntimeClient,
+            Arc<AtomicUsize>,
+            tokio::task::JoinHandle<()>,
+        ) {
+            let writes = Arc::new(AtomicUsize::new(0));
+            let state = McpFixtureState {
+                names: Arc::new(Mutex::new(Vec::new())),
+                writes: writes.clone(),
+                mode,
+            };
+            let app = Router::new()
+                .route("/health", get(health))
+                .route("/api/config", get(mcp_full))
+                .route("/api/config/map-key", post(mcp_map_key))
+                .with_state(state);
+            let listener = tokio::net::TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], 0)))
+                .await
+                .unwrap();
+            let endpoint = format!("http://{}", listener.local_addr().unwrap());
+            let task = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+            (
+                TchedRouterRuntimeClient::new(endpoint, "dashboard".into(), None),
+                writes,
+                task,
+            )
+        }
+
+        #[tokio::test]
+        async fn mcp_server_init_uses_native_map_key_and_exact_masked_readback() {
+            let (runtime, writes, task) = mcp_fixture(McpFixtureMode::Honest).await;
+            let input = ConfigInitInput {
+                section: Some("mcp.servers.opdbus_compact".into()),
+            };
+            let first = runtime
+                .init_config(&input, &McpFixturePolicy)
+                .await
+                .unwrap();
+            assert_eq!(
+                first.result,
+                json!({"initialized":["mcp.servers.opdbus_compact"]})
+            );
+            assert_eq!(
+                first.readback["mcp"]["servers"][0]["name"],
+                "opdbus_compact"
+            );
+            let second = runtime
+                .init_config(&input, &McpFixturePolicy)
+                .await
+                .unwrap();
+            assert_eq!(second.result, json!({"initialized":[]}));
+            assert_eq!(writes.load(Ordering::SeqCst), 2);
+            task.abort();
+        }
+
+        #[tokio::test]
+        async fn malformed_or_unpinned_mcp_server_init_is_rejected_before_effect() {
+            let (runtime, writes, task) = mcp_fixture(McpFixtureMode::Honest).await;
+            for section in [
+                "mcp.servers",
+                "mcp.servers.opdbus_compact.extra",
+                "mcp.servers.other",
+            ] {
+                assert!(runtime
+                    .init_config(
+                        &ConfigInitInput {
+                            section: Some(section.into()),
+                        },
+                        &McpFixturePolicy,
+                    )
+                    .await
+                    .is_err());
+            }
+            assert_eq!(writes.load(Ordering::SeqCst), 0);
+            task.abort();
+        }
+
+        #[tokio::test]
+        async fn mcp_server_init_rejects_dishonest_receipt_or_missing_readback() {
+            for mode in [
+                McpFixtureMode::WrongReceipt,
+                McpFixtureMode::MissingReadback,
+            ] {
+                let (runtime, writes, task) = mcp_fixture(mode).await;
+                assert!(runtime
+                    .init_config(
+                        &ConfigInitInput {
+                            section: Some("mcp.servers.opdbus_compact".into()),
+                        },
+                        &McpFixturePolicy,
+                    )
+                    .await
+                    .is_err());
+                assert_eq!(writes.load(Ordering::SeqCst), 1);
+                task.abort();
+            }
         }
 
         #[tokio::test]

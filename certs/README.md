@@ -1,9 +1,12 @@
 # Browser trust for the OP-DBUS door
 
-`op-dbus-ca.crt` is the public CA certificate for the deployed TLS door at
-`https://10.0.0.2:8090`. Import it into the trusted certificate authorities
-for websites in the browser on your own computer, then restart the browser
-and reopen `http://10.0.0.2:8080` over the WireGuard connection.
+For browser access over WireGuard, open `http://dashboard.ghostbridge.tech:8080`.
+Its existing Tonic door is `https://dashboard.ghostbridge.tech:8090` and uses
+a publicly trusted certificate. No private CA import is needed for that hostname.
+
+`op-dbus-ca.crt` is the public CA certificate retained for internal clients
+using `https://localhost:8090` or `https://10.0.0.3:8090`. Import it only when
+using those internal addresses.
 
 SHA-256 fingerprint:
 
@@ -14,3 +17,7 @@ SHA-256 fingerprint:
 This is a copy of `/etc/op-dbus/tls/tonic-svc0-ca.crt` from the deployed
 server. It contains no private key and is not a session credential. Adding
 it to the repository does not install it into a browser's trust store.
+
+The dashboard certificate is renewed on the Artix host using Cloudflare
+DNS-01. Runtime state and keys stay outside the repository and release tree.
+See [renewal setup and verification](../deploy/certbot/README.md).

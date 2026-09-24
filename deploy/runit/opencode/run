@@ -2,8 +2,9 @@
 set -eu
 exec 2>&1
 
-# Re-enter with a minimal environment before reading the password. This keeps
-# inherited service secrets and the password out of the process environment.
+# Re-enter with a minimal environment before reading the password. This drops
+# unrelated inherited secrets. OpenCode requires its server password in the
+# child environment; it is read from a protected file and never put in argv.
 if [ "${OPENCODE_SANITIZED:-}" != 1 ]; then
     exec env -i OPENCODE_SANITIZED=1 PATH=/usr/local/bin:/usr/bin:/bin \
         HOME=/home/jeremy USER=jeremy /bin/sh "$0" --sanitized
@@ -46,6 +47,9 @@ config_content=$(jq -ce '.config | select(.share == "disabled" and .autoshare ==
 cd "$work_dir"
 export HOME=/home/jeremy USER=jeremy PATH=/usr/local/bin:/usr/bin:/bin
 export OPENCODE_CONFIG_DIR="$config_dir" OPENCODE_CONFIG_CONTENT="$config_content"
-export OPENCODE_AUTH_FILE="$auth_file" OPENCODE_SERVER_USERNAME="$username"
+# OpenCode 1.18.32 reads auth.json at the canonical HOME/XDG data path. Its
+# OPENCODE_AUTH_FILE environment variable is ignored; HOME is /home/jeremy and
+# no XDG data override is passed to this production service.
+export OPENCODE_SERVER_USERNAME="$username"
 export OPENCODE_SERVER_PASSWORD="$password"
 exec chpst -u "$user:$user" "$binary" serve --hostname "$host" --port "$port"

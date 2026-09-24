@@ -92,6 +92,7 @@ mod tests {
             catalog_hash_at_arrival: "catalog".into(),
             head_timestamp_at_arrival: 1,
             transport_scope: "grpc".into(),
+            nextdns: None,
         };
         let mut request = Request::new(());
         request.metadata_mut().insert_bin(

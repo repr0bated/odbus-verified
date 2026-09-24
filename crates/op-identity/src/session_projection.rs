@@ -549,7 +549,7 @@ mod tests {
     #[test]
     fn mcp_header_forwards_exact_sled_sealed_id_and_rejects_projection_drift() {
         let mut record = anchored("session-a");
-        let sealed = crate::sealed_id::SealedId {
+        let mut sealed = crate::sealed_id::SealedId {
             principal_id: crate::session::derive_principal_id(&record.wireguard_pubkey),
             principal_kind: "wireguard-principal".into(),
             session_id: record.session_id.clone(),
@@ -564,15 +564,25 @@ mod tests {
             catalog_hash_at_arrival: record.catalog_hash_at_arrival.clone(),
             head_timestamp_at_arrival: record.head_timestamp_at_arrival,
             transport_scope: "dbus,grpc,mcp".into(),
+            nextdns: None,
         };
-        let inline = sealed.to_inline_ref().unwrap();
-        record.sealed_id = Some(inline.clone());
-        assert_eq!(
-            record.mcp_sealed_id_header().unwrap(),
-            inline
-                .strip_prefix(crate::sealed_id::INLINE_PREFIX)
-                .unwrap()
-        );
+        for nextdns in [
+            None,
+            Some(crate::sealed_id::NextDnsContext {
+                profile_id: "689ec7".into(),
+                device_name: "Ghostbridge-Incus".into(),
+            }),
+        ] {
+            sealed.nextdns = nextdns;
+            let inline = sealed.to_inline_ref().unwrap();
+            record.sealed_id = Some(inline.clone());
+            assert_eq!(
+                record.mcp_sealed_id_header().unwrap(),
+                inline
+                    .strip_prefix(crate::sealed_id::INLINE_PREFIX)
+                    .unwrap()
+            );
+        }
 
         record.trace_id.push('0');
         assert!(matches!(

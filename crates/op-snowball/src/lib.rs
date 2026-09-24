@@ -1,10 +1,10 @@
-//! op-snowball: Streaming snowball with data directories for timing, vectors,
+//! op-snowball: Streaming snowball with Btrfs subvolumes for timing, vectors,
 //! and state
 //!
 //! This crate provides:
 //! - Streaming snowball for audit trails
 //! - Plugin footprints for change tracking
-//! - Data directories for timing, vectors, and state
+//! - Btrfs subvolumes for timing, vectors, and state
 //! - Automatic snapshots with configurable intervals
 //! - Rolling retention policies
 //! - btrfs send/receive for replication
@@ -27,7 +27,7 @@ pub use retention::RetentionPolicy;
 pub use snapshot::SnapshotInterval;
 pub use snowball::{
     decode_vector, encode_vector, parse_block_number, parse_vector_block_number, ChainBlockRef,
-    StreamingSnowball, SNAPSHOT_LABELS,
+    SnowballTransferReport, StreamingSnowball, SNAPSHOT_LABELS,
 };
 
 /// Prelude for convenient imports

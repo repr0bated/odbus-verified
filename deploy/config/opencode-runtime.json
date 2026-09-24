@@ -1,8 +1,8 @@
 {
   "format": "opdbus.opencode-runtime.v1",
   "binary": "/usr/bin/opencode",
-  "version": "1.18.31",
-  "sha256": "f9dab32248695e9ebd56b16a1921798fd85112cf5a69c7dfd0cabc1e17be4a11",
+  "version": "1.18.32",
+  "sha256": "513f500a1a5ea1dc7d865547ac87b32a8936334e8d5abd5b3ff585c45a170080",
   "user": "jeremy",
   "host": "127.0.0.1",
   "port": 4096,

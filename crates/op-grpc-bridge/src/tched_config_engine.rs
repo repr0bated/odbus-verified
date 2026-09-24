@@ -110,6 +110,7 @@ pub(crate) async fn dispatch(
     pinned: &ManifestPinnedSchemaDocument,
     method: &str,
     args: &Value,
+    sealed_identity: &str,
 ) -> anyhow::Result<Option<Value>> {
     let admitted = &pinned.schema;
     let contract = load_contract(pinned)?;
@@ -121,7 +122,7 @@ pub(crate) async fn dispatch(
         return Ok(Some(output));
     }
 
-    let runtime = TchedRouterRuntimeClient::from_env();
+    let runtime = TchedRouterRuntimeClient::from_env().with_sealed_identity(Some(sealed_identity));
     match tched_config_dispatch::dispatch_config_read(&runtime, method, args, &contract.secrets)
         .await?
     {
@@ -213,12 +214,14 @@ pub(crate) async fn dispatch(
 /// holds the final-admitted router guard; this helper never reads a new seal.
 pub(crate) async fn coherent_observation(
     pinned: &ManifestPinnedSchemaDocument,
+    sealed_identity: &str,
 ) -> anyhow::Result<(
     op_plugins::state_plugins::tched_router::TchedRouterState,
     Value,
 )> {
     let contract = load_contract(pinned)?;
     let observation = TchedRouterRuntimeClient::from_env()
+        .with_sealed_identity(Some(sealed_identity))
         .observe_config_and_state(&contract.secrets)
         .await?;
     validate_native_config(&contract, &observation.native_config)?;

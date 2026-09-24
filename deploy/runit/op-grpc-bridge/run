@@ -1,6 +1,14 @@
 #!/bin/sh
 exec 2>&1
 
+# Operator-assigned NextDNS context for this exact WireGuard identity. This is
+# sealed by MutationEngine, never supplied by the browser or inferred from DNS.
+# An explicit [] enables legacy-only minting for a compatibility rollout.
+if [ "${OP_IDENTITY_NEXTDNS_BINDINGS+x}" != x ]; then
+    OP_IDENTITY_NEXTDNS_BINDINGS='[{"wireguard_pubkey":"0I5FNCuHAu62VctaNgOlJ7RgfejJpYe9Qd0VdPGesX8=","profile_id":"689ec7","device_name":"Ghostbridge-Incus"}]'
+fi
+export OP_IDENTITY_NEXTDNS_BINDINGS
+
 DEFAULT_READY_PATH=/run/opdbus/runit-ready/op-grpc-bridge
 rm -f -- "$DEFAULT_READY_PATH"
 
@@ -40,8 +48,8 @@ set +a
 # accept the secret itself from the broad environment file.
 export TCHED_ROUTER_RUNTIME_ENDPOINT="${TCHED_ROUTER_RUNTIME_ENDPOINT:-http://127.0.0.1:8084}"
 export TCHED_ROUTER_RUNTIME_AGENT="${TCHED_ROUTER_RUNTIME_AGENT:-dashboard}"
-# All user-facing model choices use the native OpenCode session adapter. Old
-# private provider entries may remain for rollback but are not public routes.
+# Personal model choices use the native OpenCode session adapter. Control
+# Plane separately inherits any operator-configured native provider profile.
 export TCHED_ROUTER_REQUIRE_OPENCODE=1
 TCHED_ROUTER_RUNTIME_TOKEN_FILE=${TCHED_ROUTER_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/tched-router-runtime-token}
 unset TCHED_ROUTER_RUNTIME_TOKEN
@@ -72,7 +80,7 @@ rm -f -- "$OPDBUS_READY_PATH"
 # Exact browser origins allowed to reach gRPC-Web and MCP HTTP on this door
 # (the 3tched.com UI served by op-web on :8080, plus its Vite dev server).
 # Fails closed: an origin not listed here gets no CORS preflight answer.
-export OP_MCP_ALLOWED_ORIGINS="${OP_MCP_ALLOWED_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080,http://10.0.0.1:8080,http://10.0.0.2:8080,http://10.0.0.3:8080,http://127.0.0.1:5173,http://localhost:5173}"
+export OP_MCP_ALLOWED_ORIGINS="${OP_MCP_ALLOWED_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080,http://10.0.0.1:8080,http://10.0.0.2:8080,http://10.0.0.3:8080,http://dashboard.ghostbridge.tech:8080,http://127.0.0.1:5173,http://localhost:5173}"
 
 has_ipv4() {
     interface=$1
@@ -117,16 +125,21 @@ wait_for_ipv4() {
 wait_for_ipv4 svc0 10.0.0.3 "${OP_GRPC_SVC0_WAIT_SECS:-90}"
 
 # `:8090` is the fabric: one bridge-owned TLS surface for gRPC-Web, native
-# gRPC, MCP, generated plugin methods, and mutation/control traffic. 3tched
-# identities (10.0.0.2 tonic-web, 10.200.0.2 gRPC) arrive through Xray; this
-# process must not bind them. Loopback and the UDS are internal transports,
-# not additional fabric surfaces.
+# gRPC, MCP, generated plugin methods, and mutation/control traffic. The
+# browser reaches 10.0.0.2 through the decoy's private WireGuard forwarding;
+# 10.0.0.3 and loopback retain the internal TLS identity. These addresses and
+# the UDS serve the same fabric, not separate control planes.
 FABRIC_BIND="127.0.0.1:8090,10.0.0.2:8090,10.0.0.3:8090"
 export TCHED_ROUTER_BIND_ADDR="$FABRIC_BIND"
 export GRPC_BIND="$FABRIC_BIND"
 export TCHED_ROUTER_UNIX_SOCKET="${TCHED_ROUTER_UNIX_SOCKET:-/run/opdbus/grpc.sock}"
 export TCHED_ROUTER_TLS_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
 export TCHED_ROUTER_TLS_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
+# Browser traffic still uses the same private door. Local clients and EMQX
+# retain their existing private-CA identity; no public listener is added.
+export TCHED_ROUTER_BROWSER_TLS_BIND_ADDR=10.0.0.2:8090
+export TCHED_ROUTER_BROWSER_TLS_CERT_FILE=/etc/op-dbus/tls/dashboard.ghostbridge.tech/current/fullchain.pem
+export TCHED_ROUTER_BROWSER_TLS_KEY_FILE=/etc/op-dbus/tls/dashboard.ghostbridge.tech/current/privkey.pem
 /usr/local/libexec/3tched/emqx-prepare
 export OP_EMQX_EXHOOK_ENABLE=1
 export OP_EMQX_EXHOOK_BIND_ADDR=127.0.0.1:9000
@@ -170,9 +183,9 @@ export OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIP
 # Local interactive clients, including Codex, authenticate as the existing
 # human WireGuard principal. The MutationEngine mints SID1 into this same sled;
 # there is deliberately no Codex-specific service identity.
-export OP_LOCAL_HUMAN_WIREGUARD_PUBKEY="${OP_LOCAL_HUMAN_WIREGUARD_PUBKEY:-GEMLT/+I81zs5HDPsOF22ntqGf71OEy6eFKMm7P7Dzk=}"
-export OP_LOCAL_HUMAN_SESSION_ID="${OP_LOCAL_HUMAN_SESSION_ID:-f036f8d8-aabb-c5f2-49c9-18dac19f41ea}"
-export OP_LOCAL_HUMAN_PRINCIPAL_ID="${OP_LOCAL_HUMAN_PRINCIPAL_ID:-0b7933b7-c8d5-1c01-814e-0c3066d19bbd}"
+export OP_LOCAL_HUMAN_WIREGUARD_PUBKEY="${OP_LOCAL_HUMAN_WIREGUARD_PUBKEY:-0I5FNCuHAu62VctaNgOlJ7RgfejJpYe9Qd0VdPGesX8=}"
+export OP_LOCAL_HUMAN_SESSION_ID="${OP_LOCAL_HUMAN_SESSION_ID:-414fbc56-03fb-20ab-758a-bcc7a7cbdc0e}"
+export OP_LOCAL_HUMAN_PRINCIPAL_ID="${OP_LOCAL_HUMAN_PRINCIPAL_ID:-c9bdf32e-811d-2495-b688-277c9e5c4d36}"
 export OP_LOCAL_HUMAN_DISPLAY_ALIAS="${OP_LOCAL_HUMAN_DISPLAY_ALIAS:-jeremy-wg-f036}"
 # WARP + Xray necessarily replace the decoy's human-WG inner source address.
 # Bind OIA1 to the trusted decoy signature, short lifetime, one-time nonce, and

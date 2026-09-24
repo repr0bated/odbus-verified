@@ -45,6 +45,7 @@ struct FixtureState {
     projection_block_after_patch: Option<std::path::PathBuf>,
     mcp_url: String,
     complete_native_config: bool,
+    expected_sid1: Option<String>,
 }
 
 async fn fixture() -> (String, Fixture, tokio::task::JoinHandle<()>) {
@@ -55,6 +56,7 @@ async fn fixture() -> (String, Fixture, tokio::task::JoinHandle<()>) {
             models: HashMap::from([
                 ("ollama.main".into(), "old-model".into()),
                 ("openai.main".into(), "new-model".into()),
+                ("custom.default".into(), "unlisted-model".into()),
             ]),
             write_fail: false,
             chats: 0,
@@ -71,6 +73,7 @@ async fn fixture() -> (String, Fixture, tokio::task::JoinHandle<()>) {
             projection_block_after_patch: None,
             mcp_url: "https://docs.example.test/mcp".into(),
             complete_native_config: false,
+            expected_sid1: None,
         })),
     };
     let app = Router::new()
@@ -227,10 +230,11 @@ async fn catalog_models(
     if let Some((reference, model)) = state.change_model_on_catalog.take() {
         state.models.insert(reference, model);
     }
-    let models = if q.get("model_provider").map(String::as_str) == Some("openai") {
-        vec!["new-model"]
-    } else {
-        vec!["old-model", "old-alt"]
+    let models = match q.get("model_provider").map(String::as_str) {
+        Some("ollama.main") => vec!["old-model", "old-alt"],
+        Some("ollama.secondary") => vec!["secondary-model"],
+        Some("openai.main") => vec!["new-model"],
+        _ => Vec::new(),
     };
     Json(json!({"models":models,"live":state.catalog_live}))
 }
@@ -340,9 +344,30 @@ async fn redirect_sink() -> (String, Arc<AtomicUsize>, tokio::task::JoinHandle<(
     });
     (format!("http://{address}/capture"), hits, task)
 }
-async fn chat_fixture(State(f): State<Fixture>, Json(_body): Json<Value>) -> Json<Value> {
-    f.inner.lock().await.chats += 1;
-    Json(json!({"result":{"artifacts":[{"parts":[{"kind":"text","text":"fixture"}]}]}}))
+async fn chat_fixture(
+    State(f): State<Fixture>,
+    headers: axum::http::HeaderMap,
+    Json(_body): Json<Value>,
+) -> Response {
+    let mut state = f.inner.lock().await;
+    let authenticated = state.expected_sid1.as_deref().is_some_and(|expected| {
+        headers
+            .get("x-opdbus-sealed-id-bin")
+            .and_then(|value| value.to_str().ok())
+            == Some(expected)
+    });
+    if !authenticated {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    state.chats += 1;
+    let mut response =
+        Json(json!({"result":{"artifacts":[{"parts":[{"kind":"text","text":"fixture"}]}]}}))
+            .into_response();
+    response.headers_mut().insert(
+        "x-opdbus-identity-authenticated",
+        axum::http::HeaderValue::from_static("SID1"),
+    );
+    response
 }
 
 struct FixtureScope {
@@ -590,6 +615,15 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .await
         .unwrap()
         .expect("configured fixture identity");
+    fixture.inner.lock().await.expected_sid1 = Some(
+        op_identity::session_projection::resolve_identity_credential_session(Some(
+            &caller.session_id,
+        ))
+        .unwrap()
+        .mcp_sealed_id_header()
+        .unwrap()
+        .to_owned(),
+    );
 
     // A first read has no committed projection to borrow defaults from. The
     // selected agent provider and that provider's model come from the exact
@@ -600,7 +634,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         upstream.provider = "ollama.main".into();
         upstream
             .models
-            .insert("ollama.secondary".into(), "old-alt".into());
+            .insert("ollama.secondary".into(), "secondary-model".into());
     }
     let fresh = dispatch(&engine, &caller, "GetState", json!({}))
         .await
@@ -615,6 +649,46 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .find(|provider| provider["id"] == "ollama")
         .unwrap();
     assert_eq!(old["aliases"].as_array().unwrap().len(), 2);
+    let routes = observed["model_routes"].as_array().unwrap();
+    assert!(routes
+        .iter()
+        .any(|route| route["provider"] == "ollama" && route["model"] == "old-model"));
+    assert!(routes
+        .iter()
+        .any(|route| { route["provider"] == "ollama" && route["model"] == "secondary-model" }));
+    assert!(providers.iter().any(|provider| {
+        provider["id"] == "custom" && provider["aliases"] == json!(["custom.default"])
+    }));
+    assert!(!routes.iter().any(|route| route["provider"] == "custom"));
+
+    // An empty catalog is valid for an inactive configured alias, but cannot
+    // become the selected provider's represented model inventory.
+    fixture.inner.lock().await.provider = "custom.default".into();
+    let selected_empty = dispatch(&engine, &caller, "GetState", json!({})).await;
+    assert!(format!("{:#}", selected_empty.unwrap_err())
+        .contains("selected 'custom.default' model catalog is empty"));
+    fixture.inner.lock().await.provider = "ollama.main".into();
+
+    // Family projection contains both aliases, but mutation admission must
+    // validate against the exact alias being selected.
+    let writes_before_cross_alias = fixture.inner.lock().await.writes;
+    assert!(dispatch(
+        &engine,
+        &caller,
+        "SetModel",
+        json!({"model_id":"secondary-model"}),
+    )
+    .await
+    .is_err());
+    assert!(dispatch(
+        &engine,
+        &caller,
+        "SetSelection",
+        json!({"provider_id":"ollama.secondary","model_id":"old-model"}),
+    )
+    .await
+    .is_err());
+    assert_eq!(fixture.inner.lock().await.writes, writes_before_cross_alias);
 
     // Gemma's retained route facade must reach the same admitted router
     // resolver and preserve its typed provider/model selection.

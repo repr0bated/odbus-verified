@@ -86,6 +86,9 @@ impl TlsPaths {
     }
 
     fn server_config(&self) -> Result<rustls::ServerConfig> {
+        // The workspace enables both rustls providers. Select one explicitly:
+        // rustls' implicit builder panics when no process-wide default exists.
+        let provider = Arc::new(rustls::crypto::aws_lc_rs::default_provider());
         let mut ca = RootCertStore::empty();
         let mut reader =
             BufReader::new(File::open(&self.client_ca).with_context(|| {
@@ -102,9 +105,12 @@ impl TlsPaths {
             ca.add(cert)
                 .context("invalid OpenFlow client CA certificate")?;
         }
-        let verifier = rustls::server::WebPkiClientVerifier::builder(Arc::new(ca))
-            .build()
-            .context("configuring OpenFlow client certificate verifier")?;
+        let verifier = rustls::server::WebPkiClientVerifier::builder_with_provider(
+            Arc::new(ca),
+            provider.clone(),
+        )
+        .build()
+        .context("configuring OpenFlow client certificate verifier")?;
         let certs = read_certs(&self.server_cert)?;
         let mut key_reader = BufReader::new(File::open(&self.server_key).with_context(|| {
             format!("opening OpenFlow server key {}", self.server_key.display())
@@ -112,7 +118,9 @@ impl TlsPaths {
         let key = rustls_pemfile::private_key(&mut key_reader)
             .context("parsing OpenFlow server key")?
             .context("OpenFlow server key contains no private key")?;
-        rustls::ServerConfig::builder()
+        rustls::ServerConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .context("configuring OpenFlow mTLS protocol versions")?
             .with_client_cert_verifier(verifier)
             .with_single_cert(certs, key)
             .context("configuring OpenFlow mTLS server certificate")
@@ -1116,7 +1124,6 @@ mod tests {
 
     #[tokio::test]
     async fn controller_mtls_accepts_only_dedicated_ca_client_certificate() {
-        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
         let ca_key = KeyPair::generate().unwrap();
         let mut ca_params = CertificateParams::new(vec![]).unwrap();
         ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
@@ -1159,13 +1166,20 @@ mod tests {
         );
         let mut roots = RootCertStore::empty();
         roots.add(ca.der().clone()).unwrap();
+        let client_config = || {
+            ClientConfig::builder_with_provider(Arc::new(
+                rustls::crypto::aws_lc_rs::default_provider(),
+            ))
+            .with_safe_default_protocol_versions()
+            .unwrap()
+        };
         let anonymous = Arc::new(
-            ClientConfig::builder()
+            client_config()
                 .with_root_certificates(roots.clone())
                 .with_no_client_auth(),
         );
         let wrong = Arc::new(
-            ClientConfig::builder()
+            client_config()
                 .with_root_certificates(roots.clone())
                 .with_client_auth_cert(
                     vec![wrong_cert.der().clone()],
@@ -1174,7 +1188,7 @@ mod tests {
                 .unwrap(),
         );
         let valid = Arc::new(
-            ClientConfig::builder()
+            client_config()
                 .with_root_certificates(roots)
                 .with_client_auth_cert(
                     vec![client_cert.der().clone()],

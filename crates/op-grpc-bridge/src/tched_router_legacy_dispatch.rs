@@ -103,8 +103,12 @@ struct NativeTool {
     // represented rather than copied into an opaque extension.
 }
 
-async fn read_native_tools() -> Result<Vec<LlmTool>> {
-    read_native_tools_with(&crate::tched_router_runtime::TchedRouterRuntimeClient::from_env()).await
+async fn read_native_tools(sealed_identity: &str) -> Result<Vec<LlmTool>> {
+    read_native_tools_with(
+        &crate::tched_router_runtime::TchedRouterRuntimeClient::from_env()
+            .with_sealed_identity(Some(sealed_identity)),
+    )
+    .await
 }
 
 async fn read_native_tools_with(
@@ -166,8 +170,10 @@ fn map_native_tools(response: NativeToolsResponse) -> Result<Vec<LlmTool>> {
 async fn ensure_runtime_unchanged(
     pinned: &ManifestPinnedSchemaDocument,
     expected: &Value,
+    sealed_identity: &str,
 ) -> Result<()> {
-    let (_, current) = crate::tched_config_engine::coherent_observation(pinned).await?;
+    let (_, current) =
+        crate::tched_config_engine::coherent_observation(pinned, sealed_identity).await?;
     anyhow::ensure!(
         &current == expected,
         "native tched_router config/selection changed during retained operation"
@@ -180,6 +186,7 @@ pub(crate) async fn dispatch(
     method: &str,
     args: &Value,
     documents: Option<Arc<RuntimeDocuments>>,
+    sealed_identity: &str,
 ) -> Result<LegacyDispatchReceipt> {
     // The engine retains final admission and the operation guard for this exact pin.
     let pin = SealPin {
@@ -187,13 +194,13 @@ pub(crate) async fn dispatch(
         schema_json: pinned.blob.schema_json.clone(),
     };
     let (native, complete_native) =
-        crate::tched_config_engine::coherent_observation(pinned).await?;
+        crate::tched_config_engine::coherent_observation(pinned, sealed_identity).await?;
     if method == "GetTools" {
         let object = args
             .as_object()
             .context("GetTools input must be an object")?;
         anyhow::ensure!(object.is_empty(), "GetTools does not accept fields");
-        let tools = read_native_tools().await?;
+        let tools = read_native_tools(sealed_identity).await?;
         let tools_value = serde_json::to_value(&tools)?;
         let expected = pin.clone();
         blocking(move || seal_is_unchanged(&expected)).await?;
@@ -219,7 +226,7 @@ pub(crate) async fn dispatch(
         "GetModelRoutes" | "GetProviderCatalog" | "ResolveRoute"
     ) {
         let receipt = methods.observe(method, args, &observed).await?;
-        ensure_runtime_unchanged(pinned, &complete_native).await?;
+        ensure_runtime_unchanged(pinned, &complete_native, sealed_identity).await?;
         let expected = pin.clone();
         blocking(move || seal_is_unchanged(&expected)).await?;
         return Ok(LegacyDispatchReceipt {
@@ -234,7 +241,7 @@ pub(crate) async fn dispatch(
             .assign(role, requested, &observed)
             .await
             .with_context(|| format!("{method} durable assignment failed"))?;
-        ensure_runtime_unchanged(pinned, &complete_native)
+        ensure_runtime_unchanged(pinned, &complete_native, sealed_identity)
             .await
             .with_context(|| {
                 format!(

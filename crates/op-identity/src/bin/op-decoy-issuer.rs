@@ -192,6 +192,21 @@ fn verify_listen_interface(iface: &str, listen: IpAddr) -> Result<()> {
     Ok(())
 }
 
+fn reusable_tcp_socket(listen: SocketAddr) -> Result<TcpSocket> {
+    let socket = if listen.is_ipv4() {
+        TcpSocket::new_v4()?
+    } else {
+        TcpSocket::new_v6()?
+    };
+    // A service restart can follow a health or pickup request while accepted
+    // connections are still in TIME_WAIT. Reuse the address without allowing
+    // a second active listener (SO_REUSEPORT is deliberately not enabled).
+    socket
+        .set_reuseaddr(true)
+        .context("allowing issuer restart with prior TCP connections")?;
+    Ok(socket)
+}
+
 /// Constrain accepted packets to the selected WG device as well as its IP.
 fn bind_wireguard_listener(cfg: &Config) -> Result<TcpSocket> {
     verify_listen_interface(&cfg.iface, cfg.listen.ip())?;
@@ -203,11 +218,7 @@ fn bind_wireguard_listener(cfg: &Config) -> Result<TcpSocket> {
         bail!("{} is not an available WireGuard interface", cfg.iface);
     }
     let name = CString::new(cfg.iface.as_str()).context("interface name contains NUL")?;
-    let socket = if cfg.listen.is_ipv4() {
-        TcpSocket::new_v4()?
-    } else {
-        TcpSocket::new_v6()?
-    };
+    let socket = reusable_tcp_socket(cfg.listen)?;
     let result = unsafe {
         libc::setsockopt(
             socket.as_raw_fd(),
@@ -513,5 +524,25 @@ mod tests {
             b"wg-opdbus",
             Some("10.0.0.2".parse().unwrap()),
         ));
+    }
+
+    #[tokio::test]
+    async fn issuer_listener_rebinds_with_prior_connection_in_time_wait() {
+        let first = reusable_tcp_socket("127.0.0.1:0".parse().unwrap()).unwrap();
+        first.bind("127.0.0.1:0".parse().unwrap()).unwrap();
+        let listener = first.listen(8).unwrap();
+        let address = listener.local_addr().unwrap();
+        let mut client = TcpStream::connect(address).await.unwrap();
+        let (mut accepted, _) = listener.accept().await.unwrap();
+        accepted.shutdown().await.unwrap();
+        let mut eof = [0u8; 1];
+        assert_eq!(client.read(&mut eof).await.unwrap(), 0);
+        drop(accepted);
+        drop(client);
+        drop(listener);
+
+        let replacement = reusable_tcp_socket(address).unwrap();
+        replacement.bind(address).unwrap();
+        let _replacement_listener = replacement.listen(8).unwrap();
     }
 }

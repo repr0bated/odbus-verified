@@ -577,6 +577,9 @@ build_golden() {
     [ ! -e "$ui_destination/assets" ] || run rm -r -- "$ui_destination/assets"
     [ ! -e "$ui_destination/index.html" ] || run rm -- "$ui_destination/index.html"
     run tar -xzf "$UI_ASSET_ARCHIVE" -C "$ui_destination"
+    # Reproducible archives use epoch timestamps. The HTTP entry point needs
+    # a release timestamp so browsers revalidate against the new bundle.
+    run touch "$ui_destination/index.html"
     run install -Dm644 "$UI_ASSET_MANIFEST" \
         "$GOLDEN_DIR/usr/share/op-dbus/ui-manifests/vercel-json-render-ui.json"
     ok "staged pinned vercel-json-render UI assets and provenance manifest"

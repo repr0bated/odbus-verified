@@ -190,9 +190,65 @@ fn simd_to_json(value: simd_json::OwnedValue) -> Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::fs::MetadataExt;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
 
-    async fn fixture() -> (tempfile::TempDir, Arc<StreamingSnowball>, SnowballMethods) {
-        let dir = tempfile::tempdir().unwrap();
+    struct BtrfsFixture(tempfile::TempDir);
+
+    impl BtrfsFixture {
+        fn path(&self) -> &Path {
+            self.0.path()
+        }
+    }
+
+    impl Drop for BtrfsFixture {
+        fn drop(&mut self) {
+            fn collect(path: &Path, subvolumes: &mut Vec<PathBuf>) {
+                let Ok(entries) = std::fs::read_dir(path) else {
+                    return;
+                };
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    let Ok(metadata) = std::fs::symlink_metadata(&path) else {
+                        continue;
+                    };
+                    if metadata.is_dir() && !metadata.file_type().is_symlink() {
+                        collect(&path, subvolumes);
+                        if metadata.ino() == 256 {
+                            subvolumes.push(path);
+                        }
+                    }
+                }
+            }
+            let mut subvolumes = Vec::new();
+            collect(self.path(), &mut subvolumes);
+            for path in subvolumes {
+                // Only test-owned snapshot members change RO state here.
+                let _ = Command::new("btrfs")
+                    .args(["property", "set", "-ts"])
+                    .arg(&path)
+                    .args(["ro", "false"])
+                    .output();
+                let output = Command::new("btrfs")
+                    .args(["subvolume", "delete"])
+                    .arg(&path)
+                    .output();
+                if let Ok(output) = output {
+                    if !output.status.success() {
+                        eprintln!(
+                            "test subvolume cleanup failed for {}: {}",
+                            path.display(),
+                            String::from_utf8_lossy(&output.stderr)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    async fn fixture() -> (BtrfsFixture, Arc<StreamingSnowball>, SnowballMethods) {
+        let dir = BtrfsFixture(tempfile::tempdir().unwrap());
         let chain = Arc::new(
             StreamingSnowball::new(dir.path().join("snowball"))
                 .await

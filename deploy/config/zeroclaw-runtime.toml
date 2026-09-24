@@ -1,6 +1,10 @@
 locale = "en"
 schema_version = 3
 
+# Named agents read their runtime profile, not the legacy [agent] setting.
+[runtime_profiles.chatbot_500]
+max_tool_iterations = 500
+
 [a2a.server]
 enabled = true
 
@@ -26,14 +30,14 @@ native_tools = false
 provider_extra = { opdbus_transport = "opencode_session" }
 
 [providers.models.custom.opencode_accountability]
-model = "opencode/nemotron-3-ultra-free"
+model = "opencode/glm-5.3-flash"
 uri = "http://127.0.0.1:4096"
 wire_api = "chat_completions"
 native_tools = false
 provider_extra = { opdbus_transport = "opencode_session" }
 
 [providers.models.custom.opencode_control_plane]
-model = "opencode/nemotron-3-ultra-free"
+model = "opencode/glm-5.3-flash"
 uri = "http://127.0.0.1:4096"
 wire_api = "chat_completions"
 native_tools = false
@@ -89,12 +93,14 @@ native_tools = false
 provider_extra = { opdbus_transport = "opencode_session" }
 
 [agents.dashboard]
+runtime_profile = "chatbot_500"
 enabled = true
 model_provider = "custom.opencode_dashboard"
 risk_profile = "dashboard"
 skill_bundles = ["default"]
 
 [agents.control_plane]
+runtime_profile = "chatbot_500"
 enabled = true
 model_provider = "custom.opencode_control_plane"
 risk_profile = "control_plane"
@@ -108,6 +114,7 @@ exposed_skills = ["plugin-schema"]
 backend = "none"
 
 [agents.accountability]
+runtime_profile = "chatbot_500"
 enabled = true
 model_provider = "custom.opencode_accountability"
 risk_profile = "accountability"
@@ -154,6 +161,7 @@ block_high_risk_commands = true
 open_skills_enabled = false
 
 [agents.cp_route_grok_47]
+runtime_profile = "chatbot_500"
 enabled = true
 model_provider = "custom.opencode_cp_route_grok_47"
 risk_profile = "control_plane"
@@ -167,6 +175,7 @@ exposed_skills = ["plugin-schema"]
 backend = "none"
 
 [agents.cp_route_nemotron_3_ultra]
+runtime_profile = "chatbot_500"
 enabled = true
 model_provider = "custom.opencode_cp_route_nemotron_3_ultra"
 risk_profile = "control_plane"
@@ -180,6 +189,7 @@ exposed_skills = ["plugin-schema"]
 backend = "none"
 
 [agents.cp_route_deepseek_v41_flash]
+runtime_profile = "chatbot_500"
 enabled = true
 model_provider = "custom.opencode_cp_route_deepseek_v41_flash"
 risk_profile = "control_plane"
@@ -193,6 +203,7 @@ exposed_skills = ["plugin-schema"]
 backend = "none"
 
 [agents.cp_route_glm_53_flash]
+runtime_profile = "chatbot_500"
 enabled = true
 model_provider = "custom.opencode_cp_route_glm_53_flash"
 risk_profile = "control_plane"
@@ -206,6 +217,7 @@ exposed_skills = ["plugin-schema"]
 backend = "none"
 
 [agents.cp_route_qwen3_coder_flash]
+runtime_profile = "chatbot_500"
 enabled = true
 model_provider = "custom.opencode_cp_route_qwen3_coder_flash"
 risk_profile = "control_plane"
@@ -219,6 +231,7 @@ exposed_skills = ["plugin-schema"]
 backend = "none"
 
 [agents.cp_route_gpt6_astra]
+runtime_profile = "chatbot_500"
 enabled = true
 model_provider = "custom.opencode_cp_route_gpt6_astra"
 risk_profile = "control_plane"
@@ -232,6 +245,7 @@ exposed_skills = ["plugin-schema"]
 backend = "none"
 
 [agents.cp_route_claude_fable_51]
+runtime_profile = "chatbot_500"
 enabled = true
 model_provider = "custom.opencode_cp_route_claude_fable_51"
 risk_profile = "control_plane"

@@ -8,8 +8,28 @@ use simd_json::OwnedValue;
 type State<T> = (Option<OwnedValue>, T);
 
 impl MutationEngine {
+    pub(crate) fn configure_nextdns_bindings(
+        &self,
+        bindings: crate::identity_nextdns::NextDnsBindings,
+    ) -> Result<()> {
+        self.nextdns_bindings
+            .set(bindings)
+            .map_err(|_| anyhow::anyhow!("NextDNS identity assignments are already configured"))
+    }
+
+    pub(crate) fn assigned_nextdns(
+        &self,
+        key: &str,
+    ) -> Option<op_identity::sealed_id::NextDnsContext> {
+        self.nextdns_bindings
+            .get()
+            .and_then(|bindings| bindings.get(key))
+            .cloned()
+    }
+
     /// Author a replacement SID1 for an already anchored session. This keeps
-    /// the arrival claims immutable and only migrates the transport scope.
+    /// the arrival claims immutable while refreshing transport scope and the
+    /// operator-owned NextDNS assignment. Missing policy cannot erase a claim.
     pub(crate) fn refresh_identity_sealed_id(
         &self,
         sled: &op_plugins::state_plugins::identity_sled::ContainerIdentitySled,
@@ -29,7 +49,20 @@ impl MutationEngine {
             catalog_hash_at_arrival: sled.catalog_hash_at_arrival.clone(),
             head_timestamp_at_arrival: sled.head_timestamp_at_arrival,
         };
-        super::sealed_sealed_id(&stamp, sled.schema_version, sled.expires_at.unwrap_or(0))
+        let nextdns = self.assigned_nextdns(&sled.wireguard_pubkey);
+        if let Some(inline) = sled.sealed_id.as_deref() {
+            let old = op_identity::sealed_id::SealedId::from_inline_ref(inline)?;
+            anyhow::ensure!(
+                old.nextdns.is_none() || nextdns.is_some(),
+                "credential refresh requires the existing NextDNS assignment to remain configured"
+            );
+        }
+        super::sealed_sealed_id(
+            &stamp,
+            sled.schema_version,
+            sled.expires_at.unwrap_or(0),
+            nextdns,
+        )
     }
 
     /// Recover the explicitly configured durable owner before an embedding
@@ -158,6 +191,7 @@ impl MutationEngine {
             &stamp,
             op_plugins::state_plugins::identity_sled::RECORD_FORMAT,
             expires_at,
+            self.assigned_nextdns(wireguard_pubkey),
         )?;
         Ok(stamp)
     }

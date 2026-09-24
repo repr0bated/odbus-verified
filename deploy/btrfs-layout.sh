@@ -10,9 +10,9 @@
 #   - the btrfs root-level (subvolid=5) mount is available
 #
 # Subvolume creation and population belong to build-golden.sh, not here.
-# Subvolume count must stay at 5 or fewer: 1 golden for send/receive, 2-3
-# rotating for cache. The snowball timing/vectors/state are data directories
-# inside the golden subvolume, not separate btrfs subvolumes.
+# Owner correction 2026-09-23: cache and Snowball retain their Btrfs
+# subvolumes and configured snapshot retention. There is no global five-
+# subvolume limit. This prerequisite script does not alter runtime storage.
 #
 
 set -euo pipefail

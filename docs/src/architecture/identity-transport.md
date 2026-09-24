@@ -27,7 +27,7 @@ flowchart LR
   end
 
   I -->|x-opdbus-sealed-id-bin| R[op-grpc-bridge]
-  A -.->|client injection not located; WARP transport| R
+  A -->|browser bootstrap; WARP transport| R
   R --> P[principal registry + session checks]
   P --> C[capability grants]
   C --> D[MutationEngine plugin dispatch]
@@ -61,7 +61,7 @@ an owner decision tracked in OD-58.
   the verified identity path permits it.
 - `sealed_sealed_id` constructs `op_identity::sealed_id::SealedId` with
   `principal_kind = "wireguard-principal"` and transport scope
-  `dbus,grpc,mcp`, then calls `to_inline_ref`.
+  `dbus,grpc,mcp,mqtt`, then calls `to_inline_ref`.
 - [sealed_id.rs](../../../crates/op-identity/src/sealed_id.rs) defines the
   fixed `SID1` wire format: bounded fields followed by a SHA-256 integrity
   trailer. Its inline sled spelling is `sid1:<base64url>` and its binary HTTP
@@ -172,10 +172,20 @@ principal grants. Current full formatting/Clippy/workspace-test receipts and
 remaining gaps are recorded on [OD-58](../../../WISHLIST.md); earlier passing
 counts do not identify the latest checkout.
 
-The decoy issuer and OIA1 receiver already exist. This repair provides forwarding
-for a caller-supplied assertion; it does not add a client that fetches
-`/assertion` from the decoy. Remote acquisition and end-to-end WARP delivery
-remain separate OD-34 work and have not been validated against live systems.
+The production UI in `3tched.com` obtains OIA1 from the decoy's
+`/identity/self` endpoint. Each bootstrap RPC uses a fresh assertion because
+nonces are single-use. Only an exact `UNAUTHENTICATED / UnknownPrincipal`
+response starts self-registration through `human_principal.register_key`,
+with the assertion's own public key and the declared `human_principal.write`
+capability. Backend verification and exact grants remain authoritative.
+An operator must first provision the identity through the canonical
+`identity_sled.provision_container` method. Registration does not fabricate
+an Incus instance or bypass provisioning.
+
+After registration, the UI resolves its context and reads that session's
+authored SID1 through `identity_sled.get_identity`. It only re-encodes those
+bytes for binary metadata; it does not mint or persist credentials. Server
+and source tests do not substitute for a fresh remote browser confirmation.
 
 ## Source proof
 
@@ -197,6 +207,158 @@ repaired source. A separate
 [local metadata observation](topology-observation.json) found two protected
 identity records, both with an inline `sid1:` value, genesis and instance
 binding. Only aggregate counts were retained; credentials were not printed.
-Presence does not prove integrity validation, transport injection or receiver
-acceptance. Decoy operation, WARP delivery and deployed binary equivalence
-remain unverified.
+Presence alone does not prove integrity validation, transport injection or
+receiver acceptance. Current deployment receipts in `SIGNALS.md` supersede
+this historical observation; remote browser confirmation is a separate check.
+
+## Sealed NextDNS assignments
+
+An operator can assign a NextDNS profile and device name to an exact WireGuard
+public key through `OP_IDENTITY_NEXTDNS_BINDINGS` in the bridge's service
+configuration. It is a bounded JSON array of objects with `wireguard_pubkey`,
+`profile_id`, and `device_name`. Startup validates canonical public keys, unique
+assignments, six lowercase hexadecimal profile identifiers and bounded device
+names. Invalid configuration prevents startup. The assignment is loaded once;
+there is no global DNS fallback and no request header or plugin argument can
+supply or replace it.
+
+MutationEngine adds the configured pair to that key's SID1 when it first authors
+the credential. An optional `NDN1` extension follows the original transport scope
+and precedes the integrity seal. Credentials without an assignment retain their
+exact original encoding. Both variants are accepted by updated readers, and
+receivers still require the exact bytes stored by the identity owner. Recomputing
+the public integrity checksum cannot authorize a different assignment.
+
+The association records configured NextDNS context; it does not attest which
+resolver handled a particular browser query. No API token is included. Clients
+forward the entire SID1 through the existing binary identity metadata and must
+not mint credentials or add parallel NextDNS identity headers.
+
+Existing credentials are not rewritten at startup. Their owner can invoke the
+existing `identity_sled.refresh_credential` with `{}` and its exact capability.
+The owner loads the trusted assignment, preserves principal/session/genesis and
+all arrival claims, and commits the replacement through Cozo and canonical SHM.
+The existing transport upgrade to `dbus,grpc,mcp,mqtt` remains supported. A missing
+assignment cannot silently remove a previously sealed one. A repeated refresh
+with the same assignment and current transport is a no-op; after an actual
+refresh, the old credential no longer matches the authoritative sled.
+
+Deploy compatible readers before enabling assigned minting. Retain a received
+release that understands `NDN1` as the rollback target; old binaries reject
+extended credentials. Do not roll back identity records or restore old credentials
+as part of a binary rollback. The plugin schema, Cozo columns and proto remain
+unchanged because the complete context lives in the existing sealed credential.
+
+## Seeded leaf provisioning and boot ownership
+
+The identity device record in Cozo registers the persistent Btrfs device. It
+is not a request to create a second human Cozo database. Provisioning composes
+a prepared read-only core seed with a newly created blank writable device;
+later starts remount and verify that same sprout. A populated independent
+filesystem must never be passed to device-add, nor may an identity device be
+added to the shared host/Incus pool. The original image remains retained during
+any repair of an existing identity.
+
+The sprout has distinct direct Btrfs subvolumes for its Incus pool and private
+persistent data. The Cozo device record names the actual sprout mount root;
+the container's `persist` disk names the sibling `persist` subvolume. An
+unprivileged container uses an idmapped disk (`shift=true`) to write there;
+changing the container to privileged or chowning the old data is unnecessary.
+Native verification checks the actual mount boundary, seed digest and flags,
+seed/leaf device ancestry, backing file identities and subvolume ownership.
+Incus pool capacity alone does not establish any of those facts.
+
+`op-identity-storage mount-all` is the root-only boot prerequisite in the
+versioned `incusd` runit definition. It reads descriptors from
+`/etc/op-dbus/identity-storage/<session UUID>.json`, mounts verified leaves,
+and checks the persistent subvolume before Incus starts. A missing directory
+means no seeded boot mounts have been installed. A malformed or unverifiable
+committed descriptor fails the prerequisite. Only the installer's exact
+`.boot-<UUID>.tmp` staging names are ignored after an interrupted atomic write;
+no committed descriptor is silently skipped.
+
+The storage owner installs each descriptor through
+`op_network::seeded_boot::install_verified` while holding the native mount
+guard. The fixed-directory descriptor format is owned by that module; callers
+must not write a parallel JSON representation. Installation is atomic and
+fsynced, accepts an identical existing descriptor, and refuses to overwrite a
+different one. It contains mount configuration, not credentials or authority
+to activate an identity. Cozo revision and journal checks still govern
+activation if a later identity commit fails.
+
+Incus can cache a pool as `Unavailable` if the daemon starts before its source
+is mounted. Native mount verification and a successful pool/volume GET are
+insufficient readiness evidence: the pool must additionally report `Created`.
+The owner refuses activation while unavailable; it does not poll or restart
+the shared daemon. Mount-before-daemon ordering prevents that cold-start race.
+Ship the helper binary and matching runit definition in the same received
+release; never install the hook alone. Source and private fixtures do not prove
+that this boot ordering has been activated on a live host.
+
+The core seed must contain only the pinned image cache and empty Incus volume
+categories, with no existing container, VM, custom volume or snapshot. The
+native owner validates this layout before creating a leaf or its filesystem
+journal and checks it again before device-add. An existing-root repair also
+checks the prepared sprout before importing its pool. This is a one-time
+admission check: a provisioned leaf legitimately contains its identity root,
+so boot and later starts verify provenance without requiring an empty pool.
+The earlier Cozo intent fence can remain after rejected provisioning even
+when no native leaf was created; that outcome requires reconciliation and
+must not be reported as successful provisioning or retried automatically.
+
+An existing identity whose Incus root is missing needs a separately prepared,
+blank destination leaf before `repair_own_root` can run. The shipped root-only
+`op-identity-storage prepare-leaf <session UUID> <plan SHA-256>` mode reads
+exactly `/var/lib/op-dbus/identity-leaf-plans/<session UUID>.json`. The plan
+directory is root-owned mode 0700; the plan is a root-owned mode 0600 regular
+file, opened without following symlinks and checked against the argument's
+SHA-256 before any filesystem effect. Its version-1, unknown-field-rejecting
+fields are `version`, `session_id`, `seed_image_path`, `seed_sha256`,
+`seed_fsid`, `image_fingerprint`, `new_leaf_image_path`, `leaf_size_bytes`,
+and `mount_point`. The paths are absolute and normalized. The seed path must
+name the fixed received-release artifact; the leaf path must be absent, and
+the mount point must be a private empty directory. Native preparation
+exclusively creates the blank leaf, composes it with the pinned clean seed,
+creates the empty sibling `persist` subvolume, and journals the observed
+sprout FSID. The command emits a JSON receipt with the plan digest, observed
+FSID, leaf, persist source, and journal path for the operator's later repair
+plan. It never changes Incus, Cozo, keys or grants, and it does not install a
+boot descriptor. An existing leaf or journal is a reconciliation case, not a
+retry. The authenticated repair owner installs the boot descriptor from its
+held verified mount under the repair journal after admission.
+
+Before authoring the version-3 repair plan, obtain a fresh authenticated
+`inspect_own_root_repair_preflight` response. Copy its revision, native ETag
+and `expected_first_start_idmap_sha256` into that root-owned plan. The digest
+pins the original native last-state ID map without returning its contents.
+Incus can remove generated ID-map metadata during rebuild; the repair owner
+checks this pin before effects and uses it only for a repaired identity's
+first mapping when the normal next-map field is absent. Existing current
+mappings, the instance UUID, image and user configuration remain pinned.
+
+Incus may leave an ordinary mode-0100 directory containing only its mode-0400
+`backup.yaml` after the root subvolume disappears. Rebuild cannot replace that
+stub directly. The repair owner records a quarantine intent in Cozo, verifies
+the exact mounted pool and stub, and preserves the entire directory by an
+exclusive rename within the same pool, outside `containers/`. It records the
+preserved inode and backup digest before requesting rebuild. A real subvolume,
+symlink, unexpected entry or changed inode is refused. The backup is retained;
+this operation never substitutes an ordinary directory for the Btrfs root.
+A crash between the rename and its committed receipt requires reconciliation,
+not an automatic retry.
+
+The image cache is a nested read-only Btrfs subvolume. Preparing or transporting
+the pool's parent snapshot alone omits its contents; transfer both members
+explicitly before sealing the seed image. Stage the verified seed image inside
+the prepared release and transport that release through Btrfs send/receive.
+Boot descriptors pin its absolute received-release path, never the mutable
+`current` symlink. That release remains a storage dependency after a newer
+executable release is selected and must be retained while any leaf uses it.
+
+Release selection rollback before identity provisioning can restore the prior
+catalog and Incus run script together. After a leaf is committed, a compatible
+storage helper and the mount-before-Incus prerequisite must remain installed:
+selecting an older release without them does not undo the storage transaction
+and would break cold boot. Preserve the fixed seed path and boot descriptor
+during any later binary rollback; uncertain storage phases require their own
+reconciliation rather than filesystem selection alone.

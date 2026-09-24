@@ -90,7 +90,7 @@ issuer_default=$(pin issuer_default)
     printf 'production UI asset base must be the dashboard root: %s\n' "$asset_base" >&2
     exit 1
 }
-[ "$door_default" = "https://10.0.0.3:8090" ] || {
+[ "$door_default" = "https://dashboard.ghostbridge.tech:8090" ] || {
     printf 'production UI door default is not the pinned :8090 door: %s\n' "$door_default" >&2
     exit 1
 }

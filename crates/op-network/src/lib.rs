@@ -14,6 +14,7 @@ pub mod btrfs;
 pub mod controller;
 pub mod datapath_safe;
 pub mod dbus_tls;
+pub mod incus_root_subvolume;
 pub mod openflow;
 pub mod openflow_translate;
 pub mod ovs_capabilities;
@@ -24,6 +25,9 @@ pub mod plugin;
 pub mod proxmox;
 pub mod rovs_proxy;
 pub mod rtnetlink;
+pub mod seeded_boot;
+pub mod seeded_prepare;
+pub mod seeded_root;
 pub mod unixctl;
 pub mod wireguard_kernel;
 

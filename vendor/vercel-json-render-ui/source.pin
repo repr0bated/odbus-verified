@@ -1,11 +1,11 @@
 format=opdbus.vercel-json-render-ui-source.v1
 source_repository=/srv/git/3tched.com
-source_head=286f6a11d5d6bdef0d29ae8abef518f1ec91a491
+source_head=a95ab49e07e1221083ba60a3d674204afa73b8bf
 source_worktree=modified
-content_manifest_sha256=78ea54d9a1284591d8a07d1331c805bf27453ef2a69fe3bac92f9d2b836ded29
-source_archive_sha256=6701519e3a38bbc89ee66b3e1e5c371a1fb10ffbdc18fb9ba3e2f8090a8f26da
+content_manifest_sha256=a0ed789403cf56acbd08157f689759570b79d72fed46dc9689906a367f58b554
+source_archive_sha256=3e7e888004a25e9d44e0dc62b0b854a9b644cfccd3b9616e0dad66f4b7f18913
 archive_root=vercel-json-render-ui
 node_engine=>=22.22.2
 asset_base=/
-door_default=https://10.0.0.3:8090
+door_default=https://dashboard.ghostbridge.tech:8090
 issuer_default=http://10.0.0.1:51888

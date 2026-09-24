@@ -1,0 +1,9 @@
+#!/bin/sh
+exec 2>&1
+set -eu
+PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/bin
+export PATH
+while :; do
+    /opt/op-dbus/current/usr/local/sbin/opdbus-certbot-renew || echo 'opdbus-certbot-renew: renewal attempt failed'
+    sleep 43200
+done

@@ -366,10 +366,7 @@ async fn dispatch_owned(
             let output = serde_json::to_value(GetDoorbellOutput {
                 topic: op_plugins::state_plugins::emqx::wake_topic(&owner_key)?,
                 owner_key,
-                listener: format!(
-                    "wss://{}/mqtt",
-                    op_plugins::state_plugins::emqx::EMQX_MQTT_WSS_BIND
-                ),
+                listener: crate::mqtt_doorbell_relay::PUBLIC_LISTENER.to_string(),
                 password_prefixes: vec![
                     op_identity::sealed_id::INLINE_PREFIX.to_string(),
                     crate::wake_doorbell::OIA1_PASSWORD_PREFIX.to_string(),
@@ -1266,7 +1263,10 @@ mod tests {
             format!("opdbus/wake/{owner_key}"),
             "the topic is derived from the owner key"
         );
-        assert_eq!(doorbell["result"]["listener"], "wss://10.0.0.3:8084/mqtt");
+        assert_eq!(
+            doorbell["result"]["listener"],
+            crate::mqtt_doorbell_relay::PUBLIC_LISTENER
+        );
         assert!(doorbell["result"]["knowledge_paths"]
             .as_array()
             .unwrap()

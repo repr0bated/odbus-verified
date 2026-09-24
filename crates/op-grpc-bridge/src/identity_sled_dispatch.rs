@@ -11,6 +11,7 @@ use std::{
     sync::Arc,
 };
 
+use anyhow::Context as _;
 use async_trait::async_trait;
 use base64::Engine as _;
 use op_core::projection_shm::CredentialPublication;
@@ -18,16 +19,28 @@ use op_cozo_store::{
     CozoGraphShuttle, GenesisInputsRecord, IdentityCompareExchange, IdentityIntent,
     IdentityRecoverySnapshot, IdentityRevision, IdentitySledRecord, SessionEventRecord,
 };
+#[cfg(test)]
+use op_plugins::state_plugins::incus_device::Device;
 use op_plugins::state_plugins::{
     identity_sled::{
         ContainerIdentitySled, IdentitySledState, SessionEvent, RECORD_FORMAT, SCHEMA_CONTENT_HASH,
     },
     incus::{IdentitySessionPowerState, IncusInstance, IncusPlugin},
-    incus_device::Device,
 };
 use serde_json::Value as JsonValue;
 
 use crate::mutation_engine::{GenesisStamp, MutationEngine};
+
+#[path = "identity_root_repair.rs"]
+mod root_repair;
+#[path = "identity_seed_provision.rs"]
+mod seed_provision;
+
+struct VerifiedIdentityActor<'a> {
+    actor_id: &'a str,
+    session_id: &'a str,
+    genesis: &'a str,
+}
 
 const MAX_EVENTS_IN_STATE: usize = 256;
 const MAX_HISTORY_LIMIT: usize = 4096;
@@ -106,7 +119,6 @@ impl From<CozoGraphShuttle> for IdentitySledStore {
 
 #[async_trait]
 pub(crate) trait IdentityContainerLifecycle: Send + Sync {
-    async fn create(&self, instance: &IncusInstance) -> anyhow::Result<()>;
     async fn start(&self, session_id: &str) -> anyhow::Result<()>;
     async fn stop(&self, session_id: &str) -> anyhow::Result<()>;
 }
@@ -116,9 +128,6 @@ struct IncusIdentityContainerLifecycle;
 
 #[async_trait]
 impl IdentityContainerLifecycle for IncusIdentityContainerLifecycle {
-    async fn create(&self, instance: &IncusInstance) -> anyhow::Result<()> {
-        IncusPlugin::apply_create(instance).await.map(|_| ())
-    }
     async fn start(&self, session_id: &str) -> anyhow::Result<()> {
         IncusPlugin::set_identity_session_power_state(
             session_id,
@@ -900,6 +909,7 @@ fn host_session_id() -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
+#[cfg(test)]
 fn prepare_parked_instance(
     session_id: &str,
     mut instance: IncusInstance,
@@ -957,15 +967,50 @@ async fn set_session_active_owned(
 ) -> anyhow::Result<ContainerIdentitySled> {
     let lifecycle_lock = store.lifecycle_lock(&session_id).await;
     let _lifecycle_guard = lifecycle_lock.lock_owned().await;
+    // Keep native power effects and their complete Incus readback ordered with
+    // ordinary Incus mutations and the root repair owner.
+    let _observation_guard = engine.lock_host_observation().await;
     let expected = load_revision(&store, &session_id).await?;
     let mut sled =
         revision_sled(&expected)?.ok_or_else(|| anyhow::anyhow!("identity session not found"))?;
     let has_instance = sled.instance.is_some();
-    if active && !sled.active && has_instance {
-        preflight_native_identity_effect().await?;
-        lifecycle.start(&session_id).await?;
+    let mut seeded_root_guard = None;
+    if active && has_instance {
+        let seeded = match root_repair::guard_own_root_start(&store, &expected, &sled).await? {
+            Some(guard) => Some(guard),
+            None => seed_provision::guard_start(&store, &expected, &sled).await?,
+        };
+        match seeded {
+            Some(guard) => {
+                anyhow::ensure!(
+                    load_revision(&store, &session_id).await? == expected,
+                    "identity revision changed before seeded native activation"
+                );
+                if guard.should_start {
+                    lifecycle.start(&session_id).await?;
+                }
+                seeded_root_guard = Some(guard);
+            }
+            None if !sled.active => {
+                preflight_native_identity_effect().await?;
+                lifecycle.start(&session_id).await?;
+            }
+            None => {}
+        }
     }
     if !active {
+        if has_instance
+            && (root_repair::repair_journal_incomplete(&store, &session_id).await?
+                || seed_provision::journal_incomplete(&store, &session_id).await?)
+        {
+            // A pending repair fences Cozo mutations, but stopping the native
+            // target remains available as the safe operator action.
+            preflight_native_identity_effect().await?;
+            lifecycle.stop(&session_id).await?;
+            anyhow::bail!(
+                "native identity stopped; incomplete root repair requires reconciliation"
+            );
+        }
         // Commit inactive power policy before stopping. This does not revoke SID1.
         sled.active = false;
         let pre_stop = commit_sled_update(
@@ -983,7 +1028,21 @@ async fn set_session_active_owned(
             let expected = load_revision(&store, &session_id).await?;
             let mut stopped =
                 revision_sled(&expected)?.ok_or_else(|| anyhow::anyhow!("identity disappeared"))?;
-            if let Some(instance) = stopped.instance.as_mut() {
+            let root_observed = root_repair::observe_owned_power_effect(
+                &engine, &store, &expected, &stopped, "Stopped",
+            )
+            .await
+            .context("native stop completed but authoritative readback requires reconciliation")?;
+            let seeded_observed = if root_observed.is_some() {
+                root_observed
+            } else {
+                seed_provision::observe_power(&engine, &store, &expected, &stopped, "Stopped")
+                    .await
+                    .context("seeded native stop readback requires reconciliation")?
+            };
+            if let Some(observed) = seeded_observed {
+                stopped.instance = Some(observed);
+            } else if let Some(instance) = stopped.instance.as_mut() {
                 instance.status = "Stopped".into();
             }
             return commit_sled_update(
@@ -1000,7 +1059,23 @@ async fn set_session_active_owned(
     }
     sled.active = true;
     sled.last_seen_at = now();
-    if let Some(instance) = sled.instance.as_mut() {
+    if seeded_root_guard.is_some() {
+        let root_observed =
+            root_repair::observe_owned_power_effect(&engine, &store, &expected, &sled, "Running")
+                .await
+                .context(
+                    "native start completed but authoritative readback requires reconciliation",
+                )?;
+        let observed = if let Some(observed) = root_observed {
+            Some(observed)
+        } else {
+            seed_provision::observe_power(&engine, &store, &expected, &sled, "Running")
+                .await
+                .context("seeded native start readback requires reconciliation")?
+        }
+        .context("completed seeded root journal disappeared after start")?;
+        sled.instance = Some(observed);
+    } else if let Some(instance) = sled.instance.as_mut() {
         instance.status = "Running".into();
     }
     commit_sled_update(
@@ -1012,6 +1087,88 @@ async fn set_session_active_owned(
         sled,
     )
     .await
+}
+
+/// Serialize canonical Incus effects on an identity target with its repair
+/// owner. An incomplete journal fences every native effect after a crash;
+/// ordinary exec and snapshot remain available after the completed root and
+/// persist provenance is revalidated and held for the duration of the effect.
+pub(crate) struct IdentityIncusTargetGuard {
+    _lifecycle: tokio::sync::OwnedMutexGuard<()>,
+    store: IdentitySledStore,
+    session_id: String,
+}
+
+pub(crate) async fn guard_identity_incus_target(
+    engine: &MutationEngine,
+    session_id: &str,
+) -> anyhow::Result<IdentityIncusTargetGuard> {
+    let store = engine.identity_sled_store()?.clone();
+    let lifecycle = store.lifecycle_lock(session_id).await.lock_owned().await;
+    Ok(IdentityIncusTargetGuard {
+        _lifecycle: lifecycle,
+        store,
+        session_id: session_id.to_string(),
+    })
+}
+
+impl IdentityIncusTargetGuard {
+    /// Call only after the host observation lock is held. The returned mount
+    /// guard must be kept through the native effect and its SHM readback.
+    pub(crate) async fn verify_under_host_lock(
+        &self,
+        method: &str,
+    ) -> anyhow::Result<Option<root_repair::RootStartGuard>> {
+        let cozo = self.store.cozo.clone();
+        let session = self.session_id.clone();
+        let journal =
+            tokio::task::spawn_blocking(move || cozo.read_root_repair_journal(&session)).await??;
+        let cozo = self.store.cozo.clone();
+        let session = self.session_id.clone();
+        let provision =
+            tokio::task::spawn_blocking(move || cozo.read_seed_provision_journal(&session))
+                .await??;
+        if journal.is_none() {
+            if let Some(provision) = provision {
+                anyhow::ensure!(
+                    provision.phase == "identity-committed",
+                    "Incus target has incomplete seeded provision"
+                );
+                anyhow::ensure!(
+                    matches!(method, "exec_instance" | "snapshot_instance"),
+                    "seeded identity provenance and lifecycle are identity-owned"
+                );
+                let revision = load_revision(&self.store, &self.session_id).await?;
+                let sled = revision_sled(&revision)?.context("seeded identity disappeared")?;
+                return Ok(Some(
+                    seed_provision::guard_start(&self.store, &revision, &sled)
+                        .await?
+                        .context("completed seed provision provenance disappeared")?,
+                ));
+            }
+        }
+        match journal {
+            None => Ok(None),
+            Some(journal)
+                if journal.phase == "identity-committed"
+                    && matches!(method, "exec_instance" | "snapshot_instance") =>
+            {
+                let revision = load_revision(&self.store, &self.session_id).await?;
+                let sled = revision_sled(&revision)?
+                    .ok_or_else(|| anyhow::anyhow!("repaired identity disappeared"))?;
+                Ok(Some(
+                    root_repair::guard_own_root_start(&self.store, &revision, &sled)
+                        .await?
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("completed repair provenance disappeared")
+                        })?,
+                ))
+            }
+            Some(_) => {
+                anyhow::bail!("Incus target is owned by identity root repair; use its owner route")
+            }
+        }
+    }
 }
 
 pub(crate) async fn activate_session(
@@ -1163,6 +1320,9 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
     btrfs_mount_verifier: BtrfsMountVerifier,
 ) -> anyhow::Result<JsonValue> {
     match method {
+        "repair_own_root" => {
+            anyhow::bail!("root repair requires the verified own-session identity route")
+        }
         "refresh_credential" => {
             anyhow::ensure!(
                 args.as_object().is_some_and(|object| object.is_empty()),
@@ -1240,87 +1400,7 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
             Ok(serde_json::json!({"identity": sled}))
         }
         "provision_container" => {
-            anyhow::ensure!(
-                args.get("sealed_id").is_none(),
-                "sealed_id is identity-authored"
-            );
-            anyhow::ensure!(
-                args.get("ttl_seconds").is_none(),
-                "ttl_seconds is not part of the sealed provision_container contract"
-            );
-            let public_key = arg_str(args, "wireguard_pubkey");
-            anyhow::ensure!(!public_key.is_empty(), "wireguard_pubkey is required");
-            let session_id = derive_session_id(args, &public_key)?;
-            let instance = match args.get("instance") {
-                Some(value) => {
-                    let mut value = value.clone();
-                    if let Some(object) = value.as_object_mut() {
-                        object.entry("name").or_insert(serde_json::json!(""));
-                        object.entry("status").or_insert(serde_json::json!(""));
-                        object.entry("type").or_insert(serde_json::json!(""));
-                    }
-                    serde_json::from_value(value)?
-                }
-                None => IncusInstance::default(),
-            };
-            let instance = prepare_parked_instance(&session_id, instance)?;
-            let btrfs_device = args
-                .get("btrfs_device")
-                .cloned()
-                .map(serde_json::from_value)
-                .transpose()?;
-            let expires_at = None;
-            let owned_engine = engine.clone();
-            let owned_store = store.clone();
-            let owned_instance = instance.clone();
-            let owned_lifecycle = lifecycle.clone();
-            let task = tokio::spawn(async move {
-                let lifecycle_lock = owned_store.lifecycle_lock(&session_id).await;
-                let _lifecycle_guard = lifecycle_lock.lock_owned().await;
-                let expected = load_revision(&owned_store, &session_id).await?;
-                anyhow::ensure!(expected.record.is_none(), "identity is already provisioned");
-                let stamp = owned_engine
-                    .mint_identity_genesis_stamp(&session_id, &public_key, 0)
-                    .await?;
-                preflight_native_identity_effect().await?;
-                owned_lifecycle.create(&owned_instance).await?;
-                let timestamp = now();
-                let mut sled = ContainerIdentitySled {
-                    session_id: session_id.clone(),
-                    wireguard_pubkey: public_key,
-                    interface: String::new(),
-                    peer_ip: None,
-                    mutation_index: 0,
-                    genesis: None,
-                    trace_id: String::new(),
-                    schema_version: RECORD_FORMAT,
-                    vector_id: String::new(),
-                    sealed_id: None,
-                    principal_kind: None,
-                    btrfs_device,
-                    instance: Some(owned_instance),
-                    session_started_at: timestamp,
-                    last_seen_at: timestamp,
-                    active: false,
-                    expires_at,
-                    arrival_timestamp: 0,
-                    chain_head_at_arrival: String::new(),
-                    catalog_hash_at_arrival: String::new(),
-                    head_timestamp_at_arrival: 0,
-                };
-                apply_genesis_stamp(&mut sled, &stamp)?;
-                commit_sled_update(
-                    &owned_engine,
-                    &owned_store,
-                    operation_id,
-                    expected,
-                    sled.clone(),
-                    sled,
-                )
-                .await
-            });
-            let sled = task.await??;
-            Ok(serde_json::json!({"identity": sled}))
+            anyhow::bail!("provision_container requires the verified principal owner route")
         }
         "attach_btrfs_device" => {
             let session_id = arg_str(args, "session_id");
@@ -1549,7 +1629,8 @@ async fn refresh_credential_owned(
             .any(|capability| capability == "identity_sled.credential.refresh"),
         "credential refresh requires a current exact-principal grant"
     );
-    if old_claims.transport_scope == "dbus,grpc,mcp,mqtt" {
+    let sealed_id = engine.refresh_identity_sealed_id(&sled)?;
+    if old == sealed_id {
         let published = stored_session(engine, session_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("identity credential publication is absent"))?;
@@ -1561,7 +1642,6 @@ async fn refresh_credential_owned(
             serde_json::json!({"refreshed": false, "session_id": sled.session_id, "transport_scope": old_claims.transport_scope}),
         );
     }
-    let sealed_id = engine.refresh_identity_sealed_id(&sled)?;
     sled.sealed_id = Some(sealed_id);
     sled.mutation_index = sled
         .mutation_index
@@ -1619,6 +1699,104 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
     session_id: Option<&str>,
     session_genesis: Option<&str>,
 ) -> anyhow::Result<JsonValue> {
+    if method == "inspect_own_root_repair_preflight" {
+        anyhow::ensure!(
+            args.as_object().is_some_and(|object| object.is_empty()),
+            "own root repair preflight accepts no arguments"
+        );
+        let own_session = session_id
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                anyhow::anyhow!("root repair preflight requires a verified SID1 session")
+            })?;
+        let own_genesis = session_genesis
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                anyhow::anyhow!("root repair preflight requires verified session genesis")
+            })?;
+        return root_repair::inspect_own_root_repair_preflight(
+            engine,
+            engine.identity_sled_store()?,
+            actor_id,
+            own_session,
+            own_genesis,
+        )
+        .await;
+    }
+    if method == "provision_container" {
+        let caller_session = session_id
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| anyhow::anyhow!("seed provision requires a verified actor session"))?;
+        let caller_genesis = session_genesis
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| anyhow::anyhow!("seed provision requires verified actor genesis"))?;
+        let input: seed_provision::ProvisionInput = serde_json::from_value(args.clone())?;
+        let seal = seed_provision::capture_provision_seal()?;
+        let owned_engine = engine.clone();
+        let owned_store = engine.identity_sled_store()?.clone();
+        let actor_id = actor_id.to_string();
+        let caller_session = caller_session.to_string();
+        let caller_genesis = caller_genesis.to_string();
+        let operation_id = opid("seed-provision");
+        let owned_operation_id = operation_id.clone();
+        return tokio::spawn(async move {
+            seed_provision::provision_container(
+                &owned_engine,
+                &owned_store,
+                VerifiedIdentityActor {
+                    actor_id: &actor_id,
+                    session_id: &caller_session,
+                    genesis: &caller_genesis,
+                },
+                input,
+                seal,
+                &owned_operation_id,
+            )
+            .await
+        })
+        .await
+        .map_err(|error| {
+            anyhow::anyhow!(
+                "seed provision {} owner failed; reconciliation may be required: {}",
+                operation_id,
+                error
+            )
+        })?;
+    }
+    if method == "repair_own_root" {
+        let session_id = session_id
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| anyhow::anyhow!("root repair requires a verified SID1 session"))?;
+        let session_genesis = session_genesis
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| anyhow::anyhow!("root repair requires a verified session genesis"))?;
+        let input: root_repair::RepairOwnRootInput = serde_json::from_value(args.clone())?;
+        let original_seal = root_repair::capture_repair_seal()?;
+        let owned_engine = engine.clone();
+        let owned_store = engine.identity_sled_store()?.clone();
+        let actor_id = actor_id.to_string();
+        let session_id = session_id.to_string();
+        let session_genesis = session_genesis.to_string();
+        let operation_id = opid("root-repair");
+        let owned_operation_id = operation_id.clone();
+        return tokio::spawn(async move {
+            root_repair::repair_own_root(
+                &owned_engine,
+                &owned_store,
+                VerifiedIdentityActor {
+                    actor_id: &actor_id,
+                    session_id: &session_id,
+                    genesis: &session_genesis,
+                },
+                input,
+                original_seal,
+                owned_operation_id,
+            )
+            .await
+        })
+        .await
+        .map_err(|error| root_repair::owned_task_join_error(&operation_id, error))?;
+    }
     if method == "refresh_credential" {
         anyhow::ensure!(
             args.as_object().is_some_and(|object| object.is_empty()),
@@ -1750,9 +1928,6 @@ pub(crate) mod tests {
 
     #[async_trait]
     impl IdentityContainerLifecycle for BlockingLifecycle {
-        async fn create(&self, _instance: &IncusInstance) -> anyhow::Result<()> {
-            Ok(())
-        }
         async fn start(&self, session_id: &str) -> anyhow::Result<()> {
             self.calls
                 .lock()
@@ -1773,13 +1948,6 @@ pub(crate) mod tests {
 
     #[async_trait]
     impl IdentityContainerLifecycle for RecordingLifecycle {
-        async fn create(&self, instance: &IncusInstance) -> anyhow::Result<()> {
-            self.calls
-                .lock()
-                .unwrap()
-                .push(format!("create:{}", instance.name));
-            Ok(())
-        }
         async fn start(&self, session_id: &str) -> anyhow::Result<()> {
             self.calls
                 .lock()
@@ -2223,6 +2391,92 @@ pub(crate) mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn nextdns_refresh_uses_owned_assignment_and_invalidates_old_bytes() {
+        let _refresh_lock = refresh_test_lock().lock().await;
+        let (engine, _shm, identity, _grants_dir, previous, _registry) =
+            refresh_test_fixture_with_claims(0x91, Some("dbus,grpc,mcp,mqtt"), 0).await;
+        let assignment = serde_json::json!([{
+            "wireguard_pubkey": identity.wireguard_pubkey,
+            "profile_id": "689ec7", "device_name": "Ghostbridge-Incus"
+        }]);
+        engine
+            .configure_nextdns_bindings(
+                crate::identity_nextdns::NextDnsBindings::parse(&assignment.to_string()).unwrap(),
+            )
+            .unwrap();
+        let principal = op_identity::session::derive_principal_id(&identity.wireguard_pubkey);
+        let old_wire = inline_sid1_wire(identity.sealed_id.as_deref().unwrap());
+        let mut expected = op_identity::sealed_id::SealedId::open(&old_wire).unwrap();
+        assert!(expected.nextdns.is_none());
+        authenticate_sid1_wire(&engine, &old_wire, "grpc")
+            .await
+            .unwrap();
+        let result = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            &principal,
+            Some(&identity.session_id),
+            identity.genesis.as_deref(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(result["refreshed"], true);
+        let current = stored_session(&engine, &identity.session_id)
+            .await
+            .unwrap()
+            .unwrap();
+        let wire = inline_sid1_wire(current.sealed_id.as_deref().unwrap());
+        let claims = authenticate_sid1_wire(&engine, &wire, "grpc")
+            .await
+            .unwrap();
+        expected.nextdns = Some(op_identity::sealed_id::NextDnsContext {
+            profile_id: "689ec7".into(),
+            device_name: "Ghostbridge-Incus".into(),
+        });
+        assert_eq!(claims, expected);
+        assert!(authenticate_sid1_wire(&engine, &old_wire, "grpc")
+            .await
+            .is_err());
+        let mut forged = claims.clone();
+        forged.nextdns.as_mut().unwrap().profile_id = "abcdef".into();
+        assert!(
+            authenticate_sid1_wire(&engine, &forged.seal().unwrap(), "grpc")
+                .await
+                .is_err()
+        );
+        let second = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "refresh_credential",
+            &serde_json::json!({}),
+            &principal,
+            Some(&identity.session_id),
+            identity.genesis.as_deref(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(second["refreshed"], false);
+        // The same configured key receives its association at initial mint;
+        // unrelated keys never inherit it.
+        for (key, assigned) in [
+            (identity.wireguard_pubkey.as_str(), true),
+            (pk(0x92).as_str(), false),
+        ] {
+            let stamp = engine
+                .mint_identity_genesis_stamp(&op_identity::session::derive_session_id(key), key, 0)
+                .await
+                .unwrap();
+            let claims =
+                op_identity::sealed_id::SealedId::from_inline_ref(&stamp.sealed_id).unwrap();
+            assert_eq!(claims.nextdns.is_some(), assigned);
+        }
+        assert!(engine
+            .configure_nextdns_bindings(crate::identity_nextdns::NextDnsBindings::default())
+            .is_err());
+        restore_grants_path(previous);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn refresh_is_idempotent_and_rejects_unverified_inputs() {
         let _refresh_lock = refresh_test_lock().lock().await;
         let (engine, _shm, identity, _grants_dir, previous, _registry) =
@@ -2447,6 +2701,24 @@ pub(crate) mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn queued_repair_rechecks_expired_authored_sid1() {
+        let (engine, _shm) = sled_engine();
+        let expired = write_identity_term(&engine, &pk(0x74), now() - 1)
+            .await
+            .unwrap();
+        let actor = op_identity::session::derive_principal_id(&expired.wireguard_pubkey);
+        let error = root_repair::verify_current_repair_sid1(
+            &engine,
+            &expired,
+            &actor,
+            expired.genesis.as_deref().unwrap(),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.to_string().contains("expired"));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn owned_lifecycle_preserves_anchor_and_starts_and_stops_once() {
         let (engine, _shm) = sled_engine();
         let identity = write_identity(&engine, &pk(0x61)).await.unwrap();
@@ -2571,86 +2843,29 @@ pub(crate) mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn provision_container_dispatches_lifecycle_and_commits_anchor_to_cozo_and_shm() {
+    async fn unverified_provision_and_legacy_overrides_are_rejected() {
         let (engine, _shm) = sled_engine();
-        let public_key = pk(0x7a);
-        let sibling = write_identity(&engine, &pk(0x79)).await.unwrap();
-        assert_sibling_unchanged(&engine, &sibling).await;
-        let session_id = op_identity::session::derive_session_id(&public_key);
-        let lifecycle = Arc::new(RecordingLifecycle::default());
-        let output = dispatch_with_fixtures(
+        let key = pk(0x7a);
+        for args in [
+            serde_json::json!({"wireguard_pubkey": key}),
+            serde_json::json!({"wireguard_pubkey": key, "plan_sha256": "a".repeat(64),
+                "instance": {"name":"caller-selected"}}),
+            serde_json::json!({"wireguard_pubkey": key, "plan_sha256": "a".repeat(64),
+                "btrfs_device": {"device_path":"/tmp/caller.img"}}),
+        ] {
+            assert!(
+                dispatch_identity_sled_method(&engine, "provision_container", &args)
+                    .await
+                    .is_err()
+            );
+        }
+        assert!(dispatch_identity_sled_method(
             &engine,
-            lifecycle.clone(),
-            no_btrfs_mount_verifier(),
-            "provision_container",
-            serde_json::json!({
-                "wireguard_pubkey": public_key,
-                "btrfs_device": {
-                    "device_path": "/tmp/identity-fstorage.img",
-                    "mount_point": "/tmp/identity-fstorage",
-                    "btrfs_uuid": "00000000-0000-0000-0000-000000000001",
-                    "cozo_id": "cozo-device-7",
-                    "attached": false
-                },
-                "instance": {
-                    "name": "caller-selected",
-                    "status": "Running",
-                    "type": "virtual-machine",
-                    "profiles": ["identity-custom"],
-                    "config": {"boot.autostart": "true", "limits.cpu": "2"}
-                }
-            }),
+            "inspect_own_root_repair_preflight",
+            &serde_json::json!({}),
         )
         .await
-        .unwrap();
-        let identity: ContainerIdentitySled =
-            serde_json::from_value(output["identity"].clone()).expect("typed provision output");
-        assert_eq!(identity.session_id, session_id);
-        assert_eq!(identity.wireguard_pubkey, public_key);
-        assert!(identity.is_anchored());
-        assert!(!identity.sealed_id.as_deref().unwrap().is_empty());
-        assert!(!identity.active);
-        let instance = identity.instance.as_ref().unwrap();
-        assert_eq!(instance.name, session_id);
-        assert_eq!(instance.instance_type, "container");
-        assert_eq!(instance.status, "Stopped");
-        assert_eq!(instance.profiles, ["identity-custom"]);
-        assert_eq!(instance.config.as_ref().unwrap()["boot.autostart"], "false");
-        assert_eq!(instance.config.as_ref().unwrap()["limits.cpu"], "2");
-        assert_eq!(
-            identity.btrfs_device.as_ref().unwrap().cozo_id,
-            "cozo-device-7"
-        );
-        assert!(!identity.btrfs_device.as_ref().unwrap().attached);
-        assert_eq!(
-            *lifecycle.calls.lock().unwrap(),
-            vec![format!("create:{session_id}")]
-        );
-
-        let store = engine.identity_sled_store().unwrap();
-        let durable = load_revision(store, &session_id).await.unwrap();
-        let durable_identity = revision_sled(&durable).unwrap().unwrap();
-        assert_eq!(durable_identity.sealed_id, identity.sealed_id);
-        assert_eq!(durable_identity.genesis, identity.genesis);
-        assert_eq!(
-            serde_json::to_value(&durable_identity.instance).unwrap(),
-            serde_json::to_value(&identity.instance).unwrap()
-        );
-        assert_eq!(durable_identity.btrfs_device, identity.btrfs_device);
-
-        let private = strict_private_state().unwrap();
-        let shm_identity = private
-            .sleds
-            .into_iter()
-            .find(|sled| sled.session_id == session_id)
-            .expect("provisioned identity in private SHM");
-        assert_eq!(shm_identity.sealed_id, identity.sealed_id);
-        assert_eq!(shm_identity.genesis, identity.genesis);
-        assert_eq!(
-            serde_json::to_value(&shm_identity.instance).unwrap(),
-            serde_json::to_value(&identity.instance).unwrap()
-        );
-        assert_sibling_unchanged(&engine, &sibling).await;
+        .is_err());
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -2660,11 +2875,12 @@ pub(crate) mod tests {
         let sibling = write_identity(&engine, &pk(0x7d)).await.unwrap();
         assert_sibling_unchanged(&engine, &sibling).await;
         let session_id = op_identity::session::derive_session_id(&public_key);
+        let anchored = write_identity(&engine, &public_key).await.unwrap();
         let provisioned = dispatch_with_fixtures(
             &engine,
             Arc::new(RecordingLifecycle::default()),
             no_btrfs_mount_verifier(),
-            "provision_container",
+            "write_identity",
             serde_json::json!({
                 "wireguard_pubkey": public_key,
                 "btrfs_device": {
@@ -2680,6 +2896,7 @@ pub(crate) mod tests {
         .unwrap();
         let before: ContainerIdentitySled =
             serde_json::from_value(provisioned["identity"].clone()).unwrap();
+        assert_eq!(before.genesis, anchored.genesis);
         let calls = Arc::new(Mutex::new(Vec::<(String, String, String)>::new()));
         let observed_calls = calls.clone();
         let verifier: BtrfsMountVerifier = Arc::new(move |device, mount, uuid| {
@@ -2914,4 +3131,6 @@ pub(crate) mod tests {
             .unwrap()
             .is_none());
     }
+
+    include!("identity_sled_private_fixture_tests.rs");
 }

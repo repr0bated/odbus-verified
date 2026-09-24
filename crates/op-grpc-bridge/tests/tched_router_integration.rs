@@ -72,8 +72,15 @@ async fn start_runtime_fixture() -> RuntimeFixture {
         };
         Json(serde_json::json!({"value":value}))
     }
-    async fn models() -> Json<serde_json::Value> {
-        Json(serde_json::json!({"models":["ollama-model"],"live":true}))
+    async fn models(
+        Query(query): Query<std::collections::HashMap<String, String>>,
+    ) -> Json<serde_json::Value> {
+        let models = if query.get("model_provider").map(String::as_str) == Some("ollama.default") {
+            vec!["ollama-model"]
+        } else {
+            Vec::new()
+        };
+        Json(serde_json::json!({"models":models,"live":true}))
     }
 
     let app = Router::new()

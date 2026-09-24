@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tokio::fs as async_fs;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use anyhow::Result;
@@ -148,13 +148,14 @@ impl EncryptedKeyStorage {
             self.config.subvolume_name
         );
 
-        // Check if subvolume already exists
+        // A directory or unencrypted subvolume cannot be treated as encrypted
+        // merely because it exists. There is no reliable native-encryption
+        // attestation for this legacy backend on reopen.
         if self.storage_path.exists() {
-            debug!(
-                "Encrypted subvolume already exists: {:?}",
-                self.storage_path
+            anyhow::bail!(
+                "Cannot verify native encryption of existing key storage {}; use a verified LUKS mapper",
+                self.storage_path.display()
             );
-            return Ok(());
         }
 
         // Create encrypted subvolume using btrfs command
@@ -170,22 +171,12 @@ impl EncryptedKeyStorage {
             .output()
             .map_err(|e| anyhow::anyhow!("Failed to execute btrfs command: {}", e))?;
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-
-            // Fallback to regular subvolume if encryption not supported
-            if stderr.contains("encryption not supported") || stderr.contains("invalid option") {
-                warn!("Native Btrfs encryption not supported, creating regular subvolume");
-                self.create_regular_subvolume().await?;
-            } else {
-                return Err(anyhow::anyhow!(
-                    "Failed to create encrypted subvolume: {}",
-                    stderr
-                ));
-            }
-        } else {
-            info!("Created encrypted Btrfs subvolume: {:?}", self.storage_path);
-        }
+        anyhow::ensure!(
+            output.status.success(),
+            "Native Btrfs encryption is unavailable; refusing plaintext key storage: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+        info!("Created encrypted Btrfs subvolume: {:?}", self.storage_path);
 
         // Set restrictive permissions
         self.set_secure_permissions().await?;
@@ -201,61 +192,93 @@ impl EncryptedKeyStorage {
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("LUKS device name required"))?;
 
+        anyhow::ensure!(
+            !device_name.is_empty()
+                && device_name.len() <= 128
+                && !matches!(device_name.as_str(), "." | "..")
+                && device_name
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.')),
+            "LUKS mapper name must be one safe path component"
+        );
+
         info!("Setting up LUKS encryption for device: {}", device_name);
 
         // Check if LUKS device already exists
         let luks_path = format!("/dev/mapper/{}", device_name);
-        if Path::new(&luks_path).exists() {
-            debug!("LUKS device already exists: {}", luks_path);
+        anyhow::ensure!(
+            Path::new(&luks_path).exists(),
+            "LUKS mapper {} is absent; provision and open it before key storage starts",
+            luks_path
+        );
+        debug!("LUKS device exists: {}", luks_path);
 
-            // Mount if not already mounted
-            if !self.storage_path.exists() {
-                self.mount_luks_device(&luks_path).await?;
-            }
-            return Ok(());
+        if !self.storage_path.exists() {
+            self.mount_luks_device(&luks_path).await?;
         }
-
-        // For now, create a loop device with a file
-        // In production, this would use a dedicated partition
-        let container_path = self.config.base_path.join("wireguard_keys.img");
-
-        if !container_path.exists() {
-            info!("Creating encrypted container file: {:?}", container_path);
-
-            // Create 100MB container file
-            let output = Command::new("dd")
-                .args([
-                    "if=/dev/zero",
-                    &format!("of={}", container_path.display()),
-                    "bs=1M",
-                    "count=100",
-                ])
-                .output()
-                .map_err(|e| anyhow::anyhow!(format!("Failed to create container: {}", e)))?;
-
-            if !output.status.success() {
-                return Err(anyhow::anyhow!(
-                    "Failed to create container file: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                ));
-            }
-        }
-
-        // Setup LUKS on the container file
-        // Note: In production, this would prompt for passphrase or use key file
-        warn!("LUKS setup requires manual intervention - using test passphrase");
-
-        // Create regular subvolume for now
-        self.create_regular_subvolume().await?;
-
+        self.verify_luks_mount(device_name, &luks_path).await?;
         Ok(())
     }
 
-    /// Keep key storage in an ordinary service-owned directory.
-    async fn create_regular_subvolume(&self) -> Result<()> {
-        async_fs::create_dir_all(&self.storage_path).await?;
-        self.set_secure_permissions().await?;
+    /// Require the exact mountpoint to use the configured mapper. Comparing
+    /// block-device identity accepts /dev/mapper aliases and /dev/dm-N alike.
+    async fn verify_luks_mount(&self, mapper_name: &str, mapper: &str) -> Result<()> {
+        use std::os::unix::fs::{FileTypeExt, MetadataExt};
+
+        let directory = async_fs::symlink_metadata(&self.storage_path).await?;
+        anyhow::ensure!(
+            directory.is_dir() && !directory.file_type().is_symlink(),
+            "LUKS storage path is not a real directory"
+        );
+        let mapper_device = std::fs::metadata(mapper)?;
+        anyhow::ensure!(
+            mapper_device.file_type().is_block_device(),
+            "LUKS mapper is not a block device"
+        );
+
+        // A mapper name or matching block device alone is not proof of
+        // encryption: dm-linear and plain dm-crypt devices also live here.
+        let crypt = Command::new("cryptsetup")
+            .arg("status")
+            .arg(mapper_name)
+            .output()?;
+        anyhow::ensure!(
+            crypt.status.success() && Self::status_is_luks(&crypt.stdout),
+            "Configured mapper {} is not an active verified LUKS device: {}",
+            mapper,
+            String::from_utf8_lossy(&crypt.stderr).trim()
+        );
+
+        let output = Command::new("findmnt")
+            .args(["-n", "-e", "-v", "-M"])
+            .arg(&self.storage_path)
+            .args(["-o", "SOURCE"])
+            .output()?;
+        anyhow::ensure!(
+            output.status.success(),
+            "LUKS storage path {} is not a mountpoint: {}",
+            self.storage_path.display(),
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+        let source = String::from_utf8(output.stdout)?;
+        let source_device = std::fs::metadata(source.trim())?;
+        anyhow::ensure!(
+            source_device.file_type().is_block_device()
+                && source_device.rdev() == mapper_device.rdev(),
+            "LUKS storage mount is not backed by configured mapper {}",
+            mapper
+        );
         Ok(())
+    }
+
+    fn status_is_luks(status: &[u8]) -> bool {
+        let Ok(status) = std::str::from_utf8(status) else {
+            return false;
+        };
+        status.lines().any(|line| {
+            let value = line.trim().strip_prefix("type:").map(str::trim);
+            matches!(value, Some("LUKS1" | "LUKS2"))
+        })
     }
 
     /// Mount LUKS device
@@ -580,5 +603,70 @@ impl Drop for EncryptedKeyStorage {
         if let Some(mut master_key) = self.master_key.take() {
             master_key.zeroize();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_luks_cryptsetup_status_is_accepted() {
+        assert!(EncryptedKeyStorage::status_is_luks(
+            b"opdbus is active\n  type: LUKS2\n  cipher: aes-xts-plain64\n"
+        ));
+        assert!(EncryptedKeyStorage::status_is_luks(b"type: LUKS1\n"));
+        assert!(!EncryptedKeyStorage::status_is_luks(b"type: PLAIN\n"));
+        assert!(!EncryptedKeyStorage::status_is_luks(b"type: LUKS2x\n"));
+    }
+
+    #[tokio::test]
+    async fn absent_luks_mapper_never_creates_plaintext_container_or_key() {
+        let unique = format!(
+            "opdbus-absent-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let base = std::env::temp_dir().join(&unique);
+        let config = EncryptedStorageConfig {
+            base_path: base.clone(),
+            subvolume_name: "wireguard-keys".to_string(),
+            use_native_encryption: false,
+            luks_device_name: Some(unique),
+            ..EncryptedStorageConfig::default()
+        };
+        let error = EncryptedKeyStorage::new(config).await.err().unwrap();
+        assert!(error.to_string().contains("is absent"));
+        assert!(!base.join("wireguard_keys.img").exists());
+        assert!(!base.join("wireguard-keys/master.key").exists());
+        std::fs::remove_dir_all(base).unwrap();
+    }
+
+    #[tokio::test]
+    async fn existing_plain_directory_cannot_claim_native_encryption() {
+        let unique = format!(
+            "opdbus-native-unverified-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let base = std::env::temp_dir().join(unique);
+        let storage = base.join("wireguard-keys");
+        std::fs::create_dir_all(&storage).unwrap();
+        let config = EncryptedStorageConfig {
+            base_path: base.clone(),
+            ..EncryptedStorageConfig::default()
+        };
+        let error = EncryptedKeyStorage::new(config).await.err().unwrap();
+        assert!(error
+            .to_string()
+            .contains("Cannot verify native encryption"));
+        assert!(!storage.join("master.key").exists());
+        std::fs::remove_dir_all(base).unwrap();
     }
 }

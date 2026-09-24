@@ -1,0 +1,157 @@
+#!/bin/sh
+set -eu
+umask 077
+
+DOMAIN=dashboard.ghostbridge.tech
+EXPECTED_LINEAGE=/etc/op-dbus/acme/live/dashboard.ghostbridge.tech
+BASE=/etc/op-dbus/tls/dashboard.ghostbridge.tech
+TRUST_STORE=/etc/ssl/certs
+BRIDGE_SERVICE=/etc/runit/sv/op-grpc-bridge
+
+fail() {
+    echo "opdbus-certbot-deploy: $*" >&2
+    exit 1
+}
+
+case $# in
+    0)
+        LINEAGE=${RENEWED_LINEAGE:-}
+        DOMAINS=${RENEWED_DOMAINS:-}
+        [ "$LINEAGE" = "$EXPECTED_LINEAGE" ] || fail 'unexpected certificate lineage'
+        [ "$DOMAINS" = "$DOMAIN" ] || fail 'unexpected renewed domain set'
+        DO_RESTART=yes
+        ;;
+    1)
+        [ "$1" = --install-only ] || fail 'usage: opdbus-certbot-deploy [--install-only]'
+        LINEAGE=$EXPECTED_LINEAGE
+        DO_RESTART=no
+        ;;
+    *)
+        fail 'usage: opdbus-certbot-deploy [--install-only]'
+        ;;
+esac
+
+[ "$(id -u)" -eq 0 ] || fail 'must run as root'
+[ -d "$LINEAGE" ] || fail 'lineage directory is missing'
+[ -r "$LINEAGE/cert.pem" ] || fail 'leaf certificate is missing'
+[ -r "$LINEAGE/chain.pem" ] || fail 'certificate chain is missing'
+[ -r "$LINEAGE/fullchain.pem" ] || fail 'full chain is missing'
+[ -r "$LINEAGE/privkey.pem" ] || fail 'private key is missing'
+
+openssl x509 -in "$LINEAGE/cert.pem" -noout -checkhost "$DOMAIN" >/dev/null 2>&1 \
+    || fail 'certificate hostname does not match'
+openssl x509 -in "$LINEAGE/cert.pem" -noout -checkend 86400 >/dev/null 2>&1 \
+    || fail 'certificate expires within 24 hours'
+openssl verify -verify_hostname "$DOMAIN" -CApath "$TRUST_STORE" \
+    -untrusted "$LINEAGE/chain.pem" "$LINEAGE/cert.pem" >/dev/null 2>&1 \
+    || fail 'certificate chain or hostname validation failed'
+
+leaf_fingerprint=$(openssl x509 -in "$LINEAGE/cert.pem" -noout -fingerprint -sha256 \
+    | sed 's/^[^=]*=//') || fail 'could not fingerprint leaf certificate'
+bundle_fingerprint=$(openssl x509 -in "$LINEAGE/fullchain.pem" -noout -fingerprint -sha256 \
+    | sed 's/^[^=]*=//') || fail 'could not fingerprint full chain'
+[ -n "$leaf_fingerprint" ] && [ "$leaf_fingerprint" = "$bundle_fingerprint" ] \
+    || fail 'full chain does not start with the expected leaf certificate'
+
+cert_pubkey=$(openssl x509 -in "$LINEAGE/cert.pem" -pubkey -noout \
+    | openssl pkey -pubin -outform DER 2>/dev/null \
+    | sha256sum | awk '{print $1}') || fail 'could not read certificate public key'
+key_pubkey=$(openssl pkey -in "$LINEAGE/privkey.pem" -pubout -outform DER 2>/dev/null \
+    | sha256sum | awk '{print $1}') || fail 'could not read private key public part'
+[ -n "$cert_pubkey" ] && [ "$cert_pubkey" = "$key_pubkey" ] \
+    || fail 'certificate and private key do not match'
+
+mkdir -p "$BASE/versions"
+chmod 0700 "$BASE" "$BASE/versions"
+current=$BASE/current
+previous=
+if [ -L "$current" ]; then
+    previous=$(readlink "$current") || fail 'could not read current certificate link'
+elif [ -e "$current" ]; then
+    fail 'current certificate path exists and is not a symlink'
+fi
+if [ -L "$current" ] \
+    && cmp -s "$current/fullchain.pem" "$LINEAGE/fullchain.pem" \
+    && cmp -s "$current/privkey.pem" "$LINEAGE/privkey.pem"; then
+    echo 'opdbus-certbot-deploy: certificate pair is already installed; no restart needed'
+    exit 0
+fi
+
+stamp=$(date -u +%Y%m%dT%H%M%SZ)-$$
+newdir=$BASE/versions/$stamp
+stage=$BASE/versions/.pending-$$
+mkdir -m 0700 "$stage" || fail 'could not create certificate staging directory'
+cleanup() {
+    rm -rf "$stage"
+}
+trap cleanup EXIT HUP INT TERM
+install -m 0644 "$LINEAGE/fullchain.pem" "$stage/fullchain.pem"
+install -m 0600 "$LINEAGE/privkey.pem" "$stage/privkey.pem"
+cmp -s "$LINEAGE/fullchain.pem" "$stage/fullchain.pem" || fail 'full chain copy failed'
+cmp -s "$LINEAGE/privkey.pem" "$stage/privkey.pem" || fail 'private key copy failed'
+chmod 0700 "$stage"
+mv "$stage" "$newdir" || fail 'could not publish certificate version'
+
+switch_to() {
+    target=$1
+    next=$BASE/.current-$$
+    rm -f "$next"
+    ln -s "$target" "$next"
+    mv -Tf "$next" "$current"
+}
+
+switch_to "versions/$stamp" || fail 'could not activate new certificate version'
+if [ "$DO_RESTART" = no ]; then
+    echo "opdbus-certbot-deploy: installed version $stamp; bridge restart skipped"
+    exit 0
+fi
+
+rollback() {
+    echo 'opdbus-certbot-deploy: readiness failed; restoring previous certificate link' >&2
+    if [ -n "$previous" ]; then
+        switch_to "$previous" || echo 'opdbus-certbot-deploy: could not restore old certificate link' >&2
+    else
+        rm -f "$current"
+    fi
+    sv -w 30 restart "$BRIDGE_SERVICE" >/dev/null 2>&1 || true
+    exit 1
+}
+
+wait_for_served_certificate() {
+    expected_fingerprint=$1
+    timeout 30 sh -c '
+        service=$1
+        domain=$2
+        base=$3
+        trust_store=$4
+        expected=$5
+        attempt=0
+        while [ "$attempt" -lt 30 ]; do
+            if sv check "$service" >/dev/null 2>&1; then
+                capture=$base/.served-$$
+                if timeout 2 openssl s_client -connect 10.0.0.2:8090 \
+                    -servername "$domain" -verify_return_error \
+                    -verify_hostname "$domain" -CApath "$trust_store" \
+                    -showcerts </dev/null >"$capture" 2>&1; then
+                    served=$(openssl x509 -in "$capture" -noout -fingerprint -sha256 \
+                        2>/dev/null | sed "s/^[^=]*=//") || served=
+                    rm -f "$capture"
+                    [ -n "$served" ] && [ "$served" = "$expected" ] && exit 0
+                else
+                    rm -f "$capture"
+                fi
+            fi
+            attempt=$((attempt + 1))
+            sleep 1
+        done
+        exit 1
+    ' sh "$BRIDGE_SERVICE" "$DOMAIN" "$BASE" "$TRUST_STORE" "$expected_fingerprint"
+}
+
+sv -w 30 restart "$BRIDGE_SERVICE" >/dev/null 2>&1 || rollback
+if wait_for_served_certificate "$leaf_fingerprint"; then
+    trap - EXIT HUP INT TERM
+    echo "opdbus-certbot-deploy: installed version $stamp; bridge serves the trusted certificate"
+    exit 0
+fi
+rollback

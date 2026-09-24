@@ -69,3 +69,7 @@ path = "src/bin/op-of-controller.rs"
 [[bin]]
 name = "op-ovsbr0-setup"
 path = "src/bin/op-ovsbr0-setup.rs"
+
+[[bin]]
+name = "op-identity-storage"
+path = "src/bin/op-identity-storage.rs"

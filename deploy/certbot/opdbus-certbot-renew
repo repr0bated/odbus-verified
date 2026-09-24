@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+umask 077
+export PYTHONDONTWRITEBYTECODE=1
+
+RELEASE=/opt/op-dbus/current
+RUNTIME=$RELEASE/opt/opdbus/certbot
+PYTHON=$RUNTIME/bin/python
+CERTBOT=$RUNTIME/bin/certbot
+CONFIG_DIR=/etc/op-dbus/acme
+WORK_DIR=/var/lib/op-dbus/acme
+LOG_DIR=/var/log/op-dbus/acme
+LOCK_DIR=/run/lock
+DEPLOY_HOOK=$RELEASE/usr/local/libexec/opdbus-certbot-deploy
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo 'opdbus-certbot-renew must run as root' >&2
+    exit 1
+fi
+if [ ! -x "$PYTHON" ] || [ ! -f "$CERTBOT" ]; then
+    echo 'Certbot runtime is missing from the selected release' >&2
+    exit 1
+fi
+if [ ! -r /etc/op-dbus/secrets/cloudflare-dns.ini ]; then
+    echo 'Cloudflare DNS credential file is missing or unreadable' >&2
+    exit 1
+fi
+
+exec 9>"$LOCK_DIR/opdbus-certbot-renew.lock"
+if ! flock -n 9; then
+    exit 0
+fi
+
+"$PYTHON" "$CERTBOT" renew \
+    --cert-name dashboard.ghostbridge.tech \
+    --non-interactive \
+    --quiet \
+    --config-dir "$CONFIG_DIR" \
+    --work-dir "$WORK_DIR" \
+    --logs-dir "$LOG_DIR" \
+    --deploy-hook "$DEPLOY_HOOK"
+
+# Reconcile the local certificate pair even when renewal was not due. This
+# retries a prior failed deploy without asking the CA to issue another cert.
+RENEWED_LINEAGE=$CONFIG_DIR/live/dashboard.ghostbridge.tech \
+RENEWED_DOMAINS=dashboard.ghostbridge.tech \
+    "$DEPLOY_HOOK"

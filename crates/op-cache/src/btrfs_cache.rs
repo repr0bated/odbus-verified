@@ -12,6 +12,7 @@ use op_cozo_store::CozoGraphShuttle;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::os::fd::AsRawFd;
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::{
@@ -21,7 +22,7 @@ use std::sync::{
 use tracing::{debug, info, warn};
 
 use super::numa::{NumaMemoryPolicy, NumaNode, NumaOptimizer, NumaStats, NumaTopology};
-use super::snapshot_manager::{SnapshotConfig, SnapshotManager};
+use super::snapshot_manager::{SnapshotConfig, SnapshotManager, CACHE_MEMBERS, COMPLETE_MARKER};
 
 fn is_btrfs_filesystem(path: &Path) -> Result<bool> {
     let file = std::fs::File::open(path)
@@ -31,6 +32,28 @@ fn is_btrfs_filesystem(path: &Path) -> Result<bool> {
         return Err(std::io::Error::last_os_error()).context("probing cache filesystem type");
     }
     Ok(unsafe { stat.assume_init() }.f_type as u64 == libc::BTRFS_SUPER_MAGIC as u64)
+}
+
+/// Clear entries inside a category without trying to remove its subvolume root.
+/// Refuse unexpected nested subvolumes before touching their contents.
+fn clear_directory_contents(path: &Path) -> Result<()> {
+    for entry in std::fs::read_dir(path)? {
+        let entry = entry?;
+        let child = entry.path();
+        let metadata = std::fs::symlink_metadata(&child)?;
+        if metadata.is_dir() && !metadata.file_type().is_symlink() {
+            anyhow::ensure!(
+                !(is_btrfs_filesystem(&child)? && metadata.ino() == 256),
+                "refusing to clear unexpected nested subvolume {}",
+                child.display()
+            );
+            clear_directory_contents(&child)?;
+            std::fs::remove_dir(&child)?;
+        } else {
+            std::fs::remove_file(&child)?;
+        }
+    }
+    Ok(())
 }
 
 /// NUMA-aware cache placement strategy
@@ -88,6 +111,54 @@ fn validate_remote_path(path: &str) -> Result<()> {
     {
         anyhow::bail!("remote Btrfs path must be an absolute path without shell metacharacters");
     }
+    Ok(())
+}
+
+async fn checked_ssh(remote_host: &str, command: &str) -> Result<Vec<u8>> {
+    let output = tokio::process::Command::new("ssh")
+        .arg("--")
+        .arg(remote_host)
+        .arg(command)
+        .output()
+        .await?;
+    anyhow::ensure!(
+        output.status.success(),
+        "remote Btrfs operation failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(output.stdout)
+}
+
+async fn pipe_btrfs_stream(
+    mut sender: tokio::process::Child,
+    mut receiver: tokio::process::Child,
+) -> Result<()> {
+    let mut stream = sender.stdout.take().context("missing Btrfs send output")?;
+    let mut sink = receiver
+        .stdin
+        .take()
+        .context("missing Btrfs receive input")?;
+    let transfer = tokio::spawn(async move {
+        let result = tokio::io::copy(&mut stream, &mut sink).await;
+        drop(sink);
+        result
+    });
+    let (send_output, receive_output, transfer_output) = tokio::join!(
+        sender.wait_with_output(),
+        receiver.wait_with_output(),
+        transfer
+    );
+    let send_output = send_output?;
+    let receive_output = receive_output?;
+    transfer_output.context("Btrfs forwarding task failed")??;
+    anyhow::ensure!(
+        send_output.status.success() && receive_output.status.success(),
+        "Btrfs transfer failed (send: {}; receive: {}): {}{}",
+        send_output.status,
+        receive_output.status,
+        String::from_utf8_lossy(&send_output.stderr),
+        String::from_utf8_lossy(&receive_output.stderr)
+    );
     Ok(())
 }
 
@@ -231,7 +302,19 @@ impl BtrfsCache {
     /// Create a Btrfs cache subvolume on Btrfs. Ordinary filesystems use a
     /// regular directory; Btrfs failures are never interpreted as fallback.
     async fn create_btrfs_subvolume(path: &Path) -> Result<()> {
-        let probe = if path.exists() {
+        let existing = match tokio::fs::symlink_metadata(path).await {
+            Ok(metadata) => {
+                anyhow::ensure!(
+                    metadata.is_dir() && !metadata.file_type().is_symlink(),
+                    "cache path is not a directory: {}",
+                    path.display()
+                );
+                true
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+            Err(error) => return Err(error.into()),
+        };
+        let probe = if existing {
             path
         } else {
             path.parent()
@@ -243,14 +326,17 @@ impl BtrfsCache {
                 .context("Failed to create ordinary cache directory")?;
             return Ok(());
         }
-        if path.exists() {
+        if existing {
             let output = tokio::process::Command::new("btrfs")
-                .args(["subvolume", "show"])
+                .args(["property", "get", "-ts"])
                 .arg(path)
+                .arg("ro")
                 .output()
                 .await
                 .context("Failed to execute btrfs command")?;
-            if output.status.success() {
+            if output.status.success()
+                && String::from_utf8_lossy(&output.stdout).trim() == "ro=false"
+            {
                 Self::enable_compression(path).await?;
                 return Ok(());
             }
@@ -298,37 +384,36 @@ impl BtrfsCache {
         Ok(())
     }
 
-    /// Create new BTRFS cache with proper subvolumes
+    /// Open or create the cache root and its five category subvolumes.
     pub async fn new(cache_dir: PathBuf) -> Result<Self> {
         let snapshot_config = SnapshotConfig {
             snapshot_dir: cache_dir
                 .parent()
                 .unwrap_or(Path::new("/var/lib/op-dbus"))
-                .to_path_buf(),
+                .join("@cache-snapshots"),
             max_snapshots: std::env::var("OPDBUS_MAX_CACHE_SNAPSHOTS")
                 .ok()
                 .and_then(|s| s.parse().ok())
-                .unwrap_or(2),
+                .unwrap_or(24),
             prefix: std::env::var("OPDBUS_CACHE_SNAPSHOT_PREFIX")
                 .unwrap_or_else(|_| "SNP-cache".to_string()),
         };
         anyhow::ensure!(
-            (1..=2).contains(&snapshot_config.max_snapshots),
-            "Cache rotation supports one or two snapshots"
+            snapshot_config.max_snapshots > 0,
+            "Cache rotation requires positive retention"
         );
         let snapshot_manager = SnapshotManager::new(cache_dir.clone(), snapshot_config);
-        snapshot_manager.validate_layout().await?;
 
         // Ensure parent directory exists (not as subvolume)
         if let Some(parent) = cache_dir.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
 
-        // One cache subvolume; category paths are ordinary directories so
-        // snapshots include their contents without adding nested subvolumes.
+        // Each category remains a Btrfs subvolume on Btrfs. A snapshot of the
+        // root alone omits their contents; SnapshotManager snapshots the set.
         Self::create_btrfs_subvolume(&cache_dir).await?;
         for category in ["embeddings", "blocks", "queries", "diffs", "kv"] {
-            tokio::fs::create_dir_all(cache_dir.join(category)).await?;
+            Self::create_btrfs_subvolume(&cache_dir.join(category)).await?;
         }
 
         // Create regular directories within subvolumes
@@ -1127,14 +1212,13 @@ impl BtrfsCache {
         // Clear embeddings
         let vectors_dir = self.cache_dir.join("embeddings/vectors");
         if vectors_dir.exists() {
-            std::fs::remove_dir_all(&vectors_dir)?;
-            std::fs::create_dir_all(&vectors_dir)?;
+            clear_directory_contents(&vectors_dir)?;
         }
 
         // Clear blocks
         let blocks_dir = self.cache_dir.join("blocks");
         if blocks_dir.exists() {
-            std::fs::remove_dir_all(&blocks_dir)?;
+            clear_directory_contents(&blocks_dir)?;
             std::fs::create_dir_all(blocks_dir.join("by-number"))?;
             std::fs::create_dir_all(blocks_dir.join("by-hash"))?;
         }
@@ -1142,8 +1226,7 @@ impl BtrfsCache {
         // Clear KV store
         let kv_dir = self.cache_dir.join("kv");
         if kv_dir.exists() {
-            std::fs::remove_dir_all(&kv_dir)?;
-            std::fs::create_dir_all(&kv_dir)?;
+            clear_directory_contents(&kv_dir)?;
         }
 
         // Clear CozoDB indices
@@ -1172,8 +1255,7 @@ impl BtrfsCache {
         // Clear embeddings vectors
         let vectors_dir = self.cache_dir.join("embeddings/vectors");
         if vectors_dir.exists() {
-            std::fs::remove_dir_all(&vectors_dir)?;
-            std::fs::create_dir_all(&vectors_dir)?;
+            clear_directory_contents(&vectors_dir)?;
         }
 
         // Clear CozoDB index
@@ -1194,7 +1276,7 @@ impl BtrfsCache {
         // Clear blocks
         let blocks_dir = self.cache_dir.join("blocks");
         if blocks_dir.exists() {
-            std::fs::remove_dir_all(&blocks_dir)?;
+            clear_directory_contents(&blocks_dir)?;
             std::fs::create_dir_all(blocks_dir.join("by-number"))?;
             std::fs::create_dir_all(blocks_dir.join("by-hash"))?;
         }
@@ -1219,7 +1301,9 @@ impl BtrfsCache {
         self.snapshot_manager.delete_all_snapshots().await
     }
 
-    /// Stream cache data to remote system using Btrfs send/receive with NUMA affinity
+    /// Stream all six members of a committed cache set with Btrfs send/receive.
+    /// This guarantees member coverage, not an atomic multi-member point in
+    /// time. The Snowball timing trail is authoritative; cache is rebuildable.
     pub async fn stream_to_remote(
         &self,
         remote_host: &str,
@@ -1231,67 +1315,64 @@ impl BtrfsCache {
         // Apply NUMA affinity for streaming operations
         self.apply_numa_affinity("cache_streaming").await?;
 
-        let snapshot_path = self
+        let set_path = self
             .create_snapshot()
             .await
             .map_err(|e| format!("Failed to create snapshot: {}", e))?;
-
-        info!(
-            "Streaming cache snapshot to {}:{}",
-            remote_host, remote_path
-        );
-
-        let mut sender = tokio::process::Command::new("btrfs")
-            .arg("send")
-            .arg(&snapshot_path)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| format!("Failed to start btrfs send: {}", e))?;
-        let mut stream = sender
-            .stdout
-            .take()
-            .ok_or("Failed to capture btrfs send output")?;
-        let mut receiver = tokio::process::Command::new("ssh")
-            .arg("--")
-            .arg(remote_host)
-            .arg(format!("btrfs receive {}", remote_path))
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| format!("Failed to start remote btrfs receive: {}", e))?;
-        let mut sink = receiver
-            .stdin
-            .take()
-            .ok_or("Failed to capture remote btrfs receive input")?;
-        let transfer = tokio::spawn(async move {
-            let result = tokio::io::copy(&mut stream, &mut sink).await;
-            drop(sink);
-            result
-        });
-
-        let (send_output, receive_output, transfer_output) = tokio::join!(
-            sender.wait_with_output(),
-            receiver.wait_with_output(),
-            transfer
-        );
-        let send_output = send_output?;
-        let receive_output = receive_output?;
-        transfer_output.map_err(|e| format!("Btrfs stream forwarding task failed: {}", e))??;
-
-        if !send_output.status.success() || !receive_output.status.success() {
-            return Err(format!(
-                "Btrfs streaming failed (send: {}; receive: {}): {}{}",
-                send_output.status,
-                receive_output.status,
-                String::from_utf8_lossy(&send_output.stderr),
-                String::from_utf8_lossy(&receive_output.stderr)
+        let members = self.snapshot_manager.set_members(&set_path).await?;
+        let set_name = set_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .context("invalid cache set name")?;
+        let remote_set = format!("{remote_path}/{set_name}");
+        validate_remote_path(&remote_set)?;
+        // An existing destination is never overwritten. Failed transfers leave
+        // an uncommitted directory for the operator to inspect.
+        checked_ssh(remote_host, &format!("mkdir -- {remote_set}")).await?;
+        for member in members {
+            let member_name = member
+                .file_name()
+                .and_then(|name| name.to_str())
+                .context("invalid cache member name")?;
+            let sender = tokio::process::Command::new("btrfs")
+                .arg("send")
+                .arg(&member)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
+            let receiver = tokio::process::Command::new("ssh")
+                .arg("--")
+                .arg(remote_host)
+                .arg(format!("btrfs receive {remote_set}"))
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
+            pipe_btrfs_stream(sender, receiver).await?;
+            checked_ssh(
+                remote_host,
+                &format!(
+                    "btrfs subvolume show {remote_set}/{member_name} >/dev/null && \
+                     test \"$(btrfs property get -ts {remote_set}/{member_name} ro)\" = ro=true"
+                ),
             )
-            .into());
+            .await?;
         }
-
-        info!("Successfully streamed cache snapshot");
+        checked_ssh(remote_host, &format!("sync -f {remote_set}")).await?;
+        checked_ssh(
+            remote_host,
+            &format!("printf 'cache-snapshot-set-v1\\nroot\\nembeddings\\nblocks\\nqueries\\ndiffs\\nkv\\n' > {remote_set}/.complete"),
+        )
+        .await?;
+        checked_ssh(remote_host, &format!("sync -f {remote_set}")).await?;
+        let marker = checked_ssh(remote_host, &format!("cat -- {remote_set}/.complete")).await?;
+        if marker != COMPLETE_MARKER.as_bytes() {
+            return Err("remote cache set marker mismatch".into());
+        }
+        info!(
+            "Successfully streamed complete cache set to {}:{}",
+            remote_host, remote_set
+        );
         Ok(())
     }
 
@@ -1309,62 +1390,64 @@ impl BtrfsCache {
         // Apply NUMA affinity for receiving operations
         self.apply_numa_affinity("cache_receiving").await?;
 
-        info!(
-            "Receiving cache snapshot from {}:{}",
-            remote_host, remote_snapshot
-        );
-
-        let mut sender = tokio::process::Command::new("ssh")
-            .arg("--")
-            .arg(remote_host)
-            .arg(format!("btrfs send {}", remote_snapshot))
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| format!("Failed to start remote btrfs send: {}", e))?;
-        let mut stream = sender
-            .stdout
-            .take()
-            .ok_or("Failed to capture remote btrfs send output")?;
-        let mut receiver = tokio::process::Command::new("btrfs")
-            .arg("receive")
-            .arg(local_path)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| format!("Failed to start local btrfs receive: {}", e))?;
-        let mut sink = receiver
-            .stdin
-            .take()
-            .ok_or("Failed to capture local btrfs receive input")?;
-        let transfer = tokio::spawn(async move {
-            let result = tokio::io::copy(&mut stream, &mut sink).await;
-            drop(sink);
-            result
-        });
-
-        let (send_output, receive_output, transfer_output) = tokio::join!(
-            sender.wait_with_output(),
-            receiver.wait_with_output(),
-            transfer
-        );
-        let send_output = send_output?;
-        let receive_output = receive_output?;
-        transfer_output.map_err(|e| format!("Btrfs stream forwarding task failed: {}", e))??;
-
-        if !send_output.status.success() || !receive_output.status.success() {
-            return Err(format!(
-                "Btrfs receive failed (send: {}; receive: {}): {}{}",
-                send_output.status,
-                receive_output.status,
-                String::from_utf8_lossy(&send_output.stderr),
-                String::from_utf8_lossy(&receive_output.stderr)
-            )
-            .into());
+        let marker =
+            checked_ssh(remote_host, &format!("cat -- {remote_snapshot}/.complete")).await?;
+        if marker != COMPLETE_MARKER.as_bytes() {
+            return Err("remote cache set is incomplete".into());
         }
+        let set_name = Path::new(remote_snapshot)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .context("invalid remote cache set name")?;
+        let local_parent = Path::new(local_path);
+        let metadata = tokio::fs::symlink_metadata(local_parent).await?;
+        if !metadata.is_dir() || metadata.file_type().is_symlink() {
+            return Err("receive parent is not a directory".into());
+        }
+        let local_set = local_parent.join(set_name);
+        tokio::fs::create_dir(&local_set).await?;
 
-        info!("Successfully received cache snapshot");
+        for member in CACHE_MEMBERS {
+            let remote_member = format!("{remote_snapshot}/{member}");
+            checked_ssh(
+                remote_host,
+                &format!(
+                    "btrfs subvolume show {remote_member} >/dev/null && \
+                     test \"$(btrfs property get -ts {remote_member} ro)\" = ro=true"
+                ),
+            )
+            .await?;
+            let sender = tokio::process::Command::new("ssh")
+                .arg("--")
+                .arg(remote_host)
+                .arg(format!("btrfs send {remote_member}"))
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
+            let receiver = tokio::process::Command::new("btrfs")
+                .arg("receive")
+                .arg(&local_set)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
+            pipe_btrfs_stream(sender, receiver).await?;
+        }
+        SnapshotManager::verify_members(&local_set).await?;
+        let marker_path = local_set.join(".complete");
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&marker_path)?;
+        use std::io::Write as _;
+        file.write_all(COMPLETE_MARKER.as_bytes())?;
+        file.sync_all()?;
+        std::fs::File::open(&local_set)?.sync_all()?;
+        self.snapshot_manager.set_members(&local_set).await?;
+        info!(
+            "Successfully received complete cache set at {}",
+            local_set.display()
+        );
         Ok(())
     }
 
@@ -1474,6 +1557,73 @@ pub struct NumaInfo {
 mod tests {
     use super::*;
 
+    /// TempDir cannot remove Btrfs subvolume roots. Clean all test-owned
+    /// sources and snapshot members even when a test assertion unwinds.
+    struct CacheTestDir(tempfile::TempDir);
+
+    impl CacheTestDir {
+        fn new() -> Self {
+            Self(tempfile::tempdir().unwrap())
+        }
+
+        fn path(&self) -> &Path {
+            self.0.path()
+        }
+    }
+
+    impl Drop for CacheTestDir {
+        fn drop(&mut self) {
+            if !is_btrfs_filesystem(self.path()).unwrap_or(false) {
+                return;
+            }
+            fn delete(path: &Path) {
+                if !path.exists() {
+                    return;
+                }
+                // A test-owned read-only snapshot must be made writable for
+                // unprivileged fixture cleanup, even after an assertion fails.
+                let _ = std::process::Command::new("btrfs")
+                    .args(["property", "set", "-ts"])
+                    .arg(path)
+                    .args(["ro", "false"])
+                    .output();
+                let output = std::process::Command::new("btrfs")
+                    .args(["subvolume", "delete"])
+                    .arg(path)
+                    .output();
+                if let Ok(output) = output {
+                    if !output.status.success() {
+                        eprintln!(
+                            "test subvolume cleanup failed for {}: {}",
+                            path.display(),
+                            String::from_utf8_lossy(&output.stderr)
+                        );
+                    }
+                }
+            }
+            let snapshots = self.path().join("@cache-snapshots");
+            if let Ok(entries) = std::fs::read_dir(snapshots) {
+                for entry in entries.flatten() {
+                    let set = entry.path();
+                    if set.is_dir() && !set.is_symlink() {
+                        for member in CACHE_MEMBERS.iter().rev() {
+                            delete(&set.join(member));
+                        }
+                    }
+                }
+            }
+            let received = self.path().join("received");
+            for member in CACHE_MEMBERS.iter().rev() {
+                delete(&received.join(member));
+            }
+            let cache = self.path().join("cache");
+            for category in ["kv", "diffs", "queries", "blocks", "embeddings"] {
+                delete(&cache.join(category));
+            }
+            delete(&cache);
+        }
+    }
+
     #[tokio::test]
     async fn ordinary_filesystem_creates_cache_directory_without_btrfs_command() {
         let parent = tempfile::tempdir().unwrap();
@@ -1484,6 +1634,154 @@ mod tests {
         BtrfsCache::create_btrfs_subvolume(&cache).await.unwrap();
         assert!(cache.is_dir());
         assert!(!is_btrfs_filesystem(&cache).unwrap());
+    }
+
+    #[tokio::test]
+    async fn owning_user_can_delete_complete_readonly_cache_set() {
+        let parent = CacheTestDir::new();
+        if !is_btrfs_filesystem(parent.path()).unwrap() {
+            return;
+        }
+        let cache = BtrfsCache::new(parent.path().join("cache")).await.unwrap();
+        let set = cache.create_snapshot().await.unwrap();
+        assert!(set.join(".complete").is_file());
+        SnapshotManager::verify_members(&set).await.unwrap();
+        assert_eq!(cache.delete_all_snapshots().await.unwrap(), 1);
+        assert!(!set.exists());
+        assert!(cache.list_snapshots().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    #[ignore = "native Btrfs send/receive requires root; isolated fixture deletes only its own subvolumes"]
+    async fn btrfs_cache_reopens_children_and_snapshot_contains_child_data() {
+        let parent = CacheTestDir::new();
+        if !is_btrfs_filesystem(parent.path()).unwrap() {
+            return; // Requires a Btrfs fixture filesystem.
+        }
+        let cache_path = parent.path().join("cache");
+        let cache = BtrfsCache::new(cache_path.clone()).await.unwrap();
+        for category in ["embeddings", "blocks", "queries", "diffs", "kv"] {
+            let path = cache_path.join(category);
+            assert_eq!(std::fs::metadata(&path).unwrap().ino(), 256);
+            let probe = tokio::process::Command::new("btrfs")
+                .args(["property", "get", "-ts"])
+                .arg(&path)
+                .arg("ro")
+                .output()
+                .await
+                .unwrap();
+            assert!(
+                probe.status.success(),
+                "{}",
+                String::from_utf8_lossy(&probe.stderr)
+            );
+            assert_eq!(String::from_utf8_lossy(&probe.stdout).trim(), "ro=false");
+        }
+        let block = cache_path.join("blocks/by-hash/probe.json");
+        tokio::fs::write(&block, b"before").await.unwrap();
+        let set = cache.create_snapshot().await.unwrap();
+        assert_eq!(
+            tokio::fs::read(set.join("blocks/by-hash/probe.json"))
+                .await
+                .unwrap(),
+            b"before"
+        );
+        let received = parent.path().join("received");
+        tokio::fs::create_dir(&received).await.unwrap();
+        for member in CACHE_MEMBERS {
+            let send = std::process::Command::new("btrfs")
+                .arg("send")
+                .arg(set.join(member))
+                .output()
+                .unwrap();
+            assert!(
+                send.status.success(),
+                "{}",
+                String::from_utf8_lossy(&send.stderr)
+            );
+            let mut receive = std::process::Command::new("btrfs")
+                .arg("receive")
+                .arg(&received)
+                .stdin(Stdio::piped())
+                .spawn()
+                .unwrap();
+            use std::io::Write as _;
+            receive
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(&send.stdout)
+                .unwrap();
+            assert!(receive.wait().unwrap().success());
+            let path = received.join(member);
+            let ro = std::process::Command::new("btrfs")
+                .args(["property", "get", "-ts"])
+                .arg(&path)
+                .arg("ro")
+                .output()
+                .unwrap();
+            assert!(ro.status.success());
+            assert_eq!(String::from_utf8_lossy(&ro.stdout).trim(), "ro=true");
+        }
+        assert_eq!(
+            tokio::fs::read(received.join("blocks/by-hash/probe.json"))
+                .await
+                .unwrap(),
+            b"before"
+        );
+        tokio::fs::write(&block, b"after").await.unwrap();
+        assert_eq!(
+            tokio::fs::read(set.join("blocks/by-hash/probe.json"))
+                .await
+                .unwrap(),
+            b"before"
+        );
+        cache.clear_blocks().unwrap();
+        assert_eq!(
+            std::fs::metadata(cache_path.join("blocks")).unwrap().ino(),
+            256
+        );
+        assert_eq!(
+            tokio::fs::read(set.join("blocks/by-hash/probe.json"))
+                .await
+                .unwrap(),
+            b"before"
+        );
+        assert_eq!(cache.list_snapshots().await.unwrap().len(), 1);
+        drop(cache);
+
+        let reopened = BtrfsCache::new(cache_path.clone()).await.unwrap();
+        assert_eq!(reopened.list_snapshots().await.unwrap().len(), 1);
+        reopened.delete_all_snapshots().await.unwrap();
+        drop(reopened);
+        for member in CACHE_MEMBERS.iter().rev() {
+            assert!(tokio::process::Command::new("btrfs")
+                .args(["subvolume", "delete"])
+                .arg(received.join(member))
+                .output()
+                .await
+                .unwrap()
+                .status
+                .success());
+        }
+        for category in ["kv", "diffs", "queries", "blocks", "embeddings"] {
+            assert!(tokio::process::Command::new("btrfs")
+                .args(["subvolume", "delete"])
+                .arg(cache_path.join(category))
+                .output()
+                .await
+                .unwrap()
+                .status
+                .success());
+        }
+        assert!(tokio::process::Command::new("btrfs")
+            .args(["subvolume", "delete"])
+            .arg(cache_path)
+            .output()
+            .await
+            .unwrap()
+            .status
+            .success());
     }
 
     #[test]
@@ -1500,7 +1798,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_text_hashing() {
-        let parent = tempfile::tempdir().unwrap();
+        let parent = CacheTestDir::new();
         let cache_path = parent.path().join("cache");
         let cache = BtrfsCache::new(cache_path).await.unwrap();
         let hash1 = cache.hash_text("test");
@@ -1567,7 +1865,7 @@ mod tests {
 
     #[tokio::test]
     async fn embedding_put_get() {
-        let parent = tempfile::tempdir().unwrap();
+        let parent = CacheTestDir::new();
         let cache = BtrfsCache::new(parent.path().join("cache")).await.unwrap();
 
         cache.put_embedding("test text", &[1.0, 2.0, 3.0]).unwrap();
@@ -1577,7 +1875,7 @@ mod tests {
 
     #[tokio::test]
     async fn kv_put_get_delete_round_trip() {
-        let parent = tempfile::tempdir().unwrap();
+        let parent = CacheTestDir::new();
         let cache = BtrfsCache::new(parent.path().join("cache")).await.unwrap();
 
         // put + get
@@ -1598,7 +1896,7 @@ mod tests {
 
     #[tokio::test]
     async fn failed_backing_file_delete_is_reported_and_retains_index() {
-        let parent = tempfile::tempdir().unwrap();
+        let parent = CacheTestDir::new();
         let cache = BtrfsCache::new(parent.path().join("cache")).await.unwrap();
         cache.put_raw("key", b"value").await.unwrap();
         let backing = cache
@@ -1620,7 +1918,7 @@ mod tests {
 
     #[tokio::test]
     async fn kv_get_or_compute() {
-        let parent = tempfile::tempdir().unwrap();
+        let parent = CacheTestDir::new();
         let cache = BtrfsCache::new(parent.path().join("cache")).await.unwrap();
 
         let computed = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -1648,7 +1946,7 @@ mod tests {
 
     #[tokio::test]
     async fn kv_overwrite_replaces_value() {
-        let parent = tempfile::tempdir().unwrap();
+        let parent = CacheTestDir::new();
         let cache = BtrfsCache::new(parent.path().join("cache")).await.unwrap();
 
         cache.put_raw("k", b"v1").await.unwrap();
@@ -1660,7 +1958,7 @@ mod tests {
 
     #[tokio::test]
     async fn kv_memory_cache_serves_fast_path() {
-        let parent = tempfile::tempdir().unwrap();
+        let parent = CacheTestDir::new();
         let cache = BtrfsCache::new(parent.path().join("cache")).await.unwrap();
 
         cache.put_raw("fast", b"data").await.unwrap();

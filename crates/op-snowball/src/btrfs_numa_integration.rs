@@ -37,8 +37,9 @@ impl OptimizedSnowball {
     /// NUMA topology is detected first so the snowball's dedicated writer
     /// thread can be pinned (CPU affinity + preferred memory policy) before it
     /// accepts work. Everything durable — timing block, vector file, cache
-    /// block — is then written by that one pinned thread, keeping the whole
-    /// stream node-local. Tokio workers are never pinned.
+    /// block — is then written by that one pinned thread. The preferred memory
+    /// policy is best effort and does not guarantee where pages are placed.
+    /// Tokio workers are never pinned.
     pub async fn new(
         snowball_path: impl AsRef<Path>,
         cache_path: impl AsRef<Path>,
@@ -162,8 +163,8 @@ impl OptimizedSnowball {
             "vector_features": footprint.vector_features,
         });
 
-        // Written by the same pinned thread that wrote the timing block, so the
-        // cache pages for this event stay on the stream's NUMA node.
+        // Written by the same CPU-pinned thread that wrote the timing block;
+        // page placement depends on whether the NUMA memory policy was applied.
         let blocks_dir = self.cache.cache_dir().join("blocks").join("by-hash");
         let block_json = simd_json::to_string_pretty(&block_data)?;
         let hash_for_write = block_hash.clone();
@@ -289,33 +290,14 @@ impl OptimizedSnowball {
     pub async fn create_unified_snapshot(&self) -> Result<Vec<PathBuf>> {
         let mut snapshots = Vec::new();
 
-        // Snapshot snowball
+        // One committed set contains timing, vectors and state at the same
+        // writer-locked point; a state-only snapshot is not a recovery point.
+        let snowball_name = self.snowball.create_snapshot().await?;
         let snowball_snapshot = self
             .snowball
-            .as_ref()
-            .state_subvolume_path()
-            .parent()
-            .ok_or_else(|| anyhow::anyhow!("No parent path for snowball"))?
+            .base_path()
             .join("snapshots")
-            .join(format!(
-                "snowball-{}",
-                chrono::Utc::now().format("%Y%m%d-%H%M%S")
-            ));
-
-        // Use btrfs snapshot command
-        let output = tokio::process::Command::new("btrfs")
-            .args(["subvolume", "snapshot", "-r"])
-            .arg(self.snowball.as_ref().state_subvolume_path())
-            .arg(&snowball_snapshot)
-            .output()
-            .await
-            .context("Failed to create snowball snapshot")?;
-
-        ensure_snapshot_command_succeeded(
-            output.status.success(),
-            output.status.code(),
-            &output.stderr,
-        )?;
+            .join(snowball_name);
         snapshots.push(snowball_snapshot);
         info!(
             "Created snowball snapshot: {}",
@@ -339,32 +321,8 @@ impl OptimizedSnowball {
     }
 }
 
-fn ensure_snapshot_command_succeeded(
-    success: bool,
-    code: Option<i32>,
-    stderr: &[u8],
-) -> anyhow::Result<()> {
-    if success {
-        return Ok(());
-    }
-    let detail = String::from_utf8_lossy(stderr);
-    anyhow::bail!("btrfs snapshot command failed (status {code:?}): {detail}")
-}
-
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn nonzero_btrfs_snapshot_exit_is_an_error_with_stderr() {
-        let error = super::ensure_snapshot_command_succeeded(
-            false,
-            Some(1),
-            b"read-only snapshot unsupported",
-        )
-        .unwrap_err();
-        assert!(error.to_string().contains("status Some(1)"));
-        assert!(error.to_string().contains("read-only snapshot unsupported"));
-    }
-
     /// The placement hook must run on the writer thread and its pin must
     /// still be in effect when writes execute there — while the caller's
     /// (tokio) thread is left untouched.
@@ -428,16 +386,54 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires an isolated Btrfs fixture at OPDBUS_TEST_BTRFS_ROOT"]
     async fn test_optimized_snowball_creation_and_caching() {
+        struct Fixture(tempfile::TempDir);
+        impl Drop for Fixture {
+            fn drop(&mut self) {
+                use std::os::unix::fs::MetadataExt;
+                fn collect(path: &std::path::Path, volumes: &mut Vec<std::path::PathBuf>) {
+                    let Ok(entries) = std::fs::read_dir(path) else {
+                        return;
+                    };
+                    for entry in entries.flatten() {
+                        let child = entry.path();
+                        let Ok(metadata) = std::fs::symlink_metadata(&child) else {
+                            continue;
+                        };
+                        if metadata.is_dir() && !metadata.file_type().is_symlink() {
+                            collect(&child, volumes);
+                            if metadata.ino() == 256 {
+                                volumes.push(child);
+                            }
+                        }
+                    }
+                }
+                let mut volumes = Vec::new();
+                collect(self.0.path(), &mut volumes);
+                for volume in volumes {
+                    let _ = std::process::Command::new("btrfs")
+                        .args(["property", "set", "-ts"])
+                        .arg(&volume)
+                        .args(["ro", "false"])
+                        .output();
+                    let _ = std::process::Command::new("btrfs")
+                        .args(["subvolume", "delete"])
+                        .arg(&volume)
+                        .output();
+                }
+            }
+        }
         let btrfs_root = std::path::PathBuf::from(
             std::env::var_os("OPDBUS_TEST_BTRFS_ROOT")
                 .expect("set OPDBUS_TEST_BTRFS_ROOT to an isolated Btrfs directory"),
         );
-        let fixture = tempfile::Builder::new()
-            .prefix("opdbus-optimized-snowball-")
-            .tempdir_in(&btrfs_root)
-            .expect("create isolated Btrfs fixture");
-        let snowball_path = fixture.path().join("snowball");
-        let cache_path = fixture.path().join("cache");
+        let fixture = Fixture(
+            tempfile::Builder::new()
+                .prefix("opdbus-optimized-snowball-")
+                .tempdir_in(&btrfs_root)
+                .expect("create isolated Btrfs fixture"),
+        );
+        let snowball_path = fixture.0.path().join("snowball");
+        let cache_path = fixture.0.path().join("cache");
 
         let opt_bc = OptimizedSnowball::new(snowball_path, cache_path)
             .await

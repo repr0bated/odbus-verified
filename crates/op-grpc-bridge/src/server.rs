@@ -8,6 +8,7 @@
 //! The schema itself is never generated here; it is read from the plugin's
 //! sealed blob in the SHM catalog (`/dev/shm/opdbus/plugin-blobs`).
 
+use std::convert::Infallible;
 use std::io::BufReader;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -17,10 +18,18 @@ use std::time::Duration;
 
 use async_stream::stream;
 use axum::Router;
+use axum::{body::Body, extract::connect_info::ConnectInfo};
+use hyper::body::Incoming;
+use hyper_util::{
+    rt::{TokioExecutor, TokioIo, TokioTimer},
+    server::conn::auto::Builder,
+};
 use sha2::{Digest, Sha256};
+use tokio_rustls::{rustls, TlsAcceptor};
 use tonic::transport::server::{TcpConnectInfo, TlsConnectInfo};
 use tonic::transport::{Certificate, Identity, ServerTlsConfig};
 use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
+use tower::Service;
 use tower_http::cors::CorsLayer;
 use tracing::info;
 
@@ -77,11 +86,55 @@ pub struct ServerConfig {
     pub bind_addr: String,
     /// TLS identity for the TCP door. `None` aborts startup with a clear error
     /// unless `TCHED_ROUTER_DEV_SELF_SIGNED=1` is set (dev/CI only — never production).
-    pub tls_identity: Option<Identity>,
+    pub tls_identity: Option<PemIdentity>,
+    /// Optional browser-facing certificate for one existing private/loopback TCP bind.
+    /// This never adds a listener or changes the route set.
+    pub browser_tls_override: Option<(SocketAddr, PemIdentity)>,
+    browser_tls_override_error: Option<String>,
     /// Dedicated broker callback listener. It is deliberately separate from
     /// the client-facing gRPC/MCP door: EMQX authenticates with a pinned mTLS
     /// client certificate and can reach only HookProvider.
     pub emqx_exhook: EmqxExhookConfig,
+}
+
+/// Keep the selected PEM pair available to the upgrade-capable TCP server.
+/// Tonic's `Identity` hides the key and its HTTP/1 transport drops upgraded
+/// connections, so the TCP door must configure rustls from this same pair.
+#[derive(Clone)]
+pub struct PemIdentity {
+    cert: Vec<u8>,
+    key: Vec<u8>,
+}
+
+impl std::fmt::Debug for PemIdentity {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("PemIdentity([redacted])")
+    }
+}
+
+impl PemIdentity {
+    pub(crate) fn from_pem(cert: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> Self {
+        Self {
+            cert: cert.as_ref().to_vec(),
+            key: key.as_ref().to_vec(),
+        }
+    }
+
+    pub(crate) fn server_config(&self) -> anyhow::Result<Arc<rustls::ServerConfig>> {
+        let certs = rustls_pemfile::certs(&mut BufReader::new(self.cert.as_slice()))
+            .collect::<Result<Vec<_>, _>>()?;
+        anyhow::ensure!(!certs.is_empty(), "TCP TLS certificate chain is empty");
+        let key = rustls_pemfile::private_key(&mut BufReader::new(self.key.as_slice()))?
+            .ok_or_else(|| anyhow::anyhow!("TCP TLS private key is missing"))?;
+        let mut config = rustls::ServerConfig::builder_with_provider(Arc::new(
+            rustls::crypto::aws_lc_rs::default_provider(),
+        ))
+        .with_safe_default_protocol_versions()?
+        .with_no_client_auth()
+        .with_single_cert(certs, key)?;
+        config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
+        Ok(Arc::new(config))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -118,6 +171,8 @@ impl Default for ServerConfig {
             shared_socket: PathBuf::from(DEFAULT_SHARED_SOCKET),
             bind_addr: DEFAULT_BIND_ADDR.to_string(),
             tls_identity: None,
+            browser_tls_override: None,
+            browser_tls_override_error: None,
             emqx_exhook: EmqxExhookConfig::default(),
         }
     }
@@ -126,6 +181,24 @@ impl Default for ServerConfig {
 impl ServerConfig {
     /// Load configuration from environment variables, falling back to defaults.
     pub fn from_env() -> Self {
+        let bind_addr = std::env::var("TCHED_ROUTER_BIND_ADDR")
+            .or_else(|_| std::env::var("GRPC_BIND"))
+            .unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
+        let (browser_tls_override, browser_tls_override_error) = match load_browser_tls_override(
+            &bind_addr,
+            std::env::var("TCHED_ROUTER_BROWSER_TLS_BIND_ADDR")
+                .ok()
+                .as_deref(),
+            std::env::var("TCHED_ROUTER_BROWSER_TLS_CERT_FILE")
+                .ok()
+                .as_deref(),
+            std::env::var("TCHED_ROUTER_BROWSER_TLS_KEY_FILE")
+                .ok()
+                .as_deref(),
+        ) {
+            Ok(override_identity) => (override_identity, None),
+            Err(error) => (None, Some(error.to_string())),
+        };
         Self {
             plugin_id: configured_schema_plugin_id(|key| std::env::var(key).ok()),
             schema_path: crate::sealed_schema_reader::blob_catalog_dir_from_env(),
@@ -145,10 +218,10 @@ impl ServerConfig {
                 std::env::var("GHOSTBRIDGE_SOCKET_PATH")
                     .unwrap_or_else(|_| DEFAULT_SHARED_SOCKET.to_string()),
             ),
-            bind_addr: std::env::var("TCHED_ROUTER_BIND_ADDR")
-                .or_else(|_| std::env::var("GRPC_BIND"))
-                .unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string()),
+            bind_addr,
             tls_identity: Self::load_tls_identity(),
+            browser_tls_override,
+            browser_tls_override_error,
             emqx_exhook: EmqxExhookConfig {
                 enabled: env_flag("OP_EMQX_EXHOOK_ENABLE"),
                 bind_addr: std::env::var("OP_EMQX_EXHOOK_BIND_ADDR")
@@ -188,13 +261,13 @@ impl ServerConfig {
     ///      reject an unverified cert and connections will fail at the TLS handshake).
     ///   4. `None` — startup will abort with a clear error rather than silently
     ///      serving unencrypted gRPC (zero-trust: TLS is mandatory on TCP).
-    fn load_tls_identity() -> Option<Identity> {
+    fn load_tls_identity() -> Option<PemIdentity> {
         let cert_pem = std::env::var("TCHED_ROUTER_TLS_CERT").ok();
         let key_pem = std::env::var("TCHED_ROUTER_TLS_KEY").ok();
 
         if let (Some(cert), Some(key)) = (cert_pem, key_pem) {
             tracing::info!("TLS identity loaded from TCHED_ROUTER_TLS_CERT/TCHED_ROUTER_TLS_KEY");
-            return Some(Identity::from_pem(cert, key));
+            return Some(PemIdentity::from_pem(cert, key));
         }
 
         // Certificate *files* on disk (the deployment path). Both must be set;
@@ -210,7 +283,7 @@ impl ServerConfig {
                 (Ok(cert), Ok(key)) => {
                     tracing::info!(cert = %cert_path, key = %key_path,
                         "TLS identity loaded from certificate files");
-                    return Some(Identity::from_pem(cert, key));
+                    return Some(PemIdentity::from_pem(cert, key));
                 }
                 (cert_res, key_res) => {
                     tracing::error!(
@@ -237,7 +310,7 @@ impl ServerConfig {
                         "TCHED_ROUTER_DEV_SELF_SIGNED=1: using ephemeral self-signed TLS cert. \
                          DO NOT USE IN PRODUCTION — peers will reject this cert."
                     );
-                    return Some(Identity::from_pem(
+                    return Some(PemIdentity::from_pem(
                         ck.cert.pem(),
                         ck.key_pair.serialize_pem(),
                     ));
@@ -258,6 +331,139 @@ impl ServerConfig {
         );
         None
     }
+}
+
+fn load_browser_tls_override(
+    configured_binds: &str,
+    bind_addr: Option<&str>,
+    cert_file: Option<&str>,
+    key_file: Option<&str>,
+) -> anyhow::Result<Option<(SocketAddr, PemIdentity)>> {
+    match (bind_addr, cert_file, key_file) {
+        (None, None, None) => Ok(None),
+        (Some(bind_addr), Some(cert_file), Some(key_file)) => {
+            anyhow::ensure!(
+                !bind_addr.trim().is_empty()
+                    && !cert_file.trim().is_empty()
+                    && !key_file.trim().is_empty(),
+                "browser TLS override requires non-empty bind, certificate, and key values"
+            );
+            let bind_addr: SocketAddr = bind_addr
+                .parse()
+                .map_err(|error| anyhow::anyhow!("invalid browser TLS bind address: {error}"))?;
+            validate_browser_override_bind(configured_binds, bind_addr)?;
+            let cert = std::fs::read_to_string(cert_file).map_err(|error| {
+                anyhow::anyhow!("cannot read browser TLS certificate file {cert_file}: {error}")
+            })?;
+            let key = std::fs::read_to_string(key_file).map_err(|error| {
+                anyhow::anyhow!("cannot read browser TLS key file {key_file}: {error}")
+            })?;
+            Ok(Some((bind_addr, PemIdentity::from_pem(cert, key))))
+        }
+        _ => anyhow::bail!(
+            "browser TLS override requires all three settings: \
+             TCHED_ROUTER_BROWSER_TLS_BIND_ADDR, \
+             TCHED_ROUTER_BROWSER_TLS_CERT_FILE, and \
+             TCHED_ROUTER_BROWSER_TLS_KEY_FILE"
+        ),
+    }
+}
+
+fn validate_browser_override_bind(
+    configured_binds: &str,
+    target: SocketAddr,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        is_private_or_loopback(target),
+        "browser TLS override bind must be private or loopback: {target}"
+    );
+    let mut matching_binds = 0;
+    for bind in configured_binds
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        let bind: SocketAddr = bind.parse().map_err(|error| {
+            anyhow::anyhow!("invalid configured TCP bind address '{bind}': {error}")
+        })?;
+        if bind == target {
+            matching_binds += 1;
+        }
+    }
+    anyhow::ensure!(
+        matching_binds == 1,
+        "browser TLS override must match exactly one existing TCP bind: {target}"
+    );
+    Ok(())
+}
+
+fn is_private_or_loopback(address: SocketAddr) -> bool {
+    match address.ip() {
+        std::net::IpAddr::V4(ip) => ip.is_private() || ip.is_loopback(),
+        std::net::IpAddr::V6(ip) => ip.is_loopback() || ip.is_unique_local(),
+    }
+}
+
+fn uses_browser_tls(bind_addr: SocketAddr, browser_bind_addr: Option<SocketAddr>) -> bool {
+    browser_bind_addr == Some(bind_addr)
+}
+
+fn select_tcp_identity<'a>(
+    bind_addr: SocketAddr,
+    browser_tls_override: Option<&'a (SocketAddr, PemIdentity)>,
+    base_identity: &'a PemIdentity,
+) -> &'a PemIdentity {
+    browser_tls_override
+        .filter(|(browser_bind, _)| uses_browser_tls(bind_addr, Some(*browser_bind)))
+        .map(|(_, identity)| identity)
+        .unwrap_or(base_identity)
+}
+
+fn prepare_tcp_identities(
+    config: &ServerConfig,
+) -> anyhow::Result<Vec<(SocketAddr, Arc<rustls::ServerConfig>)>> {
+    if let Some(error) = &config.browser_tls_override_error {
+        anyhow::bail!("invalid browser TLS override: {error}");
+    }
+    let bind_addrs = config
+        .bind_addr
+        .split(',')
+        .map(str::trim)
+        .filter(|address| !address.is_empty())
+        .map(|address| {
+            address.parse::<SocketAddr>().map_err(|error| {
+                anyhow::anyhow!("invalid configured TCP bind address '{address}': {error}")
+            })
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    anyhow::ensure!(
+        !bind_addrs.is_empty(),
+        "TCHED_ROUTER_BIND_ADDR is empty — no TCP addresses to bind"
+    );
+
+    if let Some((browser_bind, _)) = &config.browser_tls_override {
+        validate_browser_override_bind(&config.bind_addr, *browser_bind)?;
+    }
+    let base_identity = config.tls_identity.as_ref().ok_or_else(|| {
+        anyhow::anyhow!(
+            "TCP fabric requires TLS — set TCHED_ROUTER_TLS_CERT+TCHED_ROUTER_TLS_KEY, \
+             TCHED_ROUTER_TLS_CERT_FILE+TCHED_ROUTER_TLS_KEY_FILE, \
+             or TCHED_ROUTER_DEV_SELF_SIGNED=1 (dev only)"
+        )
+    })?;
+
+    let identities = bind_addrs
+        .into_iter()
+        .map(|bind_addr| {
+            let identity = select_tcp_identity(
+                bind_addr,
+                config.browser_tls_override.as_ref(),
+                base_identity,
+            );
+            Ok((bind_addr, identity.server_config()?))
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    Ok(identities)
 }
 
 fn env_path(key: &str, default: &str) -> PathBuf {
@@ -510,9 +716,13 @@ fn build_axum_app_with_mcp(
             crate::mcp_frontend::MCP_SESSION_HEADER.parse().unwrap(),
         ]);
 
-    mcp.merge(build_routes(loader, server, validator).into_axum_router())
-        .layer(cors)
-        .layer(GhostbridgeTraceLayer::new())
+    mcp.route(
+        "/mqtt",
+        axum::routing::get(crate::mqtt_doorbell_relay::upgrade),
+    )
+    .merge(build_routes(loader, server, validator).into_axum_router())
+    .layer(cors)
+    .layer(GhostbridgeTraceLayer::new())
 }
 
 /// Build the tonic `Routes` used for the native-gRPC Unix socket side.
@@ -524,11 +734,70 @@ fn build_tonic_routes(
     build_routes(loader, server, validator)
 }
 
+/// Serve the existing TCP door with HTTP upgrades enabled. Tonic 0.12's
+/// transport accepts HTTP/1 but calls Hyper without `with_upgrades`, which
+/// makes a WebSocket handshake succeed and then immediately resets the stream.
+/// The same Axum router retains the gRPC, gRPC-Web, reflection and MCP routes.
+pub(crate) async fn serve_upgradeable_tcp(
+    listener: tokio::net::TcpListener,
+    tls: Arc<rustls::ServerConfig>,
+    app: Router,
+) -> anyhow::Result<()> {
+    const MAX_CONNECTIONS: usize = 512;
+    let permits = Arc::new(tokio::sync::Semaphore::new(MAX_CONNECTIONS));
+    let acceptor = TlsAcceptor::from(tls);
+    loop {
+        let permit = permits.clone().acquire_owned().await?;
+        let (stream, peer) = match listener.accept().await {
+            Ok(accepted) => accepted,
+            Err(error) => {
+                tracing::warn!(%error, "TCP door accept failed");
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                continue;
+            }
+        };
+        let acceptor = acceptor.clone();
+        let app = app.clone();
+        tokio::spawn(async move {
+            let permit = Arc::new(permit);
+            let tls =
+                match tokio::time::timeout(Duration::from_secs(5), acceptor.accept(stream)).await {
+                    Ok(Ok(tls)) => tls,
+                    _ => return,
+                };
+            let service = hyper::service::service_fn(move |request: hyper::Request<Incoming>| {
+                let mut app = app.clone();
+                let permit = permit.clone();
+                async move {
+                    let mut request = request.map(Body::new);
+                    request.extensions_mut().insert(ConnectInfo(peer));
+                    request.extensions_mut().insert(permit);
+                    let response = app.call(request).await?;
+                    Ok::<_, Infallible>(response)
+                }
+            });
+            let mut builder = Builder::new(TokioExecutor::new());
+            builder
+                .http1()
+                .timer(TokioTimer::new())
+                .header_read_timeout(Duration::from_secs(10));
+            if let Err(error) = builder
+                .serve_connection_with_upgrades(TokioIo::new(tls), service)
+                .await
+            {
+                tracing::debug!(%error, "TCP door connection closed");
+            }
+        });
+    }
+}
+
 /// Run the tched_router Axum host.
 ///
 /// Returns only when both listeners exit (which should not happen under normal
 /// operation).
 pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()> {
+    let tcp_identities = prepare_tcp_identities(&config)?;
+    let nextdns_bindings = crate::identity_nextdns::NextDnsBindings::from_env()?;
     let catalog_dir = crate::sealed_schema_reader::blob_catalog_dir_from_env();
     let legacy_path = std::env::var_os("TCHED_ROUTER_SCHEMA_PATH").map(PathBuf::from);
     validate_catalog_selection(&config.schema_path, &catalog_dir, legacy_path.as_deref())?;
@@ -547,6 +816,7 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
     )));
     let ovsdb = Arc::new(op_network::rovs_proxy::OvsdbDbusClient::new());
     let mutation_engine = Arc::new(MutationEngine::new(event_chain, ovsdb));
+    mutation_engine.configure_nextdns_bindings(nextdns_bindings)?;
     mutation_engine.configure_shared_socket_path(&config.shared_socket)?;
     // Prepare only the held owner directory. Per-owner namespaces and durable
     // workspace rows remain absent until an admitted explicit recovery/mutation.
@@ -887,22 +1157,6 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
 
     // TCP door: always TLS (zero-trust transport policy).
     // bind_addr is comma-separated; each address gets its own TLS listener.
-    let identity = config.tls_identity.ok_or_else(|| {
-        anyhow::anyhow!(
-            "TCP fabric requires TLS — set TCHED_ROUTER_TLS_CERT+TCHED_ROUTER_TLS_KEY, \
-             TCHED_ROUTER_TLS_CERT_FILE+TCHED_ROUTER_TLS_KEY_FILE, \
-             or TCHED_ROUTER_DEV_SELF_SIGNED=1 (dev only)"
-        )
-    })?;
-    let bind_addrs: Vec<&str> = config
-        .bind_addr
-        .split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .collect();
-    if bind_addrs.is_empty() {
-        anyhow::bail!("TCHED_ROUTER_BIND_ADDR is empty — no TCP addresses to bind");
-    }
     let mut tcp_tasks = Vec::new();
     // One MCP policy owner / axum app, cloned onto every TCP bind. Building
     // per-address panics: MutationEngine installs that owner exactly once.
@@ -911,20 +1165,16 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         operation_server.clone(),
         assertion_validator.clone(),
     );
-    for bind_addr_str in &bind_addrs {
-        let bind_addr: SocketAddr = bind_addr_str.parse()?;
+    for (bind_addr, tls) in tcp_identities {
         let listener = tokio::net::TcpListener::bind(bind_addr)
             .await
             .map_err(|error| anyhow::anyhow!("cannot bind TCP fabric at {bind_addr}: {error}"))?;
         info!(addr = %bind_addr, "tched_router TLS gRPC/gRPC-Web listening on TCP");
-        let tls_config = ServerTlsConfig::new().identity(identity.clone());
-        let server = tonic::transport::Server::builder()
-            .accept_http1(true)
-            .tls_config(tls_config)
-            .map_err(|e| anyhow::anyhow!("invalid TLS config for {bind_addr}: {e}"))?
-            .add_routes(tonic::service::Routes::from(ingress.clone()))
-            .serve_with_incoming(tokio_stream::wrappers::TcpListenerStream::new(listener));
-        tcp_tasks.push(tokio::spawn(server));
+        tcp_tasks.push(tokio::spawn(serve_upgradeable_tcp(
+            listener,
+            tls,
+            ingress.clone(),
+        )));
     }
 
     // The service, not its launcher, owns readiness. At this point every UDS
@@ -1013,6 +1263,186 @@ mod catalog_selection_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn browser_tls_override_requires_the_complete_triplet() {
+        let configured = "127.0.0.1:8090,10.0.0.2:8090,10.0.0.3:8090";
+        assert!(load_browser_tls_override(configured, None, None, None)
+            .unwrap()
+            .is_none());
+        assert!(load_browser_tls_override(
+            configured,
+            Some("10.0.0.2:8090"),
+            Some("/cert.pem"),
+            None,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn browser_tls_override_must_select_one_existing_private_bind() {
+        let configured = "127.0.0.1:8090,10.0.0.2:8090,10.0.0.3:8090";
+        let browser_bind: SocketAddr = "10.0.0.2:8090".parse().unwrap();
+        assert!(validate_browser_override_bind(configured, browser_bind).is_ok());
+        assert!(
+            validate_browser_override_bind(configured, "10.0.0.4:8090".parse().unwrap(),).is_err()
+        );
+        assert!(
+            validate_browser_override_bind("0.0.0.0:8090", "0.0.0.0:8090".parse().unwrap(),)
+                .is_err()
+        );
+        assert!(uses_browser_tls(browser_bind, Some(browser_bind)));
+        assert!(!uses_browser_tls(
+            "127.0.0.1:8090".parse().unwrap(),
+            Some(browser_bind),
+        ));
+    }
+
+    fn test_identity() -> PemIdentity {
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+        let certificate = rcgen::generate_simple_self_signed(vec!["localhost".to_owned()]).unwrap();
+        PemIdentity::from_pem(certificate.cert.pem(), certificate.key_pair.serialize_pem())
+    }
+
+    #[tokio::test]
+    async fn upgradeable_tcp_preserves_h2_health_and_reflection() {
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+        let certificate = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
+        let cert_pem = certificate.cert.pem();
+        let tls = PemIdentity::from_pem(&cert_pem, certificate.key_pair.serialize_pem())
+            .server_config()
+            .unwrap();
+        let (_, health_service) = tonic_health::server::health_reporter();
+        let reflection = tonic_reflection::server::Builder::configure()
+            .register_encoded_file_descriptor_set(tonic_health::pb::FILE_DESCRIPTOR_SET)
+            .build_v1()
+            .unwrap();
+        let mut routes = tonic::service::Routes::builder();
+        routes.add_service(tonic_web::enable(health_service));
+        routes.add_service(tonic_web::enable(reflection));
+        let app = routes.routes().into_axum_router();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            serve_upgradeable_tcp(listener, tls, app).await.unwrap();
+        });
+        let channel = tonic::transport::Channel::from_shared(format!("https://{address}"))
+            .unwrap()
+            .tls_config(
+                tonic::transport::ClientTlsConfig::new()
+                    .ca_certificate(Certificate::from_pem(cert_pem))
+                    .domain_name("localhost"),
+            )
+            .unwrap()
+            .connect_timeout(Duration::from_secs(5))
+            .connect()
+            .await
+            .unwrap();
+        let health = tonic_health::pb::health_client::HealthClient::new(channel.clone())
+            .check(tonic_health::pb::HealthCheckRequest {
+                service: String::new(),
+            })
+            .await
+            .unwrap()
+            .into_inner();
+        assert_eq!(
+            health.status,
+            tonic_health::pb::health_check_response::ServingStatus::Serving as i32
+        );
+        let request = tonic_reflection::pb::v1::ServerReflectionRequest {
+            host: String::new(),
+            message_request: Some(
+                tonic_reflection::pb::v1::server_reflection_request::MessageRequest::ListServices(
+                    String::new(),
+                ),
+            ),
+        };
+        let mut reflection =
+            tonic_reflection::pb::v1::server_reflection_client::ServerReflectionClient::new(
+                channel,
+            )
+            .server_reflection_info(tokio_stream::iter([request]))
+            .await
+            .unwrap()
+            .into_inner();
+        let response = reflection.message().await.unwrap().unwrap();
+        let Some(tonic_reflection::pb::v1::server_reflection_response::MessageResponse::ListServicesResponse(list)) = response.message_response else {
+            panic!("reflection did not list services");
+        };
+        assert!(list
+            .service
+            .iter()
+            .any(|service| service.name == "grpc.health.v1.Health"));
+        server.abort();
+    }
+
+    #[test]
+    fn tcp_preflight_rejects_malformed_browser_identity_before_binding() {
+        let config = ServerConfig {
+            bind_addr: "127.0.0.1:8090,10.0.0.2:8090,10.0.0.3:8090".into(),
+            tls_identity: Some(test_identity()),
+            browser_tls_override: Some((
+                "10.0.0.2:8090".parse().unwrap(),
+                PemIdentity::from_pem("not a certificate", "not a key"),
+            )),
+            ..ServerConfig::default()
+        };
+        assert!(prepare_tcp_identities(&config).is_err());
+    }
+
+    #[test]
+    fn tcp_preflight_keeps_all_binds_and_selects_only_browser_identity() {
+        let loopback: SocketAddr = "127.0.0.1:8090".parse().unwrap();
+        let browser: SocketAddr = "10.0.0.2:8090".parse().unwrap();
+        let private: SocketAddr = "10.0.0.3:8090".parse().unwrap();
+        let base = test_identity();
+        let browser_identity = test_identity();
+        let override_config = (browser, browser_identity);
+        let config = ServerConfig {
+            bind_addr: format!("{loopback},{browser},{private}"),
+            tls_identity: Some(base),
+            browser_tls_override: Some(override_config),
+            ..ServerConfig::default()
+        };
+
+        let identities = prepare_tcp_identities(&config).unwrap();
+        assert_eq!(
+            identities
+                .iter()
+                .map(|(address, _)| *address)
+                .collect::<Vec<_>>(),
+            vec![loopback, browser, private]
+        );
+        let base_identity = config.tls_identity.as_ref().unwrap();
+        let browser_identity = &config.browser_tls_override.as_ref().unwrap().1;
+        assert!(std::ptr::eq(
+            select_tcp_identity(
+                loopback,
+                config.browser_tls_override.as_ref(),
+                base_identity
+            ),
+            base_identity
+        ));
+        assert!(std::ptr::eq(
+            select_tcp_identity(browser, config.browser_tls_override.as_ref(), base_identity),
+            browser_identity
+        ));
+        assert!(std::ptr::eq(
+            select_tcp_identity(private, config.browser_tls_override.as_ref(), base_identity),
+            base_identity
+        ));
+    }
+
+    #[test]
+    fn tcp_preflight_rejects_duplicate_browser_bind() {
+        let config = ServerConfig {
+            bind_addr: "127.0.0.1:8090,10.0.0.2:8090,10.0.0.2:8090".into(),
+            tls_identity: Some(test_identity()),
+            browser_tls_override: Some(("10.0.0.2:8090".parse().unwrap(), test_identity())),
+            ..ServerConfig::default()
+        };
+        assert!(prepare_tcp_identities(&config).is_err());
+    }
 
     #[test]
     fn default_server_loads_the_canonical_router_blob() {

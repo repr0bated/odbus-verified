@@ -1,10 +1,10 @@
-//! File staging for the prepared golden deployment pipeline.
+//! Btrfs deployment images with symlink deduplication.
 //!
 //! Creates deployment "images" as folders where:
-//! - Each image is an ordinary directory, never a new subvolume
+//! - Each image on Btrfs is a subvolume with a read-only streaming snapshot
 //! - Files that exist in previous images are symlinked (deduplication)
 //! - New files are copied normally
-//! - The deployment owner prepares the golden snapshot for send/receive
+//! - The deployment owner prepares and transfers the golden release snapshot
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -57,6 +57,22 @@ impl ImageManager {
         Ok(())
     }
 
+    fn snapshot_belongs_to_image(snapshot_name: &str, image_name: &str) -> bool {
+        let Some(suffix) = snapshot_name
+            .strip_prefix(image_name)
+            .and_then(|name| name.strip_prefix('-'))
+        else {
+            return false;
+        };
+        let bytes = suffix.as_bytes();
+        bytes.len() == 15
+            && bytes[8] == b'-'
+            && bytes
+                .iter()
+                .enumerate()
+                .all(|(index, byte)| index == 8 || byte.is_ascii_digit())
+    }
+
     /// Create new image manager
     pub fn new(base_path: impl AsRef<Path>) -> Self {
         let base = base_path.as_ref().to_path_buf();
@@ -91,12 +107,13 @@ impl ImageManager {
             .await
             .context("Failed to check filesystem type")?;
 
-        if output.status.success() {
-            let fstype = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            Ok(fstype == "btrfs")
-        } else {
-            Ok(false)
-        }
+        anyhow::ensure!(
+            output.status.success(),
+            "Failed to determine filesystem type for {}: {}",
+            path.display(),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Ok(String::from_utf8_lossy(&output.stdout).trim() == "btrfs")
     }
 
     /// Create a new deployment image
@@ -121,7 +138,22 @@ impl ImageManager {
             !image_path.exists(),
             "deployment image already exists: {image_name}"
         );
-        async_fs::create_dir_all(&image_path).await?;
+        let btrfs_enabled = self.is_btrfs(&self.base_path).await?;
+        if btrfs_enabled {
+            let output = Command::new("btrfs")
+                .args(["subvolume", "create"])
+                .arg(&image_path)
+                .output()
+                .await
+                .context("Failed to create deployment image subvolume")?;
+            anyhow::ensure!(
+                output.status.success(),
+                "Failed to create deployment image subvolume: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        } else {
+            async_fs::create_dir_all(&image_path).await?;
+        }
 
         let mut image_metadata = ImageMetadata {
             name: image_name.to_string(),
@@ -218,6 +250,10 @@ impl ImageManager {
         let metadata_json = simd_json::to_string_pretty(&image_metadata)?;
         async_fs::write(&metadata_path, metadata_json).await?;
 
+        if btrfs_enabled {
+            self.create_image_snapshot(image_name).await?;
+        }
+
         log::info!(
             "Created image: {} (unique: {} bytes, symlinked: {} bytes)",
             image_name,
@@ -309,6 +345,26 @@ impl ImageManager {
         Ok(format!("{:x}", hash))
     }
 
+    /// Preserve a read-only snapshot of the completed image for Btrfs send.
+    async fn create_image_snapshot(&self, image_name: &str) -> Result<PathBuf> {
+        let image_path = self.images_dir.join(image_name);
+        let timestamp = chrono::Utc::now().format("%Y%m%d-%H%M%S");
+        let snapshot_path = self.snapshots_dir.join(format!("{image_name}-{timestamp}"));
+        let output = Command::new("btrfs")
+            .args(["subvolume", "snapshot", "-r"])
+            .arg(&image_path)
+            .arg(&snapshot_path)
+            .output()
+            .await
+            .context("Failed to create deployment image snapshot")?;
+        anyhow::ensure!(
+            output.status.success(),
+            "Failed to create deployment image snapshot: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Ok(snapshot_path)
+    }
+
     /// List all deployment images
     pub async fn list_images(&self) -> Result<Vec<ImageMetadata>> {
         let mut images = Vec::new();
@@ -357,12 +413,10 @@ impl ImageManager {
         Ok(metadata)
     }
 
-    /// Locate a historical snapshot. New staged images are deployed through
-    /// the prepared golden snapshot owner, not per-image subvolume creation.
+    /// Locate the most recent read-only image snapshot for streaming.
     pub async fn get_streamable_snapshot(&self, image_name: &str) -> Result<PathBuf> {
         Self::validate_image_name(image_name)?;
         // Find the most recent snapshot for this image
-        let snapshot_prefix = format!("{image_name}-");
         let mut latest_snapshot: Option<PathBuf> = None;
         let mut latest_time: i64 = 0;
 
@@ -375,7 +429,7 @@ impl ImageManager {
             let path = entry.path();
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-            if name.starts_with(&snapshot_prefix) {
+            if Self::snapshot_belongs_to_image(name, image_name) {
                 if let Ok(metadata) = entry.metadata().await {
                     if let Ok(created) = metadata.created() {
                         let timestamp = created
@@ -399,7 +453,6 @@ impl ImageManager {
     pub async fn delete_image(&self, image_name: &str) -> Result<()> {
         Self::validate_image_name(image_name)?;
         let image_path = self.images_dir.join(image_name);
-        let snapshot_prefix = format!("{image_name}-");
 
         // Delete snapshots first
         if self.snapshots_dir.exists() {
@@ -408,8 +461,8 @@ impl ImageManager {
                 let path = entry.path();
                 let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-                if name.starts_with(&snapshot_prefix) {
-                    if self.is_btrfs(&path).await? {
+                if Self::snapshot_belongs_to_image(name, image_name) {
+                    if self.is_btrfs(&path).await? && Self::is_subvolume_root(&path).await? {
                         let output = Command::new("btrfs")
                             .args(["subvolume", "delete"])
                             .arg(&path)
@@ -470,7 +523,60 @@ impl ImageManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::fs::MetadataExt;
     use tempfile::TempDir;
+
+    /// TempDir alone cannot remove Btrfs subvolumes. The fixture owns only
+    /// paths below its temporary root and removes snapshots before images.
+    struct DeploymentFixture(TempDir);
+
+    impl DeploymentFixture {
+        fn new() -> Self {
+            Self(TempDir::new().unwrap())
+        }
+
+        fn path(&self) -> &Path {
+            self.0.path()
+        }
+    }
+
+    impl Drop for DeploymentFixture {
+        fn drop(&mut self) {
+            let base = self.path().join("deployment");
+            for parent in [base.join("snapshots"), base.join("images")] {
+                if let Ok(entries) = std::fs::read_dir(parent) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        let Ok(metadata) = std::fs::symlink_metadata(&path) else {
+                            continue;
+                        };
+                        if metadata.is_dir() && metadata.ino() == 256 {
+                            // Test-owned read-only snapshots need to be writable
+                            // before an unprivileged fixture process can delete.
+                            let _ = std::process::Command::new("btrfs")
+                                .args(["property", "set", "-ts"])
+                                .arg(&path)
+                                .args(["ro", "false"])
+                                .output();
+                            if let Ok(output) = std::process::Command::new("btrfs")
+                                .args(["subvolume", "delete"])
+                                .arg(&path)
+                                .output()
+                            {
+                                if !output.status.success() {
+                                    eprintln!(
+                                        "test subvolume cleanup failed for {}: {}",
+                                        path.display(),
+                                        String::from_utf8_lossy(&output.stderr)
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     #[tokio::test]
     async fn test_image_manager_init() {
@@ -484,7 +590,7 @@ mod tests {
 
     #[tokio::test]
     async fn changed_file_with_same_basename_is_not_reused() {
-        let temp_dir = TempDir::new().unwrap();
+        let temp_dir = DeploymentFixture::new();
         let first_source = temp_dir.path().join("first");
         let second_source = temp_dir.path().join("second");
         async_fs::create_dir_all(&first_source).await.unwrap();
@@ -514,6 +620,54 @@ mod tests {
                 .unwrap(),
             "version two"
         );
+    }
+
+    #[tokio::test]
+    async fn btrfs_image_has_a_readonly_streamable_snapshot() {
+        let temp_dir = DeploymentFixture::new();
+        let manager = ImageManager::new(temp_dir.path().join("deployment"));
+        manager.init().await.unwrap();
+        if !manager.is_btrfs(temp_dir.path()).await.unwrap() {
+            return;
+        }
+        let input = temp_dir.path().join("input.bin");
+        async_fs::write(&input, b"image contents").await.unwrap();
+        let image = manager
+            .create_image("native-image", vec![input])
+            .await
+            .unwrap();
+        assert_eq!(async_fs::metadata(&image.path).await.unwrap().ino(), 256);
+
+        let snapshot = manager
+            .get_streamable_snapshot("native-image")
+            .await
+            .unwrap();
+        assert_eq!(async_fs::metadata(&snapshot).await.unwrap().ino(), 256);
+        let property = Command::new("btrfs")
+            .args(["property", "get", "-ts"])
+            .arg(&snapshot)
+            .arg("ro")
+            .output()
+            .await
+            .unwrap();
+        assert!(property.status.success());
+        assert_eq!(String::from_utf8_lossy(&property.stdout).trim(), "ro=true");
+        assert_eq!(
+            async_fs::read(snapshot.join("input.bin")).await.unwrap(),
+            b"image contents"
+        );
+    }
+
+    #[tokio::test]
+    async fn snapshot_lookup_and_delete_do_not_match_another_image_prefix() {
+        let temp_dir = TempDir::new().unwrap();
+        let manager = ImageManager::new(temp_dir.path());
+        manager.init().await.unwrap();
+        let other = temp_dir.path().join("snapshots/foo-bar-20260923-120000");
+        async_fs::create_dir(&other).await.unwrap();
+        assert!(manager.get_streamable_snapshot("foo").await.is_err());
+        manager.delete_image("foo").await.unwrap();
+        assert!(other.exists());
     }
 
     #[test]

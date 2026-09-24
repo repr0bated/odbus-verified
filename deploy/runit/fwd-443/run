@@ -21,7 +21,7 @@ until [ -S "$REALITY" ]; do sleep 1; done
 i=0
 while [ ! -S "$MAIL" ] && [ "$i" -lt 30 ]; do i=$((i+1)); sleep 1; done
 chmod 666 "$REALITY" 2>/dev/null || true
-chmod 1777 /run/ghostbridge 2>/dev/null || true
+chmod 0755 /run/ghostbridge 2>/dev/null || true
 
 pkill -f "socat TCP-LISTEN:443,bind=188.68.58.237" 2>/dev/null || true
 pkill -f "socat TCP-LISTEN:443,bind=10.0.0.2" 2>/dev/null || true

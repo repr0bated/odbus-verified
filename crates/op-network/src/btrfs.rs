@@ -6,6 +6,7 @@
 use std::ffi::CString;
 use std::fs::File;
 use std::os::fd::AsRawFd;
+use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
@@ -88,11 +89,49 @@ struct DevInfo {
     path: [u8; 1024],
 }
 
+/// `struct loop_info64` from `linux/loop.h`. The kernel records the opened
+/// backing file's device and inode, which is stronger than its display path.
+#[repr(C)]
+struct LoopInfo64 {
+    lo_device: u64,
+    lo_inode: u64,
+    lo_rdevice: u64,
+    lo_offset: u64,
+    lo_sizelimit: u64,
+    lo_number: u32,
+    lo_encrypt_type: u32,
+    lo_encrypt_key_size: u32,
+    lo_flags: u32,
+    lo_file_name: [u8; 64],
+    lo_crypt_name: [u8; 64],
+    lo_encrypt_key: [u8; 32],
+    lo_init: [u64; 2],
+}
+
+/// `LOOP_GET_STATUS64` and `LO_FLAGS_READ_ONLY` from `linux/loop.h`.
+const LOOP_GET_STATUS64: libc::c_ulong = 0x4c05;
+const LO_FLAGS_READ_ONLY: u32 = 1;
+
 const _: () = assert!(std::mem::size_of::<FsInfo>() == 1024);
 const _: () = assert!(std::mem::size_of::<DevInfo>() == 4096);
+const _: () = assert!(std::mem::size_of::<LoopInfo64>() == 232);
 
-/// Verify a dedicated mount by kernel FSID and backing device. Read-only ioctls;
-/// no format, pool membership change, mount, or filesystem mutation occurs.
+fn loop_status_matches_backing(loop_status: &LoopInfo64, backing: &std::fs::Metadata) -> bool {
+    backing.is_file()
+        && loop_status.lo_device == backing.dev()
+        && loop_status.lo_inode == backing.ino()
+        && loop_status.lo_rdevice == backing.rdev()
+        && loop_status.lo_offset == 0
+        && loop_status.lo_sizelimit == 0
+        && loop_status.lo_flags & LO_FLAGS_READ_ONLY == 0
+}
+
+/// Verify the registered image or block device is the kernel's sole writable
+/// btrfs device, either standalone or as the leaf of a seed/sprout filesystem.
+/// This does not authenticate the seed: a seeded identity also needs explicit
+/// core-seed provenance before it can be selected as an Incus root. A direct
+/// block path likewise needs owner-side proof that it is not a shared pool.
+/// Read-only ioctls; no format, pool membership change, or mount occurs.
 pub fn verify_dedicated_mount(
     device: &Path,
     mount_point: &Path,
@@ -107,7 +146,7 @@ pub fn verify_dedicated_mount(
         return Err(std::io::Error::last_os_error()).context("query btrfs filesystem identity");
     }
     if fs.fsid != *expected.as_bytes() || fs.num_devices != 1 {
-        bail!("mount is not the registered dedicated single-device btrfs filesystem");
+        bail!("mount is not the registered single-writable-device btrfs filesystem");
     }
     // SAFETY: same integer-only ABI guarantee; max_id is kernel-provided.
     let mut dev: DevInfo = unsafe { std::mem::zeroed() };
@@ -122,8 +161,38 @@ pub fn verify_dedicated_mount(
         .position(|byte| *byte == 0)
         .context("unterminated kernel device path")?;
     let actual = std::str::from_utf8(&dev.path[..end]).context("invalid kernel device path")?;
-    if std::fs::canonicalize(device)? != std::fs::canonicalize(actual)? {
-        bail!("mounted btrfs backing device differs from the registered device");
+    let backing = File::open(device).context("open registered btrfs backing")?;
+    let backing_meta = backing.metadata()?;
+    let actual_device = File::open(actual).context("open mounted btrfs block device")?;
+    let actual_meta = actual_device.metadata()?;
+    anyhow::ensure!(
+        actual_meta.file_type().is_block_device(),
+        "mounted btrfs member is not a block device"
+    );
+    if backing_meta.is_file() {
+        // SAFETY: loop_info64 is a fixed-size kernel ABI struct of integer fields.
+        let mut loop_status: LoopInfo64 = unsafe { std::mem::zeroed() };
+        if unsafe {
+            libc::ioctl(
+                actual_device.as_raw_fd(),
+                LOOP_GET_STATUS64,
+                &mut loop_status,
+            )
+        } != 0
+        {
+            return Err(std::io::Error::last_os_error())
+                .context("mounted image member is not a loop device");
+        }
+        if !loop_status_matches_backing(&loop_status, &backing_meta) {
+            bail!("mounted btrfs loop device does not match the registered writable image");
+        }
+    } else if backing_meta.file_type().is_block_device() {
+        anyhow::ensure!(
+            backing_meta.rdev() == actual_meta.rdev(),
+            "mounted btrfs block device differs from the registered block device"
+        );
+    } else {
+        bail!("registered btrfs backing is neither a regular image nor a block device");
     }
     Ok(())
 }
@@ -131,6 +200,7 @@ pub fn verify_dedicated_mount(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::fs::MetadataExt;
     #[test]
     fn dedicated_mount_verification_rejects_invalid_uuid_before_io() {
         assert!(
@@ -139,5 +209,33 @@ mod tests {
                 .to_string()
                 .contains("UUID")
         );
+    }
+
+    #[test]
+    fn loop_backing_identity_rejects_wrong_inode_readonly_and_partial_mapping() {
+        let image = tempfile::NamedTempFile::new().unwrap();
+        let meta = image.as_file().metadata().unwrap();
+        let mut status: LoopInfo64 = unsafe { std::mem::zeroed() };
+        status.lo_device = meta.dev();
+        status.lo_inode = meta.ino();
+        status.lo_rdevice = meta.rdev();
+        assert!(loop_status_matches_backing(&status, &meta));
+        status.lo_device += 1;
+        assert!(!loop_status_matches_backing(&status, &meta));
+        status.lo_device = meta.dev();
+        status.lo_inode += 1;
+        assert!(!loop_status_matches_backing(&status, &meta));
+        status.lo_inode = meta.ino();
+        status.lo_rdevice += 1;
+        assert!(!loop_status_matches_backing(&status, &meta));
+        status.lo_rdevice = meta.rdev();
+        status.lo_flags = LO_FLAGS_READ_ONLY;
+        assert!(!loop_status_matches_backing(&status, &meta));
+        status.lo_flags = 0;
+        status.lo_offset = 4096;
+        assert!(!loop_status_matches_backing(&status, &meta));
+        status.lo_offset = 0;
+        status.lo_sizelimit = 4096;
+        assert!(!loop_status_matches_backing(&status, &meta));
     }
 }

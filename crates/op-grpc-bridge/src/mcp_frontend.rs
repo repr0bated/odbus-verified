@@ -61,6 +61,21 @@ pub const MCP_VERSION_HEADER: &str = "mcp-protocol-version";
 pub const MCP_SESSION_HEADER: &str = "mcp-session-id";
 pub const MCP_METHOD_HEADER: &str = "mcp-method";
 pub const MCP_NAME_HEADER: &str = "mcp-name";
+const COMPACT_MODE_QUERY: &str = "opdbus_mode=compact";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum McpView {
+    Typed,
+    Compact,
+}
+
+fn requested_view(query: Option<&str>) -> Result<Option<McpView>, &'static str> {
+    match query {
+        None | Some("") => Ok(None),
+        Some(COMPACT_MODE_QUERY) => Ok(Some(McpView::Compact)),
+        Some(_) => Err("unsupported MCP view query"),
+    }
+}
 
 /// Raw HTTP uses the same canonical header name as gRPC metadata. Its value is
 /// the OIA1 wire envelope encoded as unpadded canonical base64url.
@@ -108,6 +123,7 @@ struct McpSession {
     principal_id: String,
     identity_session_id: String,
     session_genesis: String,
+    view: McpView,
     selection: RwLock<Option<ToolsetSelection>>,
     events: broadcast::Sender<String>,
     event_stream_active: Arc<AtomicBool>,
@@ -115,12 +131,13 @@ struct McpSession {
 }
 
 impl McpSession {
-    fn new(caller: &AuthenticatedCaller) -> Self {
+    fn new(caller: &AuthenticatedCaller, view: McpView) -> Self {
         let (events, _) = broadcast::channel(16);
         Self {
             principal_id: caller.principal_id.clone(),
             identity_session_id: caller.session_id.clone(),
             session_genesis: caller.session_genesis.clone(),
+            view,
             selection: RwLock::new(None),
             events,
             event_stream_active: Arc::new(AtomicBool::new(false)),
@@ -913,6 +930,10 @@ struct JsonRpcRequest {
 async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body>) -> Response {
     let peer = peer_addr(request.extensions());
     let headers = request.headers().clone();
+    let requested_view = match requested_view(request.uri().query()) {
+        Ok(view) => view,
+        Err(message) => return jsonrpc_error(StatusCode::BAD_REQUEST, None, -32600, message),
+    };
     if let Err(error) = validate_origin(&headers, &state.allowed_origins) {
         return (
             StatusCode::FORBIDDEN,
@@ -1007,6 +1028,28 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
         }
         None => None,
     };
+    let view = match &session {
+        Some(session) => {
+            if requested_view.is_some_and(|requested| requested != session.view) {
+                return jsonrpc_error(
+                    StatusCode::BAD_REQUEST,
+                    rpc.id,
+                    -32600,
+                    "MCP view differs from initialized session",
+                );
+            }
+            session.view
+        }
+        None => requested_view.unwrap_or(McpView::Typed),
+    };
+    if view == McpView::Compact && rpc.method != "initialize" && session.is_none() {
+        return jsonrpc_error(
+            StatusCode::BAD_REQUEST,
+            rpc.id,
+            -32600,
+            "compact MCP view requires an initialized session",
+        );
+    }
     let session_selection = match &session {
         Some(session) => session.selection.read().await.clone(),
         None => None,
@@ -1022,6 +1065,7 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
             &rpc.method,
             rpc.params,
             session_selection.as_ref(),
+            view,
         ),
     )
     .await;
@@ -1064,7 +1108,8 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
                                 "MCP session capacity reached",
                             );
                         }
-                        sessions.insert(session_id.clone(), Arc::new(McpSession::new(&caller)));
+                        sessions
+                            .insert(session_id.clone(), Arc::new(McpSession::new(&caller, view)));
                         drop(sessions);
                         for expired_caller in expired_callers {
                             schedule_session_close(state.backend.clone(), expired_caller);
@@ -1088,10 +1133,19 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
 
 fn request_timeout_for(method: &str, params: &Value) -> Duration {
     if method == "tools/call" {
-        let name = params
+        let outer_name = params
             .get("name")
             .and_then(Value::as_str)
             .unwrap_or_default();
+        let name = if outer_name == "execute_tool" {
+            params
+                .get("arguments")
+                .and_then(|arguments| arguments.get("tool_name"))
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+        } else {
+            outer_name
+        };
         if name == "plugin.notebooklm.setup_auth" {
             return NOTEBOOKLM_AUTH_REQUEST_TIMEOUT;
         }
@@ -1292,12 +1346,158 @@ impl RpcDispatchError {
     }
 }
 
+fn compact_tool_definitions() -> Result<Vec<Value>, RpcDispatchError> {
+    op_mcp::compact::compact_tools_schema()
+        .into_iter()
+        .map(|definition| serde_json::to_value(definition).map_err(RpcDispatchError::internal))
+        .collect()
+}
+
+/// The compact view borrows only the already authenticated, grant-filtered
+/// backend. It never owns an unscoped tool registry or caches a caller across
+/// requests; the frontend reauthenticates before every invocation.
+async fn compact_call(
+    backend: &dyn McpBackend,
+    caller: &AuthenticatedCaller,
+    name: &str,
+    arguments: Value,
+    selection: Option<&ToolsetSelection>,
+) -> Result<Value, RpcDispatchError> {
+    let object = arguments
+        .as_object()
+        .ok_or_else(|| RpcDispatchError::invalid_params("compact arguments must be an object"))?;
+    match name {
+        "list_tools" | "search_tools" | "get_tool_schema" => {
+            let mut tools = backend
+                .list_tools(caller, selection)
+                .await
+                .map_err(RpcDispatchError::internal)?;
+            tools.sort_by(|left, right| tool_name(left).cmp(tool_name(right)));
+            let result = match name {
+                "list_tools" => {
+                    let category = object.get("category").and_then(Value::as_str);
+                    let offset = object.get("offset").and_then(Value::as_u64).unwrap_or(0);
+                    let limit = object.get("limit").and_then(Value::as_u64).unwrap_or(20);
+                    if offset > 10_000 || !(1..=100).contains(&limit) {
+                        return Err(RpcDispatchError::invalid_params(
+                            "compact list offset or limit is out of range",
+                        ));
+                    }
+                    let tools = tools
+                        .into_iter()
+                        .filter(|tool| {
+                            category.is_none_or(|category| {
+                                let category = category.to_lowercase();
+                                tool_name(tool).to_lowercase().contains(&category)
+                                    || tool
+                                        .get("description")
+                                        .and_then(Value::as_str)
+                                        .unwrap_or("")
+                                        .to_lowercase()
+                                        .contains(&category)
+                            })
+                        })
+                        .skip(offset as usize)
+                        .take(limit as usize)
+                        .map(|tool| {
+                            json!({
+                                "name": tool_name(&tool),
+                                "description": tool.get("description").and_then(Value::as_str).unwrap_or("")
+                            })
+                        })
+                        .collect::<Vec<_>>();
+                    json!({"count": tools.len(), "tools": tools, "offset": offset, "limit": limit})
+                }
+                "search_tools" => {
+                    let query = object
+                        .get("query")
+                        .and_then(Value::as_str)
+                        .filter(|query| !query.trim().is_empty() && query.len() <= 256)
+                        .ok_or_else(|| RpcDispatchError::invalid_params("invalid search query"))?
+                        .to_lowercase();
+                    let limit = object.get("limit").and_then(Value::as_u64).unwrap_or(10);
+                    if !(1..=100).contains(&limit) {
+                        return Err(RpcDispatchError::invalid_params(
+                            "compact search limit is out of range",
+                        ));
+                    }
+                    let tools = tools
+                        .into_iter()
+                        .filter(|tool| {
+                            tool_name(tool).to_lowercase().contains(&query)
+                                || tool
+                                    .get("description")
+                                    .and_then(Value::as_str)
+                                    .unwrap_or("")
+                                    .to_lowercase()
+                                    .contains(&query)
+                        })
+                        .take(limit as usize)
+                        .map(|tool| {
+                            json!({
+                                "name": tool_name(&tool),
+                                "description": tool.get("description").and_then(Value::as_str).unwrap_or("")
+                            })
+                        })
+                        .collect::<Vec<_>>();
+                    json!({"count": tools.len(), "tools": tools})
+                }
+                _ => {
+                    let target = object
+                        .get("tool_name")
+                        .and_then(Value::as_str)
+                        .filter(|name| !name.is_empty())
+                        .ok_or_else(|| RpcDispatchError::invalid_params("tool_name is required"))?;
+                    let tool = tools
+                        .into_iter()
+                        .find(|tool| tool_name(tool) == target)
+                        .ok_or_else(|| RpcDispatchError::invalid_params("tool unavailable"))?;
+                    json!({"tool": target, "schema": tool.get("inputSchema").cloned().unwrap_or(Value::Null)})
+                }
+            };
+            Ok(normalize_tool_result(result))
+        }
+        "execute_tool" => {
+            let target = object
+                .get("tool_name")
+                .and_then(Value::as_str)
+                .filter(|name| !name.is_empty())
+                .ok_or_else(|| RpcDispatchError::invalid_params("tool_name is required"))?;
+            let input = object
+                .get("arguments")
+                .cloned()
+                .unwrap_or_else(|| json!({}));
+            if !input.is_object() {
+                return Err(RpcDispatchError::invalid_params(
+                    "nested tool arguments must be an object",
+                ));
+            }
+            backend
+                .call_tool(caller, target, input, selection)
+                .await
+                .map_err(RpcDispatchError::internal)
+        }
+        "respond" => {
+            let message = object
+                .get("message")
+                .and_then(Value::as_str)
+                .filter(|message| message.len() <= 4096)
+                .ok_or_else(|| RpcDispatchError::invalid_params("invalid response message"))?;
+            Ok(normalize_tool_result(json!({"message": message})))
+        }
+        _ => Err(RpcDispatchError::invalid_params(
+            "unknown compact meta-tool",
+        )),
+    }
+}
+
 async fn dispatch_rpc(
     backend: &dyn McpBackend,
     caller: &AuthenticatedCaller,
     method: &str,
     params: Value,
     session_selection: Option<&ToolsetSelection>,
+    view: McpView,
 ) -> Result<Value, RpcDispatchError> {
     match method {
         // The handshake establishes a Streamable HTTP session used only for
@@ -1307,12 +1507,18 @@ async fn dispatch_rpc(
                 .get("protocolVersion")
                 .and_then(Value::as_str)
                 .ok_or_else(|| RpcDispatchError::invalid_params("missing protocolVersion"))?;
-            Ok(initialize_result(negotiate_protocol_version(requested)))
+            Ok(initialize_result(
+                negotiate_protocol_version(requested),
+                view,
+            ))
         }
         "notifications/initialized" => Ok(json!({})),
         "ping" => Ok(json!({})),
         "server/discover" => Ok(discovery_result()),
         "tools/list" => {
+            if view == McpView::Compact {
+                return paginate("tools", compact_tool_definitions()?, &params);
+            }
             let selection = selection_from_params(&params)?.or_else(|| session_selection.cloned());
             let mut tools = backend
                 .list_tools(caller, selection.as_ref())
@@ -1329,6 +1535,9 @@ async fn dispatch_rpc(
                 .unwrap_or_else(|| json!({}));
             let selection = merged_toolset_selection(&params, &mut arguments)?
                 .or_else(|| session_selection.cloned());
+            if view == McpView::Compact {
+                return compact_call(backend, caller, name, arguments, selection.as_ref()).await;
+            }
             backend
                 .call_tool(caller, name, arguments, selection.as_ref())
                 .await
@@ -1365,7 +1574,11 @@ fn protocol_version_supported(version: &str) -> bool {
     SUPPORTED_PROTOCOL_VERSIONS.contains(&version)
 }
 
-fn initialize_result(protocol_version: &str) -> Value {
+fn initialize_result(protocol_version: &str, view: McpView) -> Value {
+    let instructions = match view {
+        McpView::Typed => "Each request requires exactly one authenticated identity. tools/list returns the real typed tools declared by the broker-curated toolsets. HOT tools—including Rust Pro, memory/code context, and healthy NotebookLM providers—are immediately callable. Before calling a non-HOT tool, use toolsets to select the toolset containing it.",
+        McpView::Compact => "Five compact meta-tools expose only the current caller's broker-curated tools. Use list_tools or search_tools, then get_tool_schema and execute_tool. Select a non-HOT toolset through execute_tool(tool_name=toolsets) before calling its tools. Every call rechecks the caller's current identity and grants.",
+    };
     json!({
         "protocolVersion": protocol_version,
         "capabilities": {
@@ -1376,7 +1589,7 @@ fn initialize_result(protocol_version: &str) -> Value {
             "name": "op-grpc-bridge",
             "version": env!("CARGO_PKG_VERSION")
         },
-        "instructions": "Each request requires exactly one authenticated identity. tools/list returns the real typed tools declared by the broker-curated toolsets. HOT tools—including Rust Pro, memory/code context, and healthy NotebookLM providers—are immediately callable. Before calling a non-HOT tool, use toolsets to select the toolset containing it."
+        "instructions": instructions
     })
 }
 
@@ -1389,7 +1602,7 @@ fn discovery_result() -> Value {
         "requiredHeaders": ["MCP-Protocol-Version"],
         "identityHeaderAlternatives": [HTTP_ASSERTION_HEADER, HTTP_SEALED_ID_HEADER],
         "optionalIntegrityHeaders": ["Mcp-Method", "Mcp-Name"],
-        "capabilities": initialize_result(MCP_PROTOCOL_VERSION)["capabilities"].clone()
+        "capabilities": initialize_result(MCP_PROTOCOL_VERSION, McpView::Typed)["capabilities"].clone()
     })
 }
 
@@ -1948,6 +2161,11 @@ fn peer_addr(extensions: &axum::http::Extensions) -> Option<SocketAddr> {
     extensions
         .get::<TlsConnectInfo<TcpConnectInfo>>()
         .and_then(|info| info.get_ref().remote_addr())
+        .or_else(|| {
+            extensions
+                .get::<axum::extract::ConnectInfo<SocketAddr>>()
+                .map(|info| info.0)
+        })
 }
 
 fn jsonrpc_error(status: StatusCode, id: Option<Value>, code: i64, message: &str) -> Response {
@@ -2019,6 +2237,30 @@ mod tests {
         );
     }
 
+    #[test]
+    fn compact_execution_uses_the_target_tool_timeout() {
+        assert_eq!(
+            request_timeout_for(
+                "tools/call",
+                &json!({
+                    "name": "execute_tool",
+                    "arguments": {
+                        "tool_name": "plugin.cognitive_mcp.agent_python_executor_run",
+                        "arguments": {}
+                    }
+                })
+            ),
+            AGENT_REQUEST_TIMEOUT
+        );
+        assert_eq!(
+            request_timeout_for(
+                "tools/call",
+                &json!({"name": "execute_tool", "arguments": {"tool_name": "echo"}})
+            ),
+            REQUEST_TIMEOUT
+        );
+    }
+
     #[derive(Clone)]
     struct TestAuthenticator;
 
@@ -2029,16 +2271,16 @@ mod tests {
             headers: &HeaderMap,
             _peer: Option<SocketAddr>,
         ) -> Result<AuthenticatedCaller, McpAuthError> {
-            if headers
+            let identity = headers
                 .get("x-test-auth")
                 .and_then(|value| value.to_str().ok())
-                != Some("ok")
-            {
+                .filter(|value| matches!(*value, "ok" | "other"));
+            let Some(identity) = identity else {
                 return Err(McpAuthError("missing test assertion".into()));
-            }
+            };
             Ok(AuthenticatedCaller {
-                principal_id: "test-principal".into(),
-                session_id: "test-session".into(),
+                principal_id: format!("test-principal-{identity}"),
+                session_id: format!("test-session-{identity}"),
                 session_genesis: "test-genesis".into(),
             })
         }
@@ -2081,6 +2323,14 @@ mod tests {
             arguments: Value,
             selection: Option<&ToolsetSelection>,
         ) -> anyhow::Result<Value> {
+            if name == "denied"
+                || matches!(
+                    name,
+                    "list_tools" | "search_tools" | "get_tool_schema" | "execute_tool" | "respond"
+                )
+            {
+                anyhow::bail!("AccessDenied: test backend rejected '{name}'");
+            }
             if name == "toolsets"
                 && arguments.get("operation").and_then(Value::as_str) == Some("select")
             {
@@ -2154,12 +2404,16 @@ mod tests {
     }
 
     async fn initialize_session(router: &Router) -> String {
+        initialize_session_at(router, MCP_PATH).await
+    }
+
+    async fn initialize_session_at(router: &Router, uri: &str) -> String {
         let response = router
             .clone()
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri(MCP_PATH)
+                    .uri(uri)
                     .header(CONTENT_TYPE, "application/json")
                     .header("accept", "application/json, text/event-stream")
                     .header("x-test-auth", "ok")
@@ -2192,12 +2446,24 @@ mod tests {
         params: Value,
         name: Option<&str>,
     ) -> Response {
+        session_call_at(router, session_id, MCP_PATH, "ok", method, params, name).await
+    }
+
+    async fn session_call_at(
+        router: &Router,
+        session_id: &str,
+        uri: &str,
+        auth: &str,
+        method: &str,
+        params: Value,
+        name: Option<&str>,
+    ) -> Response {
         let mut builder = Request::builder()
             .method("POST")
-            .uri(MCP_PATH)
+            .uri(uri)
             .header(CONTENT_TYPE, "application/json")
             .header("accept", "application/json, text/event-stream")
-            .header("x-test-auth", "ok")
+            .header("x-test-auth", auth)
             .header(MCP_VERSION_HEADER, MCP_PROTOCOL_VERSION)
             .header(MCP_SESSION_HEADER, session_id)
             .header(MCP_METHOD_HEADER, method);
@@ -2383,6 +2649,192 @@ mod tests {
             called["result"]["structuredContent"]["selection"],
             "context_code"
         );
+    }
+
+    #[tokio::test]
+    async fn compact_view_lists_canonical_meta_tools_and_executes_only_through_caller_backend() {
+        let router = test_router();
+        let uri = "/mcp?opdbus_mode=compact";
+        let session_id = initialize_session_at(&router, uri).await;
+        let listed = response_json(
+            session_call_at(
+                &router,
+                &session_id,
+                uri,
+                "ok",
+                "tools/list",
+                json!({}),
+                None,
+            )
+            .await,
+        )
+        .await;
+        let names = listed["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|tool| tool.get("name").and_then(Value::as_str))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            names,
+            vec![
+                "list_tools",
+                "search_tools",
+                "get_tool_schema",
+                "execute_tool",
+                "respond"
+            ]
+        );
+        assert_eq!(
+            listed["result"]["tools"],
+            json!(compact_tool_definitions().unwrap())
+        );
+
+        let discovered = response_json(
+            session_call_at(
+                &router,
+                &session_id,
+                uri,
+                "ok",
+                "tools/call",
+                json!({"name": "search_tools", "arguments": {"query": "code_search"}}),
+                Some("search_tools"),
+            )
+            .await,
+        )
+        .await;
+        assert_eq!(
+            discovered["result"]["structuredContent"]["tools"][0]["name"],
+            "plugin.cognitive_mcp.code_search"
+        );
+        let schema = response_json(
+            session_call_at(
+                &router,
+                &session_id,
+                uri,
+                "ok",
+                "tools/call",
+                json!({"name": "get_tool_schema", "arguments": {"tool_name": "plugin.cognitive_mcp.code_search"}}),
+                Some("get_tool_schema"),
+            )
+            .await,
+        )
+        .await;
+        assert_eq!(
+            schema["result"]["structuredContent"]["schema"]["required"],
+            json!(["query"])
+        );
+
+        let selected = response_json(
+            session_call_at(
+                &router,
+                &session_id,
+                uri,
+                "ok",
+                "tools/call",
+                json!({"name": "execute_tool", "arguments": {"tool_name": "toolsets", "arguments": {"operation": "select", "toolset_id": "context_code"}}}),
+                Some("execute_tool"),
+            )
+            .await,
+        )
+        .await;
+        assert_eq!(
+            selected["result"]["structuredContent"]["result"]["selected_set"],
+            "context_code"
+        );
+        let called = response_json(
+            session_call_at(
+                &router,
+                &session_id,
+                uri,
+                "ok",
+                "tools/call",
+                json!({"name": "execute_tool", "arguments": {"tool_name": "plugin.cognitive_mcp.code_search", "arguments": {"query": "sealed schema"}}}),
+                Some("execute_tool"),
+            )
+            .await,
+        )
+        .await;
+        assert_eq!(
+            called["result"]["structuredContent"]["selection"],
+            "context_code"
+        );
+    }
+
+    #[tokio::test]
+    async fn compact_view_rejects_cross_identity_cross_mode_and_backend_denial() {
+        let router = test_router();
+        let uri = "/mcp?opdbus_mode=compact";
+        let compact = initialize_session_at(&router, uri).await;
+        let typed = initialize_session(&router).await;
+
+        let other = session_call_at(
+            &router,
+            &compact,
+            uri,
+            "other",
+            "tools/list",
+            json!({}),
+            None,
+        )
+        .await;
+        assert_eq!(other.status(), StatusCode::NOT_FOUND);
+        let mismatch =
+            session_call_at(&router, &typed, uri, "ok", "tools/list", json!({}), None).await;
+        assert_eq!(mismatch.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            response_json(mismatch).await["error"]["message"],
+            "MCP view differs from initialized session"
+        );
+        let typed_list =
+            response_json(session_call(&router, &typed, "tools/list", json!({}), None).await).await;
+        assert_eq!(typed_list["result"]["tools"][0]["name"], "echo");
+
+        let denied = response_json(
+            session_call_at(
+                &router,
+                &compact,
+                uri,
+                "ok",
+                "tools/call",
+                json!({"name": "execute_tool", "arguments": {"tool_name": "denied", "arguments": {}}}),
+                Some("execute_tool"),
+            )
+            .await,
+        )
+        .await;
+        assert_eq!(denied["error"]["code"], -32603);
+        assert!(denied["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("AccessDenied"));
+        let missing = response_json(
+            session_call_at(
+                &router,
+                &compact,
+                uri,
+                "ok",
+                "tools/call",
+                json!({"name": "get_tool_schema", "arguments": {"tool_name": "denied"}}),
+                Some("get_tool_schema"),
+            )
+            .await,
+        )
+        .await;
+        assert_eq!(missing["error"]["code"], -32602);
+        assert_eq!(missing["error"]["message"], "tool unavailable");
+
+        let unauthenticated = session_call_at(
+            &router,
+            &compact,
+            uri,
+            "invalid",
+            "tools/list",
+            json!({}),
+            None,
+        )
+        .await;
+        assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]

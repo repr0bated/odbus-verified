@@ -210,7 +210,23 @@ fn seals_catalog_into_btrfs_filesystem_image() {
     let image = dir.join("opdbus-blobs.btrfs");
     let report = op_blob::btrfs::seal_blobs_into_btrfs_image(&cat.blob_paths(), &image).unwrap();
     assert_eq!(report.blob_count, 2);
+    assert!(report.subvolumes);
     assert!(op_blob::btrfs::verify_btrfs_image(&image).unwrap());
+    let roots = std::process::Command::new("btrfs")
+        .args(["inspect-internal", "dump-tree", "-t", "root"])
+        .arg(&image)
+        .output()
+        .unwrap();
+    assert!(
+        roots.status.success(),
+        "{}",
+        String::from_utf8_lossy(&roots.stderr)
+    );
+    let roots = String::from_utf8_lossy(&roots.stdout);
+    // Root-tree backrefs, unlike ordinary directory entries, prove that the
+    // two plugin paths inside the unmounted image are actual subvolumes.
+    assert!(roots.contains("root backref") && roots.contains("name unix_socket"));
+    assert!(roots.contains("root backref") && roots.contains("name wireguard"));
     // --shrink keeps the at-rest artifact small.
     assert!(report.image_bytes < 512 * 1024 * 1024);
     std::fs::remove_dir_all(&dir).ok();

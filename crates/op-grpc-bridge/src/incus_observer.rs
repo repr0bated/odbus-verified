@@ -70,6 +70,21 @@ async fn readback_and_publish(
     Ok(())
 }
 
+/// Called by identity root repair while it holds `lock_host_observation`
+/// across the exact native effect and complete default-project readback.
+/// Keep the same pinned seal and SHM publication path as ordinary Incus calls.
+pub(crate) async fn publish_repair_readback_locked(
+    engine: &MutationEngine,
+    snapshot: &IncusState,
+) -> Result<()> {
+    let prepared = prepare_observation(&blob_catalog_dir_from_env(), snapshot)?;
+    engine
+        .process_observed_state(PLUGIN, prepared.full_state, prepared.expected_schema_hash)
+        .await
+        .map_err(anyhow::Error::msg)
+        .map(|_| ())
+}
+
 /// Subscribe first, then publish one initial complete snapshot. Each native
 /// lifecycle wakeup produces another complete root replacement. Disconnect or
 /// malformed data ends this task without deleting the last committed state;
@@ -111,7 +126,31 @@ async fn dispatch_method_owned(
     method: &str,
     args: &serde_json::Value,
 ) -> Result<serde_json::Value> {
+    // Repair takes the session lifecycle lock before the host observation
+    // lock. Keep that order here, and retain both guards through readback.
+    let target = match method {
+        "add_device" | "update_device" | "remove_device" => args.get("instance_name"),
+        "create_instance" | "modify_instance" | "delete_instance" | "start_instance"
+        | "stop_instance" | "restart_instance" | "freeze_instance" | "unfreeze_instance"
+        | "snapshot_instance" | "exec_instance" => args.get("name"),
+        _ => None,
+    };
+    let _identity_target = if let Some(target) = target {
+        let target = target.as_str().context("Incus target name is invalid")?;
+        if uuid::Uuid::parse_str(target).is_ok_and(|uuid| uuid.to_string() == target) {
+            Some(crate::identity_sled_dispatch::guard_identity_incus_target(engine, target).await?)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
     let _observation = engine.lock_host_observation().await;
+    let _seeded_root = if let Some(target) = &_identity_target {
+        target.verify_under_host_lock(method).await?
+    } else {
+        None
+    };
     compatible_seal(&blob_catalog_dir_from_env())?;
     let observed = dispatch_incus_method_observed(method, args).await?;
     if let Some(snapshot) = observed.state {

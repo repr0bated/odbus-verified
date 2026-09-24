@@ -670,6 +670,7 @@ mod tests {
             catalog_hash_at_arrival: "12".repeat(32),
             head_timestamp_at_arrival: now,
             transport_scope: "dbus".into(),
+            nextdns: None,
         }
         .seal()
         .unwrap();

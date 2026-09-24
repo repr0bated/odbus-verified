@@ -8,9 +8,8 @@
 //! Layout inside the image:
 //!
 //! ```text
-//! /blobs/<plugin_id>/<plugin_id>.<hash16>.blob   (one subvolume per plugin
-//! /blob-index.json                                when btrfs-progs supports
-//!                                                 --subvol; plain dirs otherwise)
+//! /blobs/<plugin_id>/<plugin_id>.<hash16>.blob   (one subvolume per plugin)
+//! /blob-index.json
 //! ```
 //!
 //! Sealing uses `mkfs.btrfs --rootdir --shrink`, which populates the image
@@ -20,6 +19,7 @@
 //! loading the catalog from the mountpoint.
 
 use crate::blob::BlobRef;
+use std::collections::BTreeSet;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -62,6 +62,7 @@ pub fn seal_blobs_into_btrfs_image(
 
     let mut index = Vec::new();
     let mut total: u64 = 0;
+    let mut subvol_paths = BTreeSet::new();
     for p in blob_paths {
         let bytes = std::fs::read(p)?;
         let blob =
@@ -77,6 +78,7 @@ pub fn seal_blobs_into_btrfs_image(
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "blob path has no name"))?;
         std::fs::copy(p, dir.join(file_name))?;
         total += bytes.len() as u64;
+        subvol_paths.insert(format!("rw:blobs/{}", manifest.plugin_id));
         index.push(serde_json::json!({
             "plugin_id": manifest.plugin_id,
             "schema_version": manifest.schema_version,
@@ -103,24 +105,25 @@ pub fn seal_blobs_into_btrfs_image(
     f.set_len(size)?;
     drop(f);
 
-    // Plugins are ordinary directories inside the single image. `-f`: we own the just-created image, and
+    // Give each distinct plugin a Btrfs subvolume inside the image. `-f`:
+    // we own the just-created image, and
     // without it mkfs aborts when any loop device's backing file is
     // unreadable (e.g. root-owned incus disks) during its mount-status scan.
-    let subvolumes = false;
-    let args: Vec<String> = vec![
+    let mut args: Vec<String> = vec![
         "-q".into(),
         "-f".into(),
         "--rootdir".into(),
         staging.to_string_lossy().into_owned(),
         "--shrink".into(),
-        image_path.to_string_lossy().into_owned(),
     ];
-    let ok = run_mkfs(&args)?;
-    if !ok {
-        let _ = std::fs::remove_dir_all(&staging);
-        return Err(io::Error::other("mkfs.btrfs failed"));
+    for subvol in subvol_paths {
+        args.push("--subvol".into());
+        args.push(subvol);
     }
+    args.push(image_path.to_string_lossy().into_owned());
+    let result = run_mkfs(&args);
     let _ = std::fs::remove_dir_all(&staging);
+    result?;
 
     if !verify_btrfs_image(image_path)? {
         return Err(io::Error::new(
@@ -138,7 +141,7 @@ pub fn seal_blobs_into_btrfs_image(
         image_path: image_path.to_path_buf(),
         image_bytes,
         blob_count: blob_paths.len(),
-        subvolumes,
+        subvolumes: true,
     })
 }
 
@@ -163,13 +166,15 @@ pub fn which_mkfs() -> Option<PathBuf> {
     })
 }
 
-fn run_mkfs(args: &[String]) -> io::Result<bool> {
+fn run_mkfs(args: &[String]) -> io::Result<()> {
     let out = Command::new("mkfs.btrfs").args(args).output()?;
     if !out.status.success() {
-        // Caller decides whether to retry without --subvol.
-        return Ok(false);
+        return Err(io::Error::other(format!(
+            "mkfs.btrfs failed to create plugin subvolumes: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        )));
     }
-    Ok(true)
+    Ok(())
 }
 
 fn staging_dir(image_path: &Path) -> io::Result<PathBuf> {

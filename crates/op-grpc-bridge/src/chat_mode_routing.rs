@@ -36,8 +36,9 @@ pub(crate) fn dedicated_alias(mode: ChatMode) -> Option<&'static str> {
 
 fn apply_mode_route(mode: ChatMode, mut input: ChatInput) -> (Option<&'static str>, ChatInput) {
     if dedicated_alias(mode).is_some() {
-        // Role routes are resolved from their native OpenCode profiles or the
-        // control-plane request policy, never from a dashboard override.
+        // Role routes inherit their dedicated native provider profiles,
+        // never a dashboard override. Control Plane may use any configured
+        // provider selected by its operator.
         input.provider.clear();
         input.model.clear();
     }
@@ -72,10 +73,19 @@ pub(crate) async fn resolve(
         ),
         None => (context.mode, TchedRouterRuntimeClient::from_env()),
     };
+    let sealed_identity = crate::native_sled_identity::credential_for(
+        caller.actor_id,
+        caller
+            .session_id
+            .ok_or_else(|| anyhow::anyhow!("verified session is required"))?,
+        caller
+            .session_genesis
+            .ok_or_else(|| anyhow::anyhow!("verified genesis is required"))?,
+    )?;
     Ok(ResolvedChatRoute {
         mode,
         context,
-        client,
+        client: client.with_sealed_identity(Some(&sealed_identity)),
         input,
     })
 }

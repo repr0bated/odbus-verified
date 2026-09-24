@@ -13,17 +13,46 @@
 //! bytes only; it is not an identity, grant key, vector payload, or chain term.
 
 use base64::Engine as _;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 const MAGIC: &[u8; 4] = b"SID1";
 const SEAL_LEN: usize = 32;
 const MAX_WIRE_LEN: usize = 16 * 1024;
 const MAX_STRING_LEN: usize = 4096;
+const NEXTDNS_EXTENSION_TAG: &[u8; 4] = b"NDN1";
+const MAX_NEXTDNS_DEVICE_NAME_LEN: usize = 128;
 
 /// Inline sled representation of an SID1 envelope.
 pub const INLINE_PREFIX: &str = "sid1:";
 /// Direct Streamable HTTP header emitted by SID1-aware clients.
 pub const HTTP_HEADER_NAME: &str = "x-opdbus-sealed-id-bin";
+
+/// Server-assigned NextDNS identity context bound to a WireGuard principal.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct NextDnsContext {
+    pub profile_id: String,
+    pub device_name: String,
+}
+
+impl NextDnsContext {
+    /// Validate the canonical identifiers before they enter an SID1 claim.
+    pub fn validate(&self) -> Result<(), SealedIdError> {
+        let profile_is_canonical = self.profile_id.len() == 6
+            && self
+                .profile_id
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte));
+        let device_is_canonical = !self.device_name.is_empty()
+            && self.device_name.trim() == self.device_name.as_str()
+            && self.device_name.len() <= MAX_NEXTDNS_DEVICE_NAME_LEN
+            && !self.device_name.chars().any(char::is_control);
+        if !profile_is_canonical || !device_is_canonical {
+            return Err(SealedIdError::InvalidNextDnsContext);
+        }
+        Ok(())
+    }
+}
 
 /// Immutable identity claims sealed by the MutationEngine at session arrival.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +76,9 @@ pub struct SealedId {
     pub head_timestamp_at_arrival: i64,
     /// Transport scope of the one identity envelope.
     pub transport_scope: String,
+    /// Optional server-assigned NextDNS profile/device association.
+    /// `None` preserves the original SID1 wire bytes exactly.
+    pub nextdns: Option<NextDnsContext>,
 }
 
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
@@ -61,6 +93,8 @@ pub enum SealedIdError {
     MissingInlineSealedId,
     #[error("identity sled SID1 sealed identity is not canonical base64url")]
     NonCanonicalBase64,
+    #[error("SID1 NextDNS context is invalid")]
+    InvalidNextDnsContext,
 }
 
 impl SealedId {
@@ -83,6 +117,12 @@ impl SealedId {
         push_string(&mut out, &self.catalog_hash_at_arrival)?;
         out.extend_from_slice(&self.head_timestamp_at_arrival.to_le_bytes());
         push_string(&mut out, &self.transport_scope)?;
+        if let Some(nextdns) = &self.nextdns {
+            nextdns.validate()?;
+            out.extend_from_slice(NEXTDNS_EXTENSION_TAG);
+            push_string(&mut out, &nextdns.profile_id)?;
+            push_string(&mut out, &nextdns.device_name)?;
+        }
         if out.len().saturating_add(SEAL_LEN) > MAX_WIRE_LEN {
             return Err(SealedIdError::TooLarge);
         }
@@ -106,7 +146,7 @@ impl SealedId {
         }
 
         let mut reader = Reader::new(&wire[MAGIC.len()..body_end]);
-        let sealed = Self {
+        let mut sealed = Self {
             principal_id: reader.read_string()?,
             principal_kind: reader.read_string()?,
             session_id: reader.read_string()?,
@@ -121,7 +161,19 @@ impl SealedId {
             catalog_hash_at_arrival: reader.read_string()?,
             head_timestamp_at_arrival: reader.read_i64()?,
             transport_scope: reader.read_string()?,
+            nextdns: None,
         };
+        if !reader.is_consumed() {
+            if reader.take(NEXTDNS_EXTENSION_TAG.len())? != NEXTDNS_EXTENSION_TAG.as_slice() {
+                return Err(SealedIdError::Malformed);
+            }
+            let nextdns = NextDnsContext {
+                profile_id: reader.read_string()?,
+                device_name: reader.read_string()?,
+            };
+            nextdns.validate()?;
+            sealed.nextdns = Some(nextdns);
+        }
         if !reader.is_consumed()
             || sealed.principal_id.is_empty()
             || sealed.session_id.is_empty()
@@ -240,7 +292,24 @@ mod tests {
             catalog_hash_at_arrival: "12".repeat(32),
             head_timestamp_at_arrival: 10,
             transport_scope: "dbus,grpc,mcp".into(),
+            nextdns: None,
         }
+    }
+
+    fn reseal_with_extension(extension: &[u8]) -> Vec<u8> {
+        let mut wire = sample().seal().unwrap();
+        wire.truncate(wire.len() - SEAL_LEN);
+        wire.extend_from_slice(extension);
+        let seal = Sha256::digest(&wire);
+        wire.extend_from_slice(&seal);
+        wire
+    }
+
+    fn encoded_nextdns_extension(profile_id: &str, device_name: &str) -> Vec<u8> {
+        let mut extension = NEXTDNS_EXTENSION_TAG.to_vec();
+        push_string(&mut extension, profile_id).unwrap();
+        push_string(&mut extension, device_name).unwrap();
+        extension
     }
 
     #[test]
@@ -254,6 +323,32 @@ mod tests {
     }
 
     #[test]
+    fn legacy_sid1_golden_bytes_are_preserved_and_decode_without_context() {
+        const LEGACY_GOLDEN: &str = "U0lEMQkAAABwcmluY2lwYWwTAAAAd2lyZWd1YXJkLXByaW5jaXBhbAcAAABzZXNzaW9uBgAAAHB1YmtleUAAAABhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiIAAAAGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkAwAAAAsAAAAAAAAAAAAAAAAAAAALAAAAAAAAAEAAAABlZmVmZWZlZmVmZWZlZmVmZWZlZmVmZWZlZmVmZWZlZmVmZWZlZmVmZWZlZmVmZWZlZmVmZWZlZmVmZWZlZmVmQAAAADEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIxMjEyMTIKAAAAAAAAAA0AAABkYnVzLGdycGMsbWNw16xCKfDDh-dn-IH6UG6m8EKVX1HsU8_E2HT95lyw5mI";
+        let expected = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(LEGACY_GOLDEN)
+            .unwrap();
+        assert_eq!(sample().seal().unwrap(), expected);
+        assert_eq!(SealedId::open(&expected).unwrap().nextdns, None);
+        assert_eq!(
+            sample().to_inline_ref().unwrap(),
+            format!("{INLINE_PREFIX}{LEGACY_GOLDEN}")
+        );
+    }
+
+    #[test]
+    fn nextdns_context_round_trips_deterministically() {
+        let mut sealed = sample();
+        sealed.nextdns = Some(NextDnsContext {
+            profile_id: "689ec7".into(),
+            device_name: "Ghostbridge-Incus".into(),
+        });
+        let first = sealed.seal().unwrap();
+        assert_eq!(first, sealed.seal().unwrap());
+        assert_eq!(SealedId::open(&first).unwrap(), sealed);
+    }
+
+    #[test]
     fn sid1_rejects_tampering_and_trailing_bytes() {
         let mut wire = sample().seal().unwrap();
         wire[20] ^= 1;
@@ -262,6 +357,74 @@ mod tests {
         let mut trailing = sample().seal().unwrap();
         trailing.push(0);
         assert_eq!(SealedId::open(&trailing), Err(SealedIdError::SealMismatch));
+    }
+
+    #[test]
+    fn nextdns_extension_rejects_tampering_unknown_tags_and_truncation() {
+        let mut sealed = sample();
+        sealed.nextdns = Some(NextDnsContext {
+            profile_id: "689ec7".into(),
+            device_name: "Ghostbridge-Incus".into(),
+        });
+        let mut tampered = sealed.seal().unwrap();
+        let last_claim_byte = tampered.len() - SEAL_LEN - 1;
+        tampered[last_claim_byte] ^= 1;
+        assert_eq!(SealedId::open(&tampered), Err(SealedIdError::SealMismatch));
+
+        assert_eq!(
+            SealedId::open(&reseal_with_extension(b"BAD1")),
+            Err(SealedIdError::Malformed)
+        );
+        assert_eq!(
+            SealedId::open(&reseal_with_extension(NEXTDNS_EXTENSION_TAG)),
+            Err(SealedIdError::Malformed)
+        );
+    }
+
+    #[test]
+    fn nextdns_context_rejects_noncanonical_and_unsafe_values() {
+        for context in [
+            NextDnsContext {
+                profile_id: "689EC7".into(),
+                device_name: "Ghostbridge-Incus".into(),
+            },
+            NextDnsContext {
+                profile_id: "689ec".into(),
+                device_name: "Ghostbridge-Incus".into(),
+            },
+            NextDnsContext {
+                profile_id: "689ec7".into(),
+                device_name: "".into(),
+            },
+            NextDnsContext {
+                profile_id: "689ec7".into(),
+                device_name: " Ghostbridge-Incus".into(),
+            },
+            NextDnsContext {
+                profile_id: "689ec7".into(),
+                device_name: "Ghostbridge-Incus\n".into(),
+            },
+            NextDnsContext {
+                profile_id: "689ec7".into(),
+                device_name: "x".repeat(MAX_NEXTDNS_DEVICE_NAME_LEN + 1),
+            },
+        ] {
+            assert_eq!(
+                context.validate(),
+                Err(SealedIdError::InvalidNextDnsContext)
+            );
+            let mut sealed = sample();
+            sealed.nextdns = Some(context);
+            assert_eq!(sealed.seal(), Err(SealedIdError::InvalidNextDnsContext));
+        }
+
+        assert_eq!(
+            SealedId::open(&reseal_with_extension(&encoded_nextdns_extension(
+                "689EC7",
+                "Ghostbridge-Incus",
+            ))),
+            Err(SealedIdError::InvalidNextDnsContext)
+        );
     }
 
     #[test]

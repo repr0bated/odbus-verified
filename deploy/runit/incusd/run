@@ -11,6 +11,10 @@ wait_dep() {
 }
 wait_dep opdbus-rundirs
 
+# Prepared seed/leaf mounts must exist before Incus caches pool availability.
+# This root-only helper verifies native provenance; it never starts identities.
+/opt/op-dbus/current/bin/op-identity-storage mount-all || exit 1
+
 # Containers are socket/proxy-only identities, so Incus does not wait for OVS.
 export PATH="/usr/lib/incus:${PATH:-/usr/bin:/usr/sbin}"
 /usr/local/libexec/3tched/runit-ready-signal incusd

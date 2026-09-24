@@ -12,7 +12,7 @@ type Params = BTreeMap<String, DataValue>;
 mod identity_transactions;
 pub use identity_transactions::{
     IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityRecoverySnapshot,
-    IdentityRevision,
+    IdentityRevision, RootRepairJournal, SeedProvisionJournal,
 };
 mod runtime_document_transactions;
 pub use runtime_document_transactions::{
@@ -494,6 +494,23 @@ impl CozoGraphShuttle {
                 operation_id: String, intent_kind: String, intent_value: Int,
                 principal_kind: String default ""
             }"#,
+            // Private one-row-per-session repair fence in this same Cozo DB.
+            // Ordinary session events cannot create, overwrite or truncate it.
+            r#":create identity_root_repairs {
+                session_id: String => version: Int,
+                plan_sha256: String, operation_id: String, phase: String,
+                expected_revision: Int, expected_revision_operation_id: String,
+                committed_revision: Int default 0, stub_receipt_json: String default "", updated_at: Int
+            }"#,
+            // A separately fenced, absent-record native provision. The
+            // session key is derived from the public key; only this owner
+            // writes the relation before creating a leaf or Incus instance.
+            r#":create identity_seed_provisions {
+                session_id: String => version: Int,
+                plan_sha256: String, operation_id: String, phase: String,
+                expected_revision: Int, expected_revision_operation_id: String,
+                committed_revision: Int default 0, committed_genesis: String default "", updated_at: Int
+            }"#,
             // append-only per-session "snowball" event ledger archive
             // (the immutable event chain is the proof; this is the queryable copy)
             r#":create session_events {
@@ -553,27 +570,66 @@ impl CozoGraphShuttle {
             .iter()
             .any(|row| row.first().and_then(dv_as_str) == Some("identity_sleds"));
         if !migration_done && !sessions_already_present && legacy_exists {
-            cozo_run(
+            // A relation may have a different historical width, even when it
+            // contains no rows. Avoid planning a projection it cannot satisfy.
+            let has_legacy_rows = !cozo_run(
                 &self.db,
-                r#"
+                "?[session_id] := *identity_sleds{session_id} :limit 1",
+                BTreeMap::new(),
+            )?
+            .rows
+            .is_empty();
+            if has_legacy_rows {
+                let columns = cozo_run(&self.db, "::columns identity_sleds", BTreeMap::new())?;
+                let names: std::collections::BTreeSet<&str> = columns
+                    .rows
+                    .iter()
+                    .filter_map(|row| row.first().and_then(dv_as_str))
+                    .collect();
+                // A populated pre-SealedID relation cannot supply an authored
+                // sealed credential. In particular blob_ref is not sealed_id.
+                let required = [
+                    "session_id",
+                    "wireguard_pubkey",
+                    "interface",
+                    "peer_ip",
+                    "mutation_index",
+                    "hashed_footprint",
+                    "trace_id",
+                    "schema_version",
+                    "vector_id",
+                    "sealed_id",
+                    "btrfs_device_json",
+                    "instance_json",
+                    "session_started_at",
+                    "last_seen_at",
+                    "active",
+                    "expires_at",
+                ];
+                for name in required {
+                    anyhow::ensure!(names.contains(name), "populated legacy identity_sleds missing required field {name}; retired identity requires an authored credential");
+                }
+                let legacy_fields = required.join(", ");
+                // Named fields tolerate unrelated added columns without inventing
+                // credential or expiry data. Existing v3 stores are never replayed.
+                let query = format!(
+                    r#"
                 ?[session_id, wireguard_pubkey, interface, peer_ip, mutation_index,
                   session_genesis, trace_id, schema_version, vector_id, sealed_id,
                   btrfs_device_json, instance_json, session_started_at, last_seen_at,
                   active, expires_at] :=
-                    *identity_sleds[session_id, wireguard_pubkey, interface, peer_ip,
-                      mutation_index, hashed_footprint, trace_id, schema_version,
-                      vector_id, sealed_id, btrfs_device_json, instance_json,
-                      session_started_at, last_seen_at, active, expires_at],
+                    *identity_sleds{{{legacy_fields}}},
                     session_genesis = hashed_footprint
-                :put identity_sessions {
+                :put identity_sessions {{
                     session_id => wireguard_pubkey, interface, peer_ip, mutation_index,
                     session_genesis, trace_id, schema_version, vector_id, sealed_id,
                     btrfs_device_json, instance_json, session_started_at, last_seen_at,
                     active, expires_at
-                }
-            "#,
-                BTreeMap::new(),
-            )?;
+                }}
+            "#
+                );
+                cozo_run(&self.db, &query, BTreeMap::new())?;
+            }
         }
         if !migration_done {
             cozo_run(&self.db,
@@ -2196,6 +2252,38 @@ fn dv_to_json(dv: &DataValue) -> Value {
 mod identity_sled_tests {
     use super::*;
 
+    const PRE_SEALED_ID_SCHEMA: &str = r#":create identity_sleds {
+        session_id: String => wireguard_pubkey: String,
+        interface: String default "", peer_ip: String default "",
+        mutation_index: Int default 0, hashed_footprint: String default "",
+        trace_id: String default "", schema_version: Int default 0,
+        vector_id: String default "", blob_ref: String default "",
+        btrfs_device_json: String default "", instance_json: String default "",
+        session_started_at: Int default 0, last_seen_at: Int default 0,
+        active: Bool default false
+    }"#;
+
+    fn unseeded_store() -> CozoGraphShuttle {
+        CozoGraphShuttle {
+            db: Arc::new(DbInstance::new("mem", "", Default::default()).unwrap()),
+            identity_directory: None,
+            identity_transaction: Arc::new(std::sync::Mutex::new(())),
+            runtime_document_transaction: Arc::new(std::sync::Mutex::new(())),
+            episode_transaction: Arc::new(std::sync::Mutex::new(())),
+        }
+    }
+
+    fn migration_marked(store: &CozoGraphShuttle) -> bool {
+        !cozo_run(
+            &store.db,
+            "?[name] := *schema_migrations{name, completed}, name = 'identity-sessions-v3', completed = true",
+            BTreeMap::new(),
+        )
+        .unwrap()
+        .rows
+        .is_empty()
+    }
+
     fn sample(session_id: &str) -> IdentitySledRecord {
         IdentitySledRecord {
             session_id: session_id.to_string(),
@@ -2216,6 +2304,83 @@ mod identity_sled_tests {
             active: true,
             expires_at: 0,
         }
+    }
+
+    #[test]
+    fn empty_legacy_identity_relation_does_not_require_current_column_width() {
+        let store = unseeded_store();
+        cozo_run(&store.db, PRE_SEALED_ID_SCHEMA, BTreeMap::new()).unwrap();
+        store.seed_schema().unwrap();
+        assert!(migration_marked(&store));
+        assert!(store.list_identity_sessions().unwrap().is_empty());
+    }
+
+    #[test]
+    fn populated_pre_sealed_id_identity_relation_fails_without_migration_marker() {
+        let store = unseeded_store();
+        cozo_run(&store.db, PRE_SEALED_ID_SCHEMA, BTreeMap::new()).unwrap();
+        cozo_run(
+            &store.db,
+            "?[session_id, wireguard_pubkey, hashed_footprint, instance_json] <- [['s', 'wg', 'genesis', '{\"old\":true}']] :put identity_sleds {session_id => wireguard_pubkey, hashed_footprint, instance_json}",
+            BTreeMap::new(),
+        )
+        .unwrap();
+        let err = store.seed_schema().unwrap_err().to_string();
+        assert!(err.contains("sealed_id"), "{err}");
+        assert!(!migration_marked(&store));
+        assert!(store.list_identity_sessions().unwrap().is_empty());
+    }
+
+    #[test]
+    fn wider_sealed_legacy_identity_rows_migrate_by_name_without_replay() {
+        let store = unseeded_store();
+        let schema = PRE_SEALED_ID_SCHEMA.replace(
+            "blob_ref: String default \"\"",
+            "sealed_id: String default \"\", expires_at: Int default 0, extra_a: String default \"\"",
+        );
+        cozo_run(&store.db, &schema, BTreeMap::new()).unwrap();
+        cozo_run(
+            &store.db,
+            "?[session_id, wireguard_pubkey, hashed_footprint, sealed_id, instance_json, expires_at] <- [['s', 'wg', 'genesis', 'sid1:abc', '{\"old\":true}', 1234567890]] :put identity_sleds {session_id => wireguard_pubkey, hashed_footprint, sealed_id, instance_json, expires_at}",
+            BTreeMap::new(),
+        )
+        .unwrap();
+        store.seed_schema().unwrap();
+        assert!(migration_marked(&store));
+        let mut row = store.get_identity_sled("s").unwrap().unwrap();
+        assert_eq!(row.wireguard_pubkey, "wg");
+        assert_eq!(row.session_genesis, "genesis");
+        assert_eq!(row.sealed_id, "sid1:abc");
+        assert_eq!(row.expires_at, 1234567890);
+        assert_eq!(row.instance_json, "{\"old\":true}");
+
+        row.instance_json = "{\"updated\":true}".into();
+        store.put_identity_sled(&row).unwrap();
+        store.seed_schema().unwrap();
+        assert_eq!(
+            store.get_identity_sled("s").unwrap().unwrap().instance_json,
+            "{\"updated\":true}"
+        );
+    }
+
+    #[test]
+    fn malformed_populated_legacy_identity_relation_never_marks_migration_complete() {
+        let store = unseeded_store();
+        cozo_run(
+            &store.db,
+            ":create identity_sleds { session_id: String => wireguard_pubkey: String }",
+            BTreeMap::new(),
+        )
+        .unwrap();
+        cozo_run(
+            &store.db,
+            "?[session_id, wireguard_pubkey] <- [['s', 'wg']] :put identity_sleds {session_id => wireguard_pubkey}",
+            BTreeMap::new(),
+        )
+        .unwrap();
+        assert!(store.seed_schema().is_err());
+        assert!(!migration_marked(&store));
+        assert!(store.list_identity_sessions().unwrap().is_empty());
     }
 
     #[test]

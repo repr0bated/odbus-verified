@@ -50,15 +50,21 @@ pub(crate) struct TriggerEvent {
 /// without an upstream model.
 #[async_trait::async_trait]
 pub(crate) trait Completer: Send + Sync {
-    async fn complete(&self, input: ChatInput) -> Result<ChatOutput>;
+    async fn complete(&self, input: ChatInput, scope: &EpisodeScope) -> Result<ChatOutput>;
 }
 
 struct RouterCompleter;
 
 #[async_trait::async_trait]
 impl Completer for RouterCompleter {
-    async fn complete(&self, input: ChatInput) -> Result<ChatOutput> {
+    async fn complete(&self, input: ChatInput, scope: &EpisodeScope) -> Result<ChatOutput> {
+        let sealed_identity = crate::native_sled_identity::credential_for(
+            &scope.principal_id,
+            &scope.session_id,
+            &scope.session_genesis,
+        )?;
         crate::tched_router_runtime::TchedRouterRuntimeClient::from_env()
+            .with_sealed_identity(Some(&sealed_identity))
             .chat_under_guard(input)
             .await
     }
@@ -352,7 +358,7 @@ You may request at most {} actions, only from: {}. Request none when nothing sho
                 provider: String::new(),
                 model: String::new(),
                 conversation_id: Some(format!("trigger:{}", trigger.trigger_id)),
-            })
+            }, &scope)
             .await
             .context("completion failed")?;
         let (tokens_in, tokens_out) = usage_tokens(&output.usage);
@@ -511,7 +517,7 @@ mod tests {
 
     #[async_trait::async_trait]
     impl Completer for FakeModel {
-        async fn complete(&self, input: ChatInput) -> Result<ChatOutput> {
+        async fn complete(&self, input: ChatInput, _scope: &EpisodeScope) -> Result<ChatOutput> {
             self.calls.fetch_add(1, Ordering::Relaxed);
             assert_eq!(input.messages.len(), 2);
             assert!(input.messages[0].content.contains("Event run protocol"));

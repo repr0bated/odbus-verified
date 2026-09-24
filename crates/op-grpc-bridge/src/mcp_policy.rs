@@ -782,7 +782,7 @@ mod tests {
     }
 
     #[test]
-    fn identity_inspection_is_read_only_and_granted_only_to_the_human() {
+    fn identity_inspection_stays_read_only_with_human_storage_grants() {
         let manifest = parse_toolset_manifest(include_bytes!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../deploy/config/mcp-toolsets.json"
@@ -807,22 +807,25 @@ mod tests {
             "/../../deploy/security/capability-grants.json"
         )))
         .unwrap();
-        let human = &grants["0b7933b7-c8d5-1c01-814e-0c3066d19bbd"]["capabilities"];
+        let human = &grants["c9bdf32e-811d-2495-b688-277c9e5c4d36"]["capabilities"];
         let service = &grants["87b0decc-8464-5abf-05d8-b52ec88ff9f1"]["capabilities"];
-        assert!(human
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|cap| cap == "identity_sled.read"));
-        assert!(!human
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|cap| cap == "identity_sled.write"));
-        assert!(!service
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|cap| cap == "identity_sled.read"));
+        // Storage authorization belongs to the human principal. It does not
+        // add mutation methods to the read-only inspection toolset above.
+        for capability in [
+            "identity_sled.read",
+            "identity_sled.write",
+            "cap.identity.sled.root_repair@v1",
+        ] {
+            assert!(human
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|cap| cap == capability));
+            assert!(!service
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|cap| cap == capability));
+        }
     }
 }

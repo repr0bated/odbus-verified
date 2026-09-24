@@ -170,7 +170,9 @@ pub struct SledBtrfsDevice {
     /// btrfs filesystem UUID of the sealed image.
     #[serde(default)]
     pub btrfs_uuid: String,
-    /// Cozo row id of the device record (the registry of truth).
+    /// Cozo owner key for the selected device binding. Newly provisioned
+    /// leaves use the derived identity_sessions session key, whose row owns
+    /// btrfs_device_json; repaired legacy records retain their prior value.
     #[serde(default)]
     pub cozo_id: String,
     /// Whether the dedicated identity filesystem is mounted and bind-ready.
@@ -233,10 +235,11 @@ impl StatePlugin for IdentitySledPlugin {
         "identity_sled"
     }
 
-    // Plugin field contract v3.1 retains the native Device discriminants.
+    // Plugin field contract v4.1 adds own-scoped root repair preflight readback.
+    // The native Device discriminants remain unchanged.
     // SID1, RECORD_FORMAT and durable identity record/revision formats do not change.
     fn version(&self) -> &str {
-        "3.1.0"
+        "4.1.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -282,7 +285,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "identity_sled",
-        "3.1.0",
+        "4.1.0",
         "Container identity sleds: the container is the sled is the identity; host is container zero; each record is seeded by its sealed blob",
         &root,
     );
@@ -298,6 +301,29 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     pub struct GetIdentityOutput {
         pub identity: ContainerIdentitySled,
+    }
+    /// Read-only, own-session inputs needed to prepare a trusted root repair
+    /// plan. This never returns SID1 bytes or accepts a caller-chosen target.
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    #[serde(deny_unknown_fields)]
+    pub struct InspectOwnRootRepairPreflightInput {}
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct InspectOwnRootRepairPreflightOutput {
+        pub session_id: String,
+        pub genesis: String,
+        pub revision: u64,
+        pub revision_operation_id: String,
+        pub btrfs_device: SledBtrfsDevice,
+        pub instance_etag: String,
+        pub instance_uuid: String,
+        /// SHA-256 of the original native last-state idmap, pinned before rebuild.
+        #[schemars(length(min = 64, max = 64), regex(pattern = "^[0-9a-f]{64}$"))]
+        pub expected_first_start_idmap_sha256: String,
+        pub image_fingerprint: String,
+        pub source_pool: String,
+        pub source_pool_source: String,
+        pub native_status: String,
+        pub root_subvolume: String,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
@@ -328,18 +354,29 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         /// WireGuard public key (base64). session_id — and therefore the
         /// container name — is DERIVED from this, never supplied.
         pub wireguard_pubkey: String,
-        /// btrfs persistence device to register for this sled.
-        #[serde(default)]
-        pub btrfs_device: Option<SledBtrfsDevice>,
-        /// Incus instance definition overrides (image, profiles, config,
-        /// devices…). `name` is ignored and forced to the derived session_id;
-        /// `status` is forced to `Stopped`, `boot.autostart` is forced to
-        /// `false`, and `nic`-type devices are rejected. The container starts
-        /// only when this identity completes authenticated session activation.
-        /// An omitted profile list defaults to the NIC-less `identity` profile
-        /// (root disk plus shared fabric UDS), never Incus `default`.
-        #[serde(default)]
-        pub instance: Option<super::incus::IncusInstance>,
+        /// Digest of the root-owned, session-bound seeded storage plan. The
+        /// method never accepts native paths, instance overrides or devices.
+        #[schemars(length(min = 64, max = 64), regex(pattern = "^[0-9a-f]{64}$"))]
+        pub plan_sha256: String,
+    }
+    /// The caller supplies only the digest of a root-owned, session-bound
+    /// repair plan. Paths, Incus names, native request bodies and credentials
+    /// are never accepted from the method argument.
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    #[serde(deny_unknown_fields)]
+    pub struct RepairOwnRootInput {
+        #[schemars(length(min = 64, max = 64), regex(pattern = "^[0-9a-f]{64}$"))]
+        pub plan_sha256: String,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct RepairOwnRootOutput {
+        pub status: String,
+        pub phase: String,
+        pub operation_id: String,
+        pub session_id: String,
+        pub plan_sha256: String,
+        pub pool_name: String,
+        pub btrfs_uuid: String,
     }
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
     #[serde(deny_unknown_fields)]
@@ -401,6 +438,19 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         ),
     );
     schema.methods.insert(
+        "inspect_own_root_repair_preflight".to_string(),
+        method_decl_from_schemars_with_output::<
+            InspectOwnRootRepairPreflightInput,
+            InspectOwnRootRepairPreflightOutput,
+        >(
+            "inspect_own_root_repair_preflight",
+            SideEffect::Read,
+            true,
+            "identity_sled.read",
+            "obs.service.identity-sled.root.repair-preflight@v1",
+        ),
+    );
+    schema.methods.insert(
         "write_identity".to_string(),
         method_decl_from_schemars_with_output::<WriteIdentityInput, GetIdentityOutput>(
             "write_identity",
@@ -427,7 +477,17 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
             SideEffect::Mutation,
             false,
             "identity_sled.write",
-            "mut.service.identity-sled.container.provision@v1",
+            "mut.service.identity-sled.container.provision@v2",
+        ),
+    );
+    schema.methods.insert(
+        "repair_own_root".to_string(),
+        method_decl_from_schemars_with_output::<RepairOwnRootInput, RepairOwnRootOutput>(
+            "repair_own_root",
+            SideEffect::Mutation,
+            false,
+            "cap.identity.sled.root_repair@v1",
+            "mut.service.identity-sled.root.repair@v1",
         ),
     );
     schema.methods.insert(
@@ -475,7 +535,9 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         "identity_sled.read".to_string(),
         op_state_store::CapabilityDecl {
             id: "identity_sled.read".to_string(),
-            description: "Grants: get_identity, get_session_history.".to_string(),
+            description:
+                "Grants: get_identity, get_session_history, inspect_own_root_repair_preflight."
+                    .to_string(),
         },
     );
     schema.capabilities.insert(
@@ -490,6 +552,13 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         op_state_store::CapabilityDecl {
             id: "identity_sled.credential.refresh".to_string(),
             description: "Refreshes the caller's anchored SID1 credential without changing its session claims.".to_string(),
+        },
+    );
+    schema.capabilities.insert(
+        "cap.identity.sled.root_repair@v1".to_string(),
+        op_state_store::CapabilityDecl {
+            id: "cap.identity.sled.root_repair@v1".to_string(),
+            description: "Repairs only the verified caller's stopped root from a trusted, digest-pinned plan; never mints identity or starts the container.".to_string(),
         },
     );
 
@@ -534,12 +603,14 @@ mod tests {
     #[test]
     fn schema_has_method_surface() {
         let schema = identity_sled_schema();
-        assert_eq!(schema.version, "3.1.0");
+        assert_eq!(schema.version, "4.1.0");
         for method in [
             "get_identity",
+            "inspect_own_root_repair_preflight",
             "write_identity",
             "refresh_credential",
             "provision_container",
+            "repair_own_root",
             "attach_btrfs_device",
             "touch_session",
             "record_session_event",
@@ -547,6 +618,38 @@ mod tests {
         ] {
             assert!(schema.methods.contains_key(method), "missing {method}");
         }
+        let provision = &schema.methods["provision_container"];
+        assert_eq!(
+            provision.subid,
+            "mut.service.identity-sled.container.provision@v2"
+        );
+        let args = serde_json::to_value(&provision.args).unwrap();
+        let validator = jsonschema::Validator::new(&args).unwrap();
+        assert!(validator
+            .validate(&serde_json::json!({
+                "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                "plan_sha256":"a".repeat(64)
+            }))
+            .is_ok());
+        for extra in ["instance", "btrfs_device", "sealed_id"] {
+            let mut input = serde_json::json!({
+                "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                "plan_sha256":"a".repeat(64)
+            });
+            input[extra] = serde_json::json!({});
+            assert!(
+                validator.validate(&input).is_err(),
+                "legacy override {extra} admitted"
+            );
+        }
+        let preflight =
+            serde_json::to_value(&schema.methods["inspect_own_root_repair_preflight"].args)
+                .unwrap();
+        let preflight = jsonschema::Validator::new(&preflight).unwrap();
+        assert!(preflight.validate(&serde_json::json!({})).is_ok());
+        assert!(preflight
+            .validate(&serde_json::json!({"session_id":"caller-selected"}))
+            .is_err());
     }
 
     #[test]
@@ -587,6 +690,35 @@ mod tests {
             serde_json::json!({"session_id":"s","limit":4097})
         )
         .is_err());
+        let mut preflight = serde_json::json!({
+            "session_id":"00000000-0000-4000-8000-000000000001",
+            "genesis":"g",
+            "revision":7,
+            "revision_operation_id":"op-7",
+            "btrfs_device":{
+                "device_path":"/private/fstorage.img",
+                "mount_point":"/private/persist",
+                "btrfs_uuid":"00000000-0000-4000-8000-000000000002",
+                "cozo_id":"old-cozo-key",
+                "attached":true
+            },
+            "instance_etag":"etag-7",
+            "instance_uuid":"00000000-0000-4000-8000-000000000001",
+            "expected_first_start_idmap_sha256":"b".repeat(64),
+            "image_fingerprint":"a".repeat(64),
+            "source_pool":"sourcepool",
+            "source_pool_source":"/private/sourcepool",
+            "native_status":"Stopped",
+            "root_subvolume":"missing"
+        });
+        assert!(validate(
+            "inspect_own_root_repair_preflight",
+            "returns",
+            preflight.clone()
+        )
+        .is_ok());
+        preflight["expected_first_start_idmap_sha256"] = "B".repeat(64).into();
+        assert!(validate("inspect_own_root_repair_preflight", "returns", preflight).is_err());
         assert!(validate(
             "touch_session",
             "args",

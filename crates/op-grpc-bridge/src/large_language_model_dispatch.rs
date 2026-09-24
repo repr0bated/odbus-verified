@@ -103,8 +103,10 @@ pub(crate) fn dispatch<'a>(
 pub(crate) async fn observed_tched_router_state(
     engine: &MutationEngine,
     pinned: &crate::sealed_schema_reader::ManifestPinnedSchemaDocument,
+    sealed_identity: &str,
 ) -> Result<op_plugins::state_plugins::tched_router::TchedRouterState> {
-    let (observed, represented) = crate::tched_config_engine::coherent_observation(pinned).await?;
+    let (observed, represented) =
+        crate::tched_config_engine::coherent_observation(pinned, sealed_identity).await?;
     engine
         .persist_tched_router_observation(&represented, &pinned.schema_hash)
         .await

@@ -82,6 +82,7 @@ fn legacy_credential_fixture() -> (IdentitySledRecord, GenesisInputsRecord, Stri
         catalog_hash_at_arrival: genesis.catalog_hash_at_arrival.clone(),
         head_timestamp_at_arrival: genesis.head_timestamp_at_arrival,
         transport_scope: "dbus,grpc,mcp".into(),
+        nextdns: None,
     }
     .to_inline_ref()
     .unwrap();
@@ -111,6 +112,25 @@ fn legacy_credential_fixture() -> (IdentitySledRecord, GenesisInputsRecord, Stri
         expires_at: 0,
     };
     (row, genesis, current)
+}
+
+fn credential_with_nextdns(
+    sealed_id: &str,
+    nextdns: Option<op_identity::sealed_id::NextDnsContext>,
+) -> String {
+    op_identity::sealed_id::SealedId {
+        nextdns,
+        ..op_identity::sealed_id::SealedId::from_inline_ref(sealed_id).unwrap()
+    }
+    .to_inline_ref()
+    .unwrap()
+}
+
+fn nextdns_context(profile_id: &str, device_name: &str) -> op_identity::sealed_id::NextDnsContext {
+    op_identity::sealed_id::NextDnsContext {
+        profile_id: profile_id.into(),
+        device_name: device_name.into(),
+    }
 }
 fn put(
     store: &CozoGraphShuttle,
@@ -268,6 +288,87 @@ fn transport_refresh_rejects_stale_reuse_claim_and_scope_changes() {
         store.read_identity_revision(&sid).unwrap(),
         refreshed.current
     );
+}
+
+#[test]
+fn transport_refresh_assigns_and_changes_nextdns_without_dropping_it() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let (row, genesis, current_sealed_id) = legacy_credential_fixture();
+    let sid = row.session_id.clone();
+    let first = put(&store, &sid, "seed-nextdns-refresh", row, Some(genesis));
+
+    let assigned_context = nextdns_context("689ec7", "Ghostbridge-Incus");
+    let assigned_credential =
+        credential_with_nextdns(&current_sealed_id, Some(assigned_context.clone()));
+    let assigned = store
+        .apply_identity_intent(
+            &sid,
+            "assign-nextdns",
+            IdentityIntent::RefreshTransportCredential {
+                expected: Box::new(first),
+                sealed_id: assigned_credential,
+            },
+        )
+        .unwrap();
+    assert!(!assigned.replayed);
+    assert_eq!(
+        op_identity::sealed_id::SealedId::from_inline_ref(
+            &assigned.current.record.as_ref().unwrap().sealed_id
+        )
+        .unwrap()
+        .nextdns,
+        Some(assigned_context)
+    );
+
+    let changed_context = nextdns_context("abcdef", "Laptop-2");
+    let changed_credential = credential_with_nextdns(
+        &assigned.current.record.as_ref().unwrap().sealed_id,
+        Some(changed_context.clone()),
+    );
+    let changed = store
+        .apply_identity_intent(
+            &sid,
+            "change-nextdns",
+            IdentityIntent::RefreshTransportCredential {
+                expected: Box::new(assigned.current.clone()),
+                sealed_id: changed_credential,
+            },
+        )
+        .unwrap();
+    assert!(!changed.replayed);
+    assert_eq!(
+        op_identity::sealed_id::SealedId::from_inline_ref(
+            &changed.current.record.as_ref().unwrap().sealed_id
+        )
+        .unwrap()
+        .nextdns,
+        Some(changed_context)
+    );
+
+    let dropped =
+        credential_with_nextdns(&changed.current.record.as_ref().unwrap().sealed_id, None);
+    assert!(store
+        .apply_identity_intent(
+            &sid,
+            "drop-nextdns",
+            IdentityIntent::RefreshTransportCredential {
+                expected: Box::new(changed.current.clone()),
+                sealed_id: dropped,
+            },
+        )
+        .is_err());
+
+    let unchanged = changed.current.record.as_ref().unwrap().sealed_id.clone();
+    assert!(store
+        .apply_identity_intent(
+            &sid,
+            "unchanged-refresh",
+            IdentityIntent::RefreshTransportCredential {
+                expected: Box::new(changed.current),
+                sealed_id: unchanged,
+            },
+        )
+        .is_err());
 }
 
 #[test]
@@ -930,4 +1031,358 @@ fn private_boundary_rejects_permission_drift_before_later_identity_effects() {
         )
         .is_err());
     assert_eq!(store.read_identity_revision("new").unwrap(), expected);
+}
+
+#[test]
+fn root_repair_journal_fences_plan_operation_and_uncertain_phase() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let plan = "a".repeat(64);
+    let absent = store.read_identity_revision("session").unwrap();
+    store
+        .apply_identity_intent(
+            "session",
+            "original-identity",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: absent,
+                record: Some(row("session")),
+                genesis: None,
+            })),
+        )
+        .unwrap();
+    let identity = store.read_identity_revision("session").unwrap();
+    // Caller-authored events with a journal-like kind/content have no access
+    // to the private repair fence, including after public event retention.
+    store
+        .append_session_event(
+            "session",
+            "root-repair-phase-v1",
+            "mut.service.identity-sled.root.repair@v1",
+            "{\"phase\":\"identity-committed\"}",
+            1,
+        )
+        .unwrap();
+    assert!(store.read_root_repair_journal("session").unwrap().is_none());
+    let prepared = store
+        .append_root_repair_phase("session", &plan, "original-op", "prepared", &identity, 1)
+        .unwrap();
+    assert_eq!(prepared.phase, "prepared");
+    assert_eq!(
+        store.read_root_repair_journal("session").unwrap(),
+        Some(prepared)
+    );
+    assert!(store
+        .append_root_repair_phase("session", &plan, "new-op", "mount-intent", &identity, 2)
+        .is_err());
+    assert!(store
+        .append_root_repair_phase(
+            "session",
+            &"b".repeat(64),
+            "original-op",
+            "mount-intent",
+            &identity,
+            2
+        )
+        .is_err());
+    let intent = store
+        .append_root_repair_phase(
+            "session",
+            &plan,
+            "original-op",
+            "mount-intent",
+            &identity,
+            2,
+        )
+        .unwrap();
+    assert_eq!(intent.phase, "mount-intent");
+    assert!(store
+        .append_root_repair_phase(
+            "session",
+            &plan,
+            "original-op",
+            "mount-intent",
+            &identity,
+            3
+        )
+        .is_err());
+    assert!(store
+        .append_root_repair_phase(
+            "session",
+            &plan,
+            "original-op",
+            "pool-import-intent",
+            &identity,
+            3
+        )
+        .is_err());
+    assert_eq!(
+        store.read_root_repair_journal("session").unwrap(),
+        Some(intent.clone())
+    );
+
+    assert!(store
+        .apply_identity_intent(
+            "session",
+            "unrelated-write",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: identity.clone(),
+                record: Some(row("session")),
+                genesis: None,
+            })),
+        )
+        .is_err());
+    assert_eq!(store.read_identity_revision("session").unwrap(), identity);
+    assert_eq!(
+        store.read_root_repair_journal("session").unwrap(),
+        Some(intent)
+    );
+    store
+        .append_root_repair_phase("session", &plan, "original-op", "mounted", &identity, 4)
+        .unwrap();
+    // Revocation remains available even during a repair. Its revision change
+    // prevents the old native intent from publishing a restored SID1 row.
+    store
+        .apply_identity_intent(
+            "session",
+            "revocation",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: identity.clone(),
+                record: None,
+                genesis: None,
+            })),
+        )
+        .unwrap();
+    assert!(store
+        .append_root_repair_phase(
+            "session",
+            &plan,
+            "original-op",
+            "pool-import-intent",
+            &identity,
+            5,
+        )
+        .is_err());
+}
+
+#[test]
+fn root_repair_fence_allows_only_its_verified_final_identity_cas() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let absent = store.read_identity_revision("session").unwrap();
+    store
+        .apply_identity_intent(
+            "session",
+            "initial",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: absent,
+                record: Some(row("session")),
+                genesis: None,
+            })),
+        )
+        .unwrap();
+    let before = store.read_identity_revision("session").unwrap();
+    let plan = "a".repeat(64);
+    let stub_receipt = serde_json::json!({
+        "status":"already_absent", "session_id":"session",
+        "plan_sha256":plan, "operation_id":"repair-op"
+    })
+    .to_string();
+    for (index, phase) in [
+        "prepared",
+        "mount-intent",
+        "mounted",
+        "pool-import-intent",
+        "pool-ready",
+        "stub-quarantine-intent",
+        "stub-absent",
+        "rebuild-intent",
+        "rebuilt",
+        "persist-intent",
+        "persist-ready",
+        "move-intent",
+        "moved",
+        "verified",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let row = if *phase == "stub-absent" {
+            assert!(store
+                .append_root_repair_phase(
+                    "session",
+                    &plan,
+                    "repair-op",
+                    phase,
+                    &before,
+                    index as i64
+                )
+                .is_err());
+            let foreign_receipt = stub_receipt.replace("repair-op", "foreign-op");
+            assert!(store
+                .append_root_repair_stub_absent(
+                    "session",
+                    &plan,
+                    "repair-op",
+                    &before,
+                    index as i64,
+                    &foreign_receipt,
+                )
+                .is_err());
+            store
+                .append_root_repair_stub_absent(
+                    "session",
+                    &plan,
+                    "repair-op",
+                    &before,
+                    index as i64,
+                    &stub_receipt,
+                )
+                .unwrap()
+        } else {
+            store
+                .append_root_repair_phase(
+                    "session",
+                    &plan,
+                    "repair-op",
+                    phase,
+                    &before,
+                    index as i64,
+                )
+                .unwrap()
+        };
+        assert_eq!(
+            row.stub_receipt_json,
+            if index >= 6 { &stub_receipt } else { "" }
+        );
+    }
+    assert!(store
+        .apply_identity_intent(
+            "session",
+            "other-op",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: before.clone(),
+                record: Some(row("session")),
+                genesis: None,
+            })),
+        )
+        .is_err());
+    store
+        .apply_identity_intent(
+            "session",
+            "repair-op-identity",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: before.clone(),
+                record: Some(row("session")),
+                genesis: None,
+            })),
+        )
+        .unwrap();
+    let committed = store.read_identity_revision("session").unwrap();
+    let committed_repair = store
+        .append_root_repair_phase(
+            "session",
+            &plan,
+            "repair-op",
+            "identity-committed",
+            &committed,
+            14,
+        )
+        .unwrap();
+    assert_eq!(committed_repair.stub_receipt_json, stub_receipt);
+    assert_eq!(
+        store
+            .read_root_repair_journal("session")
+            .unwrap()
+            .unwrap()
+            .stub_receipt_json,
+        committed_repair.stub_receipt_json
+    );
+}
+
+#[test]
+fn absent_seed_provision_journal_fences_native_intent_and_unrelated_identity_cas() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let sid = "new-session";
+    let plan = "a".repeat(64);
+    let absent = store.read_identity_revision(sid).unwrap();
+    store
+        .append_session_event(
+            sid,
+            "seed-provision-phase-v1",
+            "caller",
+            "{\"phase\":\"identity-committed\"}",
+            1,
+        )
+        .unwrap();
+    assert!(store.read_seed_provision_journal(sid).unwrap().is_none());
+    store
+        .append_seed_provision_phase(sid, &plan, "seed-op", "prepared", &absent, 1)
+        .unwrap();
+    assert!(store
+        .append_seed_provision_phase(sid, &plan, "other-op", "leaf-intent", &absent, 2)
+        .is_err());
+    assert!(store
+        .append_seed_provision_phase(sid, &"b".repeat(64), "seed-op", "leaf-intent", &absent, 2)
+        .is_err());
+    store
+        .append_seed_provision_phase(sid, &plan, "seed-op", "leaf-intent", &absent, 2)
+        .unwrap();
+    assert!(store
+        .apply_identity_intent(
+            sid,
+            "interloper",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: absent.clone(),
+                record: Some(row(sid)),
+                genesis: None,
+            }))
+        )
+        .is_err());
+    for (index, phase) in [
+        "leaf-ready",
+        "persist-intent",
+        "persist-ready",
+        "pool-import-intent",
+        "pool-ready",
+        "instance-create-intent",
+        "instance-ready",
+        "verified",
+    ]
+    .iter()
+    .enumerate()
+    {
+        store
+            .append_seed_provision_phase(sid, &plan, "seed-op", phase, &absent, index as i64 + 3)
+            .unwrap();
+    }
+    let mut committed_row = row(sid);
+    committed_row.session_genesis = "genesis-anchor".into();
+    store
+        .apply_identity_intent(
+            sid,
+            "seed-op-identity",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: absent,
+                record: Some(committed_row),
+                genesis: Some(genesis(sid)),
+            })),
+        )
+        .unwrap();
+    let committed = store.read_identity_revision(sid).unwrap();
+    let row = store
+        .append_seed_provision_phase(sid, &plan, "seed-op", "identity-committed", &committed, 11)
+        .unwrap();
+    assert_eq!(row.committed_genesis, "genesis-anchor");
+    assert_eq!(store.read_seed_provision_journal(sid).unwrap(), Some(row));
+    let mut replaced = committed.record.clone().unwrap();
+    replaced.btrfs_device_json = "{\"device_path\":\"/different-leaf\"}".into();
+    assert!(store
+        .apply_identity_intent(
+            sid,
+            "replace-leaf",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: committed,
+                record: Some(replaced),
+                genesis: Some(genesis(sid)),
+            }))
+        )
+        .is_err());
 }

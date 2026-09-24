@@ -347,6 +347,7 @@ pub struct MutationEngine {
     /// when the requesting future is cancelled during filesystem work.
     state_publication: Arc<Mutex<()>>,
     identity_sled_store: Arc<OnceCell<crate::identity_sled_dispatch::IdentitySledStore>>,
+    nextdns_bindings: Arc<OnceCell<crate::identity_nextdns::NextDnsBindings>>,
     /// Serialize native host observation and its commit so an earlier slow
     /// read cannot overwrite a later host snapshot.
     host_observation: Arc<Mutex<()>>,
@@ -712,6 +713,7 @@ fn sealed_sealed_id(
     stamp: &GenesisStamp,
     schema_version: u32,
     expires_at: i64,
+    nextdns: Option<op_identity::sealed_id::NextDnsContext>,
 ) -> anyhow::Result<String> {
     op_identity::sealed_id::SealedId {
         principal_id: op_identity::session::derive_principal_id(&stamp.wireguard_pubkey),
@@ -728,6 +730,7 @@ fn sealed_sealed_id(
         catalog_hash_at_arrival: stamp.catalog_hash_at_arrival.clone(),
         head_timestamp_at_arrival: stamp.head_timestamp_at_arrival,
         transport_scope: "dbus,grpc,mcp,mqtt".to_string(),
+        nextdns,
     }
     .to_inline_ref()
     .map_err(|error| anyhow::anyhow!("seal session sealed ID: {error}"))
@@ -1121,6 +1124,7 @@ impl MutationEngine {
                     &stamp,
                     existing.schema_version,
                     existing.expires_at.unwrap_or(0),
+                    self.assigned_nextdns(&stamp.wireguard_pubkey),
                 )?,
             };
             crate::identity_sled_dispatch::store_genesis(self, &stamp).await?;
@@ -1186,6 +1190,7 @@ impl MutationEngine {
             state_cache: Arc::new(RwLock::new(HashMap::new())),
             state_publication: Arc::new(Mutex::new(())),
             identity_sled_store: Arc::new(OnceCell::new()),
+            nextdns_bindings: Arc::new(OnceCell::new()),
             host_observation: Arc::new(Mutex::new(())),
             observers_started: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             incus_observer_started: Arc::new(std::sync::atomic::AtomicBool::new(false)),
@@ -4384,15 +4389,35 @@ impl MutationEngine {
             origin.readmit(self, &caller).await?;
         }
         let pinned = &guarded.pinned;
-        if let Some(result) =
-            crate::tched_config_engine::dispatch(self, pinned, method, &parsed_value).await?
+        let sealed_identity = crate::native_sled_identity::credential_for(
+            &caller.actor,
+            caller
+                .session
+                .as_deref()
+                .context("verified session is required")?,
+            caller
+                .genesis
+                .as_deref()
+                .context("verified genesis is required")?,
+        )?;
+        if let Some(result) = crate::tched_config_engine::dispatch(
+            self,
+            pinned,
+            method,
+            &parsed_value,
+            &sealed_identity,
+        )
+        .await?
         {
             return Ok(result);
         }
         if matches!(method, "GetState" | "ListProviders" | "ListModels") {
-            let observed =
-                crate::large_language_model_dispatch::observed_tched_router_state(self, pinned)
-                    .await?;
+            let observed = crate::large_language_model_dispatch::observed_tched_router_state(
+                self,
+                pinned,
+                &sealed_identity,
+            )
+            .await?;
             return op_plugins::state_plugins::tched_router::dispatch_tched_router_method(
                 method, json_args, &observed,
             )
@@ -4623,6 +4648,7 @@ impl MutationEngine {
                 method,
                 &parsed_value,
                 documents,
+                &sealed_identity,
             )
             .await?;
             self.persist_tched_router_fields(
@@ -4646,7 +4672,8 @@ impl MutationEngine {
             let _ = self
                 .projected_state::<serde_json::Value>("tched_router")
                 .await?;
-            let runtime = crate::tched_router_runtime::TchedRouterRuntimeClient::from_env();
+            let runtime = crate::tched_router_runtime::TchedRouterRuntimeClient::from_env()
+                .with_sealed_identity(Some(&sealed_identity));
             let prior = runtime.current_selection().await?;
             let selected = match method {
                 "SetProvider" => {
@@ -4671,7 +4698,7 @@ impl MutationEngine {
                 "selected_provider": selected.provider.clone(),
                 "selected_model": selected.model.clone(),
             });
-            let (readback, represented) = crate::tched_config_engine::coherent_observation(pinned)
+            let (readback, represented) = crate::tched_config_engine::coherent_observation(pinned, &sealed_identity)
                 .await
                 .context(
                     "native tched_router selection completed but coherent runtime readback failed; outcome requires reconciliation before retry",
