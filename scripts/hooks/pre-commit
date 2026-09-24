@@ -1,0 +1,12 @@
+#!/bin/sh
+# Refresh the crate graph when a commit changes workspace structure.
+# The meta node stores the current HEAD and time, so this hook does not run
+# for a graph-only commit.
+set -eu
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+git diff --cached --name-only --diff-filter=ACMR |
+    grep -Eq '^(crates/|deploy/runit/|Cargo\.toml$|Cargo\.lock$|scripts/crate-graph\.sh$)' ||
+    exit 0
+scripts/crate-graph.sh
+git add docs/crate-graph/crate-graph.cozo docs/crate-graph/crate-graph.json

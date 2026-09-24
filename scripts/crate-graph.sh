@@ -12,6 +12,9 @@
 #                                 runs_bin                                        runit_service -> bin
 #
 # Usage: scripts/crate-graph.sh [out-dir]   (default docs/crate-graph)
+# scripts/hooks/pre-commit runs this when a commit stages crates, manifests,
+# or deploy/runit. Install it with:
+#   ln -sfn ../../scripts/hooks/pre-commit .git/hooks/pre-commit
 # Load:  cargo run -p op-cozo-store --example load_crate_graph -- docs/crate-graph/crate-graph.cozo
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
