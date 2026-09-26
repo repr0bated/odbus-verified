@@ -227,13 +227,12 @@ impl OracleHttpAuthenticator {
         // Match native gRPC ordering: validate signature/binding and resolve the
         // principal, anchor the durable human session, then atomically consume
         // the nonce. A missing session must not burn an otherwise valid nonce.
-        let session = self
-            .engine
-            .ensure_verified_human_session_context(&pending.identity().human_pubkey)
-            .await
-            .ok_or_else(|| {
-                McpAuthError("Assertion identity has no anchored session genesis".into())
-            })?;
+        let session = crate::interceptor::anchor_verified_human_session(
+            self.engine.as_ref(),
+            &pending.identity().human_pubkey,
+        )
+        .await
+        .ok_or_else(|| McpAuthError("Assertion identity has no anchored session genesis".into()))?;
         pending.identity_mut().session_id = session.session_id;
         pending.identity_mut().session_genesis = session.genesis_hex;
         let identity = self

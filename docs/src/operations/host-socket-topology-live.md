@@ -253,7 +253,7 @@ Correct provision (existing WG keys preferred) — **target sequence**, not all 
 | Role | WG pubkey (existing) | Mesh IP | session_id (blake3 derive) |
 | --- | --- | --- | --- |
 | jeremy | `GEMLT/+I…` | `100.69.0.2` | `f036f8d8-aabb-c5f2-49c9-18dac19f41ea` |
-| chatbot | `VaRh9EU…` | `100.69.0.10` | `bea37ecb-92be-197c-660f-09e806f1a34f` |
+| chatbot | `Env5zPM…` | `100.69.0.10` | `b0c777e3-0955-cd8b-3d01-ca12998cae28` |
 
 When provisioned correctly, `incus list` shows those **two UUID names** (plus infra CTs). **Live today:** only named infra CTs (`assistant`, `cozo`, …) — UUID identity CTs **not** created yet.
 

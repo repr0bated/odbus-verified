@@ -32,7 +32,7 @@ use anyhow::Context as _;
 use async_trait::async_trait;
 use serde_json;
 use simd_json::prelude::{ValueAsContainer, ValueAsScalar, ValueObjectAccess};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex, OnceCell, RwLock, Semaphore};
 use zbus::zvariant::OwnedValue as ZOwnedValue;
@@ -430,6 +430,10 @@ pub struct MutationEngine {
     /// Verified session identities, keyed by session_id. Projection of the
     /// session records for the mutation path — not a second store.
     sessions: Arc<RwLock<HashMap<String, SessionContext>>>,
+    /// Last time a principal presented its own credential. Host-service calls
+    /// do not update this. A disconnect that hangs leaves the stamp behind,
+    /// and the unattended pass uses its age.
+    principal_logins: Arc<RwLock<HashMap<String, i64>>>,
 }
 
 enum AuditSink {
@@ -951,6 +955,11 @@ impl MutationEngine {
         self.sessions.read().await.get(session_id).cloned()
     }
 
+    /// Sessions the interceptor has anchored and not yet released.
+    pub async fn connected_session_ids(&self) -> HashSet<String> {
+        self.sessions.read().await.keys().cloned().collect()
+    }
+
     pub async fn session_context_for_actor(&self, actor_id: &str) -> Option<SessionContext> {
         if actor_id.is_empty() || actor_id == ANONYMOUS_ACTOR {
             return None;
@@ -995,78 +1004,8 @@ impl MutationEngine {
         }
     }
 
-    /// Anchor the first request only after the Oracle assertion path has
-    /// authenticated the decoy signature and resolved/bootstrapped the human.
-    ///
-    /// Keeping record creation out of [`ensure_session_context`] prevents the
-    /// legacy self-asserted header path from turning an arbitrary public
-    /// WireGuard key into a new session.
-    pub async fn ensure_verified_human_session_context(
-        &self,
-        wireguard_pubkey: &str,
-    ) -> Option<SessionContext> {
-        let valid_wireguard_key = base64::Engine::decode(
-            &base64::engine::general_purpose::STANDARD,
-            wireguard_pubkey.trim(),
-        )
-        .is_ok_and(|raw| raw.len() == 32);
-        if !valid_wireguard_key {
-            return None;
-        }
-        let session_id = op_identity::session::derive_session_id(wireguard_pubkey);
-        // Unavailable or malformed committed identity state must not be treated
-        // as a first arrival eligible for minting.
-        let record = crate::identity_sled_dispatch::stored_session(self, &session_id)
-            .await
-            .ok()?;
-        if let Some(record) = record {
-            let now = chrono::Utc::now().timestamp();
-            let current = record.is_anchored()
-                && record.wireguard_pubkey == wireguard_pubkey
-                && record
-                    .expires_at
-                    .is_none_or(|expires_at| expires_at == 0 || expires_at > now);
-            if !current {
-                tracing::warn!(
-                    %session_id,
-                    "verified identity has an expired or mismatched authoritative sled"
-                );
-                return None;
-            }
-            crate::identity_sled_dispatch::set_session_actor_class(self, &session_id, "human")
-                .await
-                .ok()?;
-            let context = SessionContext {
-                genesis_hex: record.genesis.unwrap_or_default(),
-                session_id: record.session_id,
-                wireguard_pubkey: record.wireguard_pubkey,
-                sealed_id_digest: sealed_id_digest(record.sealed_id.as_deref()),
-            };
-            self.register_session_context(context.clone()).await;
-            return Some(context);
-        }
-        match self
-            .mint_and_store_genesis(&session_id, wireguard_pubkey)
-            .await
-        {
-            Ok(_) => {
-                crate::identity_sled_dispatch::set_session_actor_class(self, &session_id, "human")
-                    .await
-                    .ok()?;
-                self.session_context(&session_id).await
-            }
-            Err(error) => {
-                tracing::warn!(
-                    %error,
-                    %session_id,
-                    "verified human arrival could not be anchored"
-                );
-                None
-            }
-        }
-    }
-
     pub async fn register_session_context(&self, context: SessionContext) {
+        self.note_principal_login(&context.session_id).await;
         self.sessions
             .write()
             .await
@@ -1074,7 +1013,31 @@ impl MutationEngine {
     }
 
     pub async fn forget_session_context(&self, session_id: &str) {
+        self.principal_logins.write().await.remove(session_id);
         self.sessions.write().await.remove(session_id);
+    }
+
+    /// Record that this principal presented its own credential just now.
+    pub async fn note_principal_login(&self, session_id: &str) {
+        if session_id.is_empty() {
+            return;
+        }
+        self.principal_logins
+            .write()
+            .await
+            .insert(session_id.to_string(), chrono::Utc::now().timestamp());
+    }
+
+    /// Sessions whose own credential was accepted inside `max_age_secs`.
+    pub async fn logged_in_principal_sessions(&self, max_age_secs: i64) -> HashSet<String> {
+        let now = chrono::Utc::now().timestamp();
+        self.principal_logins
+            .read()
+            .await
+            .iter()
+            .filter(|(_, seen)| now.saturating_sub(**seen) < max_age_secs)
+            .map(|(session_id, _)| session_id.clone())
+            .collect()
     }
 
     /// Mint this session's genesis once at arrival (FR-1).
@@ -1236,6 +1199,7 @@ impl MutationEngine {
                     .unwrap_or_else(|_| DEFAULT_MONGODB_MCP_URL.to_string()),
             )),
             sessions: Arc::new(RwLock::new(HashMap::new())),
+            principal_logins: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -4352,6 +4316,12 @@ impl MutationEngine {
             } else {
                 None
             };
+            if method == "get_identity" {
+                if let Some(session) = own_session.as_deref() {
+                    crate::identity_sled_dispatch::activate_human_session_on_login(self, session)
+                        .await?;
+                }
+            }
             redact_identity_method_credentials(method, own_session.as_deref(), &mut method_result);
         }
 

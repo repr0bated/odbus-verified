@@ -23,7 +23,15 @@
 //! └─────────────────────────────────────────────────────────────────┘
 //! ```
 
+/// Select rustls's aws-lc-rs provider for the whole process, as the bridge
+/// binary does. tonic's TLS also compiles in ring, so rustls cannot choose a
+/// provider itself and panics at the first TLS client or server setup.
+pub fn install_tls_crypto_provider() {
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+}
+
 pub mod chat_store;
+pub mod door_proxy;
 pub mod email;
 pub mod groups_admin;
 pub mod handlers;

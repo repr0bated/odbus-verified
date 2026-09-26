@@ -113,14 +113,14 @@ impl std::fmt::Debug for PemIdentity {
 }
 
 impl PemIdentity {
-    pub(crate) fn from_pem(cert: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> Self {
+    pub fn from_pem(cert: impl AsRef<[u8]>, key: impl AsRef<[u8]>) -> Self {
         Self {
             cert: cert.as_ref().to_vec(),
             key: key.as_ref().to_vec(),
         }
     }
 
-    pub(crate) fn server_config(&self) -> anyhow::Result<Arc<rustls::ServerConfig>> {
+    pub fn server_config(&self) -> anyhow::Result<Arc<rustls::ServerConfig>> {
         let certs = rustls_pemfile::certs(&mut BufReader::new(self.cert.as_slice()))
             .collect::<Result<Vec<_>, _>>()?;
         anyhow::ensure!(!certs.is_empty(), "TCP TLS certificate chain is empty");
@@ -738,7 +738,7 @@ fn build_tonic_routes(
 /// transport accepts HTTP/1 but calls Hyper without `with_upgrades`, which
 /// makes a WebSocket handshake succeed and then immediately resets the stream.
 /// The same Axum router retains the gRPC, gRPC-Web, reflection and MCP routes.
-pub(crate) async fn serve_upgradeable_tcp(
+pub async fn serve_upgradeable_tcp(
     listener: tokio::net::TcpListener,
     tls: Arc<rustls::ServerConfig>,
     app: Router,
@@ -855,19 +855,6 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
     mutation_engine.initialize_identity_sled_store().await?;
     crate::identity_sled_dispatch::recover_identity_startup(mutation_engine.as_ref()).await?;
     mutation_engine.seed_missing_plugin_projections().await?;
-    // D-Bus bindings do not survive a bridge restart. Invalidate every
-    // instance-backed sled that was durably active, then stop its container,
-    // before MCP/gRPC/D-Bus routes can be built or listeners exposed. Host
-    // identities have no Incus instance and remain untouched.
-    let parked =
-        crate::identity_sled_dispatch::park_orphaned_container_sessions(mutation_engine.as_ref())
-            .await?;
-    if parked > 0 {
-        tracing::warn!(
-            parked,
-            "parked orphaned identity containers before exposing fabric routes"
-        );
-    }
     // The control-plane chatbot's service identity is release-configured and sealed
     // by the same MutationEngine that owns every other session arrival.  This
     // identity belongs only to that singleton service and must not be borrowed
@@ -875,6 +862,40 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
     mutation_engine
         .bootstrap_control_plane_chatbot_identity()
         .await?;
+    let chatbot_containers =
+        crate::identity_sled_dispatch::start_service_identity_containers(mutation_engine.as_ref())
+            .await?;
+    if chatbot_containers > 0 {
+        tracing::info!(
+            chatbot_containers,
+            "control-plane chatbot identity container is running"
+        );
+    }
+    let unattended_engine = mutation_engine.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(
+            crate::identity_sled_dispatch::UNATTENDED_HUMAN_CONTAINER_SECS as u64,
+        ));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        interval.tick().await;
+        loop {
+            interval.tick().await;
+            match crate::identity_sled_dispatch::park_human_containers_without_login(
+                &unattended_engine,
+            )
+            .await
+            {
+                Ok(stopped) if stopped > 0 => tracing::info!(
+                    stopped,
+                    "stopped human identity containers with no logged-in principal"
+                ),
+                Ok(_) => {}
+                Err(error) => {
+                    tracing::warn!(%error, "unattended human container pass failed")
+                }
+            }
+        }
+    });
     // A configured local human uses the same WireGuard-derived principal on
     // every surface. Mint its SID1 into the human sled so local clients can
     // authenticate without inventing a per-client service identity.

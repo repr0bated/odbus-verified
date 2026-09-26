@@ -1,0 +1,5 @@
+#!/bin/sh
+# Xray owns this edge. Pacman reaches this script from the
+# PreTransaction hook only when caddy or nginx is in the transaction.
+echo "banned: caddy and nginx are not installed on this host. Xray owns this edge." >&2
+exit 1

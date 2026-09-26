@@ -20,7 +20,7 @@ if [ "${TCHED_ROUTER_SANITIZED:-}" != 1 ]; then
         TCHED_ROUTER_HOST="${TCHED_ROUTER_HOST:-127.0.0.1}" \
         TCHED_ROUTER_PORT="${TCHED_ROUTER_PORT:-8084}" \
         TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER="${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-custom.opencode_control_plane}" \
-        OPDBUS_SLED_AUTH_URL="${OPDBUS_SLED_AUTH_URL:-https://10.0.0.3:8090/mcp}" \
+        OPDBUS_SLED_AUTH_URL="${OPDBUS_SLED_AUTH_URL:-https://10.0.0.2:8090/mcp}" \
         OPDBUS_SLED_CA_FILE="${OPDBUS_SLED_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}" \
         /bin/sh "$0" --sanitized
 fi

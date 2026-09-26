@@ -28,6 +28,17 @@ use crate::sse::SseEventBroadcaster;
 use crate::users::UserStore;
 use crate::wireguard::WgServerConfig;
 
+/// The bridge's `:8090` door, shared by op-web's own client and the page's
+/// door connector. The door is TLS-only; its trust anchor is
+/// `OP_DBUS_GRPC_CA_FILE`.
+pub fn door_grpc_addr() -> String {
+    std::env::var("OP_DBUS_GRPC_ADDR")
+        .or_else(|_| std::env::var("OP_DBUS_ADDR"))
+        .or_else(|_| std::env::var("FABRIC_GRPC_ADDR"))
+        .or_else(|_| std::env::var("OP_FABRIC_GRPC_ADDR"))
+        .unwrap_or_else(|_| "https://10.0.0.2:8090".to_string())
+}
+
 /// Google OAuth configuration
 #[derive(Debug, Clone)]
 pub struct GoogleOAuthConfig {
@@ -232,13 +243,7 @@ impl AppState {
 
         // Initialize gRPC client for remote operations.
         // Consolidated control plane is op-grpc-bridge on :8090 (not a separate :50051 opdbus).
-        let grpc_addr = std::env::var("OP_DBUS_GRPC_ADDR")
-            .or_else(|_| std::env::var("OP_DBUS_ADDR"))
-            .or_else(|_| std::env::var("FABRIC_GRPC_ADDR"))
-            .or_else(|_| std::env::var("OP_FABRIC_GRPC_ADDR"))
-            // The :8090 door is TLS-only (tonic ClientTlsConfig; trust anchor
-            // via OP_DBUS_GRPC_CA_FILE, see GrpcClientPool::configure_endpoint).
-            .unwrap_or_else(|_| "https://10.0.0.3:8090".to_string());
+        let grpc_addr = door_grpc_addr();
         let pool = Arc::new(GrpcClientPool::new());
         let grpc_client = Arc::new(RemoteOperationClient::new(pool, &grpc_addr, "op-web"));
 

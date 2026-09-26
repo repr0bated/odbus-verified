@@ -2233,7 +2233,7 @@ Owner-provided topology note: WireGuard terminates at the decoy; there is no Wir
 
 **Test evidence.** Six local tests cover defaults, immutable paths, property names and subids. One explicitly asserts the obsolete rust-embed driver, not current serving behavior.
 
-**Uncertainty.** Owner-designated /srv/git/vercel-json-render-ui is authoritative. Embedded/always-available comments and tests do not establish runtime UI parity. No runtime presence or deployment was checked.
+**Uncertainty.** Owner-designated /srv/git/3tched.com is authoritative. Embedded/always-available comments and tests do not establish runtime UI parity. No runtime presence or deployment was checked.
 
 **Source evidence.**
 

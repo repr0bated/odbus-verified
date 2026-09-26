@@ -1,7 +1,8 @@
 //! Native btrfs device operations via ioctl — no CLI subprocesses.
 //!
-//! Identity persistence uses a dedicated, already-mounted filesystem. Binding
-//! it to a sled must never add/wipe a device into a shared storage pool.
+//! An identity device joins and leaves an already-mounted filesystem with
+//! `BTRFS_IOC_ADD_DEV` and `BTRFS_IOC_RM_DEV`. That is not a mount or unmount
+//! of the identity image.
 
 use std::ffi::CString;
 use std::fs::File;
@@ -24,6 +25,8 @@ struct BtrfsIoctlVolArgs {
 // _IOW(BTRFS_IOCTL_MAGIC=0x94, 10, struct btrfs_ioctl_vol_args)
 // = 0x40000000 | (sizeof(vol_args)=4096 << 16) | (0x94 << 8) | 10
 const BTRFS_IOC_ADD_DEV: libc::c_ulong = 0x5000_940a;
+// _IOW(BTRFS_IOCTL_MAGIC, 11, struct btrfs_ioctl_vol_args)
+const BTRFS_IOC_RM_DEV: libc::c_ulong = 0x5000_940b;
 const _: () = assert!(std::mem::size_of::<BtrfsIoctlVolArgs>() == 4096);
 
 /// Attach `device` to the mounted btrfs filesystem at `mount_point`
@@ -32,29 +35,65 @@ const _: () = assert!(std::mem::size_of::<BtrfsIoctlVolArgs>() == 4096);
 /// device (or loop-backed image) it intends to hand to this filesystem —
 /// the kernel wipes and claims it.
 pub fn device_add(device: &Path, mount_point: &Path) -> Result<()> {
+    vol_args_ioctl(BTRFS_IOC_ADD_DEV, "BTRFS_IOC_ADD_DEV", device, mount_point)
+}
+
+/// Remove `device` from the mounted btrfs filesystem at `mount_point`
+/// (equivalent to `btrfs device remove <device> <mount_point>`). `device`
+/// is the kernel member path, usually the loop device btrfs already has.
+pub fn device_remove(device: &Path, mount_point: &Path) -> Result<()> {
+    vol_args_ioctl(BTRFS_IOC_RM_DEV, "BTRFS_IOC_RM_DEV", device, mount_point)
+}
+
+/// Add the registered backing to `mount_point` when it is not already a member.
+pub fn ensure_device_added(device: &Path, mount_point: &Path) -> Result<()> {
+    if member_kernel_path(device, mount_point)?.is_some() {
+        return Ok(());
+    }
+    let block = backing_block_path(device)?;
+    if let Err(error) = device_add(&block, mount_point) {
+        if member_kernel_path(device, mount_point)?.is_some() {
+            return Ok(());
+        }
+        return Err(error);
+    }
+    Ok(())
+}
+
+/// Remove the registered backing from `mount_point` when it is still a member.
+/// A device that is already absent is left alone.
+pub fn ensure_device_removed(device: &Path, mount_point: &Path) -> Result<()> {
+    let Some(kernel_path) = member_kernel_path(device, mount_point)? else {
+        return Ok(());
+    };
+    device_remove(Path::new(&kernel_path), mount_point)
+}
+
+fn vol_args_ioctl(
+    ioctl: libc::c_ulong,
+    name: &str,
+    device: &Path,
+    mount_point: &Path,
+) -> Result<()> {
     let dev_str = device.to_str().context("device path is not valid UTF-8")?;
     if dev_str.len() > BTRFS_PATH_NAME_MAX {
         bail!("device path exceeds BTRFS_PATH_NAME_MAX");
     }
     let dev_c = CString::new(dev_str).context("device path contains NUL")?;
-
     let dir = File::open(mount_point)
         .with_context(|| format!("open btrfs mount point {}", mount_point.display()))?;
-
     let mut args = BtrfsIoctlVolArgs {
         fd: 0,
         name: [0u8; BTRFS_PATH_NAME_MAX + 1],
     };
     let bytes = dev_c.as_bytes_with_nul();
     args.name[..bytes.len()].copy_from_slice(bytes);
-
-    // SAFETY: `dir` is a valid open fd and `args` is a properly initialized,
-    // NUL-terminated btrfs_ioctl_vol_args matching the kernel ABI.
-    let rc = unsafe { libc::ioctl(dir.as_raw_fd(), BTRFS_IOC_ADD_DEV, &mut args) };
+    // SAFETY: `dir` is a valid open fd and `args` is a NUL-terminated vol_args.
+    let rc = unsafe { libc::ioctl(dir.as_raw_fd(), ioctl, &mut args) };
     if rc != 0 {
         let err = std::io::Error::last_os_error();
         bail!(
-            "BTRFS_IOC_ADD_DEV({} -> {}) failed: {err}",
+            "{name}({} -> {}) failed: {err}",
             device.display(),
             mount_point.display()
         );
@@ -115,6 +154,116 @@ const LO_FLAGS_READ_ONLY: u32 = 1;
 const _: () = assert!(std::mem::size_of::<FsInfo>() == 1024);
 const _: () = assert!(std::mem::size_of::<DevInfo>() == 4096);
 const _: () = assert!(std::mem::size_of::<LoopInfo64>() == 232);
+
+fn member_kernel_path(device: &Path, mount_point: &Path) -> Result<Option<String>> {
+    let dir = match File::open(mount_point) {
+        Ok(dir) => dir,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(error).context("open btrfs mount while looking up an identity device")
+        }
+    };
+    let backing = File::open(device).context("open registered identity btrfs backing")?;
+    let backing_meta = backing.metadata()?;
+    // SAFETY: FsInfo is an integer-only kernel ABI struct.
+    let mut fs: FsInfo = unsafe { std::mem::zeroed() };
+    if unsafe { libc::ioctl(dir.as_raw_fd(), 0x8400_941f as libc::c_ulong, &mut fs) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("query btrfs filesystem devices");
+    }
+    for devid in 1..=fs.max_id {
+        // SAFETY: DevInfo is an integer-only kernel ABI struct.
+        let mut dev: DevInfo = unsafe { std::mem::zeroed() };
+        dev.devid = devid;
+        if unsafe { libc::ioctl(dir.as_raw_fd(), 0xd000_941e as libc::c_ulong, &mut dev) } != 0 {
+            continue;
+        }
+        let Some(end) = dev.path.iter().position(|byte| *byte == 0) else {
+            continue;
+        };
+        let Ok(actual) = std::str::from_utf8(&dev.path[..end]) else {
+            continue;
+        };
+        if actual.is_empty() {
+            continue;
+        }
+        if kernel_member_matches(actual, &backing_meta)? {
+            return Ok(Some(actual.to_string()));
+        }
+    }
+    Ok(None)
+}
+
+fn kernel_member_matches(kernel_path: &str, backing_meta: &std::fs::Metadata) -> Result<bool> {
+    let actual_device = match File::open(kernel_path) {
+        Ok(file) => file,
+        Err(_) => return Ok(false),
+    };
+    let actual_meta = actual_device.metadata()?;
+    if !actual_meta.file_type().is_block_device() {
+        return Ok(false);
+    }
+    if backing_meta.is_file() {
+        // SAFETY: loop_info64 is a fixed-size integer kernel ABI struct.
+        let mut loop_status: LoopInfo64 = unsafe { std::mem::zeroed() };
+        if unsafe {
+            libc::ioctl(
+                actual_device.as_raw_fd(),
+                LOOP_GET_STATUS64,
+                &mut loop_status,
+            )
+        } != 0
+        {
+            return Ok(false);
+        }
+        return Ok(loop_status_matches_backing(&loop_status, backing_meta));
+    }
+    if backing_meta.file_type().is_block_device() {
+        return Ok(backing_meta.rdev() == actual_meta.rdev());
+    }
+    Ok(false)
+}
+
+fn backing_block_path(device: &Path) -> Result<std::path::PathBuf> {
+    let meta = std::fs::metadata(device)
+        .with_context(|| format!("inspect identity btrfs backing {}", device.display()))?;
+    if meta.file_type().is_block_device() {
+        return Ok(device.to_path_buf());
+    }
+    anyhow::ensure!(
+        meta.is_file(),
+        "identity btrfs backing is neither a block device nor an image file"
+    );
+    for entry in std::fs::read_dir("/dev").context("list loop devices")? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        let Some(digits) = name.strip_prefix("loop") else {
+            continue;
+        };
+        if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
+            continue;
+        }
+        let file = match File::options().read(true).open(entry.path()) {
+            Ok(file) => file,
+            Err(_) => continue,
+        };
+        if !file.metadata()?.file_type().is_block_device() {
+            continue;
+        }
+        // SAFETY: loop_info64 is a fixed-size integer kernel ABI struct.
+        let mut status: LoopInfo64 = unsafe { std::mem::zeroed() };
+        if unsafe { libc::ioctl(file.as_raw_fd(), LOOP_GET_STATUS64, &mut status) } != 0 {
+            continue;
+        }
+        if loop_status_matches_backing(&status, &meta) {
+            return Ok(entry.path());
+        }
+    }
+    bail!(
+        "identity image {} has no loop device to add into the mounted filesystem",
+        device.display()
+    )
+}
 
 fn loop_status_matches_backing(loop_status: &LoopInfo64, backing: &std::fs::Metadata) -> bool {
     backing.is_file()

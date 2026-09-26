@@ -61,14 +61,14 @@ deployment readiness, or a complete external dependency closure.
 The production UI's development checkout is the sibling repository
 `/srv/git/3tched.com`. The export does not depend on that checkout:
 a portable archive of its committed source, exact content hashes and build
-helper are included under `vendor/vercel-json-render-ui/`. The pin records
+helper are included under `vendor/3tched-json-render-ui/`. The pin records
 the captured production commit. Rebuild and
 verify the UI without deploying it:
 
 ```bash
-vendor/vercel-json-render-ui/build-assets.sh \
+vendor/3tched-json-render-ui/build-assets.sh \
   --npm-cache /var/cache/op-dbus-build/npm \
-  --output-dir target/ui-artifacts/vercel-json-render-ui
+  --output-dir target/ui-artifacts/3tched-json-render-ui
 ```
 
 The helper runs `npm ci`, type checking, lint, tests and the Vite build with

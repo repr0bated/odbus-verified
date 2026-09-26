@@ -26,8 +26,14 @@ set +a
 
 export PORT="${PORT:-8080}"
 export OP_WEB_STATIC_DIR="${OP_WEB_STATIC_DIR:-/usr/local/share/op-dbus/dashboard}"
-export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://10.0.0.3:8090}"
+export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://10.0.0.2:8090}"
 export OP_DBUS_GRPC_CA_FILE="${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}"
+# HTTPS for the same router on the page address 10.0.0.4, which gre-decoy
+# owns. The page's gRPC-Web calls reach the door through op-web.
+wait_dep gre-decoy
+export OP_WEB_TLS_BIND="${OP_WEB_TLS_BIND:-10.0.0.4:443}"
+export OP_WEB_TLS_CERT_FILE="${OP_WEB_TLS_CERT_FILE:-/etc/op-dbus/tls/op-web.crt}"
+export OP_WEB_TLS_KEY_FILE="${OP_WEB_TLS_KEY_FILE:-/etc/op-dbus/tls/op-web.key}"
 # Human browsers obtain OIA1 from the decoy's authenticated WireGuard pickup.
 # Host-local IP mappings do not prove a caller's identity, so no SID1 pickup
 # or HTTP admin grant is configured here.

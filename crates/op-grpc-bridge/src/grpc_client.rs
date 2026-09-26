@@ -717,24 +717,70 @@ impl std::fmt::Display for GrpcClientError {
 
 impl std::error::Error for GrpcClientError {}
 
-fn private_plugin_identity() -> Result<GhostbridgeCallMetadata, GrpcClientError> {
-    let selector = std::env::var(op_identity::session_projection::SESSION_SELECTOR_ENV)
+/// Identity for a host service call.
+///
+/// A named `OP_IDENTITY_SESSION_ID` still wins. Otherwise a single human
+/// session whose container is running is the logged-in caller. When no human
+/// is logged in, the control-plane chatbot is the caller. That service sled
+/// is never handed out by the general implicit resolver.
+fn host_service_session() -> Result<op_identity::SessionIdentity, GrpcClientError> {
+    let selector = std::env::var(op_identity::SESSION_SELECTOR_ENV)
         .ok()
         .filter(|value| !value.trim().is_empty())
         .or_else(|| {
             std::env::var("IDENTITY_SLED_HOST_SESSION_ID")
                 .ok()
                 .filter(|value| !value.trim().is_empty())
+        });
+    if selector.is_some() {
+        return op_identity::resolve_identity_credential_session(selector.as_deref()).map_err(
+            |error| {
+                GrpcClientError::RequestFailed(format!("private identity unavailable: {error}"))
+            },
+        );
+    }
+
+    let sessions = op_identity::read_identity_credential_sessions().map_err(|error| {
+        GrpcClientError::RequestFailed(format!("private identity unavailable: {error}"))
+    })?;
+    let mut logged_in_humans: Vec<_> = sessions
+        .iter()
+        .filter(|session| {
+            session.is_current() && session.may_resolve_implicitly() && session.active
         })
-        .ok_or_else(|| {
-            GrpcClientError::RequestFailed(
-                "plugin calls require an explicitly configured identity session".into(),
-            )
-        })?;
-    let identity =
-        op_identity::resolve_identity_credential_session(Some(&selector)).map_err(|e| {
-            GrpcClientError::RequestFailed(format!("private identity unavailable: {e}"))
-        })?;
+        .cloned()
+        .collect();
+    if logged_in_humans.len() == 1 {
+        return Ok(logged_in_humans.pop().expect("one logged-in human"));
+    }
+    if logged_in_humans.len() > 1 {
+        return Err(GrpcClientError::RequestFailed(format!(
+            "private identity unavailable: {}",
+            op_identity::SessionProjectionError::Ambiguous(logged_in_humans.len())
+        )));
+    }
+
+    let mut chatbots: Vec<_> = sessions
+        .into_iter()
+        .filter(|session| session.is_current() && session.is_service_principal())
+        .collect();
+    if chatbots.len() == 1 {
+        return Ok(chatbots.pop().expect("one chatbot session"));
+    }
+    if chatbots.is_empty() {
+        return Err(GrpcClientError::RequestFailed(
+            "private identity unavailable: no logged-in human and no control-plane chatbot session"
+                .into(),
+        ));
+    }
+    Err(GrpcClientError::RequestFailed(format!(
+        "private identity unavailable: {}",
+        op_identity::SessionProjectionError::Ambiguous(chatbots.len())
+    )))
+}
+
+fn private_plugin_identity() -> Result<GhostbridgeCallMetadata, GrpcClientError> {
+    let identity = host_service_session()?;
     let encoded = identity
         .sealed_id_header_for_transport("grpc")
         .map_err(|e| GrpcClientError::RequestFailed(format!("private SID1 unavailable: {e}")))?;
@@ -752,12 +798,18 @@ fn private_plugin_identity() -> Result<GhostbridgeCallMetadata, GrpcClientError>
     })
 }
 
+pub(crate) const HOST_SERVICE_LOGIN_HEADER: &str = "x-opdbus-host-service";
+
 fn attach_plugin_identity_metadata<T>(
     request: &mut Request<T>,
     identity: &GhostbridgeCallMetadata,
     capability_id: &str,
 ) -> Result<(), GrpcClientError> {
-    attach_identity_metadata(request, identity, Some(capability_id))
+    attach_identity_metadata(request, identity, Some(capability_id))?;
+    request
+        .metadata_mut()
+        .insert(HOST_SERVICE_LOGIN_HEADER, MetadataValue::from_static("1"));
+    Ok(())
 }
 
 fn attach_identity_metadata<T>(
@@ -765,59 +817,13 @@ fn attach_identity_metadata<T>(
     identity: &GhostbridgeCallMetadata,
     capability_id: Option<&str>,
 ) -> Result<(), GrpcClientError> {
-    let validate_wire =
-        |wire: &[u8], magic: &[u8; 4]| wire.len() <= 16 * 1024 && wire.starts_with(magic);
-    match (
+    crate::interceptor::insert_identity_metadata(
+        request,
         identity.sealed_id.as_deref(),
         identity.oracle_assertion.as_deref(),
-    ) {
-        (Some(_), Some(_)) => {
-            return Err(GrpcClientError::RequestFailed(
-                "multiple identity credentials".into(),
-            ))
-        }
-        (None, None) => {
-            return Err(GrpcClientError::RequestFailed(
-                "missing identity credential".into(),
-            ))
-        }
-        (Some(wire), None) => {
-            if !validate_wire(wire, b"SID1") {
-                return Err(GrpcClientError::RequestFailed(
-                    "invalid SID1 credential".into(),
-                ));
-            }
-            request.metadata_mut().insert_bin(
-                op_identity::sealed_id::HTTP_HEADER_NAME,
-                MetadataValue::from_bytes(wire),
-            )
-        }
-        (None, Some(wire)) => {
-            if !validate_wire(wire, b"OIA1") {
-                return Err(GrpcClientError::RequestFailed(
-                    "invalid OIA1 credential".into(),
-                ));
-            }
-            request.metadata_mut().insert_bin(
-                "x-oracle-identity-assertion-bin",
-                MetadataValue::from_bytes(wire),
-            )
-        }
-    };
-    if let Some(capability_id) = capability_id {
-        if capability_id.is_empty() {
-            return Err(GrpcClientError::RequestFailed(
-                "capability metadata cannot be empty".into(),
-            ));
-        }
-        request.metadata_mut().insert(
-            "x-opdbus-capability",
-            MetadataValue::try_from(capability_id).map_err(|e| {
-                GrpcClientError::RequestFailed(format!("Invalid capability metadata: {e}"))
-            })?,
-        );
-    }
-    Ok(())
+        capability_id,
+    )
+    .map_err(|error| GrpcClientError::RequestFailed(error.to_string()))
 }
 
 fn decode_get_state_response(

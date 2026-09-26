@@ -1,0 +1,21 @@
+---
+description: Every cargo command runs on a cheap subagent, never in the parent session
+alwaysApply: true
+---
+
+# Cargo runs on a cheap subagent
+
+Any `cargo` command is dispatched automatically. Do not run cargo in the parent shell, watch its log, or poll it. Do not wait for a special alias name.
+
+Launch one background Haiku subagent (Claude Haiku 4.5) with the exact cargo command, then keep talking. Report only when its completion notice arrives.
+
+| Command the parent was about to run | Subagent runs |
+|---|---|
+| `cargo check …` | that same command |
+| `cargo build …` | that same command |
+| `cargo build … --release` | that same command, with `CXXFLAGS="-include cstdint"` |
+| `cargo test …` | that same command |
+| `cargo fmt …` | that same command |
+| `cargo clippy …` | that same command |
+
+One cargo process at a time. A workspace-wide check, test, or build only when the user explicitly says workspace. Native target is `x86_64-unknown-linux-gnu`. Do not install binaries or restart services from a cargo run.

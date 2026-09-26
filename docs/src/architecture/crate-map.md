@@ -129,7 +129,7 @@ feature, method or execution path is used.
 - `op-ml` is commented out of workspace membership. `op-gallery-gen`,
   `op-uds-relay` and `zeroclaw-gui` directories are also outside the declared
   workspace in this snapshot.
-- The user-designated UI is `/srv/git/vercel-json-render-ui`, deployed as static
+- The user-designated UI is `/srv/git/3tched.com`, deployed as static
   files. It is outside this graph. The conflicting path in the json-render skill
   does not supersede the user's repository instructions.
 - `vendor/rovs-openflow` is a crates.io patch, outside this internal workspace

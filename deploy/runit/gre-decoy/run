@@ -1,0 +1,18 @@
+#!/bin/sh
+# GRE to the decoy public address. OCI only permits protocol 47; it does not
+# create this interface. Outer: 188.68.58.237 -> 129.80.64.127.
+exec 2>&1
+ip link show gre-decoy >/dev/null 2>&1 || ip link add gre-decoy type gre remote 129.80.64.127 local 188.68.58.237 ttl 64
+ip addr show dev gre-decoy | grep -q '192.168.255.1/30' || ip addr add 192.168.255.1/30 dev gre-decoy
+ip addr show dev gre-decoy | grep -q '10.0.0.2/32' || ip addr add 10.0.0.2/32 dev gre-decoy noprefixroute
+# 10.0.0.4 is op-web's :8080 page address, routed from the decoy over GRE.
+ip addr show dev gre-decoy | grep -q '10.0.0.4/32' || ip addr add 10.0.0.4/32 dev gre-decoy noprefixroute
+ip link set gre-decoy mtu 1400 up
+# 10.0.0.1 is the decoy. The bridge /24 would otherwise treat it as on-link.
+ip route replace 10.0.0.1/32 via 192.168.255.2 dev gre-decoy
+# WireGuard clients must stay visible to the door. GRE must not hide them.
+ip route replace 10.0.0.5/32 via 192.168.255.2 dev gre-decoy
+ip route replace 10.0.0.6/32 via 192.168.255.2 dev gre-decoy
+ip route replace 10.0.0.7/32 via 192.168.255.2 dev gre-decoy
+echo "gre-decoy up 192.168.255.1/30 10.0.0.1 via decoy"
+exec sleep 2147483647

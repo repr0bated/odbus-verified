@@ -5,6 +5,6 @@ set -eu
 status=$(curl --silent --show-error --connect-timeout 1 --max-time 3 \
     --cacert "${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}" \
     --output /dev/null --write-out '%{http_code}' \
-    https://localhost:8090/mcp) || exit 1
+    https://10.0.0.2:8090/mcp) || exit 1
 # An unauthenticated request must reach the active identity gate.
 [ "$status" = 401 ]

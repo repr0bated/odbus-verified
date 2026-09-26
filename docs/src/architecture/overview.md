@@ -189,7 +189,7 @@ The public MCP frontend is in-process on `op-grpc-bridge` at `:8090`.
 `op-web` hosts HTTP/static UI and the control-plane chatbot's compact mode.
 Its real entrypoint chooses `routes::create_router`; the external UI is served
 with `ServeDir` in [`routes/mod.rs`](../../../crates/op-web/src/routes/mod.rs)
-(line 291). The owner-designated UI checkout is `/srv/git/vercel-json-render-ui`.
+(line 291). The owner-designated UI checkout is `/srv/git/3tched.com`.
 
 **Owner clarification: there is no deployment script. Deployment is btrfs
 send/receive of the prepared snapshot.** Snapshot contents and transfer evidence

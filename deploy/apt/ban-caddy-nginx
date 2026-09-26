@@ -1,0 +1,11 @@
+#!/bin/sh
+# apt DPkg::Pre-Install-Pkgs. One package name per line on stdin.
+while read -r pkg _; do
+    case "$pkg" in
+        caddy|caddy-*|nginx|nginx-*)
+            echo "banned: $pkg is not installed on this host. Xray owns this edge." >&2
+            exit 1
+            ;;
+    esac
+done
+exit 0

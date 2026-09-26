@@ -5,13 +5,13 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 SOURCE_ARCHIVE="$SCRIPT_DIR/source.tar.gz"
-OUTPUT_DIR=target/ui-artifacts/vercel-json-render-ui
+OUTPUT_DIR=target/ui-artifacts/3tched-json-render-ui
 NPM_CACHE=${NPM_CACHE:-/var/cache/op-dbus-build/npm}
 VERIFY_ONLY=0
 
 usage() {
     cat <<'EOF'
-Usage: vendor/vercel-json-render-ui/build-assets.sh [options]
+Usage: vendor/3tched-json-render-ui/build-assets.sh [options]
   --source-archive PATH  source archive to verify (default: pinned archive)
   --output-dir PATH      artifact directory
   --npm-cache PATH       npm download cache
@@ -54,7 +54,7 @@ pin() {
     sed -n "s/^${key}=//p" "$SCRIPT_DIR/source.pin"
 }
 
-[ "$(pin format)" = opdbus.vercel-json-render-ui-source.v1 ] || {
+[ "$(pin format)" = opdbus.3tched-json-render-ui-source.v1 ] || {
     printf 'unsupported UI source pin format\n' >&2
     exit 1
 }
@@ -72,7 +72,7 @@ actual_manifest=$(sha256sum "$SCRIPT_DIR/source-sha256sums" | awk '{print $1}')
 }
 tar -tzf "$SOURCE_ARCHIVE" | awk '
     /^\// || /(^|\/)\.\.($|\/)/ { bad=1 }
-    !/^vercel-json-render-ui\// { bad=1 }
+    !/^3tched-json-render-ui\// { bad=1 }
     END { exit bad ? 1 : 0 }
 ' || { printf 'UI source archive has an unsafe or unexpected path\n' >&2; exit 1; }
 tar -tvzf "$SOURCE_ARCHIVE" | awk 'substr($1,1,1) !~ /[-d]/ {bad=1} END {exit bad ? 1 : 0}' || {
@@ -82,7 +82,7 @@ tar -tvzf "$SOURCE_ARCHIVE" | awk 'substr($1,1,1) !~ /[-d]/ {bad=1} END {exit ba
 
 stage=$(mktemp -d "${TMPDIR:-/var/tmp}/op-ui-build.XXXXXX")
 tar -xzf "$SOURCE_ARCHIVE" -C "$stage"
-source_root="$stage/vercel-json-render-ui"
+source_root="$stage/3tched-json-render-ui"
 asset_base=$(pin asset_base)
 door_default=$(pin door_default)
 issuer_default=$(pin issuer_default)
@@ -168,7 +168,7 @@ jq -n \
     --arg issuer "$issuer_default" \
     --arg asset_sha256 "$asset_sha" \
     --argjson asset_bytes "$asset_bytes" \
-    '{format:"opdbus.vercel-json-render-ui-assets.v1",
+    '{format:"opdbus.3tched-json-render-ui-assets.v1",
       source:{head:$source_head,worktree:$source_worktree,archive_sha256:$source_archive_sha256,content_manifest_sha256:$content_manifest_sha256,package_lock_sha256:$package_lock_sha256},
       build:{node_version:$node_version,npm_version:$npm_version,base:$base,door:$door,issuer:$issuer},
       artifact:{name:"assets.tar.gz",sha256:$asset_sha256,bytes:$asset_bytes}}' \

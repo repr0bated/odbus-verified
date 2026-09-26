@@ -51,6 +51,73 @@ pub(crate) fn engine_handle() -> Option<Arc<MutationEngine>> {
     ENGINE.read().expect("engine lock poisoned").clone()
 }
 
+/// Anchor a human session after the interceptor has already verified the
+/// decoy assertion. The sled store stays on the engine; this policy does not.
+pub(crate) async fn anchor_verified_human_session(
+    engine: &MutationEngine,
+    wireguard_pubkey: &str,
+) -> Option<crate::mutation_engine::SessionContext> {
+    let valid_wireguard_key = base64::Engine::decode(
+        &base64::engine::general_purpose::STANDARD,
+        wireguard_pubkey.trim(),
+    )
+    .is_ok_and(|raw| raw.len() == 32);
+    if !valid_wireguard_key {
+        return None;
+    }
+    let session_id = op_identity::session::derive_session_id(wireguard_pubkey);
+    // Unavailable or malformed committed identity state must not be treated
+    // as a first arrival eligible for minting.
+    let record = crate::identity_sled_dispatch::stored_session(engine, &session_id)
+        .await
+        .ok()?;
+    if let Some(record) = record {
+        let now = chrono::Utc::now().timestamp();
+        let current = record.is_anchored()
+            && record.wireguard_pubkey == wireguard_pubkey
+            && record
+                .expires_at
+                .is_none_or(|expires_at| expires_at == 0 || expires_at > now);
+        if !current {
+            tracing::warn!(
+                %session_id,
+                "verified identity has an expired or mismatched authoritative sled"
+            );
+            return None;
+        }
+        crate::identity_sled_dispatch::set_session_actor_class(engine, &session_id, "human")
+            .await
+            .ok()?;
+        let context = crate::mutation_engine::SessionContext {
+            genesis_hex: record.genesis.unwrap_or_default(),
+            session_id: record.session_id,
+            wireguard_pubkey: record.wireguard_pubkey,
+            sealed_id_digest: crate::mutation_engine::sealed_id_digest(record.sealed_id.as_deref()),
+        };
+        engine.register_session_context(context.clone()).await;
+        return Some(context);
+    }
+    match engine
+        .mint_and_store_genesis(&session_id, wireguard_pubkey)
+        .await
+    {
+        Ok(_) => {
+            crate::identity_sled_dispatch::set_session_actor_class(engine, &session_id, "human")
+                .await
+                .ok()?;
+            engine.session_context(&session_id).await
+        }
+        Err(error) => {
+            tracing::warn!(
+                %error,
+                %session_id,
+                "verified human arrival could not be anchored"
+            );
+            None
+        }
+    }
+}
+
 /// Per-serving-instance interceptor carrying its own assertion validator.
 #[derive(Clone)]
 pub struct GhostbridgeInterceptorWithValidator {
@@ -172,6 +239,79 @@ fn read_sealed_id_wire(req: &Request<()>) -> Result<Option<Vec<u8>>, Status> {
     read_bin_metadata(req, SEALED_ID_METADATA_KEY)
 }
 
+/// Why a decoy-minted identity credential could not be written onto request metadata.
+#[derive(Debug)]
+pub(crate) enum IdentityMetadataError {
+    Multiple,
+    Missing,
+    InvalidSid1,
+    InvalidOia1,
+    EmptyCapability,
+    InvalidCapability(String),
+}
+
+impl std::fmt::Display for IdentityMetadataError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Multiple => write!(formatter, "multiple identity credentials"),
+            Self::Missing => write!(formatter, "missing identity credential"),
+            Self::InvalidSid1 => write!(formatter, "invalid SID1 credential"),
+            Self::InvalidOia1 => write!(formatter, "invalid OIA1 credential"),
+            Self::EmptyCapability => write!(formatter, "capability metadata cannot be empty"),
+            Self::InvalidCapability(error) => {
+                write!(formatter, "Invalid capability metadata: {error}")
+            }
+        }
+    }
+}
+
+/// Write exactly one decoy-minted identity credential into gRPC metadata.
+///
+/// The session anchor lives on this gate. Callers that still hold the wire
+/// bytes use this same write; the bridge client does not keep a second copy.
+pub(crate) fn insert_identity_metadata<T>(
+    request: &mut Request<T>,
+    sealed_id: Option<&[u8]>,
+    oracle_assertion: Option<&[u8]>,
+    capability_id: Option<&str>,
+) -> Result<(), IdentityMetadataError> {
+    let valid_wire =
+        |wire: &[u8], magic: &[u8; 4]| wire.len() <= 16 * 1024 && wire.starts_with(magic);
+    match (sealed_id, oracle_assertion) {
+        (Some(_), Some(_)) => return Err(IdentityMetadataError::Multiple),
+        (None, None) => return Err(IdentityMetadataError::Missing),
+        (Some(wire), None) => {
+            if !valid_wire(wire, b"SID1") {
+                return Err(IdentityMetadataError::InvalidSid1);
+            }
+            request.metadata_mut().insert_bin(
+                SEALED_ID_METADATA_KEY,
+                tonic::metadata::MetadataValue::from_bytes(wire),
+            );
+        }
+        (None, Some(wire)) => {
+            if !valid_wire(wire, b"OIA1") {
+                return Err(IdentityMetadataError::InvalidOia1);
+            }
+            request.metadata_mut().insert_bin(
+                ASSERTION_METADATA_KEY,
+                tonic::metadata::MetadataValue::from_bytes(wire),
+            );
+        }
+    }
+    if let Some(capability_id) = capability_id {
+        if capability_id.is_empty() {
+            return Err(IdentityMetadataError::EmptyCapability);
+        }
+        request.metadata_mut().insert(
+            "x-opdbus-capability",
+            tonic::metadata::MetadataValue::try_from(capability_id)
+                .map_err(|error| IdentityMetadataError::InvalidCapability(error.to_string()))?,
+        );
+    }
+    Ok(())
+}
+
 #[allow(clippy::result_large_err)]
 fn authenticate_sid1_grpc(mut req: Request<()>, wire: &[u8]) -> Result<Request<()>, Status> {
     let engine =
@@ -213,8 +353,15 @@ fn ghostbridge_interceptor_with_validator(
                 "send exactly one identity credential, not both OIA1 and SID1",
             ));
         }
-        (None, Some(wire)) => return authenticate_sid1_grpc(req, wire),
-        (Some(_), None) => {}
+        (None, Some(wire)) => {
+            insert_identity_metadata(&mut req, Some(wire), None, None)
+                .map_err(|error| Status::unauthenticated(error.to_string()))?;
+            return authenticate_sid1_grpc(req, wire);
+        }
+        (Some(wire), None) => {
+            insert_identity_metadata(&mut req, None, Some(wire), None)
+                .map_err(|error| Status::unauthenticated(error.to_string()))?;
+        }
         (None, None) => {
             return Err(Status::unauthenticated("Missing Oracle identity assertion"));
         }
@@ -233,9 +380,10 @@ fn ghostbridge_interceptor_with_validator(
     let engine =
         engine_handle().ok_or_else(|| Status::internal("MutationEngine Memory Unreachable"))?;
     let session = tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(
-            engine.ensure_verified_human_session_context(&pending.identity().human_pubkey),
-        )
+        tokio::runtime::Handle::current().block_on(anchor_verified_human_session(
+            engine.as_ref(),
+            &pending.identity().human_pubkey,
+        ))
     })
     .ok_or_else(|| Status::unauthenticated("Assertion identity has no anchored session genesis"))?;
     pending.identity_mut().session_id = session.session_id;

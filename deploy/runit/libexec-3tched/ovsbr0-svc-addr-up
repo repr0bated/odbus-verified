@@ -45,3 +45,9 @@ for pair in ${BRIDGE_SVC_ADDRS:-}; do
 done
 
 apply_addr "$BRIDGE" "${BRIDGE_ADDR:-}"
+
+# OpenFlow stays the bridge address (10.200.0.1). MQTT stays bound to
+# 10.0.0.3 on svc0; alias that address here so the bridge owns it too.
+ip addr show dev "$BRIDGE" | grep -q '10.0.0.3/32' \
+    || ip addr add 10.0.0.3/32 dev "$BRIDGE" noprefixroute
+echo "ovsbr0-svc-addr: 10.0.0.3/32 on $BRIDGE"

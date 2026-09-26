@@ -156,8 +156,8 @@ mv -Tn -- "$stage" "$dest_dir"
 finished=1
 trap - EXIT
 printf '%s\n' "exported source closure to $dest_dir"
-printf '%s\n' "pinned active UI source artifact: vendor/vercel-json-render-ui/source.tar.gz"
-printf '%s\n' "UI source/build verifier: vendor/vercel-json-render-ui/build-assets.sh"
+printf '%s\n' "pinned active UI source artifact: vendor/3tched-json-render-ui/source.tar.gz"
+printf '%s\n' "UI source/build verifier: vendor/3tched-json-render-ui/build-assets.sh"
 printf '%s\n' "UI build output is separate until its manifest is admitted to the golden snapshot"
 printf '%s\n' "pinned tched_router source and patch recipe: vendor/tched-router/build-native.sh"
 printf '%s\n' "native build output is separate until its manifest is admitted to the golden snapshot"

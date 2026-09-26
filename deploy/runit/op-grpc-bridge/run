@@ -80,7 +80,7 @@ rm -f -- "$OPDBUS_READY_PATH"
 # Exact browser origins allowed to reach gRPC-Web and MCP HTTP on this door
 # (the 3tched.com UI served by op-web on :8080, plus its Vite dev server).
 # Fails closed: an origin not listed here gets no CORS preflight answer.
-export OP_MCP_ALLOWED_ORIGINS="${OP_MCP_ALLOWED_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080,http://10.0.0.1:8080,http://10.0.0.2:8080,http://10.0.0.3:8080,http://dashboard.ghostbridge.tech:8080,http://127.0.0.1:5173,http://localhost:5173}"
+export OP_MCP_ALLOWED_ORIGINS="${OP_MCP_ALLOWED_ORIGINS:-http://127.0.0.1:8080,http://localhost:8080,http://10.0.0.1:8080,http://10.0.0.2:8080,http://10.0.0.3:8080,http://10.0.0.4:8080,http://dashboard.ghostbridge.tech:8080,http://127.0.0.1:5173,http://localhost:5173}"
 
 has_ipv4() {
     interface=$1
@@ -124,22 +124,15 @@ wait_for_ipv4() {
 # the network-critical owner has not materialized the address yet.
 wait_for_ipv4 svc0 10.0.0.3 "${OP_GRPC_SVC0_WAIT_SECS:-90}"
 
-# `:8090` is the fabric: one bridge-owned TLS surface for gRPC-Web, native
-# gRPC, MCP, generated plugin methods, and mutation/control traffic. The
-# browser reaches 10.0.0.2 through the decoy's private WireGuard forwarding;
-# 10.0.0.3 and loopback retain the internal TLS identity. These addresses and
-# the UDS serve the same fabric, not separate control planes.
-FABRIC_BIND="127.0.0.1:8090,10.0.0.2:8090,10.0.0.3:8090"
+# `:8090` is tonic on 10.0.0.2, with the internal certificate.
+# The unix socket serves the same fabric.
+FABRIC_BIND="10.0.0.2:8090"
 export TCHED_ROUTER_BIND_ADDR="$FABRIC_BIND"
 export GRPC_BIND="$FABRIC_BIND"
 export TCHED_ROUTER_UNIX_SOCKET="${TCHED_ROUTER_UNIX_SOCKET:-/run/opdbus/grpc.sock}"
 export TCHED_ROUTER_TLS_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
 export TCHED_ROUTER_TLS_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
-# Browser traffic still uses the same private door. Local clients and EMQX
-# retain their existing private-CA identity; no public listener is added.
-export TCHED_ROUTER_BROWSER_TLS_BIND_ADDR=10.0.0.2:8090
-export TCHED_ROUTER_BROWSER_TLS_CERT_FILE=/etc/op-dbus/tls/dashboard.ghostbridge.tech/current/fullchain.pem
-export TCHED_ROUTER_BROWSER_TLS_KEY_FILE=/etc/op-dbus/tls/dashboard.ghostbridge.tech/current/privkey.pem
+unset TCHED_ROUTER_BROWSER_TLS_BIND_ADDR TCHED_ROUTER_BROWSER_TLS_CERT_FILE TCHED_ROUTER_BROWSER_TLS_KEY_FILE
 /usr/local/libexec/3tched/emqx-prepare
 export OP_EMQX_EXHOOK_ENABLE=1
 export OP_EMQX_EXHOOK_BIND_ADDR=127.0.0.1:9000
@@ -177,9 +170,9 @@ else
 fi
 # The singleton control-plane chatbot's service identity. These are public
 # selectors, not credentials; this identity belongs only to that chatbot.
-export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="${OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY:-VaRh9EUieQxA3zIoOj3qNiNIqZoPGpqztPU4muyF1zM=}"
-export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-bea37ecb-92be-197c-660f-09e806f1a34f}"
-export OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-87b0decc-8464-5abf-05d8-b52ec88ff9f1}"
+export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="${OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY:-Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=}"
+export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-b0c777e3-0955-cd8b-3d01-ca12998cae28}"
+export OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-1262e982-14c1-44d4-0771-7ce74213211b}"
 # Local interactive clients, including Codex, authenticate as the existing
 # human WireGuard principal. The MutationEngine mints SID1 into this same sled;
 # there is deliberately no Codex-specific service identity.

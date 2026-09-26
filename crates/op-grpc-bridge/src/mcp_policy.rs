@@ -631,7 +631,7 @@ mod tests {
             br#"{
               "version": 1,
               "rotation_epoch": 2,
-              "singleton_chatbot_principal_id": "87b0decc-8464-5abf-05d8-b52ec88ff9f1"
+              "singleton_chatbot_principal_id": "1262e982-14c1-44d4-0771-7ce74213211b"
             }"#,
         )
         .unwrap();
@@ -685,7 +685,7 @@ mod tests {
             audience: AudiencePolicy {
                 version: 1,
                 rotation_epoch: 1,
-                singleton_chatbot_principal_id: "87b0decc-8464-5abf-05d8-b52ec88ff9f1".to_string(),
+                singleton_chatbot_principal_id: "1262e982-14c1-44d4-0771-7ce74213211b".to_string(),
             },
             toolsets: manifest,
         };
@@ -737,7 +737,7 @@ mod tests {
             audience: AudiencePolicy {
                 version: 1,
                 rotation_epoch: 1,
-                singleton_chatbot_principal_id: "87b0decc-8464-5abf-05d8-b52ec88ff9f1".to_string(),
+                singleton_chatbot_principal_id: "1262e982-14c1-44d4-0771-7ce74213211b".to_string(),
             },
             toolsets: ToolsetManifest {
                 generation: 1,
@@ -748,7 +748,7 @@ mod tests {
                 sets: Vec::new(),
             },
         };
-        let chatbot = "87b0decc-8464-5abf-05d8-b52ec88ff9f1";
+        let chatbot = "1262e982-14c1-44d4-0771-7ce74213211b";
         let human = "0b7933b7-c8d5-1c01-814e-0c3066d19bbd";
 
         for name in [
@@ -808,7 +808,7 @@ mod tests {
         )))
         .unwrap();
         let human = &grants["c9bdf32e-811d-2495-b688-277c9e5c4d36"]["capabilities"];
-        let service = &grants["87b0decc-8464-5abf-05d8-b52ec88ff9f1"]["capabilities"];
+        let service = &grants["1262e982-14c1-44d4-0771-7ce74213211b"]["capabilities"];
         // Storage authorization belongs to the human principal. It does not
         // add mutation methods to the read-only inspection toolset above.
         for capability in [

@@ -1,18 +1,4 @@
 {
-  "87b0decc-8464-5abf-05d8-b52ec88ff9f1": {
-    "display_alias": "control-plane-chatbot",
-    "capabilities": [
-      "cognitive_mcp.read",
-      "cognitive_mcp.invoke",
-      "cognitive_mcp.memory.write",
-      "cognitive_mcp.code.write",
-      "workflows.read",
-      "workflows.write",
-      "notebooklm.read",
-      "notebooklm.invoke",
-      "mongodb_mcp.read"
-    ]
-  },
   "c9bdf32e-811d-2495-b688-277c9e5c4d36": {
     "display_alias": "jeremy-remote-wg",
     "capabilities": [
@@ -208,6 +194,20 @@
       "cap.identity.sled.root_repair@v1",
       "human_principal.write",
       "project.read"
+    ]
+  },
+  "1262e982-14c1-44d4-0771-7ce74213211b": {
+    "display_alias": "control-plane-chatbot",
+    "capabilities": [
+      "cognitive_mcp.read",
+      "cognitive_mcp.invoke",
+      "cognitive_mcp.memory.write",
+      "cognitive_mcp.code.write",
+      "workflows.read",
+      "workflows.write",
+      "notebooklm.read",
+      "notebooklm.invoke",
+      "mongodb_mcp.read"
     ]
   }
 }

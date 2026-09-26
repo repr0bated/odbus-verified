@@ -3,4 +3,4 @@ set -eu
 busctl --system status org.dbusmcp.Agent.UnifiedExecution >/dev/null
 busctl --system introspect org.dbusmcp.Agent.UnifiedExecution \
     /org/dbusmcp/Agent/UnifiedExecution org.dbusmcp.Agent \
-    ExecuteCatalog >/dev/null
+    | grep -q ExecuteCatalog

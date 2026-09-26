@@ -77,11 +77,9 @@ TCHED_ROUTER_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/zeroclaw-runtime.toml"
 TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/zeroclaw-skills/default"
 OPENCODE_RUNTIME_CONFIG="$SCRIPT_DIR/../config/opencode-runtime.json"
 OPENCODE_BINARY_SOURCE=${OPENCODE_BINARY_SOURCE:-/usr/bin/opencode}
-UI_SOURCE_DIR="$PROJECT_ROOT/vendor/vercel-json-render-ui"
-UI_SOURCE_PIN="$UI_SOURCE_DIR/source.pin"
-UI_SOURCE_ARCHIVE="$UI_SOURCE_DIR/source.tar.gz"
-UI_SOURCE_MANIFEST="$UI_SOURCE_DIR/source-sha256sums"
-UI_ARTIFACT_DIR="$PROJECT_ROOT/target/ui-artifacts/vercel-json-render-ui"
+UI_REPO="${UI_REPO:-/srv/git/3tched.com}"
+UI_DOOR="${UI_DOOR:-https://10.0.0.2:8090}"
+UI_ARTIFACT_DIR="$PROJECT_ROOT/target/ui-artifacts/3tched-ui"
 UI_ASSET_ARCHIVE="$UI_ARTIFACT_DIR/assets.tar.gz"
 UI_ASSET_MANIFEST="$UI_ARTIFACT_DIR/manifest.json"
 
@@ -351,48 +349,43 @@ TCHED_ROUTER_BOOTSTRAP_SKILLS_SHA256=$(
             printf '%s  %s\n' "$(sha256sum "$skill" | cut -d' ' -f1)" "$relative"
         done | sha256sum | cut -d' ' -f1
 )
-[ -f "$UI_SOURCE_PIN" ] && [ -f "$UI_SOURCE_ARCHIVE" ] && [ -f "$UI_SOURCE_MANIFEST" ] ||
-    die "missing pinned UI source inputs under $UI_SOURCE_DIR"
-[ -f "$UI_ASSET_ARCHIVE" ] && [ -f "$UI_ASSET_MANIFEST" ] ||
-    die "missing UI build artifact; run vendor/vercel-json-render-ui/build-assets.sh"
-ui_pin() {
-    sed -n "s/^$1=//p" "$UI_SOURCE_PIN"
-}
-UI_SOURCE_HEAD=$(ui_pin source_head)
-UI_SOURCE_WORKTREE=$(ui_pin source_worktree)
-UI_SOURCE_ARCHIVE_SHA256=$(sha256sum "$UI_SOURCE_ARCHIVE" | cut -d' ' -f1)
-UI_SOURCE_CONTENT_SHA256=$(sha256sum "$UI_SOURCE_MANIFEST" | cut -d' ' -f1)
-[ "$UI_SOURCE_ARCHIVE_SHA256" = "$(ui_pin source_archive_sha256)" ] ||
-    die "pinned UI source archive hash mismatch"
-[ "$UI_SOURCE_CONTENT_SHA256" = "$(ui_pin content_manifest_sha256)" ] ||
-    die "pinned UI source content-manifest hash mismatch"
-UI_PACKAGE_LOCK_SHA256=$(tar -xOzf "$UI_SOURCE_ARCHIVE" vercel-json-render-ui/package-lock.json | sha256sum | cut -d' ' -f1)
+[ -d "$UI_REPO/.git" ] || die "UI repo is not a git checkout: $UI_REPO"
+[ -f "$UI_REPO/dist/index.html" ] && [ -d "$UI_REPO/dist/assets" ] ||
+    die "missing UI build; from $UI_REPO run VITE_OPDBUS_DOOR=$UI_DOOR npm run build -- --base /"
+grep -R -Fq "$UI_DOOR" "$UI_REPO/dist" ||
+    die "UI build does not contain the production door $UI_DOOR"
+[ -z "$(find "$UI_REPO/dist" -type l -print -quit)" ] ||
+    die "UI build contains a symlink"
+UI_SOURCE_HEAD=$(git -C "$UI_REPO" rev-parse HEAD)
+if [ -z "$(git -C "$UI_REPO" status --porcelain --untracked-files=no)" ]; then
+    UI_SOURCE_WORKTREE=clean
+else
+    UI_SOURCE_WORKTREE=modified
+fi
+UI_SOURCE_ARCHIVE_SHA256=$(git -C "$UI_REPO" rev-parse 'HEAD^{tree}')
+UI_SOURCE_CONTENT_SHA256=$(sha256sum "$UI_REPO/package-lock.json" | cut -d' ' -f1)
+mkdir -p "$UI_ARTIFACT_DIR"
+(
+    cd "$UI_REPO/dist" &&
+        tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            --mode='u+rwX,go+rX,go-w' -cf - . | gzip -n -9 > "$UI_ASSET_ARCHIVE"
+)
 UI_ASSET_SHA256=$(sha256sum "$UI_ASSET_ARCHIVE" | cut -d' ' -f1)
 UI_ASSET_BYTES=$(wc -c < "$UI_ASSET_ARCHIVE" | tr -d ' ')
+jq -n \
+    --arg head "$UI_SOURCE_HEAD" \
+    --arg worktree "$UI_SOURCE_WORKTREE" \
+    --arg tree "$UI_SOURCE_ARCHIVE_SHA256" \
+    --arg lock "$UI_SOURCE_CONTENT_SHA256" \
+    --arg door "$UI_DOOR" \
+    --arg sha "$UI_ASSET_SHA256" \
+    --argjson bytes "$UI_ASSET_BYTES" \
+    '{format:"opdbus.3tched-ui-assets.v1",
+      source:{repository:"/srv/git/3tched.com",head:$head,worktree:$worktree,tree:$tree,package_lock_sha256:$lock},
+      build:{base:"/",door:$door},
+      artifact:{name:"assets.tar.gz",sha256:$sha,bytes:$bytes}}' \
+    > "$UI_ASSET_MANIFEST"
 UI_ASSET_MANIFEST_SHA256=$(sha256sum "$UI_ASSET_MANIFEST" | cut -d' ' -f1)
-jq -e \
-    --arg source_head "$UI_SOURCE_HEAD" \
-    --arg source_worktree "$UI_SOURCE_WORKTREE" \
-    --arg source_archive_sha256 "$UI_SOURCE_ARCHIVE_SHA256" \
-    --arg content_manifest_sha256 "$UI_SOURCE_CONTENT_SHA256" \
-    --arg package_lock_sha256 "$UI_PACKAGE_LOCK_SHA256" \
-    --arg asset_sha256 "$UI_ASSET_SHA256" \
-    --argjson asset_bytes "$UI_ASSET_BYTES" \
-    '.format == "opdbus.vercel-json-render-ui-assets.v1" and
-     .source.head == $source_head and
-     .source.worktree == $source_worktree and
-     .source.archive_sha256 == $source_archive_sha256 and
-     .source.content_manifest_sha256 == $content_manifest_sha256 and
-     .source.package_lock_sha256 == $package_lock_sha256 and
-     .build.base == "/" and
-     .build.door == "https://10.0.0.3:8090" and
-     (.build.node_version | type == "string" and length > 0) and
-     (.build.npm_version | type == "string" and length > 0) and
-     .artifact.name == "assets.tar.gz" and
-     .artifact.sha256 == $asset_sha256 and
-     .artifact.bytes == $asset_bytes' \
-    "$UI_ASSET_MANIFEST" >/dev/null ||
-    die "UI asset provenance does not match pinned source and artifact"
 tar -tzf "$UI_ASSET_ARCHIVE" | awk '
     /^\// || /(^|\/)\.\.($|\/)/ { bad=1 }
     END { exit bad ? 1 : 0 }
@@ -581,8 +574,8 @@ build_golden() {
     # a release timestamp so browsers revalidate against the new bundle.
     run touch "$ui_destination/index.html"
     run install -Dm644 "$UI_ASSET_MANIFEST" \
-        "$GOLDEN_DIR/usr/share/op-dbus/ui-manifests/vercel-json-render-ui.json"
-    ok "staged pinned vercel-json-render UI assets and provenance manifest"
+        "$GOLDEN_DIR/usr/share/op-dbus/ui-manifests/3tched-ui.json"
+    ok "staged pinned 3tched UI assets and provenance manifest"
     # Offline rootfs preparation consumes this archive before snapshot/send.
     # Never install the GNU daemon directly into the running Alpine container.
     run install -Dm644 "$MAIL_ARTIFACT_PATH" "$GOLDEN_DIR/opt/op-dbus/container-artifacts/$MAIL_ARTIFACT_NAME"
@@ -605,7 +598,7 @@ build_golden() {
 
     # Control scripts + the systemd compatibility layer.
     for script in systemd-unit-to-runit op-convert-systemd-units systemctl-shim \
-                  build-golden.sh; do
+                  ban-caddy-nginx build-golden.sh; do
         [ -f "$SCRIPT_DIR/$script" ] &&
             run install -Dm755 "$SCRIPT_DIR/$script" "$GOLDEN_DIR/sbin/$script"
     done
@@ -763,6 +756,9 @@ build_golden() {
     [ -f "$SCRIPT_DIR/99-systemd-unit-to-runit.hook" ] &&
         run install -Dm644 "$SCRIPT_DIR/99-systemd-unit-to-runit.hook" \
             "$GOLDEN_DIR/etc/pacman-hooks/99-systemd-unit-to-runit.hook"
+    [ -f "$SCRIPT_DIR/99-ban-caddy-nginx.hook" ] &&
+        run install -Dm644 "$SCRIPT_DIR/99-ban-caddy-nginx.hook" \
+            "$GOLDEN_DIR/etc/pacman-hooks/99-ban-caddy-nginx.hook"
     [ -f "$SCRIPT_DIR/../99-agent-runit-guard.hook" ] &&
         run install -Dm644 "$SCRIPT_DIR/../99-agent-runit-guard.hook" \
             "$GOLDEN_DIR/etc/pacman-hooks/99-agent-runit-guard.hook"

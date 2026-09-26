@@ -2,6 +2,8 @@
 //!
 //! Unified web server for op-dbus-v2.
 
+use anyhow::Context;
+use std::future::IntoFuture;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::info;
@@ -12,6 +14,8 @@ use op_web::AppState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    op_web::install_tls_crypto_provider();
+
     // Initialize logging with environment filter (RUST_LOG)
     // Default to info if not set
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
@@ -55,11 +59,44 @@ async fn main() -> anyhow::Result<()> {
     info!("API available at http://{}/api", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(
+    let http = axum::serve(
         listener,
-        app.into_make_service_with_connect_info::<SocketAddr>(),
+        app.clone()
+            .into_make_service_with_connect_info::<SocketAddr>(),
     )
-    .await?;
+    .into_future();
 
+    // Optional HTTPS listener for the same router, such as the page address
+    // 10.0.0.4:443 with its internal-CA certificate. A configured bind without
+    // a readable certificate pair stops startup.
+    let Some(tls_bind) = std::env::var("OP_WEB_TLS_BIND")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+    else {
+        http.await?;
+        return Ok(());
+    };
+    let tls_addr: SocketAddr = tls_bind
+        .trim()
+        .parse()
+        .with_context(|| format!("parsing OP_WEB_TLS_BIND={tls_bind}"))?;
+    let cert_path = std::env::var("OP_WEB_TLS_CERT_FILE")
+        .context("OP_WEB_TLS_BIND requires OP_WEB_TLS_CERT_FILE")?;
+    let key_path = std::env::var("OP_WEB_TLS_KEY_FILE")
+        .context("OP_WEB_TLS_BIND requires OP_WEB_TLS_KEY_FILE")?;
+    let tls = op_grpc_bridge::PemIdentity::from_pem(
+        std::fs::read(&cert_path).with_context(|| format!("reading {cert_path}"))?,
+        std::fs::read(&key_path).with_context(|| format!("reading {key_path}"))?,
+    )
+    .server_config()?;
+    let tls_listener = tokio::net::TcpListener::bind(tls_addr)
+        .await
+        .with_context(|| format!("binding {tls_addr}"))?;
+    info!("Listening on https://{}", tls_addr);
+
+    tokio::select! {
+        result = http => result?,
+        result = op_grpc_bridge::serve_upgradeable_tcp(tls_listener, tls, app) => result?,
+    }
     Ok(())
 }

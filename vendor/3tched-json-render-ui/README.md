@@ -13,9 +13,9 @@ logs and deployment scripts.
 Build without touching the external checkout or live dashboard:
 
 ```sh
-vendor/vercel-json-render-ui/build-assets.sh \
+vendor/3tched-json-render-ui/build-assets.sh \
   --npm-cache /var/cache/op-dbus-build/npm \
-  --output-dir target/ui-artifacts/vercel-json-render-ui
+  --output-dir target/ui-artifacts/3tched-json-render-ui
 ```
 
 The helper verifies every source file, runs the repository-required `npm ci`,

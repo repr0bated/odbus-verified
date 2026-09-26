@@ -65,8 +65,8 @@ mod mcp_config_dispatch;
 pub mod mcp_frontend;
 pub mod mcp_policy;
 mod memory_binding;
-mod mqtt_doorbell_relay;
 pub(crate) mod method_contract_admission;
+mod mqtt_doorbell_relay;
 pub mod mutation_engine;
 pub(crate) mod native_sled_identity;
 pub mod nlm_cli;
@@ -133,7 +133,7 @@ pub use plugin_grpc_gen::{
     MethodServiceLifecycleEvent, MethodServiceRegistry, PerMethodGrpcServices,
 };
 pub use proto_gen::{ProtoGenConfig, ProtoGenerator};
-pub use server::{run_tched_router_server, ServerConfig};
+pub use server::{run_tched_router_server, serve_upgradeable_tcp, PemIdentity, ServerConfig};
 // Object blob artifacts (schema-coupled D-Bus + gRPC reflection units),
 // backed by the op-blob crate.
 pub use plugin_object_blob::{BlobMethod, DbusObjectIdentity, PluginObjectBlob};

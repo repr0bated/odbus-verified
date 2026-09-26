@@ -4,7 +4,7 @@ description: >-
   Expert skill for building json-render.dev catalog components, page specs, and
   generative UI across three repos: /srv/git/json-render (library source),
   /srv/git/odbus (Rust backend + op-web Axum server), and
-  /srv/git/vercel-json-render-ui (separate chatbot-rendered UI repository).
+  /srv/git/3tched.com (separate chatbot-rendered UI repository).
   Covers the full stack: defineCatalog → Zod schema → React component →
   pageSpec → NAV_MANIFEST → factory plugin wiring → sealed blob pipeline →
   gallery/catalog promotion gate. Also covers the D-Bus plugin schema for
@@ -15,7 +15,7 @@ description: >-
 
 ## Local deployment policy — runit, not systemd
 
-The user-designated UI repository is `/srv/git/vercel-json-render-ui`, separate
+The user-designated UI repository is `/srv/git/3tched.com`, separate
 from `/srv/git/odbus`. Inspect its actual catalog, registry and build/sync inputs;
 the reference layouts below do not establish its implemented components.
 `/srv/git/operation-dashboard-ui-07` and `crates/op-web/ui/` are retired UI paths.
@@ -43,7 +43,7 @@ server-side, including on streamed updates and reconnects.
   crates/op-plugins/src/state_plugins/json_render.rs    D-Bus plugin schema
   crates/op-plugins/src/state_plugins/schema_renderer.rs
   crates/op-web/src/handlers/ui_model.rs                Axum gallery/catalog routes
-/srv/git/vercel-json-render-ui        ← active UI target; paths below are layout examples
+/srv/git/3tched.com        ← active UI target; paths below are layout examples
   src/json-render/
     catalog/catalog.ts                 defineCatalog (app catalog contract)
     catalog/registry.tsx               defineRegistry (component implementations)
@@ -357,7 +357,7 @@ Use when rendering raw gRPC response data without a custom component.
 
 | What | Path |
 |---|---|
-| Catalog contract (reference layout; inspect target first) | `/srv/git/vercel-json-render-ui/src/json-render/catalog/catalog.ts` |
+| Catalog contract (reference layout; inspect target first) | `/srv/git/3tched.com/src/json-render/catalog/catalog.ts` |
 | Component registry | `src/json-render/catalog/registry.tsx` |
 | Shell components | `src/json-render/catalog/components/shell.tsx` |
 | Dashboard widgets | `src/json-render/catalog/components/dashboard.tsx` |

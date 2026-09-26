@@ -3,7 +3,7 @@
 //! A mount gate for an existing sprout and a distinct, exclusive provisioning
 //! path for a new blank leaf. Neither path formats an existing filesystem.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::ffi::CString;
 use std::fs::{self, File, Metadata, OpenOptions};
 use std::io::{self, Write};
@@ -1081,6 +1081,218 @@ impl SeededRootMount {
         );
         Ok(path)
     }
+
+    /// Unmount this verified sprout and detach only the loops that still back
+    /// its seed and leaf. A normal unmount is required: a lazy detach would
+    /// report success while the filesystem or a child mount was still busy.
+    pub fn unmount(self) -> Result<()> {
+        let mount_point = self.mount_point.clone();
+        let seed_loop = self.seed_loop.clone();
+        let leaf_loop = self.leaf_loop.clone();
+        let seed_meta = self._seed_file.metadata()?;
+        let leaf_meta = self._leaf_file.metadata()?;
+        let pinned_id = mount_id_fd(&self._mount_file)?;
+        ensure!(
+            pinned_id == mount_id(&mount_point)?,
+            "sprout mount changed before unmount"
+        );
+        let parent = mount_point.parent().context("sprout mount has no parent")?;
+        ensure!(
+            mount_id(parent)? != pinned_id,
+            "sprout mount boundary changed before unmount"
+        );
+        let children = child_mounts(&mount_point, pinned_id, &read_mountinfo()?)?;
+        // The held mount directory would make umount(2) return EBUSY.
+        drop(self);
+        for child in children {
+            umount_path(&child)?;
+        }
+        umount_path(&mount_point).with_context(|| format!("unmount {}", mount_point.display()))?;
+        ensure!(
+            mount_id(&mount_point)? == mount_id(parent)?,
+            "btrfs sprout remained mounted"
+        );
+        detach_if_backing(&seed_loop, &seed_meta)?;
+        detach_if_backing(&leaf_loop, &leaf_meta)?;
+        Ok(())
+    }
+}
+
+/// Unmount one prepared identity sprout. An already-unmounted sprout still
+/// drops loop mappings that still reference its seed and leaf images.
+pub fn unmount_seeded_root(descriptor: &SeededRootDescriptor<'_>) -> Result<()> {
+    if !exact_mount_present(descriptor.mount_point)? {
+        release_image_loops(descriptor)?;
+        return Ok(());
+    }
+    verify_seeded_root_mounted(descriptor)?.unmount()
+}
+
+struct MountEntry {
+    id: u64,
+    parent: u64,
+    point: PathBuf,
+}
+
+fn read_mountinfo() -> Result<Vec<MountEntry>> {
+    let text = fs::read_to_string("/proc/self/mountinfo").context("read mount table")?;
+    text.lines()
+        .map(parse_mountinfo_line)
+        .collect::<Result<Vec<_>>>()
+}
+
+fn parse_mountinfo_line(line: &str) -> Result<MountEntry> {
+    let (prefix, _) = line
+        .split_once(" - ")
+        .context("mount table entry has no separator")?;
+    let mut fields = prefix.split(' ');
+    let id: u64 = fields
+        .next()
+        .context("mount id missing")?
+        .parse()
+        .context("mount id is not an integer")?;
+    let parent: u64 = fields
+        .next()
+        .context("parent mount id missing")?
+        .parse()
+        .context("parent mount id is not an integer")?;
+    let point = fields
+        .nth(2)
+        .context("mount point missing")
+        .and_then(decode_mountinfo_path)?;
+    Ok(MountEntry { id, parent, point })
+}
+
+fn decode_mountinfo_path(raw: &str) -> Result<PathBuf> {
+    let bytes = raw.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'\\' && index + 3 < bytes.len() {
+            let octal = &bytes[index + 1..index + 4];
+            if octal.iter().all(|byte| (b'0'..=b'7').contains(byte)) {
+                out.push((octal[0] - b'0') * 64 + (octal[1] - b'0') * 8 + (octal[2] - b'0'));
+                index += 4;
+                continue;
+            }
+        }
+        out.push(bytes[index]);
+        index += 1;
+    }
+    Ok(PathBuf::from(
+        String::from_utf8(out).context("mount point is not UTF-8")?,
+    ))
+}
+
+fn child_mounts(root: &Path, root_id: u64, entries: &[MountEntry]) -> Result<Vec<PathBuf>> {
+    let parents: HashMap<u64, u64> = entries
+        .iter()
+        .map(|entry| (entry.id, entry.parent))
+        .collect();
+    let mut children = Vec::new();
+    for entry in entries {
+        if entry.id == root_id || !path_is_strict_child(root, &entry.point) {
+            continue;
+        }
+        ensure!(
+            mount_descends_from(entry.id, root_id, &parents),
+            "mount {} is nested on {} without belonging to that sprout",
+            entry.point.display(),
+            root.display()
+        );
+        children.push(entry.point.clone());
+    }
+    children.sort_by_key(|path| std::cmp::Reverse(path.components().count()));
+    Ok(children)
+}
+
+fn path_is_strict_child(root: &Path, point: &Path) -> bool {
+    point
+        .strip_prefix(root)
+        .is_ok_and(|rest| rest.components().next().is_some())
+}
+
+fn mount_descends_from(mut id: u64, root_id: u64, parents: &HashMap<u64, u64>) -> bool {
+    for _ in 0..64 {
+        if id == root_id {
+            return true;
+        }
+        match parents.get(&id).copied() {
+            Some(parent) if parent != id => id = parent,
+            _ => return false,
+        }
+    }
+    false
+}
+
+fn umount_path(path: &Path) -> Result<()> {
+    let target = c_path(path)?;
+    // SAFETY: target is a NUL-terminated path. Flag 0 asks for a real unmount,
+    // which fails while the filesystem is busy instead of hiding that fact.
+    if unsafe { libc::umount2(target.as_ptr(), 0) } != 0 {
+        let error = io::Error::last_os_error();
+        let code = error.raw_os_error();
+        if code == Some(libc::EINVAL) || code == Some(libc::ENOENT) {
+            return Ok(());
+        }
+        return Err(error).with_context(|| format!("unmount {}", path.display()));
+    }
+    Ok(())
+}
+
+fn detach_if_backing(loop_path: &Path, meta: &Metadata) -> Result<()> {
+    let file = match open_loop(loop_path, true) {
+        Ok(file) => file,
+        Err(error) if error_not_found(&error) => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    let status = match loop_status(&file) {
+        Ok(status) => status,
+        Err(error) if error_is_enxio(&error) => return Ok(()),
+        Err(error) => return Err(error),
+    };
+    if !backing_matches(&status, meta) {
+        return Ok(());
+    }
+    // SAFETY: file is the loop device whose backing inode was just checked.
+    if unsafe { libc::ioctl(file.as_raw_fd(), LOOP_CLR_FD) } != 0 {
+        return Err(io::Error::last_os_error())
+            .with_context(|| format!("detach {}", loop_path.display()));
+    }
+    match loop_status(&file) {
+        Err(error) if error_is_enxio(&error) => Ok(()),
+        Ok(status) if !backing_matches(&status, meta) => Ok(()),
+        Ok(_) => bail!(
+            "{} remained mapped to the identity image after detach",
+            loop_path.display()
+        ),
+        Err(error) => Err(error),
+    }
+}
+
+fn release_image_loops(descriptor: &SeededRootDescriptor<'_>) -> Result<()> {
+    let backings = prepare_backings(descriptor)?;
+    if let Some(mapping) = existing_loop(&backings.seed_meta, true)? {
+        detach_if_backing(&mapping.path, &backings.seed_meta)?;
+    }
+    if let Some(mapping) = existing_loop(&backings.leaf_meta, false)? {
+        detach_if_backing(&mapping.path, &backings.leaf_meta)?;
+    }
+    Ok(())
+}
+
+fn error_not_found(error: &anyhow::Error) -> bool {
+    error
+        .chain()
+        .find_map(|cause| cause.downcast_ref::<io::Error>())
+        .is_some_and(|io| io.kind() == io::ErrorKind::NotFound)
+}
+
+fn error_is_enxio(error: &anyhow::Error) -> bool {
+    error
+        .chain()
+        .find_map(|cause| cause.downcast_ref::<io::Error>())
+        .is_some_and(|io| io.raw_os_error() == Some(libc::ENXIO))
 }
 
 /// Verify an existing exact mount and its two kernel members. This never

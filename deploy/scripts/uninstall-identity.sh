@@ -127,8 +127,8 @@ resolve_known() {
             ;;
         chatbot|assistant-identity)
             ROLE=chatbot
-            [ -n "$PUBKEY" ] || PUBKEY='VaRh9EUieQxA3zIoOj3qNiNIqZoPGpqztPU4muyF1zM='
-            [ -n "$SESSION_ID" ] || SESSION_ID='bea37ecb-92be-197c-660f-09e806f1a34f'
+            [ -n "$PUBKEY" ] || PUBKEY='Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18='
+            [ -n "$SESSION_ID" ] || SESSION_ID='b0c777e3-0955-cd8b-3d01-ca12998cae28'
             ;;
         *)
             # Maybe ROLE is already a UUID session id
@@ -401,7 +401,7 @@ case "$ROLE" in
         # try match known
         if [ "$SESSION_ID" = "f036f8d8-aabb-c5f2-49c9-18dac19f41ea" ]; then
             ROLE=jeremy
-        elif [ "$SESSION_ID" = "bea37ecb-92be-197c-660f-09e806f1a34f" ]; then
+        elif [ "$SESSION_ID" = "b0c777e3-0955-cd8b-3d01-ca12998cae28" ]; then
             ROLE=chatbot
         fi
         ;;

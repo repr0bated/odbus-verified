@@ -163,6 +163,30 @@ fn read_config(parent: &File, name: &OsStr, owner_uid: u32) -> Result<BootLeaf> 
     Ok(config)
 }
 
+/// Unmount the sprout named by one identity boot descriptor.
+///
+/// A session with no descriptor has no prepared sprout. A mounted sprout is
+/// checked against that descriptor, unmounted with a normal `umount(2)`, and
+/// only then has its seed and leaf loops detached.
+pub fn unmount_session(session_id: &str) -> Result<()> {
+    let session =
+        Uuid::parse_str(session_id).context("identity unmount requires a session UUID")?;
+    let Some(directory) = config_directory(false)? else {
+        return Ok(());
+    };
+    let filename = format!("{session}.json");
+    let name = OsStr::new(&filename);
+    match open_at(&directory, name, libc::O_RDONLY) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error).context("open identity boot descriptor"),
+        Ok(_) => {}
+    }
+    let config = read_config(&directory, name, 0)?;
+    let descriptor = config.descriptor(name)?;
+    crate::seeded_root::unmount_seeded_root(&descriptor)
+        .with_context(|| format!("unmount identity btrfs for {session}"))
+}
+
 /// Mount every trusted boot descriptor. A descriptor is mount configuration,
 /// never authorization to start an identity or replace its Cozo binding.
 pub fn mount_all() -> Result<usize> {

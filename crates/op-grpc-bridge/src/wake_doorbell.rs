@@ -109,10 +109,10 @@ async fn authenticate_oia1(
     let mut pending = validator
         .validate_pending_with_bootstrap(&wire, peer, now, false)
         .map_err(|rejection| format!("assertion rejected: {rejection:?}"))?;
-    let session = engine
-        .ensure_verified_human_session_context(&pending.identity().human_pubkey)
-        .await
-        .ok_or_else(|| "assertion identity has no anchored session genesis".to_string())?;
+    let session =
+        crate::interceptor::anchor_verified_human_session(engine, &pending.identity().human_pubkey)
+            .await
+            .ok_or_else(|| "assertion identity has no anchored session genesis".to_string())?;
     pending.identity_mut().session_id = session.session_id;
     pending.identity_mut().session_genesis = session.genesis_hex;
     let expected = owner_key(&EpisodeScope {

@@ -1,0 +1,15 @@
+Package: caddy
+Pin: release *
+Pin-Priority: -1
+
+Package: caddy-*
+Pin: release *
+Pin-Priority: -1
+
+Package: nginx
+Pin: release *
+Pin-Priority: -1
+
+Package: nginx-*
+Pin: release *
+Pin-Priority: -1

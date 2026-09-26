@@ -34,16 +34,16 @@
       "pubkey": "GEMLT/+I81zs5HDPsOF22ntqGf71OEy6eFKMm7P7Dzk=",
       "allowed_ip": "100.69.0.2/32",
       "client_conf": "wireguard_clients/jeremy-3tched.conf",
-      "notes": "Existing mesh peer — keep current PrivateKey on client"
+      "notes": "Existing mesh peer \u2014 keep current PrivateKey on client"
     },
     "chatbot": {
       "role": "chatbot",
       "label": "assistant chatbot",
       "email": "chatbot@3tched.com",
-      "pubkey": "VaRh9EUieQxA3zIoOj3qNiNIqZoPGpqztPU4muyF1zM=",
+      "pubkey": "Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=",
       "allowed_ip": "100.69.0.10/32",
       "runtime_dir": "/var/lib/opdbus-runtime/identities/chatbot",
-      "notes": "Reuses existing chatbot keypair; conf re-homed onto 3tched mesh"
+      "notes": "Chatbot container identity on 3tched-storage"
     }
   }
 }

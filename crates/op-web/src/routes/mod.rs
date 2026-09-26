@@ -291,7 +291,8 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     let ws_route = Router::new().route("/ws", get(websocket::websocket_handler));
 
     // Main dashboard/REST router. MCP and gRPC are served only by the
-    // authenticated bridge on TLS :8090.
+    // authenticated bridge on TLS :8090; op-web forwards the page's gRPC-Web
+    // calls to it unchanged (`door_proxy`).
     let router = Router::new()
         .nest("/api", api_routes)
         // Ordinary HTTP compatibility lives on op-web :8080. Each handler is
@@ -326,8 +327,21 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     let spa =
         ServeDir::new(&static_dir).fallback(ServeFile::new(format!("{static_dir}/index.html")));
 
+    let router = router.fallback_service(spa);
+    // The page's gRPC-Web calls go to the door through op-web's own TLS
+    // client, so the browser never handles the door's certificate.
+    let router = match crate::door_proxy::DoorProxy::from_env() {
+        Ok(proxy) => router.layer(axum::middleware::from_fn_with_state(
+            proxy,
+            crate::door_proxy::door_connector,
+        )),
+        Err(error) => {
+            tracing::error!(%error, "door connector disabled");
+            router
+        }
+    };
+
     router
-        .fallback_service(spa)
         .layer(Extension(state))
         .layer(axum::middleware::from_fn(security::ip_security_middleware))
         .layer(axum::middleware::from_fn(

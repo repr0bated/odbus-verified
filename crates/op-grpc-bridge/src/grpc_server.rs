@@ -1146,15 +1146,6 @@ pub async fn run_grpc_server(
 
     mutation_engine.initialize_identity_sled_store().await?;
     crate::identity_sled_dispatch::recover_identity_startup(mutation_engine.as_ref()).await?;
-    let parked =
-        crate::identity_sled_dispatch::park_orphaned_container_sessions(mutation_engine.as_ref())
-            .await?;
-    if parked > 0 {
-        warn!(
-            parked,
-            "parked orphaned identity containers before serving gRPC"
-        );
-    }
 
     match mutation_engine.seed_missing_plugin_projections().await {
         Ok(count) => info!(count, "Plugin projections seeded"),

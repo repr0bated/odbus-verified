@@ -958,6 +958,56 @@ async fn commit_sled_update<T: Send + 'static>(
     .await
 }
 
+async fn join_identity_btrfs(sled: &mut ContainerIdentitySled) -> anyhow::Result<()> {
+    let Some(device) = sled.btrfs_device.clone() else {
+        return Ok(());
+    };
+    if device.device_path.is_empty() || device.mount_point.is_empty() {
+        return Ok(());
+    }
+    let path = PathBuf::from(device.device_path);
+    let mount = PathBuf::from(device.mount_point);
+    tokio::task::spawn_blocking(move || op_network::btrfs::ensure_device_added(&path, &mount))
+        .await??;
+    if let Some(device) = sled.btrfs_device.as_mut() {
+        device.attached = true;
+    }
+    Ok(())
+}
+
+async fn leave_identity_btrfs(sled: &ContainerIdentitySled) -> anyhow::Result<()> {
+    let Some(device) = sled.btrfs_device.clone() else {
+        return Ok(());
+    };
+    if device.device_path.is_empty() || device.mount_point.is_empty() {
+        return Ok(());
+    }
+    let path = PathBuf::from(device.device_path);
+    let mount = PathBuf::from(device.mount_point);
+    tokio::task::spawn_blocking(move || op_network::btrfs::ensure_device_removed(&path, &mount))
+        .await??;
+    Ok(())
+}
+
+async fn stop_native_identity(
+    lifecycle: &dyn IdentityContainerLifecycle,
+    session_id: &str,
+    sled: &ContainerIdentitySled,
+) -> anyhow::Result<()> {
+    if let Err(error) = lifecycle.stop(session_id).await {
+        let detail = format!("{error:#}");
+        if !detail.contains("already stopped") && !detail.contains("in Error status") {
+            return Err(error);
+        }
+        tracing::warn!(
+            session_id,
+            %error,
+            "identity container is already stopped; removing its btrfs device"
+        );
+    }
+    leave_identity_btrfs(sled).await
+}
+
 async fn set_session_active_owned(
     engine: MutationEngine,
     store: IdentitySledStore,
@@ -976,6 +1026,7 @@ async fn set_session_active_owned(
     let has_instance = sled.instance.is_some();
     let mut seeded_root_guard = None;
     if active && has_instance {
+        join_identity_btrfs(&mut sled).await?;
         let seeded = match root_repair::guard_own_root_start(&store, &expected, &sled).await? {
             Some(guard) => Some(guard),
             None => seed_provision::guard_start(&store, &expected, &sled).await?,
@@ -1006,7 +1057,7 @@ async fn set_session_active_owned(
             // A pending repair fences Cozo mutations, but stopping the native
             // target remains available as the safe operator action.
             preflight_native_identity_effect().await?;
-            lifecycle.stop(&session_id).await?;
+            stop_native_identity(lifecycle.as_ref(), &session_id, &sled).await?;
             anyhow::bail!(
                 "native identity stopped; incomplete root repair requires reconciliation"
             );
@@ -1024,7 +1075,7 @@ async fn set_session_active_owned(
         .await?;
         if has_instance {
             preflight_native_identity_effect().await?;
-            lifecycle.stop(&session_id).await?;
+            stop_native_identity(lifecycle.as_ref(), &session_id, &sled).await?;
             let expected = load_revision(&store, &session_id).await?;
             let mut stopped =
                 revision_sled(&expected)?.ok_or_else(|| anyhow::anyhow!("identity disappeared"))?;
@@ -1044,6 +1095,9 @@ async fn set_session_active_owned(
                 stopped.instance = Some(observed);
             } else if let Some(instance) = stopped.instance.as_mut() {
                 instance.status = "Stopped".into();
+            }
+            if let Some(device) = stopped.btrfs_device.as_mut() {
+                device.attached = false;
             }
             return commit_sled_update(
                 &engine,
@@ -1171,6 +1225,131 @@ impl IdentityIncusTargetGuard {
     }
 }
 
+/// Login starts the human container. Ordinary authenticated calls do not.
+/// A service principal, including the control-plane chatbot, is left to the
+/// startup path that keeps that container running.
+pub(crate) async fn activate_human_session_on_login(
+    engine: &MutationEngine,
+    session_id: &str,
+) -> anyhow::Result<()> {
+    let Some(sled) = stored_session(engine, session_id).await? else {
+        return Ok(());
+    };
+    if sled.principal_kind.as_deref() != Some("human") || sled.instance.is_none() || sled.active {
+        return Ok(());
+    }
+    activate_session(engine, session_id).await?;
+    tracing::info!(session_id, "started human identity container on login");
+    Ok(())
+}
+
+/// How often to stop human containers that have no anchored connection.
+/// The chatbot is not part of this pass.
+pub(crate) const UNATTENDED_HUMAN_CONTAINER_SECS: i64 = 30 * 60;
+
+/// Stop human containers whose interceptor session is gone.
+/// The control-plane chatbot stays up. This stops the container only.
+/// It does not remove the Cozo device or the shared base loop.
+/// A stop that times out is left for the next pass.
+pub(crate) async fn park_human_containers_without_login(
+    engine: &MutationEngine,
+) -> anyhow::Result<usize> {
+    let connected = engine.connected_session_ids().await;
+    let chatbot = control_plane_chatbot_session_id();
+    let sessions: Vec<String> = read_private_state()
+        .await?
+        .sleds
+        .into_iter()
+        .filter(|sled| {
+            sled.principal_kind.as_deref() == Some("human")
+                && human_container_running(sled)
+                && !connected.contains(&sled.session_id)
+                && chatbot.as_deref() != Some(sled.session_id.as_str())
+        })
+        .map(|sled| sled.session_id)
+        .collect();
+    let mut stopped = 0usize;
+    for session in &sessions {
+        match tokio::time::timeout(
+            std::time::Duration::from_secs(150),
+            deactivate_session(engine, session),
+        )
+        .await
+        {
+            Ok(Ok(_)) => {
+                engine.forget_session_context(session).await;
+                stopped += 1;
+                tracing::info!(
+                    session,
+                    "stopped human identity container with no logged-in principal"
+                );
+            }
+            Ok(Err(error)) => {
+                let detail = format!("{error:#}");
+                if detail.contains("already stopped") || detail.contains("in Error status") {
+                    engine.forget_session_context(session).await;
+                    stopped += 1;
+                } else {
+                    tracing::warn!(
+                        session,
+                        %error,
+                        "human identity container stop failed; the next pass will retry"
+                    );
+                }
+            }
+            Err(_) => {
+                tracing::warn!(
+                    session,
+                    "human identity container stop timed out; the next pass will retry"
+                );
+            }
+        }
+    }
+    Ok(stopped)
+}
+
+fn human_container_running(sled: &ContainerIdentitySled) -> bool {
+    sled.instance.is_some()
+        && (sled.active
+            || sled
+                .instance
+                .as_ref()
+                .is_some_and(|instance| instance.status.eq_ignore_ascii_case("Running")))
+}
+
+/// Session id of the control-plane chatbot, from
+/// `OP_CONTROL_PLANE_CHATBOT_SESSION_ID`.
+pub(crate) fn control_plane_chatbot_session_id() -> Option<String> {
+    std::env::var("OP_CONTROL_PLANE_CHATBOT_SESSION_ID")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+/// Bring up the control-plane chatbot container named by
+/// `OP_CONTROL_PLANE_CHATBOT_SESSION_ID`. Human containers start at login.
+pub(crate) async fn start_service_identity_containers(
+    engine: &MutationEngine,
+) -> anyhow::Result<usize> {
+    let Some(session_id) = control_plane_chatbot_session_id() else {
+        return Ok(0);
+    };
+    let state = read_private_state().await?;
+    let present = state
+        .sleds
+        .into_iter()
+        .any(|sled| sled.session_id == session_id && sled.instance.is_some());
+    if !present {
+        tracing::warn!(
+            %session_id,
+            "control-plane chatbot session has no identity container"
+        );
+        return Ok(0);
+    }
+    activate_session(engine, &session_id).await?;
+    Ok(1)
+}
+
 pub(crate) async fn activate_session(
     engine: &MutationEngine,
     session_id: &str,
@@ -1244,49 +1423,11 @@ pub(crate) async fn tombstone_session(
         }
         if had_instance {
             preflight_native_identity_effect().await?;
-            IncusIdentityContainerLifecycle.stop(&session_id).await?;
+            stop_native_identity(&IncusIdentityContainerLifecycle, &session_id, &sled).await?;
         }
         Ok(())
     })
     .await?
-}
-
-pub(crate) async fn park_orphaned_container_sessions(
-    engine: &MutationEngine,
-) -> anyhow::Result<usize> {
-    let sessions: Vec<String> = read_private_state()
-        .await?
-        .sleds
-        .into_iter()
-        // Every process-local binding was lost. Stop every durable container,
-        // including one whose native start completed before a failed CAS left
-        // its durable status at Stopped.
-        .filter(|sled| sled.instance.is_some())
-        .map(|sled| sled.session_id)
-        .collect();
-    let mut failures = Vec::new();
-    for session in &sessions {
-        if let Err(error) = deactivate_session(engine, session).await {
-            let detail = format!("{error:#}");
-            // Incus reports already-parked identity CTs as ERROR, not STOPPED.
-            // A second stop then fails; the instance is still not running.
-            if detail.contains("already stopped") || detail.contains("in Error status") {
-                tracing::warn!(
-                    session,
-                    %error,
-                    "identity container is not running; treating park as complete"
-                );
-            } else {
-                failures.push(format!("{session}: {detail}"));
-            }
-        }
-        engine.forget_session_context(session).await;
-    }
-    if failures.is_empty() {
-        Ok(sessions.len())
-    } else {
-        anyhow::bail!("failed to park orphaned sessions: {}", failures.join("; "))
-    }
 }
 
 async fn dispatch_identity_sled_method_owned(

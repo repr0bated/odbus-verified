@@ -173,8 +173,17 @@ async def handle(
         return
 
     sni = extract_sni(first) or ""
-    dest = routes.get(sni.lower(), default_sock)
-    print(f"sni-demux: {peer} sni={sni or '-'} -> {dest}", flush=True)
+    sockname = client_w.get_extra_info("sockname")
+    local_host = sockname[0] if isinstance(sockname, tuple) and sockname else ""
+    # Clients omit SNI when the URL host is an address. A map whose name is
+    # that listen address is the route for those connections.
+    dest = routes.get(sni.lower()) if sni else routes.get(local_host.lower())
+    if dest is None:
+        dest = default_sock
+    print(
+        f"sni-demux: {peer} sni={sni or '-'} local={local_host or '-'} -> {dest}",
+        flush=True,
+    )
 
     try:
         remote_r, remote_w = await asyncio.open_unix_connection(dest)

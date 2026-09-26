@@ -1,0 +1,19 @@
+# Refuse caddy and nginx. Xray owns TLS on this edge.
+#
+# Install to /etc/pacman.d/hooks/99-ban-caddy-nginx.hook
+# The companion script is /usr/local/sbin/ban-caddy-nginx
+
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = caddy
+Target = caddy-bin
+Target = nginx
+Target = nginx-mainline
+
+[Action]
+Description = Refusing caddy and nginx...
+When = PreTransaction
+Exec = /usr/local/sbin/ban-caddy-nginx
+AbortOnFail

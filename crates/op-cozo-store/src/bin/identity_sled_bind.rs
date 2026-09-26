@@ -19,7 +19,7 @@ fn run() -> anyhow::Result<()> {
     let db = std::env::var("IDENTITY_SLED_COZO_DB_PATH")
         .unwrap_or_else(|_| "/var/lib/op-dbus/identity-cozo".to_string());
     let keep_raw = std::env::var("IDENTITY_SLED_KEEP_SESSIONS").unwrap_or_else(|_| {
-        "bea37ecb-92be-197c-660f-09e806f1a34f,f036f8d8-aabb-c5f2-49c9-18dac19f41ea".to_string()
+        "b0c777e3-0955-cd8b-3d01-ca12998cae28,f036f8d8-aabb-c5f2-49c9-18dac19f41ea".to_string()
     });
     let keep: HashSet<String> = keep_raw
         .split(',')

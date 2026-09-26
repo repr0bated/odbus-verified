@@ -84,7 +84,7 @@ Then read the current OD-58 entry/verification section in `WISHLIST.md`, recent 
 - WireGuard terminates at the decoy. **No WireGuard on this server.** WARP transports identity. Isolated decoy/kernel fixtures do not authorize installation on the server.
 - Waypipe is deprecated. Factory platform/plugin and Blitzy work are retired; Factory began as an SSH proxy for its CLI/billing. The assistant is the singleton control-plane chatbot, not a container.
 - Runit/`sudo sv` only. No systemctl/s6 or manual runsv. No live deployment, service restart or catalog reseal has been performed in this continuation. Deployment uses btrfs send/receive, not hand-copying live binaries. Xray live config belongs only at `/etc/xray/xray_config.json` inside its container and is changed through its owner.
-- Rust/shell for new helpers; no new Python files. CozoDB, no new SQLite usage. Active UI is `/srv/git/vercel-json-render-ui`.
+- Rust/shell for new helpers; no new Python files. CozoDB, no new SQLite usage. Active UI is `/srv/git/3tched.com`.
 - Use a ten-task swarm with the least expensive capable model. The previous run used ten Luna workers in waves with three workers active at once; only the difficult OVSDB protocol slice was escalated to Sol. Use available OpenCode models/capacity honestly; don't invent unavailable models. Keep source ownership disjoint and centralize Cargo. Workers should prepare patches while source is frozen for builds. Stay available to the user with concise progress updates.
 
 ## Repository and evidence state
