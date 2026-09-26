@@ -16,7 +16,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::dispatch::DEFAULT_BUS_ADDRESS;
-use crate::fuse_fs::TypedFuse;
+use crate::fuse_fs::{Organ, TypedFuse};
 use crate::namespace::{Namespace, NodeKind, ProjectionTarget};
 use crate::source::{DEFAULT_CATALOG_DIR, DEFAULT_STATE_DIR, SourceCatalog};
 use crate::store::{DEFAULT_STORE_DIR, ObjectStore};
@@ -107,6 +107,13 @@ enum Command {
         /// Ask libfuse to unmount on exit (may require user_allow_other).
         #[arg(long)]
         auto_unmount: bool,
+        /// Mount as one identity's organ: every method gets a `call` file,
+        /// and a write is dispatched as that identity using the SID1 at this
+        /// path on its own device.
+        #[arg(long, conflicts_with = "workspace")]
+        organ_credential: Option<PathBuf>,
+        #[arg(long, default_value = DEFAULT_BUS_ADDRESS)]
+        bus_address: String,
     },
 }
 
@@ -206,7 +213,8 @@ async fn main() -> Result<()> {
                 let marker = match node.kind {
                     NodeKind::Directory => "d",
                     NodeKind::File(_) if node.write_target.is_some() => "w",
-                    NodeKind::File(_) | NodeKind::LiveFile { .. } => "f",
+                    NodeKind::File(_) | NodeKind::LiveFile { .. } | NodeKind::Outcome { .. } => "f",
+                    NodeKind::CallFile { .. } => "c",
                     NodeKind::Symlink(_) => "l",
                 };
                 println!("{marker} {}", node.path);
@@ -302,18 +310,33 @@ async fn main() -> Result<()> {
             state,
             allow_other,
             auto_unmount,
+            organ_credential,
+            bus_address,
         } => {
             if !mountpoint.is_dir() {
                 bail!("mountpoint {} is not a directory", mountpoint.display());
             }
             let target = resolve_target(&store, &target)?;
-            let writable = matches!(target, ProjectionTarget::Workspace(_));
+            let organ = organ_credential.is_some();
+            // Organ call files need a writable mount; every other node still
+            // refuses writes on its own.
+            let writable = organ || matches!(target, ProjectionTarget::Workspace(_));
             // View mounts read live state from SHM; workspace mounts use
             // frozen COW objects and don't need the state directory.
-            let filesystem = if writable {
-                TypedFuse::new(store, target)?
-            } else {
-                TypedFuse::with_state_dir(store, target, state)?
+            let filesystem = match organ_credential {
+                Some(credential) => TypedFuse::organ(
+                    store,
+                    target,
+                    state,
+                    Organ {
+                        bus_address,
+                        credential,
+                    },
+                )?,
+                None if matches!(target, ProjectionTarget::Workspace(_)) => {
+                    TypedFuse::new(store, target)?
+                }
+                None => TypedFuse::with_state_dir(store, target, state)?,
             };
             let mut options = vec![
                 MountOption::FSName("3tchedFS".to_string()),
