@@ -1,0 +1,3 @@
+#!/bin/sh
+# success only when Incus reports RUNNING
+incus list -f csv -c ns 2>/dev/null | grep -q '^b0c777e3-0955-cd8b-3d01-ca12998cae28,RUNNING$'

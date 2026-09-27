@@ -1,0 +1,4 @@
+#!/bin/sh
+# Stopping this service does not stop identities: taking an identity down is
+# an explicit `op-identity-root down <session>`.
+rm -f /run/opdbus/runit-ready/identity-roots

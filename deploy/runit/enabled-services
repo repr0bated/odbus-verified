@@ -10,3 +10,9 @@ tched-router
 mongodb-mcp-server
 unified-execution
 opencode
+
+# Identity-centric containers (OD-86): bring each identity up from its own
+# device after incusd, and keep the transitional control-plane chatbot running
+# so the bridge always has a live identity session.
+identity-roots
+incus-ct-chatbot

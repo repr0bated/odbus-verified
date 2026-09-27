@@ -1,5 +1,7 @@
 #!/bin/sh
-# op-identity-root.sh — bring identities up from their own devices (OD-86).
+# op-identity-root — bring identities up from their own devices (OD-86).
+# Installed by the release at /usr/local/libexec/3tched/op-identity-root and
+# run at boot by the identity-roots runit service after incusd.
 #
 # The device IS the identity. There is no per-identity descriptor: an identity
 # exists when /var/lib/opdbus-runtime/identities/<session>/identity.img holds
@@ -16,9 +18,9 @@
 # it never gates incusd or any service container.
 #
 # Usage:
-#   sudo ./op-identity-root.sh up [<session>...]     # default: every identity
-#   sudo ./op-identity-root.sh down <session>...
-#   sudo ./op-identity-root.sh status
+#   sudo op-identity-root up [<session>...]     # default: every identity
+#   sudo op-identity-root down <session>...
+#   sudo op-identity-root status
 #
 # Environment overrides (defaults shown):
 #   RACCOON_UUID=2dcac52c-fb0b-418a-95a4-cb6eacc80209
@@ -28,7 +30,7 @@
 #   IDENTITIES=/var/lib/opdbus-runtime/identities
 #   POOL=identity-roots                    Incus dir pool for identity roots
 #   LUNGS_RUN=/run/opdbus-lungs
-#   THREETCHED_FS=/usr/local/sbin/threetched-fs
+#   THREETCHED_FS=/usr/local/bin/threetched-fs    the release binary
 set -u
 
 RACCOON_UUID=${RACCOON_UUID:-2dcac52c-fb0b-418a-95a4-cb6eacc80209}
@@ -39,7 +41,7 @@ IDENTITIES=${IDENTITIES:-/var/lib/opdbus-runtime/identities}
 POOL=${POOL:-identity-roots}
 POOL_PATH=/var/lib/incus/storage-pools/$POOL/containers
 LUNGS_RUN=${LUNGS_RUN:-/run/opdbus-lungs}
-THREETCHED_FS=${THREETCHED_FS:-/usr/local/sbin/threetched-fs}
+THREETCHED_FS=${THREETCHED_FS:-/usr/local/bin/threetched-fs}
 STATE=/dev/shm/opdbus/state
 CATALOG=/dev/shm/opdbus/plugin-blobs
 

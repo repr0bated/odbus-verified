@@ -1,0 +1,33 @@
+#!/bin/sh
+# runit oneshot: bring identity-centric containers up from their own devices
+# (OD-86). It runs after incusd because each identity's root is mounted into
+# Incus's private pool path. A failed identity is logged and skipped; it
+# never holds back incusd or any other container.
+exec 2>&1
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+wait_dep incusd
+
+i=0
+until incus info >/dev/null 2>&1; do
+    i=$((i + 1))
+    if [ "$i" -ge 60 ]; then
+        echo "incusd API not ready" >&2
+        exit 1
+    fi
+    sleep 1
+done
+
+/usr/local/libexec/3tched/op-identity-root up
+/usr/local/libexec/3tched/op-identity-root status
+/usr/local/libexec/3tched/runit-ready-signal identity-roots
+exec pause
