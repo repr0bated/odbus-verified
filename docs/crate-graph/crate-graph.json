@@ -249,6 +249,14 @@
       }
     },
     {
+      "id": "bin:threetched-fs",
+      "label": "bin",
+      "props": {
+        "crate": "threetched-fs",
+        "src": "crates/threetched-fs/src/main.rs"
+      }
+    },
+    {
       "id": "crate:op-agents",
       "label": "crate",
       "props": {
@@ -888,6 +896,24 @@
       }
     },
     {
+      "id": "crate:threetched-fs",
+      "label": "crate",
+      "props": {
+        "path": "crates/threetched-fs",
+        "description": "Schema-driven FUSE projection over authoritative typed OP-DBUS blobs",
+        "bins": [
+          "threetched-fs"
+        ],
+        "has_lib": false,
+        "rs_files": 7,
+        "loc": 3981,
+        "tests": 18,
+        "unsafe_refs": 2,
+        "todo": 0,
+        "unwrap_expect": 62
+      }
+    },
+    {
       "id": "ext:aes-gcm",
       "label": "ext_crate",
       "props": {
@@ -983,6 +1009,13 @@
       "label": "ext_crate",
       "props": {
         "req": "^0.10"
+      }
+    },
+    {
+      "id": "ext:blake3",
+      "label": "ext_crate",
+      "props": {
+        "req": "^1"
       }
     },
     {
@@ -1095,6 +1128,20 @@
       "label": "ext_crate",
       "props": {
         "req": "^1"
+      }
+    },
+    {
+      "id": "ext:fs2",
+      "label": "ext_crate",
+      "props": {
+        "req": "^0.4"
+      }
+    },
+    {
+      "id": "ext:fuser",
+      "label": "ext_crate",
+      "props": {
+        "req": "^0.16"
       }
     },
     {
@@ -1665,6 +1712,13 @@
       }
     },
     {
+      "id": "ext:thiserror",
+      "label": "ext_crate",
+      "props": {
+        "req": "^2"
+      }
+    },
+    {
       "id": "ext:tokio",
       "label": "ext_crate",
       "props": {
@@ -1878,8 +1932,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-27T23:06:19Z",
-        "commit": "355b64317f166aa1a894fb12cd4255036a109a39",
+        "generated_at": "2026-09-27T23:08:10Z",
+        "commit": "b524da940fd5ece59e5cb6c9f01681600506064c",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -9889,6 +9943,69 @@
       }
     },
     {
+      "id": "mod:crates/threetched-fs/src/dispatch.rs",
+      "label": "module",
+      "props": {
+        "crate": "threetched-fs",
+        "kind": "src",
+        "loc": 239
+      }
+    },
+    {
+      "id": "mod:crates/threetched-fs/src/fuse_fs.rs",
+      "label": "module",
+      "props": {
+        "crate": "threetched-fs",
+        "kind": "src",
+        "loc": 1000
+      }
+    },
+    {
+      "id": "mod:crates/threetched-fs/src/main.rs",
+      "label": "module",
+      "props": {
+        "crate": "threetched-fs",
+        "kind": "src",
+        "loc": 405
+      }
+    },
+    {
+      "id": "mod:crates/threetched-fs/src/model.rs",
+      "label": "module",
+      "props": {
+        "crate": "threetched-fs",
+        "kind": "src",
+        "loc": 736
+      }
+    },
+    {
+      "id": "mod:crates/threetched-fs/src/namespace.rs",
+      "label": "module",
+      "props": {
+        "crate": "threetched-fs",
+        "kind": "src",
+        "loc": 665
+      }
+    },
+    {
+      "id": "mod:crates/threetched-fs/src/source.rs",
+      "label": "module",
+      "props": {
+        "crate": "threetched-fs",
+        "kind": "src",
+        "loc": 249
+      }
+    },
+    {
+      "id": "mod:crates/threetched-fs/src/store.rs",
+      "label": "module",
+      "props": {
+        "crate": "threetched-fs",
+        "kind": "src",
+        "loc": 687
+      }
+    },
+    {
       "id": "plugin:adc",
       "label": "plugin",
       "props": {
@@ -10876,6 +10993,12 @@
       "src": "bin:svd",
       "rel": "bin_entry",
       "dst": "mod:crates/op-runit-systemctl/src/bin/svd.rs",
+      "props": {}
+    },
+    {
+      "src": "bin:threetched-fs",
+      "rel": "bin_entry",
+      "dst": "mod:crates/threetched-fs/src/main.rs",
       "props": {}
     },
     {
@@ -24349,6 +24472,207 @@
     },
     {
       "src": "crate:op-xray-daemon",
+      "rel": "uses_ext",
+      "dst": "ext:zbus",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "contains",
+      "dst": "mod:crates/threetched-fs/src/dispatch.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "contains",
+      "dst": "mod:crates/threetched-fs/src/fuse_fs.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "contains",
+      "dst": "mod:crates/threetched-fs/src/main.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "contains",
+      "dst": "mod:crates/threetched-fs/src/model.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "contains",
+      "dst": "mod:crates/threetched-fs/src/namespace.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "contains",
+      "dst": "mod:crates/threetched-fs/src/source.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "contains",
+      "dst": "mod:crates/threetched-fs/src/store.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "provides_bin",
+      "dst": "bin:threetched-fs",
+      "props": {}
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:anyhow",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:blake3",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:clap",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:fs2",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:fuser",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:jsonschema",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:libc",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:parking_lot",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:regex",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:serde",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:serde_json",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:sha2",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:tempfile",
+      "props": {
+        "kind": "dev",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:thiserror",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:tokio",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:uuid",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
       "rel": "uses_ext",
       "dst": "ext:zbus",
       "props": {

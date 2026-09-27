@@ -78,11 +78,12 @@ previously missing activation contract, not a new deployment script.
 
 ## Workspace shape and build
 
-The workspace has **36 member crates under `crates/`, plus the root `op-dbus`
-package** (37 workspace packages total). The root package has no application
+The workspace has **37 member crates under `crates/`, plus the root `op-dbus`
+package** (38 workspace packages total). The root package has no application
 binary. Binary targets live in members: for example `op-grpc-bridge` and
 `op-grants-materializer` in `op-grpc-bridge`, `op-web-server` and `opdbus` in
-`op-web`, `opblob` in `op-plugins`, and `op-runit-systemctl`/`svd` in
+`op-web`, `opblob` in `op-plugins`, `threetched-fs` (the 3tchedFS schema filesystem,
+imported 2026-09-27, Rust 2024 edition) in `threetched-fs`, and `op-runit-systemctl`/`svd` in
 `op-runit-systemctl`. A binary target or runit directory is source inventory,
 not proof that it is deployed; reconcile it with `enabled-services` and
 `retired-services`. There is no `op-projection` crate. `[patch.crates-io]`

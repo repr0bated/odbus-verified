@@ -38,6 +38,7 @@ members = [
     "crates/op-runit-systemctl",
     "crates/op-xray-daemon",
     "crates/op-dbus-cli",
+    "crates/threetched-fs",
 ]
 
 [workspace.package]

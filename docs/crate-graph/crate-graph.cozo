@@ -31,6 +31,7 @@
 ,[___"bin:opblob"___, ___"bin"___, ___"{"crate":"op-plugins","src":"crates/op-plugins/src/bin/opblob.rs"}"___]
 ,[___"bin:opdbus"___, ___"bin"___, ___"{"crate":"op-web","src":"crates/op-web/src/bin/opdbus.rs"}"___]
 ,[___"bin:svd"___, ___"bin"___, ___"{"crate":"op-runit-systemctl","src":"crates/op-runit-systemctl/src/bin/svd.rs"}"___]
+,[___"bin:threetched-fs"___, ___"bin"___, ___"{"crate":"threetched-fs","src":"crates/threetched-fs/src/main.rs"}"___]
 ,[___"crate:op-agents"___, ___"crate"___, ___"{"path":"crates/op-agents","description":"Secure agent registry and D-Bus agent implementations for op-dbus-v2","bins":["dbus-agent","gen-agent-defs","op-agent-manager"],"has_lib":true,"rs_files":146,"loc":21672,"tests":50,"unsafe_refs":0,"todo":2,"unwrap_expect":44}"___]
 ,[___"crate:op-assistant-grpc"___, ___"crate"___, ___"{"path":"crates/op-assistant-grpc","description":"gRPC gateway for Assistant integration with D-Bus first transport and RPC fallback","bins":["op-assistant-grpc"],"has_lib":true,"rs_files":21,"loc":3123,"tests":22,"unsafe_refs":0,"todo":0,"unwrap_expect":8}"___]
 ,[___"crate:op-blob"___, ___"crate"___, ___"{"path":"crates/op-blob","description":"Schema-driven plugin object blobs: schemars struct -> PluginSchema (single source of truth) -> sealed zero-copy blob (schema + D-Bus/gRPC identity + reflection descriptors + OSCAL metadata) -> active reflection catalog -> btrfs filesystem image","bins":[],"has_lib":true,"rs_files":15,"loc":4329,"tests":33,"unsafe_refs":0,"todo":0,"unwrap_expect":33}"___]
@@ -68,6 +69,7 @@
 ,[___"crate:op-web"___, ___"crate"___, ___"{"path":"crates/op-web","description":"Unified web server for op-dbus-v2 - consolidates all HTTP services","bins":["op-web-server","opdbus"],"has_lib":true,"rs_files":59,"loc":13648,"tests":67,"unsafe_refs":0,"todo":5,"unwrap_expect":104}"___]
 ,[___"crate:op-workflows"___, ___"crate"___, ___"{"path":"crates/op-workflows","description":"Workflow engine with plugin/service nodes for op-dbus-v2","bins":[],"has_lib":true,"rs_files":13,"loc":2702,"tests":6,"unsafe_refs":0,"todo":1,"unwrap_expect":5}"___]
 ,[___"crate:op-xray-daemon"___, ___"crate"___, ___"{"path":"crates/op-xray-daemon","description":"D-Bus service for managing Xray proxy daemon lifecycle","bins":["op-xray-daemon"],"has_lib":true,"rs_files":5,"loc":661,"tests":3,"unsafe_refs":0,"todo":0,"unwrap_expect":1}"___]
+,[___"crate:threetched-fs"___, ___"crate"___, ___"{"path":"crates/threetched-fs","description":"Schema-driven FUSE projection over authoritative typed OP-DBUS blobs","bins":["threetched-fs"],"has_lib":false,"rs_files":7,"loc":3981,"tests":18,"unsafe_refs":2,"todo":0,"unwrap_expect":62}"___]
 ,[___"ext:aes-gcm"___, ___"ext_crate"___, ___"{"req":"^0.10"}"___]
 ,[___"ext:anyhow"___, ___"ext_crate"___, ___"{"req":"^1"}"___]
 ,[___"ext:anyhow"___, ___"ext_crate"___, ___"{"req":"^1.0"}"___]
@@ -82,6 +84,7 @@
 ,[___"ext:bincode"___, ___"ext_crate"___, ___"{"req":"^1.3"}"___]
 ,[___"ext:bip39"___, ___"ext_crate"___, ___"{"req":"^2"}"___]
 ,[___"ext:blake2"___, ___"ext_crate"___, ___"{"req":"^0.10"}"___]
+,[___"ext:blake3"___, ___"ext_crate"___, ___"{"req":"^1"}"___]
 ,[___"ext:blake3"___, ___"ext_crate"___, ___"{"req":"^1.5"}"___]
 ,[___"ext:btrfs-uapi"___, ___"ext_crate"___, ___"{"req":"^0.13"}"___]
 ,[___"ext:btrfs-uapi"___, ___"ext_crate"___, ___"{"req":"^0.13.0"}"___]
@@ -98,6 +101,8 @@
 ,[___"ext:dirs"___, ___"ext_crate"___, ___"{"req":"^5.0"}"___]
 ,[___"ext:ed25519-dalek"___, ___"ext_crate"___, ___"{"req":"^2.2"}"___]
 ,[___"ext:flate2"___, ___"ext_crate"___, ___"{"req":"^1"}"___]
+,[___"ext:fs2"___, ___"ext_crate"___, ___"{"req":"^0.4"}"___]
+,[___"ext:fuser"___, ___"ext_crate"___, ___"{"req":"^0.16"}"___]
 ,[___"ext:futures"___, ___"ext_crate"___, ___"{"req":"^0.3"}"___]
 ,[___"ext:gethostname"___, ___"ext_crate"___, ___"{"req":"^0.5"}"___]
 ,[___"ext:glob"___, ___"ext_crate"___, ___"{"req":"^0.3"}"___]
@@ -179,6 +184,7 @@
 ,[___"ext:tempfile"___, ___"ext_crate"___, ___"{"req":"^3.10"}"___]
 ,[___"ext:thiserror"___, ___"ext_crate"___, ___"{"req":"^1"}"___]
 ,[___"ext:thiserror"___, ___"ext_crate"___, ___"{"req":"^1.0"}"___]
+,[___"ext:thiserror"___, ___"ext_crate"___, ___"{"req":"^2"}"___]
 ,[___"ext:tokio"___, ___"ext_crate"___, ___"{"req":"^1"}"___]
 ,[___"ext:tokio"___, ___"ext_crate"___, ___"{"req":"^1.0"}"___]
 ,[___"ext:tokio-rustls"___, ___"ext_crate"___, ___"{"req":"^0.26"}"___]
@@ -209,7 +215,7 @@
 ,[___"ext:zbus_xml"___, ___"ext_crate"___, ___"{"req":"^5"}"___]
 ,[___"ext:zeroize"___, ___"ext_crate"___, ___"{"req":"^1.6"}"___]
 ,[___"ext:zstd"___, ___"ext_crate"___, ___"{"req":"^0.13"}"___]
-,[___"meta:crate-graph"___, ___"meta"___, ___"{"generated_at":"2026-09-27T23:06:19Z","commit":"355b64317f166aa1a894fb12cd4255036a109a39","generator":"scripts/crate-graph.sh","relations":["graph_node","graph_edge"]}"___]
+,[___"meta:crate-graph"___, ___"meta"___, ___"{"generated_at":"2026-09-27T23:08:10Z","commit":"b524da940fd5ece59e5cb6c9f01681600506064c","generator":"scripts/crate-graph.sh","relations":["graph_node","graph_edge"]}"___]
 ,[___"mod:crates/op-agents/src/agent_catalog.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":78}"___]
 ,[___"mod:crates/op-agents/src/agent_registry.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":476}"___]
 ,[___"mod:crates/op-agents/src/agent_schema.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":192}"___]
@@ -394,18 +400,18 @@
 ,[___"mod:crates/op-blob/tests/typed_map_contract.rs"___, ___"module"___, ___"{"crate":"op-blob","kind":"test","loc":82}"___]
 ,[___"mod:crates/op-cache/build.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"build","loc":16}"___]
 ,[___"mod:crates/op-cache/src/agent.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":8}"___]
-,[___"mod:crates/op-cache/src/agent_registry.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":548}"___]
-,[___"mod:crates/op-cache/src/btrfs_cache.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":1974}"___]
-,[___"mod:crates/op-cache/src/capability_resolver.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":541}"___]
-,[___"mod:crates/op-cache/src/grpc/agent_service.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":402}"___]
-,[___"mod:crates/op-cache/src/grpc/cache_service.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":488}"___]
-,[___"mod:crates/op-cache/src/grpc/mcp_service.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":368}"___]
 ]
 :put graph_node { id => label, props }
 }
 {
 ?[id, label, props] <- [
-[___"mod:crates/op-cache/src/grpc/mod.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":26}"___]
+[___"mod:crates/op-cache/src/agent_registry.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":548}"___]
+,[___"mod:crates/op-cache/src/btrfs_cache.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":1974}"___]
+,[___"mod:crates/op-cache/src/capability_resolver.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":541}"___]
+,[___"mod:crates/op-cache/src/grpc/agent_service.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":402}"___]
+,[___"mod:crates/op-cache/src/grpc/cache_service.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":488}"___]
+,[___"mod:crates/op-cache/src/grpc/mcp_service.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":368}"___]
+,[___"mod:crates/op-cache/src/grpc/mod.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":26}"___]
 ,[___"mod:crates/op-cache/src/grpc/orchestrator_service.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":733}"___]
 ,[___"mod:crates/op-cache/src/grpc/server.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":222}"___]
 ,[___"mod:crates/op-cache/src/lib.rs"___, ___"module"___, ___"{"crate":"op-cache","kind":"src","loc":51}"___]
@@ -799,18 +805,18 @@
 ,[___"mod:crates/op-plugin-lint/src/emit.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":637}"___]
 ,[___"mod:crates/op-plugin-lint/src/gadget.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":327}"___]
 ,[___"mod:crates/op-plugin-lint/src/gaps.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":345}"___]
-,[___"mod:crates/op-plugin-lint/src/introspect.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":340}"___]
-,[___"mod:crates/op-plugin-lint/src/lib.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":38}"___]
-,[___"mod:crates/op-plugin-lint/src/main.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":294}"___]
-,[___"mod:crates/op-plugin-lint/src/repomix.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":991}"___]
-,[___"mod:crates/op-plugin-lint/src/report.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":103}"___]
-,[___"mod:crates/op-plugin-lint/src/rust_emit.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":467}"___]
 ]
 :put graph_node { id => label, props }
 }
 {
 ?[id, label, props] <- [
-[___"mod:crates/op-plugin-lint/src/subid.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":56}"___]
+[___"mod:crates/op-plugin-lint/src/introspect.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":340}"___]
+,[___"mod:crates/op-plugin-lint/src/lib.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":38}"___]
+,[___"mod:crates/op-plugin-lint/src/main.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":294}"___]
+,[___"mod:crates/op-plugin-lint/src/repomix.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":991}"___]
+,[___"mod:crates/op-plugin-lint/src/report.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":103}"___]
+,[___"mod:crates/op-plugin-lint/src/rust_emit.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":467}"___]
+,[___"mod:crates/op-plugin-lint/src/subid.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":56}"___]
 ,[___"mod:crates/op-plugin-lint/tests/audit_tests.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"test","loc":104}"___]
 ,[___"mod:crates/op-plugin-lint/tests/fixtures/bad_plugin.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"test","loc":30}"___]
 ,[___"mod:crates/op-plugin-lint/tests/fixtures/good_plugin.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"test","loc":82}"___]
@@ -1109,6 +1115,13 @@
 ,[___"mod:crates/op-xray-daemon/src/dbus.rs"___, ___"module"___, ___"{"crate":"op-xray-daemon","kind":"src","loc":302}"___]
 ,[___"mod:crates/op-xray-daemon/src/lib.rs"___, ___"module"___, ___"{"crate":"op-xray-daemon","kind":"src","loc":4}"___]
 ,[___"mod:crates/op-xray-daemon/src/main.rs"___, ___"module"___, ___"{"crate":"op-xray-daemon","kind":"src","loc":153}"___]
+,[___"mod:crates/threetched-fs/src/dispatch.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":239}"___]
+,[___"mod:crates/threetched-fs/src/fuse_fs.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":1000}"___]
+,[___"mod:crates/threetched-fs/src/main.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":405}"___]
+,[___"mod:crates/threetched-fs/src/model.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":736}"___]
+,[___"mod:crates/threetched-fs/src/namespace.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":665}"___]
+,[___"mod:crates/threetched-fs/src/source.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":249}"___]
+,[___"mod:crates/threetched-fs/src/store.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":687}"___]
 ,[___"plugin:adc"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/adc.rs","line":297,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/adc"}"___]
 ,[___"plugin:agent_config"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/agent_config.rs","line":493,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/agent_config"}"___]
 ,[___"plugin:antigravity"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/antigravity.rs","line":988,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/antigravity"}"___]
@@ -1228,6 +1241,7 @@
 ,[___"bin:opblob"___, ___"bin_entry"___, ___"mod:crates/op-plugins/src/bin/opblob.rs"___, ___"{}"___]
 ,[___"bin:opdbus"___, ___"bin_entry"___, ___"mod:crates/op-web/src/bin/opdbus.rs"___, ___"{}"___]
 ,[___"bin:svd"___, ___"bin_entry"___, ___"mod:crates/op-runit-systemctl/src/bin/svd.rs"___, ___"{}"___]
+,[___"bin:threetched-fs"___, ___"bin_entry"___, ___"mod:crates/threetched-fs/src/main.rs"___, ___"{}"___]
 ,[___"crate:op-agents"___, ___"contains"___, ___"mod:crates/op-agents/src/agent_catalog.rs"___, ___"{}"___]
 ,[___"crate:op-agents"___, ___"contains"___, ___"mod:crates/op-agents/src/agent_registry.rs"___, ___"{}"___]
 ,[___"crate:op-agents"___, ___"contains"___, ___"mod:crates/op-agents/src/agent_schema.rs"___, ___"{}"___]
@@ -1596,13 +1610,13 @@
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/bin/op-chain-vectors.rs"___, ___"{}"___]
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/bin/op-cog-admin.rs"___, ___"{}"___]
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/blob_catalog_tool.rs"___, ___"{}"___]
-,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/blob_vectors_tool.rs"___, ___"{}"___]
 ]
 :put graph_edge { src, rel, dst => props }
 }
 {
 ?[src, rel, dst, props] <- [
-[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/chain_vectors.rs"___, ___"{}"___]
+[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/blob_vectors_tool.rs"___, ___"{}"___]
+,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/chain_vectors.rs"___, ___"{}"___]
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/code_tools.rs"___, ___"{}"___]
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/cognitive_tools.rs"___, ___"{}"___]
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/context_awareness.rs"___, ___"{}"___]
@@ -2001,13 +2015,13 @@
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_admission.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_admission_tests.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_generation_native.rs"___, ___"{}"___]
-,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs"___, ___"{}"___]
 ]
 :put graph_edge { src, rel, dst => props }
 }
 {
 ?[src, rel, dst, props] <- [
-[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_object_blob.rs"___, ___"{}"___]
+[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs"___, ___"{}"___]
+,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_object_blob.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_runtime.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tracing.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/ui_workspace_dispatch.rs"___, ___"{}"___]
@@ -2406,13 +2420,13 @@
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:log"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-core"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-generic"___, ___"{"kind":"normal","optional":false}"___]
-,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-route"___, ___"{"kind":"normal","optional":false}"___]
 ]
 :put graph_edge { src, rel, dst => props }
 }
 {
 ?[src, rel, dst, props] <- [
-[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-utils"___, ___"{"kind":"normal","optional":false}"___]
+[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-route"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-utils"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-sys"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:rcgen"___, ___"{"kind":"dev","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:reqwest"___, ___"{"kind":"normal","optional":false}"___]
@@ -2811,13 +2825,13 @@
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:base64"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:chrono"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:log"___, ___"{"kind":"normal","optional":false}"___]
-,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:md5"___, ___"{"kind":"normal","optional":false}"___]
 ]
 :put graph_edge { src, rel, dst => props }
 }
 {
 ?[src, rel, dst, props] <- [
-[___"crate:op-state"___, ___"uses_ext"___, ___"ext:parking_lot"___, ___"{"kind":"normal","optional":false}"___]
+[___"crate:op-state"___, ___"uses_ext"___, ___"ext:md5"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:parking_lot"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:pocketflow_rs"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:quick-xml"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:rand"___, ___"{"kind":"normal","optional":false}"___]
@@ -3091,6 +3105,31 @@
 ,[___"crate:op-xray-daemon"___, ___"uses_ext"___, ___"ext:tracing-subscriber"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-xray-daemon"___, ___"uses_ext"___, ___"ext:uuid"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-xray-daemon"___, ___"uses_ext"___, ___"ext:zbus"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"contains"___, ___"mod:crates/threetched-fs/src/dispatch.rs"___, ___"{}"___]
+,[___"crate:threetched-fs"___, ___"contains"___, ___"mod:crates/threetched-fs/src/fuse_fs.rs"___, ___"{}"___]
+,[___"crate:threetched-fs"___, ___"contains"___, ___"mod:crates/threetched-fs/src/main.rs"___, ___"{}"___]
+,[___"crate:threetched-fs"___, ___"contains"___, ___"mod:crates/threetched-fs/src/model.rs"___, ___"{}"___]
+,[___"crate:threetched-fs"___, ___"contains"___, ___"mod:crates/threetched-fs/src/namespace.rs"___, ___"{}"___]
+,[___"crate:threetched-fs"___, ___"contains"___, ___"mod:crates/threetched-fs/src/source.rs"___, ___"{}"___]
+,[___"crate:threetched-fs"___, ___"contains"___, ___"mod:crates/threetched-fs/src/store.rs"___, ___"{}"___]
+,[___"crate:threetched-fs"___, ___"provides_bin"___, ___"bin:threetched-fs"___, ___"{}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:anyhow"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:blake3"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:clap"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:fs2"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:fuser"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:jsonschema"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:libc"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:parking_lot"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:regex"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:serde"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:serde_json"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:sha2"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:tempfile"___, ___"{"kind":"dev","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:thiserror"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:tokio"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:uuid"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:threetched-fs"___, ___"uses_ext"___, ___"ext:zbus"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"mod:crates/op-agents/src/bin/dbus-agent-manager.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-agents/src/bin/dbus-agent.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-agents/src/dbus_service.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
@@ -3191,7 +3230,12 @@
 ,[___"mod:crates/op-grpc-bridge/src/antigravity_canonical_tests.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/antigravity_canonical_tests.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/antigravity_dispatch.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":1}"___]
-,[___"mod:crates/op-grpc-bridge/src/antigravity_dispatch.rs"___, ___"imports"___, ___"crate:op-llm"___, ___"{"refs":3}"___]
+]
+:put graph_edge { src, rel, dst => props }
+}
+{
+?[src, rel, dst, props] <- [
+[___"mod:crates/op-grpc-bridge/src/antigravity_dispatch.rs"___, ___"imports"___, ___"crate:op-llm"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-grpc-bridge/src/antigravity_dispatch.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/bin/dump-protos.rs"___, ___"imports"___, ___"crate:op-blob"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/bin/dump-protos.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
@@ -3217,12 +3261,7 @@
 ,[___"mod:crates/op-grpc-bridge/src/chatbot_episode_state.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":11}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chatbot_episode_state.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chatbot_episode_state.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
-]
-:put graph_edge { src, rel, dst => props }
-}
-{
-?[src, rel, dst, props] <- [
-[___"mod:crates/op-grpc-bridge/src/chatbot_episode_stream.rs"___, ___"imports"___, ___"crate:op-blob"___, ___"{"refs":4}"___]
+,[___"mod:crates/op-grpc-bridge/src/chatbot_episode_stream.rs"___, ___"imports"___, ___"crate:op-blob"___, ___"{"refs":4}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chatbot_episode_stream.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chatbot_episode_stream.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chatbot_episode_stream.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":2}"___]
@@ -3596,7 +3635,12 @@
 ,[___"mod:crates/op-introspection/src/indexer.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-introspection/src/indexer.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-introspection/src/indexer_manager.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
-,[___"mod:crates/op-introspection/src/lib.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":2}"___]
+]
+:put graph_edge { src, rel, dst => props }
+}
+{
+?[src, rel, dst, props] <- [
+[___"mod:crates/op-introspection/src/lib.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-introspection/src/parser.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-introspection/src/projection.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-introspection/src/projection.rs"___, ___"imports"___, ___"crate:op-snowball"___, ___"{"refs":2}"___]
@@ -3622,12 +3666,7 @@
 ,[___"mod:crates/op-network/src/ovsdb.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-plugin-lint/src/emit.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-plugin-lint/src/gadget.rs"___, ___"imports"___, ___"crate:op-inspector"___, ___"{"refs":1}"___]
-]
-:put graph_edge { src, rel, dst => props }
-}
-{
-?[src, rel, dst, props] <- [
-[___"mod:crates/op-plugin-lint/src/rust_emit.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":2}"___]
+,[___"mod:crates/op-plugin-lint/src/rust_emit.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-plugin-lint/tests/fixtures/bad_plugin.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-plugin-lint/tests/fixtures/good_plugin.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-plugins/examples/method_coverage.rs"___, ___"imports"___, ___"crate:op-blob"___, ___"{"refs":1}"___]
