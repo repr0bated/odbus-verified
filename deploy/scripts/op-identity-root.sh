@@ -1,0 +1,195 @@
+#!/bin/sh
+# op-identity-root.sh — bring identities up from their own devices (OD-86).
+#
+# The device IS the identity. There is no per-identity descriptor: an identity
+# exists when /var/lib/opdbus-runtime/identities/<session>/identity.img holds
+# a btrfs filesystem labelled identity-<session>. For each one this script
+#
+#   1) attaches and mounts the device at <identity>/device,
+#   2) mounts the container root as overlay(Raccoon, device/upper),
+#   3) mounts the identity's lungs (3tchedFS with a call file per method),
+#   4) starts the Incus container named <session>.
+#
+# The shared lower layer is the read-only Raccoon partition, shown through an
+# idmapped view so Incus never shifts (chowns) the root into the upper layer.
+# A failure stays inside that identity: the script logs it and moves on, and
+# it never gates incusd or any service container.
+#
+# Usage:
+#   sudo ./op-identity-root.sh up [<session>...]     # default: every identity
+#   sudo ./op-identity-root.sh down <session>...
+#   sudo ./op-identity-root.sh status
+#
+# Environment overrides (defaults shown):
+#   RACCOON_UUID=2dcac52c-fb0b-418a-95a4-cb6eacc80209
+#   SEEDS=/var/lib/opdbus-seeds            read-only Raccoon mount (fstab)
+#   SEEDS_IDMAP=/var/lib/opdbus-seeds-idmap
+#   IDMAP='b:0:1000000:1000000000'         must match the containers' idmap
+#   IDENTITIES=/var/lib/opdbus-runtime/identities
+#   POOL=identity-roots                    Incus dir pool for identity roots
+#   LUNGS_RUN=/run/opdbus-lungs
+#   THREETCHED_FS=/usr/local/sbin/threetched-fs
+set -u
+
+RACCOON_UUID=${RACCOON_UUID:-2dcac52c-fb0b-418a-95a4-cb6eacc80209}
+SEEDS=${SEEDS:-/var/lib/opdbus-seeds}
+SEEDS_IDMAP=${SEEDS_IDMAP:-/var/lib/opdbus-seeds-idmap}
+IDMAP=${IDMAP:-b:0:1000000:1000000000}
+IDENTITIES=${IDENTITIES:-/var/lib/opdbus-runtime/identities}
+POOL=${POOL:-identity-roots}
+POOL_PATH=/var/lib/incus/storage-pools/$POOL/containers
+LUNGS_RUN=${LUNGS_RUN:-/run/opdbus-lungs}
+THREETCHED_FS=${THREETCHED_FS:-/usr/local/sbin/threetched-fs}
+STATE=/dev/shm/opdbus/state
+CATALOG=/dev/shm/opdbus/plugin-blobs
+
+log() { printf '%s\n' "op-identity-root: $*" >&2; }
+
+# Session ids are container names; accept only the canonical UUID shape so a
+# directory name can never smuggle a path or an option into a command.
+valid_session() {
+    printf '%s' "$1" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+}
+
+ensure_lower() {
+    if ! mountpoint -q "$SEEDS"; then
+        install -d -m 0755 "$SEEDS"
+        mount -o ro,noatime "UUID=$RACCOON_UUID" "$SEEDS" || return 1
+    fi
+    if ! mountpoint -q "$SEEDS_IDMAP"; then
+        install -d -m 0755 "$SEEDS_IDMAP"
+        mount --bind -o "ro,X-mount.idmap=$IDMAP" "$SEEDS" "$SEEDS_IDMAP" || return 1
+    fi
+}
+
+loop_for() {
+    losetup -j "$1" -O NAME -n 2>/dev/null | head -n 1
+}
+
+mount_device() {
+    session=$1
+    dir=$IDENTITIES/$session
+    image=$dir/identity.img
+    [ -f "$image" ] || { log "$session: no identity device"; return 1; }
+    mountpoint -q "$dir/device" && return 0
+    loop=$(loop_for "$image")
+    [ -n "$loop" ] || loop=$(losetup -f --show "$image") || return 1
+    label=$(blkid -s LABEL -o value "$loop" 2>/dev/null)
+    if [ "$label" != "identity-$session" ]; then
+        log "$session: device label '$label' does not name this identity"
+        losetup -d "$loop" 2>/dev/null
+        return 1
+    fi
+    install -d -m 0700 "$dir/device"
+    mount -o noatime "$loop" "$dir/device"
+}
+
+mount_root() {
+    session=$1
+    dir=$IDENTITIES/$session/device
+    root=$POOL_PATH/$session/rootfs
+    [ -d "$root" ] || { log "$session: no Incus instance on pool $POOL"; return 1; }
+    mountpoint -q "$root" && return 0
+    mount -t overlay overlay \
+        -o "lowerdir=$SEEDS_IDMAP,upperdir=$dir/upper,workdir=$dir/work" "$root"
+}
+
+mount_lungs() {
+    session=$1
+    lungs=$LUNGS_RUN/$session
+    mountpoint -q "$lungs" && return 0
+    install -d -m 0700 "$LUNGS_RUN"
+    install -d -m 0755 "$lungs"
+    store=$LUNGS_RUN/.store-$session
+    "$THREETCHED_FS" --store "$store" capture \
+        --catalog "$CATALOG" --state "$STATE" >/dev/null || return 1
+    setsid "$THREETCHED_FS" --store "$store" mount \
+        --allow-other --auto-unmount --state "$STATE" \
+        --lungs-credential "$IDENTITIES/$session/device/credential/sid1" \
+        "$lungs" </dev/null >"$LUNGS_RUN/$session.log" 2>&1 &
+    i=0
+    until mountpoint -q "$lungs"; do
+        i=$((i + 1))
+        [ "$i" -ge 20 ] && { log "$session: lungs did not mount"; return 1; }
+        sleep 0.5
+    done
+}
+
+up_one() {
+    session=$1
+    valid_session "$session" || { log "skipping '$session': not a session id"; return 1; }
+    mount_device "$session" || { log "$session: device failed"; return 1; }
+    mount_root "$session" || { log "$session: root overlay failed"; return 1; }
+    if mount_lungs "$session"; then
+        # The identity sees its lungs at /opt/run-mounts/3tched. Writes there
+        # are its calls, so the bind is writable; each file still enforces
+        # what it accepts.
+        if incus config device get "$session" 3tched source >/dev/null 2>&1; then
+            incus config device set "$session" 3tched source="$LUNGS_RUN/$session" readonly=false
+        else
+            incus config device add "$session" 3tched disk \
+                source="$LUNGS_RUN/$session" path=/opt/run-mounts/3tched >/dev/null
+        fi
+    else
+        log "$session: lungs failed; identity starts without them"
+    fi
+    if incus list "$session" -c s -f csv 2>/dev/null | grep -q '^RUNNING$'; then
+        return 0
+    fi
+    incus start "$session"
+}
+
+down_one() {
+    session=$1
+    valid_session "$session" || return 1
+    incus stop "$session" 2>/dev/null
+    mountpoint -q "$LUNGS_RUN/$session" && umount "$LUNGS_RUN/$session"
+    root=$POOL_PATH/$session/rootfs
+    mountpoint -q "$root" && umount "$root"
+    dev=$IDENTITIES/$session/device
+    if mountpoint -q "$dev"; then
+        loop=$(findmnt -n -o SOURCE "$dev")
+        umount "$dev" && [ -n "$loop" ] && losetup -d "$loop"
+    fi
+}
+
+all_sessions() {
+    for image in "$IDENTITIES"/*/identity.img; do
+        [ -f "$image" ] || continue
+        basename "$(dirname "$image")"
+    done
+}
+
+status() {
+    for session in $(all_sessions); do
+        printf '%s device=%s root=%s lungs=%s ct=%s\n' "$session" \
+            "$(mountpoint -q "$IDENTITIES/$session/device" && echo up || echo down)" \
+            "$(mountpoint -q "$POOL_PATH/$session/rootfs" && echo up || echo down)" \
+            "$(mountpoint -q "$LUNGS_RUN/$session" && echo up || echo down)" \
+            "$(incus list "$session" -c s -f csv 2>/dev/null || echo absent)"
+    done
+}
+
+command=${1:-status}
+[ "$#" -gt 0 ] && shift
+case $command in
+up)
+    ensure_lower || { log "Raccoon lower layer unavailable"; exit 1; }
+    [ "$#" -gt 0 ] || set -- $(all_sessions)
+    failed=0
+    for session in "$@"; do
+        up_one "$session" || failed=$((failed + 1))
+    done
+    [ "$failed" -eq 0 ] || log "$failed identity(ies) did not come up"
+    exit 0
+    ;;
+down)
+    [ "$#" -gt 0 ] || { log "name the session(s) to stop"; exit 2; }
+    for session in "$@"; do down_one "$session"; done
+    ;;
+status) status ;;
+*)
+    log "usage: $0 up [<session>...] | down <session>... | status"
+    exit 2
+    ;;
+esac
