@@ -755,6 +755,7 @@ mod tests {
                 methods: BTreeMap::new(),
                 signals: Vec::new(),
                 guarantees: PluginGuarantees::default(),
+                ..Default::default()
             },
             serde_json::json!({"enabled": true}),
         )
@@ -830,6 +831,7 @@ mod tests {
                 methods: BTreeMap::from([("record_event".into(), method)]),
                 signals: Vec::new(),
                 guarantees: PluginGuarantees::default(),
+                ..Default::default()
             },
             serde_json::json!({}),
         )

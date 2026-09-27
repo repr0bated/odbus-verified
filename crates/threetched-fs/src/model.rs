@@ -49,7 +49,11 @@ impl TypedObjectBlob {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// 3tchedFS's typed view of a sealed plugin schema. The sealed JSON is decoded
+/// by its authority, `op_state_store::PluginSchema`, and converted here by
+/// [`from_sealed`]; this view only adds deterministic key order and
+/// `serde_json` values for projection and validation.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct PluginSchema {
     pub name: String,
     #[serde(default)]
@@ -81,6 +85,21 @@ pub struct PluginSchema {
     pub signals: Vec<SignalDecl>,
     #[serde(default)]
     pub guarantees: PluginGuarantees,
+    /// Declared capabilities, keyed by capability id.
+    #[serde(default)]
+    pub capabilities: BTreeMap<String, Value>,
+    /// Exact per-footprint grant annotations carried by older schemas.
+    #[serde(default)]
+    pub capability_grants: BTreeMap<String, Vec<String>>,
+    /// Which state fields a public projection may expose.
+    #[serde(default)]
+    pub public_state: Value,
+    /// Field write routes, keyed by field.
+    #[serde(default)]
+    pub field_writes: BTreeMap<String, Value>,
+    /// An example of the plugin's state.
+    #[serde(default)]
+    pub example: Option<Value>,
 }
 
 impl PluginSchema {
@@ -128,7 +147,8 @@ impl PluginSchema {
         Value::Object(values)
     }
 
-    pub fn capabilities(&self) -> BTreeSet<&str> {
+    /// The capabilities that at least one method requires.
+    pub fn required_capabilities(&self) -> BTreeSet<&str> {
         self.methods
             .values()
             .filter_map(|method| method.required_capability.as_deref())
@@ -365,7 +385,6 @@ pub struct MethodDecl {
 pub enum SideEffect {
     Read,
     Mutation,
-    External,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -386,6 +405,205 @@ pub struct PluginGuarantees {
     pub supports_verification: bool,
     #[serde(default)]
     pub atomic_operations: bool,
+}
+
+// Conversion from the sealed authority.
+//
+// `op_state_store::PluginSchema` decodes the sealed JSON; the functions below
+// turn it into this crate's view. Every struct is destructured by name and
+// every enum is matched without a wildcard, so when the authority gains a
+// field or a field type this crate stops compiling until it handles it. That
+// is how a new sealed field type can no longer break capture at run time.
+
+/// Convert a schema decoded by its authority into this crate's view.
+pub fn from_sealed(sealed: op_state_store::PluginSchema) -> Result<PluginSchema> {
+    let op_state_store::PluginSchema {
+        name,
+        category,
+        version,
+        description,
+        display_name,
+        fields,
+        public_state,
+        field_writes,
+        dependencies,
+        example,
+        immutable_paths,
+        tags,
+        dialect,
+        mutation_index,
+        subids,
+        org,
+        methods,
+        capabilities,
+        capability_grants,
+        signals,
+        guarantees,
+    } = sealed;
+    let op_state_store::PluginCapabilities {
+        supports_rollback,
+        supports_checkpoints,
+        supports_verification,
+        atomic_operations,
+    } = guarantees;
+    Ok(PluginSchema {
+        name,
+        category,
+        version,
+        description,
+        display_name,
+        fields: sealed_fields(fields)?,
+        dependencies,
+        immutable_paths,
+        tags,
+        dialect,
+        mutation_index,
+        subids: subids.into_iter().collect(),
+        org,
+        methods: methods
+            .into_iter()
+            .map(|(name, method)| Ok((name, sealed_method(method)?)))
+            .collect::<Result<_>>()?,
+        signals: signals
+            .into_iter()
+            .map(sealed_signal)
+            .collect::<Result<_>>()?,
+        guarantees: PluginGuarantees {
+            supports_rollback,
+            supports_checkpoints,
+            supports_verification,
+            atomic_operations,
+        },
+        capabilities: capabilities
+            .iter()
+            .map(|(id, declaration)| Ok((id.clone(), to_json(declaration)?)))
+            .collect::<Result<_>>()?,
+        capability_grants: capability_grants.into_iter().collect(),
+        public_state: to_json(&public_state)?,
+        field_writes: field_writes
+            .iter()
+            .map(|(field, route)| Ok((field.clone(), to_json(route)?)))
+            .collect::<Result<_>>()?,
+        example: example.as_ref().map(to_json).transpose()?,
+    })
+}
+
+fn sealed_fields(
+    fields: std::collections::HashMap<String, op_state_store::FieldSchema>,
+) -> Result<BTreeMap<String, FieldSchema>> {
+    fields
+        .into_iter()
+        .map(|(name, field)| Ok((name, sealed_field(field)?)))
+        .collect()
+}
+
+fn sealed_field(sealed: op_state_store::FieldSchema) -> Result<FieldSchema> {
+    let op_state_store::FieldSchema {
+        field_type,
+        required,
+        description,
+        default,
+        example,
+        constraints,
+        read_only,
+        read_only_when,
+    } = sealed;
+    Ok(FieldSchema {
+        field_type: sealed_field_type(field_type)?,
+        required,
+        description,
+        default: default.as_ref().map(to_json).transpose()?,
+        example: example.as_ref().map(to_json).transpose()?,
+        constraints: constraints
+            .into_iter()
+            .map(sealed_constraint)
+            .collect::<Result<_>>()?,
+        read_only,
+        read_only_when: read_only_when.map(
+            |op_state_store::ReadOnlyCondition { property, value }| ReadOnlyCondition {
+                property,
+                value,
+            },
+        ),
+    })
+}
+
+fn sealed_field_type(sealed: op_state_store::FieldType) -> Result<FieldType> {
+    use op_state_store::FieldType as Sealed;
+    Ok(match sealed {
+        Sealed::String => FieldType::String,
+        Sealed::Integer => FieldType::Integer,
+        Sealed::Float => FieldType::Float,
+        Sealed::Boolean => FieldType::Boolean,
+        Sealed::Array(item) => FieldType::Array(Box::new(sealed_field_type(*item)?)),
+        Sealed::Object(fields) => FieldType::Object(sealed_fields(fields)?),
+        Sealed::Map(item) => FieldType::Map(Box::new(sealed_field_type(*item)?)),
+        Sealed::JsonSchema(document) => FieldType::JsonSchema(Box::new(to_json(&*document)?)),
+        Sealed::Enum(values) => FieldType::Enum(values),
+        Sealed::OneOf(branches) => FieldType::OneOf(
+            branches
+                .into_iter()
+                .map(sealed_field_type)
+                .collect::<Result<_>>()?,
+        ),
+        Sealed::Any => FieldType::Any,
+    })
+}
+
+fn sealed_constraint(sealed: op_state_store::Constraint) -> Result<Constraint> {
+    use op_state_store::Constraint as Sealed;
+    Ok(match sealed {
+        Sealed::Min { value } => Constraint::Min { value },
+        Sealed::Max { value } => Constraint::Max { value },
+        Sealed::Pattern { regex } => Constraint::Pattern { regex },
+        Sealed::OneOf { values } => Constraint::OneOf {
+            values: values.iter().map(to_json).collect::<Result<_>>()?,
+        },
+        Sealed::RequiresField { field } => Constraint::RequiresField { field },
+        Sealed::Custom { validator } => Constraint::Custom { validator },
+    })
+}
+
+fn sealed_method(sealed: op_state_store::MethodDecl) -> Result<MethodDecl> {
+    let op_state_store::MethodDecl {
+        name,
+        args,
+        returns,
+        side_effect,
+        idempotent,
+        required_capability,
+        subid,
+    } = sealed;
+    Ok(MethodDecl {
+        name,
+        args: to_json(&args)?,
+        returns: returns.as_ref().map(to_json).transpose()?,
+        side_effect: match side_effect {
+            op_state_store::SideEffect::Read => SideEffect::Read,
+            op_state_store::SideEffect::Mutation => SideEffect::Mutation,
+        },
+        idempotent,
+        required_capability,
+        subid,
+    })
+}
+
+fn sealed_signal(sealed: op_state_store::SignalDecl) -> Result<SignalDecl> {
+    let op_state_store::SignalDecl {
+        name,
+        payload,
+        subid,
+    } = sealed;
+    Ok(SignalDecl {
+        name,
+        payload: payload.as_ref().map(to_json).transpose()?,
+        subid,
+    })
+}
+
+/// The authority embeds `simd_json` values; this view uses `serde_json`.
+fn to_json(value: &impl Serialize) -> Result<Value> {
+    serde_json::to_value(value).context("convert sealed value to JSON")
 }
 
 fn measure(value: &Value) -> Option<f64> {
@@ -602,6 +820,7 @@ mod tests {
             methods: BTreeMap::new(),
             signals: Vec::new(),
             guarantees: PluginGuarantees::default(),
+            ..Default::default()
         }
     }
 
@@ -730,6 +949,109 @@ mod tests {
         assert!(
             FieldType::Map(Box::new(FieldType::Integer))
                 .validate(&serde_json::json!({"a": "no"}), &Value::Null)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn sealed_schemas_are_decoded_by_their_authority_without_loss() {
+        let exact = serde_json::json!({
+            "type": "object",
+            "properties": {"revision": {"type": "integer", "minimum": 2}},
+            "required": ["revision"],
+            "additionalProperties": false
+        });
+        let sealed_json = serde_json::json!({
+            "name": "demo",
+            "version": "1",
+            "description": "sealed fixture",
+            "tags": ["immutable"],
+            "dependencies": ["other"],
+            "example": {"labels": {"a": "b"}},
+            "fields": {
+                "labels": {"field_type": {"map": "string"}, "required": true},
+                "document": {"field_type": {"json_schema": exact}, "required": false},
+                "choice": {
+                    "field_type": {"one_of": ["string", "integer"]},
+                    "required": false,
+                    "constraints": [{"type": "one_of", "values": ["a", 1]}],
+                    "read_only_when": {"property": "state", "value": "locked"}
+                }
+            },
+            "methods": {
+                "record": {
+                    "name": "record",
+                    "args": {"type": "object", "properties": {"kind": {"type": "string"}}},
+                    "returns": null,
+                    "side_effect": "mutation",
+                    "idempotent": false,
+                    "required_capability": "cap.demo.record@v1",
+                    "subid": "mut.demo.record@v1"
+                }
+            },
+            "signals": [{"name": "recorded", "subid": "evt.demo.recorded@v1"}]
+        });
+        let sealed: op_state_store::PluginSchema = serde_json::from_value(sealed_json).unwrap();
+        let schema = from_sealed(sealed).unwrap();
+
+        assert_eq!(
+            schema.fields["labels"].field_type,
+            FieldType::Map(Box::new(FieldType::String))
+        );
+        assert_eq!(
+            schema.fields["document"].field_type,
+            FieldType::JsonSchema(Box::new(exact))
+        );
+        assert_eq!(
+            schema.fields["choice"].field_type,
+            FieldType::OneOf(vec![FieldType::String, FieldType::Integer])
+        );
+        assert_eq!(
+            schema.fields["choice"].constraints,
+            vec![Constraint::OneOf {
+                values: vec![Value::from("a"), Value::from(1)]
+            }]
+        );
+        assert_eq!(
+            schema.fields["choice"].read_only_when,
+            Some(ReadOnlyCondition {
+                property: "state".into(),
+                value: "locked".into()
+            })
+        );
+        let record = &schema.methods["record"];
+        assert_eq!(record.side_effect, SideEffect::Mutation);
+        assert_eq!(record.args["properties"]["kind"]["type"], "string");
+        assert_eq!(
+            record.required_capability.as_deref(),
+            Some("cap.demo.record@v1")
+        );
+        assert_eq!(schema.signals[0].subid, "evt.demo.recorded@v1");
+        assert_eq!(schema.tags, vec!["immutable".to_string()]);
+        assert_eq!(schema.dependencies, vec!["other".to_string()]);
+        // Fields this projection used to drop now survive the conversion.
+        assert_eq!(
+            schema.example,
+            Some(serde_json::json!({"labels": {"a": "b"}}))
+        );
+        assert_eq!(
+            schema
+                .required_capabilities()
+                .into_iter()
+                .collect::<Vec<_>>(),
+            vec!["cap.demo.record@v1"]
+        );
+
+        // The converted view still validates state as before.
+        schema
+            .validate_value(
+                &serde_json::json!({"labels": {"k": "v"}, "document": {"revision": 3}}),
+                None,
+            )
+            .unwrap();
+        assert!(
+            schema
+                .validate_value(&serde_json::json!({"labels": {"k": 1}}), None)
                 .is_err()
         );
     }

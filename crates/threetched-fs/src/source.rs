@@ -152,8 +152,13 @@ impl SourceCatalog {
                 "manifest hash mismatch for '{plugin_id}': expected {expected_hash}, got {actual_hash}"
             );
         }
-        serde_json::from_slice(blob.schema_json())
-            .with_context(|| format!("decode PluginSchema for '{plugin_id}'"))
+        // The schema's own authority decodes it, so this projection reads
+        // exactly what was sealed; `from_sealed` then fails to compile, not to
+        // capture, whenever the authority's shape changes.
+        let sealed: op_state_store::PluginSchema = serde_json::from_slice(blob.schema_json())
+            .with_context(|| format!("decode sealed PluginSchema for '{plugin_id}'"))?;
+        crate::model::from_sealed(sealed)
+            .with_context(|| format!("convert sealed PluginSchema for '{plugin_id}'"))
     }
 }
 

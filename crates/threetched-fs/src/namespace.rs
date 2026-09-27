@@ -141,7 +141,7 @@ impl Namespace {
             builder.add_json(
                 plugin_dir,
                 "capabilities.json",
-                &object.schema.capabilities(),
+                &object.schema.required_capabilities(),
                 None,
             )?;
             builder.add_text(

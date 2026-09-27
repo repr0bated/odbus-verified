@@ -906,11 +906,11 @@
         ],
         "has_lib": false,
         "rs_files": 7,
-        "loc": 3981,
-        "tests": 18,
+        "loc": 4311,
+        "tests": 19,
         "unsafe_refs": 2,
         "todo": 0,
-        "unwrap_expect": 62
+        "unwrap_expect": 65
       }
     },
     {
@@ -1932,8 +1932,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-27T23:08:10Z",
-        "commit": "b524da940fd5ece59e5cb6c9f01681600506064c",
+        "generated_at": "2026-09-27T23:20:23Z",
+        "commit": "77c11cedead1c51b7fa825f6bef53a9de95194e7",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -9957,7 +9957,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 1000
+        "loc": 1002
       }
     },
     {
@@ -9975,7 +9975,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 736
+        "loc": 1058
       }
     },
     {
@@ -9993,7 +9993,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 249
+        "loc": 254
       }
     },
     {
@@ -10002,7 +10002,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 687
+        "loc": 688
       }
     },
     {
@@ -24523,6 +24523,14 @@
     },
     {
       "src": "crate:threetched-fs",
+      "rel": "depends_on",
+      "dst": "crate:op-state-store",
+      "props": {
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
       "rel": "provides_bin",
       "dst": "bin:threetched-fs",
       "props": {}
@@ -31592,6 +31600,22 @@
       "src": "mod:crates/op-workflows/src/orchestrator.rs",
       "rel": "imports",
       "dst": "crate:op-tools",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/threetched-fs/src/model.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 18
+      }
+    },
+    {
+      "src": "mod:crates/threetched-fs/src/source.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
       "props": {
         "refs": 1
       }

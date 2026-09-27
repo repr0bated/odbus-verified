@@ -581,6 +581,7 @@ mod tests {
                 methods: BTreeMap::new(),
                 signals: Vec::new(),
                 guarantees: PluginGuarantees::default(),
+                ..Default::default()
             },
             value,
         )
