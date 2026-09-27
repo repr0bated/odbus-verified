@@ -32,11 +32,11 @@ pub struct CallReceipt {
     pub result: Value,
 }
 
-/// Why an organ call did not complete. Each stage maps to one errno so the
+/// Why a lungs call did not complete. Each stage maps to one errno so the
 /// writer learns what failed from `close()`, and the full text goes to the
 /// method's `error` file.
 #[derive(Debug, thiserror::Error)]
-pub enum OrganError {
+pub enum LungsError {
     #[error("arguments are not a JSON value: {0}")]
     Json(String),
     #[error("arguments failed schema validation: {0}")]
@@ -51,7 +51,7 @@ pub enum OrganError {
     Transport(String),
 }
 
-impl OrganError {
+impl LungsError {
     pub fn stage(&self) -> &'static str {
         match self {
             Self::Json(_) => "parse",
@@ -96,28 +96,28 @@ pub fn method_decl(
         .with_context(|| format!("method '{plugin_id}.{method_name}' is not schema-declared"))
 }
 
-pub fn validate_arguments(method: &MethodDecl, arguments: &Value) -> Result<(), OrganError> {
+pub fn validate_arguments(method: &MethodDecl, arguments: &Value) -> Result<(), LungsError> {
     jsonschema::Validator::new(&method.args)
-        .map_err(|error| OrganError::Arguments(format!("sealed argument schema: {error}")))?
+        .map_err(|error| LungsError::Arguments(format!("sealed argument schema: {error}")))?
         .validate(arguments)
-        .map_err(|error| OrganError::Arguments(error.to_string()))
+        .map_err(|error| LungsError::Arguments(error.to_string()))
 }
 
 /// Read the identity's SID1 from its own device. It is read per call, so a
 /// delivered or refreshed credential takes effect without a remount.
-pub fn read_credential(path: &Path) -> Result<Vec<u8>, OrganError> {
+pub fn read_credential(path: &Path) -> Result<Vec<u8>, LungsError> {
     let metadata = std::fs::metadata(path)
-        .map_err(|error| OrganError::Credential(format!("{}: {error}", path.display())))?;
+        .map_err(|error| LungsError::Credential(format!("{}: {error}", path.display())))?;
     if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_CREDENTIAL_BYTES {
-        return Err(OrganError::Credential(format!(
+        return Err(LungsError::Credential(format!(
             "{} is not a SID1 credential file",
             path.display()
         )));
     }
     let bytes = std::fs::read(path)
-        .map_err(|error| OrganError::Credential(format!("{}: {error}", path.display())))?;
+        .map_err(|error| LungsError::Credential(format!("{}: {error}", path.display())))?;
     if !bytes.starts_with(b"SID1") {
-        return Err(OrganError::Credential(format!(
+        return Err(LungsError::Credential(format!(
             "{} does not hold a SID1 envelope",
             path.display()
         )));
@@ -154,7 +154,7 @@ pub async fn call(
     Ok(receipt(plugin_id, method_name, &method, result))
 }
 
-/// Dispatch as the identity that owns the organ mount. Registration and the
+/// Dispatch as the identity that owns the lungs mount. Registration and the
 /// call share one connection, so the bridge admits the call as that identity
 /// and runs it through MutationEngine under the identity's own grants.
 pub async fn call_as_identity(
@@ -164,12 +164,12 @@ pub async fn call_as_identity(
     method: &MethodDecl,
     arguments: Value,
     credential: Vec<u8>,
-) -> Result<CallReceipt, OrganError> {
+) -> Result<CallReceipt, LungsError> {
     let connection = zbus::connection::Builder::address(bus_address)
-        .map_err(|error| OrganError::Transport(format!("bus address {bus_address}: {error}")))?
+        .map_err(|error| LungsError::Transport(format!("bus address {bus_address}: {error}")))?
         .build()
         .await
-        .map_err(|error| OrganError::Transport(format!("connect to {bus_address}: {error}")))?;
+        .map_err(|error| LungsError::Transport(format!("connect to {bus_address}: {error}")))?;
     let bootstrap = Proxy::new(
         &connection,
         PLUGIN_BUS_NAME,
@@ -177,24 +177,24 @@ pub async fn call_as_identity(
         IDENTITY_INTERFACE,
     )
     .await
-    .map_err(|error| OrganError::Transport(format!("identity bootstrap proxy: {error}")))?;
+    .map_err(|error| LungsError::Transport(format!("identity bootstrap proxy: {error}")))?;
     let registered: bool = bootstrap
         .call("RegisterCurrentSender", &(credential,))
         .await
         .map_err(|error| match refusal(&error) {
-            true => OrganError::Registration(error.to_string()),
-            false => OrganError::Transport(format!("register: {error}")),
+            true => LungsError::Registration(error.to_string()),
+            false => LungsError::Transport(format!("register: {error}")),
         })?;
     if !registered {
-        return Err(OrganError::Registration(
+        return Err(LungsError::Registration(
             "bridge declined the credential".into(),
         ));
     }
     let result = plugin_call(&connection, plugin_id, method_name, &arguments)
         .await
         .map_err(|error| match refusal(&error) {
-            true => OrganError::Refused(error.to_string()),
-            false => OrganError::Transport(format!("call: {error}")),
+            true => LungsError::Refused(error.to_string()),
+            false => LungsError::Transport(format!("call: {error}")),
         })?;
     Ok(receipt(plugin_id, method_name, method, result))
 }

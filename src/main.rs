@@ -16,7 +16,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::dispatch::DEFAULT_BUS_ADDRESS;
-use crate::fuse_fs::{Organ, TypedFuse};
+use crate::fuse_fs::{Lungs, TypedFuse};
 use crate::namespace::{Namespace, NodeKind, ProjectionTarget};
 use crate::source::{DEFAULT_CATALOG_DIR, DEFAULT_STATE_DIR, SourceCatalog};
 use crate::store::{DEFAULT_STORE_DIR, ObjectStore};
@@ -107,11 +107,11 @@ enum Command {
         /// Ask libfuse to unmount on exit (may require user_allow_other).
         #[arg(long)]
         auto_unmount: bool,
-        /// Mount as one identity's organ: every method gets a `call` file,
+        /// Mount as one identity's lungs: every method gets a `call` file,
         /// and a write is dispatched as that identity using the SID1 at this
         /// path on its own device.
         #[arg(long, conflicts_with = "workspace")]
-        organ_credential: Option<PathBuf>,
+        lungs_credential: Option<PathBuf>,
         #[arg(long, default_value = DEFAULT_BUS_ADDRESS)]
         bus_address: String,
     },
@@ -310,25 +310,25 @@ async fn main() -> Result<()> {
             state,
             allow_other,
             auto_unmount,
-            organ_credential,
+            lungs_credential,
             bus_address,
         } => {
             if !mountpoint.is_dir() {
                 bail!("mountpoint {} is not a directory", mountpoint.display());
             }
             let target = resolve_target(&store, &target)?;
-            let organ = organ_credential.is_some();
-            // Organ call files need a writable mount; every other node still
+            let lungs = lungs_credential.is_some();
+            // Lungs call files need a writable mount; every other node still
             // refuses writes on its own.
-            let writable = organ || matches!(target, ProjectionTarget::Workspace(_));
+            let writable = lungs || matches!(target, ProjectionTarget::Workspace(_));
             // View mounts read live state from SHM; workspace mounts use
             // frozen COW objects and don't need the state directory.
-            let filesystem = match organ_credential {
-                Some(credential) => TypedFuse::organ(
+            let filesystem = match lungs_credential {
+                Some(credential) => TypedFuse::lungs(
                     store,
                     target,
                     state,
-                    Organ {
+                    Lungs {
                         bus_address,
                         credential,
                     },

@@ -26,9 +26,9 @@ pub struct Namespace {
     /// SHM state directory for live reads (`/dev/shm/opdbus/state`).
     /// Only used for view mounts; workspace mounts use frozen COW objects.
     pub state_dir: Option<std::path::PathBuf>,
-    /// Organ mounts belong to one identity and expose a `call` file per
+    /// Lungs mounts belong to one identity and expose a `call` file per
     /// method, so a write is that identity's canonical call.
-    pub organ: bool,
+    pub lungs: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -54,7 +54,7 @@ pub enum NodeKind {
         pointer: String,
     },
     Symlink(String),
-    /// Organ control file. A complete JSON write, flushed on close, is
+    /// Lungs control file. A complete JSON write, flushed on close, is
     /// validated against the sealed method schema and dispatched as the
     /// mount's identity. Nothing is stored in the file itself.
     CallFile {
@@ -62,7 +62,7 @@ pub enum NodeKind {
         method: String,
     },
     /// The last receipt (`error: false`) or diagnostic (`error: true`) of the
-    /// organ call for `plugin_id.method`.
+    /// lungs call for `plugin_id.method`.
     Outcome {
         plugin_id: String,
         method: String,
@@ -86,14 +86,14 @@ impl Namespace {
         Self::build_with(store, target, state_dir, false)
     }
 
-    /// A live view for one identity, with an organ `call` file per method.
-    pub fn build_organ(
+    /// A live view for one identity, with a lungs `call` file per method.
+    pub fn build_lungs(
         store: &ObjectStore,
         target: ProjectionTarget,
         state_dir: &std::path::Path,
     ) -> Result<Self> {
         if !matches!(target, ProjectionTarget::View(_)) {
-            bail!("an organ mount projects a pinned view, not a workspace");
+            bail!("a lungs mount projects a pinned view, not a workspace");
         }
         Self::build_with(store, target, Some(state_dir), true)
     }
@@ -102,7 +102,7 @@ impl Namespace {
         store: &ObjectStore,
         target: ProjectionTarget,
         state_dir: Option<&std::path::Path>,
-        organ: bool,
+        lungs: bool,
     ) -> Result<Self> {
         let (view, workspace) = match &target {
             ProjectionTarget::View(id) => (store.read_view(id)?, None),
@@ -115,7 +115,7 @@ impl Namespace {
         // View mounts read live state from SHM; workspace mounts use frozen COW.
         let live = workspace.is_none() && state_dir.is_some();
         let mut builder =
-            NamespaceBuilder::new(target.clone(), state_dir.map(|p| p.to_path_buf()), organ);
+            NamespaceBuilder::new(target.clone(), state_dir.map(|p| p.to_path_buf()), lungs);
         builder.add_root_metadata(&view, workspace.as_ref())?;
 
         let plugins = builder.add_dir(ROOT_INO, "plugins")?;
@@ -181,8 +181,8 @@ impl Namespace {
                     builder.add_json(method_dir, "output.schema.json", returns, None)?;
                 }
                 builder.add_json(method_dir, "metadata.json", method, None)?;
-                if organ {
-                    builder.add_organ_files(method_dir, plugin_id, method_name)?;
+                if lungs {
+                    builder.add_lungs_files(method_dir, plugin_id, method_name)?;
                 }
                 builder.add_symlink(
                     root_methods_dir,
@@ -235,7 +235,7 @@ struct NamespaceBuilder {
 
 #[allow(clippy::too_many_arguments)]
 impl NamespaceBuilder {
-    fn new(target: ProjectionTarget, state_dir: Option<std::path::PathBuf>, organ: bool) -> Self {
+    fn new(target: ProjectionTarget, state_dir: Option<std::path::PathBuf>, lungs: bool) -> Self {
         let root = Node {
             ino: ROOT_INO,
             parent: ROOT_INO,
@@ -250,7 +250,7 @@ impl NamespaceBuilder {
                 children: HashMap::from([(ROOT_INO, BTreeMap::new())]),
                 target,
                 state_dir,
-                organ,
+                lungs,
             },
             paths: HashMap::from([("/".to_string(), ROOT_INO)]),
         }
@@ -407,7 +407,7 @@ impl NamespaceBuilder {
         )
     }
 
-    fn add_organ_files(&mut self, method_dir: u64, plugin_id: &str, method: &str) -> Result<()> {
+    fn add_lungs_files(&mut self, method_dir: u64, plugin_id: &str, method: &str) -> Result<()> {
         self.add_node(
             method_dir,
             "call",

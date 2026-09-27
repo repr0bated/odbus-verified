@@ -10,7 +10,7 @@ use fuser::{
 use libc::{EACCES, EINVAL, EIO, EISDIR, ENOENT, EROFS};
 use serde_json::Value;
 
-use crate::dispatch::{self, CallReceipt, OrganError};
+use crate::dispatch::{self, CallReceipt, LungsError};
 use crate::namespace::{Namespace, Node, NodeKind, ProjectionTarget};
 use crate::store::ObjectStore;
 
@@ -53,9 +53,9 @@ struct OpenFile {
     dirty: bool,
 }
 
-/// Where an organ mount sends its calls, and whose credential it presents.
+/// Where a lungs mount sends its calls, and whose credential it presents.
 /// The credential lives on the identity's own device, outside the container.
-pub struct Organ {
+pub struct Lungs {
     pub bus_address: String,
     pub credential: PathBuf,
 }
@@ -73,7 +73,7 @@ pub struct TypedFuse {
     next_fh: u64,
     uid: u32,
     gid: u32,
-    organ: Option<Organ>,
+    lungs: Option<Lungs>,
     outcomes: HashMap<(String, String), Outcome>,
     ttl: Duration,
     /// Rendered live files, keyed by (plugin, pointer), valid for one state version.
@@ -97,17 +97,17 @@ impl TypedFuse {
 
     /// A live view owned by one identity: every method gets a `call` file
     /// whose writes are dispatched as that identity.
-    pub fn organ(
+    pub fn lungs(
         store: ObjectStore,
         target: ProjectionTarget,
         state_dir: PathBuf,
-        organ: Organ,
+        lungs: Lungs,
     ) -> anyhow::Result<Self> {
-        let namespace = Namespace::build_organ(&store, target, &state_dir)?;
-        Ok(Self::from_parts(store, namespace, Some(organ)))
+        let namespace = Namespace::build_lungs(&store, target, &state_dir)?;
+        Ok(Self::from_parts(store, namespace, Some(lungs)))
     }
 
-    fn from_parts(store: ObjectStore, namespace: Namespace, organ: Option<Organ>) -> Self {
+    fn from_parts(store: ObjectStore, namespace: Namespace, lungs: Option<Lungs>) -> Self {
         let ttl = match namespace.target {
             ProjectionTarget::View(_) => VIEW_TTL,
             ProjectionTarget::Workspace(_) => Duration::ZERO,
@@ -119,7 +119,7 @@ impl TypedFuse {
             next_fh: 1,
             uid: unsafe { libc::getuid() },
             gid: unsafe { libc::getgid() },
-            organ,
+            lungs,
             outcomes: HashMap::new(),
             ttl,
             live_cache: parking_lot::Mutex::new(HashMap::new()),
@@ -139,10 +139,10 @@ impl TypedFuse {
             .unwrap_or_default()
     }
 
-    /// Run one organ call and record its receipt or diagnostic. The errno
+    /// Run one lungs call and record its receipt or diagnostic. The errno
     /// tells the writer which stage failed; the `error` file says why.
-    fn organ_call(&mut self, plugin_id: &str, method: &str, bytes: &[u8]) -> Result<(), i32> {
-        let outcome = self.run_organ_call(plugin_id, method, bytes);
+    fn lungs_call(&mut self, plugin_id: &str, method: &str, bytes: &[u8]) -> Result<(), i32> {
+        let outcome = self.run_lungs_call(plugin_id, method, bytes);
         let entry = self
             .outcomes
             .entry((plugin_id.to_string(), method.to_string()))
@@ -165,24 +165,24 @@ impl TypedFuse {
         }
     }
 
-    fn run_organ_call(
+    fn run_lungs_call(
         &self,
         plugin_id: &str,
         method_name: &str,
         bytes: &[u8],
-    ) -> Result<CallReceipt, OrganError> {
-        let organ = self
-            .organ
+    ) -> Result<CallReceipt, LungsError> {
+        let lungs = self
+            .lungs
             .as_ref()
-            .ok_or_else(|| OrganError::Transport("not an organ mount".into()))?;
+            .ok_or_else(|| LungsError::Transport("not a lungs mount".into()))?;
         let arguments: Value =
-            serde_json::from_slice(bytes).map_err(|error| OrganError::Json(error.to_string()))?;
+            serde_json::from_slice(bytes).map_err(|error| LungsError::Json(error.to_string()))?;
         let method =
             dispatch::method_decl(&self.store, &self.namespace.target, plugin_id, method_name)
-                .map_err(|error| OrganError::Arguments(error.to_string()))?;
+                .map_err(|error| LungsError::Arguments(error.to_string()))?;
         dispatch::validate_arguments(&method, &arguments)?;
-        let credential = dispatch::read_credential(&organ.credential)?;
-        let bus_address = organ.bus_address.clone();
+        let credential = dispatch::read_credential(&lungs.credential)?;
+        let bus_address = lungs.bus_address.clone();
         // FUSE callbacks run inside the mount's tokio context, which cannot
         // block on another future. A scoped thread with its own runtime keeps
         // the D-Bus round trip off that context.
@@ -192,7 +192,7 @@ impl TypedFuse {
                     let runtime = tokio::runtime::Builder::new_current_thread()
                         .enable_all()
                         .build()
-                        .map_err(|error| OrganError::Transport(format!("runtime: {error}")))?;
+                        .map_err(|error| LungsError::Transport(format!("runtime: {error}")))?;
                     runtime.block_on(dispatch::call_as_identity(
                         &bus_address,
                         plugin_id,
@@ -203,7 +203,7 @@ impl TypedFuse {
                     ))
                 })
                 .join()
-                .unwrap_or_else(|_| Err(OrganError::Transport("dispatch thread panicked".into())))
+                .unwrap_or_else(|_| Err(LungsError::Transport("dispatch thread panicked".into())))
         })
     }
 
@@ -300,7 +300,7 @@ impl TypedFuse {
             &self.store,
             self.namespace.target.clone(),
             state_dir.as_deref(),
-            self.namespace.organ,
+            self.namespace.lungs,
         )?;
         Ok(())
     }
@@ -319,7 +319,7 @@ impl TypedFuse {
             handle.dirty = false;
             let bytes = std::mem::take(&mut handle.bytes);
             let (plugin_id, method) = (plugin_id.clone(), method.clone());
-            return self.organ_call(&plugin_id, &method, &bytes);
+            return self.lungs_call(&plugin_id, &method, &bytes);
         }
         let target = node.write_target.clone().ok_or(EROFS)?;
         let value: Value = serde_json::from_slice(&handle.bytes).map_err(|_| EINVAL)?;
@@ -366,7 +366,7 @@ fn pretty(value: &impl serde::Serialize) -> Vec<u8> {
     bytes
 }
 
-/// A workspace field or an organ call file accepts writes; nothing else does.
+/// A workspace field or a lungs call file accepts writes; nothing else does.
 fn node_writable(node: &Node) -> bool {
     node.write_target.is_some() || matches!(node.kind, NodeKind::CallFile { .. })
 }
@@ -791,7 +791,7 @@ mod tests {
         assert_eq!(fs.ttl, Duration::ZERO);
     }
 
-    fn organ_fixture(credential: PathBuf) -> (tempfile::TempDir, TypedFuse) {
+    fn lungs_fixture(credential: PathBuf) -> (tempfile::TempDir, TypedFuse) {
         let directory = tempdir().unwrap();
         let state = directory.path().join("state");
         std::fs::create_dir_all(&state).unwrap();
@@ -845,12 +845,12 @@ mod tests {
             )
             .unwrap();
         let target = ProjectionTarget::View(store.current_view_id().unwrap().unwrap());
-        let fs = TypedFuse::organ(
+        let fs = TypedFuse::lungs(
             store,
             target,
             state,
-            Organ {
-                bus_address: "unix:path=/nonexistent/organ-test.sock".into(),
+            Lungs {
+                bus_address: "unix:path=/nonexistent/lungs-test.sock".into(),
                 credential,
             },
         )
@@ -902,8 +902,8 @@ mod tests {
     }
 
     #[test]
-    fn organ_exposes_call_result_and_error_per_method() {
-        let (_directory, fs) = organ_fixture(PathBuf::from("/nonexistent/sid1"));
+    fn lungs_exposes_call_result_and_error_per_method() {
+        let (_directory, fs) = lungs_fixture(PathBuf::from("/nonexistent/sid1"));
         let call = method_node(&fs, "call");
         assert!(matches!(call.kind, NodeKind::CallFile { .. }));
         assert_eq!(fs.attr(call, None).perm, 0o222);
@@ -914,22 +914,22 @@ mod tests {
     }
 
     #[test]
-    fn organ_rejects_non_json_before_anything_else() {
-        let (_directory, mut fs) = organ_fixture(PathBuf::from("/nonexistent/sid1"));
+    fn lungs_rejects_non_json_before_anything_else() {
+        let (_directory, mut fs) = lungs_fixture(PathBuf::from("/nonexistent/sid1"));
         assert_eq!(write_call(&mut fs, b"not json"), Err(EINVAL));
         assert_eq!(error_stage(&fs), "parse");
     }
 
     #[test]
-    fn organ_validates_against_the_sealed_schema() {
-        let (_directory, mut fs) = organ_fixture(PathBuf::from("/nonexistent/sid1"));
+    fn lungs_validates_against_the_sealed_schema() {
+        let (_directory, mut fs) = lungs_fixture(PathBuf::from("/nonexistent/sid1"));
         assert_eq!(write_call(&mut fs, br#"{"event": 7}"#), Err(EINVAL));
         assert_eq!(error_stage(&fs), "validate");
     }
 
     #[test]
-    fn organ_refuses_without_a_delivered_credential() {
-        let (_directory, mut fs) = organ_fixture(PathBuf::from("/nonexistent/sid1"));
+    fn lungs_refuses_without_a_delivered_credential() {
+        let (_directory, mut fs) = lungs_fixture(PathBuf::from("/nonexistent/sid1"));
         assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Err(EACCES));
         assert_eq!(error_stage(&fs), "credential");
         let result = method_node(&fs, "result");
@@ -937,21 +937,21 @@ mod tests {
     }
 
     #[test]
-    fn organ_refuses_a_credential_that_is_not_sid1() {
+    fn lungs_refuses_a_credential_that_is_not_sid1() {
         let directory = tempdir().unwrap();
         let credential = directory.path().join("sid1");
         std::fs::write(&credential, b"OIA1-not-a-session").unwrap();
-        let (_fixture, mut fs) = organ_fixture(credential);
+        let (_fixture, mut fs) = lungs_fixture(credential);
         assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Err(EACCES));
         assert_eq!(error_stage(&fs), "credential");
     }
 
     #[test]
-    fn organ_reaches_the_bus_only_with_a_sid1_credential() {
+    fn lungs_reaches_the_bus_only_with_a_sid1_credential() {
         let directory = tempdir().unwrap();
         let credential = directory.path().join("sid1");
         std::fs::write(&credential, b"SID1 fixture envelope").unwrap();
-        let (_fixture, mut fs) = organ_fixture(credential);
+        let (_fixture, mut fs) = lungs_fixture(credential);
         // The fixture bus does not exist, so a SID1 credential gets as far
         // as the transport and no further.
         assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Err(EIO));
@@ -960,7 +960,7 @@ mod tests {
 
     #[test]
     fn live_reads_follow_each_committed_state_version() {
-        let (directory, fs) = organ_fixture(PathBuf::from("/nonexistent/sid1"));
+        let (directory, fs) = lungs_fixture(PathBuf::from("/nonexistent/sid1"));
         let state = directory.path().join("state");
         let commit = |value: &str| {
             // MutationEngine commits by writing a sibling and renaming it.
@@ -993,8 +993,8 @@ mod tests {
     }
 
     #[test]
-    fn organ_views_use_the_kernel_cache() {
-        let (_directory, fs) = organ_fixture(PathBuf::from("/nonexistent/sid1"));
+    fn lungs_views_use_the_kernel_cache() {
+        let (_directory, fs) = lungs_fixture(PathBuf::from("/nonexistent/sid1"));
         assert_eq!(fs.ttl, VIEW_TTL);
     }
 }
