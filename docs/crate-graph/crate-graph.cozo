@@ -209,7 +209,7 @@
 ,[___"ext:zbus_xml"___, ___"ext_crate"___, ___"{"req":"^5"}"___]
 ,[___"ext:zeroize"___, ___"ext_crate"___, ___"{"req":"^1.6"}"___]
 ,[___"ext:zstd"___, ___"ext_crate"___, ___"{"req":"^0.13"}"___]
-,[___"meta:crate-graph"___, ___"meta"___, ___"{"generated_at":"2026-09-26T05:58:40Z","commit":"5840c7822999fba0e415e6d912b6c4d0ed201483","generator":"scripts/crate-graph.sh","relations":["graph_node","graph_edge"]}"___]
+,[___"meta:crate-graph"___, ___"meta"___, ___"{"generated_at":"2026-09-27T23:06:19Z","commit":"355b64317f166aa1a894fb12cd4255036a109a39","generator":"scripts/crate-graph.sh","relations":["graph_node","graph_edge"]}"___]
 ,[___"mod:crates/op-agents/src/agent_catalog.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":78}"___]
 ,[___"mod:crates/op-agents/src/agent_registry.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":476}"___]
 ,[___"mod:crates/op-agents/src/agent_schema.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":192}"___]
