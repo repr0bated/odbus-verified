@@ -14,7 +14,38 @@ use crate::dispatch::{self, CallReceipt, OrganError};
 use crate::namespace::{Namespace, Node, NodeKind, ProjectionTarget};
 use crate::store::ObjectStore;
 
-const TTL: Duration = Duration::ZERO;
+/// Kernel cache lifetime for a pinned view. Its tree never changes, and file
+/// contents stay live because every open uses direct I/O. Workspaces rebuild
+/// their tree on write, so they are never cached.
+const VIEW_TTL: Duration = Duration::from_secs(1);
+
+/// Identifies one committed version of a state file. MutationEngine replaces
+/// the file on every commit, so a new commit always yields a new key.
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct StateKey {
+    dev: u64,
+    ino: u64,
+    mtime: i64,
+    mtime_nsec: i64,
+    len: u64,
+}
+
+/// Rendered live-file bytes by (plugin, pointer), each tagged with the state
+/// version it was rendered from.
+type LiveCache = HashMap<(String, String), (StateKey, Vec<u8>)>;
+
+impl StateKey {
+    fn of(metadata: &std::fs::Metadata) -> Self {
+        use std::os::unix::fs::MetadataExt;
+        Self {
+            dev: metadata.dev(),
+            ino: metadata.ino(),
+            mtime: metadata.mtime(),
+            mtime_nsec: metadata.mtime_nsec(),
+            len: metadata.len(),
+        }
+    }
+}
 
 struct OpenFile {
     ino: u64,
@@ -44,6 +75,9 @@ pub struct TypedFuse {
     gid: u32,
     organ: Option<Organ>,
     outcomes: HashMap<(String, String), Outcome>,
+    ttl: Duration,
+    /// Rendered live files, keyed by (plugin, pointer), valid for one state version.
+    live_cache: parking_lot::Mutex<LiveCache>,
 }
 
 impl TypedFuse {
@@ -74,6 +108,10 @@ impl TypedFuse {
     }
 
     fn from_parts(store: ObjectStore, namespace: Namespace, organ: Option<Organ>) -> Self {
+        let ttl = match namespace.target {
+            ProjectionTarget::View(_) => VIEW_TTL,
+            ProjectionTarget::Workspace(_) => Duration::ZERO,
+        };
         Self {
             store,
             namespace,
@@ -83,6 +121,8 @@ impl TypedFuse {
             gid: unsafe { libc::getgid() },
             organ,
             outcomes: HashMap::new(),
+            ttl,
+            live_cache: parking_lot::Mutex::new(HashMap::new()),
         }
     }
 
@@ -220,8 +260,9 @@ impl TypedFuse {
         }
     }
 
-    /// Read a plugin's live state from SHM, parse it, and extract the value
-    /// at the given JSON pointer. Returns pretty-printed JSON bytes.
+    /// Read a plugin's live state from SHM and extract the value at the given
+    /// JSON pointer, as pretty-printed JSON bytes. Rendering happens once per
+    /// committed state version; later opens and size checks reuse it.
     fn live_state_bytes(&self, node: &Node) -> Option<Vec<u8>> {
         let (plugin_id, pointer) = match &node.kind {
             NodeKind::LiveFile { plugin_id, pointer } => (plugin_id.as_str(), pointer.as_str()),
@@ -229,6 +270,13 @@ impl TypedFuse {
         };
         let state_dir = self.namespace.state_dir.as_ref()?;
         let path = state_dir.join(format!("{plugin_id}.json"));
+        let key = StateKey::of(&std::fs::metadata(&path).ok()?);
+        let cache_key = (plugin_id.to_string(), pointer.to_string());
+        if let Some((cached, bytes)) = self.live_cache.lock().get(&cache_key)
+            && *cached == key
+        {
+            return Some(bytes.clone());
+        }
         let raw = std::fs::read(&path).ok()?;
         let value: Value = serde_json::from_slice(&raw).ok()?;
         let extracted = if pointer.is_empty() {
@@ -238,6 +286,11 @@ impl TypedFuse {
         };
         let mut bytes = serde_json::to_vec_pretty(&extracted).ok()?;
         bytes.push(b'\n');
+        // A commit that lands between the stat and the read is stored under
+        // the older key, so the next open simply renders it again.
+        self.live_cache
+            .lock()
+            .insert(cache_key, (key, bytes.clone()));
         Some(bytes)
     }
 
@@ -334,7 +387,7 @@ impl Filesystem for TypedFuse {
 
     fn lookup(&mut self, _request: &Request<'_>, parent: u64, name: &OsStr, reply: ReplyEntry) {
         match self.namespace.lookup(parent, name) {
-            Some(node) => reply.entry(&TTL, &self.attr(node, None), 0),
+            Some(node) => reply.entry(&self.ttl, &self.attr(node, None), 0),
             None => reply.error(ENOENT),
         }
     }
@@ -346,7 +399,7 @@ impl Filesystem for TypedFuse {
                     .and_then(|fh| self.open_files.get(&fh))
                     .filter(|handle| handle.ino == ino)
                     .map(|handle| handle.bytes.len() as u64);
-                reply.attr(&TTL, &self.attr(node, size));
+                reply.attr(&self.ttl, &self.attr(node, size));
             }
             None => reply.error(ENOENT),
         }
@@ -384,7 +437,7 @@ impl Filesystem for TypedFuse {
             return;
         }
         let Some(size) = size else {
-            reply.attr(&TTL, &self.attr(node, None));
+            reply.attr(&self.ttl, &self.attr(node, None));
             return;
         };
         let Some(fh) = fh else {
@@ -397,7 +450,7 @@ impl Filesystem for TypedFuse {
         };
         handle.bytes.resize(size as usize, 0);
         handle.dirty = true;
-        reply.attr(&TTL, &self.attr(node, Some(size)));
+        reply.attr(&self.ttl, &self.attr(node, Some(size)));
     }
 
     fn readlink(&mut self, _request: &Request<'_>, ino: u64, reply: ReplyData) {
@@ -734,6 +787,8 @@ mod tests {
             .lookup(data.ino, OsStr::new("enabled"))
             .unwrap();
         assert_eq!(fs.attr(enabled, None).perm, 0o644);
+        // A workspace rebuilds its tree on write, so the kernel never caches it.
+        assert_eq!(fs.ttl, Duration::ZERO);
     }
 
     fn organ_fixture(credential: PathBuf) -> (tempfile::TempDir, TypedFuse) {
@@ -901,5 +956,45 @@ mod tests {
         // as the transport and no further.
         assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Err(EIO));
         assert_eq!(error_stage(&fs), "transport");
+    }
+
+    #[test]
+    fn live_reads_follow_each_committed_state_version() {
+        let (directory, fs) = organ_fixture(PathBuf::from("/nonexistent/sid1"));
+        let state = directory.path().join("state");
+        let commit = |value: &str| {
+            // MutationEngine commits by writing a sibling and renaming it.
+            let staged = state.join(".demo.json.tmp");
+            std::fs::write(&staged, value).unwrap();
+            std::fs::rename(&staged, state.join("demo.json")).unwrap();
+        };
+        let plugins = fs
+            .namespace
+            .lookup(ROOT_INO, OsStr::new("plugins"))
+            .unwrap();
+        let demo = fs
+            .namespace
+            .lookup(plugins.ino, OsStr::new("demo"))
+            .unwrap();
+        let value = fs
+            .namespace
+            .lookup(demo.ino, OsStr::new("value.json"))
+            .unwrap();
+
+        commit(r#"{"generation": 1}"#);
+        let first = fs.live_state_bytes(value).unwrap();
+        assert!(String::from_utf8_lossy(&first).contains("\"generation\": 1"));
+        // A second read of the same version is served from the cache.
+        assert_eq!(fs.live_state_bytes(value).unwrap(), first);
+
+        commit(r#"{"generation": 2}"#);
+        let second = fs.live_state_bytes(value).unwrap();
+        assert!(String::from_utf8_lossy(&second).contains("\"generation\": 2"));
+    }
+
+    #[test]
+    fn organ_views_use_the_kernel_cache() {
+        let (_directory, fs) = organ_fixture(PathBuf::from("/nonexistent/sid1"));
+        assert_eq!(fs.ttl, VIEW_TTL);
     }
 }
