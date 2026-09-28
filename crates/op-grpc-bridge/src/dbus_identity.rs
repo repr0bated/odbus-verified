@@ -649,10 +649,28 @@ impl DbusIdentityResolver {
         session_id: &str,
         require_active: bool,
     ) -> Result<GhostbridgeIdentity, DbusIdentityError> {
-        let session = crate::identity_sled_dispatch::stored_session(
+        authoritative_session_identity(
             self.engine.as_ref(),
+            Some(expected_principal),
             session_id,
+            require_active,
         )
+        .await
+    }
+}
+
+/// Resolve a session to its registered principal from the committed sled
+/// projection and the key registry alone. The session must be anchored,
+/// unexpired and, when `require_active`, active; its WireGuard key must map
+/// to an unrevoked principal, which must equal `expected_principal` when one
+/// is given. Nothing here trusts a caller-supplied principal or genesis.
+pub(crate) async fn authoritative_session_identity(
+    engine: &MutationEngine,
+    expected_principal: Option<&str>,
+    session_id: &str,
+    require_active: bool,
+) -> Result<GhostbridgeIdentity, DbusIdentityError> {
+    let session = crate::identity_sled_dispatch::stored_session(engine, session_id)
         .await
         .map_err(|error| {
             tracing::error!(%error, %session_id, "identity credential projection unavailable");
@@ -666,28 +684,29 @@ impl DbusIdentityResolver {
                 .is_none_or(|expires| expires == 0 || expires > chrono::Utc::now().timestamp())
         })
         .ok_or(DbusIdentityError::SessionUnavailable)?;
-        let session_genesis = session
-            .genesis
-            .filter(|genesis| !genesis.is_empty())
-            .ok_or(DbusIdentityError::SessionUnavailable)?;
-        if session.wireguard_pubkey.is_empty() {
-            return Err(DbusIdentityError::SessionUnavailable);
-        }
-
-        let principal =
-            crate::human_principal_dispatch::resolve_key_for_assertion(&session.wireguard_pubkey)
-                .await
-                .map_err(|_| DbusIdentityError::SessionUnavailable)?
-                .filter(|record| record.revoked_at == 0)
-                .filter(|record| record.principal_id == expected_principal)
-                .ok_or(DbusIdentityError::SessionUnavailable)?;
-
-        Ok(GhostbridgeIdentity {
-            principal_id: principal.principal_id,
-            session_id: session.session_id,
-            session_genesis,
-        })
+    let session_genesis = session
+        .genesis
+        .filter(|genesis| !genesis.is_empty())
+        .ok_or(DbusIdentityError::SessionUnavailable)?;
+    if session.wireguard_pubkey.is_empty() {
+        return Err(DbusIdentityError::SessionUnavailable);
     }
+
+    let principal =
+        crate::human_principal_dispatch::resolve_key_for_assertion(&session.wireguard_pubkey)
+            .await
+            .map_err(|_| DbusIdentityError::SessionUnavailable)?
+            .filter(|record| record.revoked_at == 0)
+            .filter(|record| {
+                expected_principal.is_none_or(|expected| record.principal_id == expected)
+            })
+            .ok_or(DbusIdentityError::SessionUnavailable)?;
+
+    Ok(GhostbridgeIdentity {
+        principal_id: principal.principal_id,
+        session_id: session.session_id,
+        session_genesis,
+    })
 }
 
 /// Separate bootstrap interface: PluginV1 remains unavailable until this
