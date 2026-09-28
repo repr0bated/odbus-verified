@@ -197,7 +197,9 @@ set -- $(stat -Lc '%u %a' "$OPENCODE_GO_KEY_FILE")
 # The key is raw-file input to native config patch and never an argument.
 jq -n --rawfile key "$OPENCODE_GO_KEY_FILE" '
   ($key | gsub("[\\r\\n]+$"; "")) as $key |
-  if ($key | length) == 0 then error("empty OpenCode Go API key") else . end |
+  if ($key | length) == 0 then error("empty OpenCode Go API key")
+  elif ($key | test("^[!-~]+$") | not) then error("OpenCode Go API key must be printable ASCII without spaces")
+  else . end |
   [["opencode","dashboard"],["opencode","accountability"],["opencode","control_plane"],
    ["opencode","cp_route_grok_47"],["opencode","cp_route_deepseek_v41_flash"],
    ["opencode","cp_route_glm_53_flash"],["anthropic","cp_route_qwen38_flash"],
