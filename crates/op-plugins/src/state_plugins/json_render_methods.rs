@@ -54,7 +54,7 @@ impl JsonRenderMethods {
             "json_render snapshot source commit mismatch"
         );
         ensure!(
-            schema.methods.len() == 15,
+            schema.methods.len() == 15 + super::gallery::METHODS.len(),
             "json_render method snapshot is incomplete"
         );
         for (key, method) in &schema.methods {

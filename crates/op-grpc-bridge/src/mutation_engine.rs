@@ -319,7 +319,9 @@ fn audit_method_arguments(plugin_id: &str, method: &str, json_args: &str) -> Str
         || (plugin_id == "embedding_model" && method == "embed")
         || (plugin_id == "mcp" && method == "configure_server")
         || (plugin_id == "gemma_brain"
-            && crate::ui_workspace_dispatch::is_ui_workspace_method(method));
+            && crate::ui_workspace_dispatch::is_ui_workspace_method(method))
+        || (plugin_id == "json_render"
+            && crate::json_render_gallery_dispatch::is_gallery_method(method));
     if private {
         serde_json::json!({
             "arguments_redacted": true,
@@ -392,6 +394,9 @@ pub struct MutationEngine {
     /// consumed by the next chatbot turn or `specialist` call of that session.
     knowledge_inbox: crate::knowledge_inbox::KnowledgeInbox,
     chatbot_episode_cozo: Arc<OnceCell<Arc<op_cozo_store::CozoGraphShuttle>>>,
+    /// The control plane's json_render UI gallery and active catalog owner:
+    /// one system database, read and written only through grants.
+    ui_gallery_cozo: Arc<OnceCell<Arc<op_cozo_store::CozoGraphShuttle>>>,
     /// Private memory methods share one writer lock and the existing Cozo
     /// handle; request context determines their principal/session namespace.
     memory_methods: Arc<OnceCell<op_plugins::state_plugins::memory_methods::MemoryMethods>>,
@@ -1169,6 +1174,7 @@ impl MutationEngine {
             knowledge_inbox: crate::knowledge_inbox::KnowledgeInbox::default(),
             vector_projector: Arc::new(OnceCell::new()),
             chatbot_episode_cozo: Arc::new(OnceCell::new()),
+            ui_gallery_cozo: Arc::new(OnceCell::new()),
             memory_methods: Arc::new(OnceCell::new()),
             sess_decl_methods: Arc::new(OnceCell::new()),
             notebook_queries: Arc::new(crate::notebooklm_queries::NotebookQueries::default()),
@@ -1280,6 +1286,64 @@ impl MutationEngine {
             })
             .await
             .cloned()
+    }
+
+    /// The json_render UI gallery owner. Its database is distinct from the
+    /// generic cognitive database and the chatbot's episode database.
+    pub(crate) async fn ui_gallery_cozo(
+        &self,
+    ) -> anyhow::Result<Arc<op_cozo_store::CozoGraphShuttle>> {
+        self.ui_gallery_cozo
+            .get_or_try_init(|| async {
+                let path = std::env::var("UI_GALLERY_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/ui-gallery.db".to_string());
+                anyhow::ensure!(
+                    !path.is_empty() && path != ":memory:" && path != "memory",
+                    "ui gallery store requires a durable path"
+                );
+                let episodes = std::env::var("CTL_PLANE_CHATBOT_EPISODE_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/chatbot-episodes.db".to_string());
+                let general = self.cognitive_mcp.get().map(|server| server.cozo_shuttle());
+                let episode_store = self.chatbot_episode_cozo.get().cloned();
+                tokio::task::spawn_blocking(move || {
+                    crate::chatbot_episode_state::require_distinct_database_paths(&path)?;
+                    crate::chatbot_episode_state::distinct_databases(
+                        std::path::Path::new(&path),
+                        std::path::Path::new(&episodes),
+                    )?;
+                    let store = op_cozo_store::CozoGraphShuttle::new_persistent_private(
+                        std::path::PathBuf::from(path),
+                    )?;
+                    if let Some(general) = general {
+                        store.ensure_distinct_from(&general)?;
+                    }
+                    if let Some(episodes) = episode_store {
+                        store.ensure_distinct_from(&episodes)?;
+                    }
+                    store.initialize_ui_gallery_store()?;
+                    Ok::<_, anyhow::Error>(Arc::new(store))
+                })
+                .await
+                .context("ui gallery store initialization worker failed")?
+            })
+            .await
+            .cloned()
+    }
+
+    pub fn configure_ui_gallery_store(
+        &self,
+        store: Arc<op_cozo_store::CozoGraphShuttle>,
+    ) -> anyhow::Result<()> {
+        if let Some(general) = self.cognitive_mcp.get() {
+            store.ensure_distinct_from(&general.cozo_shuttle())?;
+        }
+        if let Some(episodes) = self.chatbot_episode_cozo.get() {
+            store.ensure_distinct_from(episodes)?;
+        }
+        store.initialize_ui_gallery_store()?;
+        self.ui_gallery_cozo
+            .set(store)
+            .map_err(|_| anyhow::anyhow!("ui gallery Cozo owner is already configured"))
     }
 
     pub fn configure_chatbot_episode_store(
@@ -3162,6 +3226,18 @@ impl MutationEngine {
         let mut method_result: serde_json::Value = match plugin_id {
             "mcp" => {
                 crate::mcp_config_dispatch::dispatch(
+                    self,
+                    method,
+                    &serde_json::to_value(&parsed_value)?,
+                    actor_id,
+                    session_id,
+                    session_genesis,
+                    &admitted_schema,
+                )
+                .await?
+            }
+            "json_render" if crate::json_render_gallery_dispatch::is_gallery_method(method) => {
+                crate::json_render_gallery_dispatch::dispatch(
                     self,
                     method,
                     &serde_json::to_value(&parsed_value)?,

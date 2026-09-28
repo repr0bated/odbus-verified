@@ -25,6 +25,7 @@ another agent's uncommitted work.
 |-------|------|-------|-------|--------------|
 | Grok (Cursor) | Release `20260928T145511Z-2bdeb27` is live (picker `op-web`). Pinned dashboard still lacks the picker control | `/srv/git/odbus-verified` `main`, uncommitted | 2026-09-28 | Do not touch `feat/chat-response` or its plugin files |
 | Claude (host, session odbus-verified-f0, delegated build) | OD-90 stage 1: the `chat_response` plugin (schema, principal-scoped private conversations, turn registry, bridge dispatch, tests). No door enforcement or release yet | branch `feat/chat-response`, host worktree `/srv/git/odbus-verified/.claude/worktrees/chat-response`, not pushed | 2026-09-28 | `crates/op-plugins/src/state_plugins/chat_response*.rs`, the new bridge `chat_response_*` modules |
+| Claude (cloud) | OD-93: UI gallery (unbounded private candidates) and active catalog with promotion, owned by `json_render`; chat Canvas profile imported from 3tched.com | branch `claude/amazing-carson-8bg4yr`; 3tched.com branch `claude/ui-gallery-promotion` | 2026-09-28 | `json_render_gallery.rs`, `json_render_chat_canvas*.rs`, `op-cozo-store/src/ui_gallery.rs`, bridge `json_render_gallery_dispatch.rs` |
 
 ## Handoffs
 

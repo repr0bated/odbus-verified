@@ -57,6 +57,7 @@ mod identity_nextdns;
 pub mod identity_sled_dispatch;
 mod incus_observer;
 pub mod interceptor;
+mod json_render_gallery_dispatch;
 mod json_schema_proto;
 mod knowledge_delivery;
 mod knowledge_inbox;

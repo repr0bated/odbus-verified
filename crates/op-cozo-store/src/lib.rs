@@ -19,6 +19,11 @@ pub use runtime_document_transactions::{
     RuntimeDocumentCommit, RuntimeDocumentFailure, RuntimeDocumentRecord,
     RuntimeDocumentUncertainPhase,
 };
+mod ui_gallery;
+pub use ui_gallery::{
+    MAX_UI_GALLERY_DOCUMENT_BYTES, UiCandidatePage, UiCandidateRecord, UiCatalogPage,
+    UiCatalogRecord,
+};
 mod ctl_plane_chatbot_episodes;
 pub use ctl_plane_chatbot_episodes::{
     EpisodeEmbeddingRecord, EpisodePage, EpisodeScope, EpisodeSnapshot, KNOWLEDGE_SNAPSHOT_LIMIT,

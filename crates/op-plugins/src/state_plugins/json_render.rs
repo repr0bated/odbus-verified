@@ -16,6 +16,10 @@ use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 pub mod canvas_profile;
 #[path = "json_render_catalog_v019.rs"]
 mod catalog_v019;
+#[path = "json_render_chat_canvas.rs"]
+pub mod chat_canvas;
+#[path = "json_render_gallery.rs"]
+pub mod gallery;
 #[path = "json_render_methods.rs"]
 pub mod methods;
 #[path = "json_render_runtime_contract.rs"]
@@ -44,6 +48,12 @@ pub struct JsonRenderState {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "exp.software.plugin.json-render.canvas-profile@v3"))]
     pub canvas_profile: canvas_profile::CanvasProfile,
+    /// The 3tched chat Canvas contract imported from the UI's own export:
+    /// what chat canvases, gallery candidates and promoted catalog entries
+    /// are composed from. Static compositions only; no deployment claim.
+    #[serde(default)]
+    #[schemars(extend("x-oscal-subid" = "exp.software.plugin.json-render.chat-canvas-profile@v1"))]
+    pub chat_canvas_profile: chat_canvas::ChatCanvasProfile,
     /// Operational status of the catalog projection.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "obs.software.plugin.json-render.status@v2"))]
@@ -555,6 +565,7 @@ impl Default for JsonRenderState {
     fn default() -> Self {
         Self {
             canvas_profile: canvas_profile::CanvasProfile::default(),
+            chat_canvas_profile: chat_canvas::ChatCanvasProfile::default(),
             status: "catalog_snapshot".to_string(),
             source: JsonRenderSource::default(),
             config: JsonRenderConfig::default(),
@@ -827,6 +838,7 @@ pub(crate) fn json_render_schema() -> PluginSchema {
         ),
     );
 
+    gallery::declare_methods(&mut schema);
     schema.capabilities.insert(
         "json_render.read".to_string(),
         op_state_store::CapabilityDecl {

@@ -62,7 +62,10 @@ fn resolved_database_path(path: &std::path::Path) -> Result<PathBuf> {
     Ok(resolved)
 }
 
-fn distinct_databases(episode: &std::path::Path, cognitive: &std::path::Path) -> Result<()> {
+pub(crate) fn distinct_databases(
+    episode: &std::path::Path,
+    cognitive: &std::path::Path,
+) -> Result<()> {
     let episode = resolved_database_path(episode)?;
     let cognitive = resolved_database_path(cognitive)?;
     anyhow::ensure!(
