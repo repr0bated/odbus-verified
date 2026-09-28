@@ -24,9 +24,15 @@ another agent's uncommitted work.
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
 | Grok (Cursor) | Host release of merged lungs work (`79a47c7`): build, seal, golden, btrfs receive, activate, then chatbot create/up/lungs-check | `/srv/git/odbus-verified` `main`, pushed | 2026-09-28 | Do not reset this tree. Catalog copy goes to `/var/tmp` before seal. **Owner reassigned the release of `0432589`+ to Claude, 2026-09-28 07:10.** |
-| Claude (host) | Release of `main` at `a12d669` (shared lungs socket plus the dashboard default-provider fix in `tched_router`). Received `20260928T064128Z-0432589` is mislabeled: it holds the `ad3051c` golden, so do not use it. **The owner handed this row to session `odbus-verified-f0` at 08:55; it runs the workspace release build on Haiku first.** | `/srv/git/odbus-verified` `main` | 2026-09-28 | `/opt/op-dbus/golden`, `/opt/op-dbus/current`, `crates/op-grpc-bridge/src/tched_router_runtime.rs`, `target/release` during the build |
 
 ## Handoffs
+
+### 2026-09-28 · Claude (host, session odbus-verified-f0: release)
+- **Live:** `current` → `releases/20260928T093213Z-f0e83ee` (`main` with PR #4, the 2024 reformat and `a12d669`). The bridge, op-web, grants and EMQX run the release binaries, and all pass `sv check`. The 66-blob catalog is unchanged and byte-identical across SHM, persisted and received. The chatbot's lungs bind over `/run/opdbus/lungs.sock`, and `op-lungs-check` passes `workflows.query_workflows` (event 84973) and `cognitive_mcp.get_health` (event 84975).
+- **Rollback:** `releases/20260928T064128Z-0432589`, which actually holds the `ad3051c` golden. Catalog backup: `/var/tmp/opdbus-release-20260928T092457Z-preseal`.
+- **For the next release:** rebuild the mail bundle after the release build (`deploy/mail-3tched/build-container-artifact.sh`). Run `build-golden.sh` with `OPENCODE_BINARY_SOURCE=/opt/op-dbus/releases/20260928T093213Z-f0e83ee/usr/bin/opencode` until OD-88 removes OpenCode as a binary (owner decision).
+- **KiroCrew is uninstalled** (owner-approved): a KiroCrew agent's copied mount namespace kept the chatbot's mounts alive and blocked `op-identity-root up` (OD-89). Backups: `/var/tmp/kirocrew-uninstalled-20260928` and `~/.kiro-crew-uninstalled-20260928`. Kiro CLI itself is untouched.
+- **Not restarted:** other services whose binaries changed in this release keep their running copies until their next restart. `notebook-sources-sync/run` also changed.
 
 ### 2026-09-28 · Claude (host, took over the cloud lungs work)
 - **Merged:** PR #4 is on `main` as `1dd7421`, not yet released. The 2024 reformat followed as `0d5f582` (`rustfmt.toml` is gone, 551 files): rebase or merge any open branch over it, and expect conflicts only in layout.
@@ -54,14 +60,3 @@ another agent's uncommitted work.
   3. `sudo /usr/local/libexec/3tched/op-identity-root up b0c777e3-0955-cd8b-3d01-ca12998cae28`
   4. `sudo /usr/local/libexec/3tched/op-lungs-check`: prints PASS/FAIL per link, ending with the chain event's actor. Agents (Claude, Codex, Grok) still need their own service identities before they get lungs.
 - **Cloud setup script:** retries the toolchain install until `rustc --version` runs, and installs `libprotobuf-dev libudev-dev`.
-
-### 2026-09-28 · Claude (cloud session)
-- **Cloud environment:** the setup script's rustup download was cut off, so it
-  left a half-installed toolchain. It was repaired in-session. The setup script still needs a retry
-  loop, a `rustc --version` check, and `libprotobuf-dev libudev-dev` added to its package line.
-  The prerequisite docs are fixed in PR #1.
-- **OD-87:** the Oct 1 record epoch is written up (owner intent: Oct 1 marks where
-  the record turns from build history into what others see it do). It is not called
-  "anchor", because that word names the interceptor's session anchoring.
-- **Waiting on owner:** the two OD-87 decisions (an epoch chain event, and the chain
-  embedding text).
