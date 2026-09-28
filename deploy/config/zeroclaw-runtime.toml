@@ -77,6 +77,17 @@ native_tools = false
 model = "claude-fable-5-1"
 uri = "https://opencode.ai/zen/go"
 
+# Cheaper Inference, a second upstream provider beside OpenCode Go: an
+# OpenAI-compatible gateway (chat completions) serving OpenAI, Anthropic,
+# Google, DeepSeek and Z.ai models below list price. The daemon injects the
+# root-owned key from /etc/op-dbus/secrets/cheaper-inference-api-key when it
+# exists. Model ids are the gateway's (GET /v1/models, key required).
+[providers.models.custom.cheaper_inference]
+model = "gpt-5.4-mini"
+uri = "https://api.cheaperinference.com/v1"
+wire_api = "chat_completions"
+native_tools = false
+
 [agents.dashboard]
 runtime_profile = "chatbot_500"
 enabled = true

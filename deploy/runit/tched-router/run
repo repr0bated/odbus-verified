@@ -14,6 +14,7 @@ if [ "${TCHED_ROUTER_SANITIZED:-}" != 1 ]; then
         TCHED_ROUTER_BOOTSTRAP_CONFIG="${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/zeroclaw-runtime.toml}" \
         TCHED_ROUTER_BOOTSTRAP_SKILLS="${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/zeroclaw-skills/default}" \
         TCHED_ROUTER_OPENCODE_KEY_FILE="${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}" \
+        TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE="${TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaper-inference-api-key}" \
         TCHED_ROUTER_NATIVE_BIN="${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}" \
         TCHED_ROUTER_NATIVE_MANIFEST="${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}" \
         TCHED_ROUTER_HOST="${TCHED_ROUTER_HOST:-127.0.0.1}" \
@@ -28,6 +29,7 @@ CONFIG_DIR=${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}
 BOOTSTRAP_CONFIG=${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/zeroclaw-runtime.toml}
 BOOTSTRAP_SKILLS=${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/zeroclaw-skills/default}
 OPENCODE_GO_KEY_FILE=${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}
+CHEAPER_INFERENCE_KEY_FILE=${TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaper-inference-api-key}
 NATIVE_BIN=${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}
 NATIVE_MANIFEST=${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}
 HOST=${TCHED_ROUTER_HOST:-127.0.0.1}
@@ -102,7 +104,7 @@ while IFS='|' read -r agent kind model wire risk; do
         current=$(native_config get agents.control_plane.model_provider --json 2>/dev/null |
             jq -r '.value // ""' 2>/dev/null || true)
         case "$current" in
-            opencode.go_*|anthropic.go_*)
+            opencode.go_*|anthropic.go_*|custom.cheaper_inference)
                 if [ "$CONTROL_PLANE_MODEL_PROVIDER" = opencode.go_control_plane ]; then
                     agent_provider=$current
                 fi
@@ -208,6 +210,41 @@ jq -n --rawfile key "$OPENCODE_GO_KEY_FILE" '
     chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
         PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
         "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
+
+# Cheaper Inference: an additional, optional OpenAI-compatible provider.
+# Configured only when its root-owned key exists; the profile's model is set
+# when the profile is created, so a later choice survives restarts. The key
+# is raw-file input to config patch, checked like the Go key, never argv.
+if [ -f "$CHEAPER_INFERENCE_KEY_FILE" ]; then
+    set -- $(stat -Lc '%u %a' "$CHEAPER_INFERENCE_KEY_FILE")
+    [ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
+        echo "tched-router: Cheaper Inference key must be root-owned with mode 0400 or 0600" >&2
+        exit 78
+    }
+    existing=$(native_config get providers.models.custom.cheaper_inference.model --json 2>/dev/null || true)
+    created=true
+    if printf '%s' "$existing" | jq -e '.value | type == "string" and length > 0' >/dev/null 2>&1; then
+        created=false
+    fi
+    native_config init providers.models.custom.cheaper_inference >/dev/null
+    jq -n --rawfile key "$CHEAPER_INFERENCE_KEY_FILE" --argjson created "$created" '
+      ($key | gsub("[\\r\\n]+$"; "")) as $key |
+      if ($key | length) == 0 then error("empty Cheaper Inference API key")
+      elif ($key | test("^[!-~]+$") | not) then error("Cheaper Inference API key must be printable ASCII without spaces")
+      else . end |
+      "/providers/models/custom/cheaper_inference" as $p |
+      (if $created then [{op:"add",path:($p+"/model"),value:"gpt-5.4-mini"}] else [] end) + [
+       {op:"add",path:($p+"/uri"),value:"https://api.cheaperinference.com/v1"},
+       {op:"add",path:($p+"/wire_api"),value:"chat_completions"},
+       {op:"add",path:($p+"/native_tools"),value:false},
+       {op:"add",path:($p+"/api_key"),value:$key}
+      ]' |
+        chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
+            PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
+            "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
+else
+    echo "tched-router: Cheaper Inference key is absent; that provider is not configured" >&2
+fi
 
 export HOME="$CONFIG_DIR/home" USER=jeremy PATH=/usr/local/bin:/usr/bin:/bin
 export ZEROCLAW_CONFIG_DIR="$CONFIG_DIR"

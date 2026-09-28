@@ -1077,7 +1077,7 @@ impl TchedRouterRuntimeClient {
     async fn selectable_providers(&self) -> anyhow::Result<Vec<ConfiguredProvider>> {
         let mut providers = self.configured_providers().await?;
         if self.opencode_only() {
-            providers.retain(is_opencode_route);
+            providers.retain(is_door_selectable_route);
         }
         Ok(providers)
     }
@@ -2089,18 +2089,26 @@ fn parse_configured_providers(
     Ok(providers.into_values().collect())
 }
 
-fn is_opencode_route(provider: &ConfiguredProvider) -> bool {
-    is_opencode_reference(&provider.reference)
+fn is_door_selectable_route(provider: &ConfiguredProvider) -> bool {
+    is_door_selectable_reference(&provider.reference)
 }
 
-fn is_opencode_reference(reference: &str) -> bool {
+/// Upstream provider profiles a door caller may select: OpenCode (the Go
+/// plan's `opencode.go_*` chat/Responses profiles and `anthropic.go_*`
+/// Messages-API profiles, and the older `custom.opencode_*` session
+/// profiles) and Cheaper Inference. Any other configured provider, such as
+/// a hand-made native default, is the router's own and not door-selectable.
+fn is_door_selectable_reference(reference: &str) -> bool {
     reference.starts_with("custom.opencode_")
+        || reference.starts_with("opencode.go_")
+        || reference.starts_with("anthropic.go_")
+        || reference == "custom.cheaper_inference"
 }
 
 /// Whether the door must present `selected_ref` as the router's own default:
 /// the agent's native selection is not a profile the door can select.
 fn is_router_default(selected_ref: &str, opencode_only: bool) -> bool {
-    opencode_only && !is_opencode_reference(selected_ref)
+    opencode_only && !is_door_selectable_reference(selected_ref)
 }
 
 fn publish_providers(
@@ -2113,7 +2121,7 @@ fn publish_providers(
     }
     let mut published = Vec::with_capacity(configured.len());
     for provider in configured {
-        if is_opencode_route(&provider) {
+        if is_door_selectable_route(&provider) {
             published.push(provider);
         } else if provider.reference == selected_ref {
             // The router's own default keeps its real provider family, so the
@@ -2625,7 +2633,7 @@ mod tests {
         assert!(
             publish_providers(configured, "ollama.main", true)
                 .iter()
-                .all(is_opencode_route)
+                .all(is_door_selectable_route)
         );
     }
 
@@ -2639,6 +2647,40 @@ mod tests {
         // Without the OpenCode-only door, every provider keeps its models
         // selectable, as before.
         assert!(ensure_router_default_model(&default, "other", false).is_ok());
+    }
+
+    #[test]
+    fn the_door_selects_opencode_go_and_cheaper_inference_profiles() {
+        for reference in [
+            "opencode.go_dashboard",
+            "opencode.go_cp_route_grok_47",
+            "anthropic.go_cp_route_qwen38_flash",
+            "custom.opencode_dashboard",
+            "custom.cheaper_inference",
+        ] {
+            assert!(is_door_selectable_reference(reference), "{reference}");
+            assert!(!is_router_default(reference, true), "{reference}");
+        }
+        for reference in [
+            "opencode.go",
+            "openai.chatgpt",
+            "anthropic.main",
+            "custom.other",
+        ] {
+            assert!(!is_door_selectable_reference(reference), "{reference}");
+        }
+        let configured = vec![
+            provider("opencode", "opencode.go_dashboard", "glm-5.3-flash"),
+            provider("custom", "custom.cheaper_inference", "gpt-5.4-mini"),
+            provider("openai", "openai.chatgpt", "gpt"),
+        ];
+        assert_eq!(
+            publish_providers(configured, "opencode.go_dashboard", true),
+            vec![
+                provider("opencode", "opencode.go_dashboard", "glm-5.3-flash"),
+                provider("custom", "custom.cheaper_inference", "gpt-5.4-mini"),
+            ]
+        );
     }
 
     #[test]
