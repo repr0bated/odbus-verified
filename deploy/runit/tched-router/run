@@ -13,13 +13,12 @@ if [ "${TCHED_ROUTER_SANITIZED:-}" != 1 ]; then
         TCHED_ROUTER_CONFIG_DIR="${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}" \
         TCHED_ROUTER_BOOTSTRAP_CONFIG="${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/zeroclaw-runtime.toml}" \
         TCHED_ROUTER_BOOTSTRAP_SKILLS="${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/zeroclaw-skills/default}" \
-        TCHED_ROUTER_OPENCODE_PASSWORD_FILE="${TCHED_ROUTER_OPENCODE_PASSWORD_FILE:-/etc/op-dbus/secrets/opencode-server-password}" \
         TCHED_ROUTER_OPENCODE_KEY_FILE="${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}" \
         TCHED_ROUTER_NATIVE_BIN="${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}" \
         TCHED_ROUTER_NATIVE_MANIFEST="${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}" \
         TCHED_ROUTER_HOST="${TCHED_ROUTER_HOST:-127.0.0.1}" \
         TCHED_ROUTER_PORT="${TCHED_ROUTER_PORT:-8084}" \
-        TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER="${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-custom.opencode_control_plane}" \
+        TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER="${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}" \
         OPDBUS_SLED_AUTH_URL="${OPDBUS_SLED_AUTH_URL:-https://10.0.0.2:8090/mcp}" \
         OPDBUS_SLED_CA_FILE="${OPDBUS_SLED_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}" \
         /bin/sh "$0" --sanitized
@@ -28,13 +27,12 @@ fi
 CONFIG_DIR=${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}
 BOOTSTRAP_CONFIG=${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/zeroclaw-runtime.toml}
 BOOTSTRAP_SKILLS=${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/zeroclaw-skills/default}
-OPENCODE_PASSWORD_FILE=${TCHED_ROUTER_OPENCODE_PASSWORD_FILE:-/etc/op-dbus/secrets/opencode-server-password}
-OPENCODE_LEGACY_KEY_FILE=${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}
+OPENCODE_GO_KEY_FILE=${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}
 NATIVE_BIN=${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}
 NATIVE_MANIFEST=${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}
 HOST=${TCHED_ROUTER_HOST:-127.0.0.1}
 PORT=${TCHED_ROUTER_PORT:-8084}
-CONTROL_PLANE_MODEL_PROVIDER=${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-custom.opencode_control_plane}
+CONTROL_PLANE_MODEL_PROVIDER=${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}
 printf '%s' "$CONTROL_PLANE_MODEL_PROVIDER" |
     jq -Re 'test("^[A-Za-z0-9_-]+[.][A-Za-z0-9_-]+$")' >/dev/null || {
     echo "tched-router: invalid Control Plane model provider reference" >&2
@@ -70,7 +68,7 @@ native_config() {
 }
 # An external selection must already exist. Check before any startup migration
 # so a misspelled variable cannot replace the role's current provider.
-if [ "$CONTROL_PLANE_MODEL_PROVIDER" != custom.opencode_control_plane ]; then
+if [ "$CONTROL_PLANE_MODEL_PROVIDER" != opencode.go_control_plane ]; then
     native_config get "providers.models.$CONTROL_PLANE_MODEL_PROVIDER.model" --json |
         jq -e '.value | strings | test("\\S")' >/dev/null || {
         echo "tched-router: Control Plane model provider is not configured" >&2
@@ -86,49 +84,47 @@ for risk in control_plane accountability; do
       {op:"add",path:($p+"/block_high_risk_commands"),value:true}
     ]' | native_config patch - >/dev/null
 done
-while IFS='|' read -r agent model risk; do
-    profile="opencode_$agent"
-    provider="custom.$profile"
+# OpenCode Go, an upstream provider like OpenRouter. Chat-completions and
+# Responses models use the native `opencode` provider at /zen/go/v1;
+# Messages-API models use the native `anthropic` provider, which posts to
+# {uri}/v1/messages. A profile's model is set when the profile is created, so
+# an operator's later model choice survives restarts.
+while IFS='|' read -r agent kind model wire risk; do
+    profile="go_$agent"
+    provider="$kind.$profile"
+    agent_provider=$provider
     if [ "$agent" = control_plane ]; then
-        provider=$CONTROL_PLANE_MODEL_PROVIDER
+        agent_provider=$CONTROL_PLANE_MODEL_PROVIDER
     fi
-    existing=$(native_config get "providers.models.custom.$profile.model" --json 2>/dev/null || true)
+    existing=$(native_config get "providers.models.$kind.$profile.model" --json 2>/dev/null || true)
     created=true
     if printf '%s' "$existing" | jq -e '.value | type == "string" and length > 0' >/dev/null 2>&1; then
         created=false
     fi
-    native_config init "providers.models.custom.$profile" >/dev/null
-    # Dashboard is an existing Personal agent. Never rewrite its model,
-    # skills, memory, risk profile, or A2A settings during this migration.
-    # Fresh bootstrap already supplies its full dashboard configuration.
-    if [ "$agent" = dashboard ]; then
-        selected=$(native_config get agents.dashboard.model_provider --json | jq -r '.value // ""')
-        case "$selected" in
-            *.*) ;;
-            *) echo "tched-router: dashboard model provider is malformed" >&2; exit 78 ;;
-        esac
-        native_config get "providers.models.$selected.model" --json |
-            jq -e '.value | type == "string" and length > 0' >/dev/null || {
-            echo "tched-router: dashboard model provider is not configured" >&2
-            exit 78
-        }
-    else
+    native_config init "providers.models.$kind.$profile" >/dev/null
+    # Dashboard is an existing Personal agent: move only its provider to Go,
+    # never its skills, memory, risk profile or A2A settings.
+    if [ "$agent" != dashboard ]; then
         for section in "agents.$agent" "agents.$agent.a2a" "agents.$agent.memory"; do
             native_config init "$section" >/dev/null
         done
     fi
-    jq -n --arg p "/providers/models/custom/$profile" --arg a "/agents/$agent" \
-        --arg model "$model" --arg provider "$provider" --arg risk "$risk" \
+    jq -n --arg p "/providers/models/$kind/$profile" --arg a "/agents/$agent" \
+        --arg kind "$kind" --arg model "$model" --arg wire "$wire" \
+        --arg provider "$agent_provider" --arg risk "$risk" \
         --argjson dashboard "$([ "$agent" = dashboard ] && echo true || echo false)" \
         --argjson created "$created" '
-      (if $created then [{op:"add",path:($p+"/model"),value:$model}] else [] end) + [
-       {op:"add",path:($p+"/uri"),value:"http://127.0.0.1:4096"},
-       {op:"add",path:($p+"/wire_api"),value:"chat_completions"},
-       {op:"add",path:($p+"/native_tools"),value:false},
-       {op:"add",path:($p+"/provider_extra"),value:{opdbus_transport:"opencode_session"}}
-      ] + (if $dashboard then [] else [
+      (if $created then [{op:"add",path:($p+"/model"),value:$model}] else [] end) +
+      (if $kind == "opencode" then [
+       {op:"add",path:($p+"/uri"),value:"https://opencode.ai/zen/go/v1"},
+       {op:"add",path:($p+"/wire_api"),value:$wire},
+       {op:"add",path:($p+"/native_tools"),value:false}
+      ] else [
+       {op:"add",path:($p+"/uri"),value:"https://opencode.ai/zen/go"}
+      ] end) +
+      [{op:"add",path:($a+"/model_provider"),value:$provider}] +
+      (if $dashboard then [] else [
        {op:"add",path:($a+"/enabled"),value:true},
-       {op:"add",path:($a+"/model_provider"),value:$provider},
        {op:"add",path:($a+"/risk_profile"),value:$risk},
        {op:"add",path:($a+"/skill_bundles"),value:["default"]},
        {op:"add",path:($a+"/a2a/published"),value:true},
@@ -136,24 +132,31 @@ while IFS='|' read -r agent model risk; do
        {op:"add",path:($a+"/memory/backend"),value:"none"}
       ] end)' | native_config patch - >/dev/null
 done <<'ROUTES'
-dashboard|opencode/nemotron-3-ultra-free|dashboard
-accountability|opencode/glm-5.3-flash|accountability
-control_plane|opencode/glm-5.3-flash|control_plane
-cp_route_grok_47|xai/grok-4.7|control_plane
-cp_route_nemotron_3_ultra|opencode/nemotron-3-ultra-free|control_plane
-cp_route_deepseek_v41_flash|opencode/deepseek-v4.1-flash|control_plane
-cp_route_glm_53_flash|opencode/glm-5.3-flash|control_plane
-cp_route_qwen3_coder_flash|qwen/qwen3-coder-flash|control_plane
-cp_route_gpt6_astra|openai/gpt-6-astra|control_plane
-cp_route_claude_fable_51|anthropic/claude-fable-5-1|control_plane
+dashboard|opencode|glm-5.3-flash|chat_completions|dashboard
+accountability|opencode|glm-5.3-flash|chat_completions|accountability
+control_plane|opencode|glm-5.3-flash|chat_completions|control_plane
+cp_route_grok_47|opencode|grok-4.7|responses|control_plane
+cp_route_deepseek_v41_flash|opencode|deepseek-v4.1-flash|chat_completions|control_plane
+cp_route_glm_53_flash|opencode|glm-5.3-flash|chat_completions|control_plane
+cp_route_qwen38_flash|anthropic|qwen3.8-flash|messages|control_plane
+cp_route_gpt6_luna|opencode|gpt-6-luna|responses|control_plane
+cp_route_claude_fable_51|anthropic|claude-fable-5-1|messages|control_plane
 ROUTES
+
+# Routes whose models OpenCode Go does not serve stay configured but disabled.
+for agent in cp_route_nemotron_3_ultra cp_route_qwen3_coder_flash cp_route_gpt6_astra; do
+    if native_config get "agents.$agent.enabled" --json >/dev/null 2>&1; then
+        jq -n --arg p "/agents/$agent/enabled" '[{op:"add",path:$p,value:false}]' |
+            native_config patch - >/dev/null
+    fi
+done
 
 # Named agents use a runtime profile; the historical [agent] limit is inert.
 # The native CLI owns provisioning dynamic profile keys. Its HTTP init endpoint
 # only initializes schema sections and cannot create this map entry.
 native_config init runtime_profiles.chatbot_500 >/dev/null
 iteration_patch='[{"op":"replace","path":"/runtime_profiles/chatbot_500/max_tool_iterations","value":500}]'
-for agent in dashboard accountability control_plane cp_route_grok_47 cp_route_nemotron_3_ultra cp_route_deepseek_v41_flash cp_route_glm_53_flash cp_route_qwen3_coder_flash cp_route_gpt6_astra cp_route_claude_fable_51; do
+for agent in dashboard accountability control_plane cp_route_grok_47 cp_route_deepseek_v41_flash cp_route_glm_53_flash cp_route_qwen38_flash cp_route_gpt6_luna cp_route_claude_fable_51; do
     current_profile=$(native_config get "agents.$agent.runtime_profile" --json | jq -er '.value | strings')
     case "$current_profile" in
         ''|chatbot_500) ;;
@@ -172,32 +175,25 @@ unset iteration_patch current_profile
 # control_plane bundle. Existing bundle contents are preserved by init.
 native_config init mcp_bundles.opdbus_control_plane >/dev/null
 
-[ -f "$OPENCODE_PASSWORD_FILE" ] || { echo "tched-router: missing OpenCode server password" >&2; exit 78; }
-set -- $(stat -Lc '%u %a' "$OPENCODE_PASSWORD_FILE")
+[ -f "$OPENCODE_GO_KEY_FILE" ] || { echo "tched-router: missing OpenCode Go API key" >&2; exit 78; }
+set -- $(stat -Lc '%u %a' "$OPENCODE_GO_KEY_FILE")
 [ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
-    echo "tched-router: OpenCode password must be root-owned with mode 0400 or 0600" >&2
+    echo "tched-router: OpenCode Go API key must be root-owned with mode 0400 or 0600" >&2
     exit 78
 }
-# The password is raw-file input to native config patch and never an argument.
-jq -n --rawfile key "$OPENCODE_PASSWORD_FILE" '
+# The key is raw-file input to native config patch and never an argument.
+jq -n --rawfile key "$OPENCODE_GO_KEY_FILE" '
   ($key | gsub("[\\r\\n]+$"; "")) as $key |
-  ["dashboard","accountability","control_plane","cp_route_grok_47","cp_route_nemotron_3_ultra","cp_route_deepseek_v41_flash","cp_route_glm_53_flash","cp_route_qwen3_coder_flash","cp_route_gpt6_astra","cp_route_claude_fable_51"] |
-  map({op:"add",path:("/providers/models/custom/opencode_" + . + "/api_key"),value:$key})' |
+  if ($key | length) == 0 then error("empty OpenCode Go API key") else . end |
+  [["opencode","dashboard"],["opencode","accountability"],["opencode","control_plane"],
+   ["opencode","cp_route_grok_47"],["opencode","cp_route_deepseek_v41_flash"],
+   ["opencode","cp_route_glm_53_flash"],["anthropic","cp_route_qwen38_flash"],
+   ["opencode","cp_route_gpt6_luna"],["anthropic","cp_route_claude_fable_51"]] |
+  map({op:"add",path:("/providers/models/" + .[0] + "/go_" + .[1] + "/api_key"),value:$key})' |
     chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
         PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
         "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
 
-# Preserve the existing Personal provider's verified environment hook. Read
-# only after the sanitized re-exec; the key stays out of argv and the shared
-# service environment cannot introduce unrelated credentials.
-[ -f "$OPENCODE_LEGACY_KEY_FILE" ] || { echo "tched-router: missing legacy provider key" >&2; exit 78; }
-set -- $(stat -Lc '%u %a' "$OPENCODE_LEGACY_KEY_FILE")
-[ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
-    echo "tched-router: legacy provider key must be root-owned with mode 0400 or 0600" >&2
-    exit 78
-}
-export OPENCODE_API_KEY=$(cat "$OPENCODE_LEGACY_KEY_FILE")
-[ -n "$OPENCODE_API_KEY" ] || { echo "tched-router: empty legacy provider key" >&2; exit 78; }
 export HOME="$CONFIG_DIR/home" USER=jeremy PATH=/usr/local/bin:/usr/bin:/bin
 export ZEROCLAW_CONFIG_DIR="$CONFIG_DIR"
 # The Sled-authenticated MCP door remains the identity authority. These are

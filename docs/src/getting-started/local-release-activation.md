@@ -58,7 +58,7 @@ Control Plane inherits its provider from the native `control_plane` agent.
 Set the public service variable `TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER`
 in the prepared service environment to an existing native `family.alias`
 profile, for example `openai.control_plane`, `anthropic.control_plane`, or
-`custom.opencode_control_plane` (the default). The referenced profile owns
+`opencode.go_control_plane` (the default, OpenCode Go). The referenced profile owns
 the model and credentials and must already be configured through the native
 configuration owner; the variable contains no credential. Startup rejects an
 unknown profile before changing the current role. Control Plane does not

@@ -20,89 +20,74 @@ allow_remote_admin = false
 request_timeout_secs = 30
 long_running_request_timeout_secs = 600
 
-# Local OpenCode session transport. The daemon injects the root-owned server
-# password at startup; no upstream provider credential is stored here.
-[providers.models.custom.opencode_dashboard]
-model = "opencode/nemotron-3-ultra-free"
-uri = "http://127.0.0.1:4096"
-wire_api = "chat_completions"
-native_tools = false
-provider_extra = { opdbus_transport = "opencode_session" }
+# OpenCode Go, an upstream provider like OpenRouter. The daemon injects the
+# root-owned Go API key into every profile at startup; no credential is stored
+# here. Go serves three wire formats: chat-completions and Responses models use
+# the native `opencode` provider at https://opencode.ai/zen/go/v1 (Responses
+# models set wire_api = "responses"); Messages-API models use the native
+# `anthropic` provider, which posts to {uri}/v1/messages with x-api-key.
 
-[providers.models.custom.opencode_accountability]
-model = "opencode/glm-5.3-flash"
-uri = "http://127.0.0.1:4096"
+[providers.models.opencode.go_dashboard]
+model = "glm-5.3-flash"
+uri = "https://opencode.ai/zen/go/v1"
 wire_api = "chat_completions"
 native_tools = false
-provider_extra = { opdbus_transport = "opencode_session" }
 
-[providers.models.custom.opencode_control_plane]
-model = "opencode/glm-5.3-flash"
-uri = "http://127.0.0.1:4096"
+[providers.models.opencode.go_accountability]
+model = "glm-5.3-flash"
+uri = "https://opencode.ai/zen/go/v1"
 wire_api = "chat_completions"
 native_tools = false
-provider_extra = { opdbus_transport = "opencode_session" }
 
-[providers.models.custom.opencode_cp_route_grok_47]
-model = "xai/grok-4.7"
-uri = "http://127.0.0.1:4096"
+[providers.models.opencode.go_control_plane]
+model = "glm-5.3-flash"
+uri = "https://opencode.ai/zen/go/v1"
 wire_api = "chat_completions"
 native_tools = false
-provider_extra = { opdbus_transport = "opencode_session" }
 
-[providers.models.custom.opencode_cp_route_nemotron_3_ultra]
-model = "opencode/nemotron-3-ultra-free"
-uri = "http://127.0.0.1:4096"
-wire_api = "chat_completions"
+[providers.models.opencode.go_cp_route_grok_47]
+model = "grok-4.7"
+uri = "https://opencode.ai/zen/go/v1"
+wire_api = "responses"
 native_tools = false
-provider_extra = { opdbus_transport = "opencode_session" }
 
-[providers.models.custom.opencode_cp_route_deepseek_v41_flash]
-model = "opencode/deepseek-v4.1-flash"
-uri = "http://127.0.0.1:4096"
+[providers.models.opencode.go_cp_route_deepseek_v41_flash]
+model = "deepseek-v4.1-flash"
+uri = "https://opencode.ai/zen/go/v1"
 wire_api = "chat_completions"
 native_tools = false
-provider_extra = { opdbus_transport = "opencode_session" }
 
-[providers.models.custom.opencode_cp_route_glm_53_flash]
-model = "opencode/glm-5.3-flash"
-uri = "http://127.0.0.1:4096"
+[providers.models.opencode.go_cp_route_glm_53_flash]
+model = "glm-5.3-flash"
+uri = "https://opencode.ai/zen/go/v1"
 wire_api = "chat_completions"
 native_tools = false
-provider_extra = { opdbus_transport = "opencode_session" }
 
-[providers.models.custom.opencode_cp_route_qwen3_coder_flash]
-model = "qwen/qwen3-coder-flash"
-uri = "http://127.0.0.1:4096"
-wire_api = "chat_completions"
-native_tools = false
-provider_extra = { opdbus_transport = "opencode_session" }
+[providers.models.anthropic.go_cp_route_qwen38_flash]
+model = "qwen3.8-flash"
+uri = "https://opencode.ai/zen/go"
 
-[providers.models.custom.opencode_cp_route_gpt6_astra]
-model = "openai/gpt-6-astra"
-uri = "http://127.0.0.1:4096"
-wire_api = "chat_completions"
+[providers.models.opencode.go_cp_route_gpt6_luna]
+model = "gpt-6-luna"
+uri = "https://opencode.ai/zen/go/v1"
+wire_api = "responses"
 native_tools = false
-provider_extra = { opdbus_transport = "opencode_session" }
 
-[providers.models.custom.opencode_cp_route_claude_fable_51]
-model = "anthropic/claude-fable-5-1"
-uri = "http://127.0.0.1:4096"
-wire_api = "chat_completions"
-native_tools = false
-provider_extra = { opdbus_transport = "opencode_session" }
+[providers.models.anthropic.go_cp_route_claude_fable_51]
+model = "claude-fable-5-1"
+uri = "https://opencode.ai/zen/go"
 
 [agents.dashboard]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "custom.opencode_dashboard"
+model_provider = "opencode.go_dashboard"
 risk_profile = "dashboard"
 skill_bundles = ["default"]
 
 [agents.control_plane]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "custom.opencode_control_plane"
+model_provider = "opencode.go_control_plane"
 risk_profile = "control_plane"
 skill_bundles = ["default"]
 
@@ -116,7 +101,7 @@ backend = "none"
 [agents.accountability]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "custom.opencode_accountability"
+model_provider = "opencode.go_accountability"
 risk_profile = "accountability"
 skill_bundles = ["default"]
 
@@ -163,7 +148,7 @@ open_skills_enabled = false
 [agents.cp_route_grok_47]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "custom.opencode_cp_route_grok_47"
+model_provider = "opencode.go_cp_route_grok_47"
 risk_profile = "control_plane"
 skill_bundles = ["default"]
 
@@ -174,24 +159,10 @@ exposed_skills = ["plugin-schema"]
 [agents.cp_route_grok_47.memory]
 backend = "none"
 
-[agents.cp_route_nemotron_3_ultra]
-runtime_profile = "chatbot_500"
-enabled = true
-model_provider = "custom.opencode_cp_route_nemotron_3_ultra"
-risk_profile = "control_plane"
-skill_bundles = ["default"]
-
-[agents.cp_route_nemotron_3_ultra.a2a]
-published = true
-exposed_skills = ["plugin-schema"]
-
-[agents.cp_route_nemotron_3_ultra.memory]
-backend = "none"
-
 [agents.cp_route_deepseek_v41_flash]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "custom.opencode_cp_route_deepseek_v41_flash"
+model_provider = "opencode.go_cp_route_deepseek_v41_flash"
 risk_profile = "control_plane"
 skill_bundles = ["default"]
 
@@ -205,7 +176,7 @@ backend = "none"
 [agents.cp_route_glm_53_flash]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "custom.opencode_cp_route_glm_53_flash"
+model_provider = "opencode.go_cp_route_glm_53_flash"
 risk_profile = "control_plane"
 skill_bundles = ["default"]
 
@@ -216,38 +187,38 @@ exposed_skills = ["plugin-schema"]
 [agents.cp_route_glm_53_flash.memory]
 backend = "none"
 
-[agents.cp_route_qwen3_coder_flash]
+[agents.cp_route_qwen38_flash]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "custom.opencode_cp_route_qwen3_coder_flash"
+model_provider = "anthropic.go_cp_route_qwen38_flash"
 risk_profile = "control_plane"
 skill_bundles = ["default"]
 
-[agents.cp_route_qwen3_coder_flash.a2a]
+[agents.cp_route_qwen38_flash.a2a]
 published = true
 exposed_skills = ["plugin-schema"]
 
-[agents.cp_route_qwen3_coder_flash.memory]
+[agents.cp_route_qwen38_flash.memory]
 backend = "none"
 
-[agents.cp_route_gpt6_astra]
+[agents.cp_route_gpt6_luna]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "custom.opencode_cp_route_gpt6_astra"
+model_provider = "opencode.go_cp_route_gpt6_luna"
 risk_profile = "control_plane"
 skill_bundles = ["default"]
 
-[agents.cp_route_gpt6_astra.a2a]
+[agents.cp_route_gpt6_luna.a2a]
 published = true
 exposed_skills = ["plugin-schema"]
 
-[agents.cp_route_gpt6_astra.memory]
+[agents.cp_route_gpt6_luna.memory]
 backend = "none"
 
 [agents.cp_route_claude_fable_51]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "custom.opencode_cp_route_claude_fable_51"
+model_provider = "anthropic.go_cp_route_claude_fable_51"
 risk_profile = "control_plane"
 skill_bundles = ["default"]
 
