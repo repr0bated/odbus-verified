@@ -1142,7 +1142,7 @@ pub struct CognitiveMcpState {
 // =============================================================================
 
 // Handler audit — where each method is actually backed:
-// get_health              → op-grpc-bridge/mutation_engine.rs bridge-owned projection
+// get_health              → op-grpc-bridge/mutation_engine.rs in-process runtime and quota
 // list_tools              → op-grpc-bridge/mutation_engine.rs in-process ToolRegistry
 // register_tool           → embedded op_cognitive_mcp::cognitive_tools::RegisterToolTool
 //                           (stub — no dynamic tool-registration mechanism exists yet)

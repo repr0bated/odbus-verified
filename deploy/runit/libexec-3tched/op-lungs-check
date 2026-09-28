@@ -42,7 +42,8 @@ socket_mode=0
 for cmdline in /proc/[0-9]*/cmdline; do
     tr '\0' ' ' <"$cmdline" 2>/dev/null | grep -q -- "--lungs-socket $socket --lungs-session $SESSION" && socket_mode=1 && break
 done
-[ "$socket_mode" -eq 1 ] || fail "lungs are mounted but not over the socket (still --lungs-credential?)"
+[ "$socket_mode" -eq 1 ] ||
+    fail "lungs are mounted but not bound over the shared socket (a mount from before the shared socket, or --lungs-credential? op-identity-root down $SESSION, then up $SESSION)"
 pass "lungs mounted over the socket"
 
 incus list "$SESSION" -c s -f csv 2>/dev/null | grep -q '^RUNNING$' || fail "container $SESSION is not running"

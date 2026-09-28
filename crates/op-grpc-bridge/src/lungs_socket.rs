@@ -125,6 +125,11 @@ fn peer_allowed(uid: u32) -> bool {
 
 /// Bind the shared socket, replacing a stale one, owner-only.
 fn bind_socket(path: &Path) -> Result<tokio::net::UnixListener> {
+    // The parent is shared with the bridge's other sockets, so its mode is
+    // left alone; the socket itself is owner-only.
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
+    }
     match std::fs::symlink_metadata(path) {
         Ok(metadata) if metadata.file_type().is_socket() => std::fs::remove_file(path)?,
         Ok(_) => anyhow::bail!("{} exists and is not a socket", path.display()),
@@ -208,7 +213,9 @@ mod tests {
     #[tokio::test]
     async fn bind_socket_replaces_a_stale_socket_owner_only() {
         let directory = tempfile::tempdir().unwrap();
-        let path = directory.path().join("lungs.sock");
+        // The parent does not exist yet, as on a bridge that binds its lungs
+        // before any other socket.
+        let path = directory.path().join("opdbus").join("lungs.sock");
         drop(bind_socket(&path).unwrap());
         let _again = bind_socket(&path).unwrap();
         let mode = std::fs::metadata(&path).unwrap().permissions().mode();

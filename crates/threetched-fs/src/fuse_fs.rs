@@ -1072,6 +1072,64 @@ mod tests {
         server.join().unwrap();
     }
 
+    /// Stands in for the bridge refusing `Bind`, as it does for a session
+    /// that is parked, expired, revoked or not anchored.
+    struct RefusingLungs;
+
+    #[zbus::interface(name = "org.opdbus.v1.LungsV1")]
+    impl RefusingLungs {
+        async fn bind(&self, session_id: String) -> zbus::fdo::Result<bool> {
+            Err(zbus::fdo::Error::AccessDenied(format!(
+                "lungs identity unavailable: {session_id}"
+            )))
+        }
+    }
+
+    #[test]
+    fn socket_lungs_stop_at_a_refused_bind() {
+        let directory = tempdir().unwrap();
+        let socket = directory.path().join("lungs.sock");
+        let listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let server = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async move {
+                let listener = tokio::net::UnixListener::from_std(listener).unwrap();
+                let (stream, _) = listener.accept().await.unwrap();
+                let connection = zbus::connection::Builder::unix_stream(stream)
+                    .server(zbus::Guid::generate())
+                    .unwrap()
+                    .p2p()
+                    .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
+                    .serve_at("/org/opdbus/v1/plugins/demo", FixtureBridge)
+                    .unwrap()
+                    .serve_at("/org/opdbus/v1/lungs", RefusingLungs)
+                    .unwrap()
+                    .build()
+                    .await
+                    .unwrap();
+                connection.closed().await;
+            });
+        });
+
+        let (_fixture, mut fs) = lungs_fixture_with(Lungs::Socket {
+            path: socket,
+            session: "b0c777e3".into(),
+        });
+        // A refused bind stops the call before any plugin sees it, at the
+        // same stage and errno as a refused SID1 registration.
+        assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Err(EACCES));
+        assert_eq!(error_stage(&fs), "register");
+        assert!(fs
+            .read_bytes(method_node(&fs, "result").ino, 0)
+            .unwrap()
+            .is_empty());
+        server.join().unwrap();
+    }
+
     #[test]
     fn live_reads_follow_each_committed_state_version() {
         let (directory, fs) = lungs_fixture(PathBuf::from("/nonexistent/sid1"));

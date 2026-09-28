@@ -48,7 +48,7 @@
 ,[___"crate:op-dynamic-loader"___, ___"crate"___, ___"{"path":"crates/op-dynamic-loader","description":"Dynamic Tool Loading Enhancement - Complements existing MCP tool loading with intelligent caching and execution tracking","bins":[],"has_lib":true,"rs_files":5,"loc":406,"tests":1,"unsafe_refs":0,"todo":0,"unwrap_expect":0}"___]
 ,[___"crate:op-execution-tracker"___, ___"crate"___, ___"{"path":"crates/op-execution-tracker","description":"MCP Execution Tracking Layer - Lightweight execution monitoring that complements existing state management","bins":[],"has_lib":true,"rs_files":6,"loc":1030,"tests":2,"unsafe_refs":0,"todo":0,"unwrap_expect":1}"___]
 ,[___"crate:op-gateway"___, ___"crate"___, ___"{"path":"crates/op-gateway","description":"MCP Gateway with WireGuard authentication and smart routing","bins":[],"has_lib":true,"rs_files":5,"loc":1873,"tests":4,"unsafe_refs":0,"todo":0,"unwrap_expect":9}"___]
-,[___"crate:op-grpc-bridge"___, ___"crate"___, ___"{"path":"crates/op-grpc-bridge","description":"Bidirectional D-Bus <-> gRPC bridge with event chain integration","bins":["dump-protos","op-decoy-network","op-grants-materializer","op-grpc-bridge"],"has_lib":true,"rs_files":152,"loc":93289,"tests":729,"unsafe_refs":178,"todo":166,"unwrap_expect":1741}"___]
+,[___"crate:op-grpc-bridge"___, ___"crate"___, ___"{"path":"crates/op-grpc-bridge","description":"Bidirectional D-Bus <-> gRPC bridge with event chain integration","bins":["dump-protos","op-decoy-network","op-grants-materializer","op-grpc-bridge"],"has_lib":true,"rs_files":153,"loc":93608,"tests":733,"unsafe_refs":178,"todo":166,"unwrap_expect":1748}"___]
 ,[___"crate:op-http"___, ___"crate"___, ___"{"path":"crates/op-http","description":"Central HTTP/TLS server for all op-dbus modules","bins":[],"has_lib":true,"rs_files":5,"loc":1040,"tests":1,"unsafe_refs":0,"todo":0,"unwrap_expect":9}"___]
 ,[___"crate:op-identity"___, ___"crate"___, ___"{"path":"crates/op-identity","description":"","bins":["op-decoy-issuer","op-identity-headers"],"has_lib":true,"rs_files":17,"loc":4336,"tests":74,"unsafe_refs":9,"todo":1,"unwrap_expect":88}"___]
 ,[___"crate:op-inspector"___, ___"crate"___, ___"{"path":"crates/op-inspector","description":"Inspector Gadget - Universal object inspector with AI gap-filling and Proxmox introspection","bins":[],"has_lib":true,"rs_files":4,"loc":2342,"tests":16,"unsafe_refs":2,"todo":0,"unwrap_expect":28}"___]
@@ -69,7 +69,7 @@
 ,[___"crate:op-web"___, ___"crate"___, ___"{"path":"crates/op-web","description":"Unified web server for op-dbus-v2 - consolidates all HTTP services","bins":["op-web-server","opdbus"],"has_lib":true,"rs_files":59,"loc":13647,"tests":67,"unsafe_refs":1,"todo":6,"unwrap_expect":104}"___]
 ,[___"crate:op-workflows"___, ___"crate"___, ___"{"path":"crates/op-workflows","description":"Workflow engine with plugin/service nodes for op-dbus-v2","bins":[],"has_lib":true,"rs_files":13,"loc":2700,"tests":6,"unsafe_refs":0,"todo":1,"unwrap_expect":5}"___]
 ,[___"crate:op-xray-daemon"___, ___"crate"___, ___"{"path":"crates/op-xray-daemon","description":"D-Bus service for managing Xray proxy daemon lifecycle","bins":["op-xray-daemon"],"has_lib":true,"rs_files":5,"loc":661,"tests":3,"unsafe_refs":0,"todo":0,"unwrap_expect":1}"___]
-,[___"crate:threetched-fs"___, ___"crate"___, ___"{"path":"crates/threetched-fs","description":"Schema-driven FUSE projection over authoritative typed OP-DBUS blobs","bins":["threetched-fs"],"has_lib":false,"rs_files":7,"loc":4303,"tests":19,"unsafe_refs":2,"todo":0,"unwrap_expect":65}"___]
+,[___"crate:threetched-fs"___, ___"crate"___, ___"{"path":"crates/threetched-fs","description":"Schema-driven FUSE projection over authoritative typed OP-DBUS blobs","bins":["threetched-fs"],"has_lib":false,"rs_files":7,"loc":4545,"tests":22,"unsafe_refs":2,"todo":0,"unwrap_expect":92}"___]
 ,[___"ext:aes-gcm"___, ___"ext_crate"___, ___"{"req":"^0.10"}"___]
 ,[___"ext:anyhow"___, ___"ext_crate"___, ___"{"req":"^1"}"___]
 ,[___"ext:anyhow"___, ___"ext_crate"___, ___"{"req":"^1.0"}"___]
@@ -215,7 +215,7 @@
 ,[___"ext:zbus_xml"___, ___"ext_crate"___, ___"{"req":"^5"}"___]
 ,[___"ext:zeroize"___, ___"ext_crate"___, ___"{"req":"^1.6"}"___]
 ,[___"ext:zstd"___, ___"ext_crate"___, ___"{"req":"^0.13"}"___]
-,[___"meta:crate-graph"___, ___"meta"___, ___"{"generated_at":"2026-09-28T02:48:31Z","commit":"35a83a1cacfb703ceb370ae6152c2f210ad8b3a7","generator":"scripts/crate-graph.sh","relations":["graph_node","graph_edge"]}"___]
+,[___"meta:crate-graph"___, ___"meta"___, ___"{"generated_at":"2026-09-28T05:58:00Z","commit":"4a6a483d6e86effc3f5adee97f103af6210673b2","generator":"scripts/crate-graph.sh","relations":["graph_node","graph_edge"]}"___]
 ,[___"mod:crates/op-agents/src/agent_catalog.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":78}"___]
 ,[___"mod:crates/op-agents/src/agent_registry.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":477}"___]
 ,[___"mod:crates/op-agents/src/agent_schema.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":192}"___]
@@ -570,7 +570,7 @@
 ,[___"mod:crates/op-grpc-bridge/src/cron_observer.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":313}"___]
 ,[___"mod:crates/op-grpc-bridge/src/ctl_plane_chatbot_dispatch.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":1587}"___]
 ,[___"mod:crates/op-grpc-bridge/src/datastore_methods.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":511}"___]
-,[___"mod:crates/op-grpc-bridge/src/dbus_identity.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":948}"___]
+,[___"mod:crates/op-grpc-bridge/src/dbus_identity.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":967}"___]
 ,[___"mod:crates/op-grpc-bridge/src/decoy_canonical_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":900}"___]
 ,[___"mod:crates/op-grpc-bridge/src/decoy_network.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":919}"___]
 ,[___"mod:crates/op-grpc-bridge/src/dynamic_reflection.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":648}"___]
@@ -603,7 +603,8 @@
 ,[___"mod:crates/op-grpc-bridge/src/knowledge_delivery.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":178}"___]
 ,[___"mod:crates/op-grpc-bridge/src/knowledge_inbox.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":168}"___]
 ,[___"mod:crates/op-grpc-bridge/src/large_language_model_dispatch.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":161}"___]
-,[___"mod:crates/op-grpc-bridge/src/lib.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":367}"___]
+,[___"mod:crates/op-grpc-bridge/src/lib.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":368}"___]
+,[___"mod:crates/op-grpc-bridge/src/lungs_socket.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":233}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mail_canonical_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":355}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mcp_config_dispatch.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":141}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mcp_config_dispatch_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":393}"___]
@@ -614,7 +615,7 @@
 ,[___"mod:crates/op-grpc-bridge/src/method_contract_admission_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":342}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mongodb_native_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":369}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mqtt_doorbell_relay.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":311}"___]
-,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":6554}"___]
+,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":6561}"___]
 ,[___"mod:crates/op-grpc-bridge/src/native_sled_identity.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":58}"___]
 ,[___"mod:crates/op-grpc-bridge/src/nlm_cli.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":1594}"___]
 ,[___"mod:crates/op-grpc-bridge/src/notebooklm_queries.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":347}"___]
@@ -639,10 +640,10 @@
 ,[___"mod:crates/op-grpc-bridge/src/schema_integer_arguments.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":157}"___]
 ,[___"mod:crates/op-grpc-bridge/src/schema_loader.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":322}"___]
 ,[___"mod:crates/op-grpc-bridge/src/schema_renderer_dispatch.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":167}"___]
-,[___"mod:crates/op-grpc-bridge/src/schema_router.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":2791}"___]
+,[___"mod:crates/op-grpc-bridge/src/schema_router.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":2828}"___]
 ,[___"mod:crates/op-grpc-bridge/src/sealed_catalog_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":347}"___]
 ,[___"mod:crates/op-grpc-bridge/src/sealed_schema_reader.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":369}"___]
-,[___"mod:crates/op-grpc-bridge/src/server.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":1488}"___]
+,[___"mod:crates/op-grpc-bridge/src/server.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":1510}"___]
 ,[___"mod:crates/op-grpc-bridge/src/shared_socket.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":644}"___]
 ,[___"mod:crates/op-grpc-bridge/src/shared_socket_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":374}"___]
 ,[___"mod:crates/op-grpc-bridge/src/specialist.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":621}"___]
@@ -804,13 +805,13 @@
 ,[___"mod:crates/op-plugin-lint/src/binary.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":547}"___]
 ,[___"mod:crates/op-plugin-lint/src/emit.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":636}"___]
 ,[___"mod:crates/op-plugin-lint/src/gadget.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":327}"___]
-,[___"mod:crates/op-plugin-lint/src/gaps.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":345}"___]
 ]
 :put graph_node { id => label, props }
 }
 {
 ?[id, label, props] <- [
-[___"mod:crates/op-plugin-lint/src/introspect.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":340}"___]
+[___"mod:crates/op-plugin-lint/src/gaps.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":345}"___]
+,[___"mod:crates/op-plugin-lint/src/introspect.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":340}"___]
 ,[___"mod:crates/op-plugin-lint/src/lib.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":38}"___]
 ,[___"mod:crates/op-plugin-lint/src/main.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":294}"___]
 ,[___"mod:crates/op-plugin-lint/src/repomix.rs"___, ___"module"___, ___"{"crate":"op-plugin-lint","kind":"src","loc":991}"___]
@@ -1115,9 +1116,9 @@
 ,[___"mod:crates/op-xray-daemon/src/dbus.rs"___, ___"module"___, ___"{"crate":"op-xray-daemon","kind":"src","loc":302}"___]
 ,[___"mod:crates/op-xray-daemon/src/lib.rs"___, ___"module"___, ___"{"crate":"op-xray-daemon","kind":"src","loc":4}"___]
 ,[___"mod:crates/op-xray-daemon/src/main.rs"___, ___"module"___, ___"{"crate":"op-xray-daemon","kind":"src","loc":153}"___]
-,[___"mod:crates/threetched-fs/src/dispatch.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":239}"___]
-,[___"mod:crates/threetched-fs/src/fuse_fs.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":1002}"___]
-,[___"mod:crates/threetched-fs/src/main.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":405}"___]
+,[___"mod:crates/threetched-fs/src/dispatch.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":299}"___]
+,[___"mod:crates/threetched-fs/src/fuse_fs.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":1172}"___]
+,[___"mod:crates/threetched-fs/src/main.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":417}"___]
 ,[___"mod:crates/threetched-fs/src/model.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":1052}"___]
 ,[___"mod:crates/threetched-fs/src/namespace.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":665}"___]
 ,[___"mod:crates/threetched-fs/src/source.rs"___, ___"module"___, ___"{"crate":"threetched-fs","kind":"src","loc":254}"___]
@@ -1965,6 +1966,7 @@
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/knowledge_inbox.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/large_language_model_dispatch.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/lib.rs"___, ___"{}"___]
+,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/lungs_socket.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/mail_canonical_tests.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/mcp_config_dispatch.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/mcp_config_dispatch_tests.rs"___, ___"{}"___]
@@ -2014,13 +2016,13 @@
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_config_secret_policy.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_admission.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_admission_tests.rs"___, ___"{}"___]
-,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_generation_native.rs"___, ___"{}"___]
 ]
 :put graph_edge { src, rel, dst => props }
 }
 {
 ?[src, rel, dst, props] <- [
-[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs"___, ___"{}"___]
+[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_generation_native.rs"___, ___"{}"___]
+,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_legacy_dispatch.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_object_blob.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_router_runtime.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tracing.rs"___, ___"{}"___]
@@ -2419,13 +2421,13 @@
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:libc"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:log"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-core"___, ___"{"kind":"normal","optional":false}"___]
-,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-generic"___, ___"{"kind":"normal","optional":false}"___]
 ]
 :put graph_edge { src, rel, dst => props }
 }
 {
 ?[src, rel, dst, props] <- [
-[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-route"___, ___"{"kind":"normal","optional":false}"___]
+[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-generic"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-route"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-packet-utils"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:netlink-sys"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:rcgen"___, ___"{"kind":"dev","optional":false}"___]
@@ -2824,13 +2826,13 @@
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:async-trait"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:base64"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:chrono"___, ___"{"kind":"normal","optional":false}"___]
-,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:log"___, ___"{"kind":"normal","optional":false}"___]
 ]
 :put graph_edge { src, rel, dst => props }
 }
 {
 ?[src, rel, dst, props] <- [
-[___"crate:op-state"___, ___"uses_ext"___, ___"ext:md5"___, ___"{"kind":"normal","optional":false}"___]
+[___"crate:op-state"___, ___"uses_ext"___, ___"ext:log"___, ___"{"kind":"normal","optional":false}"___]
+,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:md5"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:parking_lot"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:pocketflow_rs"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-state"___, ___"uses_ext"___, ___"ext:quick-xml"___, ___"{"kind":"normal","optional":false}"___]
@@ -3229,13 +3231,13 @@
 ,[___"mod:crates/op-grpc-bridge/src/antigravity_canonical_tests.rs"___, ___"imports"___, ___"crate:op-llm"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-grpc-bridge/src/antigravity_canonical_tests.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/antigravity_canonical_tests.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":1}"___]
-,[___"mod:crates/op-grpc-bridge/src/antigravity_canonical_tests.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
 ]
 :put graph_edge { src, rel, dst => props }
 }
 {
 ?[src, rel, dst, props] <- [
-[___"mod:crates/op-grpc-bridge/src/antigravity_dispatch.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":1}"___]
+[___"mod:crates/op-grpc-bridge/src/antigravity_canonical_tests.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/antigravity_dispatch.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/antigravity_dispatch.rs"___, ___"imports"___, ___"crate:op-llm"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-grpc-bridge/src/antigravity_dispatch.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/bin/dump-protos.rs"___, ___"imports"___, ___"crate:op-blob"___, ___"{"refs":1}"___]
@@ -3428,7 +3430,7 @@
 ,[___"mod:crates/op-grpc-bridge/src/mongodb_native_tests.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mqtt_doorbell_relay.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-cognitive-mcp"___, ___"{"refs":5}"___]
-,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":25}"___]
+,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":24}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":14}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":7}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-llm"___, ___"{"refs":3}"___]
@@ -3634,13 +3636,13 @@
 ,[___"mod:crates/op-inspector/src/lib.rs"___, ___"imports"___, ___"crate:op-introspection"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-introspection/src/cache.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-introspection/src/indexer.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":2}"___]
-,[___"mod:crates/op-introspection/src/indexer.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":1}"___]
 ]
 :put graph_edge { src, rel, dst => props }
 }
 {
 ?[src, rel, dst, props] <- [
-[___"mod:crates/op-introspection/src/indexer_manager.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
+[___"mod:crates/op-introspection/src/indexer.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-introspection/src/indexer_manager.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-introspection/src/lib.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-introspection/src/parser.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-introspection/src/projection.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":3}"___]

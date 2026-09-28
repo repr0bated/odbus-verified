@@ -540,12 +540,12 @@
           "op-grpc-bridge"
         ],
         "has_lib": true,
-        "rs_files": 152,
-        "loc": 93289,
-        "tests": 729,
+        "rs_files": 153,
+        "loc": 93608,
+        "tests": 733,
         "unsafe_refs": 178,
         "todo": 166,
-        "unwrap_expect": 1741
+        "unwrap_expect": 1748
       }
     },
     {
@@ -906,11 +906,11 @@
         ],
         "has_lib": false,
         "rs_files": 7,
-        "loc": 4303,
-        "tests": 19,
+        "loc": 4545,
+        "tests": 22,
         "unsafe_refs": 2,
         "todo": 0,
-        "unwrap_expect": 65
+        "unwrap_expect": 92
       }
     },
     {
@@ -1932,8 +1932,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-28T02:48:31Z",
-        "commit": "35a83a1cacfb703ceb370ae6152c2f210ad8b3a7",
+        "generated_at": "2026-09-28T05:58:00Z",
+        "commit": "4a6a483d6e86effc3f5adee97f103af6210673b2",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -5088,7 +5088,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 948
+        "loc": 967
       }
     },
     {
@@ -5385,7 +5385,16 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 367
+        "loc": 368
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/lungs_socket.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 233
       }
     },
     {
@@ -5484,7 +5493,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 6554
+        "loc": 6561
       }
     },
     {
@@ -5709,7 +5718,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 2791
+        "loc": 2828
       }
     },
     {
@@ -5736,7 +5745,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1488
+        "loc": 1510
       }
     },
     {
@@ -9948,7 +9957,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 239
+        "loc": 299
       }
     },
     {
@@ -9957,7 +9966,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 1002
+        "loc": 1172
       }
     },
     {
@@ -9966,7 +9975,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 405
+        "loc": 417
       }
     },
     {
@@ -16235,6 +16244,12 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/lib.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/lungs_socket.rs",
       "props": {}
     },
     {
@@ -27029,7 +27044,7 @@
       "rel": "imports",
       "dst": "crate:op-core",
       "props": {
-        "refs": 25
+        "refs": 24
       }
     },
     {
