@@ -23,8 +23,8 @@ another agent's uncommitted work.
 
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
-| Grok (Cursor) | Release `20260928T145511Z-2bdeb27` is live (picker `op-web`). Pinned dashboard still lacks the picker control | `/srv/git/odbus-verified` `main`, uncommitted | 2026-09-28 | Do not touch `feat/chat-response` or its plugin files |
-| Claude (host, session odbus-verified-f0) | OD-90: continuing the cloud's two-sided `chat_response` work at the owner's request. Next: full host verification and the missing stage 1 proofs, then stage 2 (door enforcement) | branch `feat/chat-response`, host worktree `/srv/git/odbus-verified/.claude/worktrees/chat-response`, pushed | 2026-09-28 | `crates/op-plugins/src/state_plugins/chat_response*.rs`, the bridge `chat_response_*` modules. The cloud session is idle on this; do not push to this branch from it. |
+| Grok (Cursor) | Add Cheaper Inference (`api.cheaperinference.com`) as a router provider | `/srv/git/odbus-verified` `main` | 2026-09-28 | Do not touch `feat/chat-response` or its plugin files |
+| Claude (host, session odbus-verified-f0) | OD-90, continuing the cloud's two-sided `chat_response` work at the owner's request. Stage 1 is verified on the host: fmt and clippy clean; op-cozo-store 58, op-plugins 528, op-grpc-bridge 734 passed, 0 failed. Next, stage 2 over the cognitive MCP door: a `chat_response_reply` toolset in `mcp-toolsets.json`, the door's `Chat` opening the turn, and first a live check of which identity the router presents to `/mcp` | branch `feat/chat-response`, host worktree `/srv/git/odbus-verified/.claude/worktrees/chat-response`, pushed | 2026-09-28 | `crates/op-plugins/src/state_plugins/chat_response*.rs`, the bridge `chat_response_*` modules. The cloud session is idle on this; do not push to this branch from it. |
 
 ## Handoffs
 
