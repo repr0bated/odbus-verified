@@ -706,8 +706,8 @@ async fn commit_turn(
     let turn_key = pending.turn_id.clone();
     let index = pending.turn_index;
     let durable_store = store.clone();
-    let (record, snapshot) = publisher
-        .commit(effect, move || {
+    let ((record, snapshot), published) = publisher
+        .commit_reporting(effect, move || {
             let draft = |head: &ChatConversationRecord,
                          _revision: u64|
              -> std::result::Result<ChatTurnDraft, CozoError> {
@@ -739,16 +739,22 @@ async fn commit_turn(
         "committed turn differs from the claimed turn"
     );
 
-    // Content-free doorbell for the session that asked; the in-process wake
-    // (owner key only) was sent by the publication itself.
-    publisher.ring(DoorbellWake {
-        owner_key: crate::wake_doorbell::owner_key(&EpisodeScope {
-            principal_id: owner.principal_id.clone(),
-            session_id: owner.session_id.clone(),
-            session_genesis: owner.session_genesis.clone(),
-        }),
-        seq: snapshot.revision,
-    });
+    // Content-free doorbell for the session that asked, once its private
+    // document holds the turn; the in-process wake (owner key only) was sent
+    // by the publication itself. A pending publication rings from recovery.
+    if published {
+        publisher.ring(DoorbellWake {
+            owner_key: crate::wake_doorbell::owner_key(&EpisodeScope {
+                principal_id: owner.principal_id.clone(),
+                session_id: owner.session_id.clone(),
+                session_genesis: owner.session_genesis.clone(),
+            }),
+            seq: snapshot.revision,
+        });
+    }
+    // The durable turn belongs on the public chain whether or not its
+    // private document is published yet: the chain is how a conversation's
+    // completeness is verified, and a retry would be refused as answered.
     announce(
         engine,
         author,
@@ -768,6 +774,12 @@ async fn commit_turn(
         },
     )
     .await;
+    anyhow::ensure!(
+        published,
+        "chat_response turn {} committed durably and announced, but its private state \
+         is pending recovery; recovery republishes it and rings the asking session",
+        turn.turn_id
+    );
     Ok((turn, snapshot.revision))
 }
 

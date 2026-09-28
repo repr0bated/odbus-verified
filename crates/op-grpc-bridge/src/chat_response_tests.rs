@@ -645,6 +645,24 @@ async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
     assert_eq!(listed["conversation_count"], 1);
     assert_eq!(listed["conversations"][0]["turn_count"], 6);
     assert_eq!(listed["conversations"][0]["title"], PRIVATE_TITLE);
+
+    // Recovery rings the session that asked the newest turn (here the first
+    // session, which asked the third question), never another principal's.
+    let snapshot = f
+        .store
+        .snapshot_chat_responses(&f.human.principal, 8, 8)
+        .unwrap();
+    let asker = crate::chat_response_state::newest_asker(&snapshot, &f.human.principal).unwrap();
+    assert_eq!(
+        asker.owner_key,
+        crate::wake_doorbell::owner_key(&EpisodeScope {
+            principal_id: f.human.principal.clone(),
+            session_id: f.human.session.clone(),
+            session_genesis: f.human.genesis.clone(),
+        })
+    );
+    assert_eq!(asker.seq, snapshot.revision);
+    assert!(crate::chat_response_state::newest_asker(&snapshot, &f.agent.principal).is_none());
 }
 
 #[tokio::test]

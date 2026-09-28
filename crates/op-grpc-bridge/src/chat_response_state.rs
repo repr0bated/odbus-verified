@@ -96,6 +96,28 @@ fn json_nodes(value: &Value) -> usize {
 
 /// The committed private document for `snapshot`, checked against the
 /// durable keys, the plugin's digests and the sealed state contract.
+/// The doorbell of the session that asked the newest committed turn, at the
+/// snapshot's revision. Only the owner's own verified turns are considered.
+pub(crate) fn newest_asker(
+    snapshot: &ChatResponseSnapshot,
+    principal_id: &str,
+) -> Option<DoorbellWake> {
+    let row = snapshot
+        .turns
+        .iter()
+        .find(|row| row.principal_id == principal_id)?;
+    let turn: ChatTurn = serde_json::from_value(row.turn.clone()).ok()?;
+    validate_turn(&turn).ok()?;
+    Some(DoorbellWake {
+        owner_key: crate::wake_doorbell::owner_key(&op_cozo_store::EpisodeScope {
+            principal_id: turn.principal_id,
+            session_id: turn.session_id,
+            session_genesis: turn.session_genesis,
+        }),
+        seq: snapshot.revision,
+    })
+}
+
 fn state(
     snapshot: &ChatResponseSnapshot,
     principal_id: &str,
@@ -241,6 +263,18 @@ impl ChatResponsePublisher {
         }
     }
 
+    /// Ring the session that asked the newest turn, once recovery has
+    /// published the document its commit left pending.
+    fn ring_recovered(&self, asker: &std::sync::Mutex<Option<DoorbellWake>>) {
+        let wake = asker
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .take();
+        if let Some(wake) = wake {
+            self.ring(wake);
+        }
+    }
+
     fn pin(&self) -> Result<ManifestPinnedSchemaDocument> {
         let pinned = read_manifest_pinned_schema_document(&self.catalog, PLUGIN)?;
         method_contract_admission::admit_compiled_state_contract(&pinned, PLUGIN)?;
@@ -268,6 +302,8 @@ impl ChatResponsePublisher {
         let operation = self.operation.clone().lock_owned().await;
         let publisher = self.clone();
         let principal = principal_id.to_string();
+        let asker = Arc::new(std::sync::Mutex::new(None));
+        let found = asker.clone();
         let (pin, recovered) = tokio::task::spawn_blocking(move || -> Result<_> {
             let pin = publisher.pin()?;
             let directory = publisher.root.prepare_child(&owner_key(&principal))?;
@@ -283,7 +319,7 @@ impl ChatResponsePublisher {
             );
             let publication =
                 directory.recover_document_with_decision(PLUGIN, &pending.operation_id, || {
-                    publisher.republish(&store, &principal, &pin, None)
+                    publisher.republish(&store, &principal, &pin, None, &found)
                 })?;
             anyhow::ensure!(
                 matches!(publication, PrivateDocumentPublication::Committed { .. }),
@@ -294,6 +330,7 @@ impl ChatResponsePublisher {
         .await??;
         if recovered {
             let _ = self.wakes.send(owner_key(principal_id));
+            self.ring_recovered(&asker);
         }
         Ok(ChatEffect {
             principal_id: principal_id.to_string(),
@@ -308,12 +345,15 @@ impl ChatResponsePublisher {
         principal_id: &str,
         pin: &ManifestPinnedSchemaDocument,
         previous: Option<&[u8]>,
+        asker: &std::sync::Mutex<Option<DoorbellWake>>,
     ) -> Result<PrivateDocumentCommit<()>> {
         let receipt = store.snapshot_chat_responses(
             principal_id,
             CONVERSATION_SNAPSHOT_LIMIT,
             TURN_SNAPSHOT_LIMIT,
         )?;
+        *asker.lock().unwrap_or_else(|poison| poison.into_inner()) =
+            newest_asker(&receipt, principal_id);
         let bytes = serde_json::to_vec(&state(&receipt, principal_id, &pin.schema)?)?;
         compare_revision(previous, &bytes, receipt.revision)?;
         self.recheck(pin)?;
@@ -324,13 +364,32 @@ impl ChatResponsePublisher {
     }
 
     /// Run the durable write for an admitted effect, then publish the
-    /// principal's private document and wake its subscribers. The lock, the
-    /// durable write and the wake stay owned if the requester is cancelled.
+    /// principal's private document and wake its subscribers. Fails when the
+    /// private document is left pending recovery; use `commit_reporting` when
+    /// the caller must act on a durable write either way.
     pub(crate) async fn commit<T: Send + 'static>(
         self: &Arc<Self>,
         effect: ChatEffect,
         durable: impl FnOnce() -> Result<(T, ChatResponseSnapshot)> + Send + 'static,
     ) -> Result<(T, ChatResponseSnapshot)> {
+        match self.commit_reporting(effect, durable).await? {
+            (durable, true) => Ok(durable),
+            (_, false) => anyhow::bail!(
+                "chat_response committed durably but its private state is pending recovery"
+            ),
+        }
+    }
+
+    /// Like `commit`, but returns the durable result with whether the private
+    /// document was published (`false`: pending recovery, which republishes
+    /// it from the durable owner and then rings the asking session). The
+    /// lock, the durable write and the wake stay owned if the requester is
+    /// cancelled.
+    pub(crate) async fn commit_reporting<T: Send + 'static>(
+        self: &Arc<Self>,
+        effect: ChatEffect,
+        durable: impl FnOnce() -> Result<(T, ChatResponseSnapshot)> + Send + 'static,
+    ) -> Result<((T, ChatResponseSnapshot), bool)> {
         let ChatEffect {
             principal_id,
             pin,
@@ -376,11 +435,17 @@ impl ChatResponsePublisher {
             match publication {
                 PrivateDocumentPublication::Committed { durable, .. } => {
                     let _ = publisher.wakes.send(wake_owner);
-                    Ok(durable)
+                    Ok((durable, true))
                 }
-                PrivateDocumentPublication::Pending { .. } => anyhow::bail!(
-                    "chat_response committed durably but its private state is pending recovery"
-                ),
+                PrivateDocumentPublication::Pending {
+                    durable: Some(durable),
+                    ..
+                } => Ok((durable, false)),
+                PrivateDocumentPublication::Pending {
+                    durable: None,
+                    error,
+                    ..
+                } => Err(error.context("chat_response durable commit did not complete")),
             }
         })
         .await
@@ -402,6 +467,8 @@ impl ChatResponsePublisher {
             let owner = owner_key(&principal);
             let wake_owner = owner.clone();
             let worker = publisher.clone();
+            let asker = Arc::new(std::sync::Mutex::new(None));
+            let found = asker.clone();
             let publication = tokio::task::spawn_blocking(move || -> Result<_> {
                 let pin = worker.pin()?;
                 let directory = worker.root.prepare_child(&owner)?;
@@ -413,24 +480,34 @@ impl ChatResponsePublisher {
                         pending.plugin_id == PLUGIN,
                         "pending chat_response owner mismatch"
                     );
-                    directory.recover_document_with_decision(PLUGIN, &pending.operation_id, || {
-                        worker.republish(&store, &principal, &pin, None)
-                    })
+                    let recovered = directory.recover_document_with_decision(
+                        PLUGIN,
+                        &pending.operation_id,
+                        || worker.republish(&store, &principal, &pin, None, &found),
+                    )?;
+                    Ok((recovered, true))
                 } else {
-                    directory.commit_document_durable_with_decision(
+                    let ignored = std::sync::Mutex::new(None);
+                    let republished = directory.commit_document_durable_with_decision(
                         PLUGIN,
                         &uuid::Uuid::new_v4().to_string(),
-                        |previous| worker.republish(&store, &principal, &pin, previous),
-                    )
+                        |previous| worker.republish(&store, &principal, &pin, previous, &ignored),
+                    )?;
+                    Ok((republished, false))
                 }
             })
             .await??;
             match publication {
-                PrivateDocumentPublication::Committed { .. } => {
+                (PrivateDocumentPublication::Committed { .. }, recovered) => {
                     let _ = publisher.wakes.send(wake_owner);
+                    // A recovered pending publication was a commit whose asker
+                    // was never rung; a plain refresh changed nothing for it.
+                    if recovered {
+                        publisher.ring_recovered(&asker);
+                    }
                     Ok(())
                 }
-                PrivateDocumentPublication::Pending { .. } => {
+                (PrivateDocumentPublication::Pending { .. }, _) => {
                     anyhow::bail!("chat_response projection recovery is pending")
                 }
             }
