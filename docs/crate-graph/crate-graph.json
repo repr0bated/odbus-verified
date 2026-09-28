@@ -406,7 +406,7 @@
         ],
         "has_lib": true,
         "rs_files": 10,
-        "loc": 9110,
+        "loc": 9111,
         "tests": 58,
         "unsafe_refs": 3,
         "todo": 2,
@@ -541,7 +541,7 @@
         ],
         "has_lib": true,
         "rs_files": 157,
-        "loc": 96632,
+        "loc": 96958,
         "tests": 742,
         "unsafe_refs": 181,
         "todo": 169,
@@ -731,7 +731,7 @@
         ],
         "has_lib": true,
         "rs_files": 147,
-        "loc": 117296,
+        "loc": 117322,
         "tests": 531,
         "unsafe_refs": 15,
         "todo": 1,
@@ -853,8 +853,8 @@
           "opdbus"
         ],
         "has_lib": true,
-        "rs_files": 59,
-        "loc": 13661,
+        "rs_files": 60,
+        "loc": 13877,
         "tests": 67,
         "unsafe_refs": 1,
         "todo": 6,
@@ -1932,8 +1932,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-28T11:29:35Z",
-        "commit": "2bdeb27c02ed3be8c78d838ddd0f44f0c628fc84",
+        "generated_at": "2026-09-28T15:13:05Z",
+        "commit": "fa6be9a478622b98a9871b4154265076de327423",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -4521,7 +4521,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 1091
+        "loc": 1092
       }
     },
     {
@@ -4980,7 +4980,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 707
+        "loc": 820
       }
     },
     {
@@ -4989,7 +4989,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 471
+        "loc": 548
       }
     },
     {
@@ -4998,7 +4998,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 618
+        "loc": 706
       }
     },
     {
@@ -5007,7 +5007,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 366
+        "loc": 379
       }
     },
     {
@@ -5538,7 +5538,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 6727
+        "loc": 6762
       }
     },
     {
@@ -7563,7 +7563,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 798
+        "loc": 808
       }
     },
     {
@@ -7572,7 +7572,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 860
+        "loc": 876
       }
     },
     {
@@ -9421,6 +9421,15 @@
       }
     },
     {
+      "id": "mod:crates/op-web/src/handlers/control_plane_picker.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-web",
+        "kind": "src",
+        "loc": 207
+      }
+    },
+    {
       "id": "mod:crates/op-web/src/handlers/dashboard.rs",
       "label": "module",
       "props": {
@@ -9489,7 +9498,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 22
+        "loc": 23
       }
     },
     {
@@ -9768,7 +9777,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 356
+        "loc": 364
       }
     },
     {
@@ -10132,7 +10141,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/chat_response.rs",
-        "line": 797,
+        "line": 807,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/chat_response"
       }
@@ -23429,6 +23438,12 @@
     {
       "src": "crate:op-web",
       "rel": "contains",
+      "dst": "mod:crates/op-web/src/handlers/control_plane_picker.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-web",
+      "rel": "contains",
       "dst": "mod:crates/op-web/src/handlers/dashboard.rs",
       "props": {}
     },
@@ -25709,7 +25724,7 @@
       "rel": "imports",
       "dst": "crate:op-cozo-store",
       "props": {
-        "refs": 3
+        "refs": 4
       }
     },
     {
@@ -25717,7 +25732,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {
@@ -25741,7 +25756,7 @@
       "rel": "imports",
       "dst": "crate:op-cozo-store",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {
@@ -25789,7 +25804,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 3
+        "refs": 4
       }
     },
     {
@@ -27325,7 +27340,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 128
+        "refs": 129
       }
     },
     {

@@ -23,10 +23,20 @@ another agent's uncommitted work.
 
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
-| Grok (Cursor) | Host release of merged lungs work (`79a47c7`): build, seal, golden, btrfs receive, activate, then chatbot create/up/lungs-check | `/srv/git/odbus-verified` `main`, pushed | 2026-09-28 | Do not reset this tree. Catalog copy goes to `/var/tmp` before seal. **Owner reassigned the release of `0432589`+ to Claude, 2026-09-28 07:10.** |
+| Grok (Cursor) | Release `20260928T145511Z-2bdeb27` is live (picker `op-web`). Pinned dashboard still lacks the picker control | `/srv/git/odbus-verified` `main`, uncommitted | 2026-09-28 | Do not touch `feat/chat-response` or its plugin files |
 | Claude (cloud) | OD-90 stage 1, taken over from the host session (rate-limited): two-sided conversations on top of its `cb81f01` | branch `feat/chat-response`, pushed | 2026-09-28 | `crates/op-plugins/src/state_plugins/chat_response*.rs`, the bridge `chat_response_*` modules |
 
 ## Handoffs
+
+### 2026-09-28 · Grok (Cursor: golden and activate, picker binary)
+- **Live:** `current` → `releases/20260928T145511Z-2bdeb27`. Same commit as the previous release, with the rebuilt `op-web-server` (`197d3115…`). Grants, bridge, EMQX, and op-web pass `sv check`. Catalog unchanged (66 plugins, generation 264).
+- **Rollback:** `releases/20260928T125401Z-2bdeb27`.
+- **Picker:** the API is in this `op-web`. The pinned dashboard bundle does not include the Control plane picker control.
+
+### 2026-09-28 · Grok (Cursor: pull build golden activate)
+- **Live:** `current` → `releases/20260928T125401Z-2bdeb27` (`main` @ `2bdeb27`, bridge default-provider fix `df43133`). Bridge/op-web/grants/EMQX restarted; all four pass `sv check`. Running `op-grpc-bridge` digest `8ba31303…` matches received. SHM, persisted and received catalog manifests match (`930d7843…`, 66 plugins, generation 264).
+- **Rollback:** `releases/20260928T093213Z-f0e83ee`. Pre-seal catalog backup: `/var/tmp/opdbus-release-20260928T122846Z-preseal`.
+- **Send snapshot:** `/opt/op-dbus/send/20260928T125401Z-2bdeb27` (readonly; may be deleted after verification).
 
 ### 2026-09-28 · Claude (host, session odbus-verified-f0: release)
 - **Live:** `current` → `releases/20260928T093213Z-f0e83ee` (`main` with PR #4, the 2024 reformat and `a12d669`). The bridge, op-web, grants and EMQX run the release binaries, and all pass `sv check`. The 66-blob catalog is unchanged and byte-identical across SHM, persisted and received. The chatbot's lungs bind over `/run/opdbus/lungs.sock`, and `op-lungs-check` passes `workflows.query_workflows` (event 84973) and `cognitive_mcp.get_health` (event 84975).
