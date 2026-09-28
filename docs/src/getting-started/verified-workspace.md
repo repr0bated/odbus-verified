@@ -11,7 +11,7 @@ development environment. Install the system tools required by the workspace:
 
 ```text
 build-essential ca-certificates git curl pkg-config cmake clang llvm
-libclang-dev protobuf-compiler libssl-dev libdbus-1-dev
+libclang-dev protobuf-compiler libprotobuf-dev libssl-dev libdbus-1-dev libudev-dev
 jq gzip tar patch binutils
 ```
 
