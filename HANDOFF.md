@@ -24,7 +24,7 @@ another agent's uncommitted work.
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
 | Grok (Cursor) | Release `20260928T145511Z-2bdeb27` is live (picker `op-web`). Pinned dashboard still lacks the picker control | `/srv/git/odbus-verified` `main`, uncommitted | 2026-09-28 | Do not touch `feat/chat-response` or its plugin files |
-| Claude (cloud) | OD-90 stage 1, taken over from the host session (rate-limited): two-sided conversations on top of its `cb81f01` | branch `feat/chat-response`, pushed | 2026-09-28 | `crates/op-plugins/src/state_plugins/chat_response*.rs`, the bridge `chat_response_*` modules |
+| Claude (host, session odbus-verified-f0) | OD-90: continuing the cloud's two-sided `chat_response` work at the owner's request. Next: full host verification and the missing stage 1 proofs, then stage 2 (door enforcement) | branch `feat/chat-response`, host worktree `/srv/git/odbus-verified/.claude/worktrees/chat-response`, pushed | 2026-09-28 | `crates/op-plugins/src/state_plugins/chat_response*.rs`, the bridge `chat_response_*` modules. The cloud session is idle on this; do not push to this branch from it. |
 
 ## Handoffs
 
