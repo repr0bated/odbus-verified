@@ -176,6 +176,30 @@ impl SchemaRouter {
         Ok(())
     }
 
+    /// The plugin objects for one lungs connection, each bound to that
+    /// connection's identity. Built from the current routes per connection,
+    /// so a catalog reload reaches the next connection without re-registering.
+    pub async fn lungs_objects(
+        &self,
+        identity: Arc<crate::lungs_socket::LungsIdentity>,
+    ) -> Vec<(String, SchemaBackedInterface)> {
+        let routes = self.routes.read().await;
+        routes
+            .iter()
+            .map(|(plugin_id, route)| {
+                let mut interface = SchemaBackedInterface::with_engine_and_storage(
+                    plugin_id.clone(),
+                    route.clone(),
+                    self.engine.clone(),
+                    &self.state_dir,
+                    &self.monolith_path,
+                );
+                interface.lungs_identity = Some(identity.clone());
+                (route.dbus_path.clone(), interface)
+            })
+            .collect()
+    }
+
     /// Reload routes and re-register objects.
     pub async fn reload(&self) -> anyhow::Result<()> {
         let count = self.reload_routes_only().await;
@@ -551,6 +575,9 @@ pub struct SchemaBackedInterface {
     engine: Option<Arc<MutationEngine>>,
     /// Exact D-Bus sender binding. `None` keeps production calls fail-closed.
     identity_resolver: Option<Arc<DbusIdentityResolver>>,
+    /// Set only on objects served over one identity's lungs socket: every
+    /// call on that connection is that identity, whatever the header says.
+    lungs_identity: Option<Arc<crate::lungs_socket::LungsIdentity>>,
 }
 
 impl SchemaBackedInterface {
@@ -624,6 +651,7 @@ impl SchemaBackedInterface {
             blob_catalog_dir: blob_catalog_dir.as_ref().to_path_buf(),
             engine: None,
             identity_resolver: None,
+            lungs_identity: None,
         }
     }
 
@@ -909,6 +937,15 @@ impl SchemaBackedInterface {
         json_args: String,
         #[zbus(header)] header: Header<'_>,
     ) -> zbus::fdo::Result<String> {
+        if let Some(lungs) = &self.lungs_identity {
+            let identity = lungs
+                .resolve()
+                .await
+                .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
+            return self
+                .dispatch_call_for_identity(method, json_args, Some(&identity))
+                .await;
+        }
         let resolver = self.identity_resolver.as_ref().ok_or_else(|| {
             zbus::fdo::Error::AccessDenied("D-Bus identity resolver is not available".to_string())
         })?;

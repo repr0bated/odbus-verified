@@ -55,9 +55,16 @@ struct OpenFile {
 
 /// Where a lungs mount sends its calls, and whose credential it presents.
 /// The credential lives on the identity's own device, outside the container.
-pub struct Lungs {
-    pub bus_address: String,
-    pub credential: PathBuf,
+/// How a lungs mount reaches the bridge.
+pub enum Lungs {
+    /// The identity's own socket. The bridge binds it to one session, so
+    /// nothing is registered and no credential is stored.
+    Socket(PathBuf),
+    /// Register a SID1 read from the identity's device on the shared bus.
+    Credential {
+        bus_address: String,
+        credential: PathBuf,
+    },
 }
 
 #[derive(Default)]
@@ -181,8 +188,10 @@ impl TypedFuse {
             dispatch::method_decl(&self.store, &self.namespace.target, plugin_id, method_name)
                 .map_err(|error| LungsError::Arguments(error.to_string()))?;
         dispatch::validate_arguments(&method, &arguments)?;
-        let credential = dispatch::read_credential(&lungs.credential)?;
-        let bus_address = lungs.bus_address.clone();
+        let credential = match lungs {
+            Lungs::Socket(_) => None,
+            Lungs::Credential { credential, .. } => Some(dispatch::read_credential(credential)?),
+        };
         // FUSE callbacks run inside the mount's tokio context, which cannot
         // block on another future. A scoped thread with its own runtime keeps
         // the D-Bus round trip off that context.
@@ -193,14 +202,34 @@ impl TypedFuse {
                         .enable_all()
                         .build()
                         .map_err(|error| LungsError::Transport(format!("runtime: {error}")))?;
-                    runtime.block_on(dispatch::call_as_identity(
-                        &bus_address,
-                        plugin_id,
-                        method_name,
-                        &method,
-                        arguments,
-                        credential,
-                    ))
+                    runtime.block_on(async {
+                        match (lungs, credential) {
+                            (Lungs::Credential { bus_address, .. }, Some(credential)) => {
+                                dispatch::call_as_identity(
+                                    bus_address,
+                                    plugin_id,
+                                    method_name,
+                                    &method,
+                                    arguments,
+                                    credential,
+                                )
+                                .await
+                            }
+                            (Lungs::Socket(socket), _) => {
+                                dispatch::call_over_socket(
+                                    socket,
+                                    plugin_id,
+                                    method_name,
+                                    &method,
+                                    arguments,
+                                )
+                                .await
+                            }
+                            (Lungs::Credential { .. }, None) => {
+                                Err(LungsError::Credential("credential was not read".into()))
+                            }
+                        }
+                    })
                 })
                 .join()
                 .unwrap_or_else(|_| Err(LungsError::Transport("dispatch thread panicked".into())))
@@ -793,6 +822,13 @@ mod tests {
     }
 
     fn lungs_fixture(credential: PathBuf) -> (tempfile::TempDir, TypedFuse) {
+        lungs_fixture_with(Lungs::Credential {
+            bus_address: "unix:path=/nonexistent/lungs-test.sock".into(),
+            credential,
+        })
+    }
+
+    fn lungs_fixture_with(lungs: Lungs) -> (tempfile::TempDir, TypedFuse) {
         let directory = tempdir().unwrap();
         let state = directory.path().join("state");
         std::fs::create_dir_all(&state).unwrap();
@@ -847,16 +883,7 @@ mod tests {
             )
             .unwrap();
         let target = ProjectionTarget::View(store.current_view_id().unwrap().unwrap());
-        let fs = TypedFuse::lungs(
-            store,
-            target,
-            state,
-            Lungs {
-                bus_address: "unix:path=/nonexistent/lungs-test.sock".into(),
-                credential,
-            },
-        )
-        .unwrap();
+        let fs = TypedFuse::lungs(store, target, state, lungs).unwrap();
         (directory, fs)
     }
 
@@ -958,6 +985,69 @@ mod tests {
         // as the transport and no further.
         assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Err(EIO));
         assert_eq!(error_stage(&fs), "transport");
+    }
+
+    #[test]
+    fn socket_lungs_never_ask_for_a_credential() {
+        let (_directory, mut fs) =
+            lungs_fixture_with(Lungs::Socket(PathBuf::from("/nonexistent/lungs.sock")));
+        // No socket exists, so the call fails at the transport, never at
+        // the credential stage: a socket mount has nothing to deliver.
+        assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Err(EIO));
+        assert_eq!(error_stage(&fs), "transport");
+    }
+
+    /// Stands in for the bridge's per-identity socket: the same PluginV1
+    /// `Call`, served peer to peer with no bus and no registration.
+    struct FixtureBridge;
+
+    #[zbus::interface(name = "org.opdbus.v1.PluginV1")]
+    impl FixtureBridge {
+        async fn call(&self, method: String, json_args: String) -> String {
+            serde_json::json!({ "method": method, "args": json_args }).to_string()
+        }
+    }
+
+    #[test]
+    fn socket_lungs_dispatch_over_the_identity_socket() {
+        let directory = tempdir().unwrap();
+        let socket = directory.path().join("lungs.sock");
+        let listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let server = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async move {
+                let listener = tokio::net::UnixListener::from_std(listener).unwrap();
+                let (stream, _) = listener.accept().await.unwrap();
+                let connection = zbus::connection::Builder::unix_stream(stream)
+                    .server(zbus::Guid::generate())
+                    .unwrap()
+                    .p2p()
+                    .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
+                    .serve_at("/org/opdbus/v1/plugins/demo", FixtureBridge)
+                    .unwrap()
+                    .build()
+                    .await
+                    .unwrap();
+                connection.closed().await;
+            });
+        });
+
+        let (_fixture, mut fs) = lungs_fixture_with(Lungs::Socket(socket));
+        assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Ok(()));
+        let result = method_node(&fs, "result");
+        let receipt: Value =
+            serde_json::from_slice(&fs.read_bytes(result.ino, 0).unwrap()).unwrap();
+        assert_eq!(receipt["result"]["method"], "record_event");
+        assert_eq!(receipt["result"]["args"], r#"{"event":"arrival"}"#);
+        assert!(fs
+            .read_bytes(method_node(&fs, "error").ino, 0)
+            .unwrap()
+            .is_empty());
+        server.join().unwrap();
     }
 
     #[test]

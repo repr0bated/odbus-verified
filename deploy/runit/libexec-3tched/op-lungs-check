@@ -1,0 +1,70 @@
+#!/bin/sh
+# op-lungs-check — prove an identity breathes through its lungs (OD-86).
+# Installed by the release at /usr/local/libexec/3tched/op-lungs-check.
+# Read-only apart from the calls it makes, which the chain records.
+#
+# Checks each link in order and stops at the first that fails:
+#   1) the bridge serves this identity's socket,
+#   2) its lungs are mounted, in socket mode,
+#   3) its container is running,
+#   4) a call written from inside the identity comes back with a result,
+#   5) the chain records that call with the identity as its actor.
+#
+# The test call is snowball.query_events, a read. Every dispatched call is
+# recorded on the chain, so the call itself leaves the event checked in 5.
+#
+# Usage:
+#   sudo op-lungs-check [<session>]     # default: the control-plane chatbot
+set -u
+
+SESSION=${1:-${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-b0c777e3-0955-cd8b-3d01-ca12998cae28}}
+LUNGS_SOCKETS=${LUNGS_SOCKETS:-/run/opdbus/lungs}
+LUNGS_RUN=${LUNGS_RUN:-/run/opdbus-lungs}
+METHOD_DIR=/opt/run-mounts/3tched/plugins/snowball/operations/query_events
+
+pass() { printf 'PASS  %s\n' "$*"; }
+fail() { printf 'FAIL  %s\n' "$*"; exit 1; }
+
+printf '%s' "$SESSION" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' ||
+    fail "'$SESSION' is not a session id"
+printf 'identity %s\n' "$SESSION"
+
+socket=$LUNGS_SOCKETS/$SESSION.sock
+[ -S "$socket" ] || fail "bridge socket $socket is missing (bridge release, or session not configured)"
+pass "bridge serves $socket"
+
+mountpoint -q "$LUNGS_RUN/$SESSION" || fail "lungs are not mounted at $LUNGS_RUN/$SESSION (op-identity-root up $SESSION)"
+socket_mode=0
+for cmdline in /proc/[0-9]*/cmdline; do
+    tr '\0' ' ' <"$cmdline" 2>/dev/null | grep -q -- "--lungs-socket $socket" && socket_mode=1 && break
+done
+[ "$socket_mode" -eq 1 ] || fail "lungs are mounted but not over the socket (still --lungs-credential?)"
+pass "lungs mounted over the socket"
+
+incus list "$SESSION" -c s -f csv 2>/dev/null | grep -q '^RUNNING$' || fail "container $SESSION is not running"
+pass "container running"
+
+# Write from inside the identity, as the identity would.
+call() {
+    incus exec "$SESSION" -- sh -c '
+        printf "%s" "$1" >"$2/call" 2>/dev/null; status=$?
+        if [ "$status" -ne 0 ]; then cat "$2/error"; exit 1; fi
+        cat "$2/result"' sh "$1" "$METHOD_DIR"
+}
+first=$(call '{"limit":1}') || fail "call refused or failed: $first"
+total=$(printf '%s' "$first" | jq -r '.result.total_in_chain // empty')
+[ -n "$total" ] || fail "call returned no chain total: $first"
+pass "call through the lungs returned (chain holds $total events)"
+
+from=$((total > 5 ? total - 5 : 0))
+second=$(call "{\"from_event_id\":$from,\"limit\":100}") || fail "second call failed: $second"
+event=$(printf '%s' "$second" | jq -c '[.result.events[]
+    | select(.plugin_id == "snowball" and .method_name == "query_events")] | last // empty')
+[ -n "$event" ] || fail "no query_events event found on the chain after event $from"
+actor=$(printf '%s' "$event" | jq -r '.actor_id')
+[ -n "$actor" ] && [ "$actor" != null ] || fail "the chain event has no actor: $event"
+expected=${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-}
+if [ -n "$expected" ] && [ "$actor" != "$expected" ]; then
+    fail "the chain names $actor, expected $expected"
+fi
+pass "chain event $(printf '%s' "$event" | jq -r '.event_id') names actor $actor"

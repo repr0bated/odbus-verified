@@ -606,7 +606,7 @@ build_golden() {
         run install -Dm755 "$SCRIPT_DIR/../agent-runit-guard.sh" \
             "$GOLDEN_DIR/sbin/agent-runit-guard.sh"
     for helper in xray-config-mount-up emqx-prepare mcp-provider-probe opdbus-rundirs-up runit-ready-signal \
-                  op-identity-root; do
+                  op-identity-root op-lungs-check; do
         [ -f "$SCRIPT_DIR/libexec-3tched/$helper" ] &&
             run install -Dm755 "$SCRIPT_DIR/libexec-3tched/$helper" \
                 "$GOLDEN_DIR/libexec/3tched/$helper"

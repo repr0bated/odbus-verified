@@ -963,8 +963,31 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
             tracing::error!(%error, "D-Bus identity bootstrap interface failed to register");
             return;
         }
-        let router = SchemaRouter::with_engine(dbus_conn, mutation_engine_for_dbus)
-            .with_identity_resolver(identity_resolver);
+        let engine_for_lungs = mutation_engine_for_dbus.clone();
+        let router = Arc::new(
+            SchemaRouter::with_engine(dbus_conn, mutation_engine_for_dbus)
+                .with_identity_resolver(identity_resolver),
+        );
+        // The control-plane chatbot gets lungs: its own socket, bound to its
+        // session, so its 3tchedFS call files dispatch as the chatbot without
+        // a stored credential.
+        if let Some(session_id) = crate::identity_sled_dispatch::control_plane_chatbot_session_id()
+        {
+            let dir = std::env::var("OPDBUS_LUNGS_SOCKET_DIR")
+                .unwrap_or_else(|_| crate::lungs_socket::DEFAULT_LUNGS_SOCKET_DIR.to_string());
+            let identity = Arc::new(crate::lungs_socket::LungsIdentity::new(
+                engine_for_lungs,
+                session_id,
+            ));
+            let router = router.clone();
+            tokio::spawn(async move {
+                if let Err(error) =
+                    crate::lungs_socket::serve(std::path::Path::new(&dir), router, identity).await
+                {
+                    tracing::error!(%error, "control-plane chatbot lungs socket stopped");
+                }
+            });
+        }
 
         match router.register_objects().await {
             Err(e) => {

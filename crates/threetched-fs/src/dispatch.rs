@@ -20,6 +20,7 @@ const IDENTITY_OBJECT_PATH: &str = "/org/opdbus/v1/identity/dbus";
 const IDENTITY_INTERFACE: &str = "org.opdbus.v1.DbusIdentityV1";
 /// Mirrors the bridge's registration bound; larger files are not SID1.
 const MAX_CREDENTIAL_BYTES: u64 = 16 * 1024;
+const LUNGS_NEGOTIATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 #[derive(Debug, Serialize)]
 pub struct CallReceipt {
@@ -190,6 +191,40 @@ pub async fn call_as_identity(
             "bridge declined the credential".into(),
         ));
     }
+    let result = plugin_call(&connection, plugin_id, method_name, &arguments)
+        .await
+        .map_err(|error| match refusal(&error) {
+            true => LungsError::Refused(error.to_string()),
+            false => LungsError::Transport(format!("call: {error}")),
+        })?;
+    Ok(receipt(plugin_id, method_name, method, result))
+}
+
+/// Dispatch over the identity's own lungs socket. The bridge binds that
+/// socket to one session, so no credential crosses it: holding the path is
+/// the proof, and the call runs through MutationEngine as that identity.
+pub async fn call_over_socket(
+    socket: &Path,
+    plugin_id: &str,
+    method_name: &str,
+    method: &MethodDecl,
+    arguments: Value,
+) -> Result<CallReceipt, LungsError> {
+    let stream = tokio::net::UnixStream::connect(socket)
+        .await
+        .map_err(|error| {
+            LungsError::Transport(format!("connect to {}: {error}", socket.display()))
+        })?;
+    let connection = tokio::time::timeout(
+        LUNGS_NEGOTIATION_TIMEOUT,
+        zbus::connection::Builder::unix_stream(stream)
+            .p2p()
+            .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
+            .build(),
+    )
+    .await
+    .map_err(|_| LungsError::Transport("lungs socket negotiation timed out".into()))?
+    .map_err(|error| LungsError::Transport(format!("lungs socket: {error}")))?;
     let result = plugin_call(&connection, plugin_id, method_name, &arguments)
         .await
         .map_err(|error| match refusal(&error) {

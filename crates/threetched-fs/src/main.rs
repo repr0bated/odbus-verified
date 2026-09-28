@@ -110,8 +110,12 @@ enum Command {
         /// Mount as one identity's lungs: every method gets a `call` file,
         /// and a write is dispatched as that identity using the SID1 at this
         /// path on its own device.
-        #[arg(long, conflicts_with = "workspace")]
+        #[arg(long, conflicts_with_all = ["workspace", "lungs_socket"])]
         lungs_credential: Option<PathBuf>,
+        /// Mount as one identity's lungs, dispatching every `call` write over
+        /// the bridge socket bound to that identity. No credential is stored.
+        #[arg(long, conflicts_with = "workspace")]
+        lungs_socket: Option<PathBuf>,
         #[arg(long, default_value = DEFAULT_BUS_ADDRESS)]
         bus_address: String,
     },
@@ -311,28 +315,28 @@ async fn main() -> Result<()> {
             allow_other,
             auto_unmount,
             lungs_credential,
+            lungs_socket,
             bus_address,
         } => {
             if !mountpoint.is_dir() {
                 bail!("mountpoint {} is not a directory", mountpoint.display());
             }
             let target = resolve_target(&store, &target)?;
-            let lungs = lungs_credential.is_some();
+            let lungs = match (lungs_socket, lungs_credential) {
+                (Some(socket), _) => Some(Lungs::Socket(socket)),
+                (None, Some(credential)) => Some(Lungs::Credential {
+                    bus_address,
+                    credential,
+                }),
+                (None, None) => None,
+            };
             // Lungs call files need a writable mount; every other node still
             // refuses writes on its own.
-            let writable = lungs || matches!(target, ProjectionTarget::Workspace(_));
+            let writable = lungs.is_some() || matches!(target, ProjectionTarget::Workspace(_));
             // View mounts read live state from SHM; workspace mounts use
             // frozen COW objects and don't need the state directory.
-            let filesystem = match lungs_credential {
-                Some(credential) => TypedFuse::lungs(
-                    store,
-                    target,
-                    state,
-                    Lungs {
-                        bus_address,
-                        credential,
-                    },
-                )?,
+            let filesystem = match lungs {
+                Some(lungs) => TypedFuse::lungs(store, target, state, lungs)?,
                 None if matches!(target, ProjectionTarget::Workspace(_)) => {
                     TypedFuse::new(store, target)?
                 }

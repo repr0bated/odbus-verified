@@ -14,7 +14,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
     build-essential ca-certificates git curl pkg-config cmake clang llvm \
-    libclang-dev protobuf-compiler libssl-dev libdbus-1-dev \
+    libclang-dev protobuf-compiler libprotobuf-dev libssl-dev libdbus-1-dev libudev-dev \
     jq gzip tar patch binutils sudo
 
 export CXXFLAGS="${CXXFLAGS:--include cstdint}"
@@ -38,8 +38,22 @@ if [ ! -x "$CARGO_HOME/bin/rustup" ]; then
     exit 1
 fi
 
-"$CARGO_HOME/bin/rustup" toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal \
-    --component rustfmt --component clippy
+# A cut-off download leaves a toolchain directory without rustc, which
+# rustup still reports as installed. Retry, and prove rustc runs.
+installed=0
+for delay in 2 4 8 16; do
+    if "$CARGO_HOME/bin/rustup" toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal \
+        --component rustfmt --component clippy --force \
+        && "$CARGO_HOME/bin/rustc" --version; then
+        installed=1
+        break
+    fi
+    sleep "$delay"
+done
+if [ "$installed" -ne 1 ]; then
+    printf 'Rust toolchain %s did not install\n' "$RUSTUP_TOOLCHAIN" >&2
+    exit 1
+fi
 "$CARGO_HOME/bin/rustup" default "$RUSTUP_TOOLCHAIN"
 
 # Setup runs as root. The later session user must be able to run rustc and
@@ -56,7 +70,12 @@ for tool in rustup cargo rustc rustdoc rustfmt cargo-fmt cargo-clippy clippy-dri
 done
 
 if [ -f Cargo.toml ]; then
-    cargo fetch --locked
+    fetched=0
+    for delay in 2 4 8 16; do
+        cargo fetch --locked && { fetched=1; break; }
+        sleep "$delay"
+    done
+    [ "$fetched" -eq 1 ] || { printf 'cargo fetch failed\n' >&2; exit 1; }
     sh scripts/check-workspace.sh preflight
 fi
 

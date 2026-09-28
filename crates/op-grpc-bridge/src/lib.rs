@@ -61,6 +61,7 @@ mod json_schema_proto;
 mod knowledge_delivery;
 mod knowledge_inbox;
 mod large_language_model_dispatch;
+pub mod lungs_socket;
 mod mcp_config_dispatch;
 pub mod mcp_frontend;
 pub mod mcp_policy;

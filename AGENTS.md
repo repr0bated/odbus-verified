@@ -159,6 +159,15 @@ Run `/verify` before reporting work complete. CI won't catch fmt drift, clippy w
 - **Btrfs storage and transport (owner correction 2026-09-23).** Deployment remains the prepared snapshot transferred by `btrfs send/receive`. The earlier global five-subvolume limit and instruction to replace Snowball/cache subvolumes with ordinary directories are withdrawn. Preserve the original `operation-dbus-proto` cache/NUMA/timing architecture: Btrfs cache category subvolumes; authoritative timing plus vector/state subvolumes; aligned read-only snapshot sets and send/receive. See the original repo `branding/product-baseline.md` §12 and `crates/op-snowball/{DESIGN,REQUIREMENTS}.md` (R5). Retention is configurable per storage owner, not a global five-subvolume cap. Parent snapshots do not include nested subvolume contents: snapshot and transport every required member explicitly. Never flatten existing subvolumes or delete historical data to satisfy the withdrawn limit. Preserve security, writer-locking, identity and error-handling fixes while correcting storage regressions.
 - **No SQLite — use CozoDB.** CozoDB (`op-cozo-store`) is the embedded database for this project. Do not add new `rusqlite` or other SQLite use. `op-cache/src/btrfs_cache.rs` already uses a Cozo index; current `workstack_cache.rs`, `workflow_cache.rs`, `workflow_tracker.rs`, and `pattern_tracker.rs` still use `rusqlite` and remain migration debt rather than an approved pattern.
 
+## Handoff between agents
+
+Claude, Codex, Grok and any other agent share one handoff: `HANDOFF.md`. Read it
+at the start of every session, after this file. Claim your task in its *Active
+work* table before changing anything, and never reset, stash or overwrite work
+another agent has claimed there. Before the session ends, or before a context or
+usage limit, update your row and add a dated *Handoff* entry. A handoff kept only
+in one agent's private memory is invisible to the others, so it does not count.
+
 ## Signals and task board
 
 - **Append observations to `SIGNALS.md`** rather than letting them evaporate in chat. Three signal types: `💡 SUGGESTION` · `⚠️ CONCERN` · `👁️ OBSERVATION`. Each row: date · model · signal · optional `→ OD-##` link. Models leave status `open`. Promote anything actionable to `WISHLIST.md` as an `OD-##` and link it back.
