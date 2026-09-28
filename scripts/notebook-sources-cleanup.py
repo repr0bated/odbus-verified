@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """
-Consolidate /home/jeremy/.notebooklm-sources so total NotebookLM source files stay ≤300.
+Consolidate /home/jeremy/.notebooklm-sources into one NotebookLM source per LLM.
 
 Strategy:
-  • Per model folder (default): roll individual session *.md into consolidated
-    bundle files:  _bundle_001.md, _bundle_002.md, …
-  • New conversations are **appended to the end** of the latest bundle for that
-    folder (tracked by content hash in .cleanup-state.json).
-  • Global budget: max --max-sources (default 300) across all bundles + optional
-    keep-loose files; when over budget, force denser packing (larger bundles /
-    fewer bundles per folder).
+  • One source file per LLM (model folder): `_bundle_001.md`, rebuilt from every
+    session that LLM has, one section per session.
+  • A session that grew replaces its own section; nothing is appended twice and
+    no file is added. Unchanged content is never rewritten.
+  • Only when an LLM's file reaches --max-bundle-bytes does `_bundle_002.md` start.
+  • Bundles from the old append layout are moved to `_retired_bundles/`.
 
 Usage:
   notebook-sources-cleanup              # all folders
@@ -111,28 +110,6 @@ def latest_bundle(folder: Path) -> Optional[Path]:
     return b[-1] if b else None
 
 
-def _archive_session_file(folder: Path, sess: Path) -> None:
-    """Move session .md (+ companion .json) into folder/_archived_sessions/.
-
-    If the archive already has the name (prior roll), remove the loose copy.
-    """
-    arch = folder / "_archived_sessions"
-    arch.mkdir(exist_ok=True)
-    if sess.is_file():
-        dest = arch / sess.name
-        if dest.exists():
-            sess.unlink()
-        else:
-            sess.rename(dest)
-    companion = folder / f"{sess.stem}.json"
-    if companion.is_file():
-        jdest = arch / companion.name
-        if jdest.exists():
-            companion.unlink()
-        else:
-            companion.rename(jdest)
-
-
 def session_header(path: Path, model: str) -> str:
     rel = path.name
     return (
@@ -144,6 +121,31 @@ def session_header(path: Path, model: str) -> str:
     )
 
 
+def session_section(name: str, model: str, body: str) -> str:
+    """A session's section in its LLM's source. Stable text only (no clock), so an
+    unchanged session never changes the file."""
+    return (
+        f"\n\n{'=' * 72}\n"
+        f"# SESSION FILE: {name}\n"
+        f"# model_folder: {model}\n"
+        f"{'=' * 72}\n\n"
+        f"{body if body.endswith(chr(10)) else body + chr(10)}"
+    )
+
+
+def _archive_replacing(folder: Path, sess: Path) -> Path:
+    """Move a session .md (+ companion .json) into _archived_sessions/, replacing
+    the archived copy: the loose file is the newer export of the same session."""
+    arch = folder / "_archived_sessions"
+    arch.mkdir(exist_ok=True)
+    dest = arch / sess.name
+    os.replace(sess, dest)
+    companion = folder / f"{sess.stem}.json"
+    if companion.is_file():
+        os.replace(companion, arch / companion.name)
+    return dest
+
+
 def consolidate_folder(
     folder: Path,
     state: dict,
@@ -153,95 +155,74 @@ def consolidate_folder(
     verbose: bool,
     archive_sessions: bool,
 ) -> Tuple[int, int]:
-    """Append new session files into bundles. Returns (appended, skipped)."""
+    """Rebuild this LLM's source from every session it has, one section per session.
+
+    One LLM, one source file (`_bundle_001.md`). A session that grew replaces its
+    own section instead of being appended again, so nothing is duplicated and no
+    file is added. A second file appears only if the LLM's history passes
+    `max_bundle_bytes` (NotebookLM's per-source limit). Files are rewritten only
+    when their content changes. Returns (rewritten_files, unchanged_files).
+    """
     model = folder.name
-    ingested: Dict[str, Any] = state.setdefault("ingested", {})
-    sessions = sorted(p for p in folder.iterdir() if p.is_file() and is_session_md(p))
-    appended = skipped = 0
-
-    bundle = latest_bundle(folder)
-    if bundle is None or (bundle.stat().st_size if bundle.exists() else 0) >= max_bundle_bytes:
-        bundle = next_bundle_path(folder)
-        if verbose:
-            print(f"  [{model}] new bundle {bundle.name}")
-
-    # Ensure bundle has a header once
-    if not dry_run and not bundle.exists():
-        bundle.write_text(
-            f"# Consolidated sessions — {model}\n"
-            f"# Auto-maintained by notebook-sources-cleanup (append-only).\n"
-            f"# Do not hand-edit; new conversations are cat'd to the end.\n\n",
-            encoding="utf-8",
-        )
-
-    for sess in sessions:
-        key = f"{model}/{sess.name}"
-        try:
-            body = sess.read_text(encoding="utf-8", errors="replace")
-        except Exception:
-            failed_key = key
-            skipped += 1
-            continue
-        h = sha16(body)
-        prev = ingested.get(key)
-        if prev and prev.get("hash") == h:
-            # Already rolled into a bundle — still move loose files out of the tree
+    arch = folder / "_archived_sessions"
+    sessions: Dict[str, Path] = {}
+    if arch.is_dir():
+        for p in arch.iterdir():
+            if p.is_file() and is_session_md(p):
+                sessions[p.name] = p
+    for p in sorted(folder.iterdir()):
+        if p.is_file() and is_session_md(p):
+            # A loose file is the latest export of its session and wins.
             if archive_sessions and not dry_run:
-                _archive_session_file(folder, sess)
-            skipped += 1
+                sessions[p.name] = _archive_replacing(folder, p)
+            else:
+                sessions[p.name] = p
+
+    header = (
+        f"# Consolidated sessions — {model}\n"
+        f"# Auto-maintained by notebook-sources-cleanup: one section per session,\n"
+        f"# replaced in place when that session grows. Do not hand-edit.\n"
+    )
+    files: List[str] = [header]
+    for name in sorted(sessions):
+        try:
+            body = sessions[name].read_text(encoding="utf-8", errors="replace")
+        except Exception:
             continue
+        section = session_section(name, model, body)
+        if len(files[-1]) > len(header) and len(files[-1]) + len(section) > max_bundle_bytes:
+            files.append(header)
+        files[-1] += section
 
-        # rotate bundle if this append would exceed soft cap (unless empty session)
-        if not dry_run and bundle.exists() and bundle.stat().st_size + len(body) > max_bundle_bytes:
-            bundle = next_bundle_path(folder)
-            bundle.write_text(
-                f"# Consolidated sessions — {model}\n"
-                f"# Auto-maintained by notebook-sources-cleanup (append-only).\n\n",
-                encoding="utf-8",
-            )
-            if verbose:
-                print(f"  [{model}] rotated → {bundle.name}")
-
-        chunk = session_header(sess, model) + body
-        if not chunk.endswith("\n"):
-            chunk += "\n"
-
-        if dry_run:
-            if verbose:
-                print(f"  [{model}] would append {sess.name} → {bundle.name} ({len(body)} bytes)")
-            appended += 1
+    rewritten = unchanged = 0
+    targets = [folder / f"{BUNDLE_PREFIX}{i:03d}.md" for i in range(1, len(files) + 1)]
+    for target, content in zip(targets, files):
+        if target.is_file() and target.read_text(encoding="utf-8", errors="replace") == content:
+            unchanged += 1
             continue
+        if verbose:
+            print(f"  [{model}] {'would rewrite' if dry_run else 'rewrote'} {target.name}")
+        if not dry_run:
+            tmp = target.with_suffix(".md.tmp")
+            tmp.write_text(content, encoding="utf-8")
+            os.replace(tmp, target)
+        rewritten += 1
 
-        with bundle.open("a", encoding="utf-8") as f:
-            f.write(chunk)
+    # Older layouts left extra bundles (including duplicated sessions). Retire
+    # them instead of deleting: every session they held is in the archive.
+    for extra in bundle_paths(folder)[len(targets):]:
+        if verbose:
+            print(f"  [{model}] retire {extra.name}")
+        if not dry_run:
+            retired = folder / "_retired_bundles"
+            retired.mkdir(exist_ok=True)
+            os.replace(extra, retired / extra.name)
 
-        ingested[key] = {
-            "hash": h,
-            "bundle": str(bundle.relative_to(folder.parent)) if folder.parent else bundle.name,
-            "bundle_name": bundle.name,
-            "model": model,
-            "bytes": len(body),
-            "appended_at": time.time(),
-        }
-        appended += 1
-
-        # companion json: mark as rolled
-        j = sess.with_suffix(".json")
-        if archive_sessions:
-            arch = folder / "_archived_sessions"
-            if not dry_run:
-                arch.mkdir(exist_ok=True)
-                dest = arch / sess.name
-                if not dest.exists():
-                    sess.rename(dest)
-                if j.is_file():
-                    jdest = arch / j.name
-                    if not jdest.exists():
-                        j.rename(jdest)
-            if verbose:
-                print(f"  [{model}] archived {sess.name}")
-
-    return appended, skipped
+    state.setdefault("sources", {})[model] = {
+        "sessions": len(sessions),
+        "files": [t.name for t in targets],
+    }
+    return rewritten, unchanged
 
 
 def count_source_files(root: Path, *, bundles_only: bool) -> int:
@@ -456,7 +437,7 @@ def run_all(
         total_app += app
         total_skip += sk
         if verbose:
-            print(f"  [{folder.name}] appended={app} unchanged={sk} bundles={len(bundle_paths(folder))}")
+            print(f"  [{folder.name}] rewritten={app} unchanged={sk} files={len(bundle_paths(folder))}")
 
     if not dry_run:
         save_state(root, state)
@@ -465,7 +446,7 @@ def run_all(
     n_bundles = count_source_files(root, bundles_only=True)
     n_all = count_source_files(root, bundles_only=False)
     if verbose:
-        print(f"totals: appended={total_app} skipped={total_skip} bundles={n_bundles} all_md={n_all}")
+        print(f"totals: rewritten={total_app} unchanged={total_skip} sources={n_bundles} all_md={n_all}")
 
     if n_bundles > max_sources:
         pack_to_budget(
@@ -483,7 +464,7 @@ def run_all(
     if n_final == 0:
         n_final = n_all
     print(
-        f"[cleanup] appended={total_app} skipped={total_skip} "
+        f"[cleanup] rewritten={total_app} unchanged={total_skip} "
         f"bundle_sources={count_source_files(root, bundles_only=True)} "
         f"loose_sessions={sum(1 for f in list_model_folders(root) for p in f.iterdir() if is_session_md(p))} "
         f"max_sources={max_sources}"

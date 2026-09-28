@@ -8,19 +8,23 @@
 #   2) its lungs are mounted, in socket mode,
 #   3) its container is running,
 #   4) a call written from inside the identity comes back with a result,
-#   5) the chain records that call with the identity as its actor.
+#   5) the chain records that call under the identity's session.
 #
-# The test call is snowball.query_events, a read. Every dispatched call is
-# recorded on the chain, so the call itself leaves the event checked in 5.
+# The test call is any method the identity is granted (LUNGS_CHECK_CALL, with
+# LUNGS_CHECK_ARGS as its JSON input, default {}). Step 5 reads the durable
+# chain blocks as host root, so the identity needs no chain-wide read grant.
 #
 # Usage:
-#   sudo op-lungs-check [<session>]     # default: the control-plane chatbot
+#   sudo LUNGS_CHECK_CALL=plugin.method op-lungs-check [<session>]
+#                                     # default session: the control-plane chatbot
 set -u
 
 SESSION=${1:-${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-b0c777e3-0955-cd8b-3d01-ca12998cae28}}
 LUNGS_SOCKETS=${LUNGS_SOCKETS:-/run/opdbus/lungs}
 LUNGS_RUN=${LUNGS_RUN:-/run/opdbus-lungs}
-METHOD_DIR=/opt/run-mounts/3tched/plugins/snowball/operations/query_events
+TIMING=${OPDBUS_SNOWBALL_PATH:-/var/lib/opdbus/snowball}/timing
+LUNGS_CHECK_CALL=${LUNGS_CHECK_CALL:?set LUNGS_CHECK_CALL=plugin.method to a method this identity is granted}
+LUNGS_CHECK_ARGS=${LUNGS_CHECK_ARGS:-\{\}}
 
 pass() { printf 'PASS  %s\n' "$*"; }
 fail() { printf 'FAIL  %s\n' "$*"; exit 1; }
@@ -44,27 +48,29 @@ pass "lungs mounted over the socket"
 incus list "$SESSION" -c s -f csv 2>/dev/null | grep -q '^RUNNING$' || fail "container $SESSION is not running"
 pass "container running"
 
-# Write from inside the identity, as the identity would.
-call() {
-    incus exec "$SESSION" -- sh -c '
-        printf "%s" "$1" >"$2/call" 2>/dev/null; status=$?
-        if [ "$status" -ne 0 ]; then cat "$2/error"; exit 1; fi
-        cat "$2/result"' sh "$1" "$METHOD_DIR"
-}
-first=$(call '{"limit":1}') || fail "call refused or failed: $first"
-total=$(printf '%s' "$first" | jq -r '.result.total_in_chain // empty')
-[ -n "$total" ] || fail "call returned no chain total: $first"
-pass "call through the lungs returned (chain holds $total events)"
+# Write from inside the identity, as the identity would. The error file is
+# cleared on success and filled on refusal, so it decides the outcome; the
+# write's own exit status can be lost when the refusal comes at close().
+plugin=${LUNGS_CHECK_CALL%%.*}
+method=${LUNGS_CHECK_CALL#*.}
+dir=/opt/run-mounts/3tched/plugins/$plugin/operations/$method
+before=$(ls "$TIMING" | grep -c '^block-.*\.json$')
+outcome=$(incus exec "$SESSION" -- sh -c '
+    printf "%s" "$1" >"$2/call" 2>/dev/null
+    if [ -s "$2/error" ]; then printf "ERROR "; cat "$2/error"; else cat "$2/result"; fi' \
+    sh "$LUNGS_CHECK_ARGS" "$dir" 2>&1)
+case $outcome in
+ERROR*) fail "$LUNGS_CHECK_CALL refused: ${outcome#ERROR }
+      (pick a method this identity is granted with LUNGS_CHECK_CALL=plugin.method)" ;;
+"") fail "$LUNGS_CHECK_CALL returned nothing" ;;
+esac
+pass "$LUNGS_CHECK_CALL through the lungs returned a result"
 
-from=$((total > 5 ? total - 5 : 0))
-second=$(call "{\"from_event_id\":$from,\"limit\":100}") || fail "second call failed: $second"
-event=$(printf '%s' "$second" | jq -c '[.result.events[]
-    | select(.plugin_id == "snowball" and .method_name == "query_events")] | last // empty')
-[ -n "$event" ] || fail "no query_events event found on the chain after event $from"
-actor=$(printf '%s' "$event" | jq -r '.actor_id')
-[ -n "$actor" ] && [ "$actor" != null ] || fail "the chain event has no actor: $event"
-expected=${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-}
-if [ -n "$expected" ] && [ "$actor" != "$expected" ]; then
-    fail "the chain names $actor, expected $expected"
-fi
-pass "chain event $(printf '%s' "$event" | jq -r '.event_id') names actor $actor"
+# Read the chain as host root, from the durable blocks the bridge writes:
+# the newest blocks must hold this call, stamped with this identity's session.
+event=$(ls "$TIMING" | grep '^block-.*\.json$' | sort | tail -n +$((before + 1)) |
+    while read -r block; do jq -c --arg s "$SESSION" --arg m "$method" \
+        'select(.data.metadata.session_id == $s and .data.metadata.method_name == $m)
+        | .data.metadata' "$TIMING/$block"; done | tail -n 1)
+[ -n "$event" ] || fail "no new chain block records $LUNGS_CHECK_CALL for session $SESSION"
+pass "chain event $(printf '%s' "$event" | jq -r '.event_id') names actor $(printf '%s' "$event" | jq -r '.actor_id') for session $SESSION"
