@@ -165,17 +165,17 @@ pub async fn signup(
         }
 
         if let Some(ref mut map) = *map_guard {
-            if let Some(last_time) = map.get(&email) {
-                if last_time.elapsed().as_secs() < 60 {
-                    return (
-                        StatusCode::TOO_MANY_REQUESTS,
-                        Json(SignupResponse {
-                            success: false,
-                            message: "Please wait 60 seconds before requesting another login link"
-                                .to_string(),
-                        }),
-                    );
-                }
+            if let Some(last_time) = map.get(&email)
+                && last_time.elapsed().as_secs() < 60
+            {
+                return (
+                    StatusCode::TOO_MANY_REQUESTS,
+                    Json(SignupResponse {
+                        success: false,
+                        message: "Please wait 60 seconds before requesting another login link"
+                            .to_string(),
+                    }),
+                );
             }
             map.insert(email.clone(), std::time::Instant::now());
 

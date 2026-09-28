@@ -758,12 +758,12 @@ impl AntigravityProvider {
     }
 
     async fn record_response_usage(&self, model: &str, usage: Option<&TokenUsage>) -> Result<()> {
-        if self.record_usage {
-            if let Some(usage) = usage {
-                record_usage(model.to_string(), usage.clone())
-                    .await
-                    .context("provider response completed but durable usage commit failed")?;
-            }
+        if self.record_usage
+            && let Some(usage) = usage
+        {
+            record_usage(model.to_string(), usage.clone())
+                .await
+                .context("provider response completed but durable usage commit failed")?;
         }
         Ok(())
     }

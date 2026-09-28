@@ -291,10 +291,10 @@ impl AgentRegistry {
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
 
-            if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                if let Err(e) = self.load_specs_from_file(&path).await {
-                    tracing::warn!("Failed to load spec from {:?}: {}", path, e);
-                }
+            if path.extension().and_then(|s| s.to_str()) == Some("json")
+                && let Err(e) = self.load_specs_from_file(&path).await
+            {
+                tracing::warn!("Failed to load spec from {:?}: {}", path, e);
             }
         }
 
@@ -381,29 +381,30 @@ impl AgentRegistry {
     pub async fn kill_agent(&self, instance_id: &str) -> Result<()> {
         let mut handles = self.handles.write().await;
 
-        if let Some(mut handle) = handles.remove(instance_id) {
-            match &mut handle.backend {
-                AgentBackend::Process(process) => {
-                    process
-                        .kill()
-                        .await
-                        .context("Failed to kill agent process")?;
+        match handles.remove(instance_id) {
+            Some(mut handle) => {
+                match &mut handle.backend {
+                    AgentBackend::Process(process) => {
+                        process
+                            .kill()
+                            .await
+                            .context("Failed to kill agent process")?;
+                    }
+                    AgentBackend::InProcess(_) => {}
                 }
-                AgentBackend::InProcess(_) => {}
-            }
 
-            // Update instance status
-            let mut instances = self.instances.write().await;
-            if let Some(instance) = instances.get_mut(instance_id) {
-                instance.status = AgentStatus::Stopped;
-            }
+                // Update instance status
+                let mut instances = self.instances.write().await;
+                if let Some(instance) = instances.get_mut(instance_id) {
+                    instance.status = AgentStatus::Stopped;
+                }
 
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!(
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!(
                 "Agent instance '{}' not found",
                 instance_id
-            ))
+            )),
         }
     }
 

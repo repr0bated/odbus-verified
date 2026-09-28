@@ -58,20 +58,20 @@ impl SearchSpecialistAgent {
     fn extract_query(task: &AgentTask) -> String {
         if let Some(raw) = task.args.as_deref() {
             if let Ok(parsed) = serde_json::from_str::<Value>(raw) {
-                if let Some(query) = parsed.get("query").and_then(|v| v.as_str()) {
-                    if !query.trim().is_empty() {
-                        return query.trim().to_string();
-                    }
+                if let Some(query) = parsed.get("query").and_then(|v| v.as_str())
+                    && !query.trim().is_empty()
+                {
+                    return query.trim().to_string();
                 }
-                if let Some(requested) = parsed.get("requested").and_then(|v| v.as_str()) {
-                    if !requested.trim().is_empty() {
-                        return requested.trim().to_string();
-                    }
+                if let Some(requested) = parsed.get("requested").and_then(|v| v.as_str())
+                    && !requested.trim().is_empty()
+                {
+                    return requested.trim().to_string();
                 }
-                if let Some(object_type) = parsed.get("object_type").and_then(|v| v.as_str()) {
-                    if !object_type.trim().is_empty() {
-                        return object_type.trim().to_string();
-                    }
+                if let Some(object_type) = parsed.get("object_type").and_then(|v| v.as_str())
+                    && !object_type.trim().is_empty()
+                {
+                    return object_type.trim().to_string();
                 }
             }
             if !raw.trim().is_empty() {
@@ -87,10 +87,10 @@ impl SearchSpecialistAgent {
             .build()
             .map_err(|e| format!("build HTTP client failed: {}", e))?;
 
-        if let Ok(results) = Self::brave_search(&client, query, limit).await {
-            if !results.is_empty() {
-                return Ok(results);
-            }
+        if let Ok(results) = Self::brave_search(&client, query, limit).await
+            && !results.is_empty()
+        {
+            return Ok(results);
         }
 
         Self::duckduckgo_search(&client, query, limit).await

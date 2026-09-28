@@ -538,17 +538,16 @@ pub fn normalize_notebooklm_result(method: &str, mut result: Value) -> anyhow::R
         }
         return Ok(serde_json::json!({field: result}));
     }
-    if method == "studio_create" {
-        if let Some(object) = result.as_object_mut() {
-            if let Some(encoded) = object.remove("mind_map_json") {
-                let text = encoded.as_str().ok_or_else(|| {
-                    anyhow!("nlm studio_create returned a non-string mind_map_json")
-                })?;
-                let mind_map: Value = serde_json::from_str(text)
-                    .context("nlm studio_create returned invalid mind-map JSON")?;
-                object.insert("mind_map".into(), mind_map);
-            }
-        }
+    if method == "studio_create"
+        && let Some(object) = result.as_object_mut()
+        && let Some(encoded) = object.remove("mind_map_json")
+    {
+        let text = encoded
+            .as_str()
+            .ok_or_else(|| anyhow!("nlm studio_create returned a non-string mind_map_json"))?;
+        let mind_map: Value = serde_json::from_str(text)
+            .context("nlm studio_create returned invalid mind-map JSON")?;
+        object.insert("mind_map".into(), mind_map);
     }
     Ok(result)
 }
@@ -624,11 +623,11 @@ fn source_add_argv(args: &Value, selected: Option<&str>) -> anyhow::Result<Vec<S
         "drive" => {
             argv.push("--drive".into());
             argv.push(require_str(args, &["document_id", "drive", "id"])?);
-            if let Some(kind) = arg_str(args, &["doc_type", "type"]) {
-                if kind != "drive" {
-                    argv.push("--type".into());
-                    argv.push(kind);
-                }
+            if let Some(kind) = arg_str(args, &["doc_type", "type"])
+                && kind != "drive"
+            {
+                argv.push("--type".into());
+                argv.push(kind);
             }
         }
         other => bail!("unsupported source_type '{other}'"),
@@ -704,10 +703,10 @@ fn studio_create_argv(args: &Value, selected: Option<&str>) -> anyhow::Result<Ve
         argv.push("--prompt".into());
         argv.push(prompt);
     }
-    if artifact == "data_table" || artifact == "data-table" {
-        if let Some(description) = arg_str(args, &["description"]) {
-            argv.insert(3, description);
-        }
+    if (artifact == "data_table" || artifact == "data-table")
+        && let Some(description) = arg_str(args, &["description"])
+    {
+        argv.insert(3, description);
     }
     Ok(argv)
 }
@@ -738,12 +737,12 @@ fn studio_status_argv(args: &Value, selected: Option<&str>) -> anyhow::Result<Ve
         argv.push("--artifact-id".into());
         argv.push(artifact);
     }
-    if let Some(action) = arg_str(args, &["action"]) {
-        if action == "rename" {
-            let artifact = require_str(args, &["artifact_id"])?;
-            let title = require_str(args, &["new_title", "title"])?;
-            return Ok(vec_owned(["studio", "rename", &artifact, &title]));
-        }
+    if let Some(action) = arg_str(args, &["action"])
+        && action == "rename"
+    {
+        let artifact = require_str(args, &["artifact_id"])?;
+        let title = require_str(args, &["new_title", "title"])?;
+        return Ok(vec_owned(["studio", "rename", &artifact, &title]));
     }
     Ok(argv)
 }
@@ -1362,7 +1361,8 @@ mod tests {
 
     #[test]
     fn default_bin_is_usr_local_not_usr_bin() {
-        std::env::remove_var("OP_NLM_BIN");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_NLM_BIN") };
         assert_eq!(nlm_bin().as_os_str(), "/usr/local/bin/nlm");
     }
 

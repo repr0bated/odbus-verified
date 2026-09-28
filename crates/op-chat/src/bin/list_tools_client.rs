@@ -28,12 +28,12 @@ async fn main() -> Result<()> {
 
     if response.success {
         println!("Successfully listed tools:");
-        if let Some(tools_value) = response.result {
-            if let Some(tools_array) = tools_value.get("tools").and_then(Value::as_array) {
-                for tool_def in tools_array {
-                    if let Some(name) = tool_def.get("name").and_then(Value::as_str) {
-                        println!("- {}", name);
-                    }
+        if let Some(tools_value) = response.result
+            && let Some(tools_array) = tools_value.get("tools").and_then(Value::as_array)
+        {
+            for tool_def in tools_array {
+                if let Some(name) = tool_def.get("name").and_then(Value::as_str) {
+                    println!("- {}", name);
                 }
             }
         }

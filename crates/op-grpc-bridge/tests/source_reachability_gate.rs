@@ -115,10 +115,10 @@ fn mod_declarations(source: &str) -> Vec<(Option<String>, String)> {
     for raw in source.lines() {
         let line = raw.trim();
         if let Some(rest) = line.strip_prefix("#[path") {
-            if let Some(start) = rest.find('"') {
-                if let Some(end) = rest[start + 1..].find('"') {
-                    pending_path = Some(rest[start + 1..start + 1 + end].to_string());
-                }
+            if let Some(start) = rest.find('"')
+                && let Some(end) = rest[start + 1..].find('"')
+            {
+                pending_path = Some(rest[start + 1..start + 1 + end].to_string());
             }
             // `#[path = "x"] mod y;` on one line falls through below.
             if !line.contains(" mod ") {

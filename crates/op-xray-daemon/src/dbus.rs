@@ -38,10 +38,10 @@ fn find_xray_pids() -> Vec<nix::unistd::Pid> {
         let Ok(pid) = entry.file_name().to_string_lossy().parse::<i32>() else {
             continue;
         };
-        if let Ok(comm) = std::fs::read_to_string(entry.path().join("comm")) {
-            if comm.trim() == "xray" {
-                pids.push(nix::unistd::Pid::from_raw(pid));
-            }
+        if let Ok(comm) = std::fs::read_to_string(entry.path().join("comm"))
+            && comm.trim() == "xray"
+        {
+            pids.push(nix::unistd::Pid::from_raw(pid));
         }
     }
     pids

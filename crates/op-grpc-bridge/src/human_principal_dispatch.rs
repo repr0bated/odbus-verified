@@ -405,8 +405,10 @@ pub(crate) mod tests {
     impl Drop for TempCozo {
         fn drop(&mut self) {
             match self.previous_path.take() {
-                Some(path) => std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", path),
-                None => std::env::remove_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH"),
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                Some(path) => unsafe { std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", path) },
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                None => unsafe { std::env::remove_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH") },
             }
         }
     }
@@ -421,8 +423,10 @@ pub(crate) mod tests {
         fn drop(&mut self) {
             for (key, value) in &self.environment {
                 match value {
-                    Some(value) => std::env::set_var(key, value),
-                    None => std::env::remove_var(key),
+                    // FIXME: Audit that the environment access only happens in single-threaded code.
+                    Some(value) => unsafe { std::env::set_var(key, value) },
+                    // FIXME: Audit that the environment access only happens in single-threaded code.
+                    None => unsafe { std::env::remove_var(key) },
                 }
             }
         }
@@ -441,7 +445,8 @@ pub(crate) mod tests {
         let guard = test_registry_guard();
         let dir = tempfile::tempdir().expect("tempdir");
         let previous_path = std::env::var_os("OP_HUMAN_PRINCIPAL_COZO_DB_PATH");
-        std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", dir.path().join("cozo"));
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", dir.path().join("cozo")) };
         TempCozo {
             _guard: guard,
             _dir: dir,
@@ -482,8 +487,10 @@ pub(crate) mod tests {
                 ))
                 .unwrap();
         }
-        std::env::set_var("OP_SHM_STATE_DIR", dir.path());
-        std::env::set_var("OP_BLOB_CATALOG_DIR", catalog);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_SHM_STATE_DIR", dir.path()) };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_BLOB_CATALOG_DIR", catalog) };
         TempShm {
             _guard: guard,
             _dir: dir,
@@ -949,7 +956,8 @@ pub(crate) mod tests {
         };
         let grants_dir = tempfile::tempdir().expect("grants dir");
         let grants_path = grants_dir.path().join("capability-grants.json");
-        std::env::set_var("OP_GRANTS_PATH", &grants_path);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_GRANTS_PATH", &grants_path) };
 
         for (method, decl) in &methods {
             let capability = decl["required_capability"]
@@ -998,7 +1006,8 @@ pub(crate) mod tests {
                 "{method} must be permitted with its grant"
             );
         }
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
 
     /// VAL-REGISTRY-021: malformed pubkeys are rejected with zero state change.
@@ -1112,7 +1121,8 @@ pub(crate) mod tests {
             .expect("serialize grants"),
         )
         .expect("write grants");
-        std::env::set_var("OP_GRANTS_PATH", &grants_path);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_GRANTS_PATH", &grants_path) };
 
         let engine = test_engine();
         let iface = SchemaBackedInterface::with_engine(
@@ -1156,7 +1166,8 @@ pub(crate) mod tests {
         );
         assert_eq!(before["result"]["principals"].as_array().unwrap().len(), 0);
 
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
 
     fn human_principal_route() -> PluginRoute {
@@ -1238,10 +1249,13 @@ pub(crate) mod tests {
         // A path UNDER A FILE can never become a directory (ENOTDIR) — a
         // deterministic unwritable location on any host.
         let blocker = tempfile::NamedTempFile::new().expect("blocker file");
-        std::env::set_var(
-            "OP_HUMAN_PRINCIPAL_COZO_DB_PATH",
-            blocker.path().join("cozo"),
-        );
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe {
+            std::env::set_var(
+                "OP_HUMAN_PRINCIPAL_COZO_DB_PATH",
+                blocker.path().join("cozo"),
+            )
+        };
 
         let result = register(&pk(26), "blocked").await;
         assert!(result.is_err(), "unwritable store must error, not panic");

@@ -370,8 +370,8 @@ impl McpClient {
     /// Check if this server has a tool (by prefixed name)
     pub async fn has_tool(&self, name: &str) -> bool {
         let tools = self.cached_tools.read().await;
-        let result = tools.iter().any(|t| t.name == name);
-        result
+
+        tools.iter().any(|t| t.name == name)
     }
 
     /// Health check

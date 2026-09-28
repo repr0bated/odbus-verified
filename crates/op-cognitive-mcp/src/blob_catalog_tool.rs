@@ -130,10 +130,10 @@ impl Tool for BlobCatalogTool {
                 if let Some(cat) = category_filter {
                     let schema_value = serde_json::to_value(schema.clone())
                         .with_context(|| format!("failed to serialize schema for '{id}'"))?;
-                    if let Some(plugin_category) = schema_value.get("category") {
-                        if plugin_category.as_str().unwrap_or("") != cat {
-                            continue; // Skip plugins not matching category
-                        }
+                    if let Some(plugin_category) = schema_value.get("category")
+                        && plugin_category.as_str().unwrap_or("") != cat
+                    {
+                        continue; // Skip plugins not matching category
                     }
                 }
 

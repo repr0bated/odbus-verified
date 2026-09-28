@@ -434,8 +434,10 @@ mod tests {
         fn drop(&mut self) {
             for (key, value) in &self.0 {
                 match value {
-                    Some(value) => std::env::set_var(key, value),
-                    None => std::env::remove_var(key),
+                    // FIXME: Audit that the environment access only happens in single-threaded code.
+                    Some(value) => unsafe { std::env::set_var(key, value) },
+                    // FIXME: Audit that the environment access only happens in single-threaded code.
+                    None => unsafe { std::env::remove_var(key) },
                 }
             }
         }
@@ -453,16 +455,21 @@ mod tests {
             .map(|key| (key, std::env::var_os(key)))
             .collect(),
         );
-        std::env::set_var("COGNITIVE_MCP_SEARCH_DEADLINE_MS", "100");
-        std::env::set_var("COGNITIVE_MCP_COMPLETION_DEADLINE_MS", "100");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("COGNITIVE_MCP_SEARCH_DEADLINE_MS", "100") };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("COGNITIVE_MCP_COMPLETION_DEADLINE_MS", "100") };
         let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
             .await
             .unwrap();
         let port = listener.local_addr().unwrap().port();
-        std::env::set_var(
-            "EMBEDDING_VOYAGE_CREDENTIAL_ORIGIN",
-            format!("https://127.0.0.1:{port}"),
-        );
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe {
+            std::env::set_var(
+                "EMBEDDING_VOYAGE_CREDENTIAL_ORIGIN",
+                format!("https://127.0.0.1:{port}"),
+            )
+        };
         let acceptor = tokio::spawn(async move {
             let mut sockets = Vec::new();
             for _ in 0..8 {

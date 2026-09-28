@@ -25,10 +25,10 @@ pub mod attorneys {
     impl OliviaScal {
         pub fn validate_controls(schema: &Value) -> std::result::Result<(), ComplianceError> {
             // Check for security control metadata
-            if let Some(caps) = schema.get("capabilities") {
-                if caps.get("requires_root").and_then(|v| v.as_bool()) == Some(true) {
-                    tracing::warn!("Plugin requires root; OSCAL assessment recommended");
-                }
+            if let Some(caps) = schema.get("capabilities")
+                && caps.get("requires_root").and_then(|v| v.as_bool()) == Some(true)
+            {
+                tracing::warn!("Plugin requires root; OSCAL assessment recommended");
             }
             Ok(())
         }
@@ -39,17 +39,14 @@ pub mod attorneys {
     impl EugeneRisk {
         pub fn validate_ai_risk(schema: &Value) -> std::result::Result<(), ComplianceError> {
             // If it's an AI/ML plugin, check for transparency requirements
-            if schema.get("plugin_type").and_then(|v| v.as_str()) == Some("custom") {
-                if let Some(meta) = schema.get("schema") {
-                    if meta.get("model_name").is_some()
-                        && meta.get("training_data_source").is_none()
-                    {
-                        return Err(ComplianceError::Validation(
-                            "EU AI Act violation: Training data source must be declared for models"
-                                .into(),
-                        ));
-                    }
-                }
+            if schema.get("plugin_type").and_then(|v| v.as_str()) == Some("custom")
+                && let Some(meta) = schema.get("schema")
+                && meta.get("model_name").is_some()
+                && meta.get("training_data_source").is_none()
+            {
+                return Err(ComplianceError::Validation(
+                    "EU AI Act violation: Training data source must be declared for models".into(),
+                ));
             }
             Ok(())
         }
@@ -225,12 +222,12 @@ impl LawFirm {
                 }
             }
         }
-        if let Some(plugin_schema) = object.get("schema") {
-            if !plugin_schema.is_object() {
-                return Err(ComplianceError::Validation(
-                    "schema must be an object".into(),
-                ));
-            }
+        if let Some(plugin_schema) = object.get("schema")
+            && !plugin_schema.is_object()
+        {
+            return Err(ComplianceError::Validation(
+                "schema must be an object".into(),
+            ));
         }
         Ok(())
     }

@@ -129,10 +129,11 @@ impl IntrospectiveGadget {
                 .collect();
 
             for (format_name, parser) in all_parsers {
-                if format_name != detected_format && format_name != "auto" {
-                    if let Ok(result) = parser.parse(&input).await {
-                        results.push(result);
-                    }
+                if format_name != detected_format
+                    && format_name != "auto"
+                    && let Ok(result) = parser.parse(&input).await
+                {
+                    results.push(result);
                 }
             }
         }
@@ -405,10 +406,10 @@ impl IntrospectiveGadget {
             if byte.is_ascii_alphanumeric() || byte.is_ascii_punctuation() || byte == b' ' {
                 current_string.push(byte);
             } else {
-                if current_string.len() >= 4 {
-                    if let Ok(s) = String::from_utf8(current_string.clone()) {
-                        strings.push(s);
-                    }
+                if current_string.len() >= 4
+                    && let Ok(s) = String::from_utf8(current_string.clone())
+                {
+                    strings.push(s);
                 }
                 current_string.clear();
             }
@@ -519,12 +520,12 @@ impl IntrospectiveGadget {
 
         if let Some(env_array) = config["Env"].as_array() {
             for env_var in env_array {
-                if let Some(env_str) = env_var.as_str() {
-                    if let Some(eq_pos) = env_str.find('=') {
-                        let key = &env_str[..eq_pos];
-                        let value = &env_str[eq_pos + 1..];
-                        env.insert(key.to_string(), value.to_string());
-                    }
+                if let Some(env_str) = env_var.as_str()
+                    && let Some(eq_pos) = env_str.find('=')
+                {
+                    let key = &env_str[..eq_pos];
+                    let value = &env_str[eq_pos + 1..];
+                    env.insert(key.to_string(), value.to_string());
                 }
             }
         }

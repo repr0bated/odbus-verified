@@ -300,10 +300,10 @@ impl SessionContextState {
 
         // Keep window size bounded
         while self.activity_window.len() > ACTIVITY_WINDOW_SIZE {
-            if let Some(removed) = self.activity_window.pop_front() {
-                if removed.activity_type.is_error_signal() {
-                    self.recent_error_count = self.recent_error_count.saturating_sub(1);
-                }
+            if let Some(removed) = self.activity_window.pop_front()
+                && removed.activity_type.is_error_signal()
+            {
+                self.recent_error_count = self.recent_error_count.saturating_sub(1);
             }
         }
 
@@ -531,16 +531,16 @@ impl ContextAwarenessEngine {
         );
 
         if event.activity_type == ActivityType::Error {
-            let should_assist = if let Some(entry) = self.session_states.get(&event.session_id) {
-                let state = entry.read().await;
-                state.can_push() && !state.is_suppressed(PushTrigger::ErrorAssistance)
-            } else {
-                false
-            };
-            if should_assist {
-                if let Err(e) = self.evaluate_error_assistance(&event.session_id).await {
-                    warn!(error = %e, "Error assistance evaluation failed");
+            let should_assist = match self.session_states.get(&event.session_id) {
+                Some(entry) => {
+                    let state = entry.read().await;
+                    state.can_push() && !state.is_suppressed(PushTrigger::ErrorAssistance)
                 }
+                _ => false,
+            };
+            if should_assist && let Err(e) = self.evaluate_error_assistance(&event.session_id).await
+            {
+                warn!(error = %e, "Error assistance evaluation failed");
             }
         }
         if self.config.proactive_enabled {
@@ -549,31 +549,33 @@ impl ContextAwarenessEngine {
     }
 
     async fn evaluate_session_by_id(&self, session_id: &str) {
-        let evaluation = if let Some(entry) = self.session_states.get(session_id) {
-            let state = entry.read().await;
-            if !state.can_push() {
+        let evaluation = match self.session_states.get(session_id) {
+            Some(entry) => {
+                let state = entry.read().await;
+                if !state.can_push() {
+                    return;
+                }
+                self.evaluate_session(&state).await
+            }
+            _ => {
                 return;
             }
-            self.evaluate_session(&state).await
-        } else {
-            return;
         };
 
-        if evaluation.should_push && evaluation.relevance_score >= self.config.min_relevance_score {
-            if let Some(trigger) = evaluation.trigger {
-                if let Err(e) = self
-                    .generate_and_push(
-                        session_id,
-                        trigger,
-                        evaluation.trigger_reason,
-                        evaluation.relevance_score,
-                        evaluation.context_query,
-                    )
-                    .await
-                {
-                    warn!(error = %e, %session_id, "Failed to generate knowledge push");
-                }
-            }
+        if evaluation.should_push
+            && evaluation.relevance_score >= self.config.min_relevance_score
+            && let Some(trigger) = evaluation.trigger
+            && let Err(e) = self
+                .generate_and_push(
+                    session_id,
+                    trigger,
+                    evaluation.trigger_reason,
+                    evaluation.relevance_score,
+                    evaluation.context_query,
+                )
+                .await
+        {
+            warn!(error = %e, %session_id, "Failed to generate knowledge push");
         }
     }
 

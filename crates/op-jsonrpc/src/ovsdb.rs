@@ -74,10 +74,10 @@ impl OvsdbDbusClient {
         debug!("OVSDB response: {}", response_text.trim());
         let response: Value = Self::parse_json_response(&response_text)?;
 
-        if let Some(error) = response.get("error") {
-            if !error.is_null() {
-                return Err(anyhow::anyhow!("OVSDB error: {}", error));
-            }
+        if let Some(error) = response.get("error")
+            && !error.is_null()
+        {
+            return Err(anyhow::anyhow!("OVSDB error: {}", error));
         }
 
         Ok(response["result"].clone())
@@ -352,10 +352,10 @@ impl OvsdbDbusClient {
         let result = self.transact("Open_vSwitch", operations).await?;
 
         let mut port_uuids = Vec::new();
-        if let Some(rows) = result[0]["rows"].as_array() {
-            if let Some(first_row) = rows.first() {
-                port_uuids = Self::extract_uuid_set(&first_row["ports"]);
-            }
+        if let Some(rows) = result[0]["rows"].as_array()
+            && let Some(first_row) = rows.first()
+        {
+            port_uuids = Self::extract_uuid_set(&first_row["ports"]);
         }
 
         // Get port names
@@ -369,12 +369,11 @@ impl OvsdbDbusClient {
             }]);
 
             let result = self.transact("Open_vSwitch", ops).await?;
-            if let Some(rows) = result[0]["rows"].as_array() {
-                if let Some(first_row) = rows.first() {
-                    if let Some(name) = first_row["name"].as_str() {
-                        port_names.push(name.to_string());
-                    }
-                }
+            if let Some(rows) = result[0]["rows"].as_array()
+                && let Some(first_row) = rows.first()
+                && let Some(name) = first_row["name"].as_str()
+            {
+                port_names.push(name.to_string());
             }
         }
 
@@ -491,12 +490,11 @@ impl OvsdbDbusClient {
 
                 let mut line_clone = line.clone();
                 if let Ok(update) = unsafe { simd_json::from_str::<Value>(line_clone.as_mut_str()) }
+                    && let Some(method) = update.get("method").and_then(|m| m.as_str())
+                    && method == "update"
+                    && tx.send(update).await.is_err()
                 {
-                    if let Some(method) = update.get("method").and_then(|m| m.as_str()) {
-                        if method == "update" && tx.send(update).await.is_err() {
-                            break;
-                        }
-                    }
+                    break;
                 }
                 line.clear();
             }
@@ -515,14 +513,13 @@ impl OvsdbDbusClient {
         }]);
 
         let result = self.transact("Open_vSwitch", operations).await?;
-        if let Some(rows) = result[0]["rows"].as_array() {
-            if let Some(first_row) = rows.first() {
-                if let Some(uuid_array) = first_row["_uuid"].as_array() {
-                    if uuid_array.len() == 2 && uuid_array[0] == "uuid" {
-                        return Ok(uuid_array[1].as_str().unwrap().to_string());
-                    }
-                }
-            }
+        if let Some(rows) = result[0]["rows"].as_array()
+            && let Some(first_row) = rows.first()
+            && let Some(uuid_array) = first_row["_uuid"].as_array()
+            && uuid_array.len() == 2
+            && uuid_array[0] == "uuid"
+        {
+            return Ok(uuid_array[1].as_str().unwrap().to_string());
         }
         Err(anyhow::anyhow!("Bridge '{}' not found", name))
     }
@@ -541,10 +538,10 @@ impl OvsdbDbusClient {
         let result = self.transact("Open_vSwitch", operations).await?;
 
         let mut port_uuids = Vec::new();
-        if let Some(rows) = result[0]["rows"].as_array() {
-            if let Some(first_row) = rows.first() {
-                port_uuids = Self::extract_uuid_set(&first_row["ports"]);
-            }
+        if let Some(rows) = result[0]["rows"].as_array()
+            && let Some(first_row) = rows.first()
+        {
+            port_uuids = Self::extract_uuid_set(&first_row["ports"]);
         }
 
         let mut port_names = Vec::new();
@@ -557,12 +554,11 @@ impl OvsdbDbusClient {
             }]);
 
             let result = self.transact("Open_vSwitch", ops).await?;
-            if let Some(rows) = result[0]["rows"].as_array() {
-                if let Some(first_row) = rows.first() {
-                    if let Some(name) = first_row["name"].as_str() {
-                        port_names.push(name.to_string());
-                    }
-                }
+            if let Some(rows) = result[0]["rows"].as_array()
+                && let Some(first_row) = rows.first()
+                && let Some(name) = first_row["name"].as_str()
+            {
+                port_names.push(name.to_string());
             }
         }
 
@@ -579,15 +575,15 @@ impl OvsdbDbusClient {
     fn extract_uuid_set(value: &Value) -> Vec<String> {
         // RFC7047 allows set columns to be encoded either as ["set", [...]]
         // or directly as a single atom (e.g. ["uuid", "..."]).
-        if let Some(as_set) = value.as_array() {
-            if as_set.len() == 2 && as_set[0] == "set" {
-                if let Some(items) = as_set[1].as_array() {
-                    return items
-                        .iter()
-                        .filter_map(Self::extract_uuid_atom)
-                        .collect::<Vec<_>>();
-                }
-            }
+        if let Some(as_set) = value.as_array()
+            && as_set.len() == 2
+            && as_set[0] == "set"
+            && let Some(items) = as_set[1].as_array()
+        {
+            return items
+                .iter()
+                .filter_map(Self::extract_uuid_atom)
+                .collect::<Vec<_>>();
         }
         Self::extract_uuid_atom(value).into_iter().collect()
     }
@@ -609,12 +605,11 @@ impl OvsdbDbusClient {
         }]);
 
         let result = self.transact("Open_vSwitch", operations).await?;
-        if let Some(rows) = result[0]["rows"].as_array() {
-            if let Some(first_row) = rows.first() {
-                if let Some(uuid) = Self::extract_uuid_atom(&first_row["_uuid"]) {
-                    return Ok(uuid);
-                }
-            }
+        if let Some(rows) = result[0]["rows"].as_array()
+            && let Some(first_row) = rows.first()
+            && let Some(uuid) = Self::extract_uuid_atom(&first_row["_uuid"])
+        {
+            return Ok(uuid);
         }
         Err(anyhow::anyhow!("{} '{}' not found", table, name))
     }

@@ -402,13 +402,13 @@ impl OrchestratorService for OrchestratorServiceImpl {
         let cache_misses = steps.iter().filter(|s| !s.cached).count() as u32;
 
         // Track pattern if workstack
-        if use_workstack {
-            if let Some(suggestion) = self.track_pattern(&agent_ids, total_latency_ms).await {
-                info!(
-                    "🔥 Pattern '{}' detected ({} calls)",
-                    suggestion.suggested_name, suggestion.call_count
-                );
-            }
+        if use_workstack
+            && let Some(suggestion) = self.track_pattern(&agent_ids, total_latency_ms).await
+        {
+            info!(
+                "🔥 Pattern '{}' detected ({} calls)",
+                suggestion.suggested_name, suggestion.call_count
+            );
         }
 
         Ok(Response::new(OrchestratorResponse {

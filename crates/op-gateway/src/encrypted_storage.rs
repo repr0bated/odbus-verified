@@ -497,14 +497,12 @@ impl EncryptedKeyStorage {
 
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
-            if let Some(extension) = path.extension() {
-                if extension == "key" {
-                    if let Some(stem) = path.file_stem() {
-                        if let Some(key_id) = stem.to_str() {
-                            keys.push(key_id.to_string());
-                        }
-                    }
-                }
+            if let Some(extension) = path.extension()
+                && extension == "key"
+                && let Some(stem) = path.file_stem()
+                && let Some(key_id) = stem.to_str()
+            {
+                keys.push(key_id.to_string());
             }
         }
 

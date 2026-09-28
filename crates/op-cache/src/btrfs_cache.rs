@@ -1591,14 +1591,14 @@ mod tests {
                     .args(["subvolume", "delete"])
                     .arg(path)
                     .output();
-                if let Ok(output) = output {
-                    if !output.status.success() {
-                        eprintln!(
-                            "test subvolume cleanup failed for {}: {}",
-                            path.display(),
-                            String::from_utf8_lossy(&output.stderr)
-                        );
-                    }
+                if let Ok(output) = output
+                    && !output.status.success()
+                {
+                    eprintln!(
+                        "test subvolume cleanup failed for {}: {}",
+                        path.display(),
+                        String::from_utf8_lossy(&output.stderr)
+                    );
                 }
             }
             let snapshots = self.path().join("@cache-snapshots");

@@ -103,10 +103,9 @@ impl ToolExecutor for DefaultToolExecutor {
     }
 
     async fn execute_tool(&self, name: &str, arguments: Value) -> Result<Value> {
-        if let Some(tool) = self.registry.get(name).await {
-            tool.execute(arguments).await
-        } else {
-            Err(anyhow::anyhow!("Tool not found: {}", name))
+        match self.registry.get(name).await {
+            Some(tool) => tool.execute(arguments).await,
+            _ => Err(anyhow::anyhow!("Tool not found: {}", name)),
         }
     }
 

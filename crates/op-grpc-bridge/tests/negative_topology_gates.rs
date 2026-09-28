@@ -321,11 +321,11 @@ fn strip_cfg_test_modules(source: &str) -> String {
             while i < source.len() && source.as_bytes()[i].is_ascii_whitespace() {
                 i += 1;
             }
-            if source[i..].starts_with("mod ") {
-                if let Some(end) = find_balanced_block_end(source, i) {
-                    i = end;
-                    continue;
-                }
+            if source[i..].starts_with("mod ")
+                && let Some(end) = find_balanced_block_end(source, i)
+            {
+                i = end;
+                continue;
             }
         }
         let ch = source[i..].chars().next().expect("valid utf-8");

@@ -58,7 +58,7 @@ impl PythonExecutor {
         let mut cmd_args = vec![temp_path.as_str()];
         cmd_args.extend(args);
 
-        let result = match self
+        match self
             .base
             .execute_command("python3", &cmd_args, None, 60)
             .await
@@ -72,8 +72,7 @@ impl PythonExecutor {
                 },
             ),
             Err(e) => AgentResponse::failure(e),
-        };
-        result
+        }
     }
 
     async fn run_pytest(&self, path: &str, args: &[&str]) -> AgentResponse {

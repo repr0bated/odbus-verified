@@ -147,7 +147,7 @@ impl GrpcClient {
         &mut self,
         tool_name: &str,
         arguments: Value,
-    ) -> Result<impl futures::Stream<Item = Result<ToolOutput, tonic::Status>>> {
+    ) -> Result<impl futures::Stream<Item = Result<ToolOutput, tonic::Status>> + use<>> {
         let request = CallToolRequest {
             tool_name: tool_name.to_string(),
             arguments: simd_to_prost_struct(&arguments)
@@ -166,7 +166,7 @@ impl GrpcClient {
     pub async fn subscribe(
         &mut self,
         event_types: Vec<String>,
-    ) -> Result<impl futures::Stream<Item = Result<McpEvent, tonic::Status>>> {
+    ) -> Result<impl futures::Stream<Item = Result<McpEvent, tonic::Status>> + use<>> {
         let request = SubscribeRequest {
             event_types,
             session_id: self.session_id.clone(),

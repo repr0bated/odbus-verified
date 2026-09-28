@@ -247,10 +247,10 @@ impl CodeFilter {
         if self.exclude_tests && r.is_test {
             return false;
         }
-        if let Some(p) = &self.path_contains {
-            if !r.file_path.to_lowercase().contains(&p.to_lowercase()) {
-                return false;
-            }
+        if let Some(p) = &self.path_contains
+            && !r.file_path.to_lowercase().contains(&p.to_lowercase())
+        {
+            return false;
         }
         if let Some(s) = &self.symbol_contains {
             let needle = s.to_lowercase();

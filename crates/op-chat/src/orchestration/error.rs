@@ -408,10 +408,10 @@ impl From<OrchestrationError> for tonic::Status {
         let mut status = tonic::Status::new(code, err.message.clone());
 
         // Add error details as metadata
-        if let Some(ref details) = err.details {
-            if let Ok(val) = details.parse() {
-                let _ = status.metadata_mut().insert("x-error-details", val);
-            }
+        if let Some(ref details) = err.details
+            && let Ok(val) = details.parse()
+        {
+            let _ = status.metadata_mut().insert("x-error-details", val);
         }
 
         if let Ok(val) = err.code.as_str().parse() {
@@ -422,10 +422,10 @@ impl From<OrchestrationError> for tonic::Status {
             if let Ok(val) = "true".parse() {
                 let _ = status.metadata_mut().insert("x-retryable", val);
             }
-            if let Some(delay) = err.retry_delay() {
-                if let Ok(val) = delay.as_millis().to_string().parse() {
-                    let _ = status.metadata_mut().insert("x-retry-after-ms", val);
-                }
+            if let Some(delay) = err.retry_delay()
+                && let Ok(val) = delay.as_millis().to_string().parse()
+            {
+                let _ = status.metadata_mut().insert("x-retry-after-ms", val);
             }
         }
 

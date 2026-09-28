@@ -100,11 +100,11 @@ impl Store {
 
     pub async fn delete_service(&self, name: &ServiceName) -> Result<()> {
         let mut guard = self.data.write().await;
-        if let Some(removed) = guard.services.remove(name.as_str()) {
-            if let Err(error) = self.flush_catalog(&guard).await {
-                guard.services.insert(name.as_str().to_string(), removed);
-                return Err(error);
-            }
+        if let Some(removed) = guard.services.remove(name.as_str())
+            && let Err(error) = self.flush_catalog(&guard).await
+        {
+            guard.services.insert(name.as_str().to_string(), removed);
+            return Err(error);
         }
         Ok(())
     }

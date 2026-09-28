@@ -165,11 +165,11 @@ impl HeadlessOAuthProvider {
         // Check cache
         {
             let cache = self.cached_token.read().unwrap();
-            if let Some(ref cached) = *cache {
-                if !cached.token.is_expired() {
-                    debug!("Using cached OAuth token");
-                    return Ok(cached.token.access_token.clone());
-                }
+            if let Some(ref cached) = *cache
+                && !cached.token.is_expired()
+            {
+                debug!("Using cached OAuth token");
+                return Ok(cached.token.access_token.clone());
             }
         }
 

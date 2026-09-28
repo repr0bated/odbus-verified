@@ -64,10 +64,10 @@ fn validate_document(bytes: &[u8]) -> Result<()> {
                 bail!("grant entry for {principal_id} repeats capability {capability}");
             }
         }
-        if let Some(alias) = entry.get("display_alias") {
-            if !alias.is_string() {
-                bail!("display_alias for {principal_id} must be a string");
-            }
+        if let Some(alias) = entry.get("display_alias")
+            && !alias.is_string()
+        {
+            bail!("display_alias for {principal_id} must be a string");
         }
     }
     Ok(())

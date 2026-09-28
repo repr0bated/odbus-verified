@@ -737,18 +737,16 @@ impl McpBackend for MutationEngineMcpBackend {
         // Reject calls outside the selected projection before resolving any
         // catalog entries or provider readiness. The later projection still
         // enforces the caller's exact grants and the provider's health.
-        if !policy.is_hot_tool(name) {
-            if let Some(selection) = selection {
-                if !Self::selected_set(&policy, selection)?
-                    .tools
-                    .iter()
-                    .any(|tool| tool == name)
-                {
-                    anyhow::bail!(
-                        "AccessDenied: tool '{name}' is not in the current HOT/toolset projection"
-                    );
-                }
-            }
+        if !policy.is_hot_tool(name)
+            && let Some(selection) = selection
+            && !Self::selected_set(&policy, selection)?
+                .tools
+                .iter()
+                .any(|tool| tool == name)
+        {
+            anyhow::bail!(
+                "AccessDenied: tool '{name}' is not in the current HOT/toolset projection"
+            );
         }
         if !policy.is_hot_tool(name) && selection.is_none() {
             let sets: Vec<_> = policy
@@ -2152,10 +2150,10 @@ fn decode_http_assertion(encoded: &str) -> Result<Vec<u8>, McpAuthError> {
 }
 
 fn peer_addr(extensions: &axum::http::Extensions) -> Option<SocketAddr> {
-    if let Some(info) = extensions.get::<TcpConnectInfo>() {
-        if let Some(addr) = info.remote_addr() {
-            return Some(addr);
-        }
+    if let Some(info) = extensions.get::<TcpConnectInfo>()
+        && let Some(addr) = info.remote_addr()
+    {
+        return Some(addr);
     }
     extensions
         .get::<TlsConnectInfo<TcpConnectInfo>>()

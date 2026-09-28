@@ -2702,12 +2702,14 @@ mod human_principal_tests {
             human_principal_cozo_db_path(),
             PathBuf::from(DEFAULT_HUMAN_PRINCIPAL_COZO_DB_PATH)
         );
-        std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", "/tmp/hp-override");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", "/tmp/hp-override") };
         assert_eq!(
             human_principal_cozo_db_path(),
             PathBuf::from("/tmp/hp-override")
         );
-        std::env::remove_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH") };
         assert_eq!(
             human_principal_cozo_db_path(),
             PathBuf::from(DEFAULT_HUMAN_PRINCIPAL_COZO_DB_PATH)

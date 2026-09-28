@@ -47,20 +47,17 @@ async fn resolve_listen_addr() -> anyhow::Result<SocketAddr> {
     let iface =
         std::env::var("OP_DBUS_GRPC_IFACE").unwrap_or_else(|_| DEFAULT_GRPC_IFACE.to_string());
 
-    if let Ok(interfaces) = list_interfaces().await {
-        if let Some(ni) = interfaces.iter().find(|i| i.name == iface) {
-            if let Some(ip) = ni
-                .addresses
-                .iter()
-                .find(|a| a.family == "AF_INET" || a.address.parse::<std::net::Ipv4Addr>().is_ok())
-                .and_then(|a| a.address.split('/').next().map(|s| s.to_string()))
-            {
-                if let Ok(addr) = format!("{}:{}", ip, port).parse::<SocketAddr>() {
-                    info!(iface = %iface, %ip, port, "discovered ovsbr0 bind address");
-                    return Ok(addr);
-                }
-            }
-        }
+    if let Ok(interfaces) = list_interfaces().await
+        && let Some(ni) = interfaces.iter().find(|i| i.name == iface)
+        && let Some(ip) = ni
+            .addresses
+            .iter()
+            .find(|a| a.family == "AF_INET" || a.address.parse::<std::net::Ipv4Addr>().is_ok())
+            .and_then(|a| a.address.split('/').next().map(|s| s.to_string()))
+        && let Ok(addr) = format!("{}:{}", ip, port).parse::<SocketAddr>()
+    {
+        info!(iface = %iface, %ip, port, "discovered ovsbr0 bind address");
+        return Ok(addr);
     }
 
     anyhow::bail!(

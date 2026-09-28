@@ -58,7 +58,8 @@ async fn private_native_fixture(
     )
     .unwrap();
     let previous = std::env::var_os("OP_GRANTS_PATH");
-    std::env::set_var("OP_GRANTS_PATH", &grants_path);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_GRANTS_PATH", &grants_path) };
     (engine, shm, identity, grants_dir, previous, registry)
 }
 

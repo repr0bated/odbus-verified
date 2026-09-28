@@ -180,38 +180,37 @@ async fn search_code(query: &str, _repo: Option<&str>, limit: usize) -> Result<V
         .ok();
 
     let mut snippets = Vec::new();
-    if let Some(r) = response {
-        if let Ok(json) = r.json::<serde_json::Value>().await {
-            if let Some(results) = json.pointer("/result/points").and_then(|p| p.as_array()) {
-                for point in results {
-                    if let Some(payload) = point.pointer("/payload") {
-                        snippets.push(CodeSnippet {
-                            file: payload
-                                .pointer("/file")
-                                .and_then(|f| f.as_str())
-                                .unwrap_or("")
-                                .to_string(),
-                            function: payload
-                                .pointer("/function")
-                                .and_then(|f| f.as_str())
-                                .map(|s| s.to_string()),
-                            language: payload
-                                .pointer("/language")
-                                .and_then(|l| l.as_str())
-                                .unwrap_or("")
-                                .to_string(),
-                            code: payload
-                                .pointer("/code")
-                                .and_then(|c| c.as_str())
-                                .unwrap_or("")
-                                .to_string(),
-                            similarity: point
-                                .pointer("/score")
-                                .and_then(|s| s.as_f64())
-                                .unwrap_or(0.0),
-                        });
-                    }
-                }
+    if let Some(r) = response
+        && let Ok(json) = r.json::<serde_json::Value>().await
+        && let Some(results) = json.pointer("/result/points").and_then(|p| p.as_array())
+    {
+        for point in results {
+            if let Some(payload) = point.pointer("/payload") {
+                snippets.push(CodeSnippet {
+                    file: payload
+                        .pointer("/file")
+                        .and_then(|f| f.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    function: payload
+                        .pointer("/function")
+                        .and_then(|f| f.as_str())
+                        .map(|s| s.to_string()),
+                    language: payload
+                        .pointer("/language")
+                        .and_then(|l| l.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    code: payload
+                        .pointer("/code")
+                        .and_then(|c| c.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    similarity: point
+                        .pointer("/score")
+                        .and_then(|s| s.as_f64())
+                        .unwrap_or(0.0),
+                });
             }
         }
     }

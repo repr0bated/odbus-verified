@@ -241,20 +241,20 @@ impl ServiceManager {
         self.store.delete_service(name).await?;
 
         let active = service_path(RUNIT_ACTIVE_DIR, name);
-        if let Err(e) = tokio::fs::remove_file(&active).await {
-            if e.kind() != std::io::ErrorKind::NotFound {
-                warn!("Failed to disable runit service {}: {}", name, e);
-            }
+        if let Err(e) = tokio::fs::remove_file(&active).await
+            && e.kind() != std::io::ErrorKind::NotFound
+        {
+            warn!("Failed to disable runit service {}: {}", name, e);
         }
         let definition = service_path(RUNIT_SERVICE_DIR, name);
-        if let Err(e) = tokio::fs::remove_dir_all(&definition).await {
-            if e.kind() != std::io::ErrorKind::NotFound {
-                warn!(
-                    "Failed to remove runit service directory {}: {}",
-                    definition.display(),
-                    e
-                );
-            }
+        if let Err(e) = tokio::fs::remove_dir_all(&definition).await
+            && e.kind() != std::io::ErrorKind::NotFound
+        {
+            warn!(
+                "Failed to remove runit service directory {}: {}",
+                definition.display(),
+                e
+            );
         }
 
         // Clear runtime status
@@ -278,10 +278,10 @@ impl ServiceManager {
             service.install()?;
         } else {
             let _ = self.stop(name).await;
-            if let Err(e) = tokio::fs::remove_file(&active).await {
-                if e.kind() != std::io::ErrorKind::NotFound {
-                    return Err(e.into());
-                }
+            if let Err(e) = tokio::fs::remove_file(&active).await
+                && e.kind() != std::io::ErrorKind::NotFound
+            {
+                return Err(e.into());
             }
         }
         Ok(())

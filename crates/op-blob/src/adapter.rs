@@ -79,13 +79,13 @@ pub fn try_plugin_schema_from_json(
 
 /// Follow a single `$ref` into `$defs`/`definitions`, recursively.
 fn resolve<'a>(node: &'a JVal, defs: Option<&'a Map<String, JVal>>) -> &'a JVal {
-    if let (Some(r), Some(d)) = (node.get("$ref").and_then(JVal::as_str), defs) {
-        if let Some(key) = r.rsplit('/').next() {
-            let key = op_state_store::state_schema_shape::decode_component(key)
-                .expect("producer preflight checked the local reference");
-            if let Some(target) = d.get(&key) {
-                return resolve(target, defs);
-            }
+    if let (Some(r), Some(d)) = (node.get("$ref").and_then(JVal::as_str), defs)
+        && let Some(key) = r.rsplit('/').next()
+    {
+        let key = op_state_store::state_schema_shape::decode_component(key)
+            .expect("producer preflight checked the local reference");
+        if let Some(target) = d.get(&key) {
+            return resolve(target, defs);
         }
     }
     node
@@ -169,12 +169,11 @@ fn field_type(node: &JVal, defs: Option<&Map<String, JVal>>) -> FieldType {
         }
         Some("object") => {
             let named = node.get("properties").and_then(JVal::as_object);
-            if named.is_none_or(|properties| properties.is_empty()) {
-                if let Some(additional) = node.get("additionalProperties") {
-                    if additional != &JVal::Bool(false) {
-                        return FieldType::Map(Box::new(field_type(additional, defs)));
-                    }
-                }
+            if named.is_none_or(|properties| properties.is_empty())
+                && let Some(additional) = node.get("additionalProperties")
+                && additional != &JVal::Bool(false)
+            {
+                return FieldType::Map(Box::new(field_type(additional, defs)));
             }
             let req = required_set(node);
             let mut m = HashMap::new();
@@ -271,12 +270,12 @@ fn constraints(node: &JVal) -> Vec<Constraint> {
 pub fn apply_state_defaults(schema: &mut PluginSchema, state: &JVal) {
     fn set_field_defaults(field: &mut FieldSchema, value: &JVal) {
         field.default = Some(value.clone());
-        if let FieldType::Object(ref mut inner) = field.field_type {
-            if let Some(obj) = value.as_object() {
-                for (k, v) in obj.iter() {
-                    if let Some(f) = inner.get_mut(k.as_str()) {
-                        set_field_defaults(f, v);
-                    }
+        if let FieldType::Object(ref mut inner) = field.field_type
+            && let Some(obj) = value.as_object()
+        {
+            for (k, v) in obj.iter() {
+                if let Some(f) = inner.get_mut(k.as_str()) {
+                    set_field_defaults(f, v);
                 }
             }
         }

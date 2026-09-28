@@ -86,16 +86,16 @@ impl AgentPoolConfig {
             config.base_address = addr;
         }
 
-        if let Ok(timeout) = std::env::var("OP_AGENT_CONNECT_TIMEOUT_MS") {
-            if let Ok(ms) = timeout.parse::<u64>() {
-                config.connect_timeout = Duration::from_millis(ms);
-            }
+        if let Ok(timeout) = std::env::var("OP_AGENT_CONNECT_TIMEOUT_MS")
+            && let Ok(ms) = timeout.parse::<u64>()
+        {
+            config.connect_timeout = Duration::from_millis(ms);
         }
 
-        if let Ok(timeout) = std::env::var("OP_AGENT_REQUEST_TIMEOUT_MS") {
-            if let Ok(ms) = timeout.parse::<u64>() {
-                config.request_timeout = Duration::from_millis(ms);
-            }
+        if let Ok(timeout) = std::env::var("OP_AGENT_REQUEST_TIMEOUT_MS")
+            && let Ok(ms) = timeout.parse::<u64>()
+        {
+            config.request_timeout = Duration::from_millis(ms);
         }
 
         if let Ok(agents) = std::env::var("OP_RUN_ON_CONNECTION_AGENTS") {
@@ -181,12 +181,12 @@ impl CircuitBreaker {
             CircuitState::Closed => true,
             CircuitState::Open => {
                 // Check if reset timeout has passed
-                if let Some(last) = self.last_failure {
-                    if last.elapsed() >= self.reset_timeout {
-                        self.state = CircuitState::HalfOpen;
-                        debug!("Circuit breaker transitioning to half-open");
-                        return true;
-                    }
+                if let Some(last) = self.last_failure
+                    && last.elapsed() >= self.reset_timeout
+                {
+                    self.state = CircuitState::HalfOpen;
+                    debug!("Circuit breaker transitioning to half-open");
+                    return true;
                 }
                 false
             }
@@ -479,11 +479,11 @@ impl GrpcAgentPool {
         // Check if already connected
         {
             let connections = self.connections.read().await;
-            if let Some(conn) = connections.get(agent_id) {
-                if conn.connected {
-                    debug!(agent = %agent_id, "Agent already connected");
-                    return Ok(());
-                }
+            if let Some(conn) = connections.get(agent_id)
+                && conn.connected
+            {
+                debug!(agent = %agent_id, "Agent already connected");
+                return Ok(());
             }
         }
 
@@ -573,13 +573,13 @@ impl GrpcAgentPool {
     async fn check_circuit_breaker(&self, agent_id: &str) -> OrchestrationResult<()> {
         let mut connections = self.connections.write().await;
 
-        if let Some(conn) = connections.get_mut(agent_id) {
-            if !conn.circuit_breaker.can_execute() {
-                return Err(OrchestrationError::agent_unavailable(
-                    agent_id,
-                    "Circuit breaker is open",
-                ));
-            }
+        if let Some(conn) = connections.get_mut(agent_id)
+            && !conn.circuit_breaker.can_execute()
+        {
+            return Err(OrchestrationError::agent_unavailable(
+                agent_id,
+                "Circuit breaker is open",
+            ));
         }
 
         Ok(())

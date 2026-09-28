@@ -284,10 +284,8 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                                     method.in_args.push(arg);
                                 }
                             }
-                        } else if in_signal {
-                            if let Some(ref mut signal) = current_signal {
-                                signal.args.push(arg);
-                            }
+                        } else if in_signal && let Some(ref mut signal) = current_signal {
+                            signal.args.push(arg);
                         }
                     }
                     _ => {}
@@ -406,10 +404,8 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                                     method.in_args.push(arg);
                                 }
                             }
-                        } else if in_signal {
-                            if let Some(ref mut signal) = current_signal {
-                                signal.args.push(arg);
-                            }
+                        } else if in_signal && let Some(ref mut signal) = current_signal {
+                            signal.args.push(arg);
                         }
                     }
                     _ => {}
@@ -430,18 +426,18 @@ fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
                     }
                     "method" => {
                         in_method = false;
-                        if let Some(method) = current_method.take() {
-                            if let Some(ref mut iface) = current_interface {
-                                iface.methods.push(method);
-                            }
+                        if let Some(method) = current_method.take()
+                            && let Some(ref mut iface) = current_interface
+                        {
+                            iface.methods.push(method);
                         }
                     }
                     "signal" => {
                         in_signal = false;
-                        if let Some(signal) = current_signal.take() {
-                            if let Some(ref mut iface) = current_interface {
-                                iface.signals.push(signal);
-                            }
+                        if let Some(signal) = current_signal.take()
+                            && let Some(ref mut iface) = current_interface
+                        {
+                            iface.signals.push(signal);
                         }
                     }
                     _ => {}

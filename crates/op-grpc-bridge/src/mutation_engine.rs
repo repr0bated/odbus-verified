@@ -677,10 +677,10 @@ fn redact_identity_method_credentials(
                 .flatten()
         });
     redact_identity_credentials_json(value);
-    if let Some(credential) = own_credential {
-        if let Some(identity) = value.get_mut("identity").and_then(|v| v.as_object_mut()) {
-            identity.insert("sealed_id".to_owned(), credential);
-        }
+    if let Some(credential) = own_credential
+        && let Some(identity) = value.get_mut("identity").and_then(|v| v.as_object_mut())
+    {
+        identity.insert("sealed_id".to_owned(), credential);
     }
 }
 
@@ -811,19 +811,19 @@ impl MutationEngine {
         }
         let session_id = op_identity::session::derive_session_id(wireguard_pubkey);
         let principal_id = op_identity::session::derive_principal_id(wireguard_pubkey);
-        if let Ok(expected) = std::env::var("OP_CONTROL_PLANE_CHATBOT_SESSION_ID") {
-            if expected.trim() != session_id {
-                anyhow::bail!(
-                    "configured control-plane chatbot session_id does not match its WireGuard key"
-                );
-            }
+        if let Ok(expected) = std::env::var("OP_CONTROL_PLANE_CHATBOT_SESSION_ID")
+            && expected.trim() != session_id
+        {
+            anyhow::bail!(
+                "configured control-plane chatbot session_id does not match its WireGuard key"
+            );
         }
-        if let Ok(expected) = std::env::var("OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID") {
-            if expected.trim() != principal_id {
-                anyhow::bail!(
-                    "configured control-plane chatbot principal_id does not match its WireGuard key"
-                );
-            }
+        if let Ok(expected) = std::env::var("OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID")
+            && expected.trim() != principal_id
+        {
+            anyhow::bail!(
+                "configured control-plane chatbot principal_id does not match its WireGuard key"
+            );
         }
         match crate::human_principal_dispatch::resolve_key_for_assertion(wireguard_pubkey).await {
             Ok(Some(record)) if record.revoked_at != 0 => {
@@ -892,17 +892,15 @@ impl MutationEngine {
         }
         let session_id = op_identity::session::derive_session_id(wireguard_pubkey);
         let principal_id = op_identity::session::derive_principal_id(wireguard_pubkey);
-        if let Ok(expected) = std::env::var("OP_LOCAL_HUMAN_SESSION_ID") {
-            if expected.trim() != session_id {
-                anyhow::bail!("configured local human session_id does not match its WireGuard key");
-            }
+        if let Ok(expected) = std::env::var("OP_LOCAL_HUMAN_SESSION_ID")
+            && expected.trim() != session_id
+        {
+            anyhow::bail!("configured local human session_id does not match its WireGuard key");
         }
-        if let Ok(expected) = std::env::var("OP_LOCAL_HUMAN_PRINCIPAL_ID") {
-            if expected.trim() != principal_id {
-                anyhow::bail!(
-                    "configured local human principal_id does not match its WireGuard key"
-                );
-            }
+        if let Ok(expected) = std::env::var("OP_LOCAL_HUMAN_PRINCIPAL_ID")
+            && expected.trim() != principal_id
+        {
+            anyhow::bail!("configured local human principal_id does not match its WireGuard key");
         }
         match crate::human_principal_dispatch::resolve_key_for_assertion(wireguard_pubkey).await {
             Ok(Some(record)) if record.revoked_at != 0 => {
@@ -2610,14 +2608,14 @@ impl MutationEngine {
             // Legacy identity callers may wrap the object in one positional
             // argument. This is the same normalization the identity adapters
             // below consume; no other plugin gains an argument alias.
-            if matches!(plugin_id.as_str(), "identity_sled" | "human_principal") {
-                if let serde_json::Value::Array(items) = &arguments {
-                    anyhow::ensure!(
-                        items.len() == 1,
-                        "identity method requires one argument object"
-                    );
-                    arguments = items[0].clone();
-                }
+            if matches!(plugin_id.as_str(), "identity_sled" | "human_principal")
+                && let serde_json::Value::Array(items) = &arguments
+            {
+                anyhow::ensure!(
+                    items.len() == 1,
+                    "identity method requires one argument object"
+                );
+                arguments = items[0].clone();
             }
             crate::method_contract_admission::validate_admitted_arguments(
                 &declaration,
@@ -2653,14 +2651,11 @@ impl MutationEngine {
                             }
                         }
                         "add_port" => {
-                            if let Some(args) = value.as_array() {
-                                if args.len() >= 2 {
-                                    if let (Some(br), Some(port)) =
-                                        (args[0].as_str(), args[1].as_str())
-                                    {
-                                        self.ovsdb.add_port(br, port).await?;
-                                    }
-                                }
+                            if let Some(args) = value.as_array()
+                                && args.len() >= 2
+                                && let (Some(br), Some(port)) = (args[0].as_str(), args[1].as_str())
+                            {
+                                self.ovsdb.add_port(br, port).await?;
                             }
                         }
                         _ => {
@@ -2679,18 +2674,18 @@ impl MutationEngine {
                         }
                     }
                 }
-            } else if change_type == ChangeType::PropertySet {
-                if let Some(prop) = &member_name {
-                    // Extract bridge name from path if possible
-                    // Path format: /org/opdbus/v1/ovsdb/Bridge/bridge_name
-                    let parts: Vec<&str> = object_path.split('/').collect();
-                    if parts.len() >= 6 && parts[4] == "Bridge" {
-                        let br_name = parts[5].replace('_', "-");
-                        if let Some(val_str) = value.as_str() {
-                            self.ovsdb
-                                .set_bridge_property(&br_name, prop, val_str)
-                                .await?;
-                        }
+            } else if change_type == ChangeType::PropertySet
+                && let Some(prop) = &member_name
+            {
+                // Extract bridge name from path if possible
+                // Path format: /org/opdbus/v1/ovsdb/Bridge/bridge_name
+                let parts: Vec<&str> = object_path.split('/').collect();
+                if parts.len() >= 6 && parts[4] == "Bridge" {
+                    let br_name = parts[5].replace('_', "-");
+                    if let Some(val_str) = value.as_str() {
+                        self.ovsdb
+                            .set_bridge_property(&br_name, prop, val_str)
+                            .await?;
                     }
                 }
             }
@@ -4316,11 +4311,11 @@ impl MutationEngine {
             } else {
                 None
             };
-            if method == "get_identity" {
-                if let Some(session) = own_session.as_deref() {
-                    crate::identity_sled_dispatch::activate_human_session_on_login(self, session)
-                        .await?;
-                }
+            if method == "get_identity"
+                && let Some(session) = own_session.as_deref()
+            {
+                crate::identity_sled_dispatch::activate_human_session_on_login(self, session)
+                    .await?;
             }
             redact_identity_method_credentials(method, own_session.as_deref(), &mut method_result);
         }
@@ -4502,9 +4497,8 @@ impl MutationEngine {
             }
             let provenance = bundle.provenance();
             // The turn itself is session activity for the context engine.
-            if has_memory {
-                if let Ok(runtime) = self.cognitive_mcp().await {
-                    runtime
+            if has_memory && let Ok(runtime) = self.cognitive_mcp().await {
+                runtime
                     .context_engine()
                     .record_activity(
                         &scope.session_id,
@@ -4513,7 +4507,6 @@ impl MutationEngine {
                         serde_json::json!({ "source": "tched_router.chat", "context": provenance }),
                     )
                     .await;
-                }
             }
             // Selected model on tched-router (:8084). Tools are compact MCP on
             // that agent; the bridge does not own a second provider state.
@@ -4892,30 +4885,29 @@ impl MutationEngine {
                         | "refresh_auth"
                         | "save_auth_tokens"
                         | "server_info"
-                ) {
-                    if let Some(status) = crate::nlm_cli::auth_status_from_value(&result) {
-                        if let Err(error) = crate::nlm_cli::apply_ready_marker(
-                            crate::nlm_cli::NOTEBOOKLM_AUTH_READY,
-                            crate::nlm_cli::ready_marker_action(&status),
-                        ) {
-                            tracing::warn!(
-                                %error,
-                                "could not update NotebookLM authentication readiness"
-                            );
-                        }
-                        if let Some(object) = result.as_object_mut() {
+                ) && let Some(status) = crate::nlm_cli::auth_status_from_value(&result)
+                {
+                    if let Err(error) = crate::nlm_cli::apply_ready_marker(
+                        crate::nlm_cli::NOTEBOOKLM_AUTH_READY,
+                        crate::nlm_cli::ready_marker_action(&status),
+                    ) {
+                        tracing::warn!(
+                            %error,
+                            "could not update NotebookLM authentication readiness"
+                        );
+                    }
+                    if let Some(object) = result.as_object_mut() {
+                        object.insert(
+                            "authenticated".into(),
+                            serde_json::Value::Bool(status == "configured"),
+                        );
+                        if status == "stale" {
                             object.insert(
-                                "authenticated".into(),
-                                serde_json::Value::Bool(status == "configured"),
+                                "hint".into(),
+                                serde_json::Value::String(
+                                    "auth_status is stale; run setup_auth".into(),
+                                ),
                             );
-                            if status == "stale" {
-                                object.insert(
-                                    "hint".into(),
-                                    serde_json::Value::String(
-                                        "auth_status is stale; run setup_auth".into(),
-                                    ),
-                                );
-                            }
                         }
                     }
                 }
@@ -6127,10 +6119,10 @@ impl MutationEngine {
         let input = simd_json::serde::to_owned_value(&tool_args)?;
         let result = runtime.tool_registry().execute(&tool_name, input).await?;
         let mut value = serde_json::to_value(result)?;
-        if method == "memory_list_namespaces" {
-            if let Some(context) = &memory_context {
-                crate::memory_binding::filter_listing(context, &mut value);
-            }
+        if method == "memory_list_namespaces"
+            && let Some(context) = &memory_context
+        {
+            crate::memory_binding::filter_listing(context, &mut value);
         }
         // Executor outcomes are session activity: a failing build or test is
         // exactly what the context engine's `build_error`/`test_failure`
@@ -6284,10 +6276,10 @@ fn map_schema_method_to_tool(
         // Gemini question answering: the tool names the field `question`.
         "gemini_query" => {
             let mut v = base.clone();
-            if let Some(obj) = v.as_object_mut() {
-                if let Some(q) = obj.remove("query") {
-                    obj.insert("question".to_string(), q);
-                }
+            if let Some(obj) = v.as_object_mut()
+                && let Some(q) = obj.remove("query")
+            {
+                obj.insert("question".to_string(), q);
             }
             Ok(("ask_question".into(), v))
         }

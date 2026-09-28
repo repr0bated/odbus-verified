@@ -1449,10 +1449,10 @@ impl Tool for DbusGetAllPropertiesTool {
 
         let mut all_properties = json!({});
         for iface in info.interfaces {
-            if let Some(filter) = interface_filter {
-                if iface.name != filter {
-                    continue;
-                }
+            if let Some(filter) = interface_filter
+                && iface.name != filter
+            {
+                continue;
             }
 
             let interface_name = zbus::names::InterfaceName::try_from(iface.name.as_str())?;

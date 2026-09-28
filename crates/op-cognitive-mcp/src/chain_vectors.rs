@@ -348,14 +348,13 @@ impl ChainVectorIndex {
                 host_load: HostLoad::sample(),
                 policy: if lines.is_some() { "schema" } else { "flatten" }.into(),
             };
-            if let Ok(meta_value) = simd_json::serde::to_owned_value(&meta) {
-                if let Err(error) = self
+            if let Ok(meta_value) = simd_json::serde::to_owned_value(&meta)
+                && let Err(error) = self
                     .chain
                     .attach_vector_meta(block.block_num, &meta_value)
                     .await
-                {
-                    tracing::warn!(%error, block = block.block_num, "vector sidecar not written");
-                }
+            {
+                tracing::warn!(%error, block = block.block_num, "vector sidecar not written");
             }
             if write_qdrant {
                 self.upsert_block(block, vector).await?;
@@ -366,11 +365,9 @@ impl ChainVectorIndex {
 
         // Watermark tracks Qdrant coverage, not chain vector coverage. Bump it
         // only when this pass actually wrote the index (manual exception).
-        if write_qdrant {
-            if let Some(highest) = pending.iter().map(|block| block.block_num).max() {
-                let watermark = self.read_indexed_block().await?.max(highest);
-                self.write_indexed_block(watermark).await?;
-            }
+        if write_qdrant && let Some(highest) = pending.iter().map(|block| block.block_num).max() {
+            let watermark = self.read_indexed_block().await?.max(highest);
+            self.write_indexed_block(watermark).await?;
         }
 
         tracing::info!(

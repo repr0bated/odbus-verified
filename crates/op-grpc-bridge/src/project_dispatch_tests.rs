@@ -12,8 +12,10 @@ struct GrantsEnvironment(Option<std::ffi::OsString>);
 impl Drop for GrantsEnvironment {
     fn drop(&mut self) {
         match self.0.take() {
-            Some(path) => std::env::set_var("OP_GRANTS_PATH", path),
-            None => std::env::remove_var("OP_GRANTS_PATH"),
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            Some(path) => unsafe { std::env::set_var("OP_GRANTS_PATH", path) },
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            None => unsafe { std::env::remove_var("OP_GRANTS_PATH") },
         }
     }
 }
@@ -69,7 +71,8 @@ async fn project_membership_and_context_methods_enforce_durable_session_ownershi
     let root = tempfile::tempdir().unwrap();
     let _environment = GrantsEnvironment(std::env::var_os("OP_GRANTS_PATH"));
     let grants_path = root.path().join("grants.json");
-    std::env::set_var("OP_GRANTS_PATH", &grants_path);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_GRANTS_PATH", &grants_path) };
     let mut identities = Vec::new();
     for (byte, name) in [(0xD5, "project-owner"), (0xD6, "project-member")] {
         let key = pk(byte);

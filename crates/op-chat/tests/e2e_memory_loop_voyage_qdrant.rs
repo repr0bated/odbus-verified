@@ -66,8 +66,10 @@ async fn post_turn_memory_is_vectorized_and_semantically_reinjected() -> Result<
 }
 
 async fn run_probe(url: &str, collection: &str) -> Result<()> {
-    std::env::set_var("COGNITIVE_MCP_QDRANT_URL", url);
-    std::env::set_var("COGNITIVE_MCP_USER_MEMORY_COLLECTION", collection);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("COGNITIVE_MCP_QDRANT_URL", url) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("COGNITIVE_MCP_USER_MEMORY_COLLECTION", collection) };
 
     let cozo =
         Arc::new(CozoGraphShuttle::new_in_memory().context("creating in-memory CozoDB for probe")?);

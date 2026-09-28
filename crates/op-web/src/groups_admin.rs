@@ -44,15 +44,15 @@ impl GroupsConfig {
         let mut profiles = HashMap::new();
 
         // Try to load from disk
-        if let Ok(content) = std::fs::read_to_string(GROUPS_CONFIG_PATH) {
-            if let Ok(saved) = serde_json::from_str::<HashMap<String, EnabledGroups>>(&content) {
-                info!(
-                    "Loaded {} tool group profiles from {}",
-                    saved.len(),
-                    GROUPS_CONFIG_PATH
-                );
-                profiles = saved;
-            }
+        if let Ok(content) = std::fs::read_to_string(GROUPS_CONFIG_PATH)
+            && let Ok(saved) = serde_json::from_str::<HashMap<String, EnabledGroups>>(&content)
+        {
+            info!(
+                "Loaded {} tool group profiles from {}",
+                saved.len(),
+                GROUPS_CONFIG_PATH
+            );
+            profiles = saved;
         }
 
         // Default profile
@@ -97,10 +97,10 @@ impl GroupsConfig {
     }
 
     async fn save_to_disk(&self) {
-        if let Ok(json) = simd_json::to_string_pretty(&*self.profiles.read().await) {
-            if let Err(e) = tokio::fs::write(GROUPS_CONFIG_PATH, json).await {
-                tracing::error!("Failed to save groups config: {}", e);
-            }
+        if let Ok(json) = simd_json::to_string_pretty(&*self.profiles.read().await)
+            && let Err(e) = tokio::fs::write(GROUPS_CONFIG_PATH, json).await
+        {
+            tracing::error!("Failed to save groups config: {}", e);
         }
     }
 }

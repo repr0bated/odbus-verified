@@ -657,10 +657,12 @@ mod tests {
 
     #[test]
     fn test_resolve_env_var() {
-        std::env::set_var("TEST_TOKEN", "secret123");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("TEST_TOKEN", "secret123") };
         assert_eq!(resolve_env_var("${TEST_TOKEN}"), "secret123");
         assert_eq!(resolve_env_var("plain_value"), "plain_value");
-        std::env::remove_var("TEST_TOKEN");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("TEST_TOKEN") };
     }
 
     #[test]

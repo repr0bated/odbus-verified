@@ -364,7 +364,7 @@ pub async fn dispatch_dnsresolver_method_on(
         };
     }
     macro_rules! mutation {
-        ($call:expr) => {{
+        ($call:expr_2021) => {{
             $call.await?;
             Ok(serde_json::to_value(DnsMutationOutput {
                 disposition: "accepted".to_string(),

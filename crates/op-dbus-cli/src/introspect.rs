@@ -404,10 +404,8 @@ fn parse_interfaces(xml: &str) -> Result<Vec<InterfaceInfo>> {
                                     m.in_args.push(arg);
                                 }
                             }
-                        } else if in_signal {
-                            if let Some(ref mut s) = current_signal {
-                                s.args.push(arg);
-                            }
+                        } else if in_signal && let Some(ref mut s) = current_signal {
+                            s.args.push(arg);
                         }
                     }
                     _ => {}
@@ -524,10 +522,8 @@ fn parse_interfaces(xml: &str) -> Result<Vec<InterfaceInfo>> {
                                     m.in_args.push(arg);
                                 }
                             }
-                        } else if in_signal {
-                            if let Some(ref mut s) = current_signal {
-                                s.args.push(arg);
-                            }
+                        } else if in_signal && let Some(ref mut s) = current_signal {
+                            s.args.push(arg);
                         }
                     }
                     "node" if depth == 1 => {
@@ -548,18 +544,18 @@ fn parse_interfaces(xml: &str) -> Result<Vec<InterfaceInfo>> {
                     }
                     "method" => {
                         in_method = false;
-                        if let Some(method) = current_method.take() {
-                            if let Some(ref mut iface) = current_iface {
-                                iface.methods.push(method);
-                            }
+                        if let Some(method) = current_method.take()
+                            && let Some(ref mut iface) = current_iface
+                        {
+                            iface.methods.push(method);
                         }
                     }
                     "signal" => {
                         in_signal = false;
-                        if let Some(signal) = current_signal.take() {
-                            if let Some(ref mut iface) = current_iface {
-                                iface.signals.push(signal);
-                            }
+                        if let Some(signal) = current_signal.take()
+                            && let Some(ref mut iface) = current_iface
+                        {
+                            iface.signals.push(signal);
                         }
                     }
                     _ => {}

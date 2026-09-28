@@ -11,8 +11,10 @@ async fn startup_restores_observations_without_publishing_schema_examples_or_res
         fn drop(&mut self) {
             for (key, value) in &self.0 {
                 match value {
-                    Some(value) => std::env::set_var(key, value),
-                    None => std::env::remove_var(key),
+                    // FIXME: Audit that the environment access only happens in single-threaded code.
+                    Some(value) => unsafe { std::env::set_var(key, value) },
+                    // FIXME: Audit that the environment access only happens in single-threaded code.
+                    None => unsafe { std::env::remove_var(key) },
                 }
             }
         }
@@ -29,12 +31,17 @@ async fn startup_restores_observations_without_publishing_schema_examples_or_res
         .map(|key| (key, std::env::var_os(key)))
         .collect(),
     );
-    std::env::set_var("OP_BLOB_CATALOG_DIR", &catalog);
-    std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state"));
-    std::env::set_var(
-        "DBUS_SESSION_BUS_ADDRESS",
-        format!("unix:path={}/absent-bus", root.path().display()),
-    );
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_BLOB_CATALOG_DIR", &catalog) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state")) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe {
+        std::env::set_var(
+            "DBUS_SESSION_BUS_ADDRESS",
+            format!("unix:path={}/absent-bus", root.path().display()),
+        )
+    };
     let schema = PluginSchema::builder("fixture_uncompiled_plugin")
         .string_field("status", false, "Observed status")
         .example(simd_json::json!({"status":"example-is-not-observed"}))

@@ -384,12 +384,11 @@ The following tools are available via execute_tool():
                 all_results.push(tool_result.clone());
 
                 // Check for response tool - if called, we're done
-                if name == "respond" || name == "response" {
-                    if let Some(ref res) = tool_result.result {
-                        if let Some(msg) = res.get("message").and_then(|v| v.as_str()) {
-                            response_message = Some(msg.to_string());
-                        }
-                    }
+                if (name == "respond" || name == "response")
+                    && let Some(ref res) = tool_result.result
+                    && let Some(msg) = res.get("message").and_then(|v| v.as_str())
+                {
+                    response_message = Some(msg.to_string());
                 }
             }
 

@@ -407,10 +407,9 @@ impl OvsdbClient {
             .get(0)
             .and_then(|r| r.get("rows"))
             .and_then(|r| r.as_array())
+            && let Some(first_row) = rows.first()
         {
-            if let Some(first_row) = rows.first() {
-                port_uuids = Self::extract_uuid_set(first_row.get("ports").unwrap_or(&Value::Null));
-            }
+            port_uuids = Self::extract_uuid_set(first_row.get("ports").unwrap_or(&Value::Null));
         }
 
         let mut port_names = Vec::new();
@@ -427,12 +426,10 @@ impl OvsdbClient {
                 .get(0)
                 .and_then(|r| r.get("rows"))
                 .and_then(|r| r.as_array())
+                && let Some(first_row) = rows.first()
+                && let Some(name) = first_row.get("name").and_then(|n| n.as_str())
             {
-                if let Some(first_row) = rows.first() {
-                    if let Some(name) = first_row.get("name").and_then(|n| n.as_str()) {
-                        port_names.push(name.to_string());
-                    }
-                }
+                port_names.push(name.to_string());
             }
         }
 
@@ -581,16 +578,13 @@ impl OvsdbClient {
             .get(0)
             .and_then(|r| r.get("rows"))
             .and_then(|r| r.as_array())
+            && let Some(first_row) = rows.first()
+            && let Some(uuid_array) = first_row.get("_uuid").and_then(|u| u.as_array())
+            && uuid_array.len() == 2
+            && uuid_array[0] == "uuid"
+            && let Some(uuid_str) = uuid_array[1].as_str()
         {
-            if let Some(first_row) = rows.first() {
-                if let Some(uuid_array) = first_row.get("_uuid").and_then(|u| u.as_array()) {
-                    if uuid_array.len() == 2 && uuid_array[0] == "uuid" {
-                        if let Some(uuid_str) = uuid_array[1].as_str() {
-                            return Ok(uuid_str.to_string());
-                        }
-                    }
-                }
-            }
+            return Ok(uuid_str.to_string());
         }
         Err(anyhow!("Bridge '{}' not found", name))
     }
@@ -609,14 +603,11 @@ impl OvsdbClient {
             .get(0)
             .and_then(|r| r.get("rows"))
             .and_then(|r| r.as_array())
+            && let Some(first_row) = rows.first()
+            && let Some(uuid) =
+                Self::extract_uuid_atom(first_row.get("_uuid").unwrap_or(&Value::Null))
         {
-            if let Some(first_row) = rows.first() {
-                if let Some(uuid) =
-                    Self::extract_uuid_atom(first_row.get("_uuid").unwrap_or(&Value::Null))
-                {
-                    return Ok(uuid);
-                }
-            }
+            return Ok(uuid);
         }
         Err(anyhow!("{} '{}' not found", table, name))
     }
@@ -629,12 +620,12 @@ impl OvsdbClient {
     }
 
     fn extract_uuid_set(value: &Value) -> Vec<String> {
-        if let Some(as_set) = value.as_array() {
-            if as_set.len() == 2 && as_set[0] == "set" {
-                if let Some(items) = as_set[1].as_array() {
-                    return items.iter().filter_map(Self::extract_uuid_atom).collect();
-                }
-            }
+        if let Some(as_set) = value.as_array()
+            && as_set.len() == 2
+            && as_set[0] == "set"
+            && let Some(items) = as_set[1].as_array()
+        {
+            return items.iter().filter_map(Self::extract_uuid_atom).collect();
         }
         Self::extract_uuid_atom(value).into_iter().collect()
     }

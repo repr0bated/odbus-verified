@@ -189,8 +189,8 @@ impl ExecutionTracker {
     /// Get execution record by ID
     pub async fn get_execution(&self, id: &str) -> Option<ExecutionRecord> {
         let records = self.records.read().await;
-        let result = records.iter().find(|r| r.id == id).cloned();
-        result
+
+        records.iter().find(|r| r.id == id).cloned()
     }
 
     /// List active executions

@@ -22,8 +22,10 @@ impl Drop for Environment {
     fn drop(&mut self) {
         for (key, value) in &self.0 {
             match value {
-                Some(value) => std::env::set_var(key, value),
-                None => std::env::remove_var(key),
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                Some(value) => unsafe { std::env::set_var(key, value) },
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                None => unsafe { std::env::remove_var(key) },
             }
         }
     }
@@ -80,10 +82,13 @@ async fn invoke_method(
 fn endpoint_without_server() -> TcpListener {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     listener.set_nonblocking(true).unwrap();
-    std::env::set_var(
-        "TCHED_ROUTER_RUNTIME_ENDPOINT",
-        format!("http://{}", listener.local_addr().unwrap()),
-    );
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe {
+        std::env::set_var(
+            "TCHED_ROUTER_RUNTIME_ENDPOINT",
+            format!("http://{}", listener.local_addr().unwrap()),
+        )
+    };
     listener
 }
 
@@ -130,7 +135,8 @@ async fn missing_grant_or_invalid_session_stops_before_http() {
         .unwrap();
     let grants = tempfile::NamedTempFile::new().unwrap();
     std::fs::write(grants.path(), b"{}").unwrap();
-    std::env::set_var("OP_GRANTS_PATH", grants.path());
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_GRANTS_PATH", grants.path()) };
     let listener = endpoint_without_server();
     let error = invoke(&engine(), &capability).await.unwrap_err();
     assert!(error.to_string().contains("exact nested"));

@@ -3025,26 +3025,27 @@ impl OperationGrpcServer {
         let Some(v) = value else {
             return vec![];
         };
-        if let Some(arr) = v.as_array() {
-            if arr.len() == 2 {
-                if arr[0].as_str() == Some("uuid") {
-                    return vec![arr[1].as_str().unwrap_or("").to_string()];
-                }
-                if arr[0].as_str() == Some("set") {
-                    if let Some(items) = arr[1].as_array() {
-                        return items
-                            .iter()
-                            .filter_map(|item| {
-                                if let Some(inner) = item.as_array() {
-                                    if inner.len() == 2 && inner[0].as_str() == Some("uuid") {
-                                        return inner[1].as_str().map(|s| s.to_string());
-                                    }
-                                }
-                                None
-                            })
-                            .collect();
-                    }
-                }
+        if let Some(arr) = v.as_array()
+            && arr.len() == 2
+        {
+            if arr[0].as_str() == Some("uuid") {
+                return vec![arr[1].as_str().unwrap_or("").to_string()];
+            }
+            if arr[0].as_str() == Some("set")
+                && let Some(items) = arr[1].as_array()
+            {
+                return items
+                    .iter()
+                    .filter_map(|item| {
+                        if let Some(inner) = item.as_array()
+                            && inner.len() == 2
+                            && inner[0].as_str() == Some("uuid")
+                        {
+                            return inner[1].as_str().map(|s| s.to_string());
+                        }
+                        None
+                    })
+                    .collect();
             }
         }
         vec![]
@@ -3059,18 +3060,18 @@ impl OperationGrpcServer {
         let Some(v) = value else {
             return map;
         };
-        if let Some(arr) = v.as_array() {
-            if arr.len() == 2 && arr[0].as_str() == Some("map") {
-                if let Some(pairs) = arr[1].as_array() {
-                    for pair in pairs {
-                        if let Some(kv) = pair.as_array() {
-                            if kv.len() == 2 {
-                                let k = kv[0].as_str().unwrap_or("").to_string();
-                                let v = kv[1].as_str().unwrap_or("").to_string();
-                                map.insert(k, v);
-                            }
-                        }
-                    }
+        if let Some(arr) = v.as_array()
+            && arr.len() == 2
+            && arr[0].as_str() == Some("map")
+            && let Some(pairs) = arr[1].as_array()
+        {
+            for pair in pairs {
+                if let Some(kv) = pair.as_array()
+                    && kv.len() == 2
+                {
+                    let k = kv[0].as_str().unwrap_or("").to_string();
+                    let v = kv[1].as_str().unwrap_or("").to_string();
+                    map.insert(k, v);
                 }
             }
         }
@@ -3661,16 +3662,14 @@ impl ComponentRegistry for OperationGrpcServer {
             }));
         }
 
-        if was_stale {
-            if let Some(info) = inner.components.get(&req.component_id).cloned() {
-                let event = RegistryEvent {
-                    event_type: RegistryEventType::RegistryEventRecovered as i32,
-                    component: Some(info),
-                    timestamp: Some(now),
-                };
-                let _ = inner.watch_tx.send(event);
-                info!(component_id = %req.component_id, "component recovered from stale");
-            }
+        if was_stale && let Some(info) = inner.components.get(&req.component_id).cloned() {
+            let event = RegistryEvent {
+                event_type: RegistryEventType::RegistryEventRecovered as i32,
+                component: Some(info),
+                timestamp: Some(now),
+            };
+            let _ = inner.watch_tx.send(event);
+            info!(component_id = %req.component_id, "component recovered from stale");
         }
 
         debug!(component_id = %req.component_id, "heartbeat acknowledged");
@@ -3957,29 +3956,29 @@ impl MailService for OperationGrpcServer {
 
         // Try reading status from MutationEngine state first
         let state = self.mutation_engine.get_state("mail").await;
-        if let Some(ref st) = state {
-            if let Some(status_obj) = st.as_object().and_then(|o| o.get("status")) {
-                return Ok(Response::new(GetMailStatusResponse {
-                    is_configured: status_obj
-                        .as_object()
-                        .and_then(|o| o.get("is_configured"))
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false),
-                    is_running: status_obj
-                        .as_object()
-                        .and_then(|o| o.get("is_running"))
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false),
-                    mail_server_type: "maddy".to_string(),
-                    webmail_url: format!("https://mail.{}", req.domain),
-                    smtp_status: "unknown".to_string(),
-                    imap_status: "unknown".to_string(),
-                    total_accounts: 0,
-                    total_messages: 0,
-                    last_checked: Some(OperationGrpcServer::now_ts()),
-                    message: "Status from state store".to_string(),
-                }));
-            }
+        if let Some(ref st) = state
+            && let Some(status_obj) = st.as_object().and_then(|o| o.get("status"))
+        {
+            return Ok(Response::new(GetMailStatusResponse {
+                is_configured: status_obj
+                    .as_object()
+                    .and_then(|o| o.get("is_configured"))
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false),
+                is_running: status_obj
+                    .as_object()
+                    .and_then(|o| o.get("is_running"))
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false),
+                mail_server_type: "maddy".to_string(),
+                webmail_url: format!("https://mail.{}", req.domain),
+                smtp_status: "unknown".to_string(),
+                imap_status: "unknown".to_string(),
+                total_accounts: 0,
+                total_messages: 0,
+                last_checked: Some(OperationGrpcServer::now_ts()),
+                message: "Status from state store".to_string(),
+            }));
         }
 
         // Attempt D-Bus call
@@ -4422,49 +4421,49 @@ impl PrivacyNetworkService for OperationGrpcServer {
 
         // Check MutationEngine state first
         let state = self.mutation_engine.get_state("privacy").await;
-        if let Some(ref st) = state {
-            if let Some(net_status) = st.as_object().and_then(|o| o.get("network_status")) {
-                let components: Vec<_> = net_status
-                    .as_object()
-                    .and_then(|o| o.get("components"))
-                    .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .map(|c| crate::proto::privacy::NetworkComponent {
-                                name: c
-                                    .as_object()
-                                    .and_then(|o| o.get("name"))
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("")
-                                    .to_string(),
-                                status: c
-                                    .as_object()
-                                    .and_then(|o| o.get("status"))
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("unknown")
-                                    .to_string(),
-                                r#type: c
-                                    .as_object()
-                                    .and_then(|o| o.get("type"))
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("")
-                                    .to_string(),
-                                ip_address: String::new(),
-                                details: String::new(),
-                                critical: false,
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default();
+        if let Some(ref st) = state
+            && let Some(net_status) = st.as_object().and_then(|o| o.get("network_status"))
+        {
+            let components: Vec<_> = net_status
+                .as_object()
+                .and_then(|o| o.get("components"))
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .map(|c| crate::proto::privacy::NetworkComponent {
+                            name: c
+                                .as_object()
+                                .and_then(|o| o.get("name"))
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            status: c
+                                .as_object()
+                                .and_then(|o| o.get("status"))
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("unknown")
+                                .to_string(),
+                            r#type: c
+                                .as_object()
+                                .and_then(|o| o.get("type"))
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            ip_address: String::new(),
+                            details: String::new(),
+                            critical: false,
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
 
-                return Ok(Response::new(GetNetworkStatusResponse {
-                    healthy: !components.is_empty(),
-                    overall_status: "from_state_store".to_string(),
-                    components,
-                    message: "Status from state store".to_string(),
-                    last_updated: Some(OperationGrpcServer::now_ts()),
-                }));
-            }
+            return Ok(Response::new(GetNetworkStatusResponse {
+                healthy: !components.is_empty(),
+                overall_status: "from_state_store".to_string(),
+                components,
+                message: "Status from state store".to_string(),
+                last_updated: Some(OperationGrpcServer::now_ts()),
+            }));
         }
 
         let args = simd_json::json!({"component": req.component});
@@ -5337,37 +5336,36 @@ impl RegistrationService for OperationGrpcServer {
             Err(_) => {
                 // Check state store for magic link token
                 let state = self.mutation_engine.get_state("registration").await;
-                if let Some(ref st) = state {
-                    if let Some(link_data) = st
+                if let Some(ref st) = state
+                    && let Some(link_data) = st
                         .as_object()
                         .and_then(|o| o.get("magic_links"))
                         .and_then(|o| o.as_object())
                         .and_then(|o| o.get(&req.token))
-                    {
-                        let email = link_data
-                            .as_object()
-                            .and_then(|o| o.get("email"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string();
-                        let is_admin = link_data
-                            .as_object()
-                            .and_then(|o| o.get("is_admin"))
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false);
+                {
+                    let email = link_data
+                        .as_object()
+                        .and_then(|o| o.get("email"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let is_admin = link_data
+                        .as_object()
+                        .and_then(|o| o.get("is_admin"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
 
-                        return Ok(Response::new(VerifyMagicLinkResponse {
-                            success: true,
-                            user_id: Uuid::new_v4().to_string(),
-                            email,
-                            wireguard_public_key: String::new(),
-                            assigned_ip: String::new(),
-                            wireguard_config: String::new(),
-                            message: "Verified from state store (D-Bus unavailable)".to_string(),
-                            is_admin,
-                            verified_at: Some(OperationGrpcServer::now_ts()),
-                        }));
-                    }
+                    return Ok(Response::new(VerifyMagicLinkResponse {
+                        success: true,
+                        user_id: Uuid::new_v4().to_string(),
+                        email,
+                        wireguard_public_key: String::new(),
+                        assigned_ip: String::new(),
+                        wireguard_config: String::new(),
+                        message: "Verified from state store (D-Bus unavailable)".to_string(),
+                        is_admin,
+                        verified_at: Some(OperationGrpcServer::now_ts()),
+                    }));
                 }
 
                 Err(Status::unavailable(
@@ -5473,68 +5471,68 @@ impl RegistrationService for OperationGrpcServer {
 
         // Check state store first
         let state = self.mutation_engine.get_state("registration").await;
-        if let Some(ref st) = state {
-            if let Some(users) = st.as_object().and_then(|o| o.get("users")) {
-                // Search by email or user_id
-                if let Some(user_data) = users.as_object().and_then(|o| {
-                    // Try user_id first
-                    if !req.user_id.is_empty() {
-                        o.get(&req.user_id)
-                    } else {
-                        // Search by email
-                        o.iter().find_map(|(_, v)| {
-                            if v.as_object()
-                                .and_then(|u| u.get("email"))
-                                .and_then(|e| e.as_str())
-                                == Some(&req.email)
-                            {
-                                Some(v)
-                            } else {
-                                None
-                            }
-                        })
-                    }
-                }) {
-                    return Ok(Response::new(GetUserStatusResponse {
-                        registered: true,
-                        user_id: user_data
-                            .as_object()
-                            .and_then(|o| o.get("user_id"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or(&req.user_id)
-                            .to_string(),
-                        email: user_data
-                            .as_object()
-                            .and_then(|o| o.get("email"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or(&req.email)
-                            .to_string(),
-                        email_verified: user_data
-                            .as_object()
-                            .and_then(|o| o.get("email_verified"))
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false),
-                        wireguard_public_key: user_data
-                            .as_object()
-                            .and_then(|o| o.get("wireguard_public_key"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        assigned_ip: user_data
-                            .as_object()
-                            .and_then(|o| o.get("assigned_ip"))
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        is_admin: user_data
-                            .as_object()
-                            .and_then(|o| o.get("is_admin"))
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false),
-                        registered_at: None,
-                        last_active: None,
-                    }));
+        if let Some(ref st) = state
+            && let Some(users) = st.as_object().and_then(|o| o.get("users"))
+        {
+            // Search by email or user_id
+            if let Some(user_data) = users.as_object().and_then(|o| {
+                // Try user_id first
+                if !req.user_id.is_empty() {
+                    o.get(&req.user_id)
+                } else {
+                    // Search by email
+                    o.iter().find_map(|(_, v)| {
+                        if v.as_object()
+                            .and_then(|u| u.get("email"))
+                            .and_then(|e| e.as_str())
+                            == Some(&req.email)
+                        {
+                            Some(v)
+                        } else {
+                            None
+                        }
+                    })
                 }
+            }) {
+                return Ok(Response::new(GetUserStatusResponse {
+                    registered: true,
+                    user_id: user_data
+                        .as_object()
+                        .and_then(|o| o.get("user_id"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(&req.user_id)
+                        .to_string(),
+                    email: user_data
+                        .as_object()
+                        .and_then(|o| o.get("email"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or(&req.email)
+                        .to_string(),
+                    email_verified: user_data
+                        .as_object()
+                        .and_then(|o| o.get("email_verified"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false),
+                    wireguard_public_key: user_data
+                        .as_object()
+                        .and_then(|o| o.get("wireguard_public_key"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    assigned_ip: user_data
+                        .as_object()
+                        .and_then(|o| o.get("assigned_ip"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    is_admin: user_data
+                        .as_object()
+                        .and_then(|o| o.get("is_admin"))
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false),
+                    registered_at: None,
+                    last_active: None,
+                }));
             }
         }
 

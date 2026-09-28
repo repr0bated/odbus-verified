@@ -632,12 +632,12 @@ impl OvsNetlinkClient {
                         let is_done = matches!(response.payload, NetlinkPayload::Done(_));
                         let is_error = matches!(response.payload, NetlinkPayload::Error(_));
 
-                        if let NetlinkPayload::Error(err) = &response.payload {
-                            if err.code.is_some() {
-                                return Err(anyhow!("Netlink error: {:?}", err));
-                            }
-                            // code == None means ACK
+                        if let NetlinkPayload::Error(err) = &response.payload
+                            && err.code.is_some()
+                        {
+                            return Err(anyhow!("Netlink error: {:?}", err));
                         }
+                        // code == None means ACK
 
                         responses.push(response);
                         offset += msg_len;

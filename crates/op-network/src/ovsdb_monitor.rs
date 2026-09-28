@@ -1031,14 +1031,14 @@ fn decode_set(value: Option<&Value>) -> Result<Vec<Value>> {
     let Some(value) = value else {
         return Ok(Vec::new());
     };
-    if let Some(encoded) = value.as_array() {
-        if encoded.first().and_then(Value::as_str) == Some("set") {
-            ensure!(encoded.len() == 2, "invalid OVSDB set encoding");
-            return Ok(encoded[1]
-                .as_array()
-                .context("invalid OVSDB set members")?
-                .clone());
-        }
+    if let Some(encoded) = value.as_array()
+        && encoded.first().and_then(Value::as_str) == Some("set")
+    {
+        ensure!(encoded.len() == 2, "invalid OVSDB set encoding");
+        return Ok(encoded[1]
+            .as_array()
+            .context("invalid OVSDB set members")?
+            .clone());
     }
     Ok(vec![value.clone()])
 }

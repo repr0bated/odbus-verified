@@ -162,17 +162,16 @@ fn load_service_account_credentials() -> Result<ServiceAccountCredentials> {
     {
         let entry = entry?;
         let path = entry.path();
-        if path.extension().map(|e| e == "json").unwrap_or(false) {
-            if let Ok(contents) = std::fs::read_to_string(&path) {
-                let mut contents_mut = contents;
-                if let Ok(creds) =
-                    unsafe { simd_json::from_str::<ServiceAccountCredentials>(&mut contents_mut) }
-                {
-                    if creds.cred_type == "service_account" {
-                        info!("Found service account: {}", path.display());
-                        return Ok(creds);
-                    }
-                }
+        if path.extension().map(|e| e == "json").unwrap_or(false)
+            && let Ok(contents) = std::fs::read_to_string(&path)
+        {
+            let mut contents_mut = contents;
+            if let Ok(creds) =
+                unsafe { simd_json::from_str::<ServiceAccountCredentials>(&mut contents_mut) }
+                && creds.cred_type == "service_account"
+            {
+                info!("Found service account: {}", path.display());
+                return Ok(creds);
             }
         }
     }
@@ -234,11 +233,11 @@ async fn get_service_account_token(creds: &ServiceAccountCredentials) -> Result<
     // Check cache first
     {
         let cache = get_token_cache().read().unwrap();
-        if let Some(ref cached) = *cache {
-            if cached.expires_at > Instant::now() + Duration::from_secs(60) {
-                debug!("Using cached service account token");
-                return Ok(cached.token.clone());
-            }
+        if let Some(ref cached) = *cache
+            && cached.expires_at > Instant::now() + Duration::from_secs(60)
+        {
+            debug!("Using cached service account token");
+            return Ok(cached.token.clone());
         }
     }
 
@@ -289,11 +288,11 @@ async fn get_oauth_refresh_token(creds: &OAuthCredentials) -> Result<String> {
     // Check cache first
     {
         let cache = get_token_cache().read().unwrap();
-        if let Some(ref cached) = *cache {
-            if cached.expires_at > Instant::now() + Duration::from_secs(60) {
-                debug!("Using cached OAuth token");
-                return Ok(cached.token.clone());
-            }
+        if let Some(ref cached) = *cache
+            && cached.expires_at > Instant::now() + Duration::from_secs(60)
+        {
+            debug!("Using cached OAuth token");
+            return Ok(cached.token.clone());
         }
     }
 

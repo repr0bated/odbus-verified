@@ -373,14 +373,12 @@ fn read_tched_router_schema_shm() -> Option<Value> {
     // `PluginSchema` serializes to { name, version, fields, methods, … }.
     let mut v: Value = simd_json::to_owned_value(&mut serde_json::to_vec(&schema).ok()?).ok()?;
     // Stamp the catalog_hash so consumers can verify lineage.
-    if let Ok(bytes) = std::fs::read("/dev/shm/opdbus/plugin-blobs/.manifest.json") {
-        if let Ok(manifest) = serde_json::from_slice::<serde_json::Value>(&bytes) {
-            if let Some(hash) = manifest.get("catalog_hash").and_then(|h| h.as_str()) {
-                if let Some(obj) = v.as_object_mut() {
-                    obj.insert("catalog_hash".to_string(), simd_json::json!(hash));
-                }
-            }
-        }
+    if let Ok(bytes) = std::fs::read("/dev/shm/opdbus/plugin-blobs/.manifest.json")
+        && let Ok(manifest) = serde_json::from_slice::<serde_json::Value>(&bytes)
+        && let Some(hash) = manifest.get("catalog_hash").and_then(|h| h.as_str())
+        && let Some(obj) = v.as_object_mut()
+    {
+        obj.insert("catalog_hash".to_string(), simd_json::json!(hash));
     }
     Some(v)
 }

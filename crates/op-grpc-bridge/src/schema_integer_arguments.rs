@@ -56,31 +56,30 @@ fn visit(root: &Value, schema: &Value, input: &mut Value, depth: usize) -> Resul
         }
         _ => false,
     };
-    if integer {
-        if let Value::Number(number) = input {
-            if number.is_f64() {
-                let value = number.as_f64().context("invalid numeric argument")?;
-                ensure!(
-                    value.is_finite() && value.fract() == 0.0,
-                    "declared integer argument is not integral"
-                );
-                // Protobuf Value transports every JSON number as a double.
-                // Outside the exact IEEE-754 integer range, the caller's
-                // integer has already been rounded and cannot be recovered.
-                ensure!(
-                    value.abs() <= 9_007_199_254_740_991.0,
-                    "declared integer argument cannot be represented exactly by the transport"
-                );
-                // Exclusive upper limits prevent Rust's saturating float cast
-                // from accepting 2^64 or rounding it to u64::MAX.
-                if (0.0..18_446_744_073_709_551_616.0).contains(&value) {
-                    *number = (value as u64).into();
-                } else if (-9_223_372_036_854_775_808.0..0.0).contains(&value) {
-                    *number = (value as i64).into();
-                } else {
-                    bail!("declared integer argument exceeds supported integer range");
-                }
-            }
+    if integer
+        && let Value::Number(number) = input
+        && number.is_f64()
+    {
+        let value = number.as_f64().context("invalid numeric argument")?;
+        ensure!(
+            value.is_finite() && value.fract() == 0.0,
+            "declared integer argument is not integral"
+        );
+        // Protobuf Value transports every JSON number as a double.
+        // Outside the exact IEEE-754 integer range, the caller's
+        // integer has already been rounded and cannot be recovered.
+        ensure!(
+            value.abs() <= 9_007_199_254_740_991.0,
+            "declared integer argument cannot be represented exactly by the transport"
+        );
+        // Exclusive upper limits prevent Rust's saturating float cast
+        // from accepting 2^64 or rounding it to u64::MAX.
+        if (0.0..18_446_744_073_709_551_616.0).contains(&value) {
+            *number = (value as u64).into();
+        } else if (-9_223_372_036_854_775_808.0..0.0).contains(&value) {
+            *number = (value as i64).into();
+        } else {
+            bail!("declared integer argument exceeds supported integer range");
         }
     }
     match input {

@@ -126,18 +126,18 @@ pub async fn route_for_model(model: &str) -> Result<Option<TchedRouterRoute>> {
 }
 
 pub async fn ensure_model_available(model: &str) -> Result<()> {
-    if let Some(route) = route_for_model(model).await? {
-        if !route.available {
-            let reason = route
-                .status_reason
-                .unwrap_or_else(|| "route is not available".to_string());
-            bail!(
-                "Router route '{}' is {} but not available: {}",
-                model,
-                route.status,
-                reason
-            );
-        }
+    if let Some(route) = route_for_model(model).await?
+        && !route.available
+    {
+        let reason = route
+            .status_reason
+            .unwrap_or_else(|| "route is not available".to_string());
+        bail!(
+            "Router route '{}' is {} but not available: {}",
+            model,
+            route.status,
+            reason
+        );
     }
 
     Ok(())

@@ -136,23 +136,23 @@ pub async fn chat_handler(
         None => state.chat_manager.current_model().await,
     };
 
-    if requested_provider.is_none() {
-        if let Err(e) = crate::tched_router_routes::ensure_model_available(&selected_model).await {
-            return Json(ChatResponse {
-                success: false,
-                message: String::new(),
-                content: e.to_string(),
-                role: "assistant".to_string(),
-                id: format!("msg-{}", uuid::Uuid::new_v4()),
-                tool_name: None,
-                error: Some(e.to_string()),
-                tools_executed: vec![],
-                session_id,
-                model: selected_model,
-                provider: "tched_router".to_string(),
-                container_id,
-            });
-        }
+    if requested_provider.is_none()
+        && let Err(e) = crate::tched_router_routes::ensure_model_available(&selected_model).await
+    {
+        return Json(ChatResponse {
+            success: false,
+            message: String::new(),
+            content: e.to_string(),
+            role: "assistant".to_string(),
+            id: format!("msg-{}", uuid::Uuid::new_v4()),
+            tool_name: None,
+            error: Some(e.to_string()),
+            tools_executed: vec![],
+            session_id,
+            model: selected_model,
+            provider: "tched_router".to_string(),
+            container_id,
+        });
     }
 
     let result = match (requested_provider, requested_model) {

@@ -24,10 +24,10 @@ pub fn extract_query(args: Option<&str>) -> String {
         let mut bytes = raw.as_bytes().to_vec();
         if let Ok(v) = simd_json::to_owned_value(&mut bytes) {
             for key in ["query", "question", "prompt", "input", "text", "message"] {
-                if let Some(s) = v.get(key).and_then(|x| x.as_str()) {
-                    if !s.trim().is_empty() {
-                        return s.trim().to_string();
-                    }
+                if let Some(s) = v.get(key).and_then(|x| x.as_str())
+                    && !s.trim().is_empty()
+                {
+                    return s.trim().to_string();
                 }
             }
         }

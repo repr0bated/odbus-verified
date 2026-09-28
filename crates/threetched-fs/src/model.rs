@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -925,11 +925,9 @@ mod tests {
         exact
             .validate(&serde_json::json!({"revision": 2}), &Value::Null)
             .unwrap();
-        assert!(
-            exact
-                .validate(&serde_json::json!({"revision": 1}), &Value::Null)
-                .is_err()
-        );
+        assert!(exact
+            .validate(&serde_json::json!({"revision": 1}), &Value::Null)
+            .is_err());
         let templated = exact.template();
         exact.validate(&templated, &Value::Null).unwrap();
         assert_eq!(templated, serde_json::json!({"revision": 2}));
@@ -946,11 +944,9 @@ mod tests {
         FieldType::Map(Box::new(FieldType::Integer))
             .validate(&serde_json::json!({"a": 1, "b": 2}), &Value::Null)
             .unwrap();
-        assert!(
-            FieldType::Map(Box::new(FieldType::Integer))
-                .validate(&serde_json::json!({"a": "no"}), &Value::Null)
-                .is_err()
-        );
+        assert!(FieldType::Map(Box::new(FieldType::Integer))
+            .validate(&serde_json::json!({"a": "no"}), &Value::Null)
+            .is_err());
     }
 
     #[test]
@@ -1049,10 +1045,8 @@ mod tests {
                 None,
             )
             .unwrap();
-        assert!(
-            schema
-                .validate_value(&serde_json::json!({"labels": {"k": 1}}), None)
-                .is_err()
-        );
+        assert!(schema
+            .validate_value(&serde_json::json!({"labels": {"k": 1}}), None)
+            .is_err());
     }
 }

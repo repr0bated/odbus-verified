@@ -83,25 +83,25 @@ impl NumaTopology {
             let name_str = name.to_string_lossy();
 
             // Parse node directories (nodeN)
-            if let Some(node_suffix) = name_str.strip_prefix("node") {
-                if let Ok(node_id) = node_suffix.parse::<u32>() {
-                    let node_path = entry.path();
+            if let Some(node_suffix) = name_str.strip_prefix("node")
+                && let Ok(node_id) = node_suffix.parse::<u32>()
+            {
+                let node_path = entry.path();
 
-                    match Self::parse_node(&node_path, node_id) {
-                        Ok(node) => {
-                            if node.is_online() {
-                                debug!(
-                                    "Detected NUMA node {}: {} CPUs, {} MB RAM",
-                                    node_id,
-                                    node.cpu_list.len(),
-                                    node.memory_total_kb / 1024
-                                );
-                                nodes.insert(node_id, node);
-                            }
+                match Self::parse_node(&node_path, node_id) {
+                    Ok(node) => {
+                        if node.is_online() {
+                            debug!(
+                                "Detected NUMA node {}: {} CPUs, {} MB RAM",
+                                node_id,
+                                node.cpu_list.len(),
+                                node.memory_total_kb / 1024
+                            );
+                            nodes.insert(node_id, node);
                         }
-                        Err(e) => {
-                            warn!("Failed to parse NUMA node {}: {}", node_id, e);
-                        }
+                    }
+                    Err(e) => {
+                        warn!("Failed to parse NUMA node {}: {}", node_id, e);
                     }
                 }
             }
@@ -266,10 +266,10 @@ impl NumaTopology {
             for link in node_links.flatten() {
                 let name = link.file_name();
                 let name_str = name.to_string_lossy();
-                if let Some(node_suffix) = name_str.strip_prefix("node") {
-                    if let Ok(node_id) = node_suffix.parse::<u32>() {
-                        return Some(node_id);
-                    }
+                if let Some(node_suffix) = name_str.strip_prefix("node")
+                    && let Ok(node_id) = node_suffix.parse::<u32>()
+                {
+                    return Some(node_id);
                 }
             }
         }
@@ -378,11 +378,11 @@ impl NumaTopology {
     pub fn refresh(&mut self) -> Result<()> {
         for (node_id, node) in &mut self.nodes {
             let node_path = PathBuf::from(format!("/sys/devices/system/node/node{}", node_id));
-            if node_path.exists() {
-                if let Ok((total, free)) = Self::parse_memory_info(&node_path) {
-                    node.memory_total_kb = total;
-                    node.memory_free_kb = free;
-                }
+            if node_path.exists()
+                && let Ok((total, free)) = Self::parse_memory_info(&node_path)
+            {
+                node.memory_total_kb = total;
+                node.memory_free_kb = free;
             }
         }
         Ok(())

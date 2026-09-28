@@ -147,17 +147,17 @@ impl SchemaValidator {
         // Validate field combinations
         if let Some(use_case) = &matching_use_case {
             for combo in &use_case.valid_combinations {
-                if let Some(plugin_config) = plugins.get(&combo.plugin) {
-                    if let Some(config_obj) = plugin_config.as_object() {
-                        for (field, valid_values) in &combo.fields {
-                            if let Some(field_value) = config_obj.get(field) {
-                                let value_str = field_value.to_string();
-                                if !valid_values.iter().any(|v| value_str.contains(v)) {
-                                    warnings.push(format!(
-                                        "Field '{}' in plugin '{}' has unusual value: {}",
-                                        field, combo.plugin, value_str
-                                    ));
-                                }
+                if let Some(plugin_config) = plugins.get(&combo.plugin)
+                    && let Some(config_obj) = plugin_config.as_object()
+                {
+                    for (field, valid_values) in &combo.fields {
+                        if let Some(field_value) = config_obj.get(field) {
+                            let value_str = field_value.to_string();
+                            if !valid_values.iter().any(|v| value_str.contains(v)) {
+                                warnings.push(format!(
+                                    "Field '{}' in plugin '{}' has unusual value: {}",
+                                    field, combo.plugin, value_str
+                                ));
                             }
                         }
                     }

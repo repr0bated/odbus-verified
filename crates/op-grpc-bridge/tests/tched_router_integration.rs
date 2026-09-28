@@ -37,8 +37,10 @@ impl Drop for RuntimeFixture {
         self.task.abort();
         for (key, value) in &self.environment {
             match value {
-                Some(value) => std::env::set_var(key, value),
-                None => std::env::remove_var(key),
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                Some(value) => unsafe { std::env::set_var(key, value) },
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                None => unsafe { std::env::remove_var(key) },
             }
         }
     }
@@ -105,9 +107,12 @@ async fn start_runtime_fixture() -> RuntimeFixture {
     .into_iter()
     .map(|key| (key, std::env::var_os(key)))
     .collect();
-    std::env::set_var("TCHED_ROUTER_RUNTIME_ENDPOINT", format!("http://{address}"));
-    std::env::set_var("TCHED_ROUTER_RUNTIME_AGENT", "dashboard");
-    std::env::remove_var("TCHED_ROUTER_RUNTIME_TOKEN");
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("TCHED_ROUTER_RUNTIME_ENDPOINT", format!("http://{address}")) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("TCHED_ROUTER_RUNTIME_AGENT", "dashboard") };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::remove_var("TCHED_ROUTER_RUNTIME_TOKEN") };
     RuntimeFixture { task, environment }
 }
 
@@ -267,13 +272,19 @@ async fn list_models_uses_the_audited_tched_router_method_dispatcher() {
         .unwrap();
     use base64::Engine as _;
     let public_key = base64::engine::general_purpose::STANDARD.encode([0xD2; 32]);
-    std::env::set_var(
-        "OP_HUMAN_PRINCIPAL_COZO_DB_PATH",
-        _catalog.root().join("human-cozo"),
-    );
-    std::env::set_var("OP_LOCAL_HUMAN_WIREGUARD_PUBKEY", &public_key);
-    std::env::remove_var("OP_LOCAL_HUMAN_SESSION_ID");
-    std::env::remove_var("OP_LOCAL_HUMAN_PRINCIPAL_ID");
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe {
+        std::env::set_var(
+            "OP_HUMAN_PRINCIPAL_COZO_DB_PATH",
+            _catalog.root().join("human-cozo"),
+        )
+    };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_LOCAL_HUMAN_WIREGUARD_PUBKEY", &public_key) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::remove_var("OP_LOCAL_HUMAN_SESSION_ID") };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::remove_var("OP_LOCAL_HUMAN_PRINCIPAL_ID") };
     let actor = op_identity::session::derive_principal_id(&public_key);
     let capability = router_schema.methods["ListModels"]
         .required_capability
@@ -288,7 +299,8 @@ async fn list_models_uses_the_audited_tched_router_method_dispatcher() {
         .unwrap(),
     )
     .unwrap();
-    std::env::set_var("OP_GRANTS_PATH", grants);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_GRANTS_PATH", grants) };
     support::provision_identity_record(&identity_cozo, _catalog.root(), &public_key).unwrap();
     engine.recover_configured_identity_store().await.unwrap();
     let caller = engine

@@ -321,12 +321,11 @@ fn state_event_stream(
                 last_forwarded = baseline.generation;
                 for frame in fresh.frames { yield Ok(wire(frame)); }
             }
-            if let Some((frame, cursor)) = pending {
-                if cursor.catalog_hash == baseline.catalog_hash && cursor.generation > baseline.generation && cursor.generation >= last_forwarded {
+            if let Some((frame, cursor)) = pending
+                && cursor.catalog_hash == baseline.catalog_hash && cursor.generation > baseline.generation && cursor.generation >= last_forwarded {
                     last_forwarded = cursor.generation;
                     yield Ok(wire(frame));
                 }
-            }
         }
     }
 }

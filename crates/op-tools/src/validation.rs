@@ -187,13 +187,13 @@ impl InputValidator {
         }
 
         // Input sanitization
-        if self.config.sanitize_inputs {
-            if let Err(e) = self.sanitize_input(&mut sanitized_input) {
-                if is_trusted && !self.config.strict_validation {
-                    warn!(tool = %tool_name, session = %session_id, "Input sanitization bypassed for trusted session");
-                } else {
-                    validation_errors.push(format!("Input sanitization failed: {}", e));
-                }
+        if self.config.sanitize_inputs
+            && let Err(e) = self.sanitize_input(&mut sanitized_input)
+        {
+            if is_trusted && !self.config.strict_validation {
+                warn!(tool = %tool_name, session = %session_id, "Input sanitization bypassed for trusted session");
+            } else {
+                validation_errors.push(format!("Input sanitization failed: {}", e));
             }
         }
 
@@ -328,85 +328,84 @@ impl InputValidator {
         }
 
         // Shell tools need extra validation
-        if tool_name.contains("shell") || tool_name.contains("exec") {
-            if let Some(cmd) = extract_command_from_input(input) {
-                // Validate against command whitelist
-                let base_cmd = cmd.split_whitespace().next().unwrap_or(&cmd);
-                if !self.config.command_whitelist.contains(base_cmd) {
+        if (tool_name.contains("shell") || tool_name.contains("exec"))
+            && let Some(cmd) = extract_command_from_input(input)
+        {
+            // Validate against command whitelist
+            let base_cmd = cmd.split_whitespace().next().unwrap_or(&cmd);
+            if !self.config.command_whitelist.contains(base_cmd) {
+                return Err(anyhow!(
+                    "Command '{}' is not whitelisted for non-trusted sessions",
+                    base_cmd
+                ));
+            }
+
+            // Check for dangerous patterns even in whitelisted commands
+            let dangerous_patterns = [
+                "rm -rf /",
+                "sudo rm",
+                "mkfs",
+                "dd if=/dev/",
+                ">/etc/",
+                "format",
+                "fdisk /dev/",
+                "chmod 777 /",
+                "chown root",
+            ];
+
+            for pattern in &dangerous_patterns {
+                if cmd.to_lowercase().contains(pattern) {
                     return Err(anyhow!(
-                        "Command '{}' is not whitelisted for non-trusted sessions",
-                        base_cmd
+                        "Dangerous command pattern '{}' detected in shell command",
+                        pattern
                     ));
                 }
-
-                // Check for dangerous patterns even in whitelisted commands
-                let dangerous_patterns = [
-                    "rm -rf /",
-                    "sudo rm",
-                    "mkfs",
-                    "dd if=/dev/",
-                    ">/etc/",
-                    "format",
-                    "fdisk /dev/",
-                    "chmod 777 /",
-                    "chown root",
-                ];
-
-                for pattern in &dangerous_patterns {
-                    if cmd.to_lowercase().contains(pattern) {
-                        return Err(anyhow!(
-                            "Dangerous command pattern '{}' detected in shell command",
-                            pattern
-                        ));
-                    }
-                }
-
-                // Validate command arguments for injection
-                validate_input(&cmd)
-                    .map_err(|e| anyhow!("Shell command validation failed: {}", e))?;
             }
+
+            // Validate command arguments for injection
+            validate_input(&cmd).map_err(|e| anyhow!("Shell command validation failed: {}", e))?;
         }
 
         // File operation tools need path validation
-        if tool_name.contains("file") || tool_name.contains("fs") {
-            if let Some(path) = extract_path_from_input(input) {
-                let path_buf = PathBuf::from(&path);
+        if (tool_name.contains("file") || tool_name.contains("fs"))
+            && let Some(path) = extract_path_from_input(input)
+        {
+            let path_buf = PathBuf::from(&path);
 
-                // Check path traversal
-                if path.contains("..") {
-                    return Err(anyhow!(
-                        "Path traversal not allowed in non-trusted sessions: {}",
-                        path
-                    ));
-                }
-
-                // Check against forbidden directories first
-                for forbidden in &self.config.forbidden_dirs {
-                    if path_buf.starts_with(forbidden) {
-                        return Err(anyhow!(
-                            "Access to forbidden path '{}' is not allowed",
-                            forbidden.display()
-                        ));
-                    }
-                }
-
-                // Check if path is within allowed directories
-                let is_allowed = self
-                    .config
-                    .allowed_dirs
-                    .iter()
-                    .any(|allowed| path_buf.starts_with(allowed));
-
-                if !is_allowed {
-                    return Err(anyhow!(
-                        "Path '{}' is not within allowed directories for non-trusted sessions",
-                        path
-                    ));
-                }
-
-                // Validate path input for forbidden characters
-                validate_input(&path).map_err(|e| anyhow!("Path validation failed: {}", e))?;
+            // Check path traversal
+            if path.contains("..") {
+                return Err(anyhow!(
+                    "Path traversal not allowed in non-trusted sessions: {}",
+                    path
+                ));
             }
+
+            // Check against forbidden directories first
+            for forbidden in &self.config.forbidden_dirs {
+                if path_buf.starts_with(forbidden) {
+                    return Err(anyhow!(
+                        "Access to forbidden path '{}' is not allowed",
+                        forbidden.display()
+                    ));
+                }
+            }
+
+            // Check if path is within allowed directories
+            let is_allowed = self
+                .config
+                .allowed_dirs
+                .iter()
+                .any(|allowed| path_buf.starts_with(allowed));
+
+            if !is_allowed {
+                return Err(anyhow!(
+                    "Path '{}' is not within allowed directories for non-trusted sessions",
+                    path
+                ));
+            }
+
+            // Validate path input for forbidden characters
+            validate_input(&path).map_err(|e| anyhow!("Path validation failed: {}", e))?;
         }
 
         // General input validation for all tools
@@ -455,10 +454,10 @@ fn extract_command_from_input(input: &Value) -> Option<String> {
         return Some(cmd.to_string());
     }
 
-    if let Some(args) = input.get("args").and_then(|v| v.as_array()) {
-        if let Some(first) = args.first().and_then(|v| v.as_str()) {
-            return Some(first.to_string());
-        }
+    if let Some(args) = input.get("args").and_then(|v| v.as_array())
+        && let Some(first) = args.first().and_then(|v| v.as_str())
+    {
+        return Some(first.to_string());
     }
 
     None

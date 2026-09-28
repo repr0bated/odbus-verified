@@ -41,13 +41,13 @@ pub fn string_list(v: &Value, key: &str) -> Vec<String> {
 
 pub fn ts_field(v: &Value, key: &str) -> Option<Timestamp> {
     let raw = v.get(key)?;
-    if let Some(s) = raw.as_str() {
-        if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
-            return Some(Timestamp {
-                seconds: dt.timestamp(),
-                nanos: dt.timestamp_subsec_nanos() as i32,
-            });
-        }
+    if let Some(s) = raw.as_str()
+        && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s)
+    {
+        return Some(Timestamp {
+            seconds: dt.timestamp(),
+            nanos: dt.timestamp_subsec_nanos() as i32,
+        });
     }
     if let Some(secs) = raw.as_i64() {
         return Some(Timestamp {

@@ -192,10 +192,10 @@ pub fn validate_exact_schema_document(schema: &Json) -> Result<(), ExactSchemaEr
 
 fn compile_exact_schema(schema: &Json) -> Result<jsonschema::Validator, ExactSchemaError> {
     bound_json(schema)?;
-    if let Some(dialect) = schema.get("$schema") {
-        if dialect.as_str() != Some(crate::DEFAULT_SCHEMA_DIALECT) {
-            return Err(error("dialect_unsupported"));
-        }
+    if let Some(dialect) = schema.get("$schema")
+        && dialect.as_str() != Some(crate::DEFAULT_SCHEMA_DIALECT)
+    {
+        return Err(error("dialect_unsupported"));
     }
     enum Step<'a> {
         Enter(&'a Json, usize),
@@ -398,10 +398,10 @@ pub fn embed_exact_schema(schema: &Json, pointer: &str) -> Json {
         let Some(object) = node.as_object_mut() else {
             return;
         };
-        if let Some(Json::String(reference)) = object.get_mut("$ref") {
-            if let Some(suffix) = reference.strip_prefix('#') {
-                *reference = format!("#{prefix}{suffix}");
-            }
+        if let Some(Json::String(reference)) = object.get_mut("$ref")
+            && let Some(suffix) = reference.strip_prefix('#')
+        {
+            *reference = format!("#{prefix}{suffix}");
         }
         for key in [
             "$defs",

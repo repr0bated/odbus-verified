@@ -141,11 +141,11 @@ impl OptimizedSnowball {
             .context("Failed to add footprint to snowball")?;
 
         // Cache in BTRFS cache for fast retrieval
-        if self.cache_enabled {
-            if let Err(e) = self.cache_block(block_hash.clone(), &footprint).await {
-                warn!("Failed to cache snowball block {}: {}", block_hash, e);
-                // Don't fail the operation if caching fails
-            }
+        if self.cache_enabled
+            && let Err(e) = self.cache_block(block_hash.clone(), &footprint).await
+        {
+            warn!("Failed to cache snowball block {}: {}", block_hash, e);
+            // Don't fail the operation if caching fails
         }
 
         Ok(block_hash)

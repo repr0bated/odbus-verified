@@ -66,10 +66,10 @@ pub const ENV_FILE_PATHS: &[&str] = &["/etc/op-dbus/environment", "/etc/op-dbus.
 /// Returns the path that was loaded, or None if no file was found.
 pub fn load_environment() -> Option<String> {
     // Check if a custom path is specified
-    if let Ok(custom_path) = std::env::var("OP_ENV_FILE") {
-        if let Some(path) = try_load_env_file(&custom_path) {
-            return Some(path);
-        }
+    if let Ok(custom_path) = std::env::var("OP_ENV_FILE")
+        && let Some(path) = try_load_env_file(&custom_path)
+    {
+        return Some(path);
     }
 
     // Try each path in order
@@ -108,7 +108,8 @@ fn try_load_env_file(path: &str) -> Option<String> {
                 if let Some((key, value)) = parse_env_line(line) {
                     // Don't override existing environment variables
                     if std::env::var(&key).is_err() {
-                        std::env::set_var(&key, &value);
+                        // FIXME: Audit that the environment access only happens in single-threaded code.
+                        unsafe { std::env::set_var(&key, &value) };
                         loaded_count += 1;
                         debug!(
                             "Loaded: {}={}",

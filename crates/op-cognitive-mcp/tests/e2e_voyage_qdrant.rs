@@ -96,10 +96,14 @@ async fn run_probe(
     blob_collection: &str,
     episodes_collection: &str,
 ) -> Result<()> {
-    std::env::set_var("COGNITIVE_MCP_QDRANT_URL", url);
-    std::env::set_var("COGNITIVE_MCP_USER_MEMORY_COLLECTION", memory_collection);
-    std::env::set_var("COGNITIVE_MCP_BLOB_VECTORS_COLLECTION", blob_collection);
-    std::env::set_var("COGNITIVE_MCP_QDRANT_COLLECTION", episodes_collection);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("COGNITIVE_MCP_QDRANT_URL", url) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("COGNITIVE_MCP_USER_MEMORY_COLLECTION", memory_collection) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("COGNITIVE_MCP_BLOB_VECTORS_COLLECTION", blob_collection) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("COGNITIVE_MCP_QDRANT_COLLECTION", episodes_collection) };
 
     let shuttle = QdrantSemanticShuttle::new()
         .await

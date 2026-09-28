@@ -473,15 +473,15 @@ pub async fn add_default_route_onlink(ifname: &str, gateway: &str) -> Result<()>
 
     let ack_msg: NetlinkMessage<RouteNetlinkMessage> =
         NetlinkMessage::deserialize(&recv_buf).context("deserialize netlink ACK")?;
-    if let NetlinkPayload::Error(e) = ack_msg.payload {
-        if e.code.is_some() {
-            anyhow::bail!(
-                "netlink RTM_NEWROUTE failed for default via {} dev {} onlink: {:?}",
-                gateway,
-                ifname,
-                e,
-            );
-        }
+    if let NetlinkPayload::Error(e) = ack_msg.payload
+        && e.code.is_some()
+    {
+        anyhow::bail!(
+            "netlink RTM_NEWROUTE failed for default via {} dev {} onlink: {:?}",
+            gateway,
+            ifname,
+            e,
+        );
     }
 
     Ok(())
@@ -605,16 +605,16 @@ pub async fn list_veth_interfaces() -> Result<Vec<String>> {
     let mut output = Vec::new();
     while let Some(link) = links.try_next().await? {
         let is_veth = link.attributes.iter().any(|attr| matches!(attr, LinkAttribute::LinkInfo(infos) if infos.iter().any(|info| matches!(info, netlink_packet_route::link::LinkInfo::Kind(netlink_packet_route::link::InfoKind::Veth)))));
-        if is_veth {
-            if let Some(name) = link.attributes.iter().find_map(|attr| {
+        if is_veth
+            && let Some(name) = link.attributes.iter().find_map(|attr| {
                 if let LinkAttribute::IfName(name) = attr {
                     Some(name.clone())
                 } else {
                     None
                 }
-            }) {
-                output.push(name);
-            }
+            })
+        {
+            output.push(name);
         }
     }
     output.sort();

@@ -9,7 +9,7 @@ use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand};
 use fuser::MountOption;
 use serde::Serialize;
@@ -18,8 +18,8 @@ use serde_json::Value;
 use crate::dispatch::DEFAULT_BUS_ADDRESS;
 use crate::fuse_fs::{Lungs, TypedFuse};
 use crate::namespace::{Namespace, NodeKind, ProjectionTarget};
-use crate::source::{DEFAULT_CATALOG_DIR, DEFAULT_STATE_DIR, SourceCatalog};
-use crate::store::{DEFAULT_STORE_DIR, ObjectStore};
+use crate::source::{SourceCatalog, DEFAULT_CATALOG_DIR, DEFAULT_STATE_DIR};
+use crate::store::{ObjectStore, DEFAULT_STORE_DIR};
 
 #[derive(Debug, Parser)]
 #[command(

@@ -3,13 +3,13 @@ use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::model::{FORMAT_VERSION, TypedObjectBlob};
+use crate::model::{TypedObjectBlob, FORMAT_VERSION};
 use crate::source::{SourceCatalog, SourceSnapshot};
 
 pub const DEFAULT_STORE_DIR: &str = "/dev/shm/3tchedfs";
@@ -674,11 +674,9 @@ mod tests {
         store
             .stage_pointer("edit", "demo", "/mutable", Value::from(3))
             .unwrap();
-        assert!(
-            store
-                .stage_pointer("edit", "demo", "/fixed", Value::from(2))
-                .is_err()
-        );
+        assert!(store
+            .stage_pointer("edit", "demo", "/fixed", Value::from(2))
+            .is_err());
 
         let workspace = store.read_workspace("edit").unwrap();
         let value = store.workspace_object(&workspace, "demo").unwrap().value;

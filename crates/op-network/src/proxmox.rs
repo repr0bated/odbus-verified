@@ -485,10 +485,10 @@ impl ProxmoxClient {
             let status = self.get_task_status(upid).await?;
 
             if status.status == "stopped" {
-                if let Some(ref exit) = status.exitstatus {
-                    if exit != "OK" {
-                        return Err(anyhow!("Task failed: {}", exit));
-                    }
+                if let Some(ref exit) = status.exitstatus
+                    && exit != "OK"
+                {
+                    return Err(anyhow!("Task failed: {}", exit));
                 }
                 return Ok(status);
             }

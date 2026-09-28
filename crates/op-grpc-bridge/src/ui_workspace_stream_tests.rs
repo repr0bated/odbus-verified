@@ -28,8 +28,10 @@ struct GrantsEnvironment(Option<std::ffi::OsString>);
 impl Drop for GrantsEnvironment {
     fn drop(&mut self) {
         match self.0.take() {
-            Some(path) => std::env::set_var("OP_GRANTS_PATH", path),
-            None => std::env::remove_var("OP_GRANTS_PATH"),
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            Some(path) => unsafe { std::env::set_var("OP_GRANTS_PATH", path) },
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            None => unsafe { std::env::remove_var("OP_GRANTS_PATH") },
         }
     }
 }
@@ -96,7 +98,8 @@ impl Fixture {
         }
         let grants = root.path().join("grants.json");
         let environment = GrantsEnvironment(std::env::var_os("OP_GRANTS_PATH"));
-        std::env::set_var("OP_GRANTS_PATH", &grants);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_GRANTS_PATH", &grants) };
         let first = identities.remove(0);
         let second = identities.remove(0);
         let fixture = Self {

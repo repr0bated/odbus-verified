@@ -76,29 +76,29 @@ pub(crate) async fn dispatch(
         }
         "execution" => {
             let result = execute(caller, &method.agent_type, &method.operation, arguments).await;
-            if context.mode.has_memory() {
-                if let Ok(runtime) = engine.cognitive_mcp().await {
-                    let successful = result
-                        .as_ref()
-                        .is_ok_and(|value| value["exit_code"].as_i64() == Some(0));
-                    let activity = match (successful, method.operation.as_str()) {
-                        (false, "test") => {
-                            op_cognitive_mcp::context_awareness::ActivityType::TestFailure
-                        }
-                        (false, _) => op_cognitive_mcp::context_awareness::ActivityType::BuildError,
-                        (true, _) => op_cognitive_mcp::context_awareness::ActivityType::ToolCall,
-                    };
-                    let detail = match &result {
-                        Ok(value) => value.to_string(),
-                        Err(error) => error.to_string(),
-                    };
-                    runtime.context_engine().record_activity(
+            if context.mode.has_memory()
+                && let Ok(runtime) = engine.cognitive_mcp().await
+            {
+                let successful = result
+                    .as_ref()
+                    .is_ok_and(|value| value["exit_code"].as_i64() == Some(0));
+                let activity = match (successful, method.operation.as_str()) {
+                    (false, "test") => {
+                        op_cognitive_mcp::context_awareness::ActivityType::TestFailure
+                    }
+                    (false, _) => op_cognitive_mcp::context_awareness::ActivityType::BuildError,
+                    (true, _) => op_cognitive_mcp::context_awareness::ActivityType::ToolCall,
+                };
+                let detail = match &result {
+                    Ok(value) => value.to_string(),
+                    Err(error) => error.to_string(),
+                };
+                runtime.context_engine().record_activity(
                         caller.scope(), activity,
                         detail.chars().take(4000).collect(),
                         json!({"tool":method.declaration.name,"success":successful,
                             "path":arguments.get("path"),"memory_namespace":context.memory_namespace}),
                     ).await;
-                }
             }
             result
         }

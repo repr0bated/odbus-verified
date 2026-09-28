@@ -45,7 +45,7 @@ impl Fixture {
         )
         .unwrap();
     }
-    fn refresh(&self) -> impl FnMut() -> Refresh + Send + 'static {
+    fn refresh(&self) -> impl FnMut() -> Refresh + Send + 'static + use<> {
         let state = self.state.path().to_str().unwrap().to_owned();
         let catalog = self.catalog.path().to_owned();
         move || {

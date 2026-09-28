@@ -73,10 +73,10 @@ impl OvsCapabilities {
         // Check if we have a valid cached result
         {
             let cached = cache.read().await;
-            if let Some(ref c) = *cached {
-                if c.cached_at.elapsed() < CACHE_DURATION {
-                    return c.capabilities.clone();
-                }
+            if let Some(ref c) = *cached
+                && c.cached_at.elapsed() < CACHE_DURATION
+            {
+                return c.capabilities.clone();
             }
         }
 

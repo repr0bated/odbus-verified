@@ -292,10 +292,9 @@ impl OvsdbDbusClient {
                 .get("rows")
                 .and_then(|r| r.as_array())
                 .and_then(|a| a.first())
+                && let Some(n) = row.get("name").and_then(|v| v.as_str())
             {
-                if let Some(n) = row.get("name").and_then(|v| v.as_str()) {
-                    names.push(n.to_string());
-                }
+                names.push(n.to_string());
             }
         }
         Ok(names)
@@ -382,12 +381,11 @@ impl OvsdbDbusClient {
                     "columns": ["interfaces"]
                 }))
                 .await?;
-            if let Some(rows) = port_result.get("rows").and_then(|r| r.as_array()) {
-                if let Some(row) = rows.first() {
-                    if let Some(ifaces) = row.get("interfaces") {
-                        Self::collect_uuids(ifaces, &mut iface_uuids);
-                    }
-                }
+            if let Some(rows) = port_result.get("rows").and_then(|r| r.as_array())
+                && let Some(row) = rows.first()
+                && let Some(ifaces) = row.get("interfaces")
+            {
+                Self::collect_uuids(ifaces, &mut iface_uuids);
             }
         }
 
@@ -464,18 +462,18 @@ impl OvsdbDbusClient {
 
     /// Recursively collect UUID strings from an OVSDB set value.
     fn collect_uuids(value: &serde_json::Value, out: &mut Vec<String>) {
-        if let Some(arr) = value.as_array() {
-            if arr.len() == 2 {
-                if arr[0] == "uuid" {
-                    if let Some(s) = arr[1].as_str() {
-                        out.push(s.to_string());
-                    }
-                } else if arr[0] == "set" {
-                    if let Some(items) = arr[1].as_array() {
-                        for item in items {
-                            Self::collect_uuids(item, out);
-                        }
-                    }
+        if let Some(arr) = value.as_array()
+            && arr.len() == 2
+        {
+            if arr[0] == "uuid" {
+                if let Some(s) = arr[1].as_str() {
+                    out.push(s.to_string());
+                }
+            } else if arr[0] == "set"
+                && let Some(items) = arr[1].as_array()
+            {
+                for item in items {
+                    Self::collect_uuids(item, out);
                 }
             }
         }
@@ -485,19 +483,19 @@ impl OvsdbDbusClient {
     fn check_errors(result: &serde_json::Value) -> Result<()> {
         if let Some(results) = result.as_array() {
             for (i, op_result) in results.iter().enumerate() {
-                if let Some(error) = op_result.get("error") {
-                    if !error.is_null() {
-                        let details = op_result
-                            .get("details")
-                            .and_then(|d| d.as_str())
-                            .unwrap_or("no details");
-                        return Err(anyhow::anyhow!(
-                            "OVSDB operation {} failed: {} ({})",
-                            i,
-                            error,
-                            details
-                        ));
-                    }
+                if let Some(error) = op_result.get("error")
+                    && !error.is_null()
+                {
+                    let details = op_result
+                        .get("details")
+                        .and_then(|d| d.as_str())
+                        .unwrap_or("no details");
+                    return Err(anyhow::anyhow!(
+                        "OVSDB operation {} failed: {} ({})",
+                        i,
+                        error,
+                        details
+                    ));
                 }
             }
         }
@@ -571,12 +569,11 @@ impl OvsdbDbusClient {
 
         // Get interface UUIDs from port
         let mut iface_uuids: Vec<String> = Vec::new();
-        if let Some(rows) = port_result.get("rows").and_then(|r| r.as_array()) {
-            if let Some(row) = rows.first() {
-                if let Some(ifaces) = row.get("interfaces") {
-                    Self::collect_uuids(ifaces, &mut iface_uuids);
-                }
-            }
+        if let Some(rows) = port_result.get("rows").and_then(|r| r.as_array())
+            && let Some(row) = rows.first()
+            && let Some(ifaces) = row.get("interfaces")
+        {
+            Self::collect_uuids(ifaces, &mut iface_uuids);
         }
 
         // Build delete operations: remove from bridge, delete port, delete interfaces

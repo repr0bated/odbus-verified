@@ -657,10 +657,10 @@ impl SchemaBackedInterface {
                 crate::sealed_schema_reader::manifest_plugins(&catalog_dir)? == before,
                 "sealed catalog changed before state read"
             );
-            if let Some(property) = property.as_deref() {
-                if !schema.public_state_exposes_top_level(property)? {
-                    return Ok(None);
-                }
+            if let Some(property) = property.as_deref()
+                && !schema.public_state_exposes_top_level(property)?
+            {
+                return Ok(None);
             }
             let state_root = state_dir
                 .to_str()
@@ -834,13 +834,13 @@ impl SchemaBackedInterface {
             .and_then(JsonValue::as_str)
             .map(str::trim)
             .filter(|capability| !capability.is_empty());
-        if let Some(required_cap) = required_cap {
-            if !load_capability_grants(&identity.principal_id).contains(required_cap) {
-                return Err(zbus::fdo::Error::AccessDenied(format!(
-                    "capability '{}' is not granted to the authenticated caller of method '{}'",
-                    required_cap, method
-                )));
-            }
+        if let Some(required_cap) = required_cap
+            && !load_capability_grants(&identity.principal_id).contains(required_cap)
+        {
+            return Err(zbus::fdo::Error::AccessDenied(format!(
+                "capability '{}' is not granted to the authenticated caller of method '{}'",
+                required_cap, method
+            )));
         }
 
         let engine = self.engine.as_ref().ok_or_else(|| {
@@ -1534,7 +1534,8 @@ mod tests {
         );
 
         cleanup(&base);
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
 
     // ── VAL-BRIDGE-004: every MethodDecl exposed as a callable method ──
@@ -2465,7 +2466,8 @@ mod tests {
         // calling mutate (VAL-ENFORCE-003).
         let base = test_base_dir();
 
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
 
         // Build the capability grants file with grants for one principal
         let grants_path = base.join("opdbus/capability-grants.json");
@@ -2477,7 +2479,8 @@ mod tests {
         });
         std::fs::write(&grants_path, serde_json::to_vec(&grants_json).unwrap()).unwrap();
 
-        std::env::set_var("OP_GRANTS_PATH", grants_path.into_os_string());
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_GRANTS_PATH", grants_path.into_os_string()) };
 
         let engine = test_engine();
         let route = dispatch_test_route();
@@ -2504,7 +2507,8 @@ mod tests {
         );
 
         cleanup(&base);
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
 
     #[tokio::test]
@@ -2515,7 +2519,8 @@ mod tests {
         // principal grants it, the call proceeds to mutate.
         let base = test_base_dir();
 
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
 
         // Build the capability grants file with grants for the test principal
         let grants_path_cloned = base.join("opdbus/capability-grants.json");
@@ -2532,7 +2537,8 @@ mod tests {
         .unwrap();
 
         // Set OP_GRANTS_PATH to point to our test grants file
-        std::env::set_var("OP_GRANTS_PATH", grants_path_cloned.into_os_string());
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_GRANTS_PATH", grants_path_cloned.into_os_string()) };
 
         let engine = test_engine();
         let route = dispatch_test_route();
@@ -2560,7 +2566,8 @@ mod tests {
         );
 
         cleanup(&base);
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
 
     #[tokio::test]
@@ -2579,7 +2586,8 @@ mod tests {
         .unwrap();
 
         // Wildcard authority is never inherited by the explicit test identity.
-        std::env::set_var("OP_GRANTS_PATH", &grants_path);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_GRANTS_PATH", &grants_path) };
 
         let engine = test_engine();
         let iface = SchemaBackedInterface::with_engine(
@@ -2598,7 +2606,8 @@ mod tests {
         assert!(engine.event_chain.read().await.events().is_empty());
 
         cleanup(&base);
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
 
     #[tokio::test]
@@ -2639,7 +2648,8 @@ mod tests {
         let grants_path = base.join("opdbus/capability-grants.json");
         std::fs::create_dir_all(grants_path.parent().unwrap()).unwrap();
         std::fs::write(&grants_path, serde_json::to_vec(&json!({})).unwrap()).unwrap();
-        std::env::set_var("OP_GRANTS_PATH", grants_path.into_os_string());
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_GRANTS_PATH", grants_path.into_os_string()) };
 
         let engine = test_engine();
         let route = dispatch_test_route();
@@ -2665,7 +2675,8 @@ mod tests {
         );
 
         cleanup(&base);
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
 
     // ── VAL-CROSS-003: Full dispatch pipeline ordering ──
@@ -2710,7 +2721,8 @@ mod tests {
 
         // Test 3: Missing capability → AccessDenied (capability check is third)
         // No grants file - capability check should fail before mutate
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
         let engine3 = test_engine();
         let iface3 = SchemaBackedInterface::with_engine(
             "beta".to_string(),

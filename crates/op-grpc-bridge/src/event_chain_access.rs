@@ -179,12 +179,12 @@ fn replay_after(
     tags: &[String],
 ) -> Result<(u64, Vec<ChainEvent>), Status> {
     let head = events.last().map_or(0, |event| event.event_id);
-    if let Some(first) = events.first() {
-        if first.event_id.saturating_sub(1) > cursor {
-            return Err(Status::out_of_range(
-                "requested audit history is no longer retained",
-            ));
-        }
+    if let Some(first) = events.first()
+        && first.event_id.saturating_sub(1) > cursor
+    {
+        return Err(Status::out_of_range(
+            "requested audit history is no longer retained",
+        ));
     }
     let pending = events.iter().filter(|event| event.event_id > cursor);
     let mut count = 0;

@@ -491,7 +491,7 @@ pub(crate) fn users_schema() -> PluginSchema {
         &root,
     );
     macro_rules! method {
-        ($name:literal,$input:ty,$output:ty,$effect:expr,$idem:expr,$cap:literal,$subid:literal) => {{
+        ($name:literal,$input:ty,$output:ty,$effect:expr_2021,$idem:expr_2021,$cap:literal,$subid:literal) => {{
             schema.methods.insert(
                 $name.into(),
                 super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<

@@ -147,12 +147,11 @@ impl Workflow {
         let mut inputs = HashMap::new();
 
         for conn in &self.definition.connections {
-            if conn.to_node == node_id {
-                if let Some(outputs) = self.node_outputs.get(&conn.from_node) {
-                    if let Some(value) = outputs.get(&conn.from_port) {
-                        inputs.insert(conn.to_port.clone(), value.clone());
-                    }
-                }
+            if conn.to_node == node_id
+                && let Some(outputs) = self.node_outputs.get(&conn.from_node)
+                && let Some(value) = outputs.get(&conn.from_port)
+            {
+                inputs.insert(conn.to_port.clone(), value.clone());
             }
         }
 

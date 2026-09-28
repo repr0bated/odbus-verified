@@ -172,14 +172,13 @@ impl Skill {
 
     /// Transform input arguments based on skill context
     pub fn transform_input(&self, tool_name: &str, mut args: Value) -> Value {
-        if let Some(transform) = self.context.input_transformations.get(tool_name) {
-            if let (Some(args_obj), Some(transform_obj)) =
+        if let Some(transform) = self.context.input_transformations.get(tool_name)
+            && let (Some(args_obj), Some(transform_obj)) =
                 (args.as_object_mut(), transform.as_object())
-            {
-                for (key, value) in transform_obj {
-                    if !args_obj.contains_key(key) {
-                        args_obj.insert(key.clone(), value.clone());
-                    }
+        {
+            for (key, value) in transform_obj {
+                if !args_obj.contains_key(key) {
+                    args_obj.insert(key.clone(), value.clone());
                 }
             }
         }
@@ -206,27 +205,27 @@ impl Skill {
 
             match constraint.constraint_type {
                 ConstraintType::RequireArgument => {
-                    if let Some(required_key) = constraint.value.as_str() {
-                        if args.get(required_key).is_none() {
-                            anyhow::bail!(
-                                "Skill '{}' requires argument '{}' for tool '{}'",
-                                self.name,
-                                required_key,
-                                tool_name
-                            );
-                        }
+                    if let Some(required_key) = constraint.value.as_str()
+                        && args.get(required_key).is_none()
+                    {
+                        anyhow::bail!(
+                            "Skill '{}' requires argument '{}' for tool '{}'",
+                            self.name,
+                            required_key,
+                            tool_name
+                        );
                     }
                 }
                 ConstraintType::ForbidArgument => {
-                    if let Some(forbidden_key) = constraint.value.as_str() {
-                        if args.get(forbidden_key).is_some() {
-                            anyhow::bail!(
-                                "Skill '{}' forbids argument '{}' for tool '{}'",
-                                self.name,
-                                forbidden_key,
-                                tool_name
-                            );
-                        }
+                    if let Some(forbidden_key) = constraint.value.as_str()
+                        && args.get(forbidden_key).is_some()
+                    {
+                        anyhow::bail!(
+                            "Skill '{}' forbids argument '{}' for tool '{}'",
+                            self.name,
+                            forbidden_key,
+                            tool_name
+                        );
                     }
                 }
                 ConstraintType::RequireConfirmation => {

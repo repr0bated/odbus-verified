@@ -24,12 +24,12 @@ use tracing::{debug, warn};
 /// Returns the first non-empty value found. The caller is responsible for
 /// validating the token against the authoritative session/peer ledger.
 pub fn extract_auth_token(headers: &HeaderMap) -> Option<String> {
-    if let Some(raw) = headers.get("authorization").and_then(|v| v.to_str().ok()) {
-        if let Some(bearer) = raw.trim().strip_prefix("Bearer ") {
-            let token = bearer.trim();
-            if !token.is_empty() {
-                return Some(token.to_string());
-            }
+    if let Some(raw) = headers.get("authorization").and_then(|v| v.to_str().ok())
+        && let Some(bearer) = raw.trim().strip_prefix("Bearer ")
+    {
+        let token = bearer.trim();
+        if !token.is_empty() {
+            return Some(token.to_string());
         }
     }
 
@@ -210,31 +210,30 @@ fn looks_like_ipv4_octets(s: &str) -> bool {
 pub fn extract_ip(headers: &HeaderMap, addr: Option<&SocketAddr>) -> String {
     if addr.map(is_trusted_proxy).unwrap_or(false) {
         // X-Forwarded-For \u2014 take leftmost (original client).
-        if let Some(forwarded) = headers.get("x-forwarded-for") {
-            if let Ok(s) = forwarded.to_str() {
-                if let Some(first) = s.split(',').next() {
-                    if let Some(ip) = parse_forwarded_segment(first) {
-                        return ip.to_string();
-                    }
-                    warn!(
-                        raw = %sanitize_header_for_log(first),
-                        "Rejected malformed X-Forwarded-For first segment"
-                    );
-                }
+        if let Some(forwarded) = headers.get("x-forwarded-for")
+            && let Ok(s) = forwarded.to_str()
+            && let Some(first) = s.split(',').next()
+        {
+            if let Some(ip) = parse_forwarded_segment(first) {
+                return ip.to_string();
             }
+            warn!(
+                raw = %sanitize_header_for_log(first),
+                "Rejected malformed X-Forwarded-For first segment"
+            );
         }
 
         // X-Real-IP fallback.
-        if let Some(real_ip) = headers.get("x-real-ip") {
-            if let Ok(s) = real_ip.to_str() {
-                if let Some(ip) = parse_forwarded_segment(s) {
-                    return ip.to_string();
-                }
-                warn!(
-                    raw = %sanitize_header_for_log(s),
-                    "Rejected malformed X-Real-IP"
-                );
+        if let Some(real_ip) = headers.get("x-real-ip")
+            && let Ok(s) = real_ip.to_str()
+        {
+            if let Some(ip) = parse_forwarded_segment(s) {
+                return ip.to_string();
             }
+            warn!(
+                raw = %sanitize_header_for_log(s),
+                "Rejected malformed X-Real-IP"
+            );
         }
     }
 

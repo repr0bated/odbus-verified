@@ -167,26 +167,26 @@ impl ObfuscationMethods {
             .map(|row| serde_json::from_value(row.document))
             .transpose()?
             .unwrap_or_default();
-        if let Some(completed) = &document.completed {
-            if completed.is_retry(method, &args) {
-                ensure!(
-                    self.owner
-                        .matches(
-                            &completed.record.bridge,
-                            &completed.record.flow,
-                            !completed.installed
-                        )
-                        .await?,
-                    "completed normalization flow changed outside its owner"
-                );
-                return Ok((
-                    completed.output(document.revision)?,
-                    ObfuscationState {
-                        revision: document.revision,
-                        flows: document.flows,
-                    },
-                ));
-            }
+        if let Some(completed) = &document.completed
+            && completed.is_retry(method, &args)
+        {
+            ensure!(
+                self.owner
+                    .matches(
+                        &completed.record.bridge,
+                        &completed.record.flow,
+                        !completed.installed
+                    )
+                    .await?,
+                "completed normalization flow changed outside its owner"
+            );
+            return Ok((
+                completed.output(document.revision)?,
+                ObfuscationState {
+                    revision: document.revision,
+                    flows: document.flows,
+                },
+            ));
         }
         if let Some(pending) = &document.pending {
             ensure!(pending.is_retry(method, &args), "normalization operation {} for {} needs its exact request retried before another change", pending.method, pending.flow_id);
@@ -272,8 +272,7 @@ impl ObfuscationMethods {
                 !pending.installed,
             )
             .await?
-        {
-            if let Err(error) = self
+            && let Err(error) = self
                 .owner
                 .exchange(
                     &pending.record.bridge,
@@ -282,27 +281,26 @@ impl ObfuscationMethods {
                     !pending.installed,
                 )
                 .await
-            {
-                // A proven unchanged switch permits clearing a failed intent.
-                // Transport uncertainty preserves it for an exact retry.
-                let prior_matches = match prior {
-                    Some(flow) => {
-                        self.owner
-                            .matches(&pending.record.bridge, flow, false)
-                            .await
-                    }
-                    None => {
-                        self.owner
-                            .matches(&pending.record.bridge, &pending.record.flow, true)
-                            .await
-                    }
-                };
-                if matches!(prior_matches, Ok(true)) {
-                    document.pending = None;
-                    self.persist(&document, revision).await?;
+        {
+            // A proven unchanged switch permits clearing a failed intent.
+            // Transport uncertainty preserves it for an exact retry.
+            let prior_matches = match prior {
+                Some(flow) => {
+                    self.owner
+                        .matches(&pending.record.bridge, flow, false)
+                        .await
                 }
-                return Err(error);
+                None => {
+                    self.owner
+                        .matches(&pending.record.bridge, &pending.record.flow, true)
+                        .await
+                }
+            };
+            if matches!(prior_matches, Ok(true)) {
+                document.pending = None;
+                self.persist(&document, revision).await?;
             }
+            return Err(error);
         }
         ensure!(
             self.owner

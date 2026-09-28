@@ -90,16 +90,14 @@ pub fn derive_significance(
         }
 
         // read_only field write — this is a violation attempt, always Signal
-        if is_write {
-            if let Some(field_schema) = schema
+        if is_write
+            && let Some(field_schema) = schema
                 .fields
                 .get(raw_name)
                 .or_else(|| schema.fields.get(field_name))
-            {
-                if field_schema.read_only {
-                    return Significance::Signal;
-                }
-            }
+            && field_schema.read_only
+        {
+            return Significance::Signal;
         }
     }
 
@@ -222,14 +220,14 @@ pub fn is_pii(schema: &PluginSchema, field: Option<&str>) -> bool {
     if schema.tags.iter().any(|t| t == "pii") {
         return true;
     }
-    if let Some(field_name) = field {
-        if let Some(field_schema) = schema.fields.get(field_name) {
-            return field_schema.description.to_lowercase().contains("[pii]")
-                || field_schema.constraints.iter().any(|c| {
-                    matches!(c, op_state_store::plugin_schema::Constraint::Custom { validator }
+    if let Some(field_name) = field
+        && let Some(field_schema) = schema.fields.get(field_name)
+    {
+        return field_schema.description.to_lowercase().contains("[pii]")
+            || field_schema.constraints.iter().any(|c| {
+                matches!(c, op_state_store::plugin_schema::Constraint::Custom { validator }
                         if validator == "pii")
-                });
-        }
+            });
     }
     false
 }

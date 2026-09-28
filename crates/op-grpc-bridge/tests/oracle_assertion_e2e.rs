@@ -99,12 +99,14 @@ fn write_trust_store(dir: &TempDir, issuer: &DecoyIssuer) {
     );
     let path = dir.path().join("decoy-trust.json");
     std::fs::write(&path, json).expect("trust store");
-    std::env::set_var("OP_DECOY_TRUST_STORE", &path);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DECOY_TRUST_STORE", &path) };
 }
 
 fn write_grants(path: &std::path::Path, doc: &serde_json::Value) {
     std::fs::write(path, serde_json::to_vec(doc).unwrap()).expect("grants");
-    std::env::set_var("OP_GRANTS_PATH", path);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_GRANTS_PATH", path) };
 }
 
 fn principal_id_for(pubkey: &str) -> String {
@@ -263,9 +265,11 @@ impl TestEnv {
             .lock_owned()
             .await;
         let root = tempfile::tempdir().expect("root");
-        std::env::set_var("OP_SHM_STATE_DIR", root.path().join("shm-state"));
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_SHM_STATE_DIR", root.path().join("shm-state")) };
         let blob_dir = root.path().join("plugin-blobs");
-        std::env::set_var("OP_BLOB_CATALOG_DIR", &blob_dir);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_BLOB_CATALOG_DIR", &blob_dir) };
         let mut blob_store = op_blob::catalog::BlobStore::open(&blob_dir).expect("blob store");
         for (plugin_id, schema) in [
             (
@@ -291,10 +295,12 @@ impl TestEnv {
             blob_store.write(&blob).expect("seal E2E plugin schema");
         }
         let cozo = tempfile::tempdir().expect("cozo");
-        std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", cozo.path().join("cozo"));
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", cozo.path().join("cozo")) };
         let identity_cozo =
             op_cozo_store::CozoGraphShuttle::new_in_memory().expect("identity Cozo");
-        std::env::set_var("OP_AUTH_REPLAY_DB_PATH", root.path().join("auth-replay.db"));
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_AUTH_REPLAY_DB_PATH", root.path().join("auth-replay.db")) };
         let grants_path = root.path().join("capability-grants.json");
         write_grants(&grants_path, &empty_grants());
         let issuer = test_issuer();
@@ -2355,16 +2361,20 @@ async fn e2e_empty_trust_store_fail_closed() {
     let engine = srv.engine.clone();
     drop(srv);
     drop(ch);
-    std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", &cozo);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", &cozo) };
     write_grants(
         &grants_template,
         &grants_for(&pubkey, &["human_principal.read"]),
     );
     let missing = tempfile::tempdir().expect("missing");
-    std::env::set_var(
-        "OP_DECOY_TRUST_STORE",
-        missing.path().join("missing-trust.json"),
-    );
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe {
+        std::env::set_var(
+            "OP_DECOY_TRUST_STORE",
+            missing.path().join("missing-trust.json"),
+        )
+    };
     // Reload the validator with an empty trust store while retaining the
     // already-authoritative session/genesis state. This test is about trust
     // fail-closure, not in-process restart hydration.
@@ -2613,7 +2623,8 @@ async fn e2e_revocation_durable_across_restart() {
     );
     drop(srv);
     drop(ch);
-    std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", &cozo);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_HUMAN_PRINCIPAL_COZO_DB_PATH", &cozo) };
     let (srv2, env) = start_server_with_env(false, env).await;
     let ch2 = tls_channel(srv2.addr, &srv2.ca_pem).await;
     env.set_grants(&serde_json::json!({
@@ -2883,9 +2894,11 @@ async fn built_in_client_forwards_authored_identity_and_preserves_grant_gate() {
         fn drop(&mut self) {
             for (key, value) in &self.0 {
                 if let Some(value) = value {
-                    std::env::set_var(key, value);
+                    // FIXME: Audit that the environment access only happens in single-threaded code.
+                    unsafe { std::env::set_var(key, value) };
                 } else {
-                    std::env::remove_var(key);
+                    // FIXME: Audit that the environment access only happens in single-threaded code.
+                    unsafe { std::env::remove_var(key) };
                 }
             }
         }
@@ -2904,14 +2917,17 @@ async fn built_in_client_forwards_authored_identity_and_preserves_grant_gate() {
     );
     let ca = env._root.path().join("client-ca.pem");
     std::fs::write(&ca, &srv.ca_pem).unwrap();
-    std::env::set_var("OP_DBUS_GRPC_CA_FILE", &ca);
-    std::env::set_var("OP_DBUS_GRPC_TLS_DOMAIN", "localhost");
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DBUS_GRPC_CA_FILE", &ca) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DBUS_GRPC_TLS_DOMAIN", "localhost") };
     let pubkey = pk(91);
     let channel = tls_channel(srv.addr, &srv.ca_pem).await;
     register_human(channel, &env, &pubkey, "built-in-client", [0x91; 16]).await;
     env.grant_human(&pubkey, &["human_principal.read"]);
     let session_id = derive_session_id(&pubkey);
-    std::env::set_var("OP_IDENTITY_SESSION_ID", &session_id);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_IDENTITY_SESSION_ID", &session_id) };
     let projection = op_identity::resolve_identity_credential_session(Some(&session_id)).unwrap();
     let encoded = projection.sealed_id_header_for_transport("grpc").unwrap();
     let wire = base64::engine::general_purpose::URL_SAFE_NO_PAD
@@ -3011,9 +3027,11 @@ async fn built_in_client_acquires_oia1_from_decoy() {
         fn drop(&mut self) {
             for (key, value) in &self.0 {
                 if let Some(value) = value {
-                    std::env::set_var(key, value);
+                    // FIXME: Audit that the environment access only happens in single-threaded code.
+                    unsafe { std::env::set_var(key, value) };
                 } else {
-                    std::env::remove_var(key);
+                    // FIXME: Audit that the environment access only happens in single-threaded code.
+                    unsafe { std::env::remove_var(key) };
                 }
             }
         }
@@ -3028,8 +3046,10 @@ async fn built_in_client_acquires_oia1_from_decoy() {
     );
     let ca = env._root.path().join("decoy-client-ca.pem");
     std::fs::write(&ca, &srv.ca_pem).expect("client CA");
-    std::env::set_var("OP_DBUS_GRPC_CA_FILE", &ca);
-    std::env::set_var("OP_DBUS_GRPC_TLS_DOMAIN", "localhost");
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DBUS_GRPC_CA_FILE", &ca) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DBUS_GRPC_TLS_DOMAIN", "localhost") };
 
     let pubkey = pk(93);
     let channel = tls_channel(srv.addr, &srv.ca_pem).await;

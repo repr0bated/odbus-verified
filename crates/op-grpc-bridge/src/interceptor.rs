@@ -195,15 +195,15 @@ pub fn bridge_capability_identity(extensions: &tonic::Extensions) -> Option<Ghos
 
 /// Shared peer-address reader for production serve builders and the E2E fixture.
 pub fn connect_info_peer_addr(req: &Request<()>) -> Option<SocketAddr> {
-    if let Some(info) = req.extensions().get::<TcpConnectInfo>() {
-        if let Some(addr) = info.remote_addr() {
-            return Some(addr);
-        }
+    if let Some(info) = req.extensions().get::<TcpConnectInfo>()
+        && let Some(addr) = info.remote_addr()
+    {
+        return Some(addr);
     }
-    if let Some(info) = req.extensions().get::<TlsConnectInfo<TcpConnectInfo>>() {
-        if let Some(addr) = info.get_ref().remote_addr() {
-            return Some(addr);
-        }
+    if let Some(info) = req.extensions().get::<TlsConnectInfo<TcpConnectInfo>>()
+        && let Some(addr) = info.get_ref().remote_addr()
+    {
+        return Some(addr);
     }
     req.extensions()
         .get::<AxumConnectInfo<SocketAddr>>()
@@ -469,12 +469,13 @@ fn verify_per_identity(
     let stored = stored?;
     let expires_at = identity.get("expires_at").and_then(|v| v.as_i64());
 
-    if let Some(expires_at) = expires_at {
-        if expires_at != 0 && expires_at <= chrono::Utc::now().timestamp() {
-            return Some(Err(Status::permission_denied(
-                "Identity term has expired. Re-authenticate to renew.",
-            )));
-        }
+    if let Some(expires_at) = expires_at
+        && expires_at != 0
+        && expires_at <= chrono::Utc::now().timestamp()
+    {
+        return Some(Err(Status::permission_denied(
+            "Identity term has expired. Re-authenticate to renew.",
+        )));
     }
 
     if stored != request_genesis {
@@ -536,11 +537,11 @@ fn ghostbridge_genesis_interceptor(mut req: Request<()>) -> Result<Request<()>, 
         .map(|v| v.to_str())
         .transpose()
         .map_err(|_| Status::invalid_argument("Invalid trace header encoding"))?;
-    if pubkey_str.is_some() || trace_str.is_some() {
-        if let Some(outcome) = verify_per_identity(pubkey_str, trace_str, request_genesis) {
-            req.extensions_mut().insert(outcome?);
-            return Ok(req);
-        }
+    if (pubkey_str.is_some() || trace_str.is_some())
+        && let Some(outcome) = verify_per_identity(pubkey_str, trace_str, request_genesis)
+    {
+        req.extensions_mut().insert(outcome?);
+        return Ok(req);
     }
 
     // Fallback: no identifying header beyond the asserted session genesis, so
@@ -626,7 +627,8 @@ pub(crate) mod tests {
             serde_json::to_vec(&document).expect("serialize grants"),
         )
         .expect("write grants");
-        std::env::set_var("OP_GRANTS_PATH", path);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_GRANTS_PATH", path) };
         dir
     }
 
@@ -1020,7 +1022,8 @@ pub(crate) mod tests {
             Some(&identity),
         )
         .is_ok());
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
 
     /// VAL-BRIDGE-028
@@ -1079,7 +1082,8 @@ pub(crate) mod tests {
             Some(&identity),
         )
         .is_err());
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
 
     /// VAL-BRIDGE-029
@@ -1121,7 +1125,8 @@ pub(crate) mod tests {
             Some(&identity),
         )
         .is_ok());
-        std::env::remove_var("OP_GRANTS_PATH");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
 
     /// VAL-BRIDGE-036

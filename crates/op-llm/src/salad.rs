@@ -498,9 +498,11 @@ mod tests {
 
     #[test]
     fn from_env_reads_key() {
-        std::env::set_var("SALAD_API_KEY", "salad-test-key");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("SALAD_API_KEY", "salad-test-key") };
         let provider = SaladProvider::from_env().expect("from_env should succeed");
         assert_eq!(provider.api_key.as_deref(), Some("salad-test-key"));
-        std::env::remove_var("SALAD_API_KEY");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("SALAD_API_KEY") };
     }
 }

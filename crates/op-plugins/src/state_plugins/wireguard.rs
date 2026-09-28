@@ -227,7 +227,7 @@ pub fn wireguard_schema() -> PluginSchema {
     schema.category = PLUGIN_CATEGORY.into();
     schema.display_name = Some(PLUGIN_DISPLAY_NAME.into());
     macro_rules! method {
-        ($id:literal, $input:ty, $output:ty, $effect:expr, $idem:expr, $cap:literal, $subid:literal) => {
+        ($id:literal, $input:ty, $output:ty, $effect:expr_2021, $idem:expr_2021, $cap:literal, $subid:literal) => {
             schema.methods.insert(
                 $id.into(),
                 method_decl_from_schemars_with_output::<$input, $output>(

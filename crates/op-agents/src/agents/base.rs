@@ -251,7 +251,7 @@ pub mod validation {
 /// Macro for implementing common agent boilerplate
 #[macro_export]
 macro_rules! impl_agent_common {
-    ($agent:ty, $type:expr, $name:expr, $desc:expr, $ops:expr) => {
+    ($agent:ty, $type:expr_2021, $name:expr_2021, $desc:expr_2021, $ops:expr_2021) => {
         impl $agent {
             pub fn agent_type(&self) -> &str {
                 $type

@@ -421,16 +421,16 @@ impl PluginSchema {
     ///    declares nothing, the vocabulary the generated clients stamp
     ///    today, derived from the plugin name and the method's side effect.
     pub fn resolve_method_capability(&self, method: &MethodDecl) -> CapabilityResolution {
-        if let Some(cap) = method.required_capability.as_deref() {
-            if !cap.is_empty() {
-                if self.capabilities.contains_key(cap) {
-                    return CapabilityResolution::Declared(cap.to_string());
-                }
-                if is_canonical_capability_id(cap) {
-                    return CapabilityResolution::Undeclared(cap.to_string());
-                }
-                return CapabilityResolution::Legacy(cap.to_string());
+        if let Some(cap) = method.required_capability.as_deref()
+            && !cap.is_empty()
+        {
+            if self.capabilities.contains_key(cap) {
+                return CapabilityResolution::Declared(cap.to_string());
             }
+            if is_canonical_capability_id(cap) {
+                return CapabilityResolution::Undeclared(cap.to_string());
+            }
+            return CapabilityResolution::Legacy(cap.to_string());
         }
         let op = match method.side_effect {
             SideEffect::Read => "read",
@@ -536,19 +536,20 @@ impl PluginSchema {
             let mut field_json = field_type_to_json_schema_2026(&field_schema.field_type);
 
             // Add description if present
-            if !field_schema.description.is_empty() {
-                if let Some(obj) = field_json.as_object_mut() {
-                    obj.insert("description".to_string(), json!(field_schema.description));
-                }
+            if !field_schema.description.is_empty()
+                && let Some(obj) = field_json.as_object_mut()
+            {
+                obj.insert("description".to_string(), json!(field_schema.description));
             }
 
             // Add readOnly if field is unconditionally immutable, in immutable_paths, or schema is fully immutable
             let path = format!("/{}", field_name);
-            if field_schema.read_only || self.immutable_paths.contains(&path) || is_fully_immutable
+            if (field_schema.read_only
+                || self.immutable_paths.contains(&path)
+                || is_fully_immutable)
+                && let Some(obj) = field_json.as_object_mut()
             {
-                if let Some(obj) = field_json.as_object_mut() {
-                    obj.insert("readOnly".to_string(), json!(true));
-                }
+                obj.insert("readOnly".to_string(), json!(true));
             }
 
             // Collect propertyDependencies for conditional readOnly
@@ -1509,36 +1510,35 @@ fn validate_field(name: &str, value: &Value, schema: &FieldSchema) -> Result<(),
     for constraint in &schema.constraints {
         match constraint {
             Constraint::Min { value: min } => {
-                if let Some(n) = value.as_f64() {
-                    if n < *min {
-                        return Err(format!("Field '{}' must be >= {}", name, min));
-                    }
+                if let Some(n) = value.as_f64()
+                    && n < *min
+                {
+                    return Err(format!("Field '{}' must be >= {}", name, min));
                 }
-                if let Some(s) = value.as_str() {
-                    if (s.len() as f64) < *min {
-                        return Err(format!("Field '{}' length must be >= {}", name, min));
-                    }
+                if let Some(s) = value.as_str()
+                    && (s.len() as f64) < *min
+                {
+                    return Err(format!("Field '{}' length must be >= {}", name, min));
                 }
             }
             Constraint::Max { value: max } => {
-                if let Some(n) = value.as_f64() {
-                    if n > *max {
-                        return Err(format!("Field '{}' must be <= {}", name, max));
-                    }
+                if let Some(n) = value.as_f64()
+                    && n > *max
+                {
+                    return Err(format!("Field '{}' must be <= {}", name, max));
                 }
-                if let Some(s) = value.as_str() {
-                    if (s.len() as f64) > *max {
-                        return Err(format!("Field '{}' length must be <= {}", name, max));
-                    }
+                if let Some(s) = value.as_str()
+                    && (s.len() as f64) > *max
+                {
+                    return Err(format!("Field '{}' length must be <= {}", name, max));
                 }
             }
             Constraint::Pattern { regex } => {
-                if let Some(s) = value.as_str() {
-                    if let Ok(re) = regex::Regex::new(regex) {
-                        if !re.is_match(s) {
-                            return Err(format!("Field '{}' must match pattern: {}", name, regex));
-                        }
-                    }
+                if let Some(s) = value.as_str()
+                    && let Ok(re) = regex::Regex::new(regex)
+                    && !re.is_match(s)
+                {
+                    return Err(format!("Field '{}' must match pattern: {}", name, regex));
                 }
             }
             Constraint::OneOf { values } if !values.contains(value) => {
@@ -1581,15 +1581,11 @@ pub(crate) fn validate_value_against_type(
             if !value.is_array() {
                 return Err(format!("Field '{}' must be an array", name));
             }
-            if let Some(items) = value.as_array() {
-                if let FieldType::Array(item_type) = field_type {
-                    for (index, item) in items.iter().enumerate() {
-                        validate_value_against_type(
-                            &format!("{}[{}]", name, index),
-                            item,
-                            item_type,
-                        )?;
-                    }
+            if let Some(items) = value.as_array()
+                && let FieldType::Array(item_type) = field_type
+            {
+                for (index, item) in items.iter().enumerate() {
+                    validate_value_against_type(&format!("{}[{}]", name, index), item, item_type)?;
                 }
             }
         }
@@ -1797,15 +1793,15 @@ fn field_type_to_json_schema_2026(field_type: &FieldType) -> Value {
             let mut required = Vec::new();
             for (name, schema) in fields {
                 let mut field_json = field_type_to_json_schema_2026(&schema.field_type);
-                if !schema.description.is_empty() {
-                    if let Some(obj) = field_json.as_object_mut() {
-                        obj.insert("description".to_string(), json!(schema.description));
-                    }
+                if !schema.description.is_empty()
+                    && let Some(obj) = field_json.as_object_mut()
+                {
+                    obj.insert("description".to_string(), json!(schema.description));
                 }
-                if schema.read_only {
-                    if let Some(obj) = field_json.as_object_mut() {
-                        obj.insert("readOnly".to_string(), json!(true));
-                    }
+                if schema.read_only
+                    && let Some(obj) = field_json.as_object_mut()
+                {
+                    obj.insert("readOnly".to_string(), json!(true));
                 }
                 properties.insert(name.clone(), field_json);
                 if schema.required {
@@ -1816,10 +1812,10 @@ fn field_type_to_json_schema_2026(field_type: &FieldType) -> Value {
                 "type": "object",
                 "properties": properties
             });
-            if !required.is_empty() {
-                if let Some(obj) = result.as_object_mut() {
-                    obj.insert("required".to_string(), json!(required));
-                }
+            if !required.is_empty()
+                && let Some(obj) = result.as_object_mut()
+            {
+                obj.insert("required".to_string(), json!(required));
             }
             result
         }

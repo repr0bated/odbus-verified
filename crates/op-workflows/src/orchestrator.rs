@@ -192,14 +192,13 @@ impl IntermediateCache {
         let mut cache = self.cache.write().await;
 
         // Evict oldest if over limit
-        if cache.len() >= self.max_entries {
-            if let Some(oldest_key) = cache
+        if cache.len() >= self.max_entries
+            && let Some(oldest_key) = cache
                 .iter()
                 .min_by_key(|(_, v)| v.created_at)
                 .map(|(k, _)| k.clone())
-            {
-                cache.remove(&oldest_key);
-            }
+        {
+            cache.remove(&oldest_key);
         }
 
         cache.insert(

@@ -251,19 +251,19 @@ impl MemoryAgent {
         }
 
         // Exact match with access tracking
-        if let Some(entry) = cache.get_mut(key) {
-            if !entry.is_expired() {
-                entry.access_count += 1;
-                entry.last_accessed = now_ts();
-                let value = entry.value.clone();
-                let count = entry.access_count;
-                drop(cache);
-                let _ = self.persist();
-                return Ok(format!(
-                    "Recalled (exact): {} = {} (accessed: {} times)",
-                    key, value, count
-                ));
-            }
+        if let Some(entry) = cache.get_mut(key)
+            && !entry.is_expired()
+        {
+            entry.access_count += 1;
+            entry.last_accessed = now_ts();
+            let value = entry.value.clone();
+            let count = entry.access_count;
+            drop(cache);
+            let _ = self.persist();
+            return Ok(format!(
+                "Recalled (exact): {} = {} (accessed: {} times)",
+                key, value, count
+            ));
         }
 
         // Fuzzy search

@@ -259,10 +259,10 @@ impl ExternalMcpClient {
             .stderr(Stdio::inherit())
             .envs(&self.config.env);
 
-        if let Some(api_key) = &self.config.api_key {
-            if matches!(self.config.auth_method, AuthMethod::EnvVar) {
-                cmd.env(&self.config.api_key_env, api_key);
-            }
+        if let Some(api_key) = &self.config.api_key
+            && matches!(self.config.auth_method, AuthMethod::EnvVar)
+        {
+            cmd.env(&self.config.api_key_env, api_key);
         }
 
         let mut child = cmd
@@ -457,10 +457,10 @@ impl ExternalMcpClient {
         for (name, value) in &self.config.headers {
             builder = builder.header(name, value);
         }
-        if let Some(api_key) = &self.config.api_key {
-            if matches!(self.config.auth_method, AuthMethod::BearerToken) {
-                builder = builder.header(AUTHORIZATION, format!("Bearer {api_key}"));
-            }
+        if let Some(api_key) = &self.config.api_key
+            && matches!(self.config.auth_method, AuthMethod::BearerToken)
+        {
+            builder = builder.header(AUTHORIZATION, format!("Bearer {api_key}"));
         }
 
         let response = builder

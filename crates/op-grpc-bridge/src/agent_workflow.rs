@@ -237,10 +237,10 @@ fn validate_step(workflow_agent: &str, step: &Value) -> Result<()> {
     if target.category == "orchestration" || agent_type == workflow_agent {
         bail!("nested orchestration is not permitted in workflow steps");
     }
-    if let Some(condition) = step.get("condition").and_then(Value::as_str) {
-        if !matches!(condition, "expect_success" | "expect_failure") {
-            bail!("unsupported workflow condition '{condition}'");
-        }
+    if let Some(condition) = step.get("condition").and_then(Value::as_str)
+        && !matches!(condition, "expect_success" | "expect_failure")
+    {
+        bail!("unsupported workflow condition '{condition}'");
     }
     let mut arguments = step.get("arguments").cloned().unwrap_or_else(|| json!({}));
     normalize_arguments(&mut arguments, &target.declaration.args)?;
@@ -267,10 +267,9 @@ fn normalize_arguments(arguments: &mut Value, schema: &impl serde::Serialize) ->
         if !object.contains_key("question")
             && object.contains_key("query")
             && properties.contains_key("question")
+            && let Some(query) = object.remove("query")
         {
-            if let Some(query) = object.remove("query") {
-                object.insert("question".into(), query);
-            }
+            object.insert("question".into(), query);
         }
     }
     Ok(())

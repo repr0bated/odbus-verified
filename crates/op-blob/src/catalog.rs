@@ -124,12 +124,12 @@ impl ActiveReflectionCatalog {
         };
         for e in std::fs::read_dir(&dir)? {
             let path = e?.path();
-            if path.extension().and_then(|x| x.to_str()) == Some("blob") {
-                if let Err(err) = cat.load_file(&path) {
-                    // A corrupt blob must not take the catalog down; it is
-                    // simply not advertised.
-                    eprintln!("op-blob: skipping {}: {err}", path.display());
-                }
+            if path.extension().and_then(|x| x.to_str()) == Some("blob")
+                && let Err(err) = cat.load_file(&path)
+            {
+                // A corrupt blob must not take the catalog down; it is
+                // simply not advertised.
+                eprintln!("op-blob: skipping {}: {err}", path.display());
             }
         }
         Ok(cat)
@@ -156,12 +156,12 @@ impl ActiveReflectionCatalog {
         let prefix = format!("{}.", blob.manifest.plugin_id);
         for e in std::fs::read_dir(&self.dir)? {
             let p = e?.path();
-            if p != path {
-                if let Some(name) = p.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with(&prefix) && name.ends_with(".blob") {
-                        let _ = std::fs::remove_file(&p);
-                    }
-                }
+            if p != path
+                && let Some(name) = p.file_name().and_then(|n| n.to_str())
+                && name.starts_with(&prefix)
+                && name.ends_with(".blob")
+            {
+                let _ = std::fs::remove_file(&p);
             }
         }
         let bytes = std::fs::read(&path)?;
@@ -202,10 +202,10 @@ impl ActiveReflectionCatalog {
             .cloned()
             .collect();
         for id in &stale {
-            if let Some(entry) = self.entries.remove(id) {
-                if entry.path.exists() {
-                    std::fs::remove_file(&entry.path)?;
-                }
+            if let Some(entry) = self.entries.remove(id)
+                && entry.path.exists()
+            {
+                std::fs::remove_file(&entry.path)?;
             }
         }
         if !stale.is_empty() {

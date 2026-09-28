@@ -184,10 +184,10 @@ impl ToolDiscoverySystem {
         }
 
         // If not in cache and cache might be stale, refresh
-        if self.should_refresh().await {
-            if let Err(e) = self.refresh_cache().await {
-                warn!("Failed to refresh cache: {}", e);
-            }
+        if self.should_refresh().await
+            && let Err(e) = self.refresh_cache().await
+        {
+            warn!("Failed to refresh cache: {}", e);
         }
 
         let cache = self.cache.read().await;
