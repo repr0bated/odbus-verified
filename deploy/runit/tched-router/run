@@ -14,6 +14,7 @@ if [ "${TCHED_ROUTER_SANITIZED:-}" != 1 ]; then
         TCHED_ROUTER_BOOTSTRAP_CONFIG="${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/zeroclaw-runtime.toml}" \
         TCHED_ROUTER_BOOTSTRAP_SKILLS="${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/zeroclaw-skills/default}" \
         TCHED_ROUTER_OPENCODE_KEY_FILE="${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}" \
+        TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE="${TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaperinverence_api_key}" \
         TCHED_ROUTER_NATIVE_BIN="${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}" \
         TCHED_ROUTER_NATIVE_MANIFEST="${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}" \
         TCHED_ROUTER_HOST="${TCHED_ROUTER_HOST:-127.0.0.1}" \
@@ -28,6 +29,7 @@ CONFIG_DIR=${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}
 BOOTSTRAP_CONFIG=${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/zeroclaw-runtime.toml}
 BOOTSTRAP_SKILLS=${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/zeroclaw-skills/default}
 OPENCODE_API_KEY_FILE=${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}
+CHEAPER_INFERENCE_KEY_FILE=${TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaperinverence_api_key}
 NATIVE_BIN=${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}
 NATIVE_MANIFEST=${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}
 HOST=${TCHED_ROUTER_HOST:-127.0.0.1}
@@ -220,6 +222,34 @@ jq -n --rawfile key "$OPENCODE_API_KEY_FILE" --arg ops "$anthropic_key_ops" '
     chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
         PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
         "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
+
+if [ -f "$CHEAPER_INFERENCE_KEY_FILE" ]; then
+    set -- $(stat -Lc '%u %a' "$CHEAPER_INFERENCE_KEY_FILE")
+    [ "$1" -eq 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || {
+        echo "tched-router: Cheaper Inference key must be root-owned with mode 0400 or 0600" >&2
+        exit 78
+    }
+    native_config init "providers.models.custom.cheaper_inference" >/dev/null
+    cheaper_model_op=add
+    native_config get "providers.models.custom.cheaper_inference.uri" --json 2>/dev/null |
+        jq -e '.value | type == "string" and length > 0' >/dev/null 2>&1 && cheaper_model_op=replace
+    cheaper_key_op=add
+    native_config get "providers.models.custom.cheaper_inference.api_key" --json 2>/dev/null |
+        jq -e '.value | type == "string" and length > 0' >/dev/null 2>&1 && cheaper_key_op=replace
+    jq -n --rawfile key "$CHEAPER_INFERENCE_KEY_FILE" \
+        --arg uri_op "$cheaper_model_op" --arg key_op "$cheaper_key_op" '
+      ($key | gsub("[\\r\\n]+$"; "")) as $key |
+      [
+        {op:$uri_op, path:"/providers/models/custom/cheaper_inference/uri", value:"https://api.cheaperinference.com/v1"},
+        {op:$uri_op, path:"/providers/models/custom/cheaper_inference/wire_api", value:"chat_completions"},
+        {op:$uri_op, path:"/providers/models/custom/cheaper_inference/native_tools", value:false},
+        {op:$key_op, path:"/providers/models/custom/cheaper_inference/api_key", value:$key}
+      ]' | chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
+            PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
+            "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
+else
+    echo "tched-router: Cheaper Inference key file is absent; provider not configured" >&2
+fi
 
 export OPENCODE_API_KEY=$(cat "$OPENCODE_API_KEY_FILE")
 [ -n "$OPENCODE_API_KEY" ] || { echo "tched-router: empty legacy provider key" >&2; exit 78; }

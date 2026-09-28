@@ -45,6 +45,13 @@ uri = "https://opencode.ai/zen/v1"
 wire_api = "chat_completions"
 native_tools = false
 
+# OpenAI-compatible gateway. Model ids come from GET /v1/models.
+# The daemon injects /etc/op-dbus/secrets/cheaperinverence_api_key when that file exists.
+[providers.models.custom.cheaper_inference]
+uri = "https://api.cheaperinference.com/v1"
+wire_api = "chat_completions"
+native_tools = false
+
 [providers.models.custom.opencode_cp_route_grok_47]
 model = "grok-4.7"
 uri = "https://opencode.ai/zen/v1"
