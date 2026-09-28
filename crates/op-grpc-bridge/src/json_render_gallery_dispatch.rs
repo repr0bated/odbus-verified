@@ -38,7 +38,7 @@ pub(crate) use op_plugins::state_plugins::json_render::gallery::is_gallery_metho
 
 #[cfg(test)]
 #[path = "json_render_gallery_tests.rs"]
-mod tests;
+pub(crate) mod tests;
 
 struct Caller {
     principal_id: String,

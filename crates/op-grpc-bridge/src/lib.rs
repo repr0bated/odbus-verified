@@ -75,6 +75,8 @@ pub mod nlm_cli;
 mod notebooklm_queries;
 pub mod oracle_assertion;
 pub mod oracle_assertion_client;
+mod pam_auth;
+mod task_elevation;
 mod wake_doorbell;
 pub use oracle_assertion_client::DecoyAssertionClient;
 mod agent_catalog_dispatch;

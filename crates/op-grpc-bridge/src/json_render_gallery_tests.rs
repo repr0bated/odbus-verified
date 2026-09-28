@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use op_cozo_store::CozoGraphShuttle;
 use op_plugins::state_plugins::{
+    elevation::{AUTHORIZE_CAPABILITY, ElevationPlugin},
     human_principal::HumanPrincipalPlugin,
     identity_sled::IdentitySledPlugin,
     json_render::{
@@ -26,8 +27,18 @@ use crate::{
 };
 
 const PRIVATE_PROMPT: &str = "PRIVATE-PROMPT-SENTINEL draw my network";
+/// The sudo password the fake authority accepts for every mapped account.
+pub(crate) const SUDO_PASSWORD: &str = "SUDO-PASSWORD-SENTINEL correct horse";
 
-struct Environment(Vec<(&'static str, Option<std::ffi::OsString>)>);
+/// Accepts `SUDO_PASSWORD` for the listed Unix accounts only.
+pub(crate) struct FakeSudo(pub Vec<&'static str>);
+impl crate::task_elevation::SudoAuthority for FakeSudo {
+    fn verify(&self, user: &str, password: &str) -> anyhow::Result<bool> {
+        Ok(self.0.contains(&user) && password == SUDO_PASSWORD)
+    }
+}
+
+pub(crate) struct Environment(Vec<(&'static str, Option<std::ffi::OsString>)>);
 impl Environment {
     fn set(values: &[(&'static str, String)]) -> Self {
         let previous = values
@@ -54,17 +65,17 @@ impl Drop for Environment {
     }
 }
 
-struct Identity {
-    principal: String,
-    session: String,
-    genesis: String,
+pub(crate) struct Identity {
+    pub(crate) principal: String,
+    pub(crate) session: String,
+    pub(crate) genesis: String,
 }
 
-struct Fixture {
-    engine: Arc<MutationEngine>,
-    alice: Identity,
-    bob: Identity,
-    carol: Identity,
+pub(crate) struct Fixture {
+    pub(crate) engine: Arc<MutationEngine>,
+    pub(crate) alice: Identity,
+    pub(crate) bob: Identity,
+    pub(crate) carol: Identity,
     _grants: tempfile::TempDir,
     _environment: Environment,
     _shm: TempShm,
@@ -82,16 +93,21 @@ async fn identity(engine: &MutationEngine, byte: u8, alias: &str) -> Identity {
     }
 }
 
-async fn fixture() -> Fixture {
+pub(crate) async fn fixture() -> Fixture {
     let cozo = temp_cozo();
     let shm = temp_shm_with_schemas(&[
         HumanPrincipalPlugin::new().schema().unwrap(),
         IdentitySledPlugin::new().schema().unwrap(),
         JsonRenderPlugin::new().schema().unwrap(),
+        ElevationPlugin::new().schema().unwrap(),
     ]);
     let grants_dir = tempfile::tempdir().unwrap();
     let grants_path = grants_dir.path().join("grants.json");
-    let environment = Environment::set(&[("OP_GRANTS_PATH", grants_path.display().to_string())]);
+    let users_path = grants_dir.path().join("elevation-users.json");
+    let environment = Environment::set(&[
+        ("OP_GRANTS_PATH", grants_path.display().to_string()),
+        ("OP_ELEVATION_USERS_PATH", users_path.display().to_string()),
+    ]);
     let engine = test_engine();
     engine
         .install_identity_sled_store_for_test(IdentitySledStore::new(
@@ -104,11 +120,23 @@ async fn fixture() -> Fixture {
     let alice = identity(&engine, 0xA1, "gallery-alice").await;
     let bob = identity(&engine, 0xB2, "gallery-bob").await;
     let carol = identity(&engine, 0xC3, "gallery-carol").await;
+    engine
+        .task_elevation()
+        .set_authority_for_test(Arc::new(FakeSudo(vec!["alice", "bob"])));
+    std::fs::write(
+        &users_path,
+        serde_json::to_vec(&json!({
+            (alice.principal.clone()): {"unix_user": "alice"},
+            (bob.principal.clone()): {"unix_user": "bob"},
+        }))
+        .unwrap(),
+    )
+    .unwrap();
     std::fs::write(
         &grants_path,
         serde_json::to_vec(&json!({
-            (alice.principal.clone()): {"capabilities": [GALLERY_CAPABILITY, PROMOTE_CAPABILITY]},
-            (bob.principal.clone()): {"capabilities": [GALLERY_CAPABILITY]},
+            (alice.principal.clone()): {"capabilities": [GALLERY_CAPABILITY, PROMOTE_CAPABILITY, AUTHORIZE_CAPABILITY]},
+            (bob.principal.clone()): {"capabilities": [GALLERY_CAPABILITY, AUTHORIZE_CAPABILITY]},
             (carol.principal.clone()): {"capabilities": []},
         }))
         .unwrap(),
@@ -134,7 +162,45 @@ fn capability(method: &str) -> &'static str {
     }
 }
 
-async fn call(
+/// Obtain the one-time sudo ticket for a protected call.
+pub(crate) async fn authorize(
+    fixture: &Fixture,
+    who: &Identity,
+    plugin: &str,
+    method: &str,
+    args: &Value,
+    password: &str,
+) -> anyhow::Result<Value> {
+    let envelope = fixture
+        .engine
+        .dispatch_method_call_with_identity(
+            "elevation",
+            "authorize_task",
+            &json!({"plugin": plugin, "method": method, "args": args, "password": password})
+                .to_string(),
+            Some(AUTHORIZE_CAPABILITY),
+            &who.principal,
+            Some(&who.session),
+            Some(&who.genesis),
+        )
+        .await?;
+    Ok(envelope["result"].clone())
+}
+
+/// A gallery call; promote and retire first obtain their sudo ticket.
+pub(crate) async fn call(
+    fixture: &Fixture,
+    who: &Identity,
+    method: &str,
+    args: Value,
+) -> anyhow::Result<Value> {
+    if matches!(method, "promote_candidate" | "retire_catalog_entry") {
+        authorize(fixture, who, "json_render", method, &args, SUDO_PASSWORD).await?;
+    }
+    call_unelevated(fixture, who, method, args).await
+}
+
+pub(crate) async fn call_unelevated(
     fixture: &Fixture,
     who: &Identity,
     method: &str,
@@ -155,11 +221,11 @@ async fn call(
     Ok(envelope["result"].clone())
 }
 
-fn error_of(result: anyhow::Result<Value>) -> String {
+pub(crate) fn error_of(result: anyhow::Result<Value>) -> String {
     format!("{:#}", result.expect_err("call must be refused"))
 }
 
-fn canvas(title: &str) -> Value {
+pub(crate) fn canvas(title: &str) -> Value {
     json!({
         "root": "page",
         "elements": {
@@ -170,7 +236,7 @@ fn canvas(title: &str) -> Value {
     })
 }
 
-async fn save(fixture: &Fixture, who: &Identity, title: &str) -> Value {
+pub(crate) async fn save(fixture: &Fixture, who: &Identity, title: &str) -> Value {
     call(
         fixture,
         who,

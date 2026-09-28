@@ -63,6 +63,9 @@ socket2 = "0.6"
 # Zero-copy shared memory (1:1 Direct Read)
 memmap2 = { workspace = true }
 hex = { workspace = true }
+libc = "0.2"
+libloading = "0.8"
+zeroize = "1"
 sha2 = { workspace = true }
 blake3 = { workspace = true }
 ed25519-dalek = "2.2"

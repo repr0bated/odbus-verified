@@ -29,6 +29,7 @@ pub mod ctl_plane_chatbot_methods;
 pub mod datastore;
 pub mod decoy_network;
 pub mod dnsresolver;
+pub mod elevation;
 pub mod embedding_model;
 pub mod emqx;
 pub mod endpoint;

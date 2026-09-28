@@ -303,6 +303,7 @@ fn audit_method_arguments(plugin_id: &str, method: &str, json_args: &str) -> Str
             | "cron"
             | "web_ui"
             | "ctl_plane_chatbot"
+            | "elevation"
             | "mail_server"
             | "wireguard"
             | "wg_opdbus"
@@ -397,6 +398,8 @@ pub struct MutationEngine {
     /// The control plane's json_render UI gallery and active catalog owner:
     /// one system database, read and written only through grants.
     ui_gallery_cozo: Arc<OnceCell<Arc<op_cozo_store::CozoGraphShuttle>>>,
+    /// One-time sudo elevation tickets for protected tasks.
+    task_elevation: Arc<crate::task_elevation::TaskElevation>,
     /// Private memory methods share one writer lock and the existing Cozo
     /// handle; request context determines their principal/session namespace.
     memory_methods: Arc<OnceCell<op_plugins::state_plugins::memory_methods::MemoryMethods>>,
@@ -1175,6 +1178,7 @@ impl MutationEngine {
             vector_projector: Arc::new(OnceCell::new()),
             chatbot_episode_cozo: Arc::new(OnceCell::new()),
             ui_gallery_cozo: Arc::new(OnceCell::new()),
+            task_elevation: Arc::new(crate::task_elevation::TaskElevation::default()),
             memory_methods: Arc::new(OnceCell::new()),
             sess_decl_methods: Arc::new(OnceCell::new()),
             notebook_queries: Arc::new(crate::notebooklm_queries::NotebookQueries::default()),
@@ -1328,6 +1332,10 @@ impl MutationEngine {
             })
             .await
             .cloned()
+    }
+
+    pub(crate) fn task_elevation(&self) -> &Arc<crate::task_elevation::TaskElevation> {
+        &self.task_elevation
     }
 
     pub fn configure_ui_gallery_store(
@@ -3160,6 +3168,15 @@ impl MutationEngine {
                 &declaration,
                 &canonical_args,
             )?;
+            // A protected task also needs a one-time sudo elevation ticket
+            // for this exact call, whichever transport or facade made it.
+            self.task_elevation.consume(
+                actor_id,
+                session_id,
+                plugin_id,
+                method,
+                &canonical_args,
+            )?;
             crate::schema_integer_arguments::normalize_declared_integers(
                 &serde_json::to_value(&declaration.args)?,
                 &mut canonical_args,
@@ -3233,6 +3250,17 @@ impl MutationEngine {
                     session_id,
                     session_genesis,
                     &admitted_schema,
+                )
+                .await?
+            }
+            "elevation" => {
+                crate::task_elevation::dispatch(
+                    self,
+                    method,
+                    &serde_json::to_value(&parsed_value)?,
+                    actor_id,
+                    session_id,
+                    session_genesis,
                 )
                 .await?
             }

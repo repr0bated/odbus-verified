@@ -4451,6 +4451,8 @@ dependencies = [
  "hyper 1.11.0",
  "hyper-util",
  "jsonschema",
+ "libc",
+ "libloading",
  "memmap2",
  "nix 0.28.0",
  "op-agents",
@@ -4498,6 +4500,7 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "zbus",
+ "zeroize",
 ]
 
 [[package]]

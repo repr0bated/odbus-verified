@@ -195,7 +195,9 @@
       "human_principal.write",
       "project.read",
       "json_render.gallery",
-      "json_render.promote"
+      "json_render.promote",
+      "elevation.authorize",
+      "elevation.read"
     ]
   },
   "1262e982-14c1-44d4-0771-7ce74213211b": {
