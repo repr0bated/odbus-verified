@@ -3,6 +3,7 @@
 pub mod agents;
 pub mod analytics;
 pub mod chat;
+pub mod control_plane_picker;
 pub mod dashboard;
 pub mod health;
 pub mod identity;

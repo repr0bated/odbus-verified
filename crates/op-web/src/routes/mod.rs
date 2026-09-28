@@ -103,6 +103,14 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             get(handlers::tched_router::tched_router_schema_handler),
         )
         .route(
+            "/control-plane/models",
+            post(handlers::control_plane_picker::list_models),
+        )
+        .route(
+            "/control-plane/model",
+            post(handlers::control_plane_picker::set_model),
+        )
+        .route(
             "/tched_router/schema",
             get(handlers::tched_router::tched_router_schema_handler),
         )

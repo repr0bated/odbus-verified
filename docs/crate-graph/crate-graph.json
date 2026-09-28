@@ -853,8 +853,8 @@
           "opdbus"
         ],
         "has_lib": true,
-        "rs_files": 59,
-        "loc": 13661,
+        "rs_files": 60,
+        "loc": 13877,
         "tests": 67,
         "unsafe_refs": 1,
         "todo": 6,
@@ -1932,8 +1932,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-28T09:55:31Z",
-        "commit": "41c6bb26cfca16e739df282b6bc99b1e2935acc1",
+        "generated_at": "2026-09-28T14:58:49Z",
+        "commit": "2bdeb27c02ed3be8c78d838ddd0f44f0c628fc84",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -9358,6 +9358,15 @@
       }
     },
     {
+      "id": "mod:crates/op-web/src/handlers/control_plane_picker.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-web",
+        "kind": "src",
+        "loc": 207
+      }
+    },
+    {
       "id": "mod:crates/op-web/src/handlers/dashboard.rs",
       "label": "module",
       "props": {
@@ -9426,7 +9435,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 22
+        "loc": 23
       }
     },
     {
@@ -9705,7 +9714,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 356
+        "loc": 364
       }
     },
     {
@@ -23303,6 +23312,12 @@
       "src": "crate:op-web",
       "rel": "contains",
       "dst": "mod:crates/op-web/src/handlers/chat.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-web",
+      "rel": "contains",
+      "dst": "mod:crates/op-web/src/handlers/control_plane_picker.rs",
       "props": {}
     },
     {
