@@ -94,10 +94,6 @@ struct ConfiguredProvider {
     selected_model: String,
 }
 
-/// Published family for an agent's native selection that the door cannot
-/// select itself: the router's own default, shown until a door selection.
-const ROUTER_DEFAULT_FAMILY: &str = "tched_router";
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct RuntimeSelection {
     pub(crate) provider: String,
@@ -1264,8 +1260,11 @@ impl TchedRouterRuntimeClient {
             }
         }
 
-        // The door UI starts on the first provider.
-        providers.sort_by_key(|provider| provider.id != ROUTER_DEFAULT_FAMILY);
+        // The door UI starts on the first provider: the router's own default
+        // when the door cannot select the agent's native provider.
+        if is_router_default(&selected_ref, self.opencode_only()) {
+            providers.sort_by_key(|provider| provider.id != selected_family);
+        }
 
         let (confirmed_ref, confirmed_model) = self.runtime_defaults().await?;
         anyhow::ensure!(
@@ -1411,7 +1410,7 @@ impl TchedRouterRuntimeClient {
     pub(crate) async fn set_model(&self, model_id: &str) -> anyhow::Result<RuntimeSelection> {
         self.health().await?;
         let provider = self.current_provider().await?;
-        ensure_router_default_model(&provider, model_id)?;
+        ensure_router_default_model(&provider, model_id, self.opencode_only())?;
         let catalog = self.model_catalog(&provider.reference).await?;
         if !catalog.models.iter().any(|model| model == model_id) {
             return Err(anyhow!(
@@ -1460,7 +1459,7 @@ impl TchedRouterRuntimeClient {
     ) -> anyhow::Result<RuntimeSelection> {
         self.health().await?;
         let provider = self.resolve_provider(provider_id).await?;
-        ensure_router_default_model(&provider, model_id)?;
+        ensure_router_default_model(&provider, model_id, self.opencode_only())?;
         let catalog = self.model_catalog(&provider.reference).await?;
         if !catalog.models.iter().any(|model| model == model_id) {
             return Err(anyhow!(
@@ -2091,7 +2090,17 @@ fn parse_configured_providers(
 }
 
 fn is_opencode_route(provider: &ConfiguredProvider) -> bool {
-    provider.reference.starts_with("custom.opencode_")
+    is_opencode_reference(&provider.reference)
+}
+
+fn is_opencode_reference(reference: &str) -> bool {
+    reference.starts_with("custom.opencode_")
+}
+
+/// Whether the door must present `selected_ref` as the router's own default:
+/// the agent's native selection is not a profile the door can select.
+fn is_router_default(selected_ref: &str, opencode_only: bool) -> bool {
+    opencode_only && !is_opencode_reference(selected_ref)
 }
 
 fn publish_providers(
@@ -2107,13 +2116,9 @@ fn publish_providers(
         if is_opencode_route(&provider) {
             published.push(provider);
         } else if provider.reference == selected_ref {
-            published.insert(
-                0,
-                ConfiguredProvider {
-                    family: ROUTER_DEFAULT_FAMILY.to_string(),
-                    ..provider
-                },
-            );
+            // The router's own default keeps its real provider family, so the
+            // picker names the provider that actually serves it.
+            published.insert(0, provider);
         }
     }
     published
@@ -2124,10 +2129,12 @@ fn publish_providers(
 fn ensure_router_default_model(
     provider: &ConfiguredProvider,
     model_id: &str,
+    opencode_only: bool,
 ) -> anyhow::Result<()> {
     anyhow::ensure!(
-        provider.family != ROUTER_DEFAULT_FAMILY || provider.selected_model == model_id,
-        "the tched_router default keeps the router's own model; select a configured provider to choose a model"
+        !is_router_default(&provider.reference, opencode_only)
+            || provider.selected_model == model_id,
+        "the router default keeps its own model; select a configured provider to choose a model"
     );
     Ok(())
 }
@@ -2598,8 +2605,10 @@ mod tests {
         ];
         assert_eq!(
             publish_providers(configured.clone(), "opencode.go", true),
+            // The router default leads under its real family, never a
+            // router-invented label.
             vec![
-                provider(ROUTER_DEFAULT_FAMILY, "opencode.go", "space-bunny-free"),
+                provider("opencode", "opencode.go", "space-bunny-free"),
                 provider("custom", "custom.opencode_dashboard", "nemotron"),
             ]
         );
@@ -2611,20 +2620,32 @@ mod tests {
             publish_providers(configured.clone(), "opencode.go", false),
             configured
         );
+        // A native selection absent from the configuration publishes no
+        // router default at all.
         assert!(
             publish_providers(configured, "ollama.main", true)
                 .iter()
-                .all(|provider| provider.family != ROUTER_DEFAULT_FAMILY)
+                .all(is_opencode_route)
         );
     }
 
     #[test]
     fn router_default_model_cannot_be_changed_through_the_door() {
-        let default = provider(ROUTER_DEFAULT_FAMILY, "opencode.go", "space-bunny-free");
-        assert!(ensure_router_default_model(&default, "space-bunny-free").is_ok());
-        assert!(ensure_router_default_model(&default, "other").is_err());
+        let default = provider("opencode", "opencode.go", "space-bunny-free");
+        assert!(ensure_router_default_model(&default, "space-bunny-free", true).is_ok());
+        assert!(ensure_router_default_model(&default, "other", true).is_err());
         let selectable = provider("custom", "custom.opencode_dashboard", "nemotron");
-        assert!(ensure_router_default_model(&selectable, "other").is_ok());
+        assert!(ensure_router_default_model(&selectable, "other", true).is_ok());
+        // Without the OpenCode-only door, every provider keeps its models
+        // selectable, as before.
+        assert!(ensure_router_default_model(&default, "other", false).is_ok());
+    }
+
+    #[test]
+    fn router_default_is_only_an_unselectable_native_provider_behind_the_door() {
+        assert!(is_router_default("opencode.go", true));
+        assert!(!is_router_default("custom.opencode_dashboard", true));
+        assert!(!is_router_default("opencode.go", false));
     }
 
     #[test]
