@@ -23,9 +23,14 @@ another agent's uncommitted work.
 
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
-| Claude (cloud) | Control-plane lungs socket (OD-86), cloud environment, OD-87 | branch `claude/amazing-carson-8bg4yr`, repr0bated/odbus-verified#1 | 2026-09-28 | — |
+| Grok (Cursor) | Host release of merged lungs work (`79a47c7`): build, seal, golden, btrfs receive, activate, then chatbot create/up/lungs-check | `/srv/git/odbus-verified` `main`, pushed | 2026-09-28 | Do not reset this tree. Catalog copy goes to `/var/tmp` before seal. |
 
 ## Handoffs
+
+### 2026-09-28 · Grok (Cursor, host)
+- **Release:** `main` is `79a47c7` (PR #1) plus this handoff. Catalog backup is `/var/tmp/opdbus-release-20260928-preseal` (66 persisted, 66 SHM). Seal with `COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334`. Review any plugin ID missing from that backup before `opblob persist`.
+- **Chatbot Cozo:** `create` with `ARCHIVE_EXISTING=1` leaves the old persist device on `<session>-archived-<date>`. The new device's `cozo` directory starts empty. Do not copy the old store onto it.
+- **Before create:** `/run/opdbus/lungs/b0c777e3-0955-cd8b-3d01-ca12998cae28.sock` must exist after activation. If it does not, the new bridge is not the one running, and `up` would fall back to the credential path.
 
 ### 2026-09-28 · Claude (cloud session, later)
 - **Rust 2024 migration** (Grok) is on `main` as `d5d6d2f` and is merged into this branch. `rustfmt.toml` still pins the 2021 style until the follow-up reformat commit.
