@@ -94,6 +94,10 @@ struct ConfiguredProvider {
     selected_model: String,
 }
 
+/// Published family for an agent's native selection that the door cannot
+/// select itself: the router's own default, shown until a door selection.
+const ROUTER_DEFAULT_FAMILY: &str = "tched_router";
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct RuntimeSelection {
     pub(crate) provider: String,
@@ -1065,13 +1069,32 @@ impl TchedRouterRuntimeClient {
                 "list configured providers",
             )
             .await?;
-        let mut providers = parse_configured_providers(response.entries)?;
-        if std::env::var("TCHED_ROUTER_REQUIRE_OPENCODE").as_deref() == Ok("1")
+        parse_configured_providers(response.entries)
+    }
+
+    fn opencode_only(&self) -> bool {
+        std::env::var("TCHED_ROUTER_REQUIRE_OPENCODE").as_deref() == Ok("1")
             && self.agent_alias != crate::chat_mode_routing::CONTROL_PLANE_AGENT
-        {
-            providers.retain(|provider| provider.reference.starts_with("custom.opencode_"));
+    }
+
+    /// Providers a door caller may select.
+    async fn selectable_providers(&self) -> anyhow::Result<Vec<ConfiguredProvider>> {
+        let mut providers = self.configured_providers().await?;
+        if self.opencode_only() {
+            providers.retain(is_opencode_route);
         }
         Ok(providers)
+    }
+
+    async fn published_providers(
+        &self,
+        selected_ref: &str,
+    ) -> anyhow::Result<Vec<ConfiguredProvider>> {
+        Ok(publish_providers(
+            self.configured_providers().await?,
+            selected_ref,
+            self.opencode_only(),
+        ))
     }
 
     async fn runtime_defaults(&self) -> anyhow::Result<(String, String)> {
@@ -1109,7 +1132,7 @@ impl TchedRouterRuntimeClient {
 
     async fn current_provider(&self) -> anyhow::Result<ConfiguredProvider> {
         let (provider_ref, selected_model) = self.runtime_defaults().await?;
-        let configured = self.configured_providers().await?;
+        let configured = self.published_providers(&provider_ref).await?;
         let provider = configured
             .into_iter()
             .find(|provider| provider.reference == provider_ref)
@@ -1144,8 +1167,8 @@ impl TchedRouterRuntimeClient {
         mut state: TchedRouterState,
     ) -> anyhow::Result<TchedRouterState> {
         self.health().await?;
-        let configured = self.configured_providers().await?;
         let (selected_ref, selected_model) = self.runtime_defaults().await?;
+        let configured = self.published_providers(&selected_ref).await?;
         let selected = configured
             .iter()
             .find(|provider| provider.reference == selected_ref)
@@ -1241,6 +1264,9 @@ impl TchedRouterRuntimeClient {
             }
         }
 
+        // The door UI starts on the first provider.
+        providers.sort_by_key(|provider| provider.id != ROUTER_DEFAULT_FAMILY);
+
         let (confirmed_ref, confirmed_model) = self.runtime_defaults().await?;
         anyhow::ensure!(
             confirmed_ref == selected_ref && confirmed_model == selected_model,
@@ -1327,7 +1353,7 @@ impl TchedRouterRuntimeClient {
         {
             return Ok(current);
         }
-        let providers = self.configured_providers().await?;
+        let providers = self.selectable_providers().await?;
         if let Some(provider) = providers
             .iter()
             .find(|provider| provider.reference.eq_ignore_ascii_case(selector))
@@ -1385,6 +1411,7 @@ impl TchedRouterRuntimeClient {
     pub(crate) async fn set_model(&self, model_id: &str) -> anyhow::Result<RuntimeSelection> {
         self.health().await?;
         let provider = self.current_provider().await?;
+        ensure_router_default_model(&provider, model_id)?;
         let catalog = self.model_catalog(&provider.reference).await?;
         if !catalog.models.iter().any(|model| model == model_id) {
             return Err(anyhow!(
@@ -1433,6 +1460,7 @@ impl TchedRouterRuntimeClient {
     ) -> anyhow::Result<RuntimeSelection> {
         self.health().await?;
         let provider = self.resolve_provider(provider_id).await?;
+        ensure_router_default_model(&provider, model_id)?;
         let catalog = self.model_catalog(&provider.reference).await?;
         if !catalog.models.iter().any(|model| model == model_id) {
             return Err(anyhow!(
@@ -2062,6 +2090,48 @@ fn parse_configured_providers(
     Ok(providers.into_values().collect())
 }
 
+fn is_opencode_route(provider: &ConfiguredProvider) -> bool {
+    provider.reference.starts_with("custom.opencode_")
+}
+
+fn publish_providers(
+    configured: Vec<ConfiguredProvider>,
+    selected_ref: &str,
+    opencode_only: bool,
+) -> Vec<ConfiguredProvider> {
+    if !opencode_only {
+        return configured;
+    }
+    let mut published = Vec::with_capacity(configured.len());
+    for provider in configured {
+        if is_opencode_route(&provider) {
+            published.push(provider);
+        } else if provider.reference == selected_ref {
+            published.insert(
+                0,
+                ConfiguredProvider {
+                    family: ROUTER_DEFAULT_FAMILY.to_string(),
+                    ..provider
+                },
+            );
+        }
+    }
+    published
+}
+
+/// The router default is not a door-selectable profile, so the door never
+/// rewrites its model.
+fn ensure_router_default_model(
+    provider: &ConfiguredProvider,
+    model_id: &str,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        provider.family != ROUTER_DEFAULT_FAMILY || provider.selected_model == model_id,
+        "the tched_router default keeps the router's own model; select a configured provider to choose a model"
+    );
+    Ok(())
+}
+
 fn validate_loopback_endpoint(endpoint: &str) -> Result<(), String> {
     let url = reqwest::Url::parse(endpoint)
         .map_err(|error| format!("invalid tched_router runtime endpoint: {error}"))?;
@@ -2509,6 +2579,52 @@ mod tests {
                 selected_model: "deepseek-v4-flash-free".to_string(),
             }]
         );
+    }
+
+    fn provider(family: &str, reference: &str, model: &str) -> ConfiguredProvider {
+        ConfiguredProvider {
+            family: family.to_string(),
+            reference: reference.to_string(),
+            selected_model: model.to_string(),
+        }
+    }
+
+    #[test]
+    fn opencode_only_publishes_an_unselectable_native_selection_as_the_router_default() {
+        let configured = vec![
+            provider("custom", "custom.opencode_dashboard", "nemotron"),
+            provider("openai", "openai.chatgpt", "gpt"),
+            provider("opencode", "opencode.go", "space-bunny-free"),
+        ];
+        assert_eq!(
+            publish_providers(configured.clone(), "opencode.go", true),
+            vec![
+                provider(ROUTER_DEFAULT_FAMILY, "opencode.go", "space-bunny-free"),
+                provider("custom", "custom.opencode_dashboard", "nemotron"),
+            ]
+        );
+        assert_eq!(
+            publish_providers(configured.clone(), "custom.opencode_dashboard", true),
+            vec![provider("custom", "custom.opencode_dashboard", "nemotron")]
+        );
+        assert_eq!(
+            publish_providers(configured.clone(), "opencode.go", false),
+            configured
+        );
+        assert!(
+            publish_providers(configured, "ollama.main", true)
+                .iter()
+                .all(|provider| provider.family != ROUTER_DEFAULT_FAMILY)
+        );
+    }
+
+    #[test]
+    fn router_default_model_cannot_be_changed_through_the_door() {
+        let default = provider(ROUTER_DEFAULT_FAMILY, "opencode.go", "space-bunny-free");
+        assert!(ensure_router_default_model(&default, "space-bunny-free").is_ok());
+        assert!(ensure_router_default_model(&default, "other").is_err());
+        let selectable = provider("custom", "custom.opencode_dashboard", "nemotron");
+        assert!(ensure_router_default_model(&selectable, "other").is_ok());
     }
 
     #[test]
