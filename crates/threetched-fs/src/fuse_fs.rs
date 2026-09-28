@@ -57,9 +57,9 @@ struct OpenFile {
 /// The credential lives on the identity's own device, outside the container.
 /// How a lungs mount reaches the bridge.
 pub enum Lungs {
-    /// The identity's own socket. The bridge binds it to one session, so
-    /// nothing is registered and no credential is stored.
-    Socket(PathBuf),
+    /// The bridge's shared lungs socket. Each connection binds to this
+    /// identity's session before calling, so no credential is stored.
+    Socket { path: PathBuf, session: String },
     /// Register a SID1 read from the identity's device on the shared bus.
     Credential {
         bus_address: String,
@@ -189,7 +189,7 @@ impl TypedFuse {
                 .map_err(|error| LungsError::Arguments(error.to_string()))?;
         dispatch::validate_arguments(&method, &arguments)?;
         let credential = match lungs {
-            Lungs::Socket(_) => None,
+            Lungs::Socket { .. } => None,
             Lungs::Credential { credential, .. } => Some(dispatch::read_credential(credential)?),
         };
         // FUSE callbacks run inside the mount's tokio context, which cannot
@@ -215,9 +215,10 @@ impl TypedFuse {
                                 )
                                 .await
                             }
-                            (Lungs::Socket(socket), _) => {
+                            (Lungs::Socket { path, session }, _) => {
                                 dispatch::call_over_socket(
-                                    socket,
+                                    path,
+                                    session,
                                     plugin_id,
                                     method_name,
                                     &method,
@@ -989,8 +990,10 @@ mod tests {
 
     #[test]
     fn socket_lungs_never_ask_for_a_credential() {
-        let (_directory, mut fs) =
-            lungs_fixture_with(Lungs::Socket(PathBuf::from("/nonexistent/lungs.sock")));
+        let (_directory, mut fs) = lungs_fixture_with(Lungs::Socket {
+            path: PathBuf::from("/nonexistent/lungs.sock"),
+            session: "session".into(),
+        });
         // No socket exists, so the call fails at the transport, never at
         // the credential stage: a socket mount has nothing to deliver.
         assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Err(EIO));
@@ -1008,10 +1011,23 @@ mod tests {
         }
     }
 
+    /// Stands in for the bridge's `LungsV1.Bind`, recording the session.
+    struct FixtureLungs(std::sync::Arc<std::sync::Mutex<Option<String>>>);
+
+    #[zbus::interface(name = "org.opdbus.v1.LungsV1")]
+    impl FixtureLungs {
+        async fn bind(&self, session_id: String) -> bool {
+            *self.0.lock().unwrap() = Some(session_id);
+            true
+        }
+    }
+
     #[test]
     fn socket_lungs_dispatch_over_the_identity_socket() {
         let directory = tempdir().unwrap();
         let socket = directory.path().join("lungs.sock");
+        let bound = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let bound_by_server = bound.clone();
         let listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
         listener.set_nonblocking(true).unwrap();
         let server = std::thread::spawn(move || {
@@ -1029,6 +1045,8 @@ mod tests {
                     .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
                     .serve_at("/org/opdbus/v1/plugins/demo", FixtureBridge)
                     .unwrap()
+                    .serve_at("/org/opdbus/v1/lungs", FixtureLungs(bound_by_server))
+                    .unwrap()
                     .build()
                     .await
                     .unwrap();
@@ -1036,7 +1054,10 @@ mod tests {
             });
         });
 
-        let (_fixture, mut fs) = lungs_fixture_with(Lungs::Socket(socket));
+        let (_fixture, mut fs) = lungs_fixture_with(Lungs::Socket {
+            path: socket,
+            session: "b0c777e3".into(),
+        });
         assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Ok(()));
         let result = method_node(&fs, "result");
         let receipt: Value =
@@ -1047,6 +1068,7 @@ mod tests {
             .read_bytes(method_node(&fs, "error").ino, 0)
             .unwrap()
             .is_empty());
+        assert_eq!(bound.lock().unwrap().as_deref(), Some("b0c777e3"));
         server.join().unwrap();
     }
 

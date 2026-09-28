@@ -20,6 +20,9 @@ const IDENTITY_OBJECT_PATH: &str = "/org/opdbus/v1/identity/dbus";
 const IDENTITY_INTERFACE: &str = "org.opdbus.v1.DbusIdentityV1";
 /// Mirrors the bridge's registration bound; larger files are not SID1.
 const MAX_CREDENTIAL_BYTES: u64 = 16 * 1024;
+/// The bridge's lungs bootstrap: a connection binds to one session here first.
+const LUNGS_OBJECT_PATH: &str = "/org/opdbus/v1/lungs";
+const LUNGS_INTERFACE: &str = "org.opdbus.v1.LungsV1";
 const LUNGS_NEGOTIATION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 #[derive(Debug, Serialize)]
@@ -200,11 +203,12 @@ pub async fn call_as_identity(
     Ok(receipt(plugin_id, method_name, method, result))
 }
 
-/// Dispatch over the identity's own lungs socket. The bridge binds that
-/// socket to one session, so no credential crosses it: holding the path is
-/// the proof, and the call runs through MutationEngine as that identity.
+/// Dispatch over the bridge's shared lungs socket. The connection first binds
+/// to this identity's session, so no credential crosses it, and the call runs
+/// through MutationEngine as that identity under its own grants.
 pub async fn call_over_socket(
     socket: &Path,
+    session: &str,
     plugin_id: &str,
     method_name: &str,
     method: &MethodDecl,
@@ -225,6 +229,27 @@ pub async fn call_over_socket(
     .await
     .map_err(|_| LungsError::Transport("lungs socket negotiation timed out".into()))?
     .map_err(|error| LungsError::Transport(format!("lungs socket: {error}")))?;
+    let lungs = Proxy::new(
+        &connection,
+        PLUGIN_BUS_NAME,
+        LUNGS_OBJECT_PATH,
+        LUNGS_INTERFACE,
+    )
+    .await
+    .map_err(|error| LungsError::Transport(format!("lungs bind proxy: {error}")))?;
+    let bound: bool =
+        lungs
+            .call("Bind", &(session,))
+            .await
+            .map_err(|error| match refusal(&error) {
+                true => LungsError::Registration(error.to_string()),
+                false => LungsError::Transport(format!("bind: {error}")),
+            })?;
+    if !bound {
+        return Err(LungsError::Registration(
+            "bridge declined to bind this session".into(),
+        ));
+    }
     let result = plugin_call(&connection, plugin_id, method_name, &arguments)
         .await
         .map_err(|error| match refusal(&error) {

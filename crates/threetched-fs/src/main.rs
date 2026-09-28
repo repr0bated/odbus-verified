@@ -113,9 +113,13 @@ enum Command {
         #[arg(long, conflicts_with_all = ["workspace", "lungs_socket"])]
         lungs_credential: Option<PathBuf>,
         /// Mount as one identity's lungs, dispatching every `call` write over
-        /// the bridge socket bound to that identity. No credential is stored.
-        #[arg(long, conflicts_with = "workspace")]
+        /// the bridge's shared lungs socket bound to --lungs-session. No
+        /// credential is stored.
+        #[arg(long, conflicts_with = "workspace", requires = "lungs_session")]
         lungs_socket: Option<PathBuf>,
+        /// The session these lungs breathe for (with --lungs-socket).
+        #[arg(long, requires = "lungs_socket")]
+        lungs_session: Option<String>,
         #[arg(long, default_value = DEFAULT_BUS_ADDRESS)]
         bus_address: String,
     },
@@ -316,6 +320,7 @@ async fn main() -> Result<()> {
             auto_unmount,
             lungs_credential,
             lungs_socket,
+            lungs_session,
             bus_address,
         } => {
             if !mountpoint.is_dir() {
@@ -323,7 +328,10 @@ async fn main() -> Result<()> {
             }
             let target = resolve_target(&store, &target)?;
             let lungs = match (lungs_socket, lungs_credential) {
-                (Some(socket), _) => Some(Lungs::Socket(socket)),
+                (Some(path), _) => Some(Lungs::Socket {
+                    path,
+                    session: lungs_session.unwrap_or_default(),
+                }),
                 (None, Some(credential)) => Some(Lungs::Credential {
                     bus_address,
                     credential,

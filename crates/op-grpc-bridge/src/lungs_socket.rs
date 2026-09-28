@@ -49,10 +49,7 @@ impl LungsIdentity {
     /// only an active, anchored session whose key maps to an unrevoked
     /// principal can call.
     pub async fn resolve(&self) -> Result<GhostbridgeIdentity, DbusIdentityError> {
-        let session_id = self
-            .session_id
-            .get()
-            .ok_or(DbusIdentityError::NoBinding)?;
+        let session_id = self.session_id.get().ok_or(DbusIdentityError::NoBinding)?;
         authoritative_session_identity(self.engine.as_ref(), None, session_id, true).await
     }
 
@@ -60,7 +57,10 @@ impl LungsIdentity {
     /// now; its context is published so its mutations carry the digest of its
     /// sealed id on the chain, as a D-Bus registration does.
     async fn bind(&self, session_id: &str) -> Result<()> {
-        ensure!(valid_session_id(session_id), "session id is not a plain name");
+        ensure!(
+            valid_session_id(session_id),
+            "session id is not a plain name"
+        );
         ensure!(
             self.session_id.get().is_none(),
             "this lungs connection is already bound"
@@ -131,14 +131,18 @@ fn bind_socket(path: &Path) -> Result<tokio::net::UnixListener> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
         Err(error) => return Err(error.into()),
     }
-    let listener = tokio::net::UnixListener::bind(path)
-        .with_context(|| format!("bind {}", path.display()))?;
+    let listener =
+        tokio::net::UnixListener::bind(path).with_context(|| format!("bind {}", path.display()))?;
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
     Ok(listener)
 }
 
 /// Serve the shared lungs socket until the listener fails.
-pub async fn serve(path: &Path, router: Arc<SchemaRouter>, engine: Arc<MutationEngine>) -> Result<()> {
+pub async fn serve(
+    path: &Path,
+    router: Arc<SchemaRouter>,
+    engine: Arc<MutationEngine>,
+) -> Result<()> {
     let listener = bind_socket(path)?;
     tracing::info!(socket = %path.display(), "lungs socket listening");
     let connections = Arc::new(tokio::sync::Semaphore::new(MAX_CONNECTIONS));

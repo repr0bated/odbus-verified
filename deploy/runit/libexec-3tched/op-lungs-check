@@ -4,7 +4,7 @@
 # Read-only apart from the calls it makes, which the chain records.
 #
 # Checks each link in order and stops at the first that fails:
-#   1) the bridge serves this identity's socket,
+#   1) the bridge serves the shared lungs socket,
 #   2) its lungs are mounted, in socket mode,
 #   3) its container is running,
 #   4) a call written from inside the identity comes back with a result,
@@ -20,7 +20,7 @@
 set -u
 
 SESSION=${1:-${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-b0c777e3-0955-cd8b-3d01-ca12998cae28}}
-LUNGS_SOCKETS=${LUNGS_SOCKETS:-/run/opdbus/lungs}
+LUNGS_SOCKET=${LUNGS_SOCKET:-/run/opdbus/lungs.sock}
 LUNGS_RUN=${LUNGS_RUN:-/run/opdbus-lungs}
 TIMING=${OPDBUS_SNOWBALL_PATH:-/var/lib/opdbus/snowball}/timing
 LUNGS_CHECK_CALL=${LUNGS_CHECK_CALL:?set LUNGS_CHECK_CALL=plugin.method to a method this identity is granted}
@@ -33,14 +33,14 @@ printf '%s' "$SESSION" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
     fail "'$SESSION' is not a session id"
 printf 'identity %s\n' "$SESSION"
 
-socket=$LUNGS_SOCKETS/$SESSION.sock
-[ -S "$socket" ] || fail "bridge socket $socket is missing (bridge release, or session not configured)"
-pass "bridge serves $socket"
+socket=$LUNGS_SOCKET
+[ -S "$socket" ] || fail "bridge lungs socket $socket is missing (bridge release?)"
+pass "bridge serves the shared lungs socket $socket"
 
 mountpoint -q "$LUNGS_RUN/$SESSION" || fail "lungs are not mounted at $LUNGS_RUN/$SESSION (op-identity-root up $SESSION)"
 socket_mode=0
 for cmdline in /proc/[0-9]*/cmdline; do
-    tr '\0' ' ' <"$cmdline" 2>/dev/null | grep -q -- "--lungs-socket $socket" && socket_mode=1 && break
+    tr '\0' ' ' <"$cmdline" 2>/dev/null | grep -q -- "--lungs-socket $socket --lungs-session $SESSION" && socket_mode=1 && break
 done
 [ "$socket_mode" -eq 1 ] || fail "lungs are mounted but not over the socket (still --lungs-credential?)"
 pass "lungs mounted over the socket"
