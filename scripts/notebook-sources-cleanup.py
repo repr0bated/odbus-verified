@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-Consolidate /home/jeremy/.notebooklm-sources into one NotebookLM source per LLM.
+Keep /home/jeremy/.notebooklm-sources as frozen history plus one live feed per LLM.
 
 Strategy:
-  • One source file per LLM (model folder): `_bundle_001.md`, rebuilt from every
-    session that LLM has, one section per session.
-  • A session that grew replaces its own section; nothing is appended twice and
-    no file is added. Unchanged content is never rewritten.
-  • Only when an LLM's file reaches --max-bundle-bytes does `_bundle_002.md` start.
-  • Bundles from the old append layout are moved to `_retired_bundles/`.
+  • Each LLM (model folder) has one live feed, `_live.md`: every session's text
+    not yet frozen. It is the only file ever replaced, and only when it changes.
+  • When the feed would pass --max-source-words (NotebookLM caps a source at
+    500,000 words), it is frozen into the next `_bundle_NNN.md`, written once and
+    never rewritten, and the feed starts empty. NotebookLM indexes each frozen
+    bundle once; replacing a source re-processes it, so history is never replaced.
+  • A session that keeps growing after being frozen adds only its new text.
+  • Bundles from older layouts are set aside once in `_legacy_bundles/`.
+  • Upload rule: `_live.md` is replaced when it changes; `_bundle_NNN.md` is
+    uploaded once. Nothing in `_archived_sessions/` or `_legacy_bundles/` is a source.
 
 Usage:
   notebook-sources-cleanup              # all folders
@@ -36,7 +40,9 @@ HOME = Path.home()
 DEFAULT_ROOT = Path(os.environ.get("NOTEBOOKLM_SOURCES_DIR", "/home/jeremy/.notebooklm-sources"))
 STATE_NAME = ".cleanup-state.json"
 BUNDLE_PREFIX = "_bundle_"
+LIVE_NAME = "_live.md"
 SKIP_NAMES = {
+    LIVE_NAME,
     "README.md",
     "MANIFEST.json",
     "NOTEBOOK_ID",
@@ -150,18 +156,19 @@ def consolidate_folder(
     folder: Path,
     state: dict,
     *,
-    max_bundle_bytes: int,
+    max_source_words: int,
     dry_run: bool,
     verbose: bool,
     archive_sessions: bool,
 ) -> Tuple[int, int]:
-    """Rebuild this LLM's source from every session it has, one section per session.
+    """Keep this LLM's sources as frozen history plus one live feed.
 
-    One LLM, one source file (`_bundle_001.md`). A session that grew replaces its
-    own section instead of being appended again, so nothing is duplicated and no
-    file is added. A second file appears only if the LLM's history passes
-    `max_bundle_bytes` (NotebookLM's per-source limit). Files are rewritten only
-    when their content changes. Returns (rewritten_files, unchanged_files).
+    NotebookLM re-processes a source when it is replaced, so only the live feed
+    (`_live.md`) is ever rewritten, and only when its content changes. When the
+    feed would pass `max_source_words` its sections are frozen into the next
+    `_bundle_NNN.md`, which is written once and never touched again, and the
+    feed starts empty. A session that keeps growing after being frozen puts only
+    its new text in the feed. Returns (files_written, files_unchanged).
     """
     model = folder.name
     arch = folder / "_archived_sessions"
@@ -178,51 +185,77 @@ def consolidate_folder(
             else:
                 sessions[p.name] = p
 
-    header = (
-        f"# Consolidated sessions — {model}\n"
-        f"# Auto-maintained by notebook-sources-cleanup: one section per session,\n"
-        f"# replaced in place when that session grows. Do not hand-edit.\n"
-    )
-    files: List[str] = [header]
+    llm = state.setdefault("llm", {}).setdefault(model, {"frozen": [], "sessions": {}})
+    if not llm["frozen"] and not dry_run:
+        # First run on this layout: bundles from the older append layouts hold
+        # duplicated sessions. Set them aside; every session is in the archive.
+        for old in bundle_paths(folder):
+            legacy = folder / "_legacy_bundles"
+            legacy.mkdir(exist_ok=True)
+            os.replace(old, legacy / old.name)
+            if verbose:
+                print(f"  [{model}] set aside {old.name}")
+
+    # What each session has not yet frozen: all of it, or only what it grew.
+    pending: List[Tuple[str, str, int]] = []
     for name in sorted(sessions):
         try:
             body = sessions[name].read_text(encoding="utf-8", errors="replace")
         except Exception:
             continue
-        section = session_section(name, model, body)
-        if len(files[-1]) > len(header) and len(files[-1]) + len(section) > max_bundle_bytes:
-            files.append(header)
-        files[-1] += section
+        mark = llm["sessions"].get(name)
+        if mark and len(body) >= mark["chars"] and sha16(body[: mark["chars"]]) == mark["hash"]:
+            new = body[mark["chars"] :]
+        else:
+            new = body  # never frozen, or rewritten rather than grown
+        if new.strip():
+            pending.append((name, session_section(name, model, new), len(body)))
 
-    rewritten = unchanged = 0
-    targets = [folder / f"{BUNDLE_PREFIX}{i:03d}.md" for i in range(1, len(files) + 1)]
-    for target, content in zip(targets, files):
-        if target.is_file() and target.read_text(encoding="utf-8", errors="replace") == content:
-            unchanged += 1
-            continue
+    header = (
+        f"# Sessions — {model}\n"
+        f"# Auto-maintained by notebook-sources-cleanup. This LLM's live feed:\n"
+        f"# replaced as sessions grow, frozen into _bundle_NNN.md when full.\n"
+    )
+    written = unchanged = 0
+    live, live_words, included = header, 0, []
+    for name, section, chars in pending:
+        words = len(section.split())
+        if included and live_words + words > max_source_words:
+            written += _freeze(folder, llm, live, included, sessions, dry_run, verbose)
+            live, live_words, included = header, 0, []
+        live += section
+        live_words += words
+        included.append((name, chars))
+
+    target = folder / LIVE_NAME
+    if target.is_file() and target.read_text(encoding="utf-8", errors="replace") == live:
+        unchanged += 1
+    else:
         if verbose:
-            print(f"  [{model}] {'would rewrite' if dry_run else 'rewrote'} {target.name}")
+            print(f"  [{model}] {'would replace' if dry_run else 'replaced'} {LIVE_NAME} ({live_words} words)")
         if not dry_run:
             tmp = target.with_suffix(".md.tmp")
-            tmp.write_text(content, encoding="utf-8")
+            tmp.write_text(live, encoding="utf-8")
             os.replace(tmp, target)
-        rewritten += 1
+        written += 1
+    return written, unchanged
 
-    # Older layouts left extra bundles (including duplicated sessions). Retire
-    # them instead of deleting: every session they held is in the archive.
-    for extra in bundle_paths(folder)[len(targets):]:
-        if verbose:
-            print(f"  [{model}] retire {extra.name}")
-        if not dry_run:
-            retired = folder / "_retired_bundles"
-            retired.mkdir(exist_ok=True)
-            os.replace(extra, retired / extra.name)
 
-    state.setdefault("sources", {})[model] = {
-        "sessions": len(sessions),
-        "files": [t.name for t in targets],
-    }
-    return rewritten, unchanged
+def _freeze(folder, llm, content, included, sessions, dry_run, verbose) -> int:
+    """Write the full feed as the next frozen bundle and mark its sessions."""
+    path = next_bundle_path(folder)
+    if verbose:
+        print(f"  [{folder.name}] {'would freeze' if dry_run else 'froze'} {path.name}")
+    if dry_run:
+        return 1
+    tmp = path.with_suffix(".md.tmp")
+    tmp.write_text(content.replace("This LLM's live feed", "Frozen history"), encoding="utf-8")
+    os.replace(tmp, path)
+    llm["frozen"].append(path.name)
+    for name, chars in included:
+        body = sessions[name].read_text(encoding="utf-8", errors="replace")[:chars]
+        llm["sessions"][name] = {"chars": chars, "hash": sha16(body)}
+    return 1
 
 
 def count_source_files(root: Path, *, bundles_only: bool) -> int:
@@ -232,7 +265,7 @@ def count_source_files(root: Path, *, bundles_only: bool) -> int:
             if not p.is_file() or p.suffix != ".md":
                 continue
             if bundles_only:
-                if p.name.startswith(BUNDLE_PREFIX):
+                if p.name.startswith(BUNDLE_PREFIX) or p.name == LIVE_NAME:
                     n += 1
             else:
                 if p.name not in SKIP_NAMES and not p.name.startswith("."):
@@ -394,6 +427,7 @@ def run_all(
     only_folder: Optional[str],
     max_sources: int,
     max_bundle_bytes: int,
+    max_source_words: int,
     dry_run: bool,
     verbose: bool,
     archive_sessions: bool,
@@ -429,7 +463,7 @@ def run_all(
         app, sk = consolidate_folder(
             folder,
             state,
-            max_bundle_bytes=max_bundle_bytes,
+            max_source_words=max_source_words,
             dry_run=dry_run,
             verbose=verbose,
             archive_sessions=archive_sessions,
@@ -497,6 +531,13 @@ def main() -> int:
         help="rotate _bundle_NNN.md when exceeding this size (default 195MiB)",
     )
     ap.add_argument(
+        "--max-source-words",
+        type=int,
+        default=int(os.environ.get("NLM_MAX_SOURCE_WORDS", "450000")),
+        help="freeze an LLM's live feed into the next _bundle_NNN.md past this many words "
+        "(NotebookLM caps a source at 500,000 words)",
+    )
+    ap.add_argument(
         "--archive-sessions",
         action="store_true",
         help="move rolled session .md/.json into <folder>/_archived_sessions/",
@@ -521,6 +562,7 @@ def main() -> int:
         only_folder=args.folder,
         max_sources=args.max_sources,
         max_bundle_bytes=args.max_bundle_bytes,
+        max_source_words=args.max_source_words,
         dry_run=args.dry_run,
         verbose=args.verbose,
         archive_sessions=args.archive_sessions,
