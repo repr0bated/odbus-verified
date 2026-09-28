@@ -29,6 +29,13 @@ another agent's uncommitted work.
 
 ## Handoffs
 
+### 2026-09-28 · Claude (cloud: OD-93 gallery, Grok picker removed, OpenCode Go)
+- **Owner direction:** "get rid of grok code" (the whole `8943f9c` commit), then "fix opencode to be a provider like openrouter", "should be go not zen", "you have to use Messages API".
+- **Removed (source only):** op-web's sudo-password picker (`/api/control-plane/model(s)`, `unix_chkpwd`) and 3tched.com's `ControlPlaneModelPicker`. **The live release `20260928T145511Z-2bdeb27` still runs the picker and the Zen profiles** until a release built from this branch is received and activated.
+- **OpenCode Go:** `deploy/config/zeroclaw-runtime.toml` and `deploy/runit/tched-router/run` now use native `opencode.go_<agent>` profiles at `https://opencode.ai/zen/go/v1` (chat-completions; Grok and GPT use `wire_api = "responses"`) and native `anthropic.go_<agent>` profiles at `https://opencode.ai/zen/go` for Messages-API models (qwen3.8-flash, claude-fable-5-1). The key is `/etc/op-dbus/secrets/opencode-api-key` (root, 0400/0600), which must hold the **Go** key. Retired routes, disabled on start: nemotron-3-ultra, qwen3-coder-flash, gpt-6-astra. The dashboard moves to glm-5.3-flash. `claude-fable-5-1` is not in Go's published model list; confirm Go serves it before relying on that route. Not run against the live router from here.
+- **OD-93:** `json_render` gallery and catalog on `claude/amazing-carson-8bg4yr`; UI on 3tched.com `claude/ui-gallery-promotion`. Needs a reseal (json_render schema changed) after release.
+
+
 ### 2026-09-28 · Grok (Cursor: golden and activate, picker binary)
 - **Live:** `current` → `releases/20260928T145511Z-2bdeb27`. Same commit as the previous release, with the rebuilt `op-web-server` (`197d3115…`). Grants, bridge, EMQX, and op-web pass `sv check`. Catalog unchanged (66 plugins, generation 264).
 - **Rollback:** `releases/20260928T125401Z-2bdeb27`.
