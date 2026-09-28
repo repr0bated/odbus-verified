@@ -124,34 +124,72 @@ enum Command {
         #[arg(long, default_value = DEFAULT_BUS_ADDRESS)]
         bus_address: String,
     },
-    /// Serve this identity's MCP on stdio: every sealed method as a tool,
-    /// every plugin's schema and state as a resource, each call dispatched as
-    /// the identity. Launch it from an IDE's MCP server configuration.
+    /// Serve this identity's MCP on stdio: sealed methods as tools, every
+    /// plugin's schema and state as resources, each call dispatched as the
+    /// identity. Launch it from an IDE's MCP server configuration.
     Mcp {
         #[command(flatten)]
         target: TargetArgs,
+        #[command(flatten)]
+        lungs: LungsArgs,
         #[arg(long, default_value = DEFAULT_STATE_DIR)]
         state: PathBuf,
-        /// The bridge's shared lungs socket; calls bind to --lungs-session.
-        #[arg(
-            long,
-            requires = "lungs_session",
-            required_unless_present = "lungs_credential"
-        )]
-        lungs_socket: Option<PathBuf>,
-        /// The session this identity breathes for (with --lungs-socket).
-        #[arg(long, requires = "lungs_socket")]
-        lungs_session: Option<String>,
-        /// The identity's SID1 on its own device, registered per call.
-        #[arg(long, conflicts_with = "lungs_socket")]
-        lungs_credential: Option<PathBuf>,
-        #[arg(long, default_value = DEFAULT_BUS_ADDRESS)]
-        bus_address: String,
-        /// Four meta-tools (list, search, schema, execute) instead of one
-        /// tool per method, for small-context clients.
+        /// List every method as its own tool instead of toolsets.
+        #[arg(long, conflicts_with = "compact")]
+        all: bool,
+        /// Four meta-tools (list, search, schema, execute) for small-context
+        /// clients.
         #[arg(long)]
         compact: bool,
+        /// Toolsets (plugin ids) loaded when the connection opens.
+        #[arg(long = "load", value_name = "TOOLSET")]
+        load: Vec<String>,
+        /// Publish the toolset manifest to EMQX on start, as this identity.
+        #[arg(long)]
+        announce_toolsets: bool,
     },
+    /// Print the toolset manifest derived from the sealed catalog, and with
+    /// --publish feed it to EMQX through `emqx.publish_toolsets`.
+    Toolsets {
+        #[command(flatten)]
+        target: TargetArgs,
+        #[command(flatten)]
+        lungs: LungsArgs,
+        #[arg(long)]
+        publish: bool,
+    },
+}
+
+/// An identity's lungs: the shared lungs socket bound to its session, or
+/// its SID1 on its own device.
+#[derive(Debug, Args, Clone)]
+struct LungsArgs {
+    #[arg(long, requires = "lungs_session", conflicts_with = "lungs_credential")]
+    lungs_socket: Option<PathBuf>,
+    /// The session this identity breathes for (with --lungs-socket).
+    #[arg(long, requires = "lungs_socket")]
+    lungs_session: Option<String>,
+    /// The identity's SID1 on its own device, registered per call.
+    #[arg(long)]
+    lungs_credential: Option<PathBuf>,
+    #[arg(long, default_value = DEFAULT_BUS_ADDRESS)]
+    bus_address: String,
+}
+
+impl LungsArgs {
+    fn lungs(self) -> Option<Lungs> {
+        match (self.lungs_socket, self.lungs_credential) {
+            (Some(path), _) => Some(Lungs::Socket {
+                path,
+                session: self.lungs_session.unwrap_or_default(),
+            }),
+            (None, Some(credential)) => Some(Lungs::Credential {
+                bus_address: self.bus_address,
+                credential,
+            }),
+            (None, None) => None,
+        }
+    }
 }
 
 #[derive(Debug, Args, Clone)]
@@ -343,33 +381,60 @@ async fn main() -> Result<()> {
         }
         Command::Mcp {
             target,
+            lungs,
             state,
-            lungs_socket,
-            lungs_session,
-            lungs_credential,
-            bus_address,
+            all,
             compact,
+            load,
+            announce_toolsets,
         } => {
             let target = resolve_target(&store, &target)?;
-            let lungs = match (lungs_socket, lungs_credential) {
-                (Some(path), _) => Lungs::Socket {
-                    path,
-                    session: lungs_session.unwrap_or_default(),
-                },
-                (None, Some(credential)) => Lungs::Credential {
-                    bus_address,
-                    credential,
-                },
-                (None, None) => bail!("the MCP server needs this identity's lungs"),
+            let lungs = lungs
+                .lungs()
+                .context("the MCP server needs this identity's lungs")?;
+            let surface = match (all, compact) {
+                (true, _) => mcp::Surface::Full,
+                (_, true) => mcp::Surface::Compact,
+                _ => mcp::Surface::Toolsets,
             };
-            let surface = if compact {
-                mcp::Surface::Compact
+            let server = mcp::IdentityMcp::new(store, target, state, lungs, surface)?;
+            server.preload(&load)?;
+            if announce_toolsets {
+                // stdout is the MCP stream; report on stderr and keep serving.
+                match server.announce_toolsets().await {
+                    Ok(receipt) => eprintln!("3tchedfs: toolsets announced: {receipt}"),
+                    Err(error) => eprintln!("3tchedfs: toolsets not announced: {error:#}"),
+                }
+            }
+            server.serve_stdio().await?;
+        }
+        Command::Toolsets {
+            target,
+            lungs,
+            publish,
+        } => {
+            let target = resolve_target(&store, &target)?;
+            let lungs = lungs.lungs();
+            if publish && lungs.is_none() {
+                bail!("--publish needs this identity's lungs");
+            }
+            // Without lungs the manifest is only printed; nothing dispatches.
+            let lungs = lungs.unwrap_or(Lungs::Socket {
+                path: PathBuf::new(),
+                session: String::new(),
+            });
+            let server = mcp::IdentityMcp::new(
+                store,
+                target,
+                PathBuf::from(DEFAULT_STATE_DIR),
+                lungs,
+                mcp::Surface::Toolsets,
+            )?;
+            if publish {
+                print_json(&server.announce_toolsets().await?)?;
             } else {
-                mcp::Surface::Full
-            };
-            mcp::IdentityMcp::new(store, target, state, lungs, surface)?
-                .serve_stdio()
-                .await?;
+                print_json(&server.toolsets())?;
+            }
         }
         Command::Mount {
             mountpoint,

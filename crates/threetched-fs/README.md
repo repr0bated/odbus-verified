@@ -170,6 +170,17 @@ holds no credential, because the connection is the identity:
 - **Prompts**: `plugin` (one plugin's methods, tools and state fields) and
   `catalog` (every plugin, one line each).
 - **Completions**: plugin ids for the `plugin` prompt and resource templates.
+- **Toolsets** (the default): a connection starts with one `toolsets` tool
+  and loads what it needs (`{"operation":"load","ids":["net"]}`); the list
+  changes and the client is notified. Sets are derived from the sealed
+  catalog, one per plugin, so there is no hand-kept manifest. Loading only
+  shapes the list: the identity can still call any method it is granted.
+  `--load <set>` preloads, `--all` lists every method.
+- **EMQX**: `--announce-toolsets` (or `threetched-fs toolsets --publish`)
+  feeds the manifest to the broker through the sealed
+  `emqx.publish_toolsets` method, as this identity. The broker keeps it
+  retained on `opdbus/toolsets`; only live identities may subscribe, and
+  nobody may publish there directly.
 - `--compact` replaces the per-method tools with four meta-tools
   (`list_plugins`, `search_tools`, `get_tool_schema`, `execute_tool`) for
   small-context clients.

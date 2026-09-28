@@ -44,8 +44,27 @@ const MAX_TOOL_NAME: usize = 64;
 /// meta-tools that search and execute them (for small-context clients).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Surface {
+    /// Every method as its own tool (can be too many for a client).
     Full,
+    /// Four meta-tools that search and execute every method.
     Compact,
+    /// A `toolsets` tool plus the tools of the sets this connection loaded;
+    /// sets come from the sealed catalog, one per plugin.
+    Toolsets,
+}
+
+/// The plugin whose sealed `publish_toolsets` method feeds the broker.
+const EMQX_PLUGIN: &str = "emqx";
+const PUBLISH_TOOLSETS: &str = "publish_toolsets";
+const TOOLSETS_TOOL: &str = "toolsets";
+
+/// One toolset: a plugin's methods, derived from its sealed schema.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Toolset {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub tools: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +79,7 @@ struct Catalog {
     objects: BTreeMap<String, TypedObjectBlob>,
     tools: Vec<Tool>,
     by_name: HashMap<String, ToolRef>,
+    sets: Vec<Toolset>,
 }
 
 impl Catalog {
@@ -100,10 +120,30 @@ impl Catalog {
                 );
             }
         }
+        let sets = objects
+            .iter()
+            .filter(|(_, object)| !object.schema.methods.is_empty())
+            .map(|(plugin, object)| Toolset {
+                id: plugin.clone(),
+                title: object
+                    .schema
+                    .display_name
+                    .clone()
+                    .unwrap_or_else(|| plugin.clone()),
+                description: object.schema.description.clone(),
+                tools: object
+                    .schema
+                    .methods
+                    .keys()
+                    .map(|method| tool_name(plugin, method))
+                    .collect(),
+            })
+            .collect();
         Ok(Self {
             objects,
             tools,
             by_name,
+            sets,
         })
     }
 }
@@ -214,6 +254,10 @@ pub struct IdentityMcp {
     lungs: Arc<Lungs>,
     surface: Surface,
     catalog: Arc<RwLock<Arc<Catalog>>>,
+    /// The captured view the catalog came from (a workspace's base view).
+    view_id: String,
+    /// Sets this connection has loaded (toolset surface only).
+    loaded: Arc<RwLock<std::collections::BTreeSet<String>>>,
 }
 
 impl IdentityMcp {
@@ -225,13 +269,182 @@ impl IdentityMcp {
         surface: Surface,
     ) -> Result<Self> {
         let catalog = Catalog::load(&store, &target).context("load the projected catalog")?;
+        let view_id = match &target {
+            ProjectionTarget::View(id) => id.clone(),
+            ProjectionTarget::Workspace(id) => store.read_workspace(id)?.base_view,
+        };
         Ok(Self {
+            view_id,
             target,
             state_dir,
             lungs: Arc::new(lungs),
             surface,
             catalog: Arc::new(RwLock::new(Arc::new(catalog))),
+            loaded: Arc::new(RwLock::new(Default::default())),
         })
+    }
+
+    /// Load sets before any client connects (`--load`).
+    pub fn preload(&self, ids: &[String]) -> Result<()> {
+        let catalog = self.catalog();
+        for id in ids {
+            anyhow::ensure!(
+                catalog.sets.iter().any(|set| &set.id == id),
+                "no toolset {id} in this view"
+            );
+        }
+        self.loaded.write().extend(ids.iter().cloned());
+        Ok(())
+    }
+
+    /// The toolset manifest derived from the sealed catalog.
+    pub fn toolsets(&self) -> Vec<Toolset> {
+        self.catalog().sets.clone()
+    }
+
+    /// Feed the broker: publish the manifest through the sealed
+    /// `emqx.publish_toolsets` method, as this identity. The broker then
+    /// holds it retained on `opdbus/toolsets` for every live identity.
+    pub async fn announce_toolsets(&self) -> Result<Value> {
+        let arguments = json!({
+            "view_id": self.view_id,
+            "sets": self.toolsets(),
+        });
+        let result = self
+            .dispatch(EMQX_PLUGIN, PUBLISH_TOOLSETS, arguments)
+            .await;
+        let body = result
+            .structured_content
+            .clone()
+            .or_else(|| {
+                result
+                    .content
+                    .first()
+                    .and_then(|content| content.as_text())
+                    .and_then(|text| serde_json::from_str(&text.text).ok())
+            })
+            .unwrap_or(Value::Null);
+        if result.is_error == Some(true) {
+            anyhow::bail!("publish toolsets: {body}");
+        }
+        Ok(body)
+    }
+
+    fn toolsets_tool() -> Tool {
+        Tool::new(
+            TOOLSETS_TOOL,
+            "List the toolsets (one per plugin) and load or unload them. Loading adds a set's \
+             tools to this connection; the list is short until you load what you need.",
+            Arc::new(
+                json!({
+                    "type": "object",
+                    "properties": {
+                        "operation": {"type": "string", "enum": ["list", "load", "unload"]},
+                        "ids": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": ["operation"]
+                })
+                .as_object()
+                .cloned()
+                .unwrap_or_default(),
+            ),
+        )
+        .with_annotations(ToolAnnotations::new().read_only(true).idempotent(true))
+    }
+
+    fn loaded_tools(&self) -> Vec<Tool> {
+        let catalog = self.catalog();
+        let loaded = self.loaded.read();
+        let mut tools = vec![Self::toolsets_tool()];
+        tools.extend(
+            catalog
+                .tools
+                .iter()
+                .filter(|tool| {
+                    catalog
+                        .by_name
+                        .get(tool.name.as_ref())
+                        .is_some_and(|reference| loaded.contains(&reference.plugin))
+                })
+                .cloned(),
+        );
+        tools
+    }
+
+    async fn call_toolsets(
+        &self,
+        arguments: &JsonObject,
+        context: &RequestContext<RoleServer>,
+    ) -> CallToolResult {
+        let catalog = self.catalog();
+        let operation = arguments
+            .get("operation")
+            .and_then(Value::as_str)
+            .unwrap_or("list");
+        let ids: Vec<String> = arguments
+            .get("ids")
+            .and_then(Value::as_array)
+            .map(|ids| {
+                ids.iter()
+                    .filter_map(Value::as_str)
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default();
+        match operation {
+            "list" => {
+                let loaded = self.loaded.read();
+                let sets: Vec<Value> = catalog
+                    .sets
+                    .iter()
+                    .map(|set| {
+                        json!({
+                            "id": set.id,
+                            "title": set.title,
+                            "description": set.description,
+                            "tools": set.tools.len(),
+                            "loaded": loaded.contains(&set.id),
+                        })
+                    })
+                    .collect();
+                text_result(&json!({"toolsets": sets}), false)
+            }
+            "load" | "unload" => {
+                let unknown: Vec<&String> = ids
+                    .iter()
+                    .filter(|id| !catalog.sets.iter().any(|set| &set.id == *id))
+                    .collect();
+                if ids.is_empty() || !unknown.is_empty() {
+                    return text_result(
+                        &json!({"error": "name one or more toolset ids from list", "unknown": unknown}),
+                        true,
+                    );
+                }
+                let changed = {
+                    let mut loaded = self.loaded.write();
+                    let mut changed = false;
+                    for id in &ids {
+                        changed |= if operation == "load" {
+                            loaded.insert(id.clone())
+                        } else {
+                            loaded.remove(id)
+                        };
+                    }
+                    changed
+                };
+                if changed {
+                    // Clients re-list on this notification; a client that
+                    // does not still sees the new tools on its next list.
+                    let _ = context.peer.notify_tool_list_changed().await;
+                }
+                let loaded: Vec<String> = self.loaded.read().iter().cloned().collect();
+                text_result(&json!({"loaded": loaded, "changed": changed}), false)
+            }
+            other => text_result(
+                &json!({"error": format!("unknown operation {other}")}),
+                true,
+            ),
+        }
     }
 
     /// Serve MCP on stdin/stdout until the client closes it.
@@ -546,6 +759,7 @@ impl ServerHandler for IdentityMcp {
                 .enable_prompts()
                 .enable_resources()
                 .enable_tools()
+                .enable_tool_list_changed()
                 .build(),
         )
         .with_server_info(
@@ -569,6 +783,7 @@ impl ServerHandler for IdentityMcp {
         let tools = match self.surface {
             Surface::Full => self.catalog().tools.clone(),
             Surface::Compact => Self::compact_tools(),
+            Surface::Toolsets => self.loaded_tools(),
         };
         let (tools, next) = page(&tools, cursor(&request))?;
         let mut result = ListToolsResult::with_all_items(tools);
@@ -587,19 +802,28 @@ impl ServerHandler for IdentityMcp {
             Surface::Compact => Self::compact_tools()
                 .into_iter()
                 .find(|tool| tool.name == name),
+            Surface::Toolsets => self
+                .loaded_tools()
+                .into_iter()
+                .find(|tool| tool.name == name),
         }
     }
 
     async fn call_tool(
         &self,
         request: CallToolRequestParams,
-        _context: RequestContext<RoleServer>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, McpError> {
         let name: Cow<'static, str> = request.name;
         let arguments = request.arguments.unwrap_or_default();
         let result = match self.surface {
             Surface::Compact => self.call_compact(&name, arguments).await,
-            Surface::Full => {
+            Surface::Toolsets if name == TOOLSETS_TOOL => {
+                self.call_toolsets(&arguments, &context).await
+            }
+            // Loading is about what the client lists; the identity can still
+            // call any method it is granted.
+            Surface::Full | Surface::Toolsets => {
                 let tool = self
                     .catalog()
                     .by_name
@@ -808,6 +1032,10 @@ mod tests {
     /// One sealed `demo` plugin with a read and a mutation method, captured
     /// into a view, plus its live state file.
     fn fixture() -> (tempfile::TempDir, IdentityMcp) {
+        fixture_with(Surface::Full)
+    }
+
+    fn fixture_with(surface: Surface) -> (tempfile::TempDir, IdentityMcp) {
         use crate::model::{MethodDecl, PluginSchema};
         use crate::source::SourceSnapshot;
 
@@ -872,7 +1100,7 @@ mod tests {
             ProjectionTarget::View(view.view_id),
             state,
             lungs,
-            Surface::Full,
+            surface,
         )
         .unwrap();
         (directory, server)
@@ -978,5 +1206,77 @@ mod tests {
 
         client.cancel().await.unwrap();
         serving.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn toolsets_keep_the_list_short_until_loaded() {
+        use rmcp::model::CallToolRequestParams;
+
+        let (_directory, server) = fixture_with(Surface::Toolsets);
+        let manifest = server.toolsets();
+        assert_eq!(manifest.len(), 1);
+        assert_eq!(manifest[0].id, "demo");
+        assert_eq!(
+            manifest[0].tools,
+            ["demo__get_status", "demo__record_event"]
+        );
+
+        let (client_io, server_io) = tokio::io::duplex(1 << 16);
+        let serving = tokio::spawn(async move {
+            server
+                .serve(server_io)
+                .await
+                .unwrap()
+                .waiting()
+                .await
+                .unwrap();
+        });
+        let client = ().serve(client_io).await.unwrap();
+        let names = |tools: Vec<Tool>| {
+            tools
+                .into_iter()
+                .map(|tool| tool.name.to_string())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names(client.list_all_tools().await.unwrap()), ["toolsets"]);
+        let args = |value: Value| value.as_object().cloned().unwrap();
+        let loaded = client
+            .call_tool(
+                CallToolRequestParams::new("toolsets")
+                    .with_arguments(args(json!({"operation": "load", "ids": ["demo"]}))),
+            )
+            .await
+            .unwrap();
+        assert_eq!(loaded.is_error, Some(false), "{}", text(&loaded));
+        assert_eq!(
+            names(client.list_all_tools().await.unwrap()),
+            ["toolsets", "demo__get_status", "demo__record_event"]
+        );
+        let unknown = client
+            .call_tool(
+                CallToolRequestParams::new("toolsets")
+                    .with_arguments(args(json!({"operation": "load", "ids": ["nope"]}))),
+            )
+            .await
+            .unwrap();
+        assert_eq!(unknown.is_error, Some(true));
+        client
+            .call_tool(
+                CallToolRequestParams::new("toolsets")
+                    .with_arguments(args(json!({"operation": "unload", "ids": ["demo"]}))),
+            )
+            .await
+            .unwrap();
+        assert_eq!(names(client.list_all_tools().await.unwrap()), ["toolsets"]);
+        client.cancel().await.unwrap();
+        serving.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn announcing_needs_the_sealed_emqx_method() {
+        // The demo view has no `emqx` plugin, so nothing reaches a broker.
+        let (_directory, server) = fixture_with(Surface::Toolsets);
+        let error = server.announce_toolsets().await.unwrap_err().to_string();
+        assert!(error.contains("not in this view"), "{error}");
     }
 }

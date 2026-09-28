@@ -88,6 +88,7 @@
       "cap.network.emqx.lifecycle.start@v1",
       "cap.network.emqx.lifecycle.stop@v1",
       "cap.network.emqx.lifecycle.restart@v1",
+      "cap.network.emqx.toolsets.publish@v1",
       "cognitive_mcp.agent.ai_engineer",
       "cognitive_mcp.agent.api_documenter",
       "cognitive_mcp.agent.arm_cortex_expert",

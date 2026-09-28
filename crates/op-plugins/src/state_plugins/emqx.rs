@@ -58,6 +58,22 @@ pub fn wake_topic(owner_key: &str) -> Result<String> {
     Ok(format!("{WAKE_TOPIC_PREFIX}{owner_key}"))
 }
 
+/// Retained topic carrying the toolset manifest derived from the sealed
+/// catalog. It holds names only: which tools a connection may call is still
+/// decided per call by the identity's grants.
+pub const TOOLSETS_TOPIC: &str = "opdbus/toolsets";
+const MAX_TOOLSETS: usize = 512;
+const MAX_ANNOUNCED_TOOLS: usize = 16_384;
+const MAX_TOOLSETS_PAYLOAD: usize = 1024 * 1024;
+
+fn valid_toolset_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 128
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
+}
+
 pub fn valid_owner_key(owner_key: &str) -> bool {
     owner_key.len() == 64
         && owner_key
@@ -414,6 +430,35 @@ pub struct PublishWakeOutput {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct AnnouncedToolset {
+    /// Set id: `[A-Za-z0-9_.-]`, at most 128 bytes.
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub description: String,
+    /// MCP tool names in this set.
+    pub tools: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PublishToolsetsInput {
+    /// Content hash of the captured view the sets were derived from.
+    pub view_id: String,
+    pub sets: Vec<AnnouncedToolset>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PublishToolsetsOutput {
+    pub topic: String,
+    pub published: bool,
+    pub message_id: Option<String>,
+    pub sets: usize,
+    pub tools: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct KickClientInput {
     /// MQTT client id to disconnect (a revoked sled's doorbell connection).
     pub client_id: String,
@@ -682,6 +727,79 @@ async fn publish_wake(
         topic,
         published: true,
         message_id: string_field(&response, &["id"]),
+    })
+}
+
+/// The toolset manifest, bounded and name-checked before it reaches the
+/// broker.
+fn toolsets_payload(input: &PublishToolsetsInput) -> Result<(String, usize)> {
+    anyhow::ensure!(
+        input.view_id.len() == 64
+            && input
+                .view_id
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
+        "view id must be 64 lowercase hex characters"
+    );
+    anyhow::ensure!(
+        input.sets.len() <= MAX_TOOLSETS,
+        "at most {MAX_TOOLSETS} toolsets"
+    );
+    let mut ids = std::collections::HashSet::new();
+    let mut tools = 0usize;
+    for set in &input.sets {
+        anyhow::ensure!(valid_toolset_id(&set.id), "invalid toolset id {:?}", set.id);
+        anyhow::ensure!(ids.insert(set.id.as_str()), "duplicate toolset id {}", set.id);
+        anyhow::ensure!(
+            set.title.len() <= 256 && set.description.len() <= 2048,
+            "toolset {} title or description too long",
+            set.id
+        );
+        for tool in &set.tools {
+            anyhow::ensure!(valid_toolset_id(tool), "invalid tool name {tool:?}");
+        }
+        tools += set.tools.len();
+    }
+    anyhow::ensure!(
+        tools <= MAX_ANNOUNCED_TOOLS,
+        "at most {MAX_ANNOUNCED_TOOLS} announced tools"
+    );
+    let payload = serde_json::json!({
+        "view_id": input.view_id,
+        "sets": input.sets,
+    })
+    .to_string();
+    anyhow::ensure!(
+        payload.len() <= MAX_TOOLSETS_PAYLOAD,
+        "toolset manifest exceeds {MAX_TOOLSETS_PAYLOAD} bytes"
+    );
+    Ok((payload, tools))
+}
+
+async fn publish_toolsets(
+    transport: &EmqxNativeTransport,
+    input: PublishToolsetsInput,
+) -> Result<PublishToolsetsOutput> {
+    let (payload, tools) = toolsets_payload(&input)?;
+    let response = emqx_api(
+        transport,
+        Method::POST,
+        "/publish",
+        Some(serde_json::json!({
+            "topic": TOOLSETS_TOPIC,
+            "payload": payload,
+            "qos": 1,
+            "retain": true,
+        })),
+    )
+    .await
+    .context("EMQX toolset publish failed")?;
+    Ok(PublishToolsetsOutput {
+        topic: TOOLSETS_TOPIC.to_string(),
+        published: true,
+        message_id: string_field(&response, &["id"]),
+        sets: input.sets.len(),
+        tools,
     })
 }
 
@@ -1067,6 +1185,10 @@ async fn dispatch_emqx_method_on(
             let input: KickClientInput = typed_input(args)?;
             serde_json::to_value(kick_client(transport, input).await?)?
         }
+        "publish_toolsets" => {
+            let input: PublishToolsetsInput = typed_input(args)?;
+            serde_json::to_value(publish_toolsets(transport, input).await?)?
+        }
         other => anyhow::bail!("unknown emqx method: {other}"),
     };
     Ok(output)
@@ -1279,6 +1401,14 @@ pub(crate) fn emqx_schema() -> PluginSchema {
         "cap.network.emqx.clients.kick@v1",
         "mut.network.emqx.clients.kick@v1",
     );
+    add_method::<PublishToolsetsInput, PublishToolsetsOutput>(
+        &mut schema,
+        "publish_toolsets",
+        SideEffect::Mutation,
+        true,
+        "cap.network.emqx.toolsets.publish@v1",
+        "mut.network.emqx.toolsets.publish@v1",
+    );
 
     schema
 }
@@ -1312,6 +1442,7 @@ mod tests {
             "restart",
             "publish_wake",
             "kick_client",
+            "publish_toolsets",
         ];
         assert_eq!(first.methods.len(), expected.len());
         for method in expected {
@@ -1352,6 +1483,34 @@ mod tests {
             ("wss", EMQX_MQTT_WSS_BIND)
         );
         assert!(!state.mcp_gateway_installed);
+    }
+
+    #[test]
+    fn toolset_manifests_are_bounded_and_name_checked() {
+        let set = |id: &str, tools: &[&str]| AnnouncedToolset {
+            id: id.into(),
+            title: id.into(),
+            description: String::new(),
+            tools: tools.iter().map(|tool| tool.to_string()).collect(),
+        };
+        let input = |sets| PublishToolsetsInput {
+            view_id: "ab".repeat(32),
+            sets,
+        };
+        let (payload, tools) =
+            toolsets_payload(&input(vec![set("net", &["net__get_status", "net__set"])])).unwrap();
+        assert_eq!(tools, 2);
+        assert!(payload.contains("net__get_status"));
+        for bad in [
+            vec![set("net/#", &[])],
+            vec![set("net", &["a b"])],
+            vec![set("net", &[]), set("net", &[])],
+        ] {
+            assert!(toolsets_payload(&input(bad)).is_err());
+        }
+        let mut short = input(vec![]);
+        short.view_id = "abc".into();
+        assert!(toolsets_payload(&short).is_err());
     }
 
     #[test]
@@ -1508,6 +1667,12 @@ mod tests {
                 SideEffect::Mutation,
                 true,
                 "mut.network.emqx.clients.kick@v1",
+            ),
+            (
+                "publish_toolsets",
+                SideEffect::Mutation,
+                true,
+                "mut.network.emqx.toolsets.publish@v1",
             ),
         ];
         for (name, effect, idempotent, subid) in expected {
