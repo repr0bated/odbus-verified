@@ -24,11 +24,11 @@ another agent's uncommitted work.
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
 | Grok (Cursor) | Host release of merged lungs work (`79a47c7`): build, seal, golden, btrfs receive, activate, then chatbot create/up/lungs-check | `/srv/git/odbus-verified` `main`, pushed | 2026-09-28 | Do not reset this tree. Catalog copy goes to `/var/tmp` before seal. |
-| Claude (host, took over from cloud) | Single shared lungs socket (OD-86) and the cognitive_mcp health fix: built, tested, waiting for the owner to review draft PR #4 | branch `claude/amazing-carson-8bg4yr`, pushed; host worktree `/srv/git/odbus-verified/.claude/worktrees/lungs-bind` | 2026-09-28 | The cloud session is idle; do not push to this branch from it. Hold the 2024 reformat until PR #4 merges. |
 
 ## Handoffs
 
 ### 2026-09-28 · Claude (host, took over the cloud lungs work)
+- **Merged:** PR #4 is on `main` as `1dd7421`, not yet released. The 2024 reformat followed as `0d5f582` (`rustfmt.toml` is gone, 551 files): rebase or merge any open branch over it, and expect conflicts only in layout.
 - **Shared lungs socket, built and tested** on `claude/amazing-carson-8bg4yr` (draft PR #4). The cloud session wrote it (`4a6a483`) while the host session wrote the same change in parallel; the host kept the cloud commit and added what it lacked on top. The bridge serves one root-only `/run/opdbus/lungs.sock` and now creates its parent if missing. Each connection calls `LungsV1.Bind(session)` once, then its plugin calls run as that session. 3tchedFS mounts with `--lungs-socket /run/opdbus/lungs.sock --lungs-session <session>`; a refused bind stops at the `register` stage with `EACCES` (new test). `op-identity-root` and `op-lungs-check` use the shared socket.
 - **`cognitive_mcp.get_health`** answers from the in-process runtime and quota, matching `GetHealthOutput`. No unit test covers it, because it needs the durable Cozo runtime; `op-lungs-check` with `LUNGS_CHECK_CALL=cognitive_mcp.get_health` proves it after the release.
 - **Verified in the host worktree:** clippy `-D warnings` is clean on threetched-fs, op-grpc-bridge and op-plugins. threetched-fs passes 22/22. op-grpc-bridge passes 725, with 0 failed and 8 ignored (`-j 1`; see the SIGNALS build concern).
