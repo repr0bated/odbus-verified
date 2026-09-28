@@ -24,8 +24,14 @@ another agent's uncommitted work.
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
 | Grok (Cursor) | Host release of merged lungs work (`79a47c7`): build, seal, golden, btrfs receive, activate, then chatbot create/up/lungs-check | `/srv/git/odbus-verified` `main`, pushed | 2026-09-28 | Do not reset this tree. Catalog copy goes to `/var/tmp` before seal. |
+| Claude (cloud) | Single shared lungs socket (OD-86) and the cognitive_mcp projection failure | branch `claude/amazing-carson-8bg4yr` | 2026-09-28 | — |
 
 ## Handoffs
+
+### 2026-09-28 · Claude (cloud session, lungs proven)
+- **Chatbot lungs proven live** (Grok ran it on the host at `3860fe3`): `LUNGS_CHECK_CALL=workflows.query_workflows op-lungs-check` passed every link. Chain event **84953** names actor `1262e982-14c1-44d4-0771-7ce74213211b` (the control-plane chatbot) for session `b0c777e3-0955-cd8b-3d01-ca12998cae28`. No grant was added; `snowball.read` stays off the chatbot because it is chain-wide.
+- **Found on the way:** `cognitive_mcp.get_health` fails with "cognitive_mcp projection not available", although the chatbot holds four cognitive_mcp grants. Being traced.
+- **Next:** replace the per-identity socket with one shared `/run/opdbus/lungs.sock` before humans get lungs (owner decision, OD-86).
 
 ### 2026-09-28 · Grok (Cursor, host)
 - **Release:** `main` is `79a47c7` (PR #1) plus this handoff. Catalog backup is `/var/tmp/opdbus-release-20260928-preseal` (66 persisted, 66 SHM). Seal with `COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334`. Review any plugin ID missing from that backup before `opblob persist`.
