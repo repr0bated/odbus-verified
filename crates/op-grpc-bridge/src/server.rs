@@ -968,23 +968,22 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
             SchemaRouter::with_engine(dbus_conn, mutation_engine_for_dbus)
                 .with_identity_resolver(identity_resolver),
         );
-        // The control-plane chatbot gets lungs: its own socket, bound to its
-        // session, so its 3tchedFS call files dispatch as the chatbot without
-        // a stored credential.
-        if let Some(session_id) = crate::identity_sled_dispatch::control_plane_chatbot_session_id()
+        // Every identity's lungs share one root-only socket: each connection
+        // binds to one session, so 3tchedFS call files dispatch as that
+        // identity without a stored credential, and logins add no sockets.
         {
-            let dir = std::env::var("OPDBUS_LUNGS_SOCKET_DIR")
-                .unwrap_or_else(|_| crate::lungs_socket::DEFAULT_LUNGS_SOCKET_DIR.to_string());
-            let identity = Arc::new(crate::lungs_socket::LungsIdentity::new(
-                engine_for_lungs,
-                session_id,
-            ));
+            let path = std::env::var("OPDBUS_LUNGS_SOCKET")
+                .unwrap_or_else(|_| crate::lungs_socket::DEFAULT_LUNGS_SOCKET.to_string());
             let router = router.clone();
             tokio::spawn(async move {
-                if let Err(error) =
-                    crate::lungs_socket::serve(std::path::Path::new(&dir), router, identity).await
+                if let Err(error) = crate::lungs_socket::serve(
+                    std::path::Path::new(&path),
+                    router,
+                    engine_for_lungs,
+                )
+                .await
                 {
-                    tracing::error!(%error, "control-plane chatbot lungs socket stopped");
+                    tracing::error!(%error, "lungs socket stopped");
                 }
             });
         }
