@@ -24,8 +24,20 @@ another agent's uncommitted work.
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
 | Grok (Cursor) | Host release of merged lungs work (`79a47c7`): build, seal, golden, btrfs receive, activate, then chatbot create/up/lungs-check | `/srv/git/odbus-verified` `main`, pushed | 2026-09-28 | Do not reset this tree. Catalog copy goes to `/var/tmp` before seal. |
+| Claude (host, took over from cloud) | Single shared lungs socket (OD-86) and the cognitive_mcp health fix: built, tested, waiting for the owner to review draft PR #4 | branch `claude/amazing-carson-8bg4yr`, pushed; host worktree `/srv/git/odbus-verified/.claude/worktrees/lungs-bind` | 2026-09-28 | The cloud session is idle; do not push to this branch from it. Hold the 2024 reformat until PR #4 merges. |
 
 ## Handoffs
+
+### 2026-09-28 · Claude (host, took over the cloud lungs work)
+- **Shared lungs socket, built and tested** on `claude/amazing-carson-8bg4yr` (draft PR #4). The cloud session wrote it (`4a6a483`) while the host session wrote the same change in parallel; the host kept the cloud commit and added what it lacked on top. The bridge serves one root-only `/run/opdbus/lungs.sock` and now creates its parent if missing. Each connection calls `LungsV1.Bind(session)` once, then its plugin calls run as that session. 3tchedFS mounts with `--lungs-socket /run/opdbus/lungs.sock --lungs-session <session>`; a refused bind stops at the `register` stage with `EACCES` (new test). `op-identity-root` and `op-lungs-check` use the shared socket.
+- **`cognitive_mcp.get_health`** answers from the in-process runtime and quota, matching `GetHealthOutput`. No unit test covers it, because it needs the durable Cozo runtime; `op-lungs-check` with `LUNGS_CHECK_CALL=cognitive_mcp.get_health` proves it after the release.
+- **Verified in the host worktree:** clippy `-D warnings` is clean on threetched-fs, op-grpc-bridge and op-plugins. threetched-fs passes 22/22. op-grpc-bridge passes 725, with 0 failed and 8 ignored (`-j 1`; see the SIGNALS build concern).
+- **After merge, host steps:** the usual release. An existing lungs mount keeps its old per-identity arguments, and `up` skips a mounted identity, so run `op-identity-root down` and then `up` for the chatbot, then `op-lungs-check`. From then on, `up` gives socket lungs to every identity whose session is anchored and active, including the owner's `414fbc56`.
+
+### 2026-09-28 · Claude (cloud session, lungs proven)
+- **Chatbot lungs proven live** (Grok ran it on the host at `3860fe3`): `LUNGS_CHECK_CALL=workflows.query_workflows op-lungs-check` passed every link. Chain event **84953** names actor `1262e982-14c1-44d4-0771-7ce74213211b` (the control-plane chatbot) for session `b0c777e3-0955-cd8b-3d01-ca12998cae28`. No grant was added; `snowball.read` stays off the chatbot because it is chain-wide.
+- **Found on the way:** `cognitive_mcp.get_health` fails with "cognitive_mcp projection not available", although the chatbot holds four cognitive_mcp grants. Being traced.
+- **Next:** replace the per-identity socket with one shared `/run/opdbus/lungs.sock` before humans get lungs (owner decision, OD-86).
 
 ### 2026-09-28 · Grok (Cursor, host)
 - **Release:** `main` is `79a47c7` (PR #1) plus this handoff. Catalog backup is `/var/tmp/opdbus-release-20260928-preseal` (66 persisted, 66 SHM). Seal with `COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334`. Review any plugin ID missing from that backup before `opblob persist`.
@@ -52,23 +64,3 @@ another agent's uncommitted work.
   "anchor", because that word names the interceptor's session anchoring.
 - **Waiting on owner:** the two OD-87 decisions (an epoch chain event, and the chain
   embedding text).
-
-### 2026-09-28 · Claude (host session 3035bc0a, transcript in `docs/`)
-Moved here from Claude's private memory so every agent can see it.
-- **Rust 2024 migration:** about 187 files are changed in the host working tree, not committed.
-  Now owned by Grok (see *Active work*).
-- **Unpushed on host:** 3tched.com has 4 commits on `main`; the owner reviews them before pushing.
-  `/srv/git/3tchedFS` can be archived, since its history is now in `crates/threetched-fs`.
-- **Live host state:** the owner's identity `414fbc56` runs on the overlay
-  root with its lungs mounted. It was set up by hand, so after a reboot it needs `op-identity-root up`
-  until a release ships the `identity-roots` service.
-- **Oct 1 plan:** traceable compliance. The NIST 800-53 control graph goes into Cozo
-  during the release window, while the bridge is down, and the demo apps' methods get
-  `control_refs` that the owner reviews. Connected mode is the critical path:
-  the owner tests `http://10.0.0.4:8080/demo/` and reports the "Tried …" line.
-- **Chain vectors:** on hold until the embedding text is settled. Ingest goes
-  through a local received subvolume (OD-64 replica path).
-- **NotebookLM sync:** uploads have been skipped since about Sep 4–10 because no notebook
-  ID is configured, and the service's log writer is down.
-- **Recovered CMS spec** (from the Aug 21 Codex session): `3tched.com/references/recovered/cms-aug21.spec.json`,
-  not committed.

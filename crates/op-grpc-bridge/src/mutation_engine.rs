@@ -5991,14 +5991,21 @@ impl MutationEngine {
         if method == "specialist" {
             return crate::specialist::consult(self, caller, args, admitted_schema, method).await;
         }
-        // Bridge-local health answers from the published in-process projection;
-        // every cognitive operation below executes through the embedded registry.
+        // Health answers from the in-process runtime itself. It used to read a
+        // `cognitive_mcp` SHM projection that nothing ever published, so it
+        // failed on every bridge. Starting the runtime is the health check:
+        // it fails exactly when every other cognitive operation would.
         if method == "get_health" {
-            let mut bytes = op_core::projection_shm::read_projection_bytes("cognitive_mcp")
-                .ok_or_else(|| anyhow::anyhow!("cognitive_mcp projection not available"))?;
-            let value = simd_json::to_owned_value(&mut bytes)
-                .map_err(|e| anyhow::anyhow!("cognitive_mcp projection is not valid JSON: {e}"))?;
-            return Ok(serde_json::to_value(&value)?);
+            let runtime = self.cognitive_mcp().await?;
+            let (remaining, limit) = runtime.quota_manager().status().await;
+            return Ok(serde_json::json!({
+                "bridge_owned": true,
+                "execution_model": "in-process",
+                // Callers are authenticated by the bridge before dispatch.
+                "auth_status": "bridge",
+                "queries_remaining": i64::from(remaining),
+                "queries_limit": i64::from(limit),
+            }));
         }
 
         // `list_tools` is an MCP *protocol* method (`tools/list`), not an entry in the

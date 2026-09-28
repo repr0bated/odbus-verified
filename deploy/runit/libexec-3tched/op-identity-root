@@ -32,7 +32,7 @@
 #   IDENTITIES=/var/lib/opdbus-runtime/identities
 #   POOL=identity-roots                    Incus dir pool for identity roots
 #   LUNGS_RUN=/run/opdbus-lungs
-#   LUNGS_SOCKETS=/run/opdbus/lungs        the bridge's per-identity sockets
+#   LUNGS_SOCKET=/run/opdbus/lungs.sock    the bridge's shared lungs socket
 #   THREETCHED_FS=/usr/local/bin/threetched-fs    the release binary
 set -u
 
@@ -44,7 +44,7 @@ IDENTITIES=${IDENTITIES:-/var/lib/opdbus-runtime/identities}
 POOL=${POOL:-identity-roots}
 POOL_PATH=/var/lib/incus/storage-pools/$POOL/containers
 LUNGS_RUN=${LUNGS_RUN:-/run/opdbus-lungs}
-LUNGS_SOCKETS=${LUNGS_SOCKETS:-/run/opdbus/lungs}
+LUNGS_SOCKET=${LUNGS_SOCKET:-/run/opdbus/lungs.sock}
 THREETCHED_FS=${THREETCHED_FS:-/usr/local/bin/threetched-fs}
 STATE=/dev/shm/opdbus/state
 CATALOG=/dev/shm/opdbus/plugin-blobs
@@ -109,10 +109,10 @@ mount_lungs() {
     store=$LUNGS_RUN/.store-$session
     "$THREETCHED_FS" --store "$store" capture \
         --catalog "$CATALOG" --state "$STATE" >/dev/null || return 1
-    # The bridge serves a socket bound to this identity when it owns one;
+    # The bridge's shared lungs socket, bound to this session per connection;
     # otherwise the lungs fall back to a SID1 registration on the shared bus.
-    if [ -S "$LUNGS_SOCKETS/$session.sock" ]; then
-        set -- --lungs-socket "$LUNGS_SOCKETS/$session.sock"
+    if [ -S "$LUNGS_SOCKET" ]; then
+        set -- --lungs-socket "$LUNGS_SOCKET" --lungs-session "$session"
     else
         set -- --lungs-credential "$IDENTITIES/$session/device/credential/sid1"
     fi
