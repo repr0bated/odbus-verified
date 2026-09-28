@@ -23,10 +23,15 @@ another agent's uncommitted work.
 
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
-| Grok (Cursor) | Rust 2024 edition migration | host `/srv/git/odbus-verified` working tree, uncommitted | 2026-09-28 | That working tree: no reset, stash, checkout or workspace-wide `cargo fix` |
-| Claude (cloud) | Cloud dev environment, OD-87 record epoch, this handoff file | branch `claude/amazing-carson-8bg4yr`, repr0bated/odbus-verified#1 | 2026-09-28 | — |
+| Claude (cloud) | Control-plane lungs socket (OD-86), cloud environment, OD-87 | branch `claude/amazing-carson-8bg4yr`, repr0bated/odbus-verified#1 | 2026-09-28 | — |
 
 ## Handoffs
+
+### 2026-09-28 · Claude (cloud session, later)
+- **Rust 2024 migration** (Grok) is on `main` as `d5d6d2f` and is merged into this branch. `rustfmt.toml` still pins the 2021 style until the follow-up reformat commit.
+- **Control-plane lungs** (`d35a7c3`): the bridge serves root-only peer-to-peer D-Bus on `/run/opdbus/lungs/<session>.sock` for `OP_CONTROL_PLANE_CHATBOT_SESSION_ID`. The socket is the proof, and no SID1 is stored. Each call re-checks the session and runs through MutationEngine under the chatbot's grants. 3tchedFS has `--lungs-socket`, and `op-identity-root` prefers the socket. Tests: threetched-fs 21/21, `lungs_socket` 5/5, `dbus_identity` 4/4, clippy clean.
+- **Not done yet (host):** ship the release; move the chatbot onto the identity-root model; make one `call` write from inside it and confirm with `snowball.query_events` that the chain names the chatbot. Agents (Claude, Codex, Grok) still need their own service identities before they get lungs.
+- **Cloud setup script:** retries the toolchain install until `rustc --version` runs, and installs `libprotobuf-dev libudev-dev`.
 
 ### 2026-09-28 · Claude (cloud session)
 - **Cloud environment:** the setup script's rustup download was cut off, so it
