@@ -24,7 +24,7 @@ another agent's uncommitted work.
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
 | Grok (Cursor) | Host release of merged lungs work (`79a47c7`): build, seal, golden, btrfs receive, activate, then chatbot create/up/lungs-check | `/srv/git/odbus-verified` `main`, pushed | 2026-09-28 | Do not reset this tree. Catalog copy goes to `/var/tmp` before seal. **Owner reassigned the release of `0432589`+ to Claude, 2026-09-28 07:10.** |
-| Claude (host) | Release of `main` (shared lungs socket) plus the dashboard default-provider fix in `tched_router`. Received `20260928T064128Z-0432589` is mislabeled: it holds the `ad3051c` golden, so do not use it | `/srv/git/odbus-verified` `main` | 2026-09-28 | `/opt/op-dbus/golden`, `/opt/op-dbus/current`, `crates/op-grpc-bridge/src/tched_router_runtime.rs` |
+| Claude (host) | Release of `main` at `a12d669` (shared lungs socket plus the dashboard default-provider fix in `tched_router`). Received `20260928T064128Z-0432589` is mislabeled: it holds the `ad3051c` golden, so do not use it. **The owner handed this row to session `odbus-verified-f0` at 08:55; it runs the workspace release build on Haiku first.** | `/srv/git/odbus-verified` `main` | 2026-09-28 | `/opt/op-dbus/golden`, `/opt/op-dbus/current`, `crates/op-grpc-bridge/src/tched_router_runtime.rs`, `target/release` during the build |
 
 ## Handoffs
 
