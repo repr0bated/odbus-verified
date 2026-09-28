@@ -111,6 +111,13 @@ def redact(s: str) -> str:
         (r"sk-or-v1-[a-zA-Z0-9_-]{10,}", "sk-or-v1-***"),
         (r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----",
          "[REDACTED PRIVATE KEY]"),
+        # JSON and escaped JSON in tool output, e.g. "privateKey": "..." from a
+        # printed Xray config: the quote before the colon defeats the rule above.
+        (r'(?i)(\\?"[a-z_]*(?:private_?key|secret|password|passwd|token|api_?key|'
+         r'sealed_?id|credential|shortids?)[a-z_]*\\?"\s*:\s*\\?")([^"\\]+)',
+         r"\1***"),
+        # Session and oracle credential envelopes, raw or base64 ("SID1"/"OIA1").
+        (r"\b(?:SID1|OIA1|U0lEMQ|T0lBMQ)[A-Za-z0-9+/=_.:-]{16,}", "[REDACTED CREDENTIAL]"),
     ]
     out = s
     for pat, rep in patterns:

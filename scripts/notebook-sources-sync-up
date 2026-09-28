@@ -5,7 +5,7 @@ set -eu
 export HOME="${HOME:-/home/jeremy}"
 export USER="${USER:-jeremy}"
 export PATH="${HOME}/.local/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin"
-OP_DBUS_ROOT="${OP_DBUS_ROOT:-/srv/git/odbus}"
+OP_DBUS_ROOT="${OP_DBUS_ROOT:-/srv/git/odbus-verified}"
 if [ ! -d "$OP_DBUS_ROOT/scripts" ]; then
     OP_DBUS_ROOT=/home/admin/git/odbus
 fi
@@ -42,30 +42,28 @@ else
     log "export script missing — skip"
 fi
 
-log "cleanup (append bundles ≤300, 195MiB rotate)"
-if command -v notebook-sources-cleanup >/dev/null 2>&1; then
+log "cleanup (frozen history + one live feed per LLM)"
+# The repo's cleanup first: an older copy on PATH may still use the append layout.
+if [ -f "$OP_DBUS_ROOT/scripts/notebook-sources-cleanup.py" ]; then
+    python3 "$OP_DBUS_ROOT/scripts/notebook-sources-cleanup.py" --archive-sessions 2>&1 || log "cleanup failed (continuing)"
+elif command -v notebook-sources-cleanup >/dev/null 2>&1; then
     notebook-sources-cleanup --archive-sessions 2>&1 || log "cleanup failed (continuing)"
-elif [ -f "$OP_DBUS_ROOT/scripts/notebook-sources-cleanup.py" ]; then
-    python3 "$OP_DBUS_ROOT/scripts/notebook-sources-cleanup.py" --archive-sessions 2>&1 || true
 fi
 
-TITLE="${NOTEBOOK_TITLE:-3tched LLM Sessions / Control Plane}"
+TITLE="${NOTEBOOK_TITLE:-3tched LLM Sessions}"
 # strip quotes if present
 TITLE=$(printf '%s' "$TITLE" | sed "s/^'//;s/'$//")
+export NOTEBOOK_TITLE="$TITLE"
 
-SYNC="$OP_DBUS_ROOT/scripts/notebook-sync"
-if [ -n "${OP_NOTEBOOK_ID:-}" ] || [ -n "${OP_NOTEBOOK_SOURCE_KEY:-}" ]; then
-    if [ -x "$SYNC" ]; then
-        log "ingest notebook title=${TITLE}"
-        "$SYNC" ingest --title "$TITLE" 2>&1 || log "ingest failed"
-    elif command -v notebook-sync >/dev/null 2>&1; then
-        log "ingest notebook title=${TITLE}"
-        notebook-sync ingest --title "$TITLE" 2>&1 || log "ingest failed"
-    else
-        log "notebook-sync missing — skip ingest"
-    fi
+UPLOAD="$OP_DBUS_ROOT/scripts/notebook-sources-upload"
+if ! command -v nlm >/dev/null 2>&1; then
+    log "nlm missing — skip upload"
+elif [ -x "$UPLOAD" ]; then
+    # Replaces changed live feeds, uploads new frozen bundles once, and
+    # retires the current notebook into the tagged series when it fills.
+    "$UPLOAD" 2>&1 || log "upload failed"
 else
-    log "no notebook id — skip ingest (run: notebook-sync create)"
+    log "$UPLOAD missing — skip upload"
 fi
 
 log "cycle done"

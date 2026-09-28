@@ -14,12 +14,13 @@ exec 2>&1
 
 export HOME=/home/jeremy
 export USER=jeremy
-export OP_DBUS_ROOT=/srv/git/odbus
+export OP_DBUS_ROOT=/srv/git/odbus-verified
 export NOTEBOOKLM_SOURCES_DIR=/home/jeremy/.notebooklm-sources
 export PATH="/home/jeremy/.local/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin"
 # 5 minutes default; override with env file if needed
 INTERVAL="${NOTEBOOK_SYNC_INTERVAL_SEC:-300}"
-HELPER=/usr/local/libexec/3tched/notebook-sources-sync-up
+# The cycle runs from the checkout, like its exporter, cleanup and uploader.
+HELPER="$OP_DBUS_ROOT/scripts/notebook-sources-sync-up"
 
 echo "notebook-sources-sync: starting (interval=${INTERVAL}s) as $USER"
 
