@@ -96,10 +96,10 @@ async fn cmd_tree(filter: Option<&str>) -> Result<()> {
 
     for (name, plugin) in &tree.plugins {
         // Apply optional filter
-        if let Some(f) = filter {
-            if !name.contains(f) {
-                continue;
-            }
+        if let Some(f) = filter
+            && !name.contains(f)
+        {
+            continue;
         }
 
         println!("╭─ {} ({})", name, plugin.service_name);
@@ -429,14 +429,20 @@ async fn cmd_call(plugin_name: &str, method_name: &str, args: &[String]) -> Resu
         Ok(reply) => {
             // Try to extract the reply body as a string
             let body = reply.body();
-            if let Ok(s) = body.deserialize::<String>() {
-                println!("{}", s);
-            } else if let Ok(strings) = body.deserialize::<Vec<String>>() {
-                for s in strings {
+            match body.deserialize::<String>() {
+                Ok(s) => {
                     println!("{}", s);
                 }
-            } else {
-                println!("(method returned successfully)");
+                _ => match body.deserialize::<Vec<String>>() {
+                    Ok(strings) => {
+                        for s in strings {
+                            println!("{}", s);
+                        }
+                    }
+                    _ => {
+                        println!("(method returned successfully)");
+                    }
+                },
             }
             Ok(())
         }
@@ -521,10 +527,13 @@ async fn cmd_get_property(plugin_name: &str, args: &[String]) -> Result<()> {
     match reply {
         Ok(reply) => {
             let body = reply.body();
-            if let Ok(val) = body.deserialize::<zbus::zvariant::OwnedValue>() {
-                println!("{}: {:?}", property_name, val);
-            } else {
-                println!("(property read successful but could not display value)");
+            match body.deserialize::<zbus::zvariant::OwnedValue>() {
+                Ok(val) => {
+                    println!("{}: {:?}", property_name, val);
+                }
+                _ => {
+                    println!("(property read successful but could not display value)");
+                }
             }
             Ok(())
         }

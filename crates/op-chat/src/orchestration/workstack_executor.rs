@@ -1002,10 +1002,10 @@ impl WorkstackExecutor {
         rec_stack.insert(phase.id.clone());
 
         for dep_id in &phase.depends_on {
-            if let Some(dep_phase) = workstack.phases.iter().find(|p| &p.id == dep_id) {
-                if self.has_cycle(dep_phase, workstack, visited, rec_stack) {
-                    return true;
-                }
+            if let Some(dep_phase) = workstack.phases.iter().find(|p| &p.id == dep_id)
+                && self.has_cycle(dep_phase, workstack, visited, rec_stack)
+            {
+                return true;
             }
         }
 
@@ -1017,12 +1017,12 @@ impl WorkstackExecutor {
     pub async fn cancel(&self, execution_id: &str) -> OrchestrationResult<bool> {
         let mut executions = self.executions.write().await;
 
-        if let Some(state) = executions.get_mut(execution_id) {
-            if state.status == ExecutionStatus::Running {
-                state.status = ExecutionStatus::Cancelled;
-                info!(execution_id = %execution_id, "Execution cancelled");
-                return Ok(true);
-            }
+        if let Some(state) = executions.get_mut(execution_id)
+            && state.status == ExecutionStatus::Running
+        {
+            state.status = ExecutionStatus::Cancelled;
+            info!(execution_id = %execution_id, "Execution cancelled");
+            return Ok(true);
         }
 
         Ok(false)

@@ -105,7 +105,7 @@ impl UnifiedOrchestrator {
         let mut calls = Vec::new();
 
         // First, check native tool calls
-        if let Some(ref tc) = tool_calls {
+        if let Some(tc) = tool_calls {
             for call in tc {
                 let args: Value = if let Some(s) = call.arguments.as_str() {
                     serde_json::from_str(s).unwrap_or(json!({}))
@@ -120,15 +120,15 @@ impl UnifiedOrchestrator {
         // (some models embed tool calls in text)
         if calls.is_empty() {
             // Try to parse JSON tool calls from content
-            if let Some(start) = content.find("```json") {
-                if let Some(end) = content[start..].find("```").map(|e| start + e + 3) {
-                    let json_str = &content[start + 7..end - 3];
-                    if let Ok(parsed) = serde_json::from_str::<Value>(json_str) {
-                        if let Some(name) = parsed.get("tool").and_then(|v| v.as_str()) {
-                            let args = parsed.get("arguments").cloned().unwrap_or(json!({}));
-                            calls.push((name.to_string(), args));
-                        }
-                    }
+            if let Some(start) = content.find("```json")
+                && let Some(end) = content[start..].find("```").map(|e| start + e + 3)
+            {
+                let json_str = &content[start + 7..end - 3];
+                if let Ok(parsed) = serde_json::from_str::<Value>(json_str)
+                    && let Some(name) = parsed.get("tool").and_then(|v| v.as_str())
+                {
+                    let args = parsed.get("arguments").cloned().unwrap_or(json!({}));
+                    calls.push((name.to_string(), args));
                 }
             }
         }

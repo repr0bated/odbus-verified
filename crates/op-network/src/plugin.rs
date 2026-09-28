@@ -220,15 +220,15 @@ impl NetworkPlugin {
 
         // Check if database file directory exists
         let db_path = std::path::Path::new(&self.ovsdb.database_path);
-        if let Some(parent) = db_path.parent() {
-            if !parent.exists() {
-                warn!(
-                    "OVSDB database directory does not exist: {}",
-                    parent.display()
-                );
-                info!("Creating directory: {}", parent.display());
-                tokio::fs::create_dir_all(parent).await?;
-            }
+        if let Some(parent) = db_path.parent()
+            && !parent.exists()
+        {
+            warn!(
+                "OVSDB database directory does not exist: {}",
+                parent.display()
+            );
+            info!("Creating directory: {}", parent.display());
+            tokio::fs::create_dir_all(parent).await?;
         }
 
         // Verify persistence is enabled

@@ -966,25 +966,28 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         let router = SchemaRouter::with_engine(dbus_conn, mutation_engine_for_dbus)
             .with_identity_resolver(identity_resolver);
 
-        if let Err(e) = router.register_objects().await {
-            tracing::error!(error = %e, "Failed to register authoritative D-Bus plugin objects");
-        } else {
-            // Store the signal bus on the MutationEngine so emit_updated_signal works.
-            engine_for_signal.set_signal_bus(conn.clone());
-            // Request the canonical bus name
-            match conn
-                .request_name(op_plugins::canonical::BASE_SERVICE_NAME)
-                .await
-            {
-                Ok(_) => {
-                    let count = router.list_plugin_ids().await.len();
-                    tracing::info!(
-                        count,
-                        "D-Bus plugin objects registered under org.opdbus.v1.plugins"
-                    );
-                }
-                Err(e) => {
-                    tracing::warn!(error = %e, "D-Bus name request failed");
+        match router.register_objects().await {
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to register authoritative D-Bus plugin objects");
+            }
+            _ => {
+                // Store the signal bus on the MutationEngine so emit_updated_signal works.
+                engine_for_signal.set_signal_bus(conn.clone());
+                // Request the canonical bus name
+                match conn
+                    .request_name(op_plugins::canonical::BASE_SERVICE_NAME)
+                    .await
+                {
+                    Ok(_) => {
+                        let count = router.list_plugin_ids().await.len();
+                        tracing::info!(
+                            count,
+                            "D-Bus plugin objects registered under org.opdbus.v1.plugins"
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %e, "D-Bus name request failed");
+                    }
                 }
             }
         }

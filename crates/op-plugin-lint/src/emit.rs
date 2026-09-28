@@ -103,10 +103,10 @@ pub fn emit_complete_plugin(
         .or_else(|| structs.keys().next().cloned());
 
     let mut fields = BTreeMap::new();
-    if let Some(root) = &state_root {
-        if let Some(fs) = structs.get(root) {
-            fields = fs.clone();
-        }
+    if let Some(root) = &state_root
+        && let Some(fs) = structs.get(root)
+    {
+        fields = fs.clone();
     }
 
     let mut nested = BTreeMap::new();
@@ -501,13 +501,12 @@ fn doc_comment(attrs: &[Attribute]) -> String {
         if !a.path().is_ident("doc") {
             continue;
         }
-        if let Meta::NameValue(nv) = &a.meta {
-            if let syn::Expr::Lit(syn::ExprLit {
+        if let Meta::NameValue(nv) = &a.meta
+            && let syn::Expr::Lit(syn::ExprLit {
                 lit: Lit::Str(s), ..
             }) = &nv.value
-            {
-                lines.push(s.value().trim().to_string());
-            }
+        {
+            lines.push(s.value().trim().to_string());
         }
     }
     lines.join(" ")

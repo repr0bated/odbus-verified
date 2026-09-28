@@ -777,10 +777,10 @@ fn re(pat: &str) -> Regex {
 
 fn crate_hint_from_path(file_path: &str) -> Option<String> {
     let parts: Vec<&str> = file_path.split('/').collect();
-    if let Some(i) = parts.iter().position(|p| *p == "crates") {
-        if let Some(name) = parts.get(i + 1) {
-            return Some(name.replace('-', "_"));
-        }
+    if let Some(i) = parts.iter().position(|p| *p == "crates")
+        && let Some(name) = parts.get(i + 1)
+    {
+        return Some(name.replace('-', "_"));
     }
     if parts.first() == Some(&"src") {
         return Some("zeroclaw".to_string());

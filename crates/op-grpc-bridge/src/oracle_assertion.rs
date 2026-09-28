@@ -869,7 +869,8 @@ pub mod tests {
         );
         let path = dir.path().join("decoy-trust.json");
         std::fs::write(&path, json).expect("write trust store");
-        std::env::set_var("OP_DECOY_TRUST_STORE", &path);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_DECOY_TRUST_STORE", &path) };
         path
     }
 
@@ -962,7 +963,8 @@ pub mod tests {
     async fn trust_store_missing_file_fails_closed() {
         let dir = tempfile::tempdir().expect("tempdir");
         let missing = dir.path().join("missing.json");
-        std::env::set_var("OP_DECOY_TRUST_STORE", &missing);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_DECOY_TRUST_STORE", &missing) };
         let store = DecoyTrustStore::load();
         assert_eq!(store.key_count(), 0);
 
@@ -1544,10 +1546,13 @@ pub mod tests {
     async fn validate_rejects_when_registry_unavailable() {
         let _cozo = temp_cozo();
         let blocker = tempfile::NamedTempFile::new().expect("blocker");
-        std::env::set_var(
-            "OP_HUMAN_PRINCIPAL_COZO_DB_PATH",
-            blocker.path().join("cozo"),
-        );
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe {
+            std::env::set_var(
+                "OP_HUMAN_PRINCIPAL_COZO_DB_PATH",
+                blocker.path().join("cozo"),
+            )
+        };
         let issuer = test_issuer();
         let validator = AssertionValidator::new(trust_store_for_issuer(&issuer));
         let signed = signed_with_fields(

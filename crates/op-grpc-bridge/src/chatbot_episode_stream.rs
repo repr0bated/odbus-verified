@@ -392,9 +392,11 @@ mod tests {
     impl Drop for GrantsRestore {
         fn drop(&mut self) {
             if let Some(path) = self.0.take() {
-                std::env::set_var("OP_GRANTS_PATH", path);
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                unsafe { std::env::set_var("OP_GRANTS_PATH", path) };
             } else {
-                std::env::remove_var("OP_GRANTS_PATH");
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                unsafe { std::env::remove_var("OP_GRANTS_PATH") };
             }
         }
     }
@@ -444,7 +446,8 @@ mod tests {
             };
             let grants = root.path().join("grants.json");
             let old = GrantsRestore(std::env::var_os("OP_GRANTS_PATH"));
-            std::env::set_var("OP_GRANTS_PATH", &grants);
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            unsafe { std::env::set_var("OP_GRANTS_PATH", &grants) };
             let fixture = Self {
                 engine: engine.clone(),
                 server: OperationGrpcServer::new(engine),

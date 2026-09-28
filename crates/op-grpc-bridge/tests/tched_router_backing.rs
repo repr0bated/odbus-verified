@@ -320,7 +320,8 @@ async fn config_patch(State(f): State<Fixture>, Json(body): Json<Value>) -> Resp
         // Model a provider effect that completes immediately before the bridge's
         // authoritative SHM publication. The test restores this process-global
         // fixture path before making another admitted call.
-        std::env::set_var("OP_SHM_STATE_DIR", blocked);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_SHM_STATE_DIR", blocked) };
     }
     Json(patch_receipt(operations)).into_response()
 }
@@ -383,8 +384,10 @@ impl Drop for FixtureScope {
         }
         for (key, value) in &self.environment {
             match value {
-                Some(value) => std::env::set_var(key, value),
-                None => std::env::remove_var(key),
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                Some(value) => unsafe { std::env::set_var(key, value) },
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                None => unsafe { std::env::remove_var(key) },
             }
         }
     }
@@ -509,14 +512,21 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .map(|key| (key, std::env::var_os(key)))
         .collect(),
     };
-    std::env::set_var("TCHED_ROUTER_RUNTIME_ENDPOINT", endpoint);
-    std::env::set_var("TCHED_ROUTER_RUNTIME_AGENT", "dashboard");
-    std::env::set_var("TCHED_ROUTER_RUNTIME_TOKEN", "fixture-secret");
-    std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state"));
-    std::env::set_var(
-        "OP_PLUGIN_RUNTIME_COZO_PATH",
-        root.path().join("runtime-documents"),
-    );
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("TCHED_ROUTER_RUNTIME_ENDPOINT", endpoint) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("TCHED_ROUTER_RUNTIME_AGENT", "dashboard") };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("TCHED_ROUTER_RUNTIME_TOKEN", "fixture-secret") };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state")) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe {
+        std::env::set_var(
+            "OP_PLUGIN_RUNTIME_COZO_PATH",
+            root.path().join("runtime-documents"),
+        )
+    };
     let catalog = root.path().join("blobs");
     let schema = op_plugins::state_plugins::tched_router::TchedRouterPlugin::new()
         .schema()
@@ -553,11 +563,15 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .write(&op_blob::blobify_plugin_schema(&plugin_name, plugin_schema))
             .unwrap();
     }
-    std::env::set_var("OP_BLOB_CATALOG_DIR", &catalog);
-    std::env::set_var(
-        "DBUS_SESSION_BUS_ADDRESS",
-        format!("unix:path={}/absent-bus", root.path().display()),
-    );
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_BLOB_CATALOG_DIR", &catalog) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe {
+        std::env::set_var(
+            "DBUS_SESSION_BUS_ADDRESS",
+            format!("unix:path={}/absent-bus", root.path().display()),
+        )
+    };
     let engine = MutationEngine::new(
         Arc::new(tokio::sync::RwLock::new(EventChain::new(
             ChainConfig::default(),
@@ -583,20 +597,29 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .unwrap();
     use base64::Engine as _;
     let public_key = base64::engine::general_purpose::STANDARD.encode([0xC8; 32]);
-    std::env::set_var(
-        "OP_HUMAN_PRINCIPAL_COZO_DB_PATH",
-        root.path().join("human-cozo"),
-    );
-    std::env::set_var("OP_LOCAL_HUMAN_WIREGUARD_PUBKEY", &public_key);
-    std::env::remove_var("OP_LOCAL_HUMAN_SESSION_ID");
-    std::env::remove_var("OP_LOCAL_HUMAN_PRINCIPAL_ID");
-    std::env::set_var(
-        "OP_IDENTITY_PROJECTION_GROUP",
-        nix::unistd::Group::from_gid(nix::unistd::Gid::current())
-            .unwrap()
-            .expect("test process group")
-            .name,
-    );
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe {
+        std::env::set_var(
+            "OP_HUMAN_PRINCIPAL_COZO_DB_PATH",
+            root.path().join("human-cozo"),
+        )
+    };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_LOCAL_HUMAN_WIREGUARD_PUBKEY", &public_key) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::remove_var("OP_LOCAL_HUMAN_SESSION_ID") };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::remove_var("OP_LOCAL_HUMAN_PRINCIPAL_ID") };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe {
+        std::env::set_var(
+            "OP_IDENTITY_PROJECTION_GROUP",
+            nix::unistd::Group::from_gid(nix::unistd::Gid::current())
+                .unwrap()
+                .expect("test process group")
+                .name,
+        )
+    };
     let actor = op_identity::session::derive_principal_id(&public_key);
     let grants = root.path().join("grants.json");
     let mut capabilities = schema.capabilities.keys().cloned().collect::<Vec<_>>();
@@ -607,7 +630,8 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         serde_json::to_vec(&serde_json::json!({(actor): {"capabilities": capabilities}})).unwrap(),
     )
     .unwrap();
-    std::env::set_var("OP_GRANTS_PATH", &grants);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_GRANTS_PATH", &grants) };
     support::provision_identity_record(&identity_cozo, root.path(), &public_key).unwrap();
     engine.recover_configured_identity_store().await.unwrap();
     let caller = engine
@@ -1219,7 +1243,8 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     let before_shm = op_core::projection_shm::read_projection_bytes("tched_router").unwrap();
     let blocked = root.path().join("blocked-state");
     std::fs::write(&blocked, b"not a directory").unwrap();
-    std::env::set_var("OP_SHM_STATE_DIR", &blocked);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_SHM_STATE_DIR", &blocked) };
     let error = dispatch(
         &engine,
         &caller,
@@ -1238,7 +1263,8 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         engine.get_state("tched_router").await.unwrap(),
         before_publication_failure
     );
-    std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state"));
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state")) };
     assert_eq!(
         op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
         before_shm
@@ -1274,7 +1300,8 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         engine.get_state("tched_router").await.unwrap(),
         before_post_effect
     );
-    std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state"));
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state")) };
     assert_eq!(
         op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
         before_post_effect_shm

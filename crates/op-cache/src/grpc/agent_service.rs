@@ -234,29 +234,29 @@ impl AgentService for AgentServiceImpl {
 
         tokio::spawn(async move {
             let agents_guard = agents.read().await;
-            if let Some(agent) = agents_guard.get(&agent_id) {
-                if let Some(executor) = &agent.executor {
-                    match executor(&input) {
-                        Ok(output) => {
-                            // Send output in chunks
-                            let chunk_size = 64 * 1024; // 64KB chunks
+            if let Some(agent) = agents_guard.get(&agent_id)
+                && let Some(executor) = &agent.executor
+            {
+                match executor(&input) {
+                    Ok(output) => {
+                        // Send output in chunks
+                        let chunk_size = 64 * 1024; // 64KB chunks
 
-                            for (sequence, chunk) in output.chunks(chunk_size).enumerate() {
-                                let sequence = sequence as u64;
-                                let is_final = sequence * chunk_size as u64 + chunk.len() as u64
-                                    >= output.len() as u64;
+                        for (sequence, chunk) in output.chunks(chunk_size).enumerate() {
+                            let sequence = sequence as u64;
+                            let is_final = sequence * chunk_size as u64 + chunk.len() as u64
+                                >= output.len() as u64;
 
-                                let _ = tx
-                                    .send(Ok(ExecuteAgentChunk {
-                                        chunk: chunk.to_vec(),
-                                        is_final,
-                                    }))
-                                    .await;
-                            }
+                            let _ = tx
+                                .send(Ok(ExecuteAgentChunk {
+                                    chunk: chunk.to_vec(),
+                                    is_final,
+                                }))
+                                .await;
                         }
-                        Err(e) => {
-                            warn!("Agent {} execution failed: {}", agent_id, e);
-                        }
+                    }
+                    Err(e) => {
+                        warn!("Agent {} execution failed: {}", agent_id, e);
                     }
                 }
             }

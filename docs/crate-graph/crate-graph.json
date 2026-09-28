@@ -269,7 +269,7 @@
         ],
         "has_lib": true,
         "rs_files": 146,
-        "loc": 21672,
+        "loc": 21668,
         "tests": 50,
         "unsafe_refs": 0,
         "todo": 2,
@@ -303,7 +303,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 15,
-        "loc": 4329,
+        "loc": 4328,
         "tests": 33,
         "unsafe_refs": 0,
         "todo": 0,
@@ -337,10 +337,10 @@
         ],
         "has_lib": true,
         "rs_files": 31,
-        "loc": 21287,
+        "loc": 21284,
         "tests": 36,
-        "unsafe_refs": 1,
-        "todo": 4,
+        "unsafe_refs": 3,
+        "todo": 6,
         "unwrap_expect": 33
       }
     },
@@ -356,10 +356,10 @@
         ],
         "has_lib": true,
         "rs_files": 30,
-        "loc": 11702,
+        "loc": 11710,
         "tests": 54,
-        "unsafe_refs": 0,
-        "todo": 1,
+        "unsafe_refs": 9,
+        "todo": 10,
         "unwrap_expect": 65
       }
     },
@@ -372,7 +372,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 1,
-        "loc": 327,
+        "loc": 324,
         "tests": 6,
         "unsafe_refs": 0,
         "todo": 0,
@@ -388,10 +388,10 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 19,
-        "loc": 4942,
+        "loc": 4941,
         "tests": 53,
-        "unsafe_refs": 4,
-        "todo": 0,
+        "unsafe_refs": 5,
+        "todo": 1,
         "unwrap_expect": 19
       }
     },
@@ -406,10 +406,10 @@
         ],
         "has_lib": true,
         "rs_files": 9,
-        "loc": 7855,
+        "loc": 7856,
         "tests": 55,
-        "unsafe_refs": 1,
-        "todo": 0,
+        "unsafe_refs": 3,
+        "todo": 2,
         "unwrap_expect": 144
       }
     },
@@ -440,7 +440,7 @@
         ],
         "has_lib": false,
         "rs_files": 3,
-        "loc": 1449,
+        "loc": 1454,
         "tests": 2,
         "unsafe_refs": 0,
         "todo": 0,
@@ -472,7 +472,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 2,
-        "loc": 694,
+        "loc": 692,
         "tests": 5,
         "unsafe_refs": 0,
         "todo": 0,
@@ -520,7 +520,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 5,
-        "loc": 1874,
+        "loc": 1873,
         "tests": 4,
         "unsafe_refs": 0,
         "todo": 0,
@@ -541,10 +541,10 @@
         ],
         "has_lib": true,
         "rs_files": 152,
-        "loc": 93102,
+        "loc": 93287,
         "tests": 729,
-        "unsafe_refs": 12,
-        "todo": 0,
+        "unsafe_refs": 178,
+        "todo": 166,
         "unwrap_expect": 1741
       }
     },
@@ -576,7 +576,7 @@
         ],
         "has_lib": true,
         "rs_files": 17,
-        "loc": 4338,
+        "loc": 4336,
         "tests": 74,
         "unsafe_refs": 9,
         "todo": 1,
@@ -592,7 +592,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 4,
-        "loc": 2341,
+        "loc": 2342,
         "tests": 16,
         "unsafe_refs": 2,
         "todo": 0,
@@ -608,7 +608,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 7,
-        "loc": 1480,
+        "loc": 1476,
         "tests": 9,
         "unsafe_refs": 0,
         "todo": 0,
@@ -624,7 +624,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 4,
-        "loc": 1230,
+        "loc": 1225,
         "tests": 10,
         "unsafe_refs": 4,
         "todo": 0,
@@ -640,10 +640,10 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 17,
-        "loc": 8406,
+        "loc": 8415,
         "tests": 26,
-        "unsafe_refs": 19,
-        "todo": 1,
+        "unsafe_refs": 29,
+        "todo": 11,
         "unwrap_expect": 79
       }
     },
@@ -656,7 +656,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 19,
-        "loc": 6742,
+        "loc": 6741,
         "tests": 35,
         "unsafe_refs": 12,
         "todo": 0,
@@ -672,10 +672,10 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 8,
-        "loc": 5025,
+        "loc": 5027,
         "tests": 33,
-        "unsafe_refs": 1,
-        "todo": 0,
+        "unsafe_refs": 3,
+        "todo": 2,
         "unwrap_expect": 17
       }
     },
@@ -693,10 +693,10 @@
         ],
         "has_lib": true,
         "rs_files": 31,
-        "loc": 16417,
+        "loc": 16414,
         "tests": 74,
-        "unsafe_refs": 87,
-        "todo": 5,
+        "unsafe_refs": 96,
+        "todo": 14,
         "unwrap_expect": 170
       }
     },
@@ -711,7 +711,7 @@
         ],
         "has_lib": true,
         "rs_files": 15,
-        "loc": 5050,
+        "loc": 5049,
         "tests": 18,
         "unsafe_refs": 1,
         "todo": 0,
@@ -785,10 +785,10 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 8,
-        "loc": 4321,
+        "loc": 4323,
         "tests": 47,
-        "unsafe_refs": 7,
-        "todo": 0,
+        "unsafe_refs": 11,
+        "todo": 4,
         "unwrap_expect": 150
       }
     },
@@ -801,7 +801,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 9,
-        "loc": 2035,
+        "loc": 2034,
         "tests": 10,
         "unsafe_refs": 5,
         "todo": 1,
@@ -817,7 +817,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 14,
-        "loc": 7942,
+        "loc": 7937,
         "tests": 74,
         "unsafe_refs": 2,
         "todo": 0,
@@ -835,7 +835,7 @@
         ],
         "has_lib": true,
         "rs_files": 28,
-        "loc": 11859,
+        "loc": 11856,
         "tests": 40,
         "unsafe_refs": 0,
         "todo": 0,
@@ -854,10 +854,10 @@
         ],
         "has_lib": true,
         "rs_files": 59,
-        "loc": 13648,
+        "loc": 13647,
         "tests": 67,
-        "unsafe_refs": 0,
-        "todo": 5,
+        "unsafe_refs": 1,
+        "todo": 6,
         "unwrap_expect": 104
       }
     },
@@ -870,7 +870,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 13,
-        "loc": 2702,
+        "loc": 2700,
         "tests": 6,
         "unsafe_refs": 0,
         "todo": 1,
@@ -906,7 +906,7 @@
         ],
         "has_lib": false,
         "rs_files": 7,
-        "loc": 4311,
+        "loc": 4303,
         "tests": 19,
         "unsafe_refs": 2,
         "todo": 0,
@@ -1932,8 +1932,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-27T23:26:42Z",
-        "commit": "0527cbee272ac76f368fdd598fc136e3deab7233",
+        "generated_at": "2026-09-28T01:39:16Z",
+        "commit": "5aa0bf56e8bd7614cc9bc67ad99c61504889dfa5",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -1956,7 +1956,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 476
+        "loc": 477
       }
     },
     {
@@ -2937,7 +2937,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "bin",
-        "loc": 209
+        "loc": 208
       }
     },
     {
@@ -2955,7 +2955,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 435
+        "loc": 434
       }
     },
     {
@@ -3045,7 +3045,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 387
+        "loc": 388
       }
     },
     {
@@ -3117,7 +3117,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 322
+        "loc": 321
       }
     },
     {
@@ -3252,7 +3252,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 176
+        "loc": 173
       }
     },
     {
@@ -3450,7 +3450,7 @@
       "props": {
         "crate": "op-blob",
         "kind": "src",
-        "loc": 613
+        "loc": 612
       }
     },
     {
@@ -3837,7 +3837,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 524
+        "loc": 523
       }
     },
     {
@@ -3909,7 +3909,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 430
+        "loc": 428
       }
     },
     {
@@ -3990,7 +3990,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 480
+        "loc": 479
       }
     },
     {
@@ -4008,7 +4008,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 293
+        "loc": 292
       }
     },
     {
@@ -4035,7 +4035,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "test",
-        "loc": 142
+        "loc": 144
       }
     },
     {
@@ -4053,7 +4053,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 514
+        "loc": 512
       }
     },
     {
@@ -4107,7 +4107,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 808
+        "loc": 805
       }
     },
     {
@@ -4116,7 +4116,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 541
+        "loc": 548
       }
     },
     {
@@ -4134,7 +4134,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 1165
+        "loc": 1167
       }
     },
     {
@@ -4305,7 +4305,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "test",
-        "loc": 257
+        "loc": 261
       }
     },
     {
@@ -4314,7 +4314,7 @@
       "props": {
         "crate": "op-compliance",
         "kind": "src",
-        "loc": 327
+        "loc": 324
       }
     },
     {
@@ -4323,7 +4323,7 @@
       "props": {
         "crate": "op-core",
         "kind": "src",
-        "loc": 222
+        "loc": 223
       }
     },
     {
@@ -4449,7 +4449,7 @@
       "props": {
         "crate": "op-core",
         "kind": "src",
-        "loc": 346
+        "loc": 344
       }
     },
     {
@@ -4530,7 +4530,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 1654
+        "loc": 1653
       }
     },
     {
@@ -4548,7 +4548,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 2716
+        "loc": 2718
       }
     },
     {
@@ -4584,7 +4584,7 @@
       "props": {
         "crate": "op-dbus-cli",
         "kind": "src",
-        "loc": 736
+        "loc": 732
       }
     },
     {
@@ -4593,7 +4593,7 @@
       "props": {
         "crate": "op-dbus-cli",
         "kind": "src",
-        "loc": 660
+        "loc": 669
       }
     },
     {
@@ -4620,7 +4620,7 @@
       "props": {
         "crate": "op-deployment",
         "kind": "src",
-        "loc": 680
+        "loc": 678
       }
     },
     {
@@ -4737,7 +4737,7 @@
       "props": {
         "crate": "op-gateway",
         "kind": "src",
-        "loc": 672
+        "loc": 670
       }
     },
     {
@@ -4773,7 +4773,7 @@
       "props": {
         "crate": "op-gateway",
         "kind": "src",
-        "loc": 819
+        "loc": 820
       }
     },
     {
@@ -4872,7 +4872,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 841
+        "loc": 844
       }
     },
     {
@@ -4890,7 +4890,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 416
+        "loc": 415
       }
     },
     {
@@ -4899,7 +4899,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 335
+        "loc": 338
       }
     },
     {
@@ -4971,7 +4971,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 912
+        "loc": 917
       }
     },
     {
@@ -4989,7 +4989,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 704
+        "loc": 707
       }
     },
     {
@@ -5070,7 +5070,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1584
+        "loc": 1587
       }
     },
     {
@@ -5097,7 +5097,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 891
+        "loc": 900
       }
     },
     {
@@ -5142,7 +5142,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1351
+        "loc": 1356
       }
     },
     {
@@ -5160,7 +5160,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 293
+        "loc": 296
       }
     },
     {
@@ -5178,7 +5178,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1186
+        "loc": 1185
       }
     },
     {
@@ -5205,7 +5205,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1253
+        "loc": 1255
       }
     },
     {
@@ -5241,7 +5241,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 5954
+        "loc": 5952
       }
     },
     {
@@ -5259,7 +5259,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1335
+        "loc": 1349
       }
     },
     {
@@ -5313,7 +5313,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 3277
+        "loc": 3280
       }
     },
     {
@@ -5322,7 +5322,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 602
+        "loc": 603
       }
     },
     {
@@ -5340,7 +5340,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1241
+        "loc": 1246
       }
     },
     {
@@ -5358,7 +5358,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 175
+        "loc": 178
       }
     },
     {
@@ -5394,7 +5394,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 351
+        "loc": 355
       }
     },
     {
@@ -5412,7 +5412,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 381
+        "loc": 393
       }
     },
     {
@@ -5421,7 +5421,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 3621
+        "loc": 3619
       }
     },
     {
@@ -5484,7 +5484,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 6562
+        "loc": 6554
       }
     },
     {
@@ -5520,7 +5520,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 195
+        "loc": 198
       }
     },
     {
@@ -5529,7 +5529,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 508
+        "loc": 506
       }
     },
     {
@@ -5538,7 +5538,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 236
+        "loc": 239
       }
     },
     {
@@ -5556,7 +5556,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 2326
+        "loc": 2331
       }
     },
     {
@@ -5646,7 +5646,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 332
+        "loc": 335
       }
     },
     {
@@ -5664,7 +5664,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 156
+        "loc": 159
       }
     },
     {
@@ -5682,7 +5682,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 158
+        "loc": 157
       }
     },
     {
@@ -5709,7 +5709,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 2779
+        "loc": 2791
       }
     },
     {
@@ -5736,7 +5736,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1485
+        "loc": 1488
       }
     },
     {
@@ -5826,7 +5826,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 135
+        "loc": 138
       }
     },
     {
@@ -5862,7 +5862,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 3419
+        "loc": 3420
       }
     },
     {
@@ -5916,7 +5916,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1171
+        "loc": 1174
       }
     },
     {
@@ -6006,7 +6006,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 154
+        "loc": 160
       }
     },
     {
@@ -6051,7 +6051,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 3423
+        "loc": 3443
       }
     },
     {
@@ -6069,7 +6069,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 176
+        "loc": 183
       }
     },
     {
@@ -6105,7 +6105,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 168
+        "loc": 181
       }
     },
     {
@@ -6123,7 +6123,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 1564
+        "loc": 1591
       }
     },
     {
@@ -6132,7 +6132,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 335
+        "loc": 347
       }
     },
     {
@@ -6303,7 +6303,7 @@
       "props": {
         "crate": "op-identity",
         "kind": "src",
-        "loc": 471
+        "loc": 469
       }
     },
     {
@@ -6357,7 +6357,7 @@
       "props": {
         "crate": "op-inspector",
         "kind": "src",
-        "loc": 1099
+        "loc": 1100
       }
     },
     {
@@ -6438,7 +6438,7 @@
       "props": {
         "crate": "op-introspection",
         "kind": "src",
-        "loc": 483
+        "loc": 479
       }
     },
     {
@@ -6456,7 +6456,7 @@
       "props": {
         "crate": "op-jsonrpc",
         "kind": "src",
-        "loc": 702
+        "loc": 697
       }
     },
     {
@@ -6501,7 +6501,7 @@
       "props": {
         "crate": "op-llm",
         "kind": "src",
-        "loc": 198
+        "loc": 206
       }
     },
     {
@@ -6537,7 +6537,7 @@
       "props": {
         "crate": "op-llm",
         "kind": "src",
-        "loc": 1282
+        "loc": 1281
       }
     },
     {
@@ -6618,7 +6618,7 @@
       "props": {
         "crate": "op-llm",
         "kind": "src",
-        "loc": 506
+        "loc": 508
       }
     },
     {
@@ -6672,7 +6672,7 @@
       "props": {
         "crate": "op-mcp-aggregator",
         "kind": "src",
-        "loc": 745
+        "loc": 747
       }
     },
     {
@@ -6825,7 +6825,7 @@
       "props": {
         "crate": "op-mcp",
         "kind": "src",
-        "loc": 869
+        "loc": 868
       }
     },
     {
@@ -6951,7 +6951,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 329
+        "loc": 335
       }
     },
     {
@@ -7041,7 +7041,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 699
+        "loc": 690
       }
     },
     {
@@ -7086,7 +7086,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 1134
+        "loc": 1131
       }
     },
     {
@@ -7095,7 +7095,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 281
+        "loc": 284
       }
     },
     {
@@ -7176,7 +7176,7 @@
       "props": {
         "crate": "op-plugin-lint",
         "kind": "src",
-        "loc": 637
+        "loc": 636
       }
     },
     {
@@ -8787,7 +8787,7 @@
       "props": {
         "crate": "op-snowball",
         "kind": "src",
-        "loc": 2501
+        "loc": 2503
       }
     },
     {
@@ -8868,7 +8868,7 @@
       "props": {
         "crate": "op-state-store",
         "kind": "src",
-        "loc": 2472
+        "loc": 2468
       }
     },
     {
@@ -8886,7 +8886,7 @@
       "props": {
         "crate": "op-state-store",
         "kind": "src",
-        "loc": 266
+        "loc": 265
       }
     },
     {
@@ -8985,7 +8985,7 @@
       "props": {
         "crate": "op-state",
         "kind": "src",
-        "loc": 113
+        "loc": 112
       }
     },
     {
@@ -9003,7 +9003,7 @@
       "props": {
         "crate": "op-tools",
         "kind": "bin",
-        "loc": 139
+        "loc": 138
       }
     },
     {
@@ -9030,7 +9030,7 @@
       "props": {
         "crate": "op-tools",
         "kind": "src",
-        "loc": 263
+        "loc": 262
       }
     },
     {
@@ -9246,7 +9246,7 @@
       "props": {
         "crate": "op-tools",
         "kind": "src",
-        "loc": 742
+        "loc": 741
       }
     },
     {
@@ -9282,7 +9282,7 @@
       "props": {
         "crate": "op-web",
         "kind": "bin",
-        "loc": 90
+        "loc": 87
       }
     },
     {
@@ -9471,7 +9471,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 737
+        "loc": 735
       }
     },
     {
@@ -9552,7 +9552,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 566
+        "loc": 565
       }
     },
     {
@@ -9606,7 +9606,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 415
+        "loc": 414
       }
     },
     {
@@ -9660,7 +9660,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 153
+        "loc": 154
       }
     },
     {
@@ -9705,7 +9705,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 352
+        "loc": 351
       }
     },
     {
@@ -9723,7 +9723,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 618
+        "loc": 624
       }
     },
     {
@@ -9849,7 +9849,7 @@
       "props": {
         "crate": "op-workflows",
         "kind": "src",
-        "loc": 269
+        "loc": 268
       }
     },
     {
@@ -9885,7 +9885,7 @@
       "props": {
         "crate": "op-workflows",
         "kind": "src",
-        "loc": 545
+        "loc": 544
       }
     },
     {
@@ -9975,7 +9975,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 1058
+        "loc": 1052
       }
     },
     {
@@ -10002,7 +10002,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 688
+        "loc": 686
       }
     },
     {

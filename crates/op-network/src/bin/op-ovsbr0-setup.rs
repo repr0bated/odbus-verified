@@ -368,10 +368,10 @@ fn extract_uuids(val: &Value) -> Vec<Uuid> {
     if let Some(arr) = val.as_array() {
         match arr.first().and_then(|v| v.as_str()) {
             Some("uuid") => {
-                if let Some(s) = arr.get(1).and_then(|v| v.as_str()) {
-                    if let Ok(u) = s.parse() {
-                        out.push(u);
-                    }
+                if let Some(s) = arr.get(1).and_then(|v| v.as_str())
+                    && let Ok(u) = s.parse()
+                {
+                    out.push(u);
                 }
             }
             Some("set") => {
@@ -415,10 +415,10 @@ async fn delete_bridge(client: &mut Client, bridge: &str) -> Result<()> {
     let port_uuids: Vec<Uuid> = ports_val.as_ref().map(extract_uuids).unwrap_or_default();
     let mut iface_uuids: Vec<Uuid> = Vec::new();
     for p_uuid in &port_uuids {
-        if let Some(row) = client.idl().row("Port", p_uuid) {
-            if let Some(ifaces) = row.get("interfaces") {
-                iface_uuids.extend(extract_uuids(ifaces));
-            }
+        if let Some(row) = client.idl().row("Port", p_uuid)
+            && let Some(ifaces) = row.get("interfaces")
+        {
+            iface_uuids.extend(extract_uuids(ifaces));
         }
     }
 
@@ -449,16 +449,16 @@ async fn purge_by_name(client: &mut Client, name: &str) -> Result<()> {
     for br_uuid in bridge_uuids {
         let mut port_uuids = Vec::new();
         let mut iface_uuids = Vec::new();
-        if let Some(row) = client.idl().row("Bridge", &br_uuid) {
-            if let Some(ports) = row.get("ports") {
-                port_uuids.extend(extract_uuids(ports));
-            }
+        if let Some(row) = client.idl().row("Bridge", &br_uuid)
+            && let Some(ports) = row.get("ports")
+        {
+            port_uuids.extend(extract_uuids(ports));
         }
         for p_uuid in &port_uuids {
-            if let Some(row) = client.idl().row("Port", p_uuid) {
-                if let Some(ifaces) = row.get("interfaces") {
-                    iface_uuids.extend(extract_uuids(ifaces));
-                }
+            if let Some(row) = client.idl().row("Port", p_uuid)
+                && let Some(ifaces) = row.get("interfaces")
+            {
+                iface_uuids.extend(extract_uuids(ifaces));
             }
         }
         let mut txn = Transaction::new("Open_vSwitch");

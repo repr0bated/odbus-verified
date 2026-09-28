@@ -96,12 +96,12 @@ impl CacheServiceImpl {
         let now = Self::now_timestamp();
 
         let entries = self.entries.read().await;
-        if let Some(entry) = entries.get(&cache_key) {
-            if now <= entry.expires_at {
-                self.total_hits.fetch_add(1, Ordering::Relaxed);
-                self.record_hit(workstack_id).await;
-                return Some(entry.output.clone());
-            }
+        if let Some(entry) = entries.get(&cache_key)
+            && now <= entry.expires_at
+        {
+            self.total_hits.fetch_add(1, Ordering::Relaxed);
+            self.record_hit(workstack_id).await;
+            return Some(entry.output.clone());
         }
 
         self.total_misses.fetch_add(1, Ordering::Relaxed);
@@ -268,20 +268,20 @@ impl CacheService for CacheServiceImpl {
 
         let mut entries = self.entries.write().await;
 
-        if let Some(entry) = entries.get_mut(&cache_key) {
-            if now <= entry.expires_at {
-                entry.access_count += 1;
-                self.total_hits.fetch_add(1, Ordering::Relaxed);
-                self.record_hit(&req.workstack_id).await;
+        if let Some(entry) = entries.get_mut(&cache_key)
+            && now <= entry.expires_at
+        {
+            entry.access_count += 1;
+            self.total_hits.fetch_add(1, Ordering::Relaxed);
+            self.record_hit(&req.workstack_id).await;
 
-                return Ok(Response::new(GetStepResponse {
-                    found: true,
-                    output: entry.output.clone(),
-                    created_at: entry.created_at,
-                    expires_at: entry.expires_at,
-                    access_count: entry.access_count,
-                }));
-            }
+            return Ok(Response::new(GetStepResponse {
+                found: true,
+                output: entry.output.clone(),
+                created_at: entry.created_at,
+                expires_at: entry.expires_at,
+                access_count: entry.access_count,
+            }));
         }
 
         self.total_misses.fetch_add(1, Ordering::Relaxed);

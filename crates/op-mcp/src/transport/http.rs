@@ -474,10 +474,10 @@ async fn serve_unix(app: Router, path: std::path::PathBuf) -> Result<()> {
     if let Some(parent) = path.parent() {
         tokio::fs::create_dir_all(parent).await?;
     }
-    if let Err(error) = tokio::fs::remove_file(&path).await {
-        if error.kind() != std::io::ErrorKind::NotFound {
-            return Err(error.into());
-        }
+    if let Err(error) = tokio::fs::remove_file(&path).await
+        && error.kind() != std::io::ErrorKind::NotFound
+    {
+        return Err(error.into());
     }
 
     let listener = tokio::net::UnixListener::bind(&path)?;

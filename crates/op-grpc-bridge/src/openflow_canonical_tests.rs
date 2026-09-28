@@ -78,8 +78,10 @@ struct GrantsEnvironment(Option<std::ffi::OsString>);
 impl Drop for GrantsEnvironment {
     fn drop(&mut self) {
         match self.0.take() {
-            Some(value) => std::env::set_var("OP_GRANTS_PATH", value),
-            None => std::env::remove_var("OP_GRANTS_PATH"),
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            Some(value) => unsafe { std::env::set_var("OP_GRANTS_PATH", value) },
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            None => unsafe { std::env::remove_var("OP_GRANTS_PATH") },
         }
     }
 }
@@ -141,7 +143,8 @@ async fn all_three_flow_methods_cross_canonical_admission_native_cas_and_child_f
     let directory = tempfile::tempdir().unwrap();
     let grants = directory.path().join("grants.json");
     let _environment = GrantsEnvironment(std::env::var_os("OP_GRANTS_PATH"));
-    std::env::set_var("OP_GRANTS_PATH", &grants);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_GRANTS_PATH", &grants) };
     std::fs::write(
         &grants,
         serde_json::to_vec(&json!({

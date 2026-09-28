@@ -150,21 +150,21 @@ impl UnifiedOrchestrator {
 
         // Get the name/id
         for field in name_fields {
-            if let Some(value) = obj.get(field) {
-                if let Some(v) = value.as_str() {
-                    parts.push(v.to_string());
-                    break;
-                }
+            if let Some(value) = obj.get(field)
+                && let Some(v) = value.as_str()
+            {
+                parts.push(v.to_string());
+                break;
             }
         }
 
         // Get status if available
         for field in status_fields {
-            if let Some(value) = obj.get(field) {
-                if let Some(v) = value.as_str() {
-                    parts.push(format!("({})", v));
-                    break;
-                }
+            if let Some(value) = obj.get(field)
+                && let Some(v) = value.as_str()
+            {
+                parts.push(format!("({})", v));
+                break;
             }
         }
 

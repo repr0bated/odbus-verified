@@ -512,7 +512,7 @@ pub(crate) fn oci_schema() -> PluginSchema {
     );
     schema.category = "container".into();
     macro_rules! method {
-        ($name:literal, $input:ty, $output:ty, $effect:expr, $idempotent:expr, $cap:literal, $subid:literal) => {
+        ($name:literal, $input:ty, $output:ty, $effect:expr_2021, $idempotent:expr_2021, $cap:literal, $subid:literal) => {
             schema.methods.insert(
                 $name.into(),
                 super::plugin_scaffold_helpers::method_decl_from_schemars_with_output::<

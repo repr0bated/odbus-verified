@@ -51,23 +51,23 @@ fn execution_input_schema(operation: &str) -> Value {
         }
     });
 
-    if matches!(operation, "run" | "exec") {
-        if let Value::Object(ref mut map) = properties {
-            map.insert(
-                "code".into(),
-                json!({
-                    "type": "string",
-                    "description": "Source code to execute (language runners)"
-                }),
-            );
-            map.insert(
-                "release".into(),
-                json!({
-                    "type": "boolean",
-                    "description": "Build/run in release mode when applicable"
-                }),
-            );
-        }
+    if matches!(operation, "run" | "exec")
+        && let Value::Object(ref mut map) = properties
+    {
+        map.insert(
+            "code".into(),
+            json!({
+                "type": "string",
+                "description": "Source code to execute (language runners)"
+            }),
+        );
+        map.insert(
+            "release".into(),
+            json!({
+                "type": "boolean",
+                "description": "Build/run in release mode when applicable"
+            }),
+        );
     }
 
     json!({
@@ -108,16 +108,16 @@ fn orchestration_input_schema(operation: &str) -> Value {
             "type": "string"
         }
     });
-    if operation == "run_workflow" {
-        if let Value::Object(ref mut map) = properties {
-            map.insert(
-                "workflow".into(),
-                json!({
-                    "type": "string",
-                    "description": "Named workflow to run"
-                }),
-            );
-        }
+    if operation == "run_workflow"
+        && let Value::Object(ref mut map) = properties
+    {
+        map.insert(
+            "workflow".into(),
+            json!({
+                "type": "string",
+                "description": "Named workflow to run"
+            }),
+        );
     }
     json!({
         "type": "object",

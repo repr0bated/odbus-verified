@@ -131,23 +131,23 @@ fn discover_type_sources(plugin_rs: &Path) -> Vec<String> {
         return out;
     };
     let common = dir.join("common");
-    if common.is_dir() {
-        if let Ok(rd) = std::fs::read_dir(&common) {
-            let mut paths: Vec<_> = rd
-                .filter_map(|e| e.ok())
-                .map(|e| e.path())
-                .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("rs"))
-                .filter(|p| {
-                    p.file_name()
-                        .and_then(|s| s.to_str())
-                        .is_some_and(|n| n != "mod.rs")
-                })
-                .collect();
-            paths.sort();
-            for p in paths {
-                if let Ok(text) = std::fs::read_to_string(&p) {
-                    out.push(text);
-                }
+    if common.is_dir()
+        && let Ok(rd) = std::fs::read_dir(&common)
+    {
+        let mut paths: Vec<_> = rd
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.extension().and_then(|x| x.to_str()) == Some("rs"))
+            .filter(|p| {
+                p.file_name()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(|n| n != "mod.rs")
+            })
+            .collect();
+        paths.sort();
+        for p in paths {
+            if let Ok(text) = std::fs::read_to_string(&p) {
+                out.push(text);
             }
         }
     }
@@ -251,13 +251,13 @@ fn resolve_plugin_object(plugin_id: &str) -> Result<CoverageInputs> {
         format!("http://127.0.0.1:18080/api/ui-model/plugin-schema/{plugin_id}"),
     ];
     for url in &candidates {
-        if let Ok(text) = http_get(url) {
-            if text.contains("\"fields\"") {
-                return Ok(CoverageInputs {
-                    sealed_schema_json: Some(text),
-                    ..Default::default()
-                });
-            }
+        if let Ok(text) = http_get(url)
+            && text.contains("\"fields\"")
+        {
+            return Ok(CoverageInputs {
+                sealed_schema_json: Some(text),
+                ..Default::default()
+            });
         }
     }
 

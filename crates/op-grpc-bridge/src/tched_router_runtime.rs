@@ -1797,10 +1797,11 @@ fn verify_patch_readbacks(
 fn normalize_config_patch_numbers(value: &mut Value) {
     match value {
         Value::Number(number) if number.is_f64() => {
-            if let Some(number) = number.as_f64() {
-                if number.fract() == 0.0 && number.abs() <= 9_007_199_254_740_991.0 {
-                    *value = Value::Number((number as i64).into());
-                }
+            if let Some(number) = number.as_f64()
+                && number.fract() == 0.0
+                && number.abs() <= 9_007_199_254_740_991.0
+            {
+                *value = Value::Number((number as i64).into());
             }
         }
         Value::Array(values) => values.iter_mut().for_each(normalize_config_patch_numbers),

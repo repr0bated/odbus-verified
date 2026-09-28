@@ -345,13 +345,13 @@ fn parse_options(help: &str) -> Vec<CliFlag> {
                 flags.push(f);
             }
             current = Some(flag);
-        } else if let Some(ref mut f) = current {
-            if !trimmed.is_empty() {
-                if !f.description.is_empty() {
-                    f.description.push(' ');
-                }
-                f.description.push_str(trimmed);
+        } else if let Some(ref mut f) = current
+            && !trimmed.is_empty()
+        {
+            if !f.description.is_empty() {
+                f.description.push(' ');
             }
+            f.description.push_str(trimmed);
         }
     }
     if let Some(f) = current {
@@ -463,10 +463,10 @@ pub fn resolve_binary_target(target: &str) -> Option<PathBuf> {
         if path.is_file() {
             // Existing non-executable text dump? leave to resolve_file.
             use std::os::unix::fs::PermissionsExt;
-            if let Ok(meta) = path.metadata() {
-                if meta.permissions().mode() & 0o111 == 0 {
-                    return None;
-                }
+            if let Ok(meta) = path.metadata()
+                && meta.permissions().mode() & 0o111 == 0
+            {
+                return None;
             }
         }
         return Some(path);

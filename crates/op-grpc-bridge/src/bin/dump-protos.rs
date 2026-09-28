@@ -68,7 +68,7 @@ fn main() -> Result<()> {
     }
 
     let mut catalog = SchemaCatalog::new();
-    let gen = ProtoGenerator::new(ProtoGenConfig::default());
+    let r#gen = ProtoGenerator::new(ProtoGenConfig::default());
 
     for plugin_id in &plugin_ids {
         let schema: PluginSchema = match read_plugin_schema_shm(plugin_id) {
@@ -90,7 +90,7 @@ fn main() -> Result<()> {
     }
 
     if !plugin_ids.is_empty() {
-        let unified = gen.generate_for_catalog(&catalog);
+        let unified = r#gen.generate_for_catalog(&catalog);
         let dest = out_dir.join("plugin_methods_unified.proto");
         fs::write(&dest, &unified).with_context(|| format!("write {}", dest.display()))?;
         dynamic_count += 1;

@@ -142,11 +142,11 @@ pub fn detect_certificates() -> Result<Option<(String, String)>> {
     if let (Ok(cert), Ok(key)) = (
         std::env::var("SSL_CERT_PATH"),
         std::env::var("SSL_KEY_PATH"),
-    ) {
-        if Path::new(&cert).exists() && Path::new(&key).exists() {
-            info!("Using certificates from environment variables");
-            return Ok(Some((cert, key)));
-        }
+    ) && Path::new(&cert).exists()
+        && Path::new(&key).exists()
+    {
+        info!("Using certificates from environment variables");
+        return Ok(Some((cert, key)));
     }
 
     // Priority 2: Cloudflare Origin certificates (NEW)

@@ -1182,24 +1182,24 @@ impl IdentityIncusTargetGuard {
         let provision =
             tokio::task::spawn_blocking(move || cozo.read_seed_provision_journal(&session))
                 .await??;
-        if journal.is_none() {
-            if let Some(provision) = provision {
-                anyhow::ensure!(
-                    provision.phase == "identity-committed",
-                    "Incus target has incomplete seeded provision"
-                );
-                anyhow::ensure!(
-                    matches!(method, "exec_instance" | "snapshot_instance"),
-                    "seeded identity provenance and lifecycle are identity-owned"
-                );
-                let revision = load_revision(&self.store, &self.session_id).await?;
-                let sled = revision_sled(&revision)?.context("seeded identity disappeared")?;
-                return Ok(Some(
-                    seed_provision::guard_start(&self.store, &revision, &sled)
-                        .await?
-                        .context("completed seed provision provenance disappeared")?,
-                ));
-            }
+        if journal.is_none()
+            && let Some(provision) = provision
+        {
+            anyhow::ensure!(
+                provision.phase == "identity-committed",
+                "Incus target has incomplete seeded provision"
+            );
+            anyhow::ensure!(
+                matches!(method, "exec_instance" | "snapshot_instance"),
+                "seeded identity provenance and lifecycle are identity-owned"
+            );
+            let revision = load_revision(&self.store, &self.session_id).await?;
+            let sled = revision_sled(&revision)?.context("seeded identity disappeared")?;
+            return Ok(Some(
+                seed_provision::guard_start(&self.store, &revision, &sled)
+                    .await?
+                    .context("completed seed provision provenance disappeared")?,
+            ));
         }
         match journal {
             None => Ok(None),
@@ -2443,14 +2443,17 @@ pub(crate) mod tests {
         )
         .unwrap();
         let previous = std::env::var_os("OP_GRANTS_PATH");
-        std::env::set_var("OP_GRANTS_PATH", &grants_path);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_GRANTS_PATH", &grants_path) };
         (engine, shm, identity, grants_dir, previous, registry)
     }
 
     fn restore_grants_path(previous: Option<std::ffi::OsString>) {
         match previous {
-            Some(value) => std::env::set_var("OP_GRANTS_PATH", value),
-            None => std::env::remove_var("OP_GRANTS_PATH"),
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            Some(value) => unsafe { std::env::set_var("OP_GRANTS_PATH", value) },
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            None => unsafe { std::env::remove_var("OP_GRANTS_PATH") },
         }
     }
 

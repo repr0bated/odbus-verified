@@ -43,7 +43,7 @@ members = [
 
 [workspace.package]
 version = "1.0.0"
-edition = "2021"
+edition = "2024"
 authors = ["OP-DBUS Contributors"]
 license = "Apache-2.0"
 

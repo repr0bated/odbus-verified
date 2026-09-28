@@ -241,10 +241,10 @@ impl GCloudParser {
                 }
 
                 // Parse group name (indented, followed by description)
-                if let Some(caps) = group_regex.captures(line) {
-                    if let Some(name) = caps.get(1) {
-                        groups.push(name.as_str().to_string());
-                    }
+                if let Some(caps) = group_regex.captures(line)
+                    && let Some(name) = caps.get(1)
+                {
+                    groups.push(name.as_str().to_string());
                 }
             }
         }
@@ -271,10 +271,10 @@ impl GCloudParser {
                     break;
                 }
 
-                if let Some(caps) = cmd_regex.captures(line) {
-                    if let Some(name) = caps.get(1) {
-                        commands.push(name.as_str().to_string());
-                    }
+                if let Some(caps) = cmd_regex.captures(line)
+                    && let Some(name) = caps.get(1)
+                {
+                    commands.push(name.as_str().to_string());
                 }
             }
         }

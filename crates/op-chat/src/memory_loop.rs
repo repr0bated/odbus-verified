@@ -471,12 +471,11 @@ impl MemoryLoop {
         for (key, cat, value) in new_entries {
             let preview = match value {
                 Value::String(s) => {
-                    let truncated = if s.len() > 60 {
+                    if s.len() > 60 {
                         format!("{}...", &s[..60])
                     } else {
                         s.clone()
-                    };
-                    truncated
+                    }
                 }
                 other => other.to_string().chars().take(60).collect(),
             };

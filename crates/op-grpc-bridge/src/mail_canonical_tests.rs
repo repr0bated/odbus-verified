@@ -43,8 +43,10 @@ impl Drop for Environment {
     fn drop(&mut self) {
         for (key, value) in &self.values {
             match value {
-                Some(value) => std::env::set_var(key, value),
-                None => std::env::remove_var(key),
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                Some(value) => unsafe { std::env::set_var(key, value) },
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                None => unsafe { std::env::remove_var(key) },
             }
         }
     }
@@ -191,8 +193,10 @@ async fn mail_owner_admits_queue_read_and_rejects_eight_unattributed_mutations()
     let fixture = NativeFixture::new().await;
     let grant_path = fixture.root.path().join("grants.json");
     let _environment = Environment::capture(["OP_GRANTS_PATH", "OP_MAIL_ADMIN_SOCKET"]);
-    std::env::set_var("OP_GRANTS_PATH", &grant_path);
-    std::env::set_var("OP_MAIL_ADMIN_SOCKET", &fixture.socket);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_GRANTS_PATH", &grant_path) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_MAIL_ADMIN_SOCKET", &fixture.socket) };
     let capabilities = schema
         .methods
         .values()

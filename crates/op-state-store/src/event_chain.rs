@@ -328,10 +328,10 @@ impl ChainEvent {
 
     /// Verify this event's hash against its content
     pub fn verify(&self) -> bool {
-        if let Some(payload) = self.input_payload.as_ref() {
-            if compute_hash(&canonicalize_json(payload)) != self.input_patch_hash {
-                return false;
-            }
+        if let Some(payload) = self.input_payload.as_ref()
+            && compute_hash(&canonicalize_json(payload)) != self.input_patch_hash
+        {
+            return false;
         }
         let computed = self.compute_hash();
         computed == self.event_hash
@@ -730,13 +730,13 @@ impl EventChain {
     ///
     /// OSCAL subid: `src.service.event-chain.rebuild@v1`
     pub fn replay_event(&mut self, event: ChainEvent) -> Result<(), String> {
-        if let Some(last) = self.events.last() {
-            if event.event_id <= last.event_id {
-                return Err(format!(
-                    "replay out of order: event {} follows {}",
-                    event.event_id, last.event_id
-                ));
-            }
+        if let Some(last) = self.events.last()
+            && event.event_id <= last.event_id
+        {
+            return Err(format!(
+                "replay out of order: event {} follows {}",
+                event.event_id, last.event_id
+            ));
         }
         self.events.push(event);
         Ok(())

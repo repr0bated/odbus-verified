@@ -37,12 +37,11 @@ fn is_secret(schema: &Value) -> bool {
 }
 
 fn resolve<'a>(root: &'a Value, schema: &'a Value) -> &'a Value {
-    if let Some(reference) = schema.get("$ref").and_then(Value::as_str) {
-        if let Some(pointer) = reference.strip_prefix('#') {
-            if let Some(target) = root.pointer(pointer) {
-                return target;
-            }
-        }
+    if let Some(reference) = schema.get("$ref").and_then(Value::as_str)
+        && let Some(pointer) = reference.strip_prefix('#')
+        && let Some(target) = root.pointer(pointer)
+    {
+        return target;
     }
     schema
 }

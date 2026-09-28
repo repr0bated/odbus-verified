@@ -35,23 +35,34 @@ impl CatalogScope {
                 ))
                 .unwrap();
         }
-        std::env::set_var("OP_BLOB_CATALOG_DIR", catalog);
-        std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state"));
-        std::env::set_var(
-            "OP_IDENTITY_PROJECTION_GROUP",
-            nix::unistd::Group::from_gid(nix::unistd::Gid::current())
-                .unwrap()
-                .expect("test process group exists")
-                .name,
-        );
-        std::env::set_var(
-            "OP_PLUGIN_RUNTIME_COZO_PATH",
-            root.path().join("runtime-documents"),
-        );
-        std::env::set_var(
-            "DBUS_SESSION_BUS_ADDRESS",
-            format!("unix:path={}/absent-bus", root.path().display()),
-        );
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_BLOB_CATALOG_DIR", catalog) };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_SHM_STATE_DIR", root.path().join("state")) };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe {
+            std::env::set_var(
+                "OP_IDENTITY_PROJECTION_GROUP",
+                nix::unistd::Group::from_gid(nix::unistd::Gid::current())
+                    .unwrap()
+                    .expect("test process group exists")
+                    .name,
+            )
+        };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe {
+            std::env::set_var(
+                "OP_PLUGIN_RUNTIME_COZO_PATH",
+                root.path().join("runtime-documents"),
+            )
+        };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe {
+            std::env::set_var(
+                "DBUS_SESSION_BUS_ADDRESS",
+                format!("unix:path={}/absent-bus", root.path().display()),
+            )
+        };
         Self {
             _guard: guard,
             _root: root,
@@ -68,8 +79,10 @@ impl Drop for CatalogScope {
     fn drop(&mut self) {
         for (key, value) in &self.environment {
             match value {
-                Some(value) => std::env::set_var(key, value),
-                None => std::env::remove_var(key),
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                Some(value) => unsafe { std::env::set_var(key, value) },
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                None => unsafe { std::env::remove_var(key) },
             }
         }
     }

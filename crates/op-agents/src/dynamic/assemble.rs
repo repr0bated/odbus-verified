@@ -158,15 +158,14 @@ pub fn assemble(
         used.push(piece);
     }
     // Always start from at least one behaviour so the persona has a method.
-    if behaviors == 0 {
-        if let Some(fallback) = library
+    if behaviors == 0
+        && let Some(fallback) = library
             .pieces()
             .iter()
             .filter(|p| p.kind == PieceKind::Behavior)
             .min_by_key(|p| p.id.clone())
-        {
-            used.insert(0, fallback);
-        }
+    {
+        used.insert(0, fallback);
     }
     used.sort_by_key(|p| kind_rank(p.kind));
 

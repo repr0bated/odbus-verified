@@ -645,7 +645,7 @@ impl NetStatePlugin {
         block.push_str(&format!("allow-ovs {}\n", bridge));
         block.push_str(&format!("iface {} inet ", bridge));
 
-        if let Some(ref ipv4_cfg) = ipv4 {
+        if let Some(ipv4_cfg) = ipv4 {
             if ipv4_cfg.enabled {
                 if ipv4_cfg.dhcp == Some(true) {
                     block.push_str("dhcp\n");

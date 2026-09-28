@@ -525,10 +525,10 @@ impl ChatManager {
         let providers = self.available_providers();
         // 1. Direct match in list_models_for_provider
         for ptype in &providers {
-            if let Ok(models) = self.list_models_for_provider(ptype).await {
-                if models.iter().any(|m| m.id == model) {
-                    return Some(ptype.clone());
-                }
+            if let Ok(models) = self.list_models_for_provider(ptype).await
+                && models.iter().any(|m| m.id == model)
+            {
+                return Some(ptype.clone());
             }
         }
 

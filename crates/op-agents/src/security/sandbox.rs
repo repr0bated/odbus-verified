@@ -267,10 +267,11 @@ impl SandboxExecutor {
         working_dir: Option<&PathBuf>,
     ) -> Result<SandboxResult, SecurityError> {
         // Check if operation requires approval
-        if let Some(op_sec) = self.profile.operations.iter().find(|o| o.name == operation) {
-            if op_sec.requires_approval && !self.profile.config.requires_approval {
-                return Err(SecurityError::RequiresApproval);
-            }
+        if let Some(op_sec) = self.profile.operations.iter().find(|o| o.name == operation)
+            && op_sec.requires_approval
+            && !self.profile.config.requires_approval
+        {
+            return Err(SecurityError::RequiresApproval);
         }
 
         self.execute(command, args, working_dir).await

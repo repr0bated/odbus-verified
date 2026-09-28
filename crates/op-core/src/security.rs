@@ -91,14 +91,12 @@ impl AccessZone {
         }
 
         // 172.16.0.0 - 172.31.255.255
-        if let Some(rest) = ip.strip_prefix("172.") {
-            if let Some(second_octet) = rest.split('.').next() {
-                if let Ok(n) = second_octet.parse::<u8>() {
-                    if (16..=31).contains(&n) {
-                        return true;
-                    }
-                }
-            }
+        if let Some(rest) = ip.strip_prefix("172.")
+            && let Some(second_octet) = rest.split('.').next()
+            && let Ok(n) = second_octet.parse::<u8>()
+            && (16..=31).contains(&n)
+        {
+            return true;
         }
 
         // IPv6 link-local

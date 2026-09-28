@@ -759,8 +759,10 @@ mod tests {
             fn drop(&mut self) {
                 for (key, value) in &self.0 {
                     match value {
-                        Some(value) => std::env::set_var(key, value),
-                        None => std::env::remove_var(key),
+                        // FIXME: Audit that the environment access only happens in single-threaded code.
+                        Some(value) => unsafe { std::env::set_var(key, value) },
+                        // FIXME: Audit that the environment access only happens in single-threaded code.
+                        None => unsafe { std::env::remove_var(key) },
                     }
                 }
             }
@@ -784,8 +786,10 @@ mod tests {
             }),
         );
         let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-        std::env::set_var("TCHED_ROUTER_RUNTIME_ENDPOINT", endpoint);
-        std::env::remove_var("TCHED_ROUTER_RUNTIME_TOKEN");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("TCHED_ROUTER_RUNTIME_ENDPOINT", endpoint) };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("TCHED_ROUTER_RUNTIME_TOKEN") };
         let event_chain = Arc::new(tokio::sync::RwLock::new(op_state_store::EventChain::new(
             op_state_store::ChainConfig::default(),
         )));
@@ -828,7 +832,8 @@ mod tests {
             .unwrap(),
         )
         .unwrap();
-        std::env::set_var("OP_GRANTS_PATH", grants);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_GRANTS_PATH", grants) };
         let input = ChatInput {
             message: "hello".to_string(),
             provider: "salad".to_string(),

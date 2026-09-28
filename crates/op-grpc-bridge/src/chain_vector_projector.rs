@@ -55,10 +55,10 @@ impl SchemaProjectionPolicy {
 
     fn schema(&self, plugin: &str) -> Option<Arc<op_state_store::PluginSchema>> {
         let mut cache = self.cache.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some((at, schema)) = cache.get(plugin) {
-            if at.elapsed() < SCHEMA_TTL {
-                return schema.clone();
-            }
+        if let Some((at, schema)) = cache.get(plugin)
+            && at.elapsed() < SCHEMA_TTL
+        {
+            return schema.clone();
         }
         let schema = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
             &self.catalog,

@@ -74,8 +74,10 @@ impl Drop for Environment {
     fn drop(&mut self) {
         for (key, value) in &self.values {
             match value {
-                Some(value) => std::env::set_var(key, value),
-                None => std::env::remove_var(key),
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                Some(value) => unsafe { std::env::set_var(key, value) },
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                None => unsafe { std::env::remove_var(key) },
             }
         }
     }
@@ -554,13 +556,20 @@ async fn all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_sib
         "OP_DECOY_NATIVE_KEY_FILE",
         "OP_DECOY_NATIVE_BRIDGE_CERT_FILE",
     ]);
-    std::env::set_var("OP_GRANTS_PATH", &grants);
-    std::env::set_var("OP_DECOY_NATIVE_ADDRESS", decoy_address.to_string());
-    std::env::set_var("OP_DECOY_NATIVE_SERVER_NAME", "decoy.fixture");
-    std::env::set_var("OP_DECOY_NATIVE_CA_FILE", &tls.ca);
-    std::env::set_var("OP_DECOY_NATIVE_CERT_FILE", &tls.bridge_certificate);
-    std::env::set_var("OP_DECOY_NATIVE_KEY_FILE", &tls.bridge_key);
-    std::env::set_var("OP_DECOY_NATIVE_BRIDGE_CERT_FILE", &tls.bridge_certificate);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_GRANTS_PATH", &grants) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DECOY_NATIVE_ADDRESS", decoy_address.to_string()) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DECOY_NATIVE_SERVER_NAME", "decoy.fixture") };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DECOY_NATIVE_CA_FILE", &tls.ca) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DECOY_NATIVE_CERT_FILE", &tls.bridge_certificate) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DECOY_NATIVE_KEY_FILE", &tls.bridge_key) };
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_DECOY_NATIVE_BRIDGE_CERT_FILE", &tls.bridge_certificate) };
     let capabilities = [&wireguard_schema, &wg_opdbus_schema, &wgcf_schema]
         .into_iter()
         .flat_map(|schema| schema.methods.values())

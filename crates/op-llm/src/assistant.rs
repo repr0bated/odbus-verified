@@ -133,26 +133,34 @@ mod tests {
     #[test]
     fn env_fallback_resolution() {
         // ASSISTANT_BASE_URL set → used
-        std::env::set_var("ASSISTANT_BASE_URL", "http://assistant:9999");
-        std::env::remove_var("OPENCLAW_BASE_URL");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("ASSISTANT_BASE_URL", "http://assistant:9999") };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OPENCLAW_BASE_URL") };
         let _p = AssistantProvider::new(None, None);
         // We can't inspect private fields, but we can verify from_env succeeds
         let _ = AssistantProvider::from_env().unwrap();
 
         // Only OPENCLAW_BASE_URL set → fallback
-        std::env::remove_var("ASSISTANT_BASE_URL");
-        std::env::set_var("OPENCLAW_BASE_URL", "http://openclaw:8888");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("ASSISTANT_BASE_URL") };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OPENCLAW_BASE_URL", "http://openclaw:8888") };
         let _ = AssistantProvider::from_env().unwrap();
 
         // Clean up
-        std::env::remove_var("ASSISTANT_BASE_URL");
-        std::env::remove_var("OPENCLAW_BASE_URL");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("ASSISTANT_BASE_URL") };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OPENCLAW_BASE_URL") };
     }
 
     #[test]
     fn default_model_is_assistant_prefix() {
-        std::env::remove_var("ASSISTANT_DEFAULT_MODEL");
-        std::env::remove_var("OPENCLAW_DEFAULT_MODEL");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("ASSISTANT_DEFAULT_MODEL") };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::remove_var("OPENCLAW_DEFAULT_MODEL") };
         let p = AssistantProvider::new(None, None);
         // from_env with no env vars should default to assistant:main
         let _ = p;

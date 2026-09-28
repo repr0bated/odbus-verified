@@ -46,9 +46,11 @@ struct GrantsEnvironment(Option<std::ffi::OsString>);
 impl Drop for GrantsEnvironment {
     fn drop(&mut self) {
         if let Some(path) = self.0.take() {
-            std::env::set_var("OP_GRANTS_PATH", path);
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            unsafe { std::env::set_var("OP_GRANTS_PATH", path) };
         } else {
-            std::env::remove_var("OP_GRANTS_PATH");
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            unsafe { std::env::remove_var("OP_GRANTS_PATH") };
         }
     }
 }
@@ -87,7 +89,8 @@ async fn flow_methods_commit_verified_children_and_reject_revoked_identity() {
     let root = tempfile::tempdir().unwrap();
     let grant_path = root.path().join("grants.json");
     let _environment = GrantsEnvironment(std::env::var_os("OP_GRANTS_PATH"));
-    std::env::set_var("OP_GRANTS_PATH", &grant_path);
+    // FIXME: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("OP_GRANTS_PATH", &grant_path) };
     let capabilities = schema
         .methods
         .values()

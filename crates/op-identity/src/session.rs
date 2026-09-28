@@ -216,10 +216,10 @@ impl SessionManager {
     pub async fn touch_session(&self) -> anyhow::Result<()> {
         let session_id = self.current_session_id.lock().await.as_ref().cloned();
 
-        if let Some(id) = session_id {
-            if let Some(mut session) = self.sessions.get_mut(&id) {
-                session.last_seen_at = Utc::now();
-            }
+        if let Some(id) = session_id
+            && let Some(mut session) = self.sessions.get_mut(&id)
+        {
+            session.last_seen_at = Utc::now();
         }
 
         Ok(())
@@ -229,16 +229,14 @@ impl SessionManager {
     pub async fn get_valid_token(&self) -> anyhow::Result<String> {
         let session_id = self.current_session_id.lock().await.as_ref().cloned();
 
-        if let Some(id) = session_id {
-            if let Some(session) = self.sessions.get(&id) {
-                if let (Some(token), Some(expires_at)) =
-                    (&session.oauth_token, session.token_expires_at)
-                {
-                    // Token valid for at least 5 more minutes
-                    if expires_at > Utc::now() + chrono::Duration::minutes(5) {
-                        return Ok(token.clone());
-                    }
-                }
+        if let Some(id) = session_id
+            && let Some(session) = self.sessions.get(&id)
+            && let (Some(token), Some(expires_at)) =
+                (&session.oauth_token, session.token_expires_at)
+        {
+            // Token valid for at least 5 more minutes
+            if expires_at > Utc::now() + chrono::Duration::minutes(5) {
+                return Ok(token.clone());
             }
         }
 
@@ -246,11 +244,11 @@ impl SessionManager {
         let (token, expires_at) = self.gcloud_auth.get_token().await?;
 
         // Update in session
-        if let Some(id) = self.current_session_id.lock().await.as_ref().cloned() {
-            if let Some(mut session) = self.sessions.get_mut(&id) {
-                session.oauth_token = Some(token.clone());
-                session.token_expires_at = Some(expires_at);
-            }
+        if let Some(id) = self.current_session_id.lock().await.as_ref().cloned()
+            && let Some(mut session) = self.sessions.get_mut(&id)
+        {
+            session.oauth_token = Some(token.clone());
+            session.token_expires_at = Some(expires_at);
         }
 
         Ok(token)

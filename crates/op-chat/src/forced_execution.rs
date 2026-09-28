@@ -363,16 +363,16 @@ pub fn parse_tool_calls(llm_response: &Value) -> Vec<ToolCall> {
     // Try Anthropic format
     if let Some(content) = llm_response.get("content").and_then(|v| v.as_array()) {
         for block in content {
-            if block.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
-                if let (Some(name), Some(input)) = (
+            if block.get("type").and_then(|t| t.as_str()) == Some("tool_use")
+                && let (Some(name), Some(input)) = (
                     block.get("name").and_then(|n: &OwnedValue| n.as_str()),
                     block.get("input"),
-                ) {
-                    calls.push(ToolCall {
-                        name: name.to_string(),
-                        arguments: input.clone(),
-                    });
-                }
+                )
+            {
+                calls.push(ToolCall {
+                    name: name.to_string(),
+                    arguments: input.clone(),
+                });
             }
         }
     }
@@ -401,23 +401,23 @@ pub fn parse_tool_calls(llm_response: &Value) -> Vec<ToolCall> {
 /// Check if LLM response contains raw text that should have gone through respond_to_user
 pub fn detect_raw_text_output(llm_response: &Value) -> Option<String> {
     // Check for content that looks like direct user communication
-    if let Some(content) = llm_response.get("content") {
-        if let Some(text) = content.as_str() {
-            // If there's text content but no tool calls, this is raw output
-            let has_tool_calls = llm_response.get("tool_calls").is_some()
-                || llm_response
-                    .get("content")
-                    .and_then(|c: &OwnedValue| c.as_array())
-                    .map(|arr: &Vec<OwnedValue>| {
-                        arr.iter().any(|b: &OwnedValue| {
-                            b.get("type").and_then(|t: &OwnedValue| t.as_str()) == Some("tool_use")
-                        })
+    if let Some(content) = llm_response.get("content")
+        && let Some(text) = content.as_str()
+    {
+        // If there's text content but no tool calls, this is raw output
+        let has_tool_calls = llm_response.get("tool_calls").is_some()
+            || llm_response
+                .get("content")
+                .and_then(|c: &OwnedValue| c.as_array())
+                .map(|arr: &Vec<OwnedValue>| {
+                    arr.iter().any(|b: &OwnedValue| {
+                        b.get("type").and_then(|t: &OwnedValue| t.as_str()) == Some("tool_use")
                     })
-                    .unwrap_or(false);
+                })
+                .unwrap_or(false);
 
-            if !has_tool_calls && !text.is_empty() {
-                return Some(text.to_string());
-            }
+        if !has_tool_calls && !text.is_empty() {
+            return Some(text.to_string());
         }
     }
 

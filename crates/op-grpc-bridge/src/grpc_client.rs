@@ -119,20 +119,20 @@ impl GrpcClientPool {
         }
 
         let mut tls = ClientTlsConfig::new().with_native_roots();
-        if let Ok(path) = std::env::var("OP_DBUS_GRPC_CA_FILE") {
-            if !path.trim().is_empty() {
-                let pem = std::fs::read(path.trim()).map_err(|e| {
-                    GrpcClientError::ConnectionFailed(format!(
-                        "failed to read OP_DBUS_GRPC_CA_FILE={path}: {e}"
-                    ))
-                })?;
-                tls = tls.ca_certificate(Certificate::from_pem(pem));
-            }
+        if let Ok(path) = std::env::var("OP_DBUS_GRPC_CA_FILE")
+            && !path.trim().is_empty()
+        {
+            let pem = std::fs::read(path.trim()).map_err(|e| {
+                GrpcClientError::ConnectionFailed(format!(
+                    "failed to read OP_DBUS_GRPC_CA_FILE={path}: {e}"
+                ))
+            })?;
+            tls = tls.ca_certificate(Certificate::from_pem(pem));
         }
-        if let Ok(domain) = std::env::var("OP_DBUS_GRPC_TLS_DOMAIN") {
-            if !domain.trim().is_empty() {
-                tls = tls.domain_name(domain.trim().to_string());
-            }
+        if let Ok(domain) = std::env::var("OP_DBUS_GRPC_TLS_DOMAIN")
+            && !domain.trim().is_empty()
+        {
+            tls = tls.domain_name(domain.trim().to_string());
         }
         endpoint
             .tls_config(tls)
@@ -513,7 +513,7 @@ impl RemoteOperationClient {
         path_filters: Vec<String>,
         tag_filters: Vec<String>,
     ) -> Result<
-        impl tokio_stream::Stream<Item = Result<StateUpdateMessage, GrpcClientError>>,
+        impl tokio_stream::Stream<Item = Result<StateUpdateMessage, GrpcClientError>> + use<>,
         GrpcClientError,
     > {
         self.subscribe_with_identity(
@@ -537,7 +537,7 @@ impl RemoteOperationClient {
         identity: &GhostbridgeCallMetadata,
         capability_id: Option<&str>,
     ) -> Result<
-        impl tokio_stream::Stream<Item = Result<StateUpdateMessage, GrpcClientError>>,
+        impl tokio_stream::Stream<Item = Result<StateUpdateMessage, GrpcClientError>> + use<>,
         GrpcClientError,
     > {
         let mut client = self.pool.state_sync_client(&self.default_address).await?;
@@ -573,7 +573,7 @@ impl RemoteOperationClient {
         plugin_filters: Vec<String>,
         tag_filters: Vec<String>,
     ) -> Result<
-        impl tokio_stream::Stream<Item = Result<ChainEventMessage, GrpcClientError>>,
+        impl tokio_stream::Stream<Item = Result<ChainEventMessage, GrpcClientError>> + use<>,
         GrpcClientError,
     > {
         self.stream_events_with_identity(
@@ -594,7 +594,7 @@ impl RemoteOperationClient {
         tag_filters: Vec<String>,
         identity: &GhostbridgeCallMetadata,
     ) -> Result<
-        impl tokio_stream::Stream<Item = Result<ChainEventMessage, GrpcClientError>>,
+        impl tokio_stream::Stream<Item = Result<ChainEventMessage, GrpcClientError>> + use<>,
         GrpcClientError,
     > {
         if plugin_filters.len() > 1 {

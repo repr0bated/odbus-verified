@@ -194,10 +194,10 @@ impl PerMethodGrpcServices {
         }
 
         let mut bytes = Vec::new();
-        if set.encode(&mut bytes).is_ok() {
-            if let Ok(mut stored) = self.descriptor_bytes.write() {
-                *stored = bytes;
-            }
+        if set.encode(&mut bytes).is_ok()
+            && let Ok(mut stored) = self.descriptor_bytes.write()
+        {
+            *stored = bytes;
         }
     }
 

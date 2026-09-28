@@ -154,12 +154,10 @@ impl SnowballWriter {
         std::thread::Builder::new()
             .name(name)
             .spawn(move || {
-                if let Some(place) = placement {
-                    if let Err(error) = place() {
-                        warn!(
-                            "{thread_name}: writer placement failed, continuing unpinned: {error}"
-                        );
-                    }
+                if let Some(place) = placement
+                    && let Err(error) = place()
+                {
+                    warn!("{thread_name}: writer placement failed, continuing unpinned: {error}");
                 }
                 for job in rx {
                     // A panicking job must not take the writer down with it;
@@ -1898,9 +1896,11 @@ mod tests {
             let guard = LOCK.lock().await;
             let previous = std::env::var_os("OPDBUS_STRICT_STATE_KEYS");
             if strict {
-                std::env::set_var("OPDBUS_STRICT_STATE_KEYS", "1");
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                unsafe { std::env::set_var("OPDBUS_STRICT_STATE_KEYS", "1") };
             } else {
-                std::env::remove_var("OPDBUS_STRICT_STATE_KEYS");
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                unsafe { std::env::remove_var("OPDBUS_STRICT_STATE_KEYS") };
             }
             Self {
                 previous,
@@ -1912,9 +1912,11 @@ mod tests {
     impl Drop for StrictStateKeysEnvironment {
         fn drop(&mut self) {
             if let Some(previous) = &self.previous {
-                std::env::set_var("OPDBUS_STRICT_STATE_KEYS", previous);
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                unsafe { std::env::set_var("OPDBUS_STRICT_STATE_KEYS", previous) };
             } else {
-                std::env::remove_var("OPDBUS_STRICT_STATE_KEYS");
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                unsafe { std::env::remove_var("OPDBUS_STRICT_STATE_KEYS") };
             }
         }
     }

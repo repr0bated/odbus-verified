@@ -150,14 +150,13 @@ impl SessionManager {
         let mut sessions = self.sessions.write().await;
 
         // Evict oldest session if at capacity
-        if sessions.len() >= self.max_sessions {
-            if let Some(oldest_id) = sessions
+        if sessions.len() >= self.max_sessions
+            && let Some(oldest_id) = sessions
                 .values()
                 .min_by_key(|s| s.updated_at)
                 .map(|s| s.id.clone())
-            {
-                sessions.remove(&oldest_id);
-            }
+        {
+            sessions.remove(&oldest_id);
         }
 
         sessions.insert(id, session.clone());

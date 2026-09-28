@@ -1471,15 +1471,14 @@ fn validate_pair(
             return Err(err("identity embedded record must be a JSON object"));
         }
     }
-    if let Some(genesis) = genesis {
-        if genesis.session_id != sid
+    if let Some(genesis) = genesis
+        && (genesis.session_id != sid
             || genesis.arrival_timestamp <= 0
             || genesis.chain_head_at_arrival.is_empty()
             || genesis.catalog_hash_at_arrival.is_empty()
-            || genesis.schema_content_hash.is_empty()
-        {
-            return Err(err("corrupt identity genesis binding"));
-        }
+            || genesis.schema_content_hash.is_empty())
+    {
+        return Err(err("corrupt identity genesis binding"));
     }
     if !row.sealed_id.is_empty()
         && (genesis.is_none() || row.session_genesis.is_empty() || row.trace_id.is_empty())

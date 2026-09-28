@@ -216,37 +216,37 @@ impl SchemaValidator {
     pub fn expand_property_dependencies(schema: &Value) -> Result<Value, ValidatorError> {
         let mut result = schema.clone();
 
-        if let Some(obj) = result.as_object_mut() {
-            if let Some(prop_deps) = obj.remove("propertyDependencies") {
-                let mut all_of = obj
-                    .get("allOf")
-                    .and_then(|a| a.as_array())
-                    .cloned()
-                    .unwrap_or_default();
+        if let Some(obj) = result.as_object_mut()
+            && let Some(prop_deps) = obj.remove("propertyDependencies")
+        {
+            let mut all_of = obj
+                .get("allOf")
+                .and_then(|a| a.as_array())
+                .cloned()
+                .unwrap_or_default();
 
-                if let Some(deps_obj) = prop_deps.as_object() {
-                    for (prop_name, value_map) in deps_obj {
-                        if let Some(values) = value_map.as_object() {
-                            for (value, then_schema) in values {
-                                let if_schema = json!({
-                                    "properties": {
-                                        prop_name: { "const": value }
-                                    },
-                                    "required": [prop_name]
-                                });
+            if let Some(deps_obj) = prop_deps.as_object() {
+                for (prop_name, value_map) in deps_obj {
+                    if let Some(values) = value_map.as_object() {
+                        for (value, then_schema) in values {
+                            let if_schema = json!({
+                                "properties": {
+                                    prop_name: { "const": value }
+                                },
+                                "required": [prop_name]
+                            });
 
-                                all_of.push(json!({
-                                    "if": if_schema,
-                                    "then": then_schema
-                                }));
-                            }
+                            all_of.push(json!({
+                                "if": if_schema,
+                                "then": then_schema
+                            }));
                         }
                     }
                 }
+            }
 
-                if !all_of.is_empty() {
-                    obj.insert("allOf".to_string(), json!(all_of));
-                }
+            if !all_of.is_empty() {
+                obj.insert("allOf".to_string(), json!(all_of));
             }
         }
 

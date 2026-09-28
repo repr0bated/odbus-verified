@@ -137,7 +137,8 @@ mod tests {
 
     #[test]
     fn test_route_id_is_deterministic() {
-        std::env::set_var("PRIVACY_ROUTE_SHARED_SECRET", "test-shared-secret");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("PRIVACY_ROUTE_SHARED_SECRET", "test-shared-secret") };
         let key = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
         let a = derive_route_id(key).expect("derive a");
         let b = derive_route_id(key).expect("derive b");

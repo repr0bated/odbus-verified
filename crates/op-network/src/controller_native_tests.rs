@@ -22,7 +22,8 @@ impl OvsEnvironment {
         let mut previous = Vec::new();
         for key in ["OVS_RUNDIR", "OVS_DBDIR", "OVS_LOGDIR"] {
             previous.push((key, std::env::var_os(key)));
-            std::env::set_var(key, root);
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            unsafe { std::env::set_var(key, root) };
         }
         Self(previous)
     }
@@ -32,8 +33,10 @@ impl Drop for OvsEnvironment {
     fn drop(&mut self) {
         for (key, value) in self.0.drain(..) {
             match value {
-                Some(value) => std::env::set_var(key, value),
-                None => std::env::remove_var(key),
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                Some(value) => unsafe { std::env::set_var(key, value) },
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                None => unsafe { std::env::remove_var(key) },
             }
         }
     }
@@ -46,7 +49,8 @@ impl TlsEnvironment {
         let mut previous = Vec::new();
         for (name, path) in [(TLS_CA_ENV, ca), (TLS_CERT_ENV, cert), (TLS_KEY_ENV, key)] {
             previous.push((name, std::env::var_os(name)));
-            std::env::set_var(name, path);
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            unsafe { std::env::set_var(name, path) };
         }
         Self(previous)
     }
@@ -56,8 +60,10 @@ impl Drop for TlsEnvironment {
     fn drop(&mut self) {
         for (name, value) in self.0.drain(..) {
             match value {
-                Some(value) => std::env::set_var(name, value),
-                None => std::env::remove_var(name),
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                Some(value) => unsafe { std::env::set_var(name, value) },
+                // FIXME: Audit that the environment access only happens in single-threaded code.
+                None => unsafe { std::env::remove_var(name) },
             }
         }
     }

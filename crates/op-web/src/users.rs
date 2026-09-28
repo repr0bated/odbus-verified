@@ -244,10 +244,10 @@ impl UserStore {
                 .strip_prefix("10.100.0.")
                 .and_then(|s| s.strip_suffix("/32"))
                 .and_then(|s| s.parse::<u8>().ok())
+                && octet > max_octet
+                && octet < 255
             {
-                if octet > max_octet && octet < 255 {
-                    max_octet = octet;
-                }
+                max_octet = octet;
             }
         }
         let mut next_ip = self.next_ip.write().await;
@@ -517,10 +517,10 @@ impl UserStore {
     pub async fn ensure_user_api_token(&self, user_id: &str) -> Result<String> {
         let mut user = self.get_user(user_id).await.context("User not found")?;
         anyhow::ensure!(user.email_verified, "User is not verified");
-        if let Some(credentials) = &user.api_credentials {
-            if !credentials.token.is_empty() {
-                return Ok(credentials.token.clone());
-            }
+        if let Some(credentials) = &user.api_credentials
+            && !credentials.token.is_empty()
+        {
+            return Ok(credentials.token.clone());
         }
         let token = generate_magic_link_token(32);
         if let Some(credentials) = user.api_credentials.as_mut() {
@@ -601,15 +601,15 @@ impl UserStore {
     /// container/route explicitly first if this is truly just an orphaned
     /// record with no real backing container.
     pub async fn delete_user(&self, user_id: &str) -> Result<()> {
-        if let Some(user) = self.get_user(user_id).await {
-            if user.privacy_container_name.is_some() || user.privacy_network_connected {
-                anyhow::bail!(
-                    "refusing to delete user {user_id}: privacy container/route still attached \
+        if let Some(user) = self.get_user(user_id).await
+            && (user.privacy_container_name.is_some() || user.privacy_network_connected)
+        {
+            anyhow::bail!(
+                "refusing to delete user {user_id}: privacy container/route still attached \
                      (container={:?}, connected={}) — detach it first",
-                    user.privacy_container_name,
-                    user.privacy_network_connected
-                );
-            }
+                user.privacy_container_name,
+                user.privacy_network_connected
+            );
         }
         let c = self.cozo_clone();
         let id = user_id.to_string();

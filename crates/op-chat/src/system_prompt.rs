@@ -330,20 +330,20 @@ pub async fn load_custom_prompt() -> (String, String) {
     // Check cache first (valid for 60 seconds)
     {
         let cache = CUSTOM_PROMPT_CACHE.read().await;
-        if let Some(ref cached) = *cache {
-            if cached.loaded_at.elapsed().as_secs() < 60 {
-                return (cached.content.clone(), cached.loaded_from.clone());
-            }
+        if let Some(ref cached) = *cache
+            && cached.loaded_at.elapsed().as_secs() < 60
+        {
+            return (cached.content.clone(), cached.loaded_from.clone());
         }
     }
 
     // Try environment variable first
-    if let Ok(content) = std::env::var("CUSTOM_SYSTEM_PROMPT") {
-        if !content.is_empty() {
-            let source = "environment:CUSTOM_SYSTEM_PROMPT".to_string();
-            cache_prompt(&content, &source).await;
-            return (content, source);
-        }
+    if let Ok(content) = std::env::var("CUSTOM_SYSTEM_PROMPT")
+        && !content.is_empty()
+    {
+        let source = "environment:CUSTOM_SYSTEM_PROMPT".to_string();
+        cache_prompt(&content, &source).await;
+        return (content, source);
     }
 
     // Try file paths

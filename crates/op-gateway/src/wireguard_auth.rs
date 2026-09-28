@@ -204,14 +204,15 @@ impl WireGuardAuthManager {
             let peer_sessions = self.peer_sessions.read().await;
             if let Some(existing_session_id) = peer_sessions.get(peer_pubkey) {
                 let sessions = self.sessions.read().await;
-                if let Some(session) = sessions.get(existing_session_id) {
-                    if session.is_active && session.expires_at > Self::current_timestamp() {
-                        debug!(
-                            "Returning existing active session for peer: {}",
-                            peer_pubkey
-                        );
-                        return Ok(session.clone());
-                    }
+                if let Some(session) = sessions.get(existing_session_id)
+                    && session.is_active
+                    && session.expires_at > Self::current_timestamp()
+                {
+                    debug!(
+                        "Returning existing active session for peer: {}",
+                        peer_pubkey
+                    );
+                    return Ok(session.clone());
                 }
             }
         }
@@ -322,15 +323,16 @@ impl WireGuardAuthManager {
         // Apply filters
         if let Some(filter) = filter {
             result.retain(|session| {
-                if let Some(active_only) = filter.active_only {
-                    if active_only && !session.is_active {
-                        return false;
-                    }
+                if let Some(active_only) = filter.active_only
+                    && active_only
+                    && !session.is_active
+                {
+                    return false;
                 }
-                if let Some(peer_pubkey) = &filter.peer_pubkey {
-                    if &session.peer_pubkey != peer_pubkey {
-                        return false;
-                    }
+                if let Some(peer_pubkey) = &filter.peer_pubkey
+                    && &session.peer_pubkey != peer_pubkey
+                {
+                    return false;
                 }
                 true
             });
@@ -472,10 +474,10 @@ impl WireGuardAuthManager {
         let psk_key_id = format!("psk_{}", peer_pubkey);
         let mut key_storage = self.key_storage.lock().await;
 
-        if let Ok(stored_psk) = key_storage.retrieve_key(&psk_key_id).await {
-            if stored_psk.len() == 32 {
-                return Ok(general_purpose::STANDARD.encode(&stored_psk));
-            }
+        if let Ok(stored_psk) = key_storage.retrieve_key(&psk_key_id).await
+            && stored_psk.len() == 32
+        {
+            return Ok(general_purpose::STANDARD.encode(&stored_psk));
         }
 
         // Generate stable PSK (no timestamp input)
@@ -586,14 +588,13 @@ impl WireGuardAuthManager {
     #[allow(dead_code)]
     async fn load_or_generate_master_key() -> anyhow::Result<Arc<[u8; 32]>> {
         // Try to load from environment or file
-        if let Ok(key_hex) = std::env::var("WG_AUTH_MASTER_KEY") {
-            if let Ok(key_bytes) = hex::decode(&key_hex) {
-                if key_bytes.len() == 32 {
-                    let mut key = [0u8; 32];
-                    key.copy_from_slice(&key_bytes);
-                    return Ok(Arc::new(key));
-                }
-            }
+        if let Ok(key_hex) = std::env::var("WG_AUTH_MASTER_KEY")
+            && let Ok(key_bytes) = hex::decode(&key_hex)
+            && key_bytes.len() == 32
+        {
+            let mut key = [0u8; 32];
+            key.copy_from_slice(&key_bytes);
+            return Ok(Arc::new(key));
         }
 
         // Generate new key

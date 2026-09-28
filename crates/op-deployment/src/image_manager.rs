@@ -429,19 +429,18 @@ impl ImageManager {
             let path = entry.path();
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-            if Self::snapshot_belongs_to_image(name, image_name) {
-                if let Ok(metadata) = entry.metadata().await {
-                    if let Ok(created) = metadata.created() {
-                        let timestamp = created
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs() as i64;
+            if Self::snapshot_belongs_to_image(name, image_name)
+                && let Ok(metadata) = entry.metadata().await
+                && let Ok(created) = metadata.created()
+            {
+                let timestamp = created
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs() as i64;
 
-                        if timestamp > latest_time {
-                            latest_time = timestamp;
-                            latest_snapshot = Some(path);
-                        }
-                    }
+                if timestamp > latest_time {
+                    latest_time = timestamp;
+                    latest_snapshot = Some(path);
                 }
             }
         }
@@ -562,14 +561,13 @@ mod tests {
                                 .args(["subvolume", "delete"])
                                 .arg(&path)
                                 .output()
+                                && !output.status.success()
                             {
-                                if !output.status.success() {
-                                    eprintln!(
-                                        "test subvolume cleanup failed for {}: {}",
-                                        path.display(),
-                                        String::from_utf8_lossy(&output.stderr)
-                                    );
-                                }
+                                eprintln!(
+                                    "test subvolume cleanup failed for {}: {}",
+                                    path.display(),
+                                    String::from_utf8_lossy(&output.stderr)
+                                );
                             }
                         }
                     }

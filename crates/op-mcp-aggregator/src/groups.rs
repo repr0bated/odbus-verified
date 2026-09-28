@@ -141,16 +141,16 @@ impl ToolGroup {
         tool_namespace: Option<&str>,
         tool_category: Option<&str>,
     ) -> bool {
-        if let Some(ns) = &self.namespace {
-            if tool_namespace != Some(ns.as_str()) {
-                return false;
-            }
+        if let Some(ns) = &self.namespace
+            && tool_namespace != Some(ns.as_str())
+        {
+            return false;
         }
 
-        if let Some(cat) = &self.category {
-            if tool_category != Some(cat.as_str()) {
-                return false;
-            }
+        if let Some(cat) = &self.category
+            && tool_category != Some(cat.as_str())
+        {
+            return false;
         }
 
         if self.patterns.is_empty() {
@@ -329,10 +329,10 @@ impl ToolGroups {
         category: Option<&str>,
     ) -> bool {
         for group_id in &self.enabled {
-            if let Some(group) = self.groups.get(group_id) {
-                if group.matches_tool(tool_name, namespace, category) {
-                    return true;
-                }
+            if let Some(group) = self.groups.get(group_id)
+                && group.matches_tool(tool_name, namespace, category)
+            {
+                return true;
             }
         }
         false

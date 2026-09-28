@@ -126,13 +126,12 @@ async fn install_packages(
         .await?;
 
     // Wait for installation to complete
-    if let Some(signal) = finished_stream.next().await {
-        if let Ok((exit_code, _runtime)) = signal.body().deserialize::<(u32, u32)>() {
-            if exit_code != 1 {
-                // 1 = PK_EXIT_ENUM_SUCCESS
-                anyhow::bail!("Package installation failed with exit code: {}", exit_code);
-            }
-        }
+    if let Some(signal) = finished_stream.next().await
+        && let Ok((exit_code, _runtime)) = signal.body().deserialize::<(u32, u32)>()
+        && exit_code != 1
+    {
+        // 1 = PK_EXIT_ENUM_SUCCESS
+        anyhow::bail!("Package installation failed with exit code: {}", exit_code);
     }
 
     Ok(())

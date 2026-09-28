@@ -137,10 +137,10 @@ impl DbusIdentityResolver {
                 let Ok(args) = signal.args() else {
                     continue;
                 };
-                if args.new_owner().as_ref().is_none() {
-                    if let Err(error) = resolver.revoke_sender(args.name().as_str()).await {
-                        tracing::error!(%error, sender = args.name().as_str(), "failed to park disconnected D-Bus identity session");
-                    }
+                if args.new_owner().as_ref().is_none()
+                    && let Err(error) = resolver.revoke_sender(args.name().as_str()).await
+                {
+                    tracing::error!(%error, sender = args.name().as_str(), "failed to park disconnected D-Bus identity session");
                 }
             }
 

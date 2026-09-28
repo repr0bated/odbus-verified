@@ -1294,8 +1294,10 @@ mod tests {
             fn drop(&mut self) {
                 for (key, value) in &self.0 {
                     match value {
-                        Some(value) => std::env::set_var(key, value),
-                        None => std::env::remove_var(key),
+                        // FIXME: Audit that the environment access only happens in single-threaded code.
+                        Some(value) => unsafe { std::env::set_var(key, value) },
+                        // FIXME: Audit that the environment access only happens in single-threaded code.
+                        None => unsafe { std::env::remove_var(key) },
                     }
                 }
             }
@@ -1310,9 +1312,12 @@ mod tests {
             .map(|key| (key, std::env::var_os(key)))
             .collect(),
         );
-        std::env::set_var("OP_BLOB_CATALOG_DIR", catalog.path());
-        std::env::set_var("OP_SHM_STATE_DIR", state.path());
-        std::env::set_var("DBUS_SESSION_BUS_ADDRESS", address);
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_BLOB_CATALOG_DIR", catalog.path()) };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OP_SHM_STATE_DIR", state.path()) };
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("DBUS_SESSION_BUS_ADDRESS", address) };
 
         let engine = MutationEngine::new(
             Arc::new(tokio::sync::RwLock::new(op_state_store::EventChain::new(

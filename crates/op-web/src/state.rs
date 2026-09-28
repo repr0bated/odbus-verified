@@ -151,11 +151,14 @@ impl AppState {
         let chat_manager = Arc::new(ChatManager::new());
 
         // Load persisted provider/model
-        if let Some(provider) = read_persisted_provider().await {
-            if let Ok(provider_type) = provider.parse() {
-                if let Err(e) = chat_manager.switch_provider(provider_type).await {
+        if let Some(provider) = read_persisted_provider().await
+            && let Ok(provider_type) = provider.parse()
+        {
+            match chat_manager.switch_provider(provider_type).await {
+                Err(e) => {
                     warn!("Failed to load provider '{}': {}", provider, e);
-                } else {
+                }
+                _ => {
                     info!("Loaded provider: {}", provider);
                 }
             }
@@ -163,13 +166,16 @@ impl AppState {
 
         if let Some(model) = read_persisted_model().await {
             let non_sandboxed = read_persisted_model_non_sandboxed().await;
-            if let Err(e) = chat_manager
+            match chat_manager
                 .switch_model_with_options(model.clone(), non_sandboxed)
                 .await
             {
-                warn!("Failed to load model '{}': {}", model, e);
-            } else {
-                info!("Loaded model: {}", model);
+                Err(e) => {
+                    warn!("Failed to load model '{}': {}", model, e);
+                }
+                _ => {
+                    info!("Loaded model: {}", model);
+                }
             }
         }
 

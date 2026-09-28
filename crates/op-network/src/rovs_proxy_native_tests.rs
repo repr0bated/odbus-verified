@@ -81,7 +81,8 @@ struct SocketEnvironment(Option<std::ffi::OsString>);
 impl SocketEnvironment {
     fn set(socket: &Path) -> Self {
         let previous = std::env::var_os("OVSDB_SOCKET_ADDR");
-        std::env::set_var("OVSDB_SOCKET_ADDR", format!("unix:{}", socket.display()));
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("OVSDB_SOCKET_ADDR", format!("unix:{}", socket.display())) };
         Self(previous)
     }
 }
@@ -89,8 +90,10 @@ impl SocketEnvironment {
 impl Drop for SocketEnvironment {
     fn drop(&mut self) {
         match self.0.take() {
-            Some(value) => std::env::set_var("OVSDB_SOCKET_ADDR", value),
-            None => std::env::remove_var("OVSDB_SOCKET_ADDR"),
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            Some(value) => unsafe { std::env::set_var("OVSDB_SOCKET_ADDR", value) },
+            // FIXME: Audit that the environment access only happens in single-threaded code.
+            None => unsafe { std::env::remove_var("OVSDB_SOCKET_ADDR") },
         }
     }
 }

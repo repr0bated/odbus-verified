@@ -1,7 +1,7 @@
 [package]
 name = "op-xray-daemon"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 description = "D-Bus service for managing Xray proxy daemon lifecycle"
 license = "MIT OR Apache-2.0"
 authors = ["3tched Contributors"]

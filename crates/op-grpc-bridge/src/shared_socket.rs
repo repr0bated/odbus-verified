@@ -513,10 +513,10 @@ impl Drop for SharedListenerController {
                 let _ = socket.shutdown(Shutdown::Both);
             }
             drop(state.listener.take());
-            if let Some(ownership) = &state.ownership {
-                if let Err(error) = ownership.remove_matching() {
-                    tracing::warn!(%error, "owned listener cleanup refused");
-                }
+            if let Some(ownership) = &state.ownership
+                && let Err(error) = ownership.remove_matching()
+            {
+                tracing::warn!(%error, "owned listener cleanup refused");
             }
         }
     }
@@ -626,10 +626,10 @@ impl AsyncWrite for ManagedUnixStream {
 }
 impl Drop for ManagedUnixStream {
     fn drop(&mut self) {
-        if let Some(owner) = self.owner.upgrade() {
-            if let Ok(mut state) = owner.state.lock() {
-                state.connections.remove(&self.connection_id);
-            }
+        if let Some(owner) = self.owner.upgrade()
+            && let Ok(mut state) = owner.state.lock()
+        {
+            state.connections.remove(&self.connection_id);
         }
     }
 }

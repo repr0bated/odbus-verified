@@ -336,15 +336,15 @@ fn collect_oscal_subids(value: &Value, subids: &mut BTreeSet<String>) {
                     if let Some(subid) = nested.as_str().filter(|value| is_oscal_subid(value)) {
                         subids.insert(subid.to_string());
                     }
-                } else if key == "subids" {
-                    if let Some(entries) = nested.as_object() {
-                        for subid in entries
-                            .values()
-                            .filter_map(Value::as_str)
-                            .filter(|value| is_oscal_subid(value))
-                        {
-                            subids.insert(subid.to_string());
-                        }
+                } else if key == "subids"
+                    && let Some(entries) = nested.as_object()
+                {
+                    for subid in entries
+                        .values()
+                        .filter_map(Value::as_str)
+                        .filter(|value| is_oscal_subid(value))
+                    {
+                        subids.insert(subid.to_string());
                     }
                 }
                 collect_oscal_subids(nested, subids);

@@ -129,16 +129,16 @@ impl MemoryService for OrchestrationServer {
 
         if let Some(entry) = mem.get_mut(&req.key) {
             // Check expiry
-            if let Some(exp) = entry.expires_at {
-                if now_ms > exp {
-                    // Expired - remove it
-                    mem.remove(&req.key);
-                    return Ok(Response::new(RecallResponse {
-                        found: false,
-                        key: req.key,
-                        ..Default::default()
-                    }));
-                }
+            if let Some(exp) = entry.expires_at
+                && now_ms > exp
+            {
+                // Expired - remove it
+                mem.remove(&req.key);
+                return Ok(Response::new(RecallResponse {
+                    found: false,
+                    key: req.key,
+                    ..Default::default()
+                }));
             }
 
             // Update access metadata
@@ -193,10 +193,10 @@ impl MemoryService for OrchestrationServer {
             .values()
             .filter(|entry| {
                 // Skip expired entries
-                if let Some(exp) = entry.expires_at {
-                    if now_ms > exp {
-                        return false;
-                    }
+                if let Some(exp) = entry.expires_at
+                    && now_ms > exp
+                {
+                    return false;
                 }
 
                 // Glob pattern match
@@ -251,10 +251,10 @@ impl MemoryService for OrchestrationServer {
             .values()
             .filter_map(|entry| {
                 // Skip expired
-                if let Some(exp) = entry.expires_at {
-                    if now_ms > exp {
-                        return None;
-                    }
+                if let Some(exp) = entry.expires_at
+                    && now_ms > exp
+                {
+                    return None;
                 }
 
                 let key_lower = entry.key.to_lowercase();

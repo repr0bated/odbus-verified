@@ -3,19 +3,12 @@ description: Every cargo command runs on a cheap subagent, never in the parent s
 alwaysApply: true
 ---
 
-# Cargo runs on a cheap subagent
+# Cargo runs on a Composer 2.5 subagent
 
-Any `cargo` command is dispatched automatically. Do not run cargo in the parent shell, watch its log, or poll it. Do not wait for a special alias name.
+Do not run cargo in the parent shell, watch its log, or poll it.
 
-Launch one background Haiku subagent (Claude Haiku 4.5) with the exact cargo command, then keep talking. Report only when its completion notice arrives.
+`~/.bashrc` defines a `cargo` function. For `check`, `build`, `test`, `run`, `bench`, `fmt`, `clippy`, `fix`, `doc`, `rustc`, and `clean` (including `c`, `b`, `t`, `r`, and a leading `+toolchain`), it starts one background `agent --model composer-2.5` and returns the pid and log path under `~/.cache/cargo-dispatch/`. The agent runs that same command via `/usr/bin/cargo`. A `--release` command exports `CXXFLAGS="-include cstdint"`. `install` and `publish` are refused. Other subcommands, such as `metadata` and `tree`, call `/usr/bin/cargo` directly.
 
-| Command the parent was about to run | Subagent runs |
-|---|---|
-| `cargo check …` | that same command |
-| `cargo build …` | that same command |
-| `cargo build … --release` | that same command, with `CXXFLAGS="-include cstdint"` |
-| `cargo test …` | that same command |
-| `cargo fmt …` | that same command |
-| `cargo clippy …` | that same command |
+Shells that do not source `~/.bashrc` use the same split: one background Composer 2.5 agent, the exact command, no second cargo process.
 
-One cargo process at a time. A workspace-wide check, test, or build only when the user explicitly says workspace. Native target is `x86_64-unknown-linux-gnu`. Do not install binaries or restart services from a cargo run.
+One cargo process at a time. If cargo, rustc, or clippy is already running, do not start another. A workspace-wide check, test, or build only when the user explicitly says workspace. Native target is `x86_64-unknown-linux-gnu`. Do not install binaries or restart services from a cargo run.

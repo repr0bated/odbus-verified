@@ -44,30 +44,30 @@ impl SchemaAsCodeAgent {
             );
         }
 
-        if let Some(v) = Self::parse_json_args(raw) {
-            if let Some(obj) = v.as_object() {
-                let schema_v = obj
-                    .get("schema")
-                    .or_else(|| obj.get("json_schema"))
-                    .cloned();
-                let instance_v = obj
-                    .get("instance")
-                    .or_else(|| obj.get("data"))
-                    .or_else(|| obj.get("document"))
-                    .cloned();
+        if let Some(v) = Self::parse_json_args(raw)
+            && let Some(obj) = v.as_object()
+        {
+            let schema_v = obj
+                .get("schema")
+                .or_else(|| obj.get("json_schema"))
+                .cloned();
+            let instance_v = obj
+                .get("instance")
+                .or_else(|| obj.get("data"))
+                .or_else(|| obj.get("document"))
+                .cloned();
 
-                if let (Some(schema_v), Some(instance_v)) = (schema_v.clone(), instance_v) {
-                    return Self::run_jsonschema(&schema_v, &instance_v, raw);
-                }
+            if let (Some(schema_v), Some(instance_v)) = (schema_v.clone(), instance_v) {
+                return Self::run_jsonschema(&schema_v, &instance_v, raw);
+            }
 
-                // Treat the whole object as a schema document to lint.
-                if obj.contains_key("type")
-                    || obj.contains_key("$schema")
-                    || obj.contains_key("properties")
-                    || obj.contains_key("openapi")
-                {
-                    return Ok(Self::lint_schema_document(&v, raw));
-                }
+            // Treat the whole object as a schema document to lint.
+            if obj.contains_key("type")
+                || obj.contains_key("$schema")
+                || obj.contains_key("properties")
+                || obj.contains_key("openapi")
+            {
+                return Ok(Self::lint_schema_document(&v, raw));
             }
         }
 
@@ -170,15 +170,15 @@ impl SchemaAsCodeAgent {
                     .map(|p| p.keys().cloned().collect::<Vec<_>>())
                     .unwrap_or_default();
                 for req in required {
-                    if let Some(name) = req.as_str() {
-                        if !props.iter().any(|p| p == name) {
-                            findings.push(json!({
-                                "severity": "error",
-                                "message": format!(
-                                    "required field '{name}' is not declared in properties"
-                                )
-                            }));
-                        }
+                    if let Some(name) = req.as_str()
+                        && !props.iter().any(|p| p == name)
+                    {
+                        findings.push(json!({
+                            "severity": "error",
+                            "message": format!(
+                                "required field '{name}' is not declared in properties"
+                            )
+                        }));
                     }
                 }
             }

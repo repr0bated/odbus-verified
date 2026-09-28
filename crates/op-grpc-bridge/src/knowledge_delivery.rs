@@ -41,11 +41,14 @@ pub(crate) fn spawn(engine: Arc<MutationEngine>, mut pushes: broadcast::Receiver
                     if wake_muted_until.is_some_and(|until| Instant::now() < until) {
                         continue;
                     }
-                    if let Err(error) = ring(&scope, seq).await {
-                        tracing::debug!(%error, "doorbell wake not published");
-                        wake_muted_until = Some(Instant::now() + WAKE_BACKOFF);
-                    } else {
-                        wake_muted_until = None;
+                    match ring(&scope, seq).await {
+                        Err(error) => {
+                            tracing::debug!(%error, "doorbell wake not published");
+                            wake_muted_until = Some(Instant::now() + WAKE_BACKOFF);
+                        }
+                        _ => {
+                            wake_muted_until = None;
+                        }
                     }
                 }
                 Ok(None) => {}

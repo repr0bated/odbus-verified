@@ -75,12 +75,11 @@ fn check(out_dir: &Path, rendered: &BTreeMap<String, String>) -> Result<()> {
     if out_dir.exists() {
         for entry in std::fs::read_dir(out_dir)? {
             let path = entry?.path();
-            if path.extension().is_some_and(|e| e == "md") {
-                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                    if !rendered.contains_key(stem) {
-                        stale.push(format!("{stem}: orphaned (not in catalog)"));
-                    }
-                }
+            if path.extension().is_some_and(|e| e == "md")
+                && let Some(stem) = path.file_stem().and_then(|s| s.to_str())
+                && !rendered.contains_key(stem)
+            {
+                stale.push(format!("{stem}: orphaned (not in catalog)"));
             }
         }
     }

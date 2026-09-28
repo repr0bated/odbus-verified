@@ -709,7 +709,7 @@ impl StatePlugin for CtlPlaneChatbotPlugin {
 
         let mut actions = Vec::new();
         macro_rules! field_diff {
-            ($field:ident, $key:expr) => {
+            ($field:ident, $key:expr_2021) => {
                 if cur.$field != des.$field {
                     actions.push(StateAction::Modify {
                         resource: $key.into(),

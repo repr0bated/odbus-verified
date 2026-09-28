@@ -232,18 +232,18 @@ impl LlmProvider for GeminiCliProvider {
             .context("Failed to execute gemini CLI")?;
 
         // Handle auth requirement
-        if result.auth_required {
-            if let Some(auth) = &result.auth_details {
-                warn!(
-                    auth_type = ?auth.auth_type,
-                    url = ?auth.url,
-                    "Gemini CLI requires authentication"
-                );
-                return Err(anyhow::anyhow!(
-                    "Authentication required. Visit: {}",
-                    auth.url.as_deref().unwrap_or("(see terminal output)")
-                ));
-            }
+        if result.auth_required
+            && let Some(auth) = &result.auth_details
+        {
+            warn!(
+                auth_type = ?auth.auth_type,
+                url = ?auth.url,
+                "Gemini CLI requires authentication"
+            );
+            return Err(anyhow::anyhow!(
+                "Authentication required. Visit: {}",
+                auth.url.as_deref().unwrap_or("(see terminal output)")
+            ));
         }
 
         if result.exit_code != 0 {

@@ -132,10 +132,10 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                     tokio::spawn(async move {
                         while let Some(event) = event_rx.recv().await {
                             let ws_event = WsMessage::Event { data: event };
-                            if let Ok(json) = simd_json::to_string(&ws_event) {
-                                if session_tx_for_events.send(json).await.is_err() {
-                                    break;
-                                }
+                            if let Ok(json) = simd_json::to_string(&ws_event)
+                                && session_tx_for_events.send(json).await.is_err()
+                            {
+                                break;
                             }
                         }
                     });

@@ -64,12 +64,11 @@ pub fn find_pluglet_by_id(
     let pluglets = extract_pluglets(plugin_state, collection_key)?;
 
     for pluglet in pluglets {
-        if let Some(id_value) = pluglet.get(id_field) {
-            if let Some(id_str) = id_value.as_str() {
-                if id_str == target_id {
-                    return Ok(Some(pluglet));
-                }
-            }
+        if let Some(id_value) = pluglet.get(id_field)
+            && let Some(id_str) = id_value.as_str()
+            && id_str == target_id
+        {
+            return Ok(Some(pluglet));
         }
     }
 

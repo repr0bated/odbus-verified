@@ -366,25 +366,22 @@ impl AgentExecution for OrchestrationServer {
                             execution_time_ms: start.elapsed().as_millis() as i64,
                             metadata: Default::default(),
                         },
-                        Err(e) => {
-                            let resp = ExecuteResponse {
-                                correlation_id,
-                                agent_id: exec_req.agent_id,
-                                operation: exec_req.operation,
-                                success: false,
-                                result_json: String::new(),
-                                error: Some(ExecuteError {
-                                    code: format!("{:?}", e.code),
-                                    message: e.to_string(),
-                                    details: String::new(),
-                                    retryable: e.is_retryable(),
-                                    stack_trace: String::new(),
-                                }),
-                                execution_time_ms: start.elapsed().as_millis() as i64,
-                                metadata: Default::default(),
-                            };
-                            resp
-                        }
+                        Err(e) => ExecuteResponse {
+                            correlation_id,
+                            agent_id: exec_req.agent_id,
+                            operation: exec_req.operation,
+                            success: false,
+                            result_json: String::new(),
+                            error: Some(ExecuteError {
+                                code: format!("{:?}", e.code),
+                                message: e.to_string(),
+                                details: String::new(),
+                                retryable: e.is_retryable(),
+                                stack_trace: String::new(),
+                            }),
+                            execution_time_ms: start.elapsed().as_millis() as i64,
+                            metadata: Default::default(),
+                        },
                     };
 
                     let is_err = !resp.success;
@@ -411,20 +408,21 @@ impl AgentExecution for OrchestrationServer {
         info!(correlation = %req.correlation_id, "Cancel");
 
         let mut tokens = self.cancellation_tokens.write().await;
-        if let Some(tx) = tokens.remove(&req.correlation_id) {
-            // Signal cancellation
-            let _ = tx.send(true);
-            Ok(Response::new(CancelResponse {
-                success: true,
-                correlation_id: req.correlation_id,
-                was_running: true,
-            }))
-        } else {
-            Ok(Response::new(CancelResponse {
+        match tokens.remove(&req.correlation_id) {
+            Some(tx) => {
+                // Signal cancellation
+                let _ = tx.send(true);
+                Ok(Response::new(CancelResponse {
+                    success: true,
+                    correlation_id: req.correlation_id,
+                    was_running: true,
+                }))
+            }
+            _ => Ok(Response::new(CancelResponse {
                 success: false,
                 correlation_id: req.correlation_id,
                 was_running: false,
-            }))
+            })),
         }
     }
 }

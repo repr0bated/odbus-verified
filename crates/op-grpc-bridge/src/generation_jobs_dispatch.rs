@@ -580,12 +580,11 @@ impl GenerationPublisher {
                 })();
                 Ok(match prepared {Ok(current)=>PrivateDocumentCommit::Publish{current,durable:state},Err(_)=>PrivateDocumentCommit::RetainPending{durable:state,error:anyhow::anyhow!("generation post-durable admission or projection validation failed")}})
             };
-            if recovery {
-                if let Some(pending)=directory.pending_document()? {
+            if recovery
+                && let Some(pending)=directory.pending_document()? {
                     anyhow::ensure!(pending.plugin_id==PLUGIN,"generation pending owner mismatch");
                     return directory.recover_document_with_decision(PLUGIN,&pending.operation_id,||apply(None));
                 }
-            }
             directory.commit_document_durable_with_decision(PLUGIN,&operation,apply)
         }).await.map_err(|_|anyhow::anyhow!("generation publication worker failed"));
         let result = match result {

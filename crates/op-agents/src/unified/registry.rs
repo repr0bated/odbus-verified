@@ -92,12 +92,9 @@ impl UnifiedAgentRegistry {
     pub fn list_by_category(&self, category: AgentCategory) -> Vec<&str> {
         self.factories
             .keys()
-            .filter(|id| {
-                if let Some(agent) = self.get(id) {
-                    agent.category() == category
-                } else {
-                    false
-                }
+            .filter(|id| match self.get(id) {
+                Some(agent) => agent.category() == category,
+                _ => false,
             })
             .copied()
             .collect()

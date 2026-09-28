@@ -208,8 +208,8 @@ impl ProfileManager {
     /// Check if a tool is available in a profile
     pub async fn tool_available_in_profile(&self, tool_name: &str, profile_name: &str) -> bool {
         let tools = self.get_tools_for_profile(profile_name).await;
-        let result = tools.iter().any(|t| t.name == tool_name);
-        result
+
+        tools.iter().any(|t| t.name == tool_name)
     }
 
     /// Get profile stats

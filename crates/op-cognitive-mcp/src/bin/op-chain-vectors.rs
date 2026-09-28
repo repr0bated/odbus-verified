@@ -206,7 +206,7 @@ async fn status() -> Result<()> {
     println!("missing vectors:  {}", blocks.len() - with_vectors);
 
     match btrfs_delta::generation(vectors_subvol).await {
-        Ok(gen) => println!("vectors gen:      {gen}"),
+        Ok(r#gen) => println!("vectors gen:      {gen}"),
         Err(err) => println!("vectors gen:      unavailable ({err})"),
     }
     match btrfs_delta::received_uuid(vectors_subvol).await {
