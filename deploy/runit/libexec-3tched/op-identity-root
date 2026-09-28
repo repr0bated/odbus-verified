@@ -21,6 +21,8 @@
 #   sudo op-identity-root up [<session>...]     # default: every identity
 #   sudo op-identity-root down <session>...
 #   sudo op-identity-root status
+#   sudo ARCHIVE_EXISTING=1 op-identity-root create <session> [size]
+#                                  # give an existing identity a device, fresh on Raccoon
 #
 # Environment overrides (defaults shown):
 #   RACCOON_UUID=2dcac52c-fb0b-418a-95a4-cb6eacc80209
@@ -163,6 +165,59 @@ down_one() {
     fi
 }
 
+# Give an existing identity a device and an identity root, starting fresh on
+# Raccoon. The identity's keys (user.opdbus.*) come from its current Incus
+# instance, which is renamed <session>-archived-<date>, never deleted, so the
+# old root and its devices stay available for rollback. Nothing is minted:
+# the session, its sled and its principal already exist.
+create_one() {
+    session=$1
+    size=$2
+    valid_session "$session" || { log "'$session' is not a session id"; return 2; }
+    dir=$IDENTITIES/$session
+    [ -e "$dir/identity.img" ] && { log "$session: already has a device"; return 1; }
+    [ -d "$POOL_PATH/$session" ] && { log "$session: already on pool $POOL"; return 1; }
+    incus info "$session" >/dev/null 2>&1 || { log "$session: no Incus instance to take keys from"; return 1; }
+    keys=$(incus config show "$session" | sed -n 's/^  \(user\.opdbus\.[a-z_]*\): \(.*\)$/\1=\2/p')
+    printf '%s\n' "$keys" | grep -q "^user.opdbus.session_id=$session$" ||
+        { log "$session: instance does not carry its own session id"; return 1; }
+    printf '%s\n' "$keys" | grep -q '^user.opdbus.wireguard_public_key=.' ||
+        { log "$session: instance carries no WireGuard key"; return 1; }
+    if [ "${ARCHIVE_EXISTING:-0}" != 1 ]; then
+        log "$session: set ARCHIVE_EXISTING=1 to stop and rename the current instance"
+        return 1
+    fi
+    archived=$session-archived-$(date -u +%Y%m%d)
+    incus info "$archived" >/dev/null 2>&1 && { log "$archived already exists"; return 1; }
+
+    incus stop "$session" --timeout 30 2>/dev/null || incus stop "$session" --force 2>/dev/null
+    incus move "$session" "$archived" || { log "$session: rename failed"; return 1; }
+    log "$session: previous instance kept as $archived"
+
+    install -d -m 0700 "$dir" "$dir/device"
+    truncate -s "$size" "$dir/identity.img"
+    mkfs.btrfs -q -L "identity-$session" "$dir/identity.img" || return 1
+    mount_device "$session" || return 1
+    install -d -o 1000000 -g 1000000 -m 0755 "$dir/device/upper"
+    install -d -m 0700 "$dir/device/work"
+    install -d -o 1000000 -g 1000000 -m 0700 "$dir/device/cozo"
+
+    incus init --empty "$session" --no-profiles -s "$POOL" >/dev/null || return 1
+    printf '%s\n' "$keys" | while IFS= read -r kv; do
+        [ -n "$kv" ] && incus config set "$session" "$kv"
+    done
+    incus config set "$session" boot.autostart=false
+    incus config set "$session" security.nesting=false
+    incus config set "$session" "user.opdbus.identity_device=identity-$session"
+    # Preset the idmap so Incus does not shift (copy) Raccoon into upper.
+    incus config set "$session" volatile.last_state.idmap="$(incus config get "$session" volatile.idmap.next)"
+    incus config device add "$session" ghostbridge-socket disk \
+        source=/run/ghostbridge path=/opt/run-mounts/ghostbridge >/dev/null
+    incus config device add "$session" persist disk \
+        source="$dir/device/cozo" path=/opt/run-mounts/persist >/dev/null
+    log "$session: device and identity root created; run: $0 up $session"
+}
+
 all_sessions() {
     for image in "$IDENTITIES"/*/identity.img; do
         [ -f "$image" ] || continue
@@ -198,8 +253,13 @@ down)
     for session in "$@"; do down_one "$session"; done
     ;;
 status) status ;;
+create)
+    [ "$#" -ge 1 ] || { log "name the session to create"; exit 2; }
+    ensure_lower || { log "Raccoon lower layer unavailable"; exit 1; }
+    create_one "$1" "${2:-8G}"
+    ;;
 *)
-    log "usage: $0 up [<session>...] | down <session>... | status"
+    log "usage: $0 up [<session>...] | down <session>... | status | create <session> [size]"
     exit 2
     ;;
 esac

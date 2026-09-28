@@ -19,6 +19,10 @@ wait_dep() {
 }
 
 wait_dep incusd
+# Once the chatbot runs on its own identity root, identity-roots mounts that
+# root and its lungs; starting the instance first would boot it on an empty
+# rootfs directory. identity-roots becomes ready even with no identity devices.
+wait_dep identity-roots
 
 NAME='b0c777e3-0955-cd8b-3d01-ca12998cae28'
 
