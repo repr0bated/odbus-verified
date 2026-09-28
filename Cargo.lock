@@ -5265,6 +5265,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "pastey"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ee67f1008b1ba2321834326597b8e186293b049a023cdef258527550b9935b4"
+
+[[package]]
 name = "pem"
 version = "3.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6249,6 +6255,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "rmcp"
+version = "3.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fae7019994ae0fe4ada40b732f798f3ff26f0f04facb1477f1bf37eb4f18a2d3"
+dependencies = [
+ "base64 0.23.1",
+ "chrono",
+ "futures",
+ "indexmap 2.14.0",
+ "pastey",
+ "pin-project-lite",
+ "rmcp-macros",
+ "schemars 1.2.1",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "rmcp-macros"
+version = "3.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7e66877136e969d5a2d561ee5841b17717a0619aebd64abb47a2a2f46e34683"
+dependencies = [
+ "darling 0.24.1",
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "syn 3.0.3",
+]
+
+[[package]]
 name = "rmp"
 version = "0.8.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6659,6 +6702,7 @@ version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2b42f36aa1cd011945615b92222f6bf73c599a102a300334cd7f8dbeec726cc"
 dependencies = [
+ "chrono",
  "dyn-clone",
  "ref-cast",
  "schemars_derive",
@@ -7412,6 +7456,7 @@ dependencies = [
  "op-state-store",
  "parking_lot",
  "regex",
+ "rmcp",
  "serde",
  "serde_json",
  "sha2 0.10.9",

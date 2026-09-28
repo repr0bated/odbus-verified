@@ -1,5 +1,6 @@
 mod dispatch;
 mod fuse_fs;
+mod mcp;
 mod model;
 mod namespace;
 mod source;
@@ -122,6 +123,34 @@ enum Command {
         lungs_session: Option<String>,
         #[arg(long, default_value = DEFAULT_BUS_ADDRESS)]
         bus_address: String,
+    },
+    /// Serve this identity's MCP on stdio: every sealed method as a tool,
+    /// every plugin's schema and state as a resource, each call dispatched as
+    /// the identity. Launch it from an IDE's MCP server configuration.
+    Mcp {
+        #[command(flatten)]
+        target: TargetArgs,
+        #[arg(long, default_value = DEFAULT_STATE_DIR)]
+        state: PathBuf,
+        /// The bridge's shared lungs socket; calls bind to --lungs-session.
+        #[arg(
+            long,
+            requires = "lungs_session",
+            required_unless_present = "lungs_credential"
+        )]
+        lungs_socket: Option<PathBuf>,
+        /// The session this identity breathes for (with --lungs-socket).
+        #[arg(long, requires = "lungs_socket")]
+        lungs_session: Option<String>,
+        /// The identity's SID1 on its own device, registered per call.
+        #[arg(long, conflicts_with = "lungs_socket")]
+        lungs_credential: Option<PathBuf>,
+        #[arg(long, default_value = DEFAULT_BUS_ADDRESS)]
+        bus_address: String,
+        /// Four meta-tools (list, search, schema, execute) instead of one
+        /// tool per method, for small-context clients.
+        #[arg(long)]
+        compact: bool,
     },
 }
 
@@ -311,6 +340,36 @@ async fn main() -> Result<()> {
             )
             .await?;
             print_json(&receipt)?;
+        }
+        Command::Mcp {
+            target,
+            state,
+            lungs_socket,
+            lungs_session,
+            lungs_credential,
+            bus_address,
+            compact,
+        } => {
+            let target = resolve_target(&store, &target)?;
+            let lungs = match (lungs_socket, lungs_credential) {
+                (Some(path), _) => Lungs::Socket {
+                    path,
+                    session: lungs_session.unwrap_or_default(),
+                },
+                (None, Some(credential)) => Lungs::Credential {
+                    bus_address,
+                    credential,
+                },
+                (None, None) => bail!("the MCP server needs this identity's lungs"),
+            };
+            let surface = if compact {
+                mcp::Surface::Compact
+            } else {
+                mcp::Surface::Full
+            };
+            mcp::IdentityMcp::new(store, target, state, lungs, surface)?
+                .serve_stdio()
+                .await?;
         }
         Command::Mount {
             mountpoint,

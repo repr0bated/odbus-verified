@@ -138,6 +138,42 @@ Mutation and external operations additionally require
 `--confirm-side-effects`. The default bus address is
 `unix:path=/run/opdbus/session-bus.sock`.
 
+## MCP server (the identity's own)
+
+`threetched-fs mcp` serves one identity over MCP on stdio, using the reference
+Rust SDK (`rmcp`). Any IDE that launches an MCP server can use it; the IDE
+holds no credential, because the connection is the identity:
+
+```json
+{
+  "mcpServers": {
+    "opdbus": {
+      "command": "threetched-fs",
+      "args": ["mcp", "--lungs-socket", "/run/opdbus/lungs.sock",
+               "--lungs-session", "<session>"]
+    }
+  }
+}
+```
+
+(`--lungs-credential <SID1 path>` registers the identity's own SID1 instead.)
+
+- **Tools**: every sealed method in the view, named `plugin__method`, with
+  the sealed argument schema as its input schema. Read methods are marked
+  read-only and mutations destructive, so the IDE confirms them. Arguments
+  are validated before dispatch; each call runs as the identity under its
+  own grants.
+- **Resources**: `3tched://view`, and per plugin
+  `3tched://plugins/<plugin>/schema` and `.../state` (live SHM state for a
+  view, the staged value for a workspace), plus templates including
+  `3tched://plugins/{plugin}/state/{+pointer}`.
+- **Prompts**: `plugin` (one plugin's methods, tools and state fields) and
+  `catalog` (every plugin, one line each).
+- **Completions**: plugin ids for the `plugin` prompt and resource templates.
+- `--compact` replaces the per-method tools with four meta-tools
+  (`list_plugins`, `search_tools`, `get_tool_schema`, `execute_tool`) for
+  small-context clients.
+
 ## Namespace
 
 ```text
