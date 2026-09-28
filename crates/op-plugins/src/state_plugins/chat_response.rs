@@ -122,12 +122,22 @@ pub enum ResponseContent {
         )]
         alternatives: Vec<String>,
     },
+    /// A human's message: the human side of the conversation, recorded in
+    /// the same chain as the responses so a conversation reads both ways.
+    HumanMessage {
+        #[schemars(
+            description = "What the human said [PII]",
+            extend("x-opdbus-private" = true)
+        )]
+        message: String,
+    },
 }
 
 // ── Committed records ────────────────────────────────────────────────────────
 
-/// One committed turn: a response authored by an agent into the asking
-/// human's private principal scope.
+/// One committed turn in the human's private principal scope: either the
+/// human's own message or an agent's response to it. The conversation chain
+/// runs through both, so the record shows what was asked as well as answered.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ChatTurn {
@@ -152,7 +162,7 @@ pub struct ChatTurn {
     )]
     pub conversation_id: String,
     #[schemars(
-        description = "Bridge-minted turn id the response answered (public)",
+        description = "Bridge-minted turn id: the human message's own id, or the turn the response answered (public)",
         extend("readOnly" = true)
     )]
     pub turn_id: String,
@@ -162,17 +172,17 @@ pub struct ChatTurn {
     )]
     pub turn_index: u64,
     #[schemars(
-        description = "Bridge-minted id of this committed response",
+        description = "Bridge-minted id of this committed turn",
         extend("readOnly" = true)
     )]
     pub response_id: String,
     #[schemars(
-        description = "Agent principal that authored the response (the chain actor)",
+        description = "Principal that authored this turn: the human for a human message, the answering agent for a response (the chain actor)",
         extend("readOnly" = true)
     )]
     pub responder_principal_id: String,
     #[schemars(
-        description = "RFC3339 time the bridge opened the turn",
+        description = "RFC3339 time the bridge opened the turn (for a human message, when it was received)",
         extend("readOnly" = true)
     )]
     pub opened_at: String,
@@ -197,12 +207,12 @@ pub struct ChatTurn {
     )]
     pub content_hash: String,
     #[schemars(
-        description = "Global chain event id of the admitted response method call",
+        description = "Global chain event id of the call that carried this turn: the response method, or the human's chat request",
         extend("readOnly" = true)
     )]
     pub request_event_id: u64,
     #[schemars(
-        description = "Global chain event_hash of the admitted response method call",
+        description = "Global chain event_hash of the call that carried this turn",
         extend("readOnly" = true)
     )]
     pub request_event_hash: String,
@@ -212,7 +222,7 @@ pub struct ChatTurn {
     )]
     pub canvas_schema_hash: Option<String>,
     #[schemars(
-        description = "The authored response content [PII]",
+        description = "The authored turn content [PII]",
         extend("readOnly" = true),
         extend("x-opdbus-private" = true)
     )]

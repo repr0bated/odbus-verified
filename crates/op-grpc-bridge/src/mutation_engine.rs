@@ -1387,17 +1387,25 @@ impl MutationEngine {
         &self.chat_turns
     }
 
-    /// Open a chat turn for a verified human in one of their conversations
-    /// and designate the agent principal that may answer it. Internal bridge
-    /// API: the door's chat operation calls it (OD-90 stage 2); no transport
-    /// or model can mint a turn.
+    /// Record a verified human's message as the next turn of one of their
+    /// conversations, then open the following turn for the agent principal
+    /// that may answer it. Both sides land in the same conversation chain:
+    /// the response's `prev_turn_hash` is the human turn's hash. Internal
+    /// bridge API: the door's chat operation calls it (OD-90 stage 2), with
+    /// its own admitted chat request as `request`; no transport or model can
+    /// mint a turn.
     #[allow(dead_code)] // stage 2 (door chat operation) is the production caller
     pub(crate) async fn open_chat_turn(
         &self,
         owner: crate::chat_response_turns::TurnOwner,
         conversation_id: &str,
+        message: String,
+        request: crate::chat_response_dispatch::RequestEvent,
         responder_principal_id: &str,
-    ) -> anyhow::Result<crate::chat_response_turns::PendingTurn> {
+    ) -> anyhow::Result<(
+        op_plugins::state_plugins::chat_response::ChatTurn,
+        crate::chat_response_turns::PendingTurn,
+    )> {
         crate::project_dispatch::verified_session(
             self,
             &owner.principal_id,
@@ -1424,12 +1432,39 @@ impl MutationEngine {
         .await
         .context("chat_response conversation lookup worker failed")??
         .context("conversation does not exist in the asking principal's scope")?;
-        self.chat_turns.open(
-            owner,
+        // Reserve the answer's turn first: the registry allows one open turn
+        // per conversation, so this also serializes the human message below,
+        // and a refused reservation records nothing.
+        let pending = self.chat_turns.open(
+            owner.clone(),
             conversation_id,
-            head.turn_count,
+            head.turn_count + 1,
             responder_principal_id,
+        )?;
+        let human = match crate::chat_response_dispatch::commit_human_turn(
+            self,
+            &owner,
+            conversation_id,
+            message,
+            request,
         )
+        .await
+        {
+            Ok(human) if human.turn_index + 1 == pending.turn_index => human,
+            Ok(human) => {
+                self.chat_turns.cancel(&pending.turn_id);
+                anyhow::bail!(
+                    "human message landed at turn {} but the answer was reserved at {}",
+                    human.turn_index,
+                    pending.turn_index
+                );
+            }
+            Err(error) => {
+                self.chat_turns.cancel(&pending.turn_id);
+                return Err(error);
+            }
+        };
+        Ok((human, pending))
     }
 
     /// Admit and commit an episode in one step. The chat path admits before

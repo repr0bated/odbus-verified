@@ -526,6 +526,14 @@ async fn commit_response(
     }
 }
 
+/// The responding agent's method boundary, revalidated under the owner's lock.
+struct AgentBoundary<'a> {
+    method: &'a str,
+    caller: &'a TurnOwner,
+    admitted: &'a PluginSchema,
+    pin: &'a SealPin,
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn commit_claimed(
     engine: &MutationEngine,
@@ -539,20 +547,107 @@ async fn commit_claimed(
     canvas_schema_hash: Option<String>,
     request: RequestEvent,
 ) -> Result<(ChatTurn, u64)> {
-    let pending = claim.turn().clone();
+    let boundary = AgentBoundary {
+        method,
+        caller,
+        admitted,
+        pin,
+    };
+    commit_turn(
+        engine,
+        claim.turn().clone(),
+        &caller.principal_id,
+        Some(boundary),
+        store,
+        content,
+        canvas_schema_hash,
+        request,
+    )
+    .await
+}
+
+/// Record a verified human's message as the next turn of their conversation,
+/// authored by that human, so the conversation chain holds both sides. The
+/// door's chat operation calls this through `open_chat_turn`, with its own
+/// admitted chat request as the turn's chain event.
+pub(crate) async fn commit_human_turn(
+    engine: &MutationEngine,
+    owner: &TurnOwner,
+    conversation_id: &str,
+    message: String,
+    request: RequestEvent,
+) -> Result<ChatTurn> {
+    let content = ResponseContent::HumanMessage { message };
+    op_plugins::state_plugins::chat_response_methods::validate_content(&content)?;
+    let store = engine.chat_response_cozo().await?;
+    let head_store = store.clone();
+    let principal = owner.principal_id.clone();
+    let conversation = conversation_id.to_string();
+    let head = blocking(move || {
+        head_store
+            .get_chat_conversation(&principal, &conversation)?
+            .context("conversation does not exist in the asking principal's scope")
+    })
+    .await?;
+    let now = chrono::Utc::now();
+    let pending = crate::chat_response_turns::PendingTurn {
+        turn_id: uuid::Uuid::now_v7().to_string(),
+        owner: owner.clone(),
+        conversation_id: conversation_id.to_string(),
+        turn_index: head.turn_count,
+        responder_principal_id: owner.principal_id.clone(),
+        opened_at: now,
+        expires_at: now,
+    };
+    let (turn, _revision) = commit_turn(
+        engine,
+        pending,
+        &owner.principal_id,
+        None,
+        store,
+        content,
+        None,
+        request,
+    )
+    .await?;
+    Ok(turn)
+}
+
+/// Commit one turn authored by `author` at the conversation head: an agent's
+/// response (with its method boundary) or a human's message (without one).
+#[allow(clippy::too_many_arguments)]
+async fn commit_turn(
+    engine: &MutationEngine,
+    pending: crate::chat_response_turns::PendingTurn,
+    author: &str,
+    boundary: Option<AgentBoundary<'_>>,
+    store: std::sync::Arc<op_cozo_store::CozoGraphShuttle>,
+    content: ResponseContent,
+    canvas_schema_hash: Option<String>,
+    request: RequestEvent,
+) -> Result<(ChatTurn, u64)> {
     let owner = pending.owner.clone();
     let publisher = engine.chat_response_publisher()?.clone();
     let effect = publisher.admit(store.clone(), &owner.principal_id).await?;
-    // Under the owner's lock: the responder's session, grant and seal, and
-    // the asking session, are all still current.
-    revalidate_boundary(engine, method, caller, admitted, pin).await?;
+    // Under the owner's lock: a responder's session, grant and seal, and the
+    // asking session, are all still current.
+    if let Some(boundary) = &boundary {
+        revalidate_boundary(
+            engine,
+            boundary.method,
+            boundary.caller,
+            boundary.admitted,
+            boundary.pin,
+        )
+        .await?;
+    }
     verify_owner(engine, &owner).await?;
 
     let response_id = uuid::Uuid::now_v7().to_string();
     let committed_at = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
     let make_turn = {
         let pending = pending.clone();
-        let responder = caller.principal_id.clone();
+        let responder = author.to_string();
         let request_hash = request.event_hash.clone();
         let request_id = request.event_id;
         move |head: &ChatConversationRecord| -> Result<(ChatTurn, ConversationSummary)> {
@@ -640,7 +735,7 @@ async fn commit_claimed(
         .await?;
     let turn = decode_turn(&record, &owner.principal_id)?;
     anyhow::ensure!(
-        turn.responder_principal_id == caller.principal_id && turn.turn_id == pending.turn_id,
+        turn.responder_principal_id == author && turn.turn_id == pending.turn_id,
         "committed turn differs from the claimed turn"
     );
 
@@ -656,7 +751,8 @@ async fn commit_claimed(
     });
     announce(
         engine,
-        &caller.principal_id,
+        author,
+        boundary.is_some().then(|| RESPOND_CAPABILITY.to_string()),
         &ResponseCommittedSignal {
             owner_key: owner_key(&owner.principal_id),
             conversation_id: turn.conversation_id.clone(),
@@ -679,7 +775,12 @@ async fn commit_claimed(
 /// the declared `response_committed` signal. The payload is public: ids and
 /// hashes only. Best effort: the durable row and private document are
 /// already committed; a failed announcement is logged, never unwound.
-async fn announce(engine: &MutationEngine, responder: &str, signal: &ResponseCommittedSignal) {
+async fn announce(
+    engine: &MutationEngine,
+    author: &str,
+    capability: Option<String>,
+    signal: &ResponseCommittedSignal,
+) {
     let value = match simd_json::serde::to_owned_value(signal) {
         Ok(value) => value,
         Err(error) => {
@@ -696,8 +797,8 @@ async fn announce(engine: &MutationEngine, responder: &str, signal: &ResponseCom
             None,
             value,
             vec!["state".into(), PLUGIN.into()],
-            responder.to_string(),
-            Some(RESPOND_CAPABILITY.to_string()),
+            author.to_string(),
+            capability,
             ChangeSource::Internal,
         )
         .await

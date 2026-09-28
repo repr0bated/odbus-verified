@@ -401,8 +401,18 @@ pub fn validate_content(content: &ResponseContent) -> Result<()> {
             validate_text("reason", reason, MAX_REASON_BYTES)?;
             validate_items("alternatives", alternatives, MAX_LIST_ITEM_BYTES)?;
         }
+        ResponseContent::HumanMessage { message } => {
+            validate_text("message", message, MAX_MESSAGE_BYTES)?;
+        }
     }
     Ok(())
+}
+
+impl ResponseContent {
+    /// Whether this is the human's side of the conversation.
+    pub fn is_human_message(&self) -> bool {
+        matches!(self, Self::HumanMessage { .. })
+    }
 }
 
 impl RespondToUserInput {
@@ -602,6 +612,12 @@ pub fn validate_turn(turn: &ChatTurn) -> Result<()> {
         _ => anyhow::bail!("canvas_schema_hash must be present exactly when a canvas is"),
     }
     validate_content(&turn.content)?;
+    // A human message is authored by the human whose scope holds it; a
+    // response never is, so neither side can pass as the other.
+    ensure!(
+        turn.content.is_human_message() == (turn.responder_principal_id == turn.principal_id),
+        "a human message must be authored by its own principal, and a response by an agent"
+    );
     ensure!(
         turn.content_hash == content_hash(&turn.content)?,
         "turn content_hash does not match its content"

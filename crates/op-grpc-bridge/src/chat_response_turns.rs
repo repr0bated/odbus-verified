@@ -92,6 +92,19 @@ impl TurnRegistry {
         )
     }
 
+    /// Withdraw a turn that was reserved but never offered to its responder,
+    /// because the human message it follows failed to commit. Only a turn
+    /// still pending is removed; one being answered or answered stays.
+    pub(crate) fn cancel(&self, turn_id: &str) {
+        let mut turns = self.lock();
+        if turns
+            .get(turn_id)
+            .is_some_and(|entry| entry.state == TurnState::Pending)
+        {
+            turns.remove(turn_id);
+        }
+    }
+
     /// Open a turn at `now` for `ttl`. At most one open turn per conversation:
     /// its index is the durable head, so the conversation chain stays gapless.
     pub(crate) fn open_at(

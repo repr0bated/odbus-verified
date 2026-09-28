@@ -604,6 +604,7 @@ impl CozoGraphShuttle {
     /// durable conversation and the revision this commit will take, and
     /// returns the turn chained to that head and the advanced conversation.
     #[allow(clippy::type_complexity)]
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_chat_turn_and_snapshot(
         &self,
         principal_id: &str,

@@ -31,6 +31,7 @@ use crate::{
 const PRIVATE_MESSAGE: &str = "PRIVATE-MESSAGE-SENTINEL answer text";
 const PRIVATE_CANVAS: &str = "PRIVATE-CANVAS-SENTINEL";
 const PRIVATE_TITLE: &str = "PRIVATE-TITLE-SENTINEL";
+const PRIVATE_QUESTION: &str = "PRIVATE-QUESTION-SENTINEL what the human asked";
 
 struct Environment(Vec<(&'static str, Option<std::ffi::OsString>)>);
 impl Environment {
@@ -226,6 +227,38 @@ fn chain_events(fixture: &Fixture) -> Vec<op_state_store::ChainEvent> {
         .collect()
 }
 
+/// What the door's chat operation does (OD-90 stage 2): record the human's
+/// message under the chain event of their own request, then open the turn
+/// that `responder` may answer.
+async fn ask(
+    fixture: &Fixture,
+    who: &Identity,
+    conversation: &str,
+    message: &str,
+    responder: &Identity,
+) -> anyhow::Result<(
+    op_plugins::state_plugins::chat_response::ChatTurn,
+    crate::chat_response_turns::PendingTurn,
+)> {
+    let latest = chain_events(fixture)
+        .last()
+        .cloned()
+        .expect("the conversation start is on the chain");
+    fixture
+        .engine
+        .open_chat_turn(
+            who.owner(),
+            conversation,
+            message.to_string(),
+            crate::chat_response_dispatch::RequestEvent {
+                event_id: latest.event_id,
+                event_hash: latest.event_hash.clone(),
+            },
+            &responder.principal,
+        )
+        .await
+}
+
 fn payload(event: &op_state_store::ChainEvent) -> serde_json::Value {
     serde_json::from_str(&simd_json::to_string(event.input_payload.as_ref().unwrap()).unwrap())
         .unwrap()
@@ -240,26 +273,36 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
     assert_eq!(wakes.recv().await.unwrap(), owner_key(&f.human.principal));
 
     // Only a verified human's own conversation, answered by a holder of the
-    // respond grant other than that human, can have a turn.
+    // respond grant other than that human, can have a turn, and a refused
+    // turn records nothing.
     assert!(
-        f.engine
-            .open_chat_turn(f.human.owner(), &conversation, &f.human.principal)
+        ask(&f, &f.human, &conversation, PRIVATE_QUESTION, &f.human)
             .await
             .is_err()
     );
     assert!(
-        f.engine
-            .open_chat_turn(f.other.owner(), &conversation, &f.agent.principal)
+        ask(&f, &f.other, &conversation, PRIVATE_QUESTION, &f.agent)
             .await
             .is_err(),
         "a conversation outside the owner's scope has no turns"
     );
-    let turn = f
-        .engine
-        .open_chat_turn(f.human.owner(), &conversation, &f.agent.principal)
+    assert_eq!(
+        f.store
+            .snapshot_chat_responses(&f.human.principal, 8, 8)
+            .unwrap()
+            .turn_count,
+        0
+    );
+    // The human's message is turn 0, authored by the human; the answer is
+    // reserved as turn 1.
+    let (asked, turn) = ask(&f, &f.human, &conversation, PRIVATE_QUESTION, &f.agent)
         .await
         .unwrap();
-    assert_eq!(turn.turn_index, 0);
+    assert_eq!(asked.turn_index, 0);
+    assert_eq!(asked.responder_principal_id, f.human.principal);
+    assert_eq!(asked.principal_id, f.human.principal);
+    assert!(asked.content.is_human_message());
+    assert_eq!(turn.turn_index, 1);
     assert_eq!(
         uuid::Uuid::parse_str(&turn.turn_id)
             .unwrap()
@@ -308,8 +351,8 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
     )
     .unwrap();
     assert_eq!(committed["conversation_id"], conversation);
-    assert_eq!(committed["turn_index"], 0);
-    assert_eq!(committed["revision"], 2);
+    assert_eq!(committed["turn_index"], 1);
+    assert_eq!(committed["revision"], 3);
     assert_eq!(committed["canvas_schema_hash"], renderer.schema_hash);
     let response_id = committed["response_id"].as_str().unwrap();
     assert_eq!(
@@ -352,11 +395,15 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
         .get_chat_conversation(&f.human.principal, &conversation)
         .unwrap()
         .unwrap();
-    assert_eq!(summary.turn_count, 1);
+    assert_eq!(summary.turn_count, 2);
     assert_eq!(summary.head_turn_hash, turn_hash);
     assert_eq!(
-        stored.prev_turn_hash, summary.conversation["genesis_hash"],
-        "turn 0 chains to the conversation genesis"
+        asked.prev_turn_hash, summary.conversation["genesis_hash"],
+        "the human's message, turn 0, chains to the conversation genesis"
+    );
+    assert_eq!(
+        stored.prev_turn_hash, asked.turn_hash,
+        "the answer chains to the message it answers"
     );
 
     // Never in the agent's scope; another human cannot read it.
@@ -399,15 +446,19 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
         state["turns"][&turn.turn_id]["content"]["message"],
         PRIVATE_MESSAGE
     );
-    assert_eq!(state["conversations"][&conversation]["turn_count"], 1);
-    assert_eq!(state["revision"], 2);
+    assert_eq!(
+        state["turns"][&asked.turn_id]["content"]["message"],
+        PRIVATE_QUESTION
+    );
+    assert_eq!(state["conversations"][&conversation]["turn_count"], 2);
+    assert_eq!(state["revision"], 3);
 
     // Wakes carry owner keys only.
     let wake = wakes.recv().await.unwrap();
     assert_eq!(wake, owner_key(&f.human.principal));
     assert_ne!(wake, owner_key(&f.agent.principal));
     let rung = f.rung.lock().unwrap().clone();
-    assert_eq!(rung.len(), 1, "one doorbell per committed response");
+    assert_eq!(rung.len(), 2, "one doorbell per committed turn");
     assert_eq!(
         rung[0].owner_key,
         crate::wake_doorbell::owner_key(&EpisodeScope {
@@ -416,22 +467,28 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
             session_genesis: f.human.genesis.clone(),
         })
     );
-    assert_eq!(rung[0].seq, 2);
+    assert_eq!((rung[0].seq, rung[1].seq), (2, 3));
     let ring = serde_json::to_value(&rung[0]).unwrap();
     assert_eq!(ring.as_object().unwrap().len(), 2, "owner_key and seq only");
 
-    // The chain records the public sub-chain fields under the agent, and no
-    // content in either the signal or the redacted method-call payloads.
+    // The chain records each side under its author: the message under the
+    // human with no respond grant, the answer under the agent. Neither the
+    // signals nor the redacted method-call payloads carry content.
     let events = chain_events(&f);
-    let signal = events
+    let announced: Vec<_> = events
         .iter()
-        .find(|event| event.method_name.as_deref() == Some("response_committed"))
-        .expect("response_committed is announced");
+        .filter(|event| event.method_name.as_deref() == Some("response_committed"))
+        .collect();
+    assert_eq!(announced.len(), 2);
+    assert_eq!(announced[0].actor_id, f.human.principal);
+    assert_eq!(announced[0].capability_id, None);
+    assert_eq!(payload(announced[0])["turn_hash"], asked.turn_hash);
+    let signal = announced[1];
     assert_eq!(signal.actor_id, f.agent.principal);
     assert_eq!(signal.capability_id.as_deref(), Some(RESPOND_CAPABILITY));
     let public = payload(signal);
     assert_eq!(public["conversation_id"], conversation);
-    assert_eq!(public["turn_index"], 0);
+    assert_eq!(public["turn_index"], 1);
     assert_eq!(public["turn_hash"], turn_hash);
     assert_eq!(public["prev_turn_hash"], stored.prev_turn_hash);
     assert_eq!(public["content_hash"], stored.content_hash);
@@ -441,7 +498,12 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
             continue;
         };
         let encoded = simd_json::to_string(input).unwrap();
-        for private in [PRIVATE_MESSAGE, PRIVATE_CANVAS, PRIVATE_TITLE] {
+        for private in [
+            PRIVATE_MESSAGE,
+            PRIVATE_CANVAS,
+            PRIVATE_TITLE,
+            PRIVATE_QUESTION,
+        ] {
             assert!(
                 !encoded.contains(private),
                 "{:?} leaked content into the chain",
@@ -455,17 +517,22 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
 async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
     let f = fixture().await;
     let conversation = start(&f, &f.human).await;
-    let first = f
-        .engine
-        .open_chat_turn(f.human.owner(), &conversation, &f.agent.principal)
+    let (_, first) = ask(&f, &f.human, &conversation, "first question", &f.agent)
         .await
         .unwrap();
     assert!(
-        f.engine
-            .open_chat_turn(f.human.owner(), &conversation, &f.agent.principal)
+        ask(&f, &f.human, &conversation, "interrupting", &f.agent)
             .await
             .is_err(),
         "one open turn per conversation"
+    );
+    assert_eq!(
+        f.store
+            .snapshot_chat_responses(&f.human.principal, 8, 8)
+            .unwrap()
+            .turn_count,
+        1,
+        "a refused message is not recorded"
     );
     call(
         &f,
@@ -486,12 +553,10 @@ async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
         ..f.human.clone()
     };
     assert_ne!(later.genesis, f.human.genesis);
-    let second = f
-        .engine
-        .open_chat_turn(later.owner(), &conversation, &f.agent.principal)
+    let (_, second) = ask(&f, &later, &conversation, "second question", &f.agent)
         .await
         .unwrap();
-    assert_eq!(second.turn_index, 1);
+    assert_eq!(second.turn_index, 3);
     let clarified = call(
         &f,
         &f.agent,
@@ -503,15 +568,14 @@ async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
     )
     .await
     .unwrap();
-    assert_eq!(clarified["turn_index"], 1);
+    assert_eq!(clarified["turn_index"], 3);
     assert!(clarified.get("canvas_schema_hash").is_none());
 
-    let third = f
-        .engine
-        .open_chat_turn(f.human.owner(), &conversation, &f.agent.principal)
+    // The human answers the clarification with their next message.
+    let (_, third) = ask(&f, &f.human, &conversation, "br1", &f.agent)
         .await
         .unwrap();
-    assert_eq!(third.turn_index, 2);
+    assert_eq!(third.turn_index, 5);
     let refused = call(
         &f,
         &f.agent,
@@ -523,9 +587,10 @@ async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
     )
     .await
     .unwrap();
-    assert_eq!(refused["turn_index"], 2);
+    assert_eq!(refused["turn_index"], 5);
 
-    // Read from the later session: one conversation, three chained turns.
+    // Read from the later session: one conversation, six chained turns that
+    // alternate between the human and the agent.
     let read = call(
         &f,
         &later,
@@ -535,20 +600,27 @@ async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
     .await
     .unwrap();
     let read: GetConversationOutput = serde_json::from_value(read).unwrap();
-    assert_eq!(read.conversation.turn_count, 3);
+    assert_eq!(read.conversation.turn_count, 6);
     assert!(!read.turns_truncated);
     assert_eq!(read.first_turn_index, 0);
     assert_eq!(
         read.turns.iter().map(|t| t.turn_index).collect::<Vec<_>>(),
-        [0, 1, 2]
+        [0, 1, 2, 3, 4, 5]
     );
     assert_eq!(read.turns[0].prev_turn_hash, read.conversation.genesis_hash);
-    assert_eq!(read.turns[1].prev_turn_hash, read.turns[0].turn_hash);
-    assert_eq!(read.turns[2].prev_turn_hash, read.turns[1].turn_hash);
-    assert_eq!(read.conversation.head_turn_hash, read.turns[2].turn_hash);
+    for pair in read.turns.windows(2) {
+        assert_eq!(pair[1].prev_turn_hash, pair[0].turn_hash);
+    }
+    assert_eq!(read.conversation.head_turn_hash, read.turns[5].turn_hash);
+    for (index, turn) in read.turns.iter().enumerate() {
+        let author = if index % 2 == 0 { &f.human } else { &f.agent };
+        assert_eq!(turn.responder_principal_id, author.principal);
+        assert_eq!(turn.content.is_human_message(), index % 2 == 0);
+    }
     assert_eq!(read.turns[0].session_id, f.human.session);
-    assert_eq!(read.turns[1].session_id, later.session);
-    assert_eq!(read.turns[1].session_genesis, later.genesis);
+    assert_eq!(read.turns[2].session_id, later.session);
+    assert_eq!(read.turns[3].session_id, later.session);
+    assert_eq!(read.turns[3].session_genesis, later.genesis);
     op_plugins::state_plugins::chat_response_methods::verify_turn_chain(
         &read.conversation,
         &read.turns,
@@ -562,7 +634,7 @@ async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
         .filter(|event| event.method_name.as_deref() == Some("response_committed"))
         .map(payload)
         .collect();
-    assert_eq!(announced.len(), 3);
+    assert_eq!(announced.len(), 6);
     for (turn, public) in read.turns.iter().zip(&announced) {
         assert_eq!(public["turn_hash"], turn.turn_hash);
         assert_eq!(public["turn_index"], turn.turn_index);
@@ -571,7 +643,7 @@ async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
         .await
         .unwrap();
     assert_eq!(listed["conversation_count"], 1);
-    assert_eq!(listed["conversations"][0]["turn_count"], 3);
+    assert_eq!(listed["conversations"][0]["turn_count"], 6);
     assert_eq!(listed["conversations"][0]["title"], PRIVATE_TITLE);
 }
 
@@ -609,10 +681,8 @@ async fn expired_turns_are_refused_without_a_commit() {
         .unwrap();
     assert_eq!((scope.turn_count, scope.revision), (0, 1));
     // The conversation can still open a fresh turn at the same head.
-    let fresh = f
-        .engine
-        .open_chat_turn(f.human.owner(), &conversation, &f.agent.principal)
+    let (asked, fresh) = ask(&f, &f.human, &conversation, "again", &f.agent)
         .await
         .unwrap();
-    assert_eq!(fresh.turn_index, 0);
+    assert_eq!((asked.turn_index, fresh.turn_index), (0, 1));
 }
