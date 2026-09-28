@@ -4,8 +4,8 @@
 use crate::{
     method_contract_admission,
     sealed_schema_reader::{
-        blob_catalog_dir_from_env, read_manifest_pinned_schema_document,
-        ManifestPinnedSchemaDocument,
+        ManifestPinnedSchemaDocument, blob_catalog_dir_from_env,
+        read_manifest_pinned_schema_document,
     },
 };
 use anyhow::{Context, Result};
@@ -16,7 +16,7 @@ use op_plugins::state_plugins::{
     tched_router_legacy_methods::{ModelRole, TchedRouterLegacyMethods},
 };
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 pub(crate) struct LegacyDispatchReceipt {
@@ -342,16 +342,20 @@ mod tests {
             parameters: json!({"type":"object"}),
             output: None,
         };
-        assert!(map_native_tools(NativeToolsResponse {
-            tools: vec![duplicate(), duplicate()],
-        })
-        .is_err());
-        assert!(map_native_tools(NativeToolsResponse {
-            tools: vec![NativeTool {
-                parameters: Value::String("not-schema".into()),
-                ..duplicate()
-            }],
-        })
-        .is_err());
+        assert!(
+            map_native_tools(NativeToolsResponse {
+                tools: vec![duplicate(), duplicate()],
+            })
+            .is_err()
+        );
+        assert!(
+            map_native_tools(NativeToolsResponse {
+                tools: vec![NativeTool {
+                    parameters: Value::String("not-schema".into()),
+                    ..duplicate()
+                }],
+            })
+            .is_err()
+        );
     }
 }

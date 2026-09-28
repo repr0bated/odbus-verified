@@ -25,4 +25,4 @@ pub use agent_trait::{AgentCapability, AgentCategory, UnifiedAgent};
 pub use execution::ExecutionAgent;
 pub use orchestration::OrchestrationAgent;
 pub use persona::PersonaAgent;
-pub use registry::{UnifiedAgentRegistry, GLOBAL_REGISTRY};
+pub use registry::{GLOBAL_REGISTRY, UnifiedAgentRegistry};

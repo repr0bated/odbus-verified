@@ -9,9 +9,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 use pocketflow_rs::context::Context;
 use pocketflow_rs::node::{Node, ProcessResult, ProcessState};
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
 use simd_json::ValueBuilder;
+use simd_json::prelude::*;
 use std::sync::Arc;
 
 /// Workflow states for plugin execution

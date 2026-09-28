@@ -20,7 +20,7 @@
 //! | Python | `.py` (classes / pydantic fields) | `py.` |
 
 use crate::gadget::introspect_json_paths;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use regex::Regex;
 use serde::Serialize;
 use serde_json::Value as JsonValue;
@@ -897,10 +897,12 @@ pub struct V1Config {
 "#;
         let surface = introspect_repomix(Path::new("repomix-output.xml"), xml).unwrap();
         assert_eq!(surface.file_count("rust"), 1);
-        assert!(surface
-            .element_paths
-            .iter()
-            .any(|p| p == "struct.zeroclaw_config.V1Config.default_model"));
+        assert!(
+            surface
+                .element_paths
+                .iter()
+                .any(|p| p == "struct.zeroclaw_config.V1Config.default_model")
+        );
     }
 
     #[test]
@@ -967,25 +969,35 @@ paths:
         assert_eq!(surface.file_count("graphql"), 1);
         assert_eq!(surface.file_count("openapi"), 1);
 
-        assert!(surface
-            .element_paths
-            .iter()
-            .any(|p| p == "toml.config.default.default_model"));
-        assert!(surface
-            .element_paths
-            .iter()
-            .any(|p| p.contains("sql.db.schema.table.users.email")));
-        assert!(surface
-            .element_paths
-            .iter()
-            .any(|p| p.contains("proto.api.v1.message.User.email")));
-        assert!(surface
-            .element_paths
-            .iter()
-            .any(|p| p.contains("graphql.schema.type.User.email")));
-        assert!(surface
-            .element_paths
-            .iter()
-            .any(|p| p.contains("openapi.") && p.contains("paths")));
+        assert!(
+            surface
+                .element_paths
+                .iter()
+                .any(|p| p == "toml.config.default.default_model")
+        );
+        assert!(
+            surface
+                .element_paths
+                .iter()
+                .any(|p| p.contains("sql.db.schema.table.users.email"))
+        );
+        assert!(
+            surface
+                .element_paths
+                .iter()
+                .any(|p| p.contains("proto.api.v1.message.User.email"))
+        );
+        assert!(
+            surface
+                .element_paths
+                .iter()
+                .any(|p| p.contains("graphql.schema.type.User.email"))
+        );
+        assert!(
+            surface
+                .element_paths
+                .iter()
+                .any(|p| p.contains("openapi.") && p.contains("paths"))
+        );
     }
 }

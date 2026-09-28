@@ -121,20 +121,20 @@ mod xray_methods;
 pub use grpc_client::{
     GhostbridgeCallMetadata, GrpcClientPool, RemoteEndpoint, RemoteOperationClient,
 };
-pub use grpc_server::{run_grpc_server, OperationGrpcServer, PluginSchemaProvider};
+pub use grpc_server::{OperationGrpcServer, PluginSchemaProvider, run_grpc_server};
 pub use interceptor::ghostbridge_interceptor;
 pub use mutation_engine::{ChangeSource, ChangeType, MutationEngine, StateChange};
 pub use per_plugin_reflection::{
+    MethodReflectionMeta, PerMethodReflectionConfig, PerMethodReflectionRegistry,
     generate_all_method_protos_for_plugin, generate_reflection_file_descriptor_set,
-    to_method_service_name, MethodReflectionMeta, PerMethodReflectionConfig,
-    PerMethodReflectionRegistry,
+    to_method_service_name,
 };
 pub use plugin_grpc_gen::{
-    generate_method_file_descriptor, generate_method_proto, generate_plugin_method_protos,
     MethodServiceLifecycleEvent, MethodServiceRegistry, PerMethodGrpcServices,
+    generate_method_file_descriptor, generate_method_proto, generate_plugin_method_protos,
 };
 pub use proto_gen::{ProtoGenConfig, ProtoGenerator};
-pub use server::{run_tched_router_server, serve_upgradeable_tcp, PemIdentity, ServerConfig};
+pub use server::{PemIdentity, ServerConfig, run_tched_router_server, serve_upgradeable_tcp};
 // Object blob artifacts (schema-coupled D-Bus + gRPC reflection units),
 // backed by the op-blob crate.
 pub use plugin_object_blob::{BlobMethod, DbusObjectIdentity, PluginObjectBlob};

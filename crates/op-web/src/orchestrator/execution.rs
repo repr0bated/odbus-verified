@@ -1,8 +1,8 @@
-use super::types::{OrchestratorResponse, ToolResult};
 use super::UnifiedOrchestrator;
+use super::types::{OrchestratorResponse, ToolResult};
 use anyhow::Result;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use tracing::error;
 
 impl UnifiedOrchestrator {
@@ -48,7 +48,10 @@ impl UnifiedOrchestrator {
                     name: name.to_string(),
                     success: false,
                     result: None,
-                    error: Some(format!("Tool not found: {}. Use list_tools or search_tools to find available tools.", name)),
+                    error: Some(format!(
+                        "Tool not found: {}. Use list_tools or search_tools to find available tools.",
+                        name
+                    )),
                 }
             }
         }

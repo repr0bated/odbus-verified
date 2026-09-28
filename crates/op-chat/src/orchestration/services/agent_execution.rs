@@ -9,8 +9,8 @@ use tracing::info;
 
 use crate::orchestration::grpc_pool::StreamChunk;
 use crate::orchestration::proto::op_chat_orchestration::{
-    agent_execution_server::AgentExecution, BatchExecuteRequest, CancelRequest, CancelResponse,
-    ChunkType, ExecuteChunk, ExecuteError, ExecuteRequest, ExecuteResponse,
+    BatchExecuteRequest, CancelRequest, CancelResponse, ChunkType, ExecuteChunk, ExecuteError,
+    ExecuteRequest, ExecuteResponse, agent_execution_server::AgentExecution,
 };
 
 use super::OrchestrationServer;

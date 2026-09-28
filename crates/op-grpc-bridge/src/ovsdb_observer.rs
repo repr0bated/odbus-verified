@@ -7,10 +7,10 @@ use crate::{
     mutation_engine::MutationEngine,
     sealed_schema_reader::{blob_catalog_dir_from_env, read_manifest_pinned_schema_document},
 };
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_network::rovs_proxy::{
-    monitor::{MonitorObservation, OvsdbSnapshot},
     OvsdbDbusClient,
+    monitor::{MonitorObservation, OvsdbSnapshot},
 };
 use std::{path::Path, sync::Arc};
 
@@ -163,10 +163,12 @@ mod tests {
             .unwrap();
         assert_eq!(read()["bridges"], serde_json::json!([]));
         let before = read();
-        assert!(engine
-            .process_observed_property(PLUGIN, "bridges", bridges, "stale".into())
-            .await
-            .is_err());
+        assert!(
+            engine
+                .process_observed_property(PLUGIN, "bridges", bridges, "stale".into())
+                .await
+                .is_err()
+        );
         assert_eq!(read(), before);
     }
 

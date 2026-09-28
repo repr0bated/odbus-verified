@@ -6,16 +6,16 @@ use super::*;
 use crate::human_principal_dispatch::tests::{
     pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
 };
-use crate::identity_sled_dispatch::{tests::write_identity, IdentitySledStore};
+use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use axum::{
+    Json, Router,
     body::to_bytes,
     extract::{Request, State},
-    http::{header::AUTHORIZATION, Method, StatusCode},
+    http::{Method, StatusCode, header::AUTHORIZATION},
     response::IntoResponse,
     routing::any,
-    Json, Router,
 };
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use op_network::wireguard_kernel::{KernelDeviceConfig, KernelDeviceSnapshot, KernelPeerSnapshot};
@@ -36,7 +36,7 @@ use op_plugins::state_plugins::{
 use op_state::StatePlugin;
 use rcgen::{BasicConstraints, CertificateParams, IsCa, KeyPair};
 use rustls::pki_types::PrivateKeyDer;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -44,8 +44,8 @@ use std::{
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 use tokio::sync::Mutex;
@@ -263,7 +263,7 @@ async fn cloudflare_gateway(
             return (
                 StatusCode::BAD_REQUEST,
                 Json(json!({"error":"invalid body"})),
-            )
+            );
         }
     };
     let body: Value = if bytes.is_empty() {
@@ -275,7 +275,7 @@ async fn cloudflare_gateway(
                 return (
                     StatusCode::BAD_REQUEST,
                     Json(json!({"error":"invalid json"})),
-                )
+                );
             }
         }
     };
@@ -331,7 +331,7 @@ async fn cloudflare_gateway(
             return (
                 StatusCode::UNAUTHORIZED,
                 Json(json!({"error":"unadmitted fixture request"})),
-            )
+            );
         }
     };
     (StatusCode::OK, Json(response))
@@ -679,10 +679,12 @@ async fn all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_sib
             }
             "remove_peer" => {
                 assert_eq!(response["result"]["changed"], true);
-                assert!(response["result"]["interface"]["peers"]
-                    .as_array()
-                    .unwrap()
-                    .is_empty());
+                assert!(
+                    response["result"]["interface"]["peers"]
+                        .as_array()
+                        .unwrap()
+                        .is_empty()
+                );
             }
             _ => unreachable!("fixture contains all wireguard methods"),
         }
@@ -835,11 +837,13 @@ async fn all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_sib
         .await;
         calls += 1;
         if method == "apply_config" {
-            assert!(response["result"]["kernel"]["interfaces"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|interface| interface["name"] == WGCF_INTERFACE));
+            assert!(
+                response["result"]["kernel"]["interfaces"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|interface| interface["name"] == WGCF_INTERFACE)
+            );
             assert_eq!(response["result"]["profile"]["profile_id"], profile_id);
         } else {
             assert_eq!(
@@ -853,11 +857,13 @@ async fn all_sixteen_methods_cross_canonical_pinned_mtls_and_commit_complete_sib
         let facade_state = read_and_validate_state(&wg_opdbus_schema);
         assert_eq!(facade_state["interfaces"].as_object().unwrap().len(), 2);
         assert!(facade_state["interfaces"][WGCF_INTERFACE]["interface"].is_object());
-        assert!(wire_state["interfaces"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|interface| interface["name"] == WGCF_INTERFACE));
+        assert!(
+            wire_state["interfaces"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|interface| interface["name"] == WGCF_INTERFACE)
+        );
         let public = format!("{response}{wgcf_state}{wire_state}{facade_state}");
         for secret in &secrets {
             assert!(!public.contains(secret));

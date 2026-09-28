@@ -10,7 +10,7 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 /// `BTRFS_PATH_NAME_MAX` from `linux/btrfs.h`.
 const BTRFS_PATH_NAME_MAX: usize = 4087;
@@ -160,7 +160,7 @@ fn member_kernel_path(device: &Path, mount_point: &Path) -> Result<Option<String
         Ok(dir) => dir,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => {
-            return Err(error).context("open btrfs mount while looking up an identity device")
+            return Err(error).context("open btrfs mount while looking up an identity device");
         }
     };
     let backing = File::open(device).context("open registered identity btrfs backing")?;

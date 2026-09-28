@@ -32,8 +32,8 @@
 
 use op_state_store::{Constraint, FieldSchema, FieldType, PluginSchema};
 use serde_json::{Map, Value as JVal};
-use simd_json::prelude::*;
 use simd_json::OwnedValue;
+use simd_json::prelude::*;
 use std::collections::{HashMap, HashSet};
 
 /// Build a `PluginSchema` from the JSON of a schemars-derived schema.
@@ -836,18 +836,22 @@ mod explicit_exact_record_tests {
         };
         let retained = serde_json::to_value(record.as_ref()).unwrap();
         assert_eq!(retained["properties"]["revision"]["format"], "uint64");
-        assert!(retained["properties"]["label"]["type"]
-            .as_array()
-            .unwrap()
-            .contains(&serde_json::json!("null")));
+        assert!(
+            retained["properties"]["label"]["type"]
+                .as_array()
+                .unwrap()
+                .contains(&serde_json::json!("null"))
+        );
         let valid = simd_json::json!({"jobs":{"stable":{"revision":u64::MAX,"label":null}}});
         assert!(schema.validate(&valid).valid);
         schema.validate_exact_schema_fields(&valid).unwrap();
-        assert!(schema
-            .validate_exact_schema_fields(
-                &simd_json::json!({"jobs":{"stable":{"revision":-1,"label":null}}})
-            )
-            .is_err());
+        assert!(
+            schema
+                .validate_exact_schema_fields(
+                    &simd_json::json!({"jobs":{"stable":{"revision":-1,"label":null}}})
+                )
+                .is_err()
+        );
         assert!(schema.public_state.is_empty());
     }
 }

@@ -1,3 +1,0 @@
-# Formatting stays on the 2021 style for the edition-bump commit; the
-# follow-up commit removes this file and reformats in the 2024 style.
-style_edition = "2021"

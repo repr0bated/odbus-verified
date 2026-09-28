@@ -1,16 +1,16 @@
 //! Emit a full contract-shaped plugin document from a plugin `.rs` source,
 //! optionally including introspect gap findings.
 
-use crate::audit::{audit_source_with_coverage, CoverageInputs};
+use crate::audit::{CoverageInputs, audit_source_with_coverage};
 use crate::gadget::declared_field_paths_multi;
-use crate::gaps::{gaps_from_surface_json_for_plugin, IntrospectGaps};
+use crate::gaps::{IntrospectGaps, gaps_from_surface_json_for_plugin};
 use crate::report::Report;
 use anyhow::{Context, Result};
 use regex::Regex;
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
-use syn::{parse_file, Attribute, Fields, Item, Lit, Meta, Type};
+use syn::{Attribute, Fields, Item, Lit, Meta, Type, parse_file};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct CompletePluginDocument {

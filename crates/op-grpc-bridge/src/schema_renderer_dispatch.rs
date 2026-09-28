@@ -5,7 +5,7 @@ use op_plugins::state_plugins::{
     json_render::canvas_profile::PinnedCanvasValidator,
     schema_renderer::TargetPluginInput,
     schema_renderer_methods::{
-        complete_gallery_method, plan_gallery_method, SchemaRendererMethods,
+        SchemaRendererMethods, complete_gallery_method, plan_gallery_method,
     },
 };
 

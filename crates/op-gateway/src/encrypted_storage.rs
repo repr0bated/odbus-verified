@@ -558,7 +558,9 @@ impl EncryptedKeyStorage {
 
     /// Get filesystem information
     async fn get_filesystem_info(&self) -> anyhow::Result<FilesystemInfo> {
-        anyhow::bail!("Storage capacity is unavailable through this legacy gateway; request filesystem_usage from the sealed btrfs plugin through the canonical door")
+        anyhow::bail!(
+            "Storage capacity is unavailable through this legacy gateway; request filesystem_usage from the sealed btrfs plugin through the canonical door"
+        )
     }
 }
 
@@ -661,9 +663,11 @@ mod tests {
             ..EncryptedStorageConfig::default()
         };
         let error = EncryptedKeyStorage::new(config).await.err().unwrap();
-        assert!(error
-            .to_string()
-            .contains("Cannot verify native encryption"));
+        assert!(
+            error
+                .to_string()
+                .contains("Cannot verify native encryption")
+        );
         assert!(!storage.join("master.key").exists());
         std::fs::remove_dir_all(base).unwrap();
     }

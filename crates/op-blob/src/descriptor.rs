@@ -719,7 +719,7 @@ impl<'a> Reader<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter::{method_decl_from_schemars_with_output, AckOutput};
+    use crate::adapter::{AckOutput, method_decl_from_schemars_with_output};
     use crate::schema::SideEffect;
     use serde::{Deserialize, Serialize};
 

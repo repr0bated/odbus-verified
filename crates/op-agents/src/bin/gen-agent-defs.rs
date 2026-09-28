@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use op_agents::{builtin_agent_descriptors, AgentDescriptor};
+use op_agents::{AgentDescriptor, builtin_agent_descriptors};
 
 const OUT_DIR: &str = ".agents/generated";
 const DEFAULT_MODEL: &str = "sonnet";

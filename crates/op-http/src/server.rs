@@ -2,7 +2,7 @@
 //!
 //! Single server that handles all HTTP/HTTPS traffic for op-dbus.
 
-use crate::middleware::{apply_middleware, MiddlewareConfig};
+use crate::middleware::{MiddlewareConfig, apply_middleware};
 use crate::tls::TlsConfig;
 use crate::{Result, ServerError};
 use axum::Router;

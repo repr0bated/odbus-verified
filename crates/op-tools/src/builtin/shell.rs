@@ -20,13 +20,13 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::process::Stdio;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tracing::{debug, error, info, warn};
 
-use crate::security::{get_security_validator, AccessLevel};
+use crate::security::{AccessLevel, get_security_validator};
 use crate::{Tool, ToolRegistry};
 
 // ============================================================================
@@ -519,15 +519,17 @@ mod tests {
 
         assert!(result.is_ok());
         let val = result.unwrap();
-        assert!(val
-            .get("success")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false));
-        assert!(val
-            .get("stdout")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .contains("hello world"));
+        assert!(
+            val.get("success")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+        );
+        assert!(
+            val.get("stdout")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .contains("hello world")
+        );
     }
 
     #[tokio::test]

@@ -5,7 +5,7 @@
 //! membership. This reader never enumerates the projection directory and never
 //! opens a mutable blob store.
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use simd_json::OwnedValue as Value;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};

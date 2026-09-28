@@ -3,8 +3,8 @@
 //! Original admission is retained until each guarded effect commits.
 
 use anyhow::{Context, Result};
-use op_plugins::state_plugins::mcp::methods::{complete_method, plan_method};
 use op_plugins::state_plugins::mcp::ConfigureToolGroupsInput;
+use op_plugins::state_plugins::mcp::methods::{complete_method, plan_method};
 use op_state_store::PluginSchema;
 use serde_json::Value;
 

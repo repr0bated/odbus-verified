@@ -13,8 +13,8 @@ use op_plugins::state_plugins::{
 use op_plugins::{DefaultPluginRegistry, PluginSchema};
 use op_state_store::MemoryStore;
 use serde::Serialize;
-use simd_json::prelude::*;
 use simd_json::OwnedValue;
+use simd_json::prelude::*;
 
 fn owned<T: Serialize>(value: &T) -> OwnedValue {
     simd_json::serde::to_owned_value(value).expect("typed state serializes")
@@ -94,10 +94,12 @@ async fn typed_seed_and_default_states_project_for_each_annotated_plugin() {
     // The stateless renderer has no observed state to publish.
     let renderer = &schemas["schema_renderer"];
     assert!(renderer.fields.is_empty());
-    assert!(renderer
-        .project_public_state(&owned(&SchemaRendererState::default()))
-        .unwrap()
-        .is_none());
+    assert!(
+        renderer
+            .project_public_state(&owned(&SchemaRendererState::default()))
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[tokio::test]

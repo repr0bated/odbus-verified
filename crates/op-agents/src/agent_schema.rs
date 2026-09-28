@@ -5,7 +5,7 @@
 
 use crate::unified::AgentCategory;
 use serde::{Deserialize, Serialize};
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 
 /// JSON Schema for a single agent operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]

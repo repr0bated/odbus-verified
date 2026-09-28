@@ -3,13 +3,13 @@ use super::*;
 use crate::human_principal_dispatch::tests::{
     pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
 };
-use crate::identity_sled_dispatch::{tests::write_identity, IdentitySledStore};
+use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
 use op_plugins::state_plugins::{
     human_principal::HumanPrincipalPlugin, identity_sled::IdentitySledPlugin,
     proxy_server::ProxyServerPlugin, runtime_documents::RuntimeDocuments,
 };
 use op_state::StatePlugin;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -46,10 +46,12 @@ async fn three_proxy_methods_require_identity_and_publish_actual_committed_state
     let documents = Arc::new(RuntimeDocuments::new(
         op_cozo_store::CozoGraphShuttle::new_in_memory().unwrap(),
     ));
-    assert!(engine
-        .proxy_methods
-        .set(Arc::new(crate::proxy_methods::ProxyMethods::new(documents)))
-        .is_ok());
+    assert!(
+        engine
+            .proxy_methods
+            .set(Arc::new(crate::proxy_methods::ProxyMethods::new(documents)))
+            .is_ok()
+    );
     let public_key = pk(0xD4);
     register(&public_key, "proxy-fixture").await.unwrap();
     let identity = write_identity(&engine, &public_key).await.unwrap();
@@ -83,18 +85,20 @@ async fn three_proxy_methods_require_identity_and_publish_actual_committed_state
     drop(available);
     let configure = json!({"name":"fixture","enabled":true,"port":port,"upstream":upstream_address.to_string(),"expected_revision":0});
     let capability = schema.methods["configure"].required_capability.as_deref();
-    assert!(engine
-        .dispatch_method_call_with_identity(
-            "proxy_server",
-            "configure",
-            &configure.to_string(),
-            capability,
-            &principal,
-            None,
-            None
-        )
-        .await
-        .is_err());
+    assert!(
+        engine
+            .dispatch_method_call_with_identity(
+                "proxy_server",
+                "configure",
+                &configure.to_string(),
+                capability,
+                &principal,
+                None,
+                None
+            )
+            .await
+            .is_err()
+    );
     assert!(op_core::projection_shm::read_projection_bytes("proxy_server").is_none());
     for (method, arguments, revision, running) in [
         ("configure", configure, 1, false),
@@ -150,9 +154,11 @@ async fn three_proxy_methods_require_identity_and_publish_actual_committed_state
             .unwrap();
             assert_eq!(&response, b"pong");
         } else {
-            assert!(TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
-                .await
-                .is_err());
+            assert!(
+                TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
+                    .await
+                    .is_err()
+            );
         }
     }
     responder.await.unwrap();

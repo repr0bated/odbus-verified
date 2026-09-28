@@ -11,7 +11,7 @@
 //!
 //! Legacy paths are deprecated and will be rejected.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use op_state_store::StateStore;
 use simd_json::prelude::*;
 use std::sync::Arc;

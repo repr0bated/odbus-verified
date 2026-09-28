@@ -681,9 +681,11 @@ mod tests {
     #[test]
     fn ttl_hard_cap_boundary() {
         let issuer = test_issuer(); // max_lifetime = 900 s
-        assert!(issuer
-            .issue(SAMPLE_PUBKEY, test_ip(), Duration::from_secs(900))
-            .is_ok());
+        assert!(
+            issuer
+                .issue(SAMPLE_PUBKEY, test_ip(), Duration::from_secs(900))
+                .is_ok()
+        );
         assert_eq!(
             issuer
                 .issue(SAMPLE_PUBKEY, test_ip(), Duration::from_secs(901))
@@ -703,9 +705,11 @@ mod tests {
     #[test]
     fn ttl_above_max_lifetime_rejected() {
         let tight = DecoyIssuer::new(test_signing_key(), "decoy-key-1", Duration::from_secs(60));
-        assert!(tight
-            .issue(SAMPLE_PUBKEY, test_ip(), Duration::from_secs(60))
-            .is_ok());
+        assert!(
+            tight
+                .issue(SAMPLE_PUBKEY, test_ip(), Duration::from_secs(60))
+                .is_ok()
+        );
         assert_eq!(
             tight
                 .issue(SAMPLE_PUBKEY, test_ip(), Duration::from_secs(61))
@@ -715,9 +719,11 @@ mod tests {
 
         // Configured above the hard cap: issuance above 900 s is still rejected.
         let loose = DecoyIssuer::new(test_signing_key(), "decoy-key-1", Duration::from_secs(3600));
-        assert!(loose
-            .issue(SAMPLE_PUBKEY, test_ip(), Duration::from_secs(900))
-            .is_ok());
+        assert!(
+            loose
+                .issue(SAMPLE_PUBKEY, test_ip(), Duration::from_secs(900))
+                .is_ok()
+        );
         assert_eq!(
             loose
                 .issue(SAMPLE_PUBKEY, test_ip(), Duration::from_secs(901))

@@ -1,4 +1,4 @@
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_state_store::{FieldType, PluginSchema};
 use qdrant_client::qdrant::{
     Condition, Filter, PointStruct, QueryPointsBuilder, RetrievedPoint, ScoredPoint,

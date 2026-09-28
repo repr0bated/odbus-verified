@@ -3,13 +3,13 @@
 //! This module exports a router that can be mounted by op-http.
 
 use axum::{
+    Json, Router,
     extract::State,
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
-    Json, Router,
 };
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 
 use crate::registry::ToolRegistry;

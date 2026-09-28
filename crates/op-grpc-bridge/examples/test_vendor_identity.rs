@@ -3,8 +3,8 @@
 //! to confirm a provisioned vendor/partner identity (e.g. Lovable) is actually
 //! accepted — and that a wrong or expired one is actually rejected.
 use op_grpc_bridge::proto::plugin_service_client::PluginServiceClient;
-use tonic::metadata::MetadataValue;
 use tonic::Request;
+use tonic::metadata::MetadataValue;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

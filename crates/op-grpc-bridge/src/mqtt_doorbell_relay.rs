@@ -8,17 +8,17 @@ use std::{io::BufReader, net::Ipv4Addr, sync::Arc, time::Duration};
 
 use axum::{
     extract::{
-        ws::{Message as BrowserMessage, WebSocket, WebSocketUpgrade},
         Extension,
+        ws::{Message as BrowserMessage, WebSocket, WebSocketUpgrade},
     },
-    http::{header, HeaderMap, StatusCode},
+    http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
 };
 use futures::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio::sync::OnceCell;
-use tokio_rustls::{rustls, TlsConnector};
-use tokio_tungstenite::{tungstenite, tungstenite::protocol::WebSocketConfig, WebSocketStream};
+use tokio_rustls::{TlsConnector, rustls};
+use tokio_tungstenite::{WebSocketStream, tungstenite, tungstenite::protocol::WebSocketConfig};
 
 pub(crate) const PUBLIC_LISTENER: &str = "wss://dashboard.ghostbridge.tech:8090/mqtt";
 const BROKER_HOST: &str = op_plugins::state_plugins::emqx::FABRIC_SVC0_IP;
@@ -82,8 +82,8 @@ where
         .into_response()
 }
 
-async fn connect_broker(
-) -> anyhow::Result<WebSocketStream<tokio_rustls::client::TlsStream<TcpStream>>> {
+async fn connect_broker()
+-> anyhow::Result<WebSocketStream<tokio_rustls::client::TlsStream<TcpStream>>> {
     let config = BROKER_TLS
         .get_or_try_init(|| async {
             let ca = tokio::fs::read(BROKER_CA).await?;
@@ -211,7 +211,7 @@ use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{routing::get, Router};
+    use axum::{Router, routing::get};
     use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 
     #[test]

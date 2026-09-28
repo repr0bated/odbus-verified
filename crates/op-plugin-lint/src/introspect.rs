@@ -7,12 +7,12 @@
 
 use crate::audit::CoverageInputs;
 use crate::binary::{
-    introspect_binary, resolve_binary_target, surface_as_instance_json, surface_to_json,
-    BinaryIntrospectOpts,
+    BinaryIntrospectOpts, introspect_binary, resolve_binary_target, surface_as_instance_json,
+    surface_to_json,
 };
 use crate::repomix::{introspect_repomix, looks_like_repomix, surface_to_coverage_json};
-use anyhow::{bail, Context, Result};
-use serde_json::{json, Value};
+use anyhow::{Context, Result, bail};
+use serde_json::{Value, json};
 use std::path::Path;
 use std::process::Command;
 

@@ -18,10 +18,10 @@ use std::path::Path;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use zbus::connection::AuthMechanism;
 
-use crate::dbus_identity::{authoritative_session_identity, DbusIdentityError};
+use crate::dbus_identity::{DbusIdentityError, authoritative_session_identity};
 use crate::interceptor::GhostbridgeIdentity;
 use crate::mutation_engine::MutationEngine;
 use crate::schema_router::SchemaRouter;

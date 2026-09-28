@@ -6,7 +6,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 
 use crate::node::{NodePort, NodeResult, NodeState, WorkflowNode};
@@ -84,10 +84,14 @@ impl WorkflowNode for PluginNode {
                         .with_description("The current system state"),
                 ]
             }
-            PluginOperation::Diff => vec![NodePort::required("diff", "State Diff", "object")
-                .with_description("Difference between current and desired state")],
-            PluginOperation::Apply => vec![NodePort::required("result", "Apply Result", "object")
-                .with_description("Result of applying the state")],
+            PluginOperation::Diff => vec![
+                NodePort::required("diff", "State Diff", "object")
+                    .with_description("Difference between current and desired state"),
+            ],
+            PluginOperation::Apply => vec![
+                NodePort::required("result", "Apply Result", "object")
+                    .with_description("Result of applying the state"),
+            ],
         }
     }
 

@@ -2,7 +2,7 @@
 //! annotations cannot create plugin membership or replace a method contract.
 use std::{path::PathBuf, sync::Arc};
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::oscal_subid_registry_methods::{
     CatalogPinVerifier, OscalInvocationContext, OscalSubidRegistryMethods, SealedCatalogSnapshot,
     SealedSchemaDocument,

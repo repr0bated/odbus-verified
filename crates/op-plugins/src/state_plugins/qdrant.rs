@@ -1071,7 +1071,11 @@ mod tests {
                 serde_json::json!({"result": true, "status": "ok"})
             };
             let encoded = body.to_string();
-            let response = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", encoded.len(), encoded);
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                encoded.len(),
+                encoded
+            );
             stream.write_all(response.as_bytes()).await?;
             anyhow::Ok(())
         });

@@ -8,8 +8,8 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc, Mutex as StdMutex, Weak,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -29,7 +29,7 @@ use op_plugins::state_plugins::{
 use op_state_store::PluginSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{Mutex, broadcast};
 
 use crate::{
     interceptor::load_capability_grants,
@@ -37,9 +37,9 @@ use crate::{
     mutation_engine::MutationEngine,
     project_dispatch,
     sealed_schema_reader::{
-        read_manifest_pinned_catalog, ManifestPinnedCatalog, ManifestPinnedSchemaDocument,
+        ManifestPinnedCatalog, ManifestPinnedSchemaDocument, read_manifest_pinned_catalog,
     },
-    tched_router_admission::{readmit_call, FacadeOrigin, RouterCaller},
+    tched_router_admission::{FacadeOrigin, RouterCaller, readmit_call},
 };
 
 const PLUGIN: &str = "gemma_brain";

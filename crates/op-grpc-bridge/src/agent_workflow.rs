@@ -5,9 +5,9 @@
 //! schema-backed cognitive method call carrying the original verified
 //! identity.  This prevents a workflow from becoming an unaudited side door.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::mutation_engine::MutationEngine;
 use crate::specialist::CognitiveCaller;
@@ -363,11 +363,11 @@ mod tests {
             "operation": "run_workflow",
             "arguments": {"steps": []}
         })];
-        let error = validate("code-review-orchestrator", Some(&steps)).unwrap()["errors"][0]
-            ["message"]
-            .as_str()
-            .unwrap()
-            .to_string();
+        let error =
+            validate("code-review-orchestrator", Some(&steps)).unwrap()["errors"][0]["message"]
+                .as_str()
+                .unwrap()
+                .to_string();
         assert!(error.contains("nested orchestration"), "{error}");
     }
 
@@ -378,11 +378,11 @@ mod tests {
             "operation": "exec",
             "arguments": {"command": "true", "cwd": ".", "timeout": 1}
         })];
-        let error = validate("code-review-orchestrator", Some(&steps)).unwrap()["errors"][0]
-            ["message"]
-            .as_str()
-            .unwrap()
-            .to_string();
+        let error =
+            validate("code-review-orchestrator", Some(&steps)).unwrap()["errors"][0]["message"]
+                .as_str()
+                .unwrap()
+                .to_string();
         assert!(error.contains("does not allow"), "{error}");
     }
 
@@ -405,11 +405,11 @@ mod tests {
             "operation": "run",
             "arguments": {}
         })];
-        let error = validate("code-review-orchestrator", Some(&steps)).unwrap()["errors"][0]
-            ["message"]
-            .as_str()
-            .unwrap()
-            .to_string();
+        let error =
+            validate("code-review-orchestrator", Some(&steps)).unwrap()["errors"][0]["message"]
+                .as_str()
+                .unwrap()
+                .to_string();
         assert!(error.contains("violate schema"), "{error}");
     }
 }

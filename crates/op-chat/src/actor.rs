@@ -12,13 +12,13 @@ use op_execution_tracker::ExecutionTracker;
 use op_llm::provider::{ChatMessage as LlmChatMessage, LlmProvider};
 use op_tools::ToolRegistry;
 use serde::{Deserialize, Serialize};
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error, info, warn};
 
 use crate::forced_tool_pipeline::ForcedToolPipeline;
-use crate::memory_loop::{MemoryLoop, CHATBOT_SOUL_ID};
+use crate::memory_loop::{CHATBOT_SOUL_ID, MemoryLoop};
 use crate::session::SessionManager;
 use crate::system_prompt::generate_system_prompt;
 use crate::tool_executor::TrackedToolExecutor;
@@ -539,7 +539,9 @@ impl ChatActor {
         _session_id: Option<String>,
     ) -> RpcResponse {
         // A chat session string is not a verified identity or an operation grant.
-        RpcResponse::error("Legacy actor ExecuteTool lacks canonical admission; use PluginService/CallMethod with a verified SID1/OIA1 and declared capability")
+        RpcResponse::error(
+            "Legacy actor ExecuteTool lacks canonical admission; use PluginService/CallMethod with a verified SID1/OIA1 and declared capability",
+        )
     }
 
     async fn handle_get_tool(&self, name: &str) -> RpcResponse {

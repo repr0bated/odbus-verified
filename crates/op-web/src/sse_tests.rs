@@ -153,9 +153,11 @@ async fn lag_rehydrates_from_current_shm_and_exposes_unreplayed_audit_gap() {
             .count(),
         2
     );
-    assert!(frames
-        .iter()
-        .any(|(kind, value)| kind == "stream_gap" && value["state"] == "rehydrating"));
+    assert!(
+        frames
+            .iter()
+            .any(|(kind, value)| kind == "stream_gap" && value["state"] == "rehydrating")
+    );
     let latest = frames
         .iter()
         .rfind(|(kind, _)| kind == "state_update")
@@ -223,9 +225,11 @@ async fn removed_public_policy_clears_prior_values_but_retains_sealed_contract()
     assert_eq!(current[2].1["removed"], true);
     assert_eq!(current[2].1["state_generation"], "1");
     assert_eq!(current[3].0, "state_ready");
-    assert!(!current
-        .iter()
-        .any(|(_, value)| value.to_string().contains("formerly-visible")));
+    assert!(
+        !current
+            .iter()
+            .any(|(_, value)| value.to_string().contains("formerly-visible"))
+    );
 }
 
 #[tokio::test]
@@ -313,7 +317,9 @@ async fn shared_sse_cannot_forward_privileged_audit_metadata() {
     drop(sender);
     let frames = collected(state_event_stream(receiver, fixture.refresh())).await;
     assert!(!frames.iter().any(|(kind, _)| kind == "audit_event"));
-    assert!(frames
-        .iter()
-        .any(|(kind, value)| kind == "state_update" && value["new_value"]["value"] == "public"));
+    assert!(
+        frames
+            .iter()
+            .any(|(kind, value)| kind == "state_update" && value["new_value"]["value"] == "public")
+    );
 }

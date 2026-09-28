@@ -2,7 +2,7 @@
 //! This report is never a runtime schema, registry, or plugin existence source.
 //! `inventory <catalog>` emits the full denominator. `check <catalog> <claims>`
 //! rejects missing methods, duplicate claims, stale contracts and unexecuted tests.
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use op_blob::BlobRef;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

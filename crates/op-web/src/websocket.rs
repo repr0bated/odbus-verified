@@ -5,8 +5,8 @@
 
 use axum::{
     extract::{
-        ws::{Message, WebSocket},
         Extension, WebSocketUpgrade,
+        ws::{Message, WebSocket},
     },
     response::Response,
 };

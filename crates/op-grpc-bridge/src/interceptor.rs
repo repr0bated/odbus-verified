@@ -459,7 +459,7 @@ fn verify_per_identity(
         Err(error) => {
             return Some(Err(Status::unavailable(format!(
                 "identity credential projection unavailable: {error}"
-            ))))
+            ))));
         }
     };
     // Session genesis is the authoritative arrival proof. Legacy hashed
@@ -609,17 +609,17 @@ pub fn registration_interceptor(req: Request<()>) -> Result<Request<()>, Status>
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::human_principal_dispatch::tests::{pk, register, temp_cozo, TempShm};
+    use crate::human_principal_dispatch::tests::{TempShm, pk, register, temp_cozo};
     use crate::identity_sled_dispatch::tests::{sled_engine, write_identity};
+    use crate::oracle_assertion::AssertionValidator;
     use crate::oracle_assertion::tests::{
         signed_with_fields, source_at, test_ip, test_issuer, trust_store_for_issuer,
     };
-    use crate::oracle_assertion::AssertionValidator;
     use base64::Engine as _;
     use op_identity::session::derive_principal_id;
+    use tonic::Code;
     use tonic::metadata::MetadataValue;
     use tonic::service::Interceptor;
-    use tonic::Code;
 
     fn install_grants(document: serde_json::Value) -> tempfile::TempDir {
         let dir = tempfile::tempdir().expect("grants tempdir");
@@ -690,9 +690,11 @@ pub(crate) mod tests {
         assert!(result.is_err());
         let status = result.unwrap_err();
         assert_eq!(status.code(), tonic::Code::Unauthenticated);
-        assert!(status
-            .message()
-            .contains("Missing Ghostbridge session identity"));
+        assert!(
+            status
+                .message()
+                .contains("Missing Ghostbridge session identity")
+        );
     }
 
     #[test]
@@ -779,9 +781,11 @@ pub(crate) mod tests {
         assert!(result.is_err());
         let status = result.unwrap_err();
         assert_eq!(status.code(), tonic::Code::Internal);
-        assert!(status
-            .message()
-            .contains("MutationEngine Memory Unreachable"));
+        assert!(
+            status
+                .message()
+                .contains("MutationEngine Memory Unreachable")
+        );
     }
 
     /// VAL-BRIDGE-021
@@ -1016,14 +1020,16 @@ pub(crate) mod tests {
             ex
         })
         .expect("identity");
-        assert!(crate::grpc_server::enforce_bridge_capability_with_schema(
-            Some(&schema),
-            "human_principal",
-            "resolve_key",
-            Some("human_principal.read"),
-            Some(&identity),
-        )
-        .is_ok());
+        assert!(
+            crate::grpc_server::enforce_bridge_capability_with_schema(
+                Some(&schema),
+                "human_principal",
+                "resolve_key",
+                Some("human_principal.read"),
+                Some(&identity),
+            )
+            .is_ok()
+        );
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
@@ -1049,41 +1055,49 @@ pub(crate) mod tests {
             session_id: "human".to_string(),
             session_genesis: "33".repeat(32),
         };
-        assert!(crate::grpc_server::enforce_bridge_capability_with_schema(
-            Some(&schema),
-            "human_principal",
-            "resolve_key",
-            Some("human_principal.read"),
-            Some(&identity),
-        )
-        .is_err());
-        assert!(crate::grpc_server::enforce_bridge_capability_with_schema(
-            None,
-            "human_principal",
-            "resolve_key",
-            Some("human_principal.read"),
-            Some(&identity),
-        )
-        .is_err());
-        assert!(crate::grpc_server::enforce_bridge_capability_with_schema(
-            Some(&schema),
-            "human_principal",
-            "missing_method",
-            Some("human_principal.read"),
-            Some(&identity),
-        )
-        .is_err());
+        assert!(
+            crate::grpc_server::enforce_bridge_capability_with_schema(
+                Some(&schema),
+                "human_principal",
+                "resolve_key",
+                Some("human_principal.read"),
+                Some(&identity),
+            )
+            .is_err()
+        );
+        assert!(
+            crate::grpc_server::enforce_bridge_capability_with_schema(
+                None,
+                "human_principal",
+                "resolve_key",
+                Some("human_principal.read"),
+                Some(&identity),
+            )
+            .is_err()
+        );
+        assert!(
+            crate::grpc_server::enforce_bridge_capability_with_schema(
+                Some(&schema),
+                "human_principal",
+                "missing_method",
+                Some("human_principal.read"),
+                Some(&identity),
+            )
+            .is_err()
+        );
         let missing_metadata = serde_json::json!({
             "methods": { "resolve_key": { "required_capability": null } }
         });
-        assert!(crate::grpc_server::enforce_bridge_capability_with_schema(
-            Some(&missing_metadata),
-            "human_principal",
-            "resolve_key",
-            Some("human_principal.read"),
-            Some(&identity),
-        )
-        .is_err());
+        assert!(
+            crate::grpc_server::enforce_bridge_capability_with_schema(
+                Some(&missing_metadata),
+                "human_principal",
+                "resolve_key",
+                Some("human_principal.read"),
+                Some(&identity),
+            )
+            .is_err()
+        );
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }
@@ -1119,14 +1133,16 @@ pub(crate) mod tests {
         });
         let identity = bridge_capability_identity(&ex).expect("human wins");
         assert_eq!(identity.principal_id, human_principal);
-        assert!(crate::grpc_server::enforce_bridge_capability_with_schema(
-            Some(&schema),
-            "human_principal",
-            "resolve_key",
-            Some("human_principal.read"),
-            Some(&identity),
-        )
-        .is_ok());
+        assert!(
+            crate::grpc_server::enforce_bridge_capability_with_schema(
+                Some(&schema),
+                "human_principal",
+                "resolve_key",
+                Some("human_principal.read"),
+                Some(&identity),
+            )
+            .is_ok()
+        );
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::remove_var("OP_GRANTS_PATH") };
     }

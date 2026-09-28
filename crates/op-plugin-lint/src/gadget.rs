@@ -120,7 +120,7 @@ pub fn declared_field_paths(source: &str) -> Result<BTreeSet<String>> {
 /// crates/modules (e.g. `common/llm_projection.rs` for `#[serde(flatten)]`).
 pub fn declared_field_paths_multi(sources: &[&str]) -> Result<BTreeSet<String>> {
     use std::collections::HashMap;
-    use syn::{parse_file, Fields, Item};
+    use syn::{Fields, Item, parse_file};
 
     // (field_name, type_name, flattened?)
     let mut structs: HashMap<String, Vec<(String, String, bool)>> = HashMap::new();

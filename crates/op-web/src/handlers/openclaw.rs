@@ -7,7 +7,7 @@ use axum::{extract::Extension, response::Json};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, error};

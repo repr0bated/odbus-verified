@@ -11,11 +11,11 @@ use tracing::{debug, info, warn};
 
 use crate::orchestration::proto::op_chat_orchestration::WorkstackInfo as ProtoWorkstackInfo;
 use crate::orchestration::proto::op_chat_orchestration::{
-    workstack_service_server::WorkstackService, ListWorkstacksRequest, ListWorkstacksResponse,
-    WorkstackCancelRequest, WorkstackCancelResponse, WorkstackEvent as ProtoWorkstackEvent,
-    WorkstackEventType, WorkstackExecuteRequest, WorkstackExecutionStatus, WorkstackProgress,
-    WorkstackRollbackRequest, WorkstackRollbackResponse, WorkstackStatusRequest,
-    WorkstackStatusResponse,
+    ListWorkstacksRequest, ListWorkstacksResponse, WorkstackCancelRequest, WorkstackCancelResponse,
+    WorkstackEvent as ProtoWorkstackEvent, WorkstackEventType, WorkstackExecuteRequest,
+    WorkstackExecutionStatus, WorkstackProgress, WorkstackRollbackRequest,
+    WorkstackRollbackResponse, WorkstackStatusRequest, WorkstackStatusResponse,
+    workstack_service_server::WorkstackService,
 };
 use crate::orchestration::workstack_executor::{ExecutionStatus, WorkstackEvent as InternalEvent};
 

@@ -2,13 +2,13 @@
 //! numbers and message layouts differ; the plugin's output contract owns value
 //! semantics. Fixtures never read or reseal a live catalog.
 use op_plugins::state_plugins::tched_router::{
-    tched_router_plugin_schema, ConfigPropertyKind, ConfigPropertyOutput,
+    ConfigPropertyKind, ConfigPropertyOutput, tched_router_plugin_schema,
 };
 use op_state_store::PluginSchema;
 use prost::Message;
 use prost_reflect::{DescriptorPool, DynamicMessage, Kind, MessageDescriptor, SerializeOptions};
 use serde::de::DeserializeSeed;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::OnceLock;
 
 struct Contracts {

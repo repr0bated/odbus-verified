@@ -428,11 +428,13 @@ mod tests {
                 ..Default::default()
             },
         );
-        assert!(manager
-            .create_snapshot()
-            .await
-            .unwrap_err()
-            .to_string()
-            .contains("positive retention"));
+        assert!(
+            manager
+                .create_snapshot()
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("positive retention")
+        );
     }
 }

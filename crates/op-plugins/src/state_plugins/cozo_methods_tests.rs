@@ -41,11 +41,13 @@ async fn all_seven_methods_execute_against_the_supplied_native_handle() {
     ).await.unwrap();
     assert_eq!(output["results"][0]["headers"], json!(["status"]));
     let listed = call(&store, root.path(), "list_relations", json!({}));
-    assert!(listed["relations"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|relation| relation["name"] == "portable_items"));
+    assert!(
+        listed["relations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|relation| relation["name"] == "portable_items")
+    );
     let described = call(
         &store,
         root.path(),
@@ -213,7 +215,10 @@ fn import_preserves_triggers_and_rolls_back_every_relation_on_native_failure() {
     for name in ["portable_input", "portable_log", "portable_z"] {
         query(&store, &format!(":create {name} {{id:Int=>value:String}}"));
     }
-    query(&store, "::set_triggers portable_input on put { ?[id,value] := _new[id,value] :put portable_log {id=>value} }");
+    query(
+        &store,
+        "::set_triggers portable_input on put { ?[id,value] := _new[id,value] :put portable_log {id=>value} }",
+    );
     let error = dispatch_sync(
         &store,
         root.path(),
@@ -289,16 +294,20 @@ fn archives_report_unrepresentable_metadata_and_reject_schema_drift() {
     let mut archive =
         archive_from_snapshot(snapshot(&store, &["portable_plain".into()], true).unwrap()).unwrap();
     archive.relations[0].metadata.indices[0].index_type = "hnsw".into();
-    assert!(decode_archive(&archive)
-        .unwrap_err()
-        .to_string()
-        .contains("portable"));
+    assert!(
+        decode_archive(&archive)
+            .unwrap_err()
+            .to_string()
+            .contains("portable")
+    );
     archive.relations[0].metadata.indices.clear();
     archive.relations[0].metadata.relation.description = "cannot restore this description".into();
-    assert!(decode_archive(&archive)
-        .unwrap_err()
-        .to_string()
-        .contains("description"));
+    assert!(
+        decode_archive(&archive)
+            .unwrap_err()
+            .to_string()
+            .contains("description")
+    );
 }
 
 #[test]
@@ -315,7 +324,10 @@ fn metadata_is_checked_again_inside_the_write_transaction() {
     let mut params = BTreeMap::new();
     append_metadata_checks(&mut script, &mut params, 0, &metadata).unwrap();
     script.push_str("{ ?[id,value] <- [[1,'must-not-commit']] :put portable_guarded {id=>value} }");
-    query(&store, "::set_triggers portable_guarded on put { ?[id,value] := _new[id,value] :put portable_audit {id=>value} }");
+    query(
+        &store,
+        "::set_triggers portable_guarded on put { ?[id,value] := _new[id,value] :put portable_audit {id=>value} }",
+    );
     assert!(run(&store, &script, params, false).is_err());
     assert!(exported(&store, "portable_guarded").rows.is_empty());
     assert!(exported(&store, "portable_audit").rows.is_empty());
@@ -334,13 +346,15 @@ fn archives_are_unique_immutable_confined_and_digest_verified() {
     assert_ne!(first["archive"], second["archive"]);
     assert_eq!(first["sha256"], second["sha256"]);
     for path in ["../escape", "/tmp/escape", "nested/file"] {
-        assert!(dispatch_sync(
-            &store,
-            root.path(),
-            "backup",
-            &json!({"path":path,"relations":["portable_paths"]})
-        )
-        .is_err());
+        assert!(
+            dispatch_sync(
+                &store,
+                root.path(),
+                "backup",
+                &json!({"path":path,"relations":["portable_paths"]})
+            )
+            .is_err()
+        );
         assert!(dispatch_sync(&store, root.path(), "restore", &json!({"path":path})).is_err());
     }
     let first_name = first["archive"].as_str().unwrap();
@@ -348,10 +362,12 @@ fn archives_are_unique_immutable_confined_and_digest_verified() {
     fs::set_permissions(&first_path, fs::Permissions::from_mode(0o600)).unwrap();
     fs::write(&first_path, b"{}").unwrap();
     fs::set_permissions(&first_path, fs::Permissions::from_mode(0o400)).unwrap();
-    assert!(read_archive(root.path(), first_name)
-        .unwrap_err()
-        .to_string()
-        .contains("digest mismatch"));
+    assert!(
+        read_archive(root.path(), first_name)
+            .unwrap_err()
+            .to_string()
+            .contains("digest mismatch")
+    );
     let linked_name = format!("link.{}.cozo.json", second["sha256"].as_str().unwrap());
     std::os::unix::fs::symlink(
         root.path().join(second["archive"].as_str().unwrap()),
@@ -379,9 +395,11 @@ fn archive_type_parser_rejects_programs_and_validates_native_values() {
         DataValue::Num(Num::Int(2))
     ])));
     assert!(!pair.accepts(&DataValue::List(vec![DataValue::Num(Num::Int(1))])));
-    assert!(!TypeSpec::parse("Float")
-        .unwrap()
-        .accepts(&DataValue::Num(Num::Float(f64::INFINITY))));
+    assert!(
+        !TypeSpec::parse("Float")
+            .unwrap()
+            .accepts(&DataValue::Num(Num::Float(f64::INFINITY)))
+    );
     assert!(TypeSpec::parse("Int?").unwrap().accepts(&DataValue::Null));
     assert!(!TypeSpec::parse("Int").unwrap().accepts(&DataValue::Null));
 }

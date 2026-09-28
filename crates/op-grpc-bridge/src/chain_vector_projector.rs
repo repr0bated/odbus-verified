@@ -382,10 +382,12 @@ mod tests {
         assert!(!text.contains("junk-token"), "{text}");
         // session_genesis IS declared on the episode (identity scope) — it is
         // embedded as the schema says; the identity digest stays in the payload.
-        assert!(policy.payload_fields(&block)["subid"]
-            .as_str()
-            .unwrap()
-            .starts_with("evt."));
+        assert!(
+            policy.payload_fields(&block)["subid"]
+                .as_str()
+                .unwrap()
+                .starts_with("evt.")
+        );
     }
 
     #[test]

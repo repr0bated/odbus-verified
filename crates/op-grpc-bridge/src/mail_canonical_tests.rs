@@ -4,20 +4,20 @@ use super::*;
 use crate::human_principal_dispatch::tests::{
     pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
 };
-use crate::identity_sled_dispatch::{tests::write_identity, IdentitySledStore};
+use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
 use op_plugins::state_plugins::{
     human_principal::HumanPrincipalPlugin,
     identity_sled::IdentitySledPlugin,
     mail_server::{
-        methods, native_owner::MailAdminService, native_owner::NativePaths, MailServerPlugin,
+        MailServerPlugin, methods, native_owner::MailAdminService, native_owner::NativePaths,
     },
     runtime_documents::RuntimeDocuments,
 };
 use op_state::StatePlugin;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::{
-    atomic::{AtomicUsize, Ordering},
     Mutex as StdMutex,
+    atomic::{AtomicUsize, Ordering},
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -226,18 +226,20 @@ async fn mail_owner_admits_queue_read_and_rejects_eight_unattributed_mutations()
     let before = op_core::projection_shm::read_projection_bytes("mail_server").unwrap();
 
     let read_capability = schema.methods["get_queue"].required_capability.as_deref();
-    assert!(engine
-        .dispatch_method_call_with_identity(
-            "mail_server",
-            "get_queue",
-            "{}",
-            read_capability,
-            &principal,
-            None,
-            None,
-        )
-        .await
-        .is_err());
+    assert!(
+        engine
+            .dispatch_method_call_with_identity(
+                "mail_server",
+                "get_queue",
+                "{}",
+                read_capability,
+                &principal,
+                None,
+                None,
+            )
+            .await
+            .is_err()
+    );
     assert_eq!(fixture.accepted.load(Ordering::SeqCst), 0);
     assert_eq!(
         op_core::projection_shm::read_projection_bytes("mail_server").unwrap(),
@@ -347,9 +349,11 @@ async fn mail_owner_admits_queue_read_and_rejects_eight_unattributed_mutations()
         std::fs::read_to_string(&fixture.paths.dovecot_users).unwrap(),
         "owner@example.com:{SHA512-CRYPT}$6$fixture::::::\n"
     );
-    assert!(!fixture
-        .paths
-        .mail_root
-        .join("example.net/alice/Maildir")
-        .exists());
+    assert!(
+        !fixture
+            .paths
+            .mail_root
+            .join("example.net/alice/Maildir")
+            .exists()
+    );
 }

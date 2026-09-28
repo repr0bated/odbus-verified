@@ -122,7 +122,7 @@ impl UnifiedAgent for RustExecutor {
                 ("cargo", args, 300)
             }
             _ => {
-                return AgentResponse::failure(format!("Unknown operation: {}", request.operation))
+                return AgentResponse::failure(format!("Unknown operation: {}", request.operation));
             }
         };
 

@@ -1,8 +1,8 @@
 use crate::state::AppState;
 use axum::{extract::Extension, response::Json};
+use simd_json::OwnedValue as Value;
 use simd_json::json;
 use simd_json::prelude::ValueAsContainer;
-use simd_json::OwnedValue as Value;
 use std::sync::Arc;
 
 /// Catalog manifest published by the blob sealer — the real present-state of

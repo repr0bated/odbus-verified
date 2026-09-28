@@ -12,8 +12,8 @@ use tonic::{Request, Status};
 use crate::{
     event_chain_access,
     grpc_server::{
-        simd_to_prost_struct, simd_to_prost_value, state_heartbeat_frame,
-        state_snapshot_frames_with_views, DECLARED_CAPABILITY_HEADER,
+        DECLARED_CAPABILITY_HEADER, simd_to_prost_struct, simd_to_prost_value,
+        state_heartbeat_frame, state_snapshot_frames_with_views,
     },
     interceptor::load_capability_grants,
     mutation_engine::MutationEngine,
@@ -21,8 +21,8 @@ use crate::{
     proto::{GetStateRequest, GetStateResponse, StateChange, StateFrameKind, SubscribeRequest},
     state_stream::{PluginSnapshot, StateSnapshot},
     ui_workspace_dispatch::{
-        CommittedUiWorkspace, UiWorkspacePublisher, UiWorkspaceSubscription,
-        UI_WORKSPACE_READ_CAPABILITY,
+        CommittedUiWorkspace, UI_WORKSPACE_READ_CAPABILITY, UiWorkspacePublisher,
+        UiWorkspaceSubscription,
     },
     ui_workspace_stream_selection::WorkspaceSelection,
 };

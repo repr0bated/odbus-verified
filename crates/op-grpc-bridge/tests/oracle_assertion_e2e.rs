@@ -8,17 +8,17 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{Arc, Mutex, Once, OnceLock};
 use std::time::Duration;
 
+use axum::Router;
 use axum::extract::ConnectInfo as AxumConnectInfo;
 use axum::http::StatusCode;
 use axum::routing::any;
-use axum::Router;
 use base64::Engine as _;
 use ed25519_dalek::{Signer, SigningKey};
 use op_cozo_store::{IdentityCompareExchange, IdentityIntent, IdentitySledRecord};
 use op_grpc_bridge::grpc_server::{
-    build_operation_routes_with_validator, OperationGrpcServer, DECLARED_CAPABILITY_HEADER,
+    DECLARED_CAPABILITY_HEADER, OperationGrpcServer, build_operation_routes_with_validator,
 };
-use op_grpc_bridge::interceptor::{connect_info_peer_addr, ASSERTION_METADATA_KEY};
+use op_grpc_bridge::interceptor::{ASSERTION_METADATA_KEY, connect_info_peer_addr};
 use op_grpc_bridge::mutation_engine::MutationEngine;
 use op_grpc_bridge::oracle_assertion::{
     AssertionSourceBinding, AssertionValidator, DecoyTrustStore,
@@ -36,17 +36,17 @@ use op_grpc_bridge::proto::{
     OperationType, OvsdbTransactRequest, SetPropertyRequest,
 };
 use op_identity::oracle_assertion::{
-    verify_signature, DecoyIssuer, OracleIdentityAssertion, SignedAssertion,
+    DecoyIssuer, OracleIdentityAssertion, SignedAssertion, verify_signature,
 };
 use op_identity::session::{derive_principal_id, derive_session_id};
 use op_plugins::state_plugins::identity_sled::{
-    ContainerIdentitySled, SledBtrfsDevice, RECORD_FORMAT,
+    ContainerIdentitySled, RECORD_FORMAT, SledBtrfsDevice,
 };
 use op_plugins::state_plugins::incus::IncusInstance;
 use op_state::StatePlugin;
 use op_state_store::{ChainConfig, EventChain};
-use prost_types::value::Kind;
 use prost_types::Value as ProstValue;
+use prost_types::value::Kind;
 use tempfile::TempDir;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
@@ -1014,9 +1014,11 @@ async fn oracle_assertion_cannot_restore_retired_ovsdb_transact() {
 
     let status = client.transact(request).await.unwrap_err();
     assert_eq!(status.code(), Code::Unimplemented);
-    assert!(status
-        .message()
-        .contains("legacy domain RPC has no sealed method admission; use PluginService"));
+    assert!(
+        status
+            .message()
+            .contains("legacy domain RPC has no sealed method admission; use PluginService")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1043,9 +1045,11 @@ async fn oracle_assertion_cannot_write_unmapped_property() {
 
     let status = client.set_property(request).await.unwrap_err();
     assert_eq!(status.code(), Code::FailedPrecondition);
-    assert!(status
-        .message()
-        .contains("property is read-only through generic Set"));
+    assert!(
+        status
+            .message()
+            .contains("property is read-only through generic Set")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1851,10 +1855,12 @@ async fn legacy_mutate_preserves_verified_identity_and_ignores_spoofed_actor() {
     assert_eq!(event.capability_id.as_deref(), Some("human_principal.read"));
     assert_eq!(event.method_name.as_deref(), Some("resolve_key"));
     assert_eq!(event.session_id.as_deref(), Some(expected_session.as_str()));
-    assert!(event
-        .session_genesis
-        .as_ref()
-        .is_some_and(|value| !value.is_empty()));
+    assert!(
+        event
+            .session_genesis
+            .as_ref()
+            .is_some_and(|value| !value.is_empty())
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -2992,21 +2998,25 @@ async fn built_in_client_forwards_authored_identity_and_preserves_grant_gate() {
     assert!(error.to_lowercase().contains("unauthenticated"), "{error}");
     identity.sealed_id = Some(wire.clone());
     identity.oracle_assertion = Some(fresh_signed(&env.issuer, &pubkey, [0x92; 16]).to_wire());
-    assert!(client_call(&client, &pubkey, &identity)
-        .await
-        .unwrap_err()
-        .to_string()
-        .contains("multiple identity"));
+    assert!(
+        client_call(&client, &pubkey, &identity)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("multiple identity")
+    );
     identity.sealed_id = None;
     client_call(&client, &pubkey, &identity)
         .await
         .expect("exact caller OIA1 passes the same receiver");
     identity.oracle_assertion = None;
-    assert!(client_call(&client, &pubkey, &identity)
-        .await
-        .unwrap_err()
-        .to_string()
-        .contains("missing identity"));
+    assert!(
+        client_call(&client, &pubkey, &identity)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("missing identity")
+    );
 
     identity.sealed_id = Some(wire);
     env.set_grants(&empty_grants());
@@ -3336,7 +3346,7 @@ async fn event_chain_rpc_rejects_missing_grants_and_unbacked_private_aliases() {
 #[tokio::test(flavor = "multi_thread")]
 async fn event_chain_rpc_stream_uses_engine_replays_and_rechecks_revocation() {
     use op_grpc_bridge::proto::{
-        event_chain_service_client::EventChainServiceClient, SubscribeEventsRequest,
+        SubscribeEventsRequest, event_chain_service_client::EventChainServiceClient,
     };
     let (srv, env) = start_server(false).await;
     let channel = tls_channel(srv.addr, &srv.ca_pem).await;

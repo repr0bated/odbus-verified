@@ -19,7 +19,7 @@ use op_state::{
 use op_state_store::{PluginSchema, SideEffect};
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 
 /// OpenFlow obfuscation configuration
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -617,12 +617,14 @@ mod tests {
             state_snapshot: simd_json::json!(null),
             backend_checkpoint: None,
         };
-        assert!(plugin
-            .rollback(&checkpoint)
-            .await
-            .unwrap_err()
-            .to_string()
-            .contains("no canonical backend"));
+        assert!(
+            plugin
+                .rollback(&checkpoint)
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("no canonical backend")
+        );
     }
 }
 

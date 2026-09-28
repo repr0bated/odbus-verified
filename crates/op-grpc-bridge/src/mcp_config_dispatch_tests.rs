@@ -2,15 +2,15 @@ use crate::{
     human_principal_dispatch::tests::{
         pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
     },
-    identity_sled_dispatch::{tests::write_identity, IdentitySledStore},
+    identity_sled_dispatch::{IdentitySledStore, tests::write_identity},
     tched_router_runtime::TchedRouterRuntimeClient,
 };
 use op_state::StatePlugin;
 use serde_json::json;
 use std::{
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
     time::Duration,
 };
@@ -78,7 +78,7 @@ async fn call_tool_groups(
 #[tokio::test]
 async fn canonical_tool_group_dispatch_commits_file_live_owner_and_member_projection() {
     use crate::mcp_policy::{
-        AudiencePolicy, McpPolicyOwner, McpProjectionPolicy, ToolsetManifest, HOT_TOOL_NAMES,
+        AudiencePolicy, HOT_TOOL_NAMES, McpPolicyOwner, McpProjectionPolicy, ToolsetManifest,
     };
     use op_plugins::state_plugins::{
         emqx::EmqxPlugin, human_principal::HumanPrincipalPlugin, identity_sled::IdentitySledPlugin,
@@ -203,15 +203,17 @@ async fn canonical_tool_group_dispatch_commits_file_live_owner_and_member_projec
 
     let before_file = std::fs::read(&toolsets_path).unwrap();
     let before_state = op_core::projection_shm::read_projection_bytes("mcp").unwrap();
-    assert!(call_tool_groups(
-        &engine,
-        &actor,
-        &sled.session_id,
-        sled.genesis.as_deref(),
-        toolset_input(1),
-    )
-    .await
-    .is_err());
+    assert!(
+        call_tool_groups(
+            &engine,
+            &actor,
+            &sled.session_id,
+            sled.genesis.as_deref(),
+            toolset_input(1),
+        )
+        .await
+        .is_err()
+    );
     assert_eq!(std::fs::read(&toolsets_path).unwrap(), before_file);
     assert_eq!(owner.snapshot().toolsets.generation, 3);
     assert_eq!(

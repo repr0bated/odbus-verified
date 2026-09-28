@@ -4,7 +4,7 @@
 //! through the service implementations (in-memory Cozo). Production serve
 //! uses D-Bus PluginV1.Call to cognitive-mcp instead — see cognitive_client.rs.
 
-use op_assistant_grpc::memory::{ensure_namespace, MemoryServiceImpl};
+use op_assistant_grpc::memory::{MemoryServiceImpl, ensure_namespace};
 use op_assistant_grpc::namespace::NamespaceMemoryServiceImpl;
 use op_assistant_grpc::proto::memory_service_server::MemoryService;
 use op_assistant_grpc::proto::namespace_memory_service_server::NamespaceMemoryService;

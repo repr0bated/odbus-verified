@@ -7,8 +7,8 @@ use std::{
     future::Future,
     path::PathBuf,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
     task::Poll,
 };
@@ -208,13 +208,15 @@ async fn recovery_contract_mismatch_neither_runs_callback_nor_clears_pending() {
     let calls = Arc::new(AtomicUsize::new(0));
     let called = calls.clone();
     let mut updates = fixture.engine.change_tx.subscribe();
-    assert!(fixture
-        .recover("needs-recovery", move || {
-            called.fetch_add(1, Ordering::SeqCst);
-            Ok((None, ()))
-        })
-        .await
-        .is_err());
+    assert!(
+        fixture
+            .recover("needs-recovery", move || {
+                called.fetch_add(1, Ordering::SeqCst);
+                Ok((None, ()))
+            })
+            .await
+            .is_err()
+    );
     assert_eq!(calls.load(Ordering::SeqCst), 0);
     assert_eq!(
         op_core::projection_shm::pending_identity_publication_in(&fixture.state)
@@ -351,13 +353,15 @@ async fn exact_recovery_to_absence_removes_mirror_and_emits_deletion_wakeup() {
     let mut updates = fixture.engine.change_tx.subscribe();
     let invoked = Arc::new(AtomicUsize::new(0));
     let wrong = invoked.clone();
-    assert!(fixture
-        .recover("wrong", move || {
-            wrong.fetch_add(1, Ordering::SeqCst);
-            Ok((None, ()))
-        })
-        .await
-        .is_err());
+    assert!(
+        fixture
+            .recover("wrong", move || {
+                wrong.fetch_add(1, Ordering::SeqCst);
+                Ok((None, ()))
+            })
+            .await
+            .is_err()
+    );
     assert_eq!(invoked.load(Ordering::SeqCst), 0);
     let receipt = fixture
         .recover("delete-uncertain", || Ok((None, ())))

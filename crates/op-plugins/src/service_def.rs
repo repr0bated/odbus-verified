@@ -546,7 +546,9 @@ mod tests {
         let run = service_with_user().to_runit_run();
         assert!(run.starts_with("#!/bin/sh\n"));
         assert!(run.contains("cd /var/lib/op-example || exit 1"));
-        assert!(run.contains("exec chpst -u op-example:op-example /usr/local/bin/op-example serve"));
+        assert!(
+            run.contains("exec chpst -u op-example:op-example /usr/local/bin/op-example serve")
+        );
         assert!(!run.contains("s6"));
     }
 }

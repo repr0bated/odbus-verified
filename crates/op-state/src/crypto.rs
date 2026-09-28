@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 #![allow(deprecated)]
 use aes_gcm::{
-    aead::{Aead, KeyInit, OsRng},
     Aes256Gcm, Key, Nonce,
+    aead::{Aead, KeyInit, OsRng},
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use argon2::Argon2;
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 

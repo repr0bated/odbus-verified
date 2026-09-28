@@ -19,7 +19,7 @@
 use std::net::SocketAddr;
 
 use anyhow::{Context, Result};
-use op_network::{get_datapath_health, OpenFlowController, OpenFlowControllerHandle};
+use op_network::{OpenFlowController, OpenFlowControllerHandle, get_datapath_health};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 use zbus::interface;

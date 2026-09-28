@@ -13,9 +13,9 @@ use super::cache_service::CacheServiceImpl;
 use super::mcp_service::McpServiceImpl;
 use super::orchestrator_service::OrchestratorServiceImpl;
 use super::proto::{
-    agent_service_server::AgentServiceServer, cache_service_server::CacheServiceServer,
-    mcp_service_server::McpServiceServer, orchestrator_service_server::OrchestratorServiceServer,
-    FILE_DESCRIPTOR_SET,
+    FILE_DESCRIPTOR_SET, agent_service_server::AgentServiceServer,
+    cache_service_server::CacheServiceServer, mcp_service_server::McpServiceServer,
+    orchestrator_service_server::OrchestratorServiceServer,
 };
 
 /// Server configuration
@@ -46,7 +46,9 @@ impl GrpcServerConfig {
             self.listen_addr.ip().is_loopback(),
             "unauthenticated cache gRPC compatibility transport is restricted to loopback"
         );
-        anyhow::bail!("Standalone cache gRPC ingress is retired; use the canonical :8090 plugin door with verified identity and workstack grants")
+        anyhow::bail!(
+            "Standalone cache gRPC ingress is retired; use the canonical :8090 plugin door with verified identity and workstack grants"
+        )
     }
 }
 
@@ -210,9 +212,11 @@ mod transport_security_tests {
 
     #[test]
     fn cache_compatibility_listener_cannot_bypass_plugin_admission() {
-        assert!(GrpcServerConfig::default()
-            .validate_transport_security()
-            .is_err());
+        assert!(
+            GrpcServerConfig::default()
+                .validate_transport_security()
+                .is_err()
+        );
         let config = GrpcServerConfig {
             listen_addr: "0.0.0.0:50051".parse().unwrap(),
             ..GrpcServerConfig::default()

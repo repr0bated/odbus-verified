@@ -21,18 +21,18 @@ use super::{McpHandler, Transport};
 use crate::McpRequest;
 use anyhow::Result;
 use axum::{
+    Router,
     extract::State,
     http::{HeaderMap, StatusCode},
     middleware,
     response::{
-        sse::{Event, Sse},
         IntoResponse, Json, Response,
+        sse::{Event, Sse},
     },
     routing::{get, post},
-    Router,
 };
 use futures::stream::{self, Stream};
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -501,7 +501,7 @@ async fn serve_unix(app: Router, path: std::path::PathBuf) -> Result<()> {
 }
 
 fn apply_socket_acl(path: &std::path::Path) -> std::io::Result<()> {
-    use std::os::unix::fs::{chown, PermissionsExt};
+    use std::os::unix::fs::{PermissionsExt, chown};
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o660))?;
     let owner = std::env::var("OP_MCP_SOCK_OWNER").unwrap_or_else(|_| "jeremy:jeremy".into());
     let (user, group) = owner

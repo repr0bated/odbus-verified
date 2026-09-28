@@ -29,10 +29,10 @@ pub mod soul;
 pub mod tasks;
 pub mod transport;
 
-pub use auth::{wireguard_auth_interceptor, WireGuardIdentity};
+pub use auth::{WireGuardIdentity, wireguard_auth_interceptor};
 pub use client::AssistantClient;
 pub use error::AssistantError;
-pub use server::{run_grpc_server, AssistantGrpcServer, ServerConfig};
+pub use server::{AssistantGrpcServer, ServerConfig, run_grpc_server};
 pub use transport::{Transport, TransportConfig, TransportKind};
 
 /// Generated protobuf types.

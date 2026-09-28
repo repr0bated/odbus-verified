@@ -14,8 +14,8 @@ use crate::{
     chatbot_episode_state::{EpisodePublisher, PLUGIN, READ_CAPABILITY},
     event_chain_access,
     grpc_server::{
-        simd_to_prost_struct, simd_to_prost_value, state_heartbeat_frame,
-        state_snapshot_frames_with_views, DECLARED_CAPABILITY_HEADER,
+        DECLARED_CAPABILITY_HEADER, simd_to_prost_struct, simd_to_prost_value,
+        state_heartbeat_frame, state_snapshot_frames_with_views,
     },
     interceptor::load_capability_grants,
     method_contract_admission,
@@ -360,13 +360,13 @@ mod tests {
         human_principal_dispatch::tests::{
             pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
         },
-        identity_sled_dispatch::{tests::write_identity, IdentitySledStore},
-        proto::{state_sync_server::StateSync, GetStateRequest, SubscribeRequest},
+        identity_sled_dispatch::{IdentitySledStore, tests::write_identity},
+        proto::{GetStateRequest, SubscribeRequest, state_sync_server::StateSync},
     };
     use futures::StreamExt;
     use op_plugins::state_plugins::{
         ctl_plane_chatbot::CtlPlaneChatbotPlugin,
-        ctl_plane_chatbot_methods::{build_completed_chat_episode, CompletedChatEpisode},
+        ctl_plane_chatbot_methods::{CompletedChatEpisode, build_completed_chat_episode},
         human_principal::HumanPrincipalPlugin,
         identity_sled::IdentitySledPlugin,
     };
@@ -513,19 +513,23 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        assert!(EpisodeSelection::from_subscription(
-            &[],
-            &[
-                format!("{root}/episodes"),
-                format!("{root}/episode_revision")
-            ]
-        )
-        .is_ok());
-        assert!(EpisodeSelection::from_subscription(
-            &[],
-            &[format!("{root}/episodes"), format!("{root}/config")]
-        )
-        .is_err());
+        assert!(
+            EpisodeSelection::from_subscription(
+                &[],
+                &[
+                    format!("{root}/episodes"),
+                    format!("{root}/episode_revision")
+                ]
+            )
+            .is_ok()
+        );
+        assert!(
+            EpisodeSelection::from_subscription(
+                &[],
+                &[format!("{root}/episodes"), format!("{root}/config")]
+            )
+            .is_err()
+        );
         for path in [
             format!("{root}/episodes/../x"),
             format!("{root}/episodes/*"),
@@ -533,14 +537,15 @@ mod tests {
         ] {
             assert!(EpisodeSelection::from_subscription(&[], &[path]).is_err());
         }
-        assert!(EpisodeSelection::from_subscription(&[], &["x".into()])
-            .unwrap()
-            .is_none());
-        assert!(EpisodeSelection::from_subscription(
-            &["other".into()],
-            &[format!("{root}/episodes")]
-        )
-        .is_err());
+        assert!(
+            EpisodeSelection::from_subscription(&[], &["x".into()])
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            EpisodeSelection::from_subscription(&["other".into()], &[format!("{root}/episodes")])
+                .is_err()
+        );
     }
 
     #[tokio::test]

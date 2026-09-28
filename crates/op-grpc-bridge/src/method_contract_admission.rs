@@ -20,7 +20,7 @@ use op_state_store::MethodDecl;
 use serde::Deserialize;
 
 use crate::sealed_schema_reader::{
-    blob_catalog_dir_from_env, read_manifest_pinned_schema_document, ManifestPinnedSchemaDocument,
+    ManifestPinnedSchemaDocument, blob_catalog_dir_from_env, read_manifest_pinned_schema_document,
 };
 
 #[cfg(test)]

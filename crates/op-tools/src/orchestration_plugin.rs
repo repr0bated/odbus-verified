@@ -30,8 +30,8 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};

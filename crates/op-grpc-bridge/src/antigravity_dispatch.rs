@@ -6,16 +6,16 @@
 
 use anyhow::{Context, Result};
 use op_llm::antigravity::{
-    auth_status_for_config, configure_runtime_with_documents, configure_safety_with_documents,
-    last_bridge_status_with_documents, load_runtime_config_from, observe_bridge_with_documents,
-    usage_report_with_documents, GoogleCredentialOwner,
+    GoogleCredentialOwner, auth_status_for_config, configure_runtime_with_documents,
+    configure_safety_with_documents, last_bridge_status_with_documents, load_runtime_config_from,
+    observe_bridge_with_documents, usage_report_with_documents,
 };
 use op_plugins::state_plugins::{
     antigravity::{AntigravityState, ConfigureSafetyInput, GetUsageReportInput, LocalUsageReport},
     antigravity_chat::{AntigravityChatState, ChatConfig, ConfigureInput, NativeBridgeStatus},
     runtime_documents::RuntimeDocuments,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 pub(crate) struct DispatchOutcome {
@@ -231,20 +231,22 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(row.document["selected_model"], "gemini-test");
-        assert!(dispatch(
-            "antigravity_chat",
-            "configure",
-            &json!({
-                "expected_revision": 1,
-                "provider": "gemini",
-                "base_url": "https://generativelanguage.googleapis.com/v1beta",
-                "selected_model": "stale"
-            }),
-            documents,
-            google_credential_owner(),
-        )
-        .await
-        .is_err());
+        assert!(
+            dispatch(
+                "antigravity_chat",
+                "configure",
+                &json!({
+                    "expected_revision": 1,
+                    "provider": "gemini",
+                    "base_url": "https://generativelanguage.googleapis.com/v1beta",
+                    "selected_model": "stale"
+                }),
+                documents,
+                google_credential_owner(),
+            )
+            .await
+            .is_err()
+        );
     }
 
     #[tokio::test]

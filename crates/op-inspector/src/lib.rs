@@ -14,8 +14,8 @@ pub mod runit;
 
 // Re-export main types
 pub use gcloud::{
-    introspect_gcloud, GCloudArg, GCloudCommand, GCloudFlag, GCloudParser, GCloudSchema,
-    GCloudStats,
+    GCloudArg, GCloudCommand, GCloudFlag, GCloudParser, GCloudSchema, GCloudStats,
+    introspect_gcloud,
 };
 pub use introspective_gadget::{
     BinaryPattern, ContainerInspection, ContainerInspectionWithKnowledge, ContainerMount,

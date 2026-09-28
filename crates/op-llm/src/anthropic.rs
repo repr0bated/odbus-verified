@@ -18,8 +18,8 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 use std::time::Duration;
 use tracing::{debug, info};
 

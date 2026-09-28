@@ -17,7 +17,7 @@ use op_cognitive_mcp::memory_store::{CognitiveMemoryStore, EntryQuery, MemoryEnt
 use op_cognitive_mcp::qdrant_shuttle::QdrantSemanticShuttle;
 use op_llm::provider::ChatMessage;
 use regex::Regex;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 use tracing::{debug, info, warn};

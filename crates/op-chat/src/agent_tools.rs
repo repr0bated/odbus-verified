@@ -4,7 +4,7 @@
 //! the LLM to interact with specialized agents for various tasks.
 
 use anyhow::Result;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::{debug, info, warn};

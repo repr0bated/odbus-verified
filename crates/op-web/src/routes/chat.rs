@@ -1,6 +1,6 @@
 //! Chat API routes
 
-use axum::{extract::Extension, http::StatusCode, response::IntoResponse, Json};
+use axum::{Json, extract::Extension, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{error, info};
@@ -62,7 +62,9 @@ pub async fn chat_message(
 
     // Build messages
     let messages = vec![
-        ChatMessage::system("You are a helpful AI assistant integrated with op-dbus, a system management tool. You can help with system administration, code, and general questions."),
+        ChatMessage::system(
+            "You are a helpful AI assistant integrated with op-dbus, a system management tool. You can help with system administration, code, and general questions.",
+        ),
         ChatMessage::user(&req.message),
     ];
 

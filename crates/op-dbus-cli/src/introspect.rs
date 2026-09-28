@@ -230,8 +230,8 @@ impl Default for PluginTreeAdapter {
 
 /// Parse child <node name="..."/> entries from introspection XML
 fn parse_child_nodes(xml: &str) -> Result<Vec<String>> {
-    use quick_xml::events::Event;
     use quick_xml::Reader;
+    use quick_xml::events::Event;
 
     let mut reader = Reader::from_str(xml);
     let mut buf = Vec::new();
@@ -285,8 +285,8 @@ fn parse_child_nodes(xml: &str) -> Result<Vec<String>> {
 
 /// Parse interfaces from introspection XML
 fn parse_interfaces(xml: &str) -> Result<Vec<InterfaceInfo>> {
-    use quick_xml::events::Event;
     use quick_xml::Reader;
+    use quick_xml::events::Event;
 
     let mut reader = Reader::from_str(xml);
     let mut buf = Vec::new();

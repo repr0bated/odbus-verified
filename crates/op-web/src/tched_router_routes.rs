@@ -3,9 +3,9 @@
 //! HTTP paths stay `/api/tched-router/*` and `/api/llm/*` (what the UI already
 //! calls). The sealed plugin those handlers read is `tched_router`.
 
-use anyhow::{bail, Result};
-use simd_json::prelude::*;
+use anyhow::{Result, bail};
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 
 use crate::state_tree;
 

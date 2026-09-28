@@ -9,18 +9,18 @@ use std::sync::OnceLock;
 use std::time::Duration;
 use tokio::sync::Mutex;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use futures::StreamExt;
 use op_plugins::state_plugins::common::llm_projection::{ModelRoute, Provider};
 use op_plugins::state_plugins::tched_router::{
     ChatInput, ChatOutput, ConfigInitInput, ConfigMigrateInput, ConfigPatchInput,
-    ConfigPatchOperation, ConfigSetInput, TchedRouterState, MAX_CHAT_REQUEST_BYTES,
-    MAX_CHAT_RESPONSE_BYTES,
+    ConfigPatchOperation, ConfigSetInput, MAX_CHAT_REQUEST_BYTES, MAX_CHAT_RESPONSE_BYTES,
+    TchedRouterState,
 };
 use reqwest::RequestBuilder;
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde::de::DeserializeOwned;
+use serde_json::{Value, json};
 
 const DEFAULT_ENDPOINT: &str = "http://127.0.0.1:8084";
 const DEFAULT_AGENT_ALIAS: &str = "dashboard";
@@ -251,10 +251,11 @@ impl TchedRouterRuntimeClient {
             return Err(anyhow!(error.clone()));
         }
         self.http.as_ref().ok_or_else(|| {
-            anyhow!(self
-                .client_error
-                .clone()
-                .unwrap_or_else(|| "tched_router HTTP client is unavailable".to_string()))
+            anyhow!(
+                self.client_error
+                    .clone()
+                    .unwrap_or_else(|| "tched_router HTTP client is unavailable".to_string())
+            )
         })
     }
 
@@ -826,9 +827,9 @@ impl TchedRouterRuntimeClient {
         let readback = self
             .read_config_property(&input.path, secrets)
             .await
-            .with_context(|| {
-                "native config property was updated but authoritative readback failed"
-            })?;
+            .with_context(
+                || "native config property was updated but authoritative readback failed",
+            )?;
         if secret {
             anyhow::ensure!(
                 result.get("populated") == readback.get("populated"),
@@ -2215,14 +2216,14 @@ mod tests {
     use tokio_tungstenite::{
         accept_hdr_async,
         tungstenite::{
-            handshake::server::{Request, Response},
             Message,
+            handshake::server::{Request, Response},
         },
     };
 
     #[tokio::test]
     async fn a2a_forwards_canonical_sid1_and_requires_native_ack() {
-        use axum::{http::HeaderMap, response::IntoResponse, routing::post, Json, Router};
+        use axum::{Json, Router, http::HeaderMap, response::IntoResponse, routing::post};
 
         for acknowledge in [false, true] {
             let app = Router::new().route(
@@ -2263,10 +2264,12 @@ mod tests {
             if acknowledge {
                 assert_eq!(response.unwrap(), serde_json::json!({"result":"ok"}));
             } else {
-                assert!(response
-                    .unwrap_err()
-                    .to_string()
-                    .contains("did not authenticate"));
+                assert!(
+                    response
+                        .unwrap_err()
+                        .to_string()
+                        .contains("did not authenticate")
+                );
             }
             server.abort();
         }
@@ -2316,11 +2319,13 @@ mod tests {
                 {
                     let socket =
                         accept_hdr_async(stream, |request: &Request, mut response: Response| {
-                            assert!(request
-                                .uri()
-                                .query()
-                                .unwrap_or_default()
-                                .contains(&format!("agent_alias={server_alias}")));
+                            assert!(
+                                request
+                                    .uri()
+                                    .query()
+                                    .unwrap_or_default()
+                                    .contains(&format!("agent_alias={server_alias}"))
+                            );
                             response.headers_mut().insert(
                                 "Sec-WebSocket-Protocol",
                                 "tched_router.generation.v1".parse().unwrap(),
@@ -2441,9 +2446,11 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(error
-            .to_string()
-            .contains("native generation protocol rejected"));
+        assert!(
+            error
+                .to_string()
+                .contains("native generation protocol rejected")
+        );
     }
 
     #[tokio::test]
@@ -2507,16 +2514,20 @@ mod tests {
     #[test]
     fn configured_provider_catalog_rejects_missing_or_malformed_model_entries() {
         assert!(parse_configured_providers(Vec::new()).unwrap().is_empty());
-        assert!(parse_configured_providers(vec![ConfigListEntry {
-            path: "providers.models.opencode.go.model".into(),
-            value: None,
-        }])
-        .is_err());
-        assert!(parse_configured_providers(vec![ConfigListEntry {
-            path: "providers.models.opencode..model".into(),
-            value: Some(json!("model")),
-        }])
-        .is_err());
+        assert!(
+            parse_configured_providers(vec![ConfigListEntry {
+                path: "providers.models.opencode.go.model".into(),
+                value: None,
+            }])
+            .is_err()
+        );
+        assert!(
+            parse_configured_providers(vec![ConfigListEntry {
+                path: "providers.models.opencode..model".into(),
+                value: Some(json!("model")),
+            }])
+            .is_err()
+        );
     }
 
     #[test]
@@ -2709,26 +2720,30 @@ mod tests {
                          "value":"must-not-leave"}],
             "warnings": []
         });
-        assert!(sanitize_patch_response(
-            &mut secret,
-            &[ConfigPatchOperation::Replace {
-                path: "/providers/api_key".into(),
-                value: json!("private")
-            }],
-            &StaticSecretPolicy
-        )
-        .is_err());
+        assert!(
+            sanitize_patch_response(
+                &mut secret,
+                &[ConfigPatchOperation::Replace {
+                    path: "/providers/api_key".into(),
+                    value: json!("private")
+                }],
+                &StaticSecretPolicy
+            )
+            .is_err()
+        );
 
         let mut count = json!({"saved":true, "results":[], "warnings":[]});
-        assert!(sanitize_patch_response(
-            &mut count,
-            &[ConfigPatchOperation::Replace {
-                path: "/gateway/port".into(),
-                value: json!(8085)
-            }],
-            &StaticSecretPolicy
-        )
-        .is_err());
+        assert!(
+            sanitize_patch_response(
+                &mut count,
+                &[ConfigPatchOperation::Replace {
+                    path: "/gateway/port".into(),
+                    value: json!(8085)
+                }],
+                &StaticSecretPolicy
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -2889,18 +2904,22 @@ mod tests {
             &operations,
         )
         .unwrap();
-        assert!(verify_patch_readbacks(
-            &sanitized,
-            &[json!({"path":"gateway.port","kind":"value","value":"8084"})],
-            &operations,
-        )
-        .is_err());
-        assert!(verify_patch_readbacks(
-            &sanitized,
-            &[json!({"path":"gateway.host","kind":"value","value":"8085"})],
-            &operations,
-        )
-        .is_err());
+        assert!(
+            verify_patch_readbacks(
+                &sanitized,
+                &[json!({"path":"gateway.port","kind":"value","value":"8084"})],
+                &operations,
+            )
+            .is_err()
+        );
+        assert!(
+            verify_patch_readbacks(
+                &sanitized,
+                &[json!({"path":"gateway.host","kind":"value","value":"8085"})],
+                &operations,
+            )
+            .is_err()
+        );
         for mismatch in ["order", "path", "op"] {
             let mut response = valid.clone();
             match mismatch {
@@ -2929,7 +2948,7 @@ mod tests {
 
     #[test]
     fn paired_native_config_and_selection_commit_preserves_sibling_children() {
-        use crate::state_tree_fold::{merge_plugin_object_fields, StateTreeFold};
+        use crate::state_tree_fold::{StateTreeFold, merge_plugin_object_fields};
         let directory = tempfile::tempdir().unwrap();
         let state_dir = directory.path().to_str().unwrap();
         op_core::projection_shm::prepare_projection_directory_in(state_dir).unwrap();
@@ -2988,17 +3007,17 @@ mod tests {
     mod config_http_fixture {
         use super::*;
         use axum::{
+            Json, Router,
             extract::{Query, State},
             routing::{get, post},
-            Json, Router,
         };
         use serde_json::json;
         use std::{
             collections::HashMap,
             net::SocketAddr,
             sync::{
-                atomic::{AtomicUsize, Ordering},
                 Arc,
+                atomic::{AtomicUsize, Ordering},
             },
         };
 
@@ -3332,15 +3351,17 @@ mod tests {
                 "mcp.servers.opdbus_compact.extra",
                 "mcp.servers.other",
             ] {
-                assert!(runtime
-                    .init_config(
-                        &ConfigInitInput {
-                            section: Some(section.into()),
-                        },
-                        &McpFixturePolicy,
-                    )
-                    .await
-                    .is_err());
+                assert!(
+                    runtime
+                        .init_config(
+                            &ConfigInitInput {
+                                section: Some(section.into()),
+                            },
+                            &McpFixturePolicy,
+                        )
+                        .await
+                        .is_err()
+                );
             }
             assert_eq!(writes.load(Ordering::SeqCst), 0);
             task.abort();
@@ -3353,15 +3374,17 @@ mod tests {
                 McpFixtureMode::MissingReadback,
             ] {
                 let (runtime, writes, task) = mcp_fixture(mode).await;
-                assert!(runtime
-                    .init_config(
-                        &ConfigInitInput {
-                            section: Some("mcp.servers.opdbus_compact".into()),
-                        },
-                        &McpFixturePolicy,
-                    )
-                    .await
-                    .is_err());
+                assert!(
+                    runtime
+                        .init_config(
+                            &ConfigInitInput {
+                                section: Some("mcp.servers.opdbus_compact".into()),
+                            },
+                            &McpFixturePolicy,
+                        )
+                        .await
+                        .is_err()
+                );
                 assert_eq!(writes.load(Ordering::SeqCst), 1);
                 task.abort();
             }

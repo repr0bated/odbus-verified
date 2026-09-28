@@ -26,7 +26,7 @@ use std::sync::{Mutex, OnceLock};
 
 use anyhow::{anyhow, bail};
 use base64::Engine as _;
-use op_cozo_store::{human_principal_cozo_db_path, CozoGraphShuttle, HumanPrincipalRecord};
+use op_cozo_store::{CozoGraphShuttle, HumanPrincipalRecord, human_principal_cozo_db_path};
 use op_plugins::state_plugins::human_principal::{HumanPrincipal, HumanPrincipalState};
 use serde_json::Value as JsonValue;
 

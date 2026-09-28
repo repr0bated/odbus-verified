@@ -23,7 +23,7 @@ use op_state::{ApplyResult, Checkpoint, StateAction, StateDiff, StatePlugin};
 use op_state_store::{Constraint, FieldSchema, FieldType, PluginSchema};
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -458,7 +458,9 @@ impl FullSystemPlugin {
             .await
             .unwrap_or_default();
         if !names.iter().any(|n| n == "org.freedesktop.systemd1") {
-            debug!("org.freedesktop.systemd1 not available — skipping service capture (non-systemd host)");
+            debug!(
+                "org.freedesktop.systemd1 not available — skipping service capture (non-systemd host)"
+            );
             return Ok(services);
         }
 
@@ -776,7 +778,7 @@ impl StatePlugin for FullSystemPlugin {
         );
 
         use super::plugin_scaffold_helpers::{
-            method_decl_from_schemars_with_output, AckOutput, EmptyInput,
+            AckOutput, EmptyInput, method_decl_from_schemars_with_output,
         };
         use op_state_store::SideEffect;
 
@@ -1105,22 +1107,22 @@ mod tests {
         let readback: String = proxy.get_property("Hostname").await.unwrap();
         assert_eq!(readback, "fixture.local");
 
-        assert!(dispatch_full_system_method_with_owner(
-            &owner,
-            "set_hostname",
-            &serde_json::json!({"hostname":"bad/name"}),
-        )
-        .await
-        .is_err());
+        assert!(
+            dispatch_full_system_method_with_owner(
+                &owner,
+                "set_hostname",
+                &serde_json::json!({"hostname":"bad/name"}),
+            )
+            .await
+            .is_err()
+        );
         let unchanged: String = proxy.get_property("Hostname").await.unwrap();
         assert_eq!(unchanged, "fixture.local");
-        assert!(dispatch_full_system_method_with_owner(
-            &owner,
-            "set_hostname",
-            &serde_json::json!({}),
-        )
-        .await
-        .is_err());
+        assert!(
+            dispatch_full_system_method_with_owner(&owner, "set_hostname", &serde_json::json!({}),)
+                .await
+                .is_err()
+        );
         daemon.kill().await.expect("stop private dbus-daemon");
     }
 

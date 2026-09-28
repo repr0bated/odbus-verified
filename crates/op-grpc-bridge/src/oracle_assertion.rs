@@ -13,7 +13,7 @@ use std::sync::Mutex;
 
 use base64::Engine as _;
 use ed25519_dalek::VerifyingKey;
-use op_identity::oracle_assertion::{verify_signature, SignedAssertion, MAX_LIFETIME_SECS};
+use op_identity::oracle_assertion::{MAX_LIFETIME_SECS, SignedAssertion, verify_signature};
 use op_identity::session::derive_principal_id;
 use thiserror::Error;
 
@@ -816,7 +816,7 @@ pub mod tests {
     use tonic::Code;
 
     use super::*;
-    use crate::human_principal_dispatch::tests::{pk, register, revoke, temp_cozo, TempCozo};
+    use crate::human_principal_dispatch::tests::{TempCozo, pk, register, revoke, temp_cozo};
 
     const TEST_KEY_BYTES: [u8; 32] = [7u8; 32];
     const SAMPLE_PUBKEY_LOCAL: &str = "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=";
@@ -1337,25 +1337,31 @@ pub mod tests {
         let cache = AssertionReplayCache::new(CLOCK_LEEWAY_SECS);
         let nonce = [0xBB; 16];
         let expires_at = 1_700_000_100i64;
-        assert!(cache
-            .check_and_insert(nonce, expires_at, 1_700_000_000)
-            .expect("insert nonce"));
+        assert!(
+            cache
+                .check_and_insert(nonce, expires_at, 1_700_000_000)
+                .expect("insert nonce")
+        );
         assert_eq!(cache.entry_count(), 1);
         // TTL passes without cache access — entry remains (no background purge).
         assert_eq!(cache.entry_count(), 1);
         // The nonce remains active through the last second in which the
         // assertion itself is time-valid. Access one second later purges it.
-        assert!(cache
-            .check_and_insert(
-                [0xCC; 16],
-                expires_at + 1000,
-                expires_at + CLOCK_LEEWAY_SECS + 1
-            )
-            .expect("insert after purge"));
+        assert!(
+            cache
+                .check_and_insert(
+                    [0xCC; 16],
+                    expires_at + 1000,
+                    expires_at + CLOCK_LEEWAY_SECS + 1
+                )
+                .expect("insert after purge")
+        );
         assert_eq!(cache.entry_count(), 1, "expired nonce purged on access");
-        assert!(cache
-            .check_and_insert(nonce, expires_at + 1000, expires_at + CLOCK_LEEWAY_SECS + 1)
-            .expect("reuse expired nonce"));
+        assert!(
+            cache
+                .check_and_insert(nonce, expires_at + 1000, expires_at + CLOCK_LEEWAY_SECS + 1)
+                .expect("reuse expired nonce")
+        );
     }
 
     /// VAL-BRIDGE-013

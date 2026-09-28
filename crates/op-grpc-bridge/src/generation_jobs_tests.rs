@@ -3,13 +3,13 @@
 
 use super::*;
 use crate::{
-    grpc_server::{OperationGrpcServer, DECLARED_CAPABILITY_HEADER},
+    grpc_server::{DECLARED_CAPABILITY_HEADER, OperationGrpcServer},
     human_principal_dispatch::tests::{
-        pk, register, temp_cozo, temp_shm_with_schemas, test_engine, TempCozo, TempShm,
+        TempCozo, TempShm, pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
     },
-    identity_sled_dispatch::{tests::write_identity, IdentitySledStore},
+    identity_sled_dispatch::{IdentitySledStore, tests::write_identity},
     oracle_assertion::HumanPrincipalIdentity,
-    proto::{state_sync_server::StateSync, GetStateRequest, SubscribeRequest},
+    proto::{GetStateRequest, SubscribeRequest, state_sync_server::StateSync},
     tched_router_runtime::TchedRouterRuntimeClient,
 };
 use futures::{SinkExt, StreamExt};
@@ -23,8 +23,8 @@ use std::time::Duration;
 use tokio_tungstenite::{
     accept_hdr_async,
     tungstenite::{
-        handshake::server::{Request as WsRequest, Response as WsResponse},
         Message,
+        handshake::server::{Request as WsRequest, Response as WsResponse},
     },
 };
 use tonic::Request;
@@ -68,16 +68,20 @@ impl NativeFixture {
                 stream,
                 move |request: &WsRequest, mut response: WsResponse| {
                     assert_eq!(request.uri().path(), "/ws/chat");
-                    assert!(request
-                        .uri()
-                        .query()
-                        .unwrap()
-                        .contains("agent_alias=fixture"));
-                    assert!(request
-                        .uri()
-                        .query()
-                        .unwrap()
-                        .contains("stateless_generation=1"));
+                    assert!(
+                        request
+                            .uri()
+                            .query()
+                            .unwrap()
+                            .contains("agent_alias=fixture")
+                    );
+                    assert!(
+                        request
+                            .uri()
+                            .query()
+                            .unwrap()
+                            .contains("stateless_generation=1")
+                    );
                     assert_eq!(request.headers()["authorization"], "Bearer fixture-token");
                     let forwarded = request.headers()["x-opdbus-sealed-id-bin"]
                         .to_str()
@@ -431,9 +435,11 @@ async fn llm_stream_facade_and_job_listing_use_private_committed_state() {
         .await
         .unwrap();
     let other_workspace: GenerationWorkspaceOutput = serde_json::from_value(other.clone()).unwrap();
-    assert!(other_workspace
-        .state
-        .is_none_or(|state| state.generation_jobs.is_empty()));
+    assert!(
+        other_workspace
+            .state
+            .is_none_or(|state| state.generation_jobs.is_empty())
+    );
     assert!(!other.to_string().contains("PRIVATE_FACADE_PROMPT"));
     assert!(!other.to_string().contains("facade output"));
     fixture
@@ -450,20 +456,24 @@ async fn llm_stream_facade_and_job_listing_use_private_committed_state() {
         .call(&fixture.first, "get_generation_jobs", json!({}))
         .await
         .unwrap();
-    assert!(deleted["state"]["generation_jobs"]
-        .as_object()
-        .unwrap()
-        .is_empty());
+    assert!(
+        deleted["state"]["generation_jobs"]
+            .as_object()
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[tokio::test]
 async fn actual_handlers_require_owner_grants_and_serve_only_committed_children() {
     let mut native = NativeFixture::new().await;
     let fixture = Fixture::new(native.endpoint.clone()).await;
-    assert!(fixture
-        .get(&fixture.first, "generation_jobs")
-        .await
-        .is_err());
+    assert!(
+        fixture
+            .get(&fixture.first, "generation_jobs")
+            .await
+            .is_err()
+    );
     let missing = fixture.request(
         SubscribeRequest {
             plugin_ids: vec![PLUGIN.into()],
@@ -811,10 +821,12 @@ async fn private_pending_failure_blocks_reads_and_recovery_uses_durable_state() 
     .unwrap()
     .unwrap();
     assert!(matches!(result, PrivateDocumentPublication::Pending { .. }));
-    assert!(fixture
-        .get(&fixture.first, "generation_jobs")
-        .await
-        .is_err());
+    assert!(
+        fixture
+            .get(&fixture.first, "generation_jobs")
+            .await
+            .is_err()
+    );
     fixture.activate(&fixture.first).await;
     let recovered = fixture
         .call(
@@ -826,9 +838,11 @@ async fn private_pending_failure_blocks_reads_and_recovery_uses_durable_state() 
         .unwrap();
     assert_eq!(recovered["job"]["status"], "interrupted");
     assert_eq!(recovered["job"]["failure"], "process_interrupted");
-    assert!(!serde_json::to_string(&recovered)
-        .unwrap()
-        .contains("never-replay"));
+    assert!(
+        !serde_json::to_string(&recovered)
+            .unwrap()
+            .contains("never-replay")
+    );
 }
 
 #[tokio::test]
@@ -932,16 +946,18 @@ fn private_generation_state_is_typed_but_never_part_of_public_router_policy() {
     let valid = schema.validate(&value);
     assert!(valid.valid, "{:?}", valid.errors);
     assert!(valid.warnings.is_empty());
-    assert!(schema
-        .project_public_state(&value)
-        .unwrap()
-        .as_ref()
-        .is_none_or(|state| {
-            serde_json::to_value(state)
-                .unwrap()
-                .get("generation_jobs")
-                .is_none()
-        }));
+    assert!(
+        schema
+            .project_public_state(&value)
+            .unwrap()
+            .as_ref()
+            .is_none_or(|state| {
+                serde_json::to_value(state)
+                    .unwrap()
+                    .get("generation_jobs")
+                    .is_none()
+            })
+    );
 }
 
 #[tokio::test]
@@ -978,29 +994,35 @@ async fn queued_grant_withdrawal_rejects_before_any_durable_or_native_effect() {
     .unwrap();
     fixture.grants(false, true);
     drop(guard);
-    assert!(tokio::time::timeout(LIMIT, call)
-        .await
-        .unwrap()
-        .unwrap()
-        .is_err());
-    assert!(fixture
-        .documents
-        .read(&owner.document_id())
-        .await
-        .unwrap()
-        .is_none());
+    assert!(
+        tokio::time::timeout(LIMIT, call)
+            .await
+            .unwrap()
+            .unwrap()
+            .is_err()
+    );
+    assert!(
+        fixture
+            .documents
+            .read(&owner.document_id())
+            .await
+            .unwrap()
+            .is_none()
+    );
     assert!(matches!(
         native.prompt.try_recv(),
         Err(tokio::sync::oneshot::error::TryRecvError::Empty)
     ));
-    assert!(fixture
-        .private
-        .open_child(owner.selector())
-        .unwrap()
-        .unwrap()
-        .pending_document()
-        .unwrap()
-        .is_none());
+    assert!(
+        fixture
+            .private
+            .open_child(owner.selector())
+            .unwrap()
+            .unwrap()
+            .pending_document()
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[tokio::test]

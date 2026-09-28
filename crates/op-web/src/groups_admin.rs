@@ -8,15 +8,15 @@
 //! - Real-time tool count tracking
 
 use axum::{
+    Router,
     extract::ConnectInfo,
     http::StatusCode,
     response::{Html, Json},
     routing::get,
-    Router,
 };
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use tokio::sync::RwLock;

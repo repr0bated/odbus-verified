@@ -5,7 +5,7 @@
 //! - Security profiles
 //! - Operation specifications
 
-use crate::generator::md_parser::{determine_category, AgentDefinition};
+use crate::generator::md_parser::{AgentDefinition, determine_category};
 use crate::security::ProfileCategory;
 use std::collections::HashSet;
 

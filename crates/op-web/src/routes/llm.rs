@@ -1,10 +1,10 @@
 //! LLM API routes for provider and model management
 
 use axum::{
+    Json,
     extract::{Extension, Query},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;

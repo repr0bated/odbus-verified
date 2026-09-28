@@ -1,19 +1,19 @@
 use crate::human_principal_dispatch::tests::{
     pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
 };
-use crate::identity_sled_dispatch::{tests::write_identity, IdentitySledStore};
+use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
 use op_plugins::state_plugins::{
     human_principal::HumanPrincipalPlugin,
     identity_sled::IdentitySledPlugin,
     openflow::{FlowAction, FlowEntry, OpenFlowPlugin},
 };
 use op_state::StatePlugin;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 use tokio::sync::Mutex;
@@ -223,17 +223,19 @@ async fn all_three_flow_methods_cross_canonical_admission_native_cas_and_child_f
 
     std::fs::write(&grants, "{}").unwrap();
     let denied = json!({"bridge":"fixture0","flow":flow(FlowAction::Normal)});
-    assert!(engine
-        .dispatch_method_call_with_identity(
-            "openflow",
-            "add_flow",
-            &denied.to_string(),
-            Some("openflow.write"),
-            &principal,
-            Some(&identity.session_id),
-            identity.genesis.as_deref(),
-        )
-        .await
-        .is_err());
+    assert!(
+        engine
+            .dispatch_method_call_with_identity(
+                "openflow",
+                "add_flow",
+                &denied.to_string(),
+                Some("openflow.write"),
+                &principal,
+                Some(&identity.session_id),
+                identity.genesis.as_deref(),
+            )
+            .await
+            .is_err()
+    );
     assert_eq!(controller.effects.load(Ordering::SeqCst), 3);
 }

@@ -32,13 +32,13 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpListener;
-use tokio::sync::{mpsc, oneshot, Semaphore};
-use tokio_rustls::rustls::{self, RootCertStore};
+use tokio::sync::{Semaphore, mpsc, oneshot};
 use tokio_rustls::TlsAcceptor;
+use tokio_rustls::rustls::{self, RootCertStore};
 
 use crate::datapath_safe::{FALLBACK_COOKIE, MANAGED_COOKIE};
 use crate::openflow_translate::{json_flow_to_add, json_flow_to_delete};
-use crate::unixctl::{ensure_static_fdb_entries, static_fdb_from_env, StaticFdbEntry};
+use crate::unixctl::{StaticFdbEntry, ensure_static_fdb_entries, static_fdb_from_env};
 
 #[path = "controller_flow_verify.rs"]
 mod flow_verify;
@@ -1102,8 +1102,8 @@ impl OpenFlowControllerHandle {
 mod tests {
     use super::*;
     use rcgen::{BasicConstraints, CertificateParams, IsCa, KeyPair};
-    use rustls::pki_types::{PrivateKeyDer, ServerName};
     use rustls::ClientConfig;
+    use rustls::pki_types::{PrivateKeyDer, ServerName};
     use tokio_rustls::TlsConnector;
 
     async fn handshake(server: Arc<rustls::ServerConfig>, client: Arc<ClientConfig>) -> bool {
@@ -1255,10 +1255,12 @@ mod tests {
             (Some("ca.pem"), Some("cert.pem"), None, TLS_KEY_ENV),
             (Some("ca.pem"), Some(" "), Some("key.pem"), TLS_CERT_ENV),
         ] {
-            assert!(TlsPaths::from_values(ca, cert, key)
-                .unwrap_err()
-                .to_string()
-                .contains(missing));
+            assert!(
+                TlsPaths::from_values(ca, cert, key)
+                    .unwrap_err()
+                    .to_string()
+                    .contains(missing)
+            );
         }
         let paths = TlsPaths::from_values(
             Some("/missing/ca.pem"),

@@ -17,10 +17,10 @@ use op_state::{
 use op_state_store::PluginSchema;
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use zbus::{
-    zvariant::{ObjectPath, OwnedObjectPath},
     Connection, Proxy,
+    zvariant::{ObjectPath, OwnedObjectPath},
 };
 
 /// Keyring state representation
@@ -240,7 +240,7 @@ pub(crate) fn keyring_schema() -> PluginSchema {
         &simd_json::serde::to_owned_value(&KeyringState::default()).unwrap(),
     );
 
-    use super::plugin_scaffold_helpers::{method_decl_from_schemars_with_output, EmptyInput};
+    use super::plugin_scaffold_helpers::{EmptyInput, method_decl_from_schemars_with_output};
     use op_state_store::SideEffect;
 
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]

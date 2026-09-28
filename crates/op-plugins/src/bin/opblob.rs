@@ -14,11 +14,10 @@
 //! ```
 
 use op_blob::{
-    blob, blobify_plugin_schema, btrfs,
+    BlobRef, blob, blobify_plugin_schema, btrfs,
     catalog::{ActiveReflectionCatalog, DEFAULT_SHM_DIR},
     demo, descriptor,
     identity::WgKeypair,
-    BlobRef,
 };
 use op_plugins::DefaultPluginRegistry;
 use op_state_store::MemoryStore;

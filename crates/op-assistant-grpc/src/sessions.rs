@@ -8,7 +8,7 @@ use crate::proto::{
     ListSessionsRequest, ListSessionsResponse, Message, SendMessageRequest, Session,
     SessionHistory,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tonic::{Request, Response, Status};
 
 pub struct SessionServiceImpl {

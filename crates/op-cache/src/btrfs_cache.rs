@@ -16,13 +16,13 @@ use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::{
-    atomic::{AtomicUsize, Ordering},
     Mutex,
+    atomic::{AtomicUsize, Ordering},
 };
 use tracing::{debug, info, warn};
 
 use super::numa::{NumaMemoryPolicy, NumaNode, NumaOptimizer, NumaStats, NumaTopology};
-use super::snapshot_manager::{SnapshotConfig, SnapshotManager, CACHE_MEMBERS, COMPLETE_MARKER};
+use super::snapshot_manager::{CACHE_MEMBERS, COMPLETE_MARKER, SnapshotConfig, SnapshotManager};
 
 fn is_btrfs_filesystem(path: &Path) -> Result<bool> {
     let file = std::fs::File::open(path)
@@ -972,8 +972,9 @@ impl BtrfsCache {
                 Ok(()) => {}
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
                 Err(error) => {
-                    return Err(error)
-                        .with_context(|| format!("Failed to delete cache file {}", path.display()))
+                    return Err(error).with_context(|| {
+                        format!("Failed to delete cache file {}", path.display())
+                    });
                 }
             }
         }
@@ -1755,33 +1756,39 @@ mod tests {
         reopened.delete_all_snapshots().await.unwrap();
         drop(reopened);
         for member in CACHE_MEMBERS.iter().rev() {
-            assert!(tokio::process::Command::new("btrfs")
-                .args(["subvolume", "delete"])
-                .arg(received.join(member))
-                .output()
-                .await
-                .unwrap()
-                .status
-                .success());
+            assert!(
+                tokio::process::Command::new("btrfs")
+                    .args(["subvolume", "delete"])
+                    .arg(received.join(member))
+                    .output()
+                    .await
+                    .unwrap()
+                    .status
+                    .success()
+            );
         }
         for category in ["kv", "diffs", "queries", "blocks", "embeddings"] {
-            assert!(tokio::process::Command::new("btrfs")
+            assert!(
+                tokio::process::Command::new("btrfs")
+                    .args(["subvolume", "delete"])
+                    .arg(cache_path.join(category))
+                    .output()
+                    .await
+                    .unwrap()
+                    .status
+                    .success()
+            );
+        }
+        assert!(
+            tokio::process::Command::new("btrfs")
                 .args(["subvolume", "delete"])
-                .arg(cache_path.join(category))
+                .arg(cache_path)
                 .output()
                 .await
                 .unwrap()
                 .status
-                .success());
-        }
-        assert!(tokio::process::Command::new("btrfs")
-            .args(["subvolume", "delete"])
-            .arg(cache_path)
-            .output()
-            .await
-            .unwrap()
-            .status
-            .success());
+                .success()
+        );
     }
 
     #[test]
@@ -1905,12 +1912,14 @@ mod tests {
             .join(format!("{}.dat", cache.hash_key("key")));
         tokio::fs::remove_file(&backing).await.unwrap();
         tokio::fs::create_dir(&backing).await.unwrap();
-        assert!(cache
-            .delete("key")
-            .await
-            .unwrap_err()
-            .to_string()
-            .contains("Failed to delete cache file"));
+        assert!(
+            cache
+                .delete("key")
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("Failed to delete cache file")
+        );
         tokio::fs::remove_dir(&backing).await.unwrap();
         // The failed removal did not pretend that its index row was deleted.
         assert!(cache.delete("key").await.unwrap());

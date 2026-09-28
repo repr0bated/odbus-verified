@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 
 use crate::node::{NodePort, NodeResult, NodeState, WorkflowNode};
@@ -52,13 +52,17 @@ impl WorkflowNode for DbusMethodNode {
     }
 
     fn inputs(&self) -> Vec<NodePort> {
-        vec![NodePort::optional("args", "Arguments", "array")
-            .with_description("Arguments to pass to the D-Bus method")]
+        vec![
+            NodePort::optional("args", "Arguments", "array")
+                .with_description("Arguments to pass to the D-Bus method"),
+        ]
     }
 
     fn outputs(&self) -> Vec<NodePort> {
-        vec![NodePort::required("result", "Result", "object")
-            .with_description("Result from the D-Bus method call")]
+        vec![
+            NodePort::required("result", "Result", "object")
+                .with_description("Result from the D-Bus method call"),
+        ]
     }
 
     fn state(&self) -> NodeState {

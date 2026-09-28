@@ -21,7 +21,7 @@ use async_trait::async_trait;
 use op_tools::tool::{SecurityLevel, Tool};
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tracing::{debug, info};
 
@@ -521,11 +521,7 @@ impl Tool for SearchToolsTool {
                     score += 30;
                 }
 
-                if score > 0 {
-                    Some((score, t))
-                } else {
-                    None
-                }
+                if score > 0 { Some((score, t)) } else { None }
             })
             .collect();
 

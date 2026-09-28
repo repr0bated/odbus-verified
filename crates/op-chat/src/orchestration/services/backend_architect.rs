@@ -5,18 +5,18 @@
 
 use std::pin::Pin;
 
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
 
 use crate::orchestration::proto::op_chat_orchestration::{
-    backend_architect_service_server::BackendArchitectService, ArchitectAnalyzeRequest,
-    ArchitectAnalyzeResponse, ArchitectDesignRequest, ArchitectDesignResponse,
-    ArchitectDocumentRequest, ArchitectReviewRequest, ArchitectReviewResponse,
-    ArchitectSuggestRequest, ArchitectSuggestResponse, ArchitectureFinding, DocumentChunk,
-    ReviewIssue, Suggestion,
+    ArchitectAnalyzeRequest, ArchitectAnalyzeResponse, ArchitectDesignRequest,
+    ArchitectDesignResponse, ArchitectDocumentRequest, ArchitectReviewRequest,
+    ArchitectReviewResponse, ArchitectSuggestRequest, ArchitectSuggestResponse,
+    ArchitectureFinding, DocumentChunk, ReviewIssue, Suggestion,
+    backend_architect_service_server::BackendArchitectService,
 };
 
 use super::OrchestrationServer;

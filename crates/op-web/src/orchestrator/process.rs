@@ -5,7 +5,7 @@ use tracing::{debug, error, info, warn};
 
 use op_llm::provider::{ChatMessage, ChatRequest, LlmProvider, ModelInfo, ToolChoice};
 
-use super::{OrchestratorEvent, OrchestratorResponse, UnifiedOrchestrator, MAX_TURNS};
+use super::{MAX_TURNS, OrchestratorEvent, OrchestratorResponse, UnifiedOrchestrator};
 
 fn is_step1_no_tools_recoverable(err: &str) -> bool {
     err.contains("MALFORMED_FUNCTION_CALL")
@@ -258,8 +258,8 @@ The following tools are available via execute_tool():
                                     });
                                 }
                                 warn!(
-                                        "No-tools fallback returned empty content; returning original error"
-                                    );
+                                    "No-tools fallback returned empty content; returning original error"
+                                );
                             }
                             Ok(Err(fallback_err)) => {
                                 warn!(

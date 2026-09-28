@@ -13,7 +13,7 @@ use std::os::unix::fs::FileExt;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 

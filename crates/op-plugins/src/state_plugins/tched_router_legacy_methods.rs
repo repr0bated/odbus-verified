@@ -5,7 +5,7 @@ use super::runtime_documents::{RuntimeDocument, RuntimeDocuments};
 use super::tched_router::{ObservedTchedRouterState, ResolveRouteInput};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{collections::BTreeSet, sync::Arc};
 
 const ASSIGNMENTS_DOCUMENT_ID: &str = "tched_router.model_assignments";

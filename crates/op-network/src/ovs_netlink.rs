@@ -4,18 +4,18 @@
 //! REALITY: This module talks directly to kernel via Generic Netlink
 //! REQUIRES: CAP_NET_ADMIN or root privileges
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use byteorder::{ByteOrder, NativeEndian};
 use netlink_packet_core::{
-    NetlinkBuffer, NetlinkMessage, NetlinkPayload, NLM_F_ACK, NLM_F_DUMP, NLM_F_REQUEST,
+    NLM_F_ACK, NLM_F_DUMP, NLM_F_REQUEST, NetlinkBuffer, NetlinkMessage, NetlinkPayload,
 };
-use netlink_packet_generic::ctrl::{nlas::GenlCtrlAttrs, GenlCtrl, GenlCtrlCmd};
 use netlink_packet_generic::GenlMessage;
+use netlink_packet_generic::ctrl::{GenlCtrl, GenlCtrlCmd, nlas::GenlCtrlAttrs};
 use netlink_packet_utils::{
-    nla::{Nla, NlaBuffer, NlasIterator},
     DecodeError,
+    nla::{Nla, NlaBuffer, NlasIterator},
 };
-use netlink_sys::{protocols::NETLINK_GENERIC, Socket};
+use netlink_sys::{Socket, protocols::NETLINK_GENERIC};
 
 // ============================================================================
 // OVS Netlink Family Names

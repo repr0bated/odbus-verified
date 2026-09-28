@@ -38,10 +38,10 @@
 //! `ensure_static_fdb_entries` is re-asserted on every OVS reconnect alongside
 //! `ensure_fallback_normal`.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use rovs_jsonrpc::Connection;
 use rovs_transport::{Address, Stream};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
 /// Directory holding the `ovs-vswitchd.<pid>.ctl` socket.

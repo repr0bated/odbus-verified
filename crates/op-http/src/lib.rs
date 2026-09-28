@@ -55,15 +55,15 @@ pub type Result<T> = std::result::Result<T, ServerError>;
 
 /// Prelude for convenient imports by other crates
 pub mod prelude {
+    pub use super::Result;
     pub use super::axum::{
+        Router,
         extract::{Json, Path, Query, State},
         response::{IntoResponse, Response},
         routing::{delete, get, post, put},
-        Router,
     };
     pub use super::middleware::{MiddlewareConfig, MiddlewareStack};
     pub use super::router::{RouterBuilder, ServiceRouter};
     pub use super::server::{HttpServer, HttpServerBuilder, ServerConfig};
     pub use super::tls::{TlsConfig, TlsMode};
-    pub use super::Result;
 }

@@ -13,19 +13,19 @@
 //! Fail closed: no anchored sled → dropped before any effect; queue full →
 //! dropped; deadline → timeout; refused action → failed.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use op_cozo_store::EpisodeScope;
 use op_plugins::state_plugins::agent_triggers::AgentTrigger;
 use op_plugins::state_plugins::ctl_plane_chatbot::{RunAction, RunRecord, RunStatus};
 use op_plugins::state_plugins::ctl_plane_chatbot_methods::{
-    build_completed_agent_run, CompletedAgentRun,
+    CompletedAgentRun, build_completed_agent_run,
 };
 use op_plugins::state_plugins::tched_router::{ChatInput, ChatOutput, TchedChatMessage};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 
 use crate::mutation_engine::MutationEngine;
 
@@ -477,7 +477,7 @@ mod tests {
     use crate::human_principal_dispatch::tests::{
         pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
     };
-    use crate::identity_sled_dispatch::{tests::write_identity, IdentitySledStore};
+    use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
     use op_plugins::state_plugins::{
         ctl_plane_chatbot::CtlPlaneChatbotPlugin, human_principal::HumanPrincipalPlugin,
         identity_sled::IdentitySledPlugin,
@@ -709,10 +709,12 @@ mod tests {
         let run = &runs[0]["run"];
         assert_eq!(run["status"], "failed");
         assert_eq!(run["actions"][0]["ok"], false);
-        assert!(run["actions"][0]["error"]
-            .as_str()
-            .unwrap()
-            .contains("allowed_methods"));
+        assert!(
+            run["actions"][0]["error"]
+                .as_str()
+                .unwrap()
+                .contains("allowed_methods")
+        );
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

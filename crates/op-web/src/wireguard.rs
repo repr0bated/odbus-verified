@@ -3,9 +3,9 @@
 //! Generates WireGuard client configurations and QR codes for the privacy router.
 
 use anyhow::Result;
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use image::Luma;
-use op_identity::{generate_wireguard_keypair, WireGuardKeyPair};
+use op_identity::{WireGuardKeyPair, generate_wireguard_keypair};
 use qrcode::QrCode;
 
 /// WireGuard keypair
@@ -71,11 +71,7 @@ impl WgServerConfig {
 fn detect_interface_public_key(interface: &str) -> Option<String> {
     let path = format!("/sys/class/net/{}/wireguard/public_key", interface);
     let key = std::fs::read_to_string(&path).ok()?.trim().to_string();
-    if key.is_empty() {
-        None
-    } else {
-        Some(key)
-    }
+    if key.is_empty() { None } else { Some(key) }
 }
 
 /// Generate a WireGuard client configuration

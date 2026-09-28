@@ -17,13 +17,13 @@ use tonic::{Request, Response, Status};
 use tracing::{debug, info};
 
 use op_plugins::state_plugins::emqx::{
-    BrokerEvent, BROKER_EVENT_SIGNAL, BROKER_EVENT_SUBID, REGISTERED_HOOKS,
+    BROKER_EVENT_SIGNAL, BROKER_EVENT_SUBID, BrokerEvent, REGISTERED_HOOKS,
 };
 
 use crate::mutation_engine::{ChangeSource, ChangeType, MutationEngine};
 use crate::proto::emqx_exhook::{
-    self as exhook, hook_provider_server::HookProvider, valued_response, EmptySuccess, HookSpec,
-    LoadedResponse, ValuedResponse,
+    self as exhook, EmptySuccess, HookSpec, LoadedResponse, ValuedResponse,
+    hook_provider_server::HookProvider, valued_response,
 };
 
 /// HookProvider service implementation for EMQX MQTT event hooks.

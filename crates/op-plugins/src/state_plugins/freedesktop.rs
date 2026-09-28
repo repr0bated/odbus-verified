@@ -34,8 +34,8 @@ use op_state::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use simd_json::prelude::{ValueAsScalar, ValueObjectAccess};
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::{ValueAsScalar, ValueObjectAccess};
 use std::collections::HashMap;
 
 /// Enumeration is restricted to the current sealed OP-DBUS plugin catalog.
@@ -626,15 +626,21 @@ mod tests {
         let plugin = FreeDesktopPlugin::new();
 
         // Check all standard interfaces are registered
-        assert!(plugin
-            .get_interface(canonical::OBJECT_MANAGER_INTERFACE)
-            .is_some());
-        assert!(plugin
-            .get_interface(canonical::PROPERTIES_INTERFACE)
-            .is_some());
-        assert!(plugin
-            .get_interface(canonical::INTROSPECTABLE_INTERFACE)
-            .is_some());
+        assert!(
+            plugin
+                .get_interface(canonical::OBJECT_MANAGER_INTERFACE)
+                .is_some()
+        );
+        assert!(
+            plugin
+                .get_interface(canonical::PROPERTIES_INTERFACE)
+                .is_some()
+        );
+        assert!(
+            plugin
+                .get_interface(canonical::INTROSPECTABLE_INTERFACE)
+                .is_some()
+        );
         assert!(plugin.get_interface(canonical::PEER_INTERFACE).is_some());
     }
 
@@ -643,14 +649,18 @@ mod tests {
         let plugin = FreeDesktopPlugin::new();
 
         // Valid canonical path
-        assert!(plugin
-            .validate_canonical_path("/org/opdbus/v1/plugins/test")
-            .is_ok());
+        assert!(
+            plugin
+                .validate_canonical_path("/org/opdbus/v1/plugins/test")
+                .is_ok()
+        );
 
         // Invalid legacy path (missing /org prefix)
-        assert!(plugin
-            .validate_canonical_path("/opdbus/v1/plugins/test")
-            .is_err());
+        assert!(
+            plugin
+                .validate_canonical_path("/opdbus/v1/plugins/test")
+                .is_err()
+        );
     }
 
     #[test]

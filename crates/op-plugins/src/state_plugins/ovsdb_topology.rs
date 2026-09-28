@@ -4,7 +4,7 @@
 //! and later scrubbed. This is selected topology, not a full config backup.
 
 use super::{BridgeConfig, InterfaceConfig, OvsBridgeState, PortConfig};
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_network::rovs_proxy::monitor::{OvsdbRow, OvsdbSnapshot};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};

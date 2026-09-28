@@ -3,9 +3,9 @@
 //!
 //! Dynamic Value/Struct/ListValue numbers use protobuf's IEEE-754 doubles.
 //! Declared integer fields use int64/uint64 and retain their full range.
+use serde_json::Value;
 #[cfg(test)]
 use serde_json::json;
-use serde_json::Value;
 
 /// Proto3 scalar presence distinguishes an omitted argument from an explicit
 /// false, zero, or empty string before validating the owning plugin schema.

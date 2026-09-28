@@ -23,8 +23,8 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use op_cognitive_mcp::ChainVectorIndex;
-use op_snowball::replication::{transfer_prepared_snapshot, PreparedSnapshotTransfer};
-use op_snowball::{btrfs_delta, StreamingSnowball};
+use op_snowball::replication::{PreparedSnapshotTransfer, transfer_prepared_snapshot};
+use op_snowball::{StreamingSnowball, btrfs_delta};
 use std::{path::PathBuf, time::Duration};
 
 #[derive(Parser)]
@@ -243,15 +243,17 @@ mod tests {
 
     #[test]
     fn replicate_requires_explicit_snapshot_and_preserves_optional_parent() {
-        assert!(Cli::try_parse_from([
-            "op-chain-vectors",
-            "replicate",
-            "--host",
-            "backup",
-            "--remote-path",
-            "/receive",
-        ])
-        .is_err());
+        assert!(
+            Cli::try_parse_from([
+                "op-chain-vectors",
+                "replicate",
+                "--host",
+                "backup",
+                "--remote-path",
+                "/receive",
+            ])
+            .is_err()
+        );
         let cli = Cli::try_parse_from([
             "op-chain-vectors",
             "replicate",

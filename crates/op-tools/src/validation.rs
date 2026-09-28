@@ -6,7 +6,7 @@
 //! Uses simd-json for high-performance JSON processing while maintaining
 //! compatibility with the existing serde_json ecosystem.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use jsonschema::Validator;
 use serde_json::Value; // Keep for compatibility with existing code
 use std::collections::HashSet;

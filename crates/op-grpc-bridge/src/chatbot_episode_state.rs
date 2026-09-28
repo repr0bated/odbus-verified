@@ -8,14 +8,14 @@ use op_core::projection_shm::{
 };
 use op_cozo_store::{EpisodeScope, EpisodeSnapshot};
 use op_state_store::PluginSchema;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{Mutex, broadcast};
 
 use crate::{
     method_contract_admission,
     mutation_engine::MutationEngine,
-    sealed_schema_reader::{read_manifest_pinned_schema_document, ManifestPinnedSchemaDocument},
+    sealed_schema_reader::{ManifestPinnedSchemaDocument, read_manifest_pinned_schema_document},
 };
 
 pub(crate) const PLUGIN: &str = "ctl_plane_chatbot";
@@ -545,11 +545,11 @@ mod tests {
         human_principal_dispatch::tests::{
             pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
         },
-        identity_sled_dispatch::{tests::write_identity, IdentitySledStore},
+        identity_sled_dispatch::{IdentitySledStore, tests::write_identity},
     };
     use op_plugins::state_plugins::{
         ctl_plane_chatbot::CtlPlaneChatbotPlugin,
-        ctl_plane_chatbot_methods::{build_completed_chat_episode, CompletedChatEpisode},
+        ctl_plane_chatbot_methods::{CompletedChatEpisode, build_completed_chat_episode},
         human_principal::HumanPrincipalPlugin,
         identity_sled::IdentitySledPlugin,
     };
@@ -715,10 +715,12 @@ mod tests {
                 .get(&third_id)
                 .is_some()
         );
-        assert!(store
-            .get_scoped_episode(&scope, &third_id)
-            .unwrap()
-            .is_some());
+        assert!(
+            store
+                .get_scoped_episode(&scope, &third_id)
+                .unwrap()
+                .is_some()
+        );
 
         // A knowledge push is the same owned effect: durable row, private
         // document child, owner-key wake — and the episode window is intact.
@@ -773,14 +775,16 @@ mod tests {
             "sealed by the plugin digest"
         );
         // The same engine push again is a duplicate, not a second row.
-        assert!(publisher
-            .commit_knowledge(
-                &engine,
-                scope.clone(),
-                crate::knowledge_delivery::push_document(&push),
-            )
-            .await
-            .is_err());
+        assert!(
+            publisher
+                .commit_knowledge(
+                    &engine,
+                    scope.clone(),
+                    crate::knowledge_delivery::push_document(&push),
+                )
+                .await
+                .is_err()
+        );
         assert!(
             crate::knowledge_delivery::scope_for_session(&engine, "no-such-session")
                 .await

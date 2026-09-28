@@ -4,7 +4,7 @@ use std::sync::Arc;
 use op_grpc_bridge::{ChangeSource, ChangeType, MutationEngine};
 use op_state::StatePlugin;
 use op_state_store::PluginSchema;
-use simd_json::{json, OwnedValue};
+use simd_json::{OwnedValue, json};
 use tokio::sync::broadcast::error::TryRecvError;
 
 mod support;
@@ -143,15 +143,17 @@ async fn failed_commit_changes_neither_state_mirror_nor_state_notifications() {
     let original_manifest = std::fs::read(&manifest_path).unwrap();
     // An interrupted transaction may not be treated as committed state.
     std::fs::write(&manifest_path, br#"{"generation":1,"publishing":true}"#).unwrap();
-    assert!(change(
-        &engine,
-        "/instances/one",
-        ChangeType::PropertySet,
-        Some("status"),
-        json!("bad")
-    )
-    .await
-    .is_err());
+    assert!(
+        change(
+            &engine,
+            "/instances/one",
+            ChangeType::PropertySet,
+            Some("status"),
+            json!("bad")
+        )
+        .await
+        .is_err()
+    );
     assert_eq!(std::fs::read(&state_path).unwrap(), original_bytes);
     assert_eq!(engine.get_state("incus").await, Some(original));
     assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
@@ -203,9 +205,11 @@ async fn private_backend_fields_stay_in_shm_and_out_of_state_notifications_and_o
     let update = updates.try_recv().unwrap();
     assert_eq!(update.old_value, Some(expected.clone()));
     assert_eq!(update.new_value, expected);
-    assert!(!serde_json::to_string(&audit.try_recv().unwrap())
-        .unwrap()
-        .contains("replacement-secret"));
+    assert!(
+        !serde_json::to_string(&audit.try_recv().unwrap())
+            .unwrap()
+            .contains("replacement-secret")
+    );
 }
 
 #[tokio::test]
@@ -242,21 +246,23 @@ async fn method_arguments_and_unsealed_orphan_files_are_never_present_state() {
     )
     .unwrap();
     assert!(engine.get_public_state("unsealed").await.is_none());
-    assert!(engine
-        .process_authoritative_change(
-            "unsealed".into(),
-            "/org/opdbus/v1/plugins/unsealed".into(),
-            ChangeType::PropertySet,
-            None,
-            None,
-            json!({"new":true}),
-            vec![],
-            "fixture".into(),
-            None,
-            ChangeSource::Internal,
-        )
-        .await
-        .is_err());
+    assert!(
+        engine
+            .process_authoritative_change(
+                "unsealed".into(),
+                "/org/opdbus/v1/plugins/unsealed".into(),
+                ChangeType::PropertySet,
+                None,
+                None,
+                json!({"new":true}),
+                vec![],
+                "fixture".into(),
+                None,
+                ChangeSource::Internal,
+            )
+            .await
+            .is_err()
+    );
     assert!(matches!(rx.try_recv(), Err(TryRecvError::Empty)));
 }
 
@@ -320,10 +326,12 @@ async fn generic_identity_updates_cannot_bypass_the_durable_owner() {
         assert!(error.contains("durable intent owner"), "{error}");
     }
     assert!(!catalog.root().join("state/identity_sled.json").exists());
-    assert!(!catalog
-        .root()
-        .join("state/.credentials/identity_sled.json")
-        .exists());
+    assert!(
+        !catalog
+            .root()
+            .join("state/.credentials/identity_sled.json")
+            .exists()
+    );
     assert!(engine.get_state("identity_sled").await.is_none());
     assert!(matches!(changes.try_recv(), Err(TryRecvError::Empty)));
     assert!(matches!(audit.try_recv(), Err(TryRecvError::Empty)));

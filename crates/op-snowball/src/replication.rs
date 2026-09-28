@@ -7,7 +7,7 @@
 //! directories. Incremental receive also requires the unchanged parent at the
 //! destination. Native receive errors are preserved, without remote cleanup.
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use btrfs_uapi::{filesystem, send_receive, subvolume};
 use nix::{fcntl::OFlag, sys::stat::Mode};
 use serde::Serialize;
@@ -399,7 +399,9 @@ pub async fn transfer_prepared_snapshot(
         Ok(result) => result?,
         Err(_) => {
             let _ = child.start_kill();
-            bail!("prepared snapshot transfer timed out; remote data may be partial; no arrival hook ran")
+            bail!(
+                "prepared snapshot transfer timed out; remote data may be partial; no arrival hook ran"
+            )
         }
     }
     let arrival_hook_error = if let Some(arguments) = &hook_arguments {
@@ -485,22 +487,26 @@ mod tests {
         };
         validate_parent(&facts(), &parent).unwrap();
         assert!(validate_parent(&facts(), &facts()).is_err());
-        assert!(validate_parent(
-            &facts(),
-            &SnapshotFacts {
-                readonly: false,
-                ..parent.clone()
-            }
-        )
-        .is_err());
-        assert!(validate_parent(
-            &facts(),
-            &SnapshotFacts {
-                filesystem_uuid: Uuid::from_u128(99),
-                ..parent
-            }
-        )
-        .is_err());
+        assert!(
+            validate_parent(
+                &facts(),
+                &SnapshotFacts {
+                    readonly: false,
+                    ..parent.clone()
+                }
+            )
+            .is_err()
+        );
+        assert!(
+            validate_parent(
+                &facts(),
+                &SnapshotFacts {
+                    filesystem_uuid: Uuid::from_u128(99),
+                    ..parent
+                }
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -593,7 +599,10 @@ mod tests {
             Uuid::from_u128(2),
         )
         .unwrap();
-        assert_eq!(command, "exec '/opt/my hook' '/receive/golden'\\''s image' '00000000-0000-0000-0000-000000000002'");
+        assert_eq!(
+            command,
+            "exec '/opt/my hook' '/receive/golden'\\''s image' '00000000-0000-0000-0000-000000000002'"
+        );
         assert!(hook_command("relative-hook", "/receive/image", Uuid::nil()).is_err());
     }
 

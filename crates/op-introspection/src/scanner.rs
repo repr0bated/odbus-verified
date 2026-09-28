@@ -93,8 +93,8 @@ impl Default for ServiceScanner {
 
 /// Parse DBus introspection XML
 fn parse_introspection_xml(xml: &str, path: &str) -> Result<ObjectInfo> {
-    use quick_xml::events::Event;
     use quick_xml::Reader;
+    use quick_xml::events::Event;
 
     let mut reader = Reader::from_str(xml);
     let mut buf = Vec::new();

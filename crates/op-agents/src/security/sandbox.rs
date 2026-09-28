@@ -16,7 +16,7 @@ use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 
 use super::profiles::SecurityProfile;
-use super::validation::{validate_command, validate_path, SecurityError};
+use super::validation::{SecurityError, validate_command, validate_path};
 
 /// Drain to EOF even after the retention cap, so a full pipe cannot stall a child.
 async fn read_capped<R: tokio::io::AsyncRead + Unpin>(

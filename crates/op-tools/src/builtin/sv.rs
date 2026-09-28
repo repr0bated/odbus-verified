@@ -10,12 +10,12 @@
 //!
 //! OSCAL subid: `mut.service.runit.service-control@v1`
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
-use zbus::{proxy, Connection};
+use zbus::{Connection, proxy};
 
 use crate::{Tool, ToolRegistry};
 

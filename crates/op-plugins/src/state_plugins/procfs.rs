@@ -4,7 +4,7 @@
 //! JSON rendering, D-Bus projection, and tool generation all consume the same
 //! schema authority instead of ad-hoc `/proc` tools.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use async_trait::async_trait;
 use op_state::{
     ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateAction, StateDiff, StatePlugin,
@@ -829,12 +829,14 @@ mod tests {
 
     #[test]
     fn process_lookup_rejects_invalid_pid_and_represents_missing_process() {
-        assert!(dispatch_procfs_snapshot(
-            "get_process_info",
-            &serde_json::json!({"pid": -1}),
-            fixture(),
-        )
-        .is_err());
+        assert!(
+            dispatch_procfs_snapshot(
+                "get_process_info",
+                &serde_json::json!({"pid": -1}),
+                fixture(),
+            )
+            .is_err()
+        );
         assert!(
             dispatch_procfs_snapshot("get_process_info", &serde_json::json!({}), fixture(),)
                 .is_err()
@@ -853,21 +855,21 @@ mod tests {
     fn invalid_native_snapshots_are_rejected_before_publication() {
         let mut zero_total = fixture();
         zero_total.total_memory_bytes = 0;
-        assert!(dispatch_procfs_snapshot_observed(
-            "get_meminfo",
-            &serde_json::json!({}),
-            zero_total,
-        )
-        .is_err());
+        assert!(
+            dispatch_procfs_snapshot_observed("get_meminfo", &serde_json::json!({}), zero_total,)
+                .is_err()
+        );
 
         let mut impossible_available = fixture();
         impossible_available.available_memory_bytes = impossible_available.total_memory_bytes + 1;
-        assert!(dispatch_procfs_snapshot_observed(
-            "get_meminfo",
-            &serde_json::json!({}),
-            impossible_available,
-        )
-        .is_err());
+        assert!(
+            dispatch_procfs_snapshot_observed(
+                "get_meminfo",
+                &serde_json::json!({}),
+                impossible_available,
+            )
+            .is_err()
+        );
 
         let mut no_cpus = fixture();
         no_cpus.cpus.clear();
@@ -879,12 +881,14 @@ mod tests {
         let mut zero_available_and_frequency = fixture();
         zero_available_and_frequency.available_memory_bytes = 0;
         zero_available_and_frequency.cpus[0].frequency_mhz = None;
-        assert!(dispatch_procfs_snapshot_observed(
-            "get_cpuinfo",
-            &serde_json::json!({}),
-            zero_available_and_frequency,
-        )
-        .is_ok());
+        assert!(
+            dispatch_procfs_snapshot_observed(
+                "get_cpuinfo",
+                &serde_json::json!({}),
+                zero_available_and_frequency,
+            )
+            .is_ok()
+        );
     }
 
     #[test]

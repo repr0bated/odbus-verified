@@ -1,7 +1,7 @@
 //! Explicit private-generation selection for the existing StateSync transport.
 //! This is path syntax only. Verified identity, exact sealed read admission and
 //! owner activation are separate mandatory gates before any private SHM read.
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 
 const ROOT: &str = "/org/opdbus/v1/plugins/tched_router";
 const MAX_PATHS: usize = 32;
@@ -83,9 +83,11 @@ mod tests {
             vec![ROOT.to_owned()],
             vec!["/org/opdbus/v1/plugins/*".into()],
         ] {
-            assert!(GenerationSelection::from_subscription(&[], &paths)
-                .unwrap()
-                .is_none());
+            assert!(
+                GenerationSelection::from_subscription(&[], &paths)
+                    .unwrap()
+                    .is_none()
+            );
         }
         let paths = vec![
             format!("{ROOT}/generation_jobs"),
@@ -113,10 +115,12 @@ mod tests {
         ] {
             assert!(GenerationSelection::from_subscription(&[], &paths).is_err());
         }
-        assert!(GenerationSelection::from_subscription(
-            &["tched_router".into(), "config".into()],
-            &[root]
-        )
-        .is_err());
+        assert!(
+            GenerationSelection::from_subscription(
+                &["tched_router".into(), "config".into()],
+                &[root]
+            )
+            .is_err()
+        );
     }
 }

@@ -1,10 +1,10 @@
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::PluginSchema;
 use serde::{Deserialize, Serialize};
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 use sysinfo::{Disks, System};
 
 /// Hardware inventory snapshot.
@@ -396,7 +396,7 @@ pub fn hardware_schema() -> PluginSchema {
     );
 
     // Add methods
-    use super::plugin_scaffold_helpers::{method_decl_from_schemars_with_output, EmptyInput};
+    use super::plugin_scaffold_helpers::{EmptyInput, method_decl_from_schemars_with_output};
     use op_state_store::SideEffect;
 
     schema.methods.insert(
@@ -540,13 +540,15 @@ mod tests {
             assert_eq!(output["disposition"], "observed");
             assert_eq!(output["inventory"]["cpu"]["model"], "fixture-cpu");
         }
-        assert!(HardwarePlugin::dispatch_snapshot(
-            "get_device",
-            &serde_json::json!({"name":" "}),
-            "t".into(),
-            state,
-        )
-        .is_err());
+        assert!(
+            HardwarePlugin::dispatch_snapshot(
+                "get_device",
+                &serde_json::json!({"name":" "}),
+                "t".into(),
+                state,
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -572,23 +574,27 @@ mod tests {
 
         let mut invalid = fixture();
         invalid.cpu.cores = 0;
-        assert!(HardwarePlugin::dispatch_snapshot_observed(
-            "get_stats",
-            &serde_json::json!({}),
-            "t".into(),
-            invalid,
-        )
-        .is_err());
+        assert!(
+            HardwarePlugin::dispatch_snapshot_observed(
+                "get_stats",
+                &serde_json::json!({}),
+                "t".into(),
+                invalid,
+            )
+            .is_err()
+        );
 
         let mut invalid = fixture();
         invalid.memory.available_kb = invalid.memory.total_kb + 1;
-        assert!(HardwarePlugin::dispatch_snapshot_observed(
-            "get_stats",
-            &serde_json::json!({}),
-            "t".into(),
-            invalid,
-        )
-        .is_err());
+        assert!(
+            HardwarePlugin::dispatch_snapshot_observed(
+                "get_stats",
+                &serde_json::json!({}),
+                "t".into(),
+                invalid,
+            )
+            .is_err()
+        );
     }
 
     #[test]

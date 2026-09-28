@@ -1,7 +1,7 @@
 //! Explicit private-workspace selection for the existing StateSync transport.
 //! This is path syntax only. Verified identity, exact sealed read admission and
 //! owner activation are separate mandatory gates before any private SHM read.
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 
 const ROOT: &str = "/org/opdbus/v1/plugins/gemma_brain";
 const MAX_PATHS: usize = 32;
@@ -83,9 +83,11 @@ mod tests {
             vec![ROOT.to_owned()],
             vec!["/org/opdbus/v1/plugins/*".into()],
         ] {
-            assert!(WorkspaceSelection::from_subscription(&[], &paths)
-                .unwrap()
-                .is_none());
+            assert!(
+                WorkspaceSelection::from_subscription(&[], &paths)
+                    .unwrap()
+                    .is_none()
+            );
         }
         let paths = vec![
             format!("{ROOT}/jobs"),
@@ -113,10 +115,12 @@ mod tests {
         ] {
             assert!(WorkspaceSelection::from_subscription(&[], &paths).is_err());
         }
-        assert!(WorkspaceSelection::from_subscription(
-            &["gemma_brain".into(), "config".into()],
-            &[root]
-        )
-        .is_err());
+        assert!(
+            WorkspaceSelection::from_subscription(
+                &["gemma_brain".into(), "config".into()],
+                &[root]
+            )
+            .is_err()
+        );
     }
 }

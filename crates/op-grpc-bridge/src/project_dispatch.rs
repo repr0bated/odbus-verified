@@ -1,9 +1,9 @@
 //! Authenticated project effects, entered only through MutationEngine/D-Bus.
 //! No ambient user, caller-supplied owner or cross-project store path is used.
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use op_cozo_store::CozoGraphShuttle;
 use op_plugins::state_plugins::{incus::IncusPlugin, project::*};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::{BTreeSet, HashMap};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};

@@ -9,7 +9,7 @@ use crate::{
     cron_dispatch, cron_gateway::TchedRouterCronGateway, cron_methods::CronMethods,
     mutation_engine::MutationEngine, tched_router_runtime::TchedRouterRuntimeClient,
 };
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use futures::StreamExt;
 use std::{future::Future, sync::Arc, time::Duration};
 
@@ -205,10 +205,12 @@ mod tests {
     #[test]
     fn fragmented_cron_result_is_one_wakeup_and_output_is_not_returned() {
         let mut decoder = SseDecoder::default();
-        assert!(decoder
-            .push(b"data: {\"type\":\"cron_result\",\"job_id\":\"job-1\",\"out")
-            .unwrap()
-            .is_empty());
+        assert!(
+            decoder
+                .push(b"data: {\"type\":\"cron_result\",\"job_id\":\"job-1\",\"out")
+                .unwrap()
+                .is_empty()
+        );
         assert_eq!(
             decoder.push(b"put\":\"private result\"}\n\n").unwrap(),
             vec![Wakeup::CronResult]
@@ -229,10 +231,12 @@ mod tests {
     fn unrelated_events_and_keepalives_do_not_wake_state_reads() {
         let mut decoder = SseDecoder::default();
         assert!(decoder.push(b": keepalive\n\n").unwrap().is_empty());
-        assert!(decoder
-            .push(b"data: {\"type\":\"tool_call\",\"output\":\"private\"}\n\n")
-            .unwrap()
-            .is_empty());
+        assert!(
+            decoder
+                .push(b"data: {\"type\":\"tool_call\",\"output\":\"private\"}\n\n")
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]
@@ -241,9 +245,11 @@ mod tests {
         assert!(malformed.push(b"data: not-json\n\n").is_err());
 
         let mut oversized = SseDecoder::default();
-        assert!(oversized
-            .push(&vec![b'x'; MAX_SSE_FRAME_BYTES + 1])
-            .is_err());
+        assert!(
+            oversized
+                .push(&vec![b'x'; MAX_SSE_FRAME_BYTES + 1])
+                .is_err()
+        );
 
         let mut truncated = SseDecoder::default();
         truncated.push(b"data: {\"type\":").unwrap();
@@ -295,15 +301,17 @@ mod tests {
         )]);
         let publications = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let publish = publications.clone();
-        assert!(drive_event_stream(stream, move || {
-            let publish = publish.clone();
-            async move {
-                publish.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                Ok(())
-            }
-        })
-        .await
-        .is_err());
+        assert!(
+            drive_event_stream(stream, move || {
+                let publish = publish.clone();
+                async move {
+                    publish.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    Ok(())
+                }
+            })
+            .await
+            .is_err()
+        );
         assert_eq!(
             publications.load(std::sync::atomic::Ordering::SeqCst),
             1,

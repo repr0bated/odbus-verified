@@ -1,7 +1,7 @@
 //! Full exact-schema validation must run after child folding, before publication.
 use op_grpc_bridge::{ChangeSource, ChangeType, MutationEngine};
 use op_state_store::{FieldSchema, FieldType, PluginSchema};
-use simd_json::{json, OwnedValue};
+use simd_json::{OwnedValue, json};
 use std::sync::Arc;
 use tokio::sync::broadcast::error::TryRecvError;
 mod support;
@@ -81,14 +81,16 @@ async fn protected_exact_grandchild_writes_preserve_siblings_and_reject_before_s
         true
     );
     let cache = engine.get_state("incus").await;
-    assert!(change(
-        &engine,
-        "/native/jobs/first/children/grandchild",
-        Some("ready"),
-        json!("PRIVATE_INVALID")
-    )
-    .await
-    .is_err());
+    assert!(
+        change(
+            &engine,
+            "/native/jobs/first/children/grandchild",
+            Some("ready"),
+            json!("PRIVATE_INVALID")
+        )
+        .await
+        .is_err()
+    );
     assert_eq!(std::fs::read(path).unwrap(), before);
     assert_eq!(std::fs::read(manifest).unwrap(), generation);
     assert_eq!(engine.get_state("incus").await, cache);

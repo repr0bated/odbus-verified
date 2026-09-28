@@ -10,7 +10,7 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use op_mcp::tool_registry::{BoxedTool, Tool, ToolRegistry};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 pub async fn register_blob_catalog_tool(registry: &ToolRegistry) -> Result<()> {

@@ -9,7 +9,7 @@ use crate::{PROTOCOL_VERSION, SERVER_NAME, SERVER_VERSION};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
@@ -322,7 +322,7 @@ impl McpServer {
                 return McpResponse::error(
                     request.id,
                     JsonRpcError::invalid_params("Missing params"),
-                )
+                );
             }
         };
 
@@ -336,7 +336,7 @@ impl McpServer {
                 return McpResponse::error(
                     request.id,
                     JsonRpcError::invalid_params("Missing tool name"),
-                )
+                );
             }
         };
 

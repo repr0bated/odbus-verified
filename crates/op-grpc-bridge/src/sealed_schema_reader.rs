@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Context as _;
 use prost::Message;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[cfg(test)]
 #[path = "sealed_catalog_tests.rs"]

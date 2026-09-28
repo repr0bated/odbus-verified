@@ -10,12 +10,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::{extract::Query, routing::get, Json, Router};
+use axum::{Json, Router, extract::Query, routing::get};
 use op_grpc_bridge::mcp_policy::{
-    parse_audience_policy, parse_toolset_manifest, McpProjectionPolicy,
+    McpProjectionPolicy, parse_audience_policy, parse_toolset_manifest,
 };
 use op_grpc_bridge::proto::tched_router::{
-    tched_router_service_client::TchedRouterServiceClient, GetSchemaRequest, WatchSchemaRequest,
+    GetSchemaRequest, WatchSchemaRequest, tched_router_service_client::TchedRouterServiceClient,
 };
 use op_grpc_bridge::schema_loader::SchemaLoader;
 use op_grpc_bridge::server::build_axum_app_with_policy;
@@ -327,9 +327,11 @@ async fn list_models_uses_the_audited_tched_router_method_dispatcher() {
     assert_eq!(result["method"], "ListModels");
     let routes = result["result"]["model_routes"].as_array().unwrap();
     assert!(!routes.is_empty());
-    assert!(routes
-        .iter()
-        .all(|route| { route["provider"] == "ollama" || route["upstream_provider"] == "ollama" }));
+    assert!(
+        routes.iter().all(|route| {
+            route["provider"] == "ollama" || route["upstream_provider"] == "ollama"
+        })
+    );
 
     let chain = event_chain.read().await;
     let event = chain.events().last().unwrap();

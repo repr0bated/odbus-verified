@@ -10,7 +10,7 @@ use std::task::{Context, Poll};
 
 use axum::extract::Request;
 use axum::response::Response;
-use tracing::{warn, Span};
+use tracing::{Span, warn};
 use uuid::Uuid;
 
 const GENESIS_HEADER: &str = "X-Ghostbridge-Genesis";

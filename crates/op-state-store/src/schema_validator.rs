@@ -5,10 +5,10 @@
 //! - Instance data against plugin schemas
 //! - Expansion of propertyDependencies to if/then for broader compatibility
 
-use crate::plugin_schema::{PluginSchema, SchemaCatalog, DEFAULT_SCHEMA_DIALECT};
+use crate::plugin_schema::{DEFAULT_SCHEMA_DIALECT, PluginSchema, SchemaCatalog};
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 
 /// Validation report with detailed error information

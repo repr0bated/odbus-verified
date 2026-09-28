@@ -32,7 +32,7 @@
 //! `<plugin_id>.<hash16>.blob`.
 
 use crate::descriptor;
-use crate::schema::{hex, PluginSchema, SideEffect};
+use crate::schema::{PluginSchema, SideEffect, hex};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::io;

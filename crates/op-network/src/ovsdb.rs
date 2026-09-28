@@ -6,9 +6,9 @@
 //!
 //! Per AGENTS.md §4: D-Bus is the ONLY control plane.
 
-use anyhow::{anyhow, Result};
-use serde_json::json;
+use anyhow::{Result, anyhow};
 use serde_json::Value;
+use serde_json::json;
 use simd_json::OwnedValue as SimdValue;
 use std::time::Duration;
 use tokio::sync::OnceCell;

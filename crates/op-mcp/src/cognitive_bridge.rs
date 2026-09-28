@@ -24,9 +24,9 @@
 //! OSCAL subid: exp.service.cognitive-mcp.fanin-proxy@v1
 
 use crate::server::{ToolExecutor, ToolInfo};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use tokio::sync::RwLock;
 
 /// Bus name owned by op-grpc-bridge. The only legal well-known name.

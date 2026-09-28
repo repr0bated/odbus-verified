@@ -2,7 +2,7 @@
 // Manages OpenFlow flows for the GhostBridge privacy tunnel (gbr_wg → gbr_warp → gbr_xray)
 // and the shared gRPC bridge ingress port. No per-container sock_* ports.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use async_trait::async_trait;
 use log;
 use op_state::{
@@ -12,7 +12,7 @@ use op_state_store::PluginSchema;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::{BTreeMap, HashMap};
 use zbus::proxy;
 

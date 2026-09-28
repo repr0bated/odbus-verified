@@ -3,14 +3,14 @@
 //! Central state management for the web server.
 //! Simple, direct tool access - no MCP complexity.
 
-use anyhow::{anyhow, bail, Context};
+use anyhow::{Context, anyhow, bail};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use tokio_stream::StreamExt;
 use tracing::{debug, info, warn};
 
@@ -18,9 +18,9 @@ use op_agents::agent_registry::AgentRegistry;
 use op_grpc_bridge::{GrpcClientPool, RemoteOperationClient};
 use op_llm::chat::ChatManager;
 use op_state_store::{MemoryStore, StateStore};
+use op_tools::ToolRegistry;
 use op_tools::registry::ToolDefinition;
 use op_tools::tool::{BoxedTool, Tool};
-use op_tools::ToolRegistry;
 
 use crate::email::{EmailConfig, EmailSender};
 use crate::orchestrator::UnifiedOrchestrator;
@@ -231,7 +231,9 @@ impl AppState {
         if google_oauth_config.is_some() {
             info!("✅ Google OAuth configured");
         } else {
-            info!("⚠️  Google OAuth not configured (set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)");
+            info!(
+                "⚠️  Google OAuth not configured (set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)"
+            );
         }
 
         // Initialize State Store

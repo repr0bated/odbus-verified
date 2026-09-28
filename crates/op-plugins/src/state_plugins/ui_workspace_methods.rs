@@ -7,14 +7,14 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 use super::super::json_render::{
     canvas_profile::PinnedCanvasValidator,
-    validation_bounds::{check_json, JsonLimits},
+    validation_bounds::{JsonLimits, check_json},
 };
 use super::super::runtime_documents::{RuntimeDocumentRejected, RuntimeDocuments};
 use super::methods::{self as taxonomy_methods, GemmaTaxonomy, RegisterTagOutput};
@@ -1394,16 +1394,20 @@ mod tests {
     async fn ownership_is_exact_for_principal_and_session() {
         let service = service(CozoGraphShuttle::new_in_memory().unwrap());
         completed_spec(&service, &access("principal-a", "session-a")).await;
-        assert!(service
-            .snapshot(&access("principal-b", "session-a"))
-            .await
-            .unwrap()
-            .is_none());
-        assert!(service
-            .snapshot(&access("principal-a", "session-b"))
-            .await
-            .unwrap()
-            .is_none());
+        assert!(
+            service
+                .snapshot(&access("principal-b", "session-a"))
+                .await
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            service
+                .snapshot(&access("principal-a", "session-b"))
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]
@@ -1422,10 +1426,12 @@ mod tests {
         let service =
             UiWorkspaceMethods::new(documents.clone(), Arc::new(FixtureValidator)).unwrap();
         let owner = access("principal", "session");
-        assert!(service
-            .create_job(&owner, &"x".repeat(MAX_ID_BYTES + 1), PROMPT_DIGEST)
-            .await
-            .is_err());
+        assert!(
+            service
+                .create_job(&owner, &"x".repeat(MAX_ID_BYTES + 1), PROMPT_DIGEST)
+                .await
+                .is_err()
+        );
         let key = Owner::new(&owner).unwrap().document_id;
         assert!(documents.read(&key).await.unwrap().is_none());
     }
@@ -1435,26 +1441,30 @@ mod tests {
         let service = service(CozoGraphShuttle::new_in_memory().unwrap());
         let owner = access("principal", "session");
         completed_spec(&service, &owner).await;
-        assert!(service
-            .update_spec_properties(
-                &owner,
-                "spec-1",
-                7,
-                "root",
-                serde_json::json!({"text":"stale"}),
-            )
-            .await
-            .is_err());
-        assert!(service
-            .update_spec_properties(
-                &owner,
-                "spec-1",
-                1,
-                "root",
-                serde_json::json!({"wrong":true}),
-            )
-            .await
-            .is_err());
+        assert!(
+            service
+                .update_spec_properties(
+                    &owner,
+                    "spec-1",
+                    7,
+                    "root",
+                    serde_json::json!({"text":"stale"}),
+                )
+                .await
+                .is_err()
+        );
+        assert!(
+            service
+                .update_spec_properties(
+                    &owner,
+                    "spec-1",
+                    1,
+                    "root",
+                    serde_json::json!({"wrong":true}),
+                )
+                .await
+                .is_err()
+        );
         let stored = service.get_spec(&owner, "spec-1").await.unwrap().unwrap();
         assert_eq!(stored.revision, 1);
         assert_eq!(stored.spec, spec("before"));
@@ -1515,15 +1525,17 @@ mod tests {
             }
             receipt => panic!("unexpected receipt: {receipt:?}"),
         };
-        assert!(service
-            .fail_job(
-                &owner,
-                "job-1",
-                completed_job.revision,
-                UiJobFailureCode::PublicationFailed,
-            )
-            .await
-            .is_err());
+        assert!(
+            service
+                .fail_job(
+                    &owner,
+                    "job-1",
+                    completed_job.revision,
+                    UiJobFailureCode::PublicationFailed,
+                )
+                .await
+                .is_err()
+        );
         let recovered = service.recover_snapshot(&owner).await.unwrap().unwrap();
         assert_eq!(recovered.document_revision, completed.document_revision);
         assert_eq!(recovered.projection, completed.projection);
@@ -1548,16 +1560,18 @@ mod tests {
         let current = service_from_documents(documents, true);
         let retained = current.get_spec(&owner, "spec-1").await.unwrap().unwrap();
         assert_eq!(retained.catalog_hash, CATALOG_HASH);
-        assert!(current
-            .update_spec_properties(
-                &owner,
-                "spec-1",
-                1,
-                "root",
-                serde_json::json!({"text":"must-not-render"}),
-            )
-            .await
-            .is_err());
+        assert!(
+            current
+                .update_spec_properties(
+                    &owner,
+                    "spec-1",
+                    1,
+                    "root",
+                    serde_json::json!({"text":"must-not-render"}),
+                )
+                .await
+                .is_err()
+        );
 
         let failed = current
             .fail_job(&owner, "interrupted", 1, UiJobFailureCode::CatalogChanged)
@@ -1568,10 +1582,12 @@ mod tests {
             failed.projection.jobs["interrupted"].error_code,
             Some(UiJobFailureCode::CatalogChanged)
         );
-        assert!(current
-            .create_job(&owner, "new-work", PROMPT_DIGEST)
-            .await
-            .is_err());
+        assert!(
+            current
+                .create_job(&owner, "new-work", PROMPT_DIGEST)
+                .await
+                .is_err()
+        );
 
         let deleted = current.delete_spec(&owner, "spec-1", 1).await.unwrap();
         assert_eq!(deleted.projection.catalog_hash, CATALOG_HASH);
@@ -1596,12 +1612,14 @@ mod tests {
             .create_job(&owner, "job-1", PROMPT_DIGEST)
             .await
             .unwrap();
-        assert!(service
-            .fail_job(&owner, "job-1", 1, UiJobFailureCode::CatalogChanged)
-            .await
-            .unwrap_err()
-            .to_string()
-            .contains("has not changed"));
+        assert!(
+            service
+                .fail_job(&owner, "job-1", 1, UiJobFailureCode::CatalogChanged)
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("has not changed")
+        );
     }
 
     #[tokio::test]
@@ -1661,10 +1679,12 @@ mod tests {
             "root":"root",
             "elements":{"root":{"type":"invented","props":{},"children":[]}}
         });
-        assert!(service
-            .complete_job(&owner, "job-1", 2, "spec-1", invalid, vec![])
-            .await
-            .is_err());
+        assert!(
+            service
+                .complete_job(&owner, "job-1", 2, "spec-1", invalid, vec![])
+                .await
+                .is_err()
+        );
         let snapshot = service.snapshot(&owner).await.unwrap().unwrap();
         assert_eq!(snapshot.jobs["job-1"].status, UiJobStatus::Running);
         assert!(!snapshot.specs.contains_key("spec-1"));
@@ -1744,9 +1764,11 @@ mod tests {
             .create_job(&owner, "overflow", PROMPT_DIGEST)
             .await
             .unwrap_err();
-        assert!(error
-            .to_string()
-            .contains("no terminal job eligible for retention"));
+        assert!(
+            error
+                .to_string()
+                .contains("no terminal job eligible for retention")
+        );
         let snapshot = service.snapshot(&owner).await.unwrap().unwrap();
         assert_eq!(snapshot.jobs.len(), MAX_JOBS);
         assert!(!snapshot.jobs.contains_key("overflow"));

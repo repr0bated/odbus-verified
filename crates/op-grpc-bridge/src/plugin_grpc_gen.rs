@@ -25,10 +25,10 @@ use std::sync::Arc;
 use op_state_store::{MethodDecl, PluginSchema};
 use prost::Message;
 use prost_types::{
-    field_descriptor_proto, DescriptorProto, FieldDescriptorProto, FileDescriptorProto,
-    FileDescriptorSet, MethodDescriptorProto, ServiceDescriptorProto,
+    DescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileDescriptorSet,
+    MethodDescriptorProto, ServiceDescriptorProto, field_descriptor_proto,
 };
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 
 /// Manages frozen per-method gRPC services.
 ///

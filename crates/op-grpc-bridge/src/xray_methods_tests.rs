@@ -111,9 +111,11 @@ async fn stats_read_exact_native_counter_without_reset_and_bound_failures() {
         json!({"name":""}),
         json!({"name":"bad\ncounter"}),
     ] {
-        assert!(dispatch_stats_at(socket, &input, CALL_TIMEOUT)
-            .await
-            .is_err());
+        assert!(
+            dispatch_stats_at(socket, &input, CALL_TIMEOUT)
+                .await
+                .is_err()
+        );
     }
     assert_eq!(stats.0.lock().unwrap().len(), before);
     assert!(
@@ -628,14 +630,16 @@ async fn malformed_native_account_response_prevents_user_mutation() {
             }),
         }],
     );
-    assert!(dispatch_at(
-        &fixture.socket,
-        CALL_TIMEOUT,
-        "add_user",
-        &json!({"inbound_tag":"target","user":user("vless")})
-    )
-    .await
-    .is_err());
+    assert!(
+        dispatch_at(
+            &fixture.socket,
+            CALL_TIMEOUT,
+            "add_user",
+            &json!({"inbound_tag":"target","user":user("vless")})
+        )
+        .await
+        .is_err()
+    );
     assert!(fixture.mock.0.lock().unwrap().altered.is_empty());
 }
 
@@ -648,10 +652,12 @@ fn credential_and_tls_bounds_are_enforced_before_transport() {
     value["account"]["password"] = json!("x".repeat(4097));
     let typed: XrayHandlerUser = serde_json::from_value(value).unwrap();
     assert!(build_user(&typed).is_err());
-    assert!(serde_json::from_value::<RemoveUserInput>(
-        json!({"inbound_tag":"tag","email":"key","protocol":"trojan"})
-    )
-    .is_err());
+    assert!(
+        serde_json::from_value::<RemoveUserInput>(
+            json!({"inbound_tag":"tag","email":"key","protocol":"trojan"})
+        )
+        .is_err()
+    );
 }
 
 #[test]
@@ -662,10 +668,12 @@ fn vless_masked_uuid_alias_is_rejected_before_new_inbound() {
     alias["account"]["id"] = json!("12345678-1234-ffff-89ab-123456789abc");
     args["users"].as_array_mut().unwrap().push(alias);
     let input: AddInboundInput = serde_json::from_value(args).unwrap();
-    assert!(build_inbound(&input)
-        .unwrap_err()
-        .to_string()
-        .contains("duplicate account credential"));
+    assert!(
+        build_inbound(&input)
+            .unwrap_err()
+            .to_string()
+            .contains("duplicate account credential")
+    );
 }
 
 #[tokio::test]

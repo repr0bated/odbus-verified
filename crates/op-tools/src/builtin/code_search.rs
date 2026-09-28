@@ -5,8 +5,8 @@
 
 use anyhow::Result;
 use serde_json;
-use simd_json::prelude::ValueAsContainer;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::ValueAsContainer;
 use tracing::debug;
 
 /// Code context extracted from indexed repos

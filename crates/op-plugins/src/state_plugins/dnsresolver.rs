@@ -499,8 +499,10 @@ pub async fn dispatch_dnsresolver_method_on(
                 SetLinkDNSSECNegativeTrustAnchorsInput,
                 "invalid set_link_dnssec_nta arguments"
             );
-            mutation!(manager
-                .call::<_, _, ()>("SetLinkDNSSECNegativeTrustAnchors", &(i.ifindex, i.names)))
+            mutation!(
+                manager
+                    .call::<_, _, ()>("SetLinkDNSSECNegativeTrustAnchors", &(i.ifindex, i.names))
+            )
         }
         "revert_link" => {
             let i = input!(RevertLinkInput, "invalid revert_link arguments");

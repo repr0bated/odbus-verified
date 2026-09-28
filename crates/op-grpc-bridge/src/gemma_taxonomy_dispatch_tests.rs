@@ -2,12 +2,12 @@ use crate::{
     human_principal_dispatch::tests::{
         pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
     },
-    identity_sled_dispatch::{tests::write_identity, IdentitySledStore},
+    identity_sled_dispatch::{IdentitySledStore, tests::write_identity},
     mutation_engine::MutationEngine,
     oracle_assertion::HumanPrincipalIdentity,
 };
 use op_plugins::state_plugins::{
-    gemma_brain::{workspace::UiAccessContext, GemmaBrainPlugin},
+    gemma_brain::{GemmaBrainPlugin, workspace::UiAccessContext},
     human_principal::HumanPrincipalPlugin,
     identity_sled::IdentitySledPlugin,
     json_render::JsonRenderPlugin,
@@ -15,7 +15,7 @@ use op_plugins::state_plugins::{
 };
 use op_state::StatePlugin;
 use op_state_store::PluginSchema;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{path::PathBuf, sync::Arc};
 
 struct GrantsEnvironment(Option<std::ffi::OsString>);
@@ -232,14 +232,16 @@ async fn all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated() {
         first_state["tags"]["deploy"]["keywords"],
         json!(["release"])
     );
-    assert!(fixture
-        .call(
-            &fixture.first,
-            "register_tag",
-            json!({"expected_taxonomy_revision":0,"tag":tag("stale","bad","other")}),
-        )
-        .await
-        .is_err());
+    assert!(
+        fixture
+            .call(
+                &fixture.first,
+                "register_tag",
+                json!({"expected_taxonomy_revision":0,"tag":tag("stale","bad","other")}),
+            )
+            .await
+            .is_err()
+    );
     assert_eq!(fixture.committed(&fixture.first), first_before);
     let tags_after_conflict = fixture
         .call(&fixture.first, "list_tags", json!({}))
@@ -267,30 +269,34 @@ async fn all_five_taxonomy_methods_are_admitted_scoped_and_schema_validated() {
     );
 
     let declaration = &fixture.schema.methods["list_tags"];
-    assert!(fixture
-        .engine
-        .dispatch_method_call_with_identity(
-            "gemma_brain",
-            "list_tags",
-            "{}",
-            declaration.required_capability.as_deref(),
-            &fixture.first.principal_id,
-            Some(&fixture.second.session_id),
-            Some(&fixture.first.session_genesis),
-        )
-        .await
-        .is_err());
-    assert!(fixture
-        .engine
-        .dispatch_method_call_with_identity(
-            "gemma_brain",
-            "list_tags",
-            "{}",
-            declaration.required_capability.as_deref(),
-            &fixture.first.principal_id,
-            Some(&fixture.first.session_id),
-            Some(&fixture.second.session_genesis),
-        )
-        .await
-        .is_err());
+    assert!(
+        fixture
+            .engine
+            .dispatch_method_call_with_identity(
+                "gemma_brain",
+                "list_tags",
+                "{}",
+                declaration.required_capability.as_deref(),
+                &fixture.first.principal_id,
+                Some(&fixture.second.session_id),
+                Some(&fixture.first.session_genesis),
+            )
+            .await
+            .is_err()
+    );
+    assert!(
+        fixture
+            .engine
+            .dispatch_method_call_with_identity(
+                "gemma_brain",
+                "list_tags",
+                "{}",
+                declaration.required_capability.as_deref(),
+                &fixture.first.principal_id,
+                Some(&fixture.first.session_id),
+                Some(&fixture.second.session_genesis),
+            )
+            .await
+            .is_err()
+    );
 }

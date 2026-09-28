@@ -5,7 +5,7 @@
 //! state from those files. This layer does not decide plugin existence: callers
 //! select IDs using the manifest-pinned sealed catalog, never a directory scan.
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use nix::{
     errno::Errno,
     fcntl::{Flock, FlockArg, OFlag},
@@ -148,7 +148,7 @@ fn directory(path: &Path, create: bool, mode: u32) -> Result<Option<File>> {
                     Err(Errno::ENOENT) => return Ok(None),
                     Err(error) => {
                         return Err(error)
-                            .context("projection directory must have no symlink components")
+                            .context("projection directory must have no symlink components");
                     }
                 };
             }
@@ -236,8 +236,10 @@ impl LockedDirectory {
         let lock = match open_at(&directory, LOCK_NAME.as_ref(), flags, 0o600) {
             Ok(file) => file,
             Err(Errno::ENOENT) if !exclusive => {
-                ensure!(read_file(&directory, MANIFEST_NAME, MAX_MANIFEST, false)?.is_none(),
-                    "projection manifest exists without its lock; writer must prepare the projection directory before readers start");
+                ensure!(
+                    read_file(&directory, MANIFEST_NAME, MAX_MANIFEST, false)?.is_none(),
+                    "projection manifest exists without its lock; writer must prepare the projection directory before readers start"
+                );
                 return Ok(None);
             }
             Err(error) => return Err(error).context("open private projection lock"),
@@ -296,7 +298,10 @@ impl LockedDirectory {
             );
             identity_transaction::validate_operation_id(&pending.operation_id)?;
         }
-        ensure!(!manifest.publishing, "projection transaction is incomplete; operator recovery is required before reading or updating state");
+        ensure!(
+            !manifest.publishing,
+            "projection transaction is incomplete; operator recovery is required before reading or updating state"
+        );
         Ok(Some((manifest, bytes)))
     }
 
@@ -559,7 +564,9 @@ fn publish(
             return Err(error)
                 .context("projection publication failed; previous committed state restored");
         }
-        bail!("projection publication failed ({error}); rollback incomplete (public={restore_public:?}, private={restore_private:?}); in-progress manifest retained and state is unreadable")
+        bail!(
+            "projection publication failed ({error}); rollback incomplete (public={restore_public:?}, private={restore_private:?}); in-progress manifest retained and state is unreadable"
+        )
     }
     Ok(ProjectionCommit {
         generation,
@@ -710,8 +717,8 @@ pub(super) fn read_credential_in(state_dir: &str, plugin_id: &str) -> Result<Opt
 #[path = "identity_projection_transaction.rs"]
 mod identity_transaction;
 pub use identity_transaction::{
-    commit_identity_projection_durable_in, pending_identity_publication_in,
-    recover_identity_projection_in, CredentialPublication,
+    CredentialPublication, commit_identity_projection_durable_in, pending_identity_publication_in,
+    recover_identity_projection_in,
 };
 
 #[cfg(test)]

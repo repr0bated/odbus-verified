@@ -7,8 +7,8 @@ use op_state::{
 use op_state_store::{FieldSchema, FieldType};
 use op_state_store::{PluginSchema, SideEffect};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use serde_json::Value as JsonValue;
+use serde_json::json;
 
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 use simd_json::OwnedValue as Value;

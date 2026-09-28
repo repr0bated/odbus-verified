@@ -4,8 +4,8 @@ use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 
 use serde_json::Value as Json;
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 
 use crate::{FieldSchema, FieldType, PluginSchema};
 
@@ -586,8 +586,7 @@ mod tests {
             "#/properties/first/$defs/Entry"
         );
         assert_eq!(
-            exported["properties"]["second/a~b"]["properties"]["jobs"]["additionalProperties"]
-                ["$ref"],
+            exported["properties"]["second/a~b"]["properties"]["jobs"]["additionalProperties"]["$ref"],
             "#/properties/second~1a~0b/$defs/Entry"
         );
         let validator = jsonschema::options()

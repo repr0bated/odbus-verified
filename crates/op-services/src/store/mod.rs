@@ -184,10 +184,12 @@ mod tests {
         store.save_service(&service("svc-0")).await.unwrap();
         let reopened = Store::new(dir.path().join("services.json")).await.unwrap();
         assert_eq!(reopened.list_services().await.unwrap().len(), 16);
-        assert!(reopened
-            .get_service(&ServiceName::new("svc-0").unwrap())
-            .await
-            .unwrap()
-            .is_some());
+        assert!(
+            reopened
+                .get_service(&ServiceName::new("svc-0").unwrap())
+                .await
+                .unwrap()
+                .is_some()
+        );
     }
 }

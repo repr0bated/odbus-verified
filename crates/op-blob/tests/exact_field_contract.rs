@@ -58,9 +58,11 @@ fn exact_field_original_schema_and_rebased_referenced_wire_both_survive_sealing(
         "#/properties/native/$defs/Row"
     );
     let input = json!({"native":{"jobs":{"stable_key":{"revision":u64::MAX,"label":null,"children":{"stable_grandchild":false}}}}});
-    assert!(jsonschema::Validator::new(&export)
-        .unwrap()
-        .is_valid(&input));
+    assert!(
+        jsonschema::Validator::new(&export)
+            .unwrap()
+            .is_valid(&input)
+    );
     let pool = DescriptorPool::decode(pinned.descriptor_set()).unwrap();
     let descriptor = pool
         .get_message_by_name(&blob.manifest.methods[0].output_message)

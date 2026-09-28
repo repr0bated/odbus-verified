@@ -12,7 +12,7 @@
 use crate::{JsonRpcError, McpRequest, McpResponse, ToolExecutor, ToolInfo};
 use anyhow::Result;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info};
@@ -175,7 +175,7 @@ impl CompactServer {
                 return McpResponse::error(
                     request.id,
                     JsonRpcError::invalid_params("Missing params"),
-                )
+                );
             }
         };
 
@@ -189,7 +189,7 @@ impl CompactServer {
                 return McpResponse::error(
                     request.id,
                     JsonRpcError::invalid_params("Missing tool name"),
-                )
+                );
             }
         };
 
@@ -208,10 +208,13 @@ impl CompactServer {
             "respond" => self.meta_respond(request.id, arguments).await,
             _ => McpResponse::error(
                 request.id,
-                JsonRpcError::new(-32001, format!(
-                    "Unknown meta-tool: {}. Use list_tools, search_tools, get_tool_schema, execute_tool, or respond.",
-                    tool_name
-                )),
+                JsonRpcError::new(
+                    -32001,
+                    format!(
+                        "Unknown meta-tool: {}. Use list_tools, search_tools, get_tool_schema, execute_tool, or respond.",
+                        tool_name
+                    ),
+                ),
             ),
         }
     }

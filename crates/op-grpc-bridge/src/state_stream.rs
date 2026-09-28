@@ -3,11 +3,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use serde_json::Value;
 
 use crate::sealed_schema_reader::{
-    read_manifest_pinned_catalog, valid_plugin_id, ManifestPinnedCatalog,
+    ManifestPinnedCatalog, read_manifest_pinned_catalog, valid_plugin_id,
 };
 
 const MAX_VIEW_DEPTH: usize = 64;
@@ -512,10 +512,12 @@ mod tests {
         };
         validate_path_patterns_against_snapshot(&snapshot, &["/org/opdbus/v1/plugins/de*".into()])
             .unwrap();
-        assert!(validate_path_patterns_against_snapshot(
-            &snapshot,
-            &["/org/opdbus/v1/plugins/private_store".into()],
-        )
-        .is_err());
+        assert!(
+            validate_path_patterns_against_snapshot(
+                &snapshot,
+                &["/org/opdbus/v1/plugins/private_store".into()],
+            )
+            .is_err()
+        );
     }
 }

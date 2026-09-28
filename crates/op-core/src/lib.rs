@@ -22,7 +22,7 @@ pub mod types;
 pub use error::{Error, Result};
 pub use execution::{ExecutionRecord, ExecutionStats, ExecutionStatus, ExecutionTracker};
 pub use security::{AccessZone, NetworkConfig, SecurityLevel};
-pub use self_identity::{get_self_repo_path, SelfRepositoryInfo};
+pub use self_identity::{SelfRepositoryInfo, get_self_repo_path};
 pub use types::{
     AgentDefinition, AgentStatus, ArgDirection, ArgInfo, BusType, ChatMessage, ChatRole,
     ComponentHealth, ComponentStatus, HealthStatus, InterfaceInfo, MethodInfo, ObjectInfo,

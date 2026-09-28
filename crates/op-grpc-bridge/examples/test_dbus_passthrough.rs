@@ -1,7 +1,7 @@
-use op_grpc_bridge::proto::dbus_passthrough_client::DbusPassthroughClient;
 use op_grpc_bridge::proto::DbusCallRequest;
-use tonic::metadata::MetadataValue;
+use op_grpc_bridge::proto::dbus_passthrough_client::DbusPassthroughClient;
 use tonic::Request;
+use tonic::metadata::MetadataValue;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

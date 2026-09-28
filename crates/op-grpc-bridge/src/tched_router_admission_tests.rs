@@ -2,15 +2,15 @@ use super::*;
 use crate::human_principal_dispatch::tests::{
     pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
 };
-use crate::identity_sled_dispatch::{tests::write_identity, IdentitySledStore};
+use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
 use op_plugins::state_plugins::{
     human_principal::HumanPrincipalPlugin, identity_sled::IdentitySledPlugin,
     tched_router::TchedRouterPlugin,
 };
 use op_state::StatePlugin;
 use std::sync::{
-    atomic::{AtomicUsize, Ordering},
     Arc,
+    atomic::{AtomicUsize, Ordering},
 };
 
 struct RestoreGrants(Option<std::ffi::OsString>);

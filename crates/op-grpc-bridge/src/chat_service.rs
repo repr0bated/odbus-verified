@@ -17,23 +17,24 @@ use std::pin::Pin;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context};
-use op_llm::chat::ChatManager;
+use anyhow::{Context, anyhow};
 use op_llm::ProviderType;
+use op_llm::chat::ChatManager;
 use op_plugins::state_plugins::tched_router::{
     ChatInput, ChatOutput, TchedChatMessage, TchedRouterState,
 };
 use tokio::sync::Mutex;
-use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::Stream;
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
 
-use crate::interceptor::{bridge_capability_identity, GhostbridgeIdentity};
+use crate::interceptor::{GhostbridgeIdentity, bridge_capability_identity};
 use crate::mutation_engine::MutationEngine;
 use crate::proto::chat::{
-    chat_frame, chat_service_server::ChatService, ApproveRequest, ApproveResponse, CancelRequest,
-    CancelResponse, ChatFrame, Heartbeat, SendRequest, StreamDone, StreamError, UiMessagePart,
+    ApproveRequest, ApproveResponse, CancelRequest, CancelResponse, ChatFrame, Heartbeat,
+    SendRequest, StreamDone, StreamError, UiMessagePart, chat_frame,
+    chat_service_server::ChatService,
 };
 
 const ROUTER_PLUGIN_ID: &str = "tched_router";
@@ -738,7 +739,7 @@ mod tests {
     #[tokio::test]
     async fn chat_dispatch_reaches_the_tched_router_backend() {
         use crate::human_principal_dispatch::tests::{pk, register, temp_cozo};
-        use crate::identity_sled_dispatch::{tests::write_identity, IdentitySledStore};
+        use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
         use op_plugins::state_plugins::{
             human_principal::HumanPrincipalPlugin, identity_sled::IdentitySledPlugin,
         };

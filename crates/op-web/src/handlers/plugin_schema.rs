@@ -6,9 +6,9 @@
 //! plugin exists iff its blob is sealed there. These routes are deliberately
 //! model-agnostic — nothing here depends on which inference model is in use.
 
-use axum::{extract::Path, Json};
+use axum::{Json, extract::Path};
 use op_blob::catalog;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// Every plugin actually present in the sealed blob catalog.
 ///

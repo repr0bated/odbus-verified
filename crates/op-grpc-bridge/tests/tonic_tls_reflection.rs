@@ -15,8 +15,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::time::timeout;
-use tonic::transport::{Certificate, Channel, ClientTlsConfig, Identity, ServerTlsConfig};
 use tonic::Request;
+use tonic::transport::{Certificate, Channel, ClientTlsConfig, Identity, ServerTlsConfig};
 
 /// Install the rustls CryptoProvider exactly once for the entire test binary.
 fn install_crypto_provider() {

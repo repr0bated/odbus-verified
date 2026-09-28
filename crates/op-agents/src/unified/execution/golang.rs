@@ -93,7 +93,7 @@ impl UnifiedAgent for GoExecutor {
             "fmt" => (vec!["fmt", "./..."], 60),
             "vet" => (vec!["vet", "./..."], 120),
             _ => {
-                return AgentResponse::failure(format!("Unknown operation: {}", request.operation))
+                return AgentResponse::failure(format!("Unknown operation: {}", request.operation));
             }
         };
 

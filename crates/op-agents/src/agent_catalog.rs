@@ -3,9 +3,9 @@
 //! Builds descriptors from the unified registry via `create_agent`, including
 //! per-operation JSON Schemas.
 
-use crate::agent_schema::{infer_category, schemas_for_operations, AgentOperationSchema};
+use crate::agent_schema::{AgentOperationSchema, infer_category, schemas_for_operations};
 use crate::unified::{self, AgentCategory};
-use crate::{create_agent, list_agent_types, AgentTrait};
+use crate::{AgentTrait, create_agent, list_agent_types};
 
 /// Minimal descriptor for tool registration + schema export.
 #[derive(Debug, Clone)]

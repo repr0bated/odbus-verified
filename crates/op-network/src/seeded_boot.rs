@@ -8,8 +8,8 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Component, Path};
 
-use crate::seeded_root::{ensure_seeded_root_mounted, SeededRootDescriptor, SeededRootMount};
-use anyhow::{ensure, Context, Result};
+use crate::seeded_root::{SeededRootDescriptor, SeededRootMount, ensure_seeded_root_mounted};
+use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -337,7 +337,7 @@ pub fn install_verified(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::os::unix::fs::{symlink, PermissionsExt};
+    use std::os::unix::fs::{PermissionsExt, symlink};
 
     fn fixture() -> (String, String) {
         let session = "f036f8d8-aabb-c5f2-49c9-18dac19f41ea";

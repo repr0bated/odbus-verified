@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 
 use crate::agents::base::{AgentTask, AgentTrait, TaskResult};
-use crate::security::{profiles::presets, SecurityProfile};
+use crate::security::{SecurityProfile, profiles::presets};
 
 pub struct TddOrchestratorAgent {
     agent_id: String,

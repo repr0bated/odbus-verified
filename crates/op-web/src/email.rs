@@ -4,12 +4,12 @@
 
 use anyhow::{Context, Result};
 use lettre::{
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
     message::header::ContentType,
     transport::smtp::{
         authentication::Credentials,
         client::{Tls, TlsParameters},
     },
-    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
 };
 use tracing::info;
 

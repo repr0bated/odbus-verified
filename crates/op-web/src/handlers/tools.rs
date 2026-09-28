@@ -5,7 +5,7 @@ use axum::{
     response::Json,
 };
 use serde::{Deserialize, Serialize};
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tracing::info;
 

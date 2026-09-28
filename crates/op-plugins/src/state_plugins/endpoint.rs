@@ -3,9 +3,9 @@ use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::PluginSchema;
 use serde::{Deserialize, Serialize};
+use simd_json::OwnedValue as Value;
 use simd_json::json;
 use simd_json::prelude::*;
-use simd_json::OwnedValue as Value;
 
 /// Endpoint declaration state.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, schemars::JsonSchema)]
@@ -69,9 +69,13 @@ fn endpoint_state(value: Option<serde_json::Value>) -> Result<EndpointState> {
 
 fn checked_endpoint(args: &serde_json::Value) -> Result<String> {
     let input: EndpointInput = serde_json::from_value(args.clone())?;
-    anyhow::ensure!(!input.endpoint.is_empty() && input.endpoint.len() <= 2048
-        && input.endpoint.trim() == input.endpoint && !input.endpoint.chars().any(char::is_control),
-        "endpoint must be a nonempty declaration without surrounding whitespace or control characters");
+    anyhow::ensure!(
+        !input.endpoint.is_empty()
+            && input.endpoint.len() <= 2048
+            && input.endpoint.trim() == input.endpoint
+            && !input.endpoint.chars().any(char::is_control),
+        "endpoint must be a nonempty declaration without surrounding whitespace or control characters"
+    );
     Ok(input.endpoint)
 }
 

@@ -10,7 +10,7 @@ use op_plugins::state_plugins::tched_router::{
     ConfigSetInput,
 };
 use op_plugins::state_plugins::tched_router_config_surface::{
-    config_method_backing, ConfigMethodBacking,
+    ConfigMethodBacking, config_method_backing,
 };
 use serde_json::Value;
 

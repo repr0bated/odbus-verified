@@ -242,7 +242,7 @@ mod tests {
         use crate::human_principal_dispatch::tests::{
             pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
         };
-        use crate::identity_sled_dispatch::{tests::write_identity, IdentitySledStore};
+        use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
         use crate::oracle_assertion::tests::{
             signed_with_fields, test_issuer, trust_store_for_issuer,
         };

@@ -46,9 +46,11 @@ fn interrupted_identity_pair_is_rejected_until_the_prior_commit_is_restored() {
     std::fs::write(&manifest, old_manifest).unwrap();
     let read = read_identity_sessions_in(state_dir, true).unwrap();
     assert_eq!(read[0].sealed_id.as_deref(), Some("sid1:committed"));
-    assert!(read_identity_sessions_in(state_dir, false).unwrap()[0]
-        .sealed_id
-        .is_none());
+    assert!(
+        read_identity_sessions_in(state_dir, false).unwrap()[0]
+            .sealed_id
+            .is_none()
+    );
     assert_eq!(
         read_projection_snapshot_in(state_dir, &["identity_sled".into()])
             .unwrap()

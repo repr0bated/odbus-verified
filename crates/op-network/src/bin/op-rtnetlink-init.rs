@@ -3,7 +3,7 @@
 //! This binary keeps boot-critical link, address, and route mutations independent
 //! of op-grpc-bridge so the bridge can start only after egress is ready.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use op_network::rtnetlink;
 use std::env;
 use std::net::Ipv4Addr;

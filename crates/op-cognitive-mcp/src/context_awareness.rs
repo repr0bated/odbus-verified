@@ -59,8 +59,8 @@
 
 use crate::memory_store::{CognitiveMemoryStore, EntryQuery};
 use crate::rag_pipeline::{
-    default_collection_from_env, with_retrieval_deadline, RagPipeline, RetrievalMode,
-    RetrievalProfile,
+    RagPipeline, RetrievalMode, RetrievalProfile, default_collection_from_env,
+    with_retrieval_deadline,
 };
 use anyhow::{Context as AnyhowContext, Result};
 use dashmap::DashMap;
@@ -69,7 +69,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::sync::{RwLock, broadcast, mpsc};
 use tracing::{info, trace, warn};
 
 /// Maximum activity window to keep per session

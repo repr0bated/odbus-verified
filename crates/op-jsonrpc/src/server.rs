@@ -7,7 +7,7 @@
 
 use anyhow::{Context, Result};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -17,8 +17,8 @@ use tokio::net::{TcpListener, TcpStream, UnixListener, UnixStream};
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
-use crate::protocol::{error_codes, JsonRpcRequest, JsonRpcResponse};
 use crate::OvsdbDbusClient;
+use crate::protocol::{JsonRpcRequest, JsonRpcResponse, error_codes};
 
 /// Handler function type
 pub type HandlerFn = Box<dyn Fn(JsonRpcRequest) -> JsonRpcResponse + Send + Sync>;
@@ -277,7 +277,7 @@ impl JsonRpcServerConnection {
                         request.id,
                         error_codes::DATABASE_ERROR,
                         e.to_string(),
-                    )
+                    );
                 }
             },
             "ovsdb.get_schema" => {
@@ -294,7 +294,7 @@ impl JsonRpcServerConnection {
                             request.id,
                             error_codes::DATABASE_ERROR,
                             e.to_string(),
-                        )
+                        );
                     }
                 }
             }

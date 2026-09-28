@@ -1,11 +1,11 @@
 use anyhow::Result;
 use op_chat::{
-    actor::{ChatActorConfig, RpcRequest},
     ChatActor,
+    actor::{ChatActorConfig, RpcRequest},
 };
 use op_llm::chat::ChatManager;
 use op_llm::provider::LlmProvider;
-use simd_json::{prelude::*, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, prelude::*};
 use std::sync::Arc;
 
 #[tokio::main]

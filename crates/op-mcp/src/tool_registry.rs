@@ -13,8 +13,8 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -370,18 +370,22 @@ mod descriptor_tests {
             .register(test_tool("missing_subid", "cognitive_mcp.read", ""))
             .await
             .unwrap();
-        assert!(registry
-            .get_descriptor("missing_capability")
-            .await
-            .unwrap()
-            .required_capability
-            .is_none());
-        assert!(registry
-            .get_descriptor("missing_subid")
-            .await
-            .unwrap()
-            .subid
-            .is_none());
+        assert!(
+            registry
+                .get_descriptor("missing_capability")
+                .await
+                .unwrap()
+                .required_capability
+                .is_none()
+        );
+        assert!(
+            registry
+                .get_descriptor("missing_subid")
+                .await
+                .unwrap()
+                .subid
+                .is_none()
+        );
         assert_eq!(registry.count().await, 2);
     }
 

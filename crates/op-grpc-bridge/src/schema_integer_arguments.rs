@@ -1,6 +1,6 @@
 //! Preserve declared JSON integers after protobuf Value decodes them as f64.
 //! Opaque JSON and declared floating-point numbers keep their original shape.
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use serde_json::Value;
 
 pub(crate) fn normalize_declared_integers(schema: &Value, input: &mut Value) -> Result<()> {

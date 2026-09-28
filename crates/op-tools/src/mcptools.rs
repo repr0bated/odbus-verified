@@ -23,7 +23,7 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;

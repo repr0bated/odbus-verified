@@ -10,7 +10,7 @@ use super::{
     MailAdministrationState, MailAlias, MailMailbox, MailQueueEntry, MailQueueRecipient,
     MailQueueSummary, MailboxMutationOutput, QuotaMutationOutput,
 };
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_cozo_store::CozoGraphShuttle;
 use serde::{Deserialize, Serialize};
 use std::{

@@ -2,14 +2,14 @@
 //!
 //! This is the primary interface for the MCP aggregator.
 
-use crate::cache::{cache_maintenance_loop, ToolCache};
+use crate::cache::{ToolCache, cache_maintenance_loop};
 use crate::client::{ClientManager, McpClient, ToolDefinition};
 use crate::config::AggregatorConfig;
 use crate::profile::ProfileManager;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
@@ -611,11 +611,7 @@ impl Aggregator {
                     score += 20;
                 }
 
-                if score > 0 {
-                    Some((score, t))
-                } else {
-                    None
-                }
+                if score > 0 { Some((score, t)) } else { None }
             })
             .collect();
 
@@ -917,15 +913,19 @@ mod tests {
             .unwrap();
         aggregator.cache.insert(tool, "untrusted-server").await;
         assert_eq!(pinned.1, "trusted-server");
-        assert!(aggregator
-            .profiles
-            .authorized_tool_in_profile("allowed", "trusted")
-            .await
-            .is_none());
-        assert!(aggregator
-            .compact_get_schema(json!({"tool_name":"allowed"}), "trusted")
-            .await
-            .is_err());
+        assert!(
+            aggregator
+                .profiles
+                .authorized_tool_in_profile("allowed", "trusted")
+                .await
+                .is_none()
+        );
+        assert!(
+            aggregator
+                .compact_get_schema(json!({"tool_name":"allowed"}), "trusted")
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -948,10 +948,12 @@ mod tests {
                 "{error}"
             );
         }
-        assert!(aggregator
-            .handle_compact_tool_call_in_profile("allowed", json!({}), "typo")
-            .await
-            .is_err());
+        assert!(
+            aggregator
+                .handle_compact_tool_call_in_profile("allowed", json!({}), "typo")
+                .await
+                .is_err()
+        );
         assert!(
             !aggregator
                 .profiles
@@ -963,10 +965,12 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(listed["count"].as_u64(), Some(1));
-        assert!(aggregator
-            .handle_compact_tool_call("get_tool_schema", json!({"tool_name":"allowed"}))
-            .await
-            .is_ok());
+        assert!(
+            aggregator
+                .handle_compact_tool_call("get_tool_schema", json!({"tool_name":"allowed"}))
+                .await
+                .is_ok()
+        );
     }
 
     #[tokio::test]
@@ -1003,12 +1007,14 @@ mod tests {
             ..Default::default()
         };
         let aggregator = Aggregator::new(config).await.unwrap();
-        assert!(aggregator
-            .initialize()
-            .await
-            .unwrap_err()
-            .to_string()
-            .contains("Unsupported MCP transport"));
+        assert!(
+            aggregator
+                .initialize()
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("Unsupported MCP transport")
+        );
         assert!(aggregator.ensure_initialized().await.is_err());
     }
 

@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use serde_json::Value;
 
 use crate::tched_router_runtime::ConfigSecretPolicy;
@@ -252,21 +252,29 @@ mod tests {
     fn resolves_secrets_in_the_pinned_v084_contract() {
         let document = op_plugins::state_plugins::tched_router_contract::document().clone();
         let policy = PinnedConfigSecretPolicy::new(Arc::new(document)).unwrap();
-        assert!(policy
-            .is_secret("providers.models.openai.main.api_key")
-            .unwrap());
-        assert!(!policy
-            .is_secret("providers.models.openai.main.model")
-            .unwrap());
+        assert!(
+            policy
+                .is_secret("providers.models.openai.main.api_key")
+                .unwrap()
+        );
+        assert!(
+            !policy
+                .is_secret("providers.models.openai.main.model")
+                .unwrap()
+        );
         assert!(!policy.is_secret("mcp.servers.docs.url").unwrap());
         assert!(!policy.is_secret("mcp.servers.0.url").unwrap());
-        assert!(policy
-            .is_secret("mcp.servers.docs.headers.Authorization")
-            .unwrap());
+        assert!(
+            policy
+                .is_secret("mcp.servers.docs.headers.Authorization")
+                .unwrap()
+        );
         assert!(policy.is_secret("mcp.servers.docs.env.API_TOKEN").unwrap());
-        assert!(policy
-            .is_secret("mcp.servers.docs.unknown_property")
-            .is_err());
+        assert!(
+            policy
+                .is_secret("mcp.servers.docs.unknown_property")
+                .is_err()
+        );
         let mut config = json!({"mcp":{"servers":[{
             "name":"docs", "url":"https://docs.example.test/mcp",
             "headers":{"Authorization":"Bearer private"}, "env":{}

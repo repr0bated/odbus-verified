@@ -1,24 +1,24 @@
 //! MCP gRPC Service Implementation
 #![allow(clippy::result_large_err)]
 
+use crate::ServerMode;
 #[cfg(feature = "grpc")]
 use crate::grpc::proto::mcp_service_server::McpService;
 #[cfg(feature = "grpc")]
 use crate::grpc::proto::*;
-use crate::ServerMode;
 use anyhow::Result;
 use prost_types::{ListValue as ProstListValue, Struct as ProstStruct, Value as ProstValue};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
-use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::sync::{RwLock, broadcast, mpsc};
 #[cfg(feature = "grpc")]
-use tokio_stream::{wrappers::ReceiverStream, Stream, StreamExt};
+use tokio_stream::{Stream, StreamExt, wrappers::ReceiverStream};
 #[cfg(feature = "grpc")]
 use tonic::{Request, Response, Status};
 use tracing::warn;
@@ -93,7 +93,9 @@ pub struct McpGrpcService {
 impl McpGrpcService {
     fn ensure_supported_mode(&self) -> Result<(), Status> {
         if matches!(self.mode, ServerMode::BlobSchema) {
-            return Err(Status::unimplemented("BlobSchema is served by the canonical sealed-plugin door; the compatibility registry cannot represent this mode"));
+            return Err(Status::unimplemented(
+                "BlobSchema is served by the canonical sealed-plugin door; the compatibility registry cannot represent this mode",
+            ));
         }
         Ok(())
     }
@@ -725,9 +727,11 @@ mod mode_tests {
             .await
             .unwrap_err();
         assert_eq!(status.code(), tonic::Code::Unimplemented);
-        assert!(service
-            .call_tool(Request::new(CallToolRequest::default()))
-            .await
-            .is_err());
+        assert!(
+            service
+                .call_tool(Request::new(CallToolRequest::default()))
+                .await
+                .is_err()
+        );
     }
 }

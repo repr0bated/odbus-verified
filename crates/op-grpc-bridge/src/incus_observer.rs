@@ -9,10 +9,10 @@ use crate::{
     mutation_engine::MutationEngine,
     sealed_schema_reader::{blob_catalog_dir_from_env, read_manifest_pinned_schema_document},
 };
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::incus::{
-    dispatch_incus_method_observed, subscribe_incus_default_project, IncusLifecycleObserver,
-    IncusState,
+    IncusLifecycleObserver, IncusState, dispatch_incus_method_observed,
+    subscribe_incus_default_project,
 };
 use std::{path::Path, sync::Arc};
 

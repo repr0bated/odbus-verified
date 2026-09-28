@@ -14,7 +14,7 @@ use crate::{
     method_contract_admission,
     mutation_engine::MutationEngine,
     project_dispatch,
-    sealed_schema_reader::{read_manifest_pinned_catalog, ManifestPinnedSchemaDocument},
+    sealed_schema_reader::{ManifestPinnedSchemaDocument, read_manifest_pinned_catalog},
 };
 
 pub(crate) const PLUGIN: &str = "tched_router";

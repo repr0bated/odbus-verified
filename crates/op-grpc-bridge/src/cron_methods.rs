@@ -8,7 +8,7 @@
 //!   completion and commits the returned observed state before notification;
 //! * audit records digest create/update bodies and run output, never raw text.
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use async_trait::async_trait;
 use op_plugins::state_plugins::cron::*;
 use std::{collections::BTreeSet, sync::Arc};

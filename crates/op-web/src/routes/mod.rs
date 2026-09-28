@@ -1,9 +1,9 @@
 //! API routes and route handlers
 
 use axum::{
+    Router,
     extract::Extension,
     routing::{delete, get, post},
-    Router,
 };
 use std::sync::Arc;
 use tower_http::compression::CompressionLayer;

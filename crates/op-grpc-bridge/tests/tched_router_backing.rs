@@ -2,22 +2,22 @@
 mod support;
 
 use axum::{
+    Json, Router,
     extract::{Query, State},
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     response::{IntoResponse, Response},
     routing::{get, patch, post},
-    Json, Router,
 };
 use op_grpc_bridge::mutation_engine::MutationEngine;
 use op_state_store::{ChainConfig, EventChain};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::HashMap,
     net::SocketAddr,
     sync::{
-        atomic::{AtomicUsize, Ordering},
         Arc, OnceLock,
+        atomic::{AtomicUsize, Ordering},
     },
 };
 use tokio::sync::Mutex as AsyncMutex;
@@ -674,12 +674,16 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .unwrap();
     assert_eq!(old["aliases"].as_array().unwrap().len(), 2);
     let routes = observed["model_routes"].as_array().unwrap();
-    assert!(routes
-        .iter()
-        .any(|route| route["provider"] == "ollama" && route["model"] == "old-model"));
-    assert!(routes
-        .iter()
-        .any(|route| { route["provider"] == "ollama" && route["model"] == "secondary-model" }));
+    assert!(
+        routes
+            .iter()
+            .any(|route| route["provider"] == "ollama" && route["model"] == "old-model")
+    );
+    assert!(
+        routes
+            .iter()
+            .any(|route| { route["provider"] == "ollama" && route["model"] == "secondary-model" })
+    );
     assert!(providers.iter().any(|provider| {
         provider["id"] == "custom" && provider["aliases"] == json!(["custom.default"])
     }));
@@ -689,29 +693,35 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     // become the selected provider's represented model inventory.
     fixture.inner.lock().await.provider = "custom.default".into();
     let selected_empty = dispatch(&engine, &caller, "GetState", json!({})).await;
-    assert!(format!("{:#}", selected_empty.unwrap_err())
-        .contains("selected 'custom.default' model catalog is empty"));
+    assert!(
+        format!("{:#}", selected_empty.unwrap_err())
+            .contains("selected 'custom.default' model catalog is empty")
+    );
     fixture.inner.lock().await.provider = "ollama.main".into();
 
     // Family projection contains both aliases, but mutation admission must
     // validate against the exact alias being selected.
     let writes_before_cross_alias = fixture.inner.lock().await.writes;
-    assert!(dispatch(
-        &engine,
-        &caller,
-        "SetModel",
-        json!({"model_id":"secondary-model"}),
-    )
-    .await
-    .is_err());
-    assert!(dispatch(
-        &engine,
-        &caller,
-        "SetSelection",
-        json!({"provider_id":"ollama.secondary","model_id":"old-model"}),
-    )
-    .await
-    .is_err());
+    assert!(
+        dispatch(
+            &engine,
+            &caller,
+            "SetModel",
+            json!({"model_id":"secondary-model"}),
+        )
+        .await
+        .is_err()
+    );
+    assert!(
+        dispatch(
+            &engine,
+            &caller,
+            "SetSelection",
+            json!({"provider_id":"ollama.secondary","model_id":"old-model"}),
+        )
+        .await
+        .is_err()
+    );
     assert_eq!(fixture.inner.lock().await.writes, writes_before_cross_alias);
 
     // Gemma's retained route facade must reach the same admitted router
@@ -780,16 +790,18 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         "/mcp/servers/docs/a~1b",
     ] {
         let before = fixture.requests.load(Ordering::SeqCst);
-        assert!(dispatch_mcp(
-            &engine,
-            &caller,
-            "configure_server",
-            json!({"operations":[{
-                "op":"replace", "path":forbidden, "value":"forbidden"
-            }]})
-        )
-        .await
-        .is_err());
+        assert!(
+            dispatch_mcp(
+                &engine,
+                &caller,
+                "configure_server",
+                json!({"operations":[{
+                    "op":"replace", "path":forbidden, "value":"forbidden"
+                }]})
+            )
+            .await
+            .is_err()
+        );
         assert_eq!(fixture.requests.load(Ordering::SeqCst), before);
     }
     let target_write_grant = schema.methods["PatchConfig"]
@@ -991,11 +1003,13 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     let cached = dispatch(&engine, &caller, "GetState", json!({}))
         .await
         .unwrap();
-    assert!(cached["result"]["state"]["model_routes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|route| route["available"] == false && route["status"] == "catalogued"));
+    assert!(
+        cached["result"]["state"]["model_routes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|route| route["available"] == false && route["status"] == "catalogued")
+    );
     fixture.inner.lock().await.catalog_live = true;
 
     {
@@ -1020,9 +1034,11 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
         .unwrap();
     assert_eq!(observed["result"]["state"]["selected_provider"], "ollama");
     assert_eq!(observed["result"]["state"]["selected_model"], "old-model");
-    assert!(observed["result"]["state"]["providers"]
-        .as_array()
-        .is_some_and(|providers| !providers.is_empty()));
+    assert!(
+        observed["result"]["state"]["providers"]
+            .as_array()
+            .is_some_and(|providers| !providers.is_empty())
+    );
     let committed: Value = serde_json::from_slice(
         &op_core::projection_shm::read_projection_bytes("tched_router").unwrap(),
     )
@@ -1096,14 +1112,16 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     // An HTTP success that failed to change upstream config must never become
     // a successful mutation or a new projected selection.
     fixture.inner.lock().await.ignore_writes = true;
-    assert!(dispatch(
-        &engine,
-        &caller,
-        "SetSelection",
-        json!({"provider_id":"openai","model_id":"new-model"})
-    )
-    .await
-    .is_err());
+    assert!(
+        dispatch(
+            &engine,
+            &caller,
+            "SetSelection",
+            json!({"provider_id":"openai","model_id":"new-model"})
+        )
+        .await
+        .is_err()
+    );
     assert_eq!(engine.get_state("tched_router").await.unwrap(), initial);
     fixture.inner.lock().await.ignore_writes = false;
 
@@ -1150,14 +1168,16 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     );
     assert_eq!(fixture.inner.lock().await.provider, "openai.main");
 
-    assert!(dispatch(
-        &engine,
-        &caller,
-        "Chat",
-        json!({"message":"hi", "model":"stale"})
-    )
-    .await
-    .is_err());
+    assert!(
+        dispatch(
+            &engine,
+            &caller,
+            "Chat",
+            json!({"message":"hi", "model":"stale"})
+        )
+        .await
+        .is_err()
+    );
     assert_eq!(fixture.inner.lock().await.chats, 0);
     let chat = dispatch(
         &engine,
@@ -1206,14 +1226,16 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
 
     let before_failed_write = engine.get_state("tched_router").await.unwrap();
     fixture.inner.lock().await.write_fail = true;
-    assert!(dispatch(
-        &engine,
-        &caller,
-        "SetProvider",
-        json!({"provider_id":"ollama"})
-    )
-    .await
-    .is_err());
+    assert!(
+        dispatch(
+            &engine,
+            &caller,
+            "SetProvider",
+            json!({"provider_id":"ollama"})
+        )
+        .await
+        .is_err()
+    );
     assert_eq!(
         engine.get_state("tched_router").await.unwrap(),
         before_failed_write
@@ -1341,19 +1363,23 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     let routes = dispatch(&engine, &caller, "GetModelRoutes", json!({}))
         .await
         .unwrap();
-    assert!(routes["result"]["model_routes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|route| route["provider"] == "openai" && route["model"] == "new-model"));
+    assert!(
+        routes["result"]["model_routes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|route| route["provider"] == "openai" && route["model"] == "new-model")
+    );
     let providers = dispatch(&engine, &caller, "GetProviderCatalog", json!({}))
         .await
         .unwrap();
-    assert!(providers["result"]["providers"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|provider| provider["id"] == "ollama"));
+    assert!(
+        providers["result"]["providers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|provider| provider["id"] == "ollama")
+    );
     let tools = dispatch(&engine, &caller, "GetTools", json!({}))
         .await
         .unwrap();
@@ -1408,11 +1434,13 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .await
             .unwrap()["result"]
     );
-    assert!(providers["result"]["providers"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|p| p["id"] == "openai"));
+    assert!(
+        providers["result"]["providers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["id"] == "openai")
+    );
     let provider = dispatch_llm(&engine, &caller, "get_provider", json!({}))
         .await
         .unwrap();
@@ -1432,11 +1460,13 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
             .await
             .unwrap()["result"]
     );
-    assert!(models["result"]["model_routes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|m| m["model"] == "new-model"));
+    assert!(
+        models["result"]["model_routes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|m| m["model"] == "new-model")
+    );
     let config = dispatch_llm(&engine, &caller, "get_config", json!({}))
         .await
         .unwrap();
@@ -1479,7 +1509,7 @@ async fn canonical_selection_commits_verified_upstream_and_preserves_projection_
     );
     assert!(!native.to_string().contains("fixture-private-mcp-token"));
     use op_plugins::state_plugins::tched_router_config_surface::{
-        config_method_backing, ConfigMethodBacking,
+        ConfigMethodBacking, config_method_backing,
     };
     let mut tested = std::collections::BTreeSet::new();
     for method in schema.methods.keys() {

@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -240,7 +240,10 @@ impl ExternalMcpClient {
         );
 
         if total_duration.as_secs() > 5 {
-            tracing::warn!("External MCP server {} took longer than expected to start (>5s). Consider optimizing or checking for startup issues.", self.config.name);
+            tracing::warn!(
+                "External MCP server {} took longer than expected to start (>5s). Consider optimizing or checking for startup issues.",
+                self.config.name
+            );
         }
 
         Ok(())
@@ -654,13 +657,13 @@ impl Default for ExternalMcpManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Router;
     use axum::body::Body;
     use axum::extract::State;
     use axum::http::{Request, Response, StatusCode};
     use axum::routing::post;
-    use axum::Router;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn streamable_http_json_response_parses() {
@@ -670,9 +673,11 @@ mod tests {
         )
         .expect("JSON response parses");
         assert_eq!(value["id"], 1);
-        assert!(value["result"]["tools"]
-            .as_array()
-            .is_some_and(Vec::is_empty));
+        assert!(
+            value["result"]["tools"]
+                .as_array()
+                .is_some_and(Vec::is_empty)
+        );
     }
 
     #[test]

@@ -192,8 +192,7 @@ Example:
 
         format!(
             "{}\n\n## Available Tools\n\nYou have access to the following tools through the `execute_tool` function:\n\n{}\n\n## Instructions\n\n1. Use `list_tools` to see available tools by category\n2. Use `search_tools` to find relevant tools\n3. Use `get_tool_schema` to get detailed parameters for a tool\n4. Use `execute_tool` to run tools with the required arguments\n5. Use `respond` to send your final answer to the user\n\nAlways verify actions completed successfully before reporting completion.",
-            base_prompt,
-            tool_list
+            base_prompt, tool_list
         )
     }
 }

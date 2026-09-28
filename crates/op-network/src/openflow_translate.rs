@@ -9,8 +9,8 @@
 //! narrow ones). Unsupported fields here are a hard error instead — callers
 //! must not install a flow that is looser than what was requested.
 
-use anyhow::{bail, Context, Result};
-use rovs_openflow::{nxm, ActionList, Flow, FlowCommand, Match, OutputPort};
+use anyhow::{Context, Result, bail};
+use rovs_openflow::{ActionList, Flow, FlowCommand, Match, OutputPort, nxm};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 

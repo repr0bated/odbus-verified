@@ -11,7 +11,7 @@
 mod identity;
 mod introspect;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use identity::CliIdentity;
 use introspect::PluginTreeAdapter;
 use std::process::ExitCode;
@@ -459,7 +459,8 @@ async fn cmd_get_property(plugin_name: &str, args: &[String]) -> Result<()> {
     if args.is_empty() {
         bail!(
             "Usage: dbus-plugin-cli {} get <property-name>\n\nRun 'dbus-plugin-cli {} --help' to see available properties.",
-            plugin_name, plugin_name
+            plugin_name,
+            plugin_name
         );
     }
 

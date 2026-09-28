@@ -4,12 +4,12 @@
 //! member, description, and signature. Query syntax follows Cozo FTS (including
 //! terms, phrases, Boolean operators, and prefix `*`); invalid syntax is an error.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::Utc;
 use op_core::types::{BusType, ObjectInfo, PropertyAccess};
 use op_cozo_store::CozoGraphShuttle;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, info, warn};

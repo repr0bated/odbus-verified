@@ -586,11 +586,13 @@ mod tests {
         export
             .global_dependencies
             .push(SystemDependency::required("untrusted-package"));
-        assert!(restore_from_export(&export)
-            .await
-            .unwrap_err()
-            .to_string()
-            .contains("not authorized"));
+        assert!(
+            restore_from_export(&export)
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("not authorized")
+        );
         export.global_dependencies = get_global_dependencies();
         assert!(validate_export_dependencies(&export).is_ok());
         let mut plugin = PluginStateExport::new("btrfs", "1", simd_json::json!({}));

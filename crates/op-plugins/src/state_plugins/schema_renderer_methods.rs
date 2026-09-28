@@ -2,9 +2,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_state_store::PluginSchema;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{
     json_render::canvas_profile::PinnedCanvasValidator,
@@ -291,13 +291,15 @@ mod tests {
         assert_eq!(list.method, "get_ui_workspace");
         assert_eq!(list.capability, "gemma.read");
         assert!(plan_gallery_method("list_galleries", &json!({"owner":"other"})).is_err());
-        assert!(plan_gallery_method(
-            "get_rendering",
-            &json!({
-                "gallery_id":"other", "rendering_id":"one"
-            })
-        )
-        .is_err());
+        assert!(
+            plan_gallery_method(
+                "get_rendering",
+                &json!({
+                    "gallery_id":"other", "rendering_id":"one"
+                })
+            )
+            .is_err()
+        );
         let get = plan_gallery_method(
             "get_rendering",
             &json!({
@@ -376,15 +378,19 @@ mod tests {
             .dispatch("validate_schema", &target, &"b".repeat(64))
             .unwrap();
         assert_eq!(output["valid"], false);
-        assert!(output["errors"][0]
-            .as_str()
-            .unwrap()
-            .contains("transport method"));
-        assert!(service
-            .dispatch("list_galleries", &target, &"b".repeat(64))
-            .unwrap_err()
-            .to_string()
-            .contains("authenticated workspace dispatch"));
+        assert!(
+            output["errors"][0]
+                .as_str()
+                .unwrap()
+                .contains("transport method")
+        );
+        assert!(
+            service
+                .dispatch("list_galleries", &target, &"b".repeat(64))
+                .unwrap_err()
+                .to_string()
+                .contains("authenticated workspace dispatch")
+        );
     }
 
     #[test]

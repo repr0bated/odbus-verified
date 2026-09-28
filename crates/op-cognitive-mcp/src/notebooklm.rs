@@ -249,7 +249,7 @@ fn env_flag(name: &str, default: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{NotebookLmConfig, DEFAULT_NOTEBOOKLM_URL};
+    use super::{DEFAULT_NOTEBOOKLM_URL, NotebookLmConfig};
 
     #[test]
     fn should_normalize_notebooklm_tool_names() {

@@ -38,7 +38,11 @@ impl std::fmt::Display for RuntimeDocumentUncertain {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Domain documents can contain opaque private values. Never echo them
         // or a native diagnostic that might contain serialized values here.
-        write!(f, "runtime_document_uncertain: revision {} has an uncertain {:?} outcome; reconcile before publication or retry", self.candidate.revision, self.phase)
+        write!(
+            f,
+            "runtime_document_uncertain: revision {} has an uncertain {:?} outcome; reconcile before publication or retry",
+            self.candidate.revision, self.phase
+        )
     }
 }
 impl std::error::Error for RuntimeDocumentUncertain {
@@ -320,10 +324,12 @@ mod tests {
                 .await
                 .unwrap();
             assert_eq!(row.revision, 1);
-            assert!(store
-                .update("config", |_| Err(anyhow!("invalid setting")))
-                .await
-                .is_err());
+            assert!(
+                store
+                    .update("config", |_| Err(anyhow!("invalid setting")))
+                    .await
+                    .is_err()
+            );
             assert_eq!(
                 store.read("config").await.unwrap().unwrap().document["configs"]["limit"],
                 3

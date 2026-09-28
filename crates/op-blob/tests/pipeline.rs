@@ -2,7 +2,7 @@
 //! and the spec's reflection-coverage gate (Task 5.1):
 //! struct -> PluginSchema -> blob -> zero-copy read -> catalog -> btrfs image.
 
-use op_blob::blob::{blobify, blobify_with_identity, BlobRef};
+use op_blob::blob::{BlobRef, blobify, blobify_with_identity};
 use op_blob::catalog::ActiveReflectionCatalog;
 use op_blob::demo::{unix_socket_schema, wireguard_schema};
 use op_blob::descriptor::decode_file_summaries;
@@ -44,11 +44,12 @@ fn blob_dbus_and_grpc_identity_match_plugin() {
         "/org/opdbus/v1/plugins/unix_socket"
     );
     assert_eq!(blob.manifest.dbus.interface_name, "org.opdbus.v1.PluginV1");
-    assert!(blob
-        .manifest
-        .grpc
-        .services
-        .contains(&"operation.method.unix_socket.bind.BindService".to_string()));
+    assert!(
+        blob.manifest
+            .grpc
+            .services
+            .contains(&"operation.method.unix_socket.bind.BindService".to_string())
+    );
 }
 
 #[test]
@@ -126,9 +127,10 @@ fn reflection_descriptor_covers_every_method_with_typed_messages() {
             // fields import the standard JSON well-known descriptor once.
             assert_eq!(f.messages.len(), 2, "{}: Input + Output", f.name);
             assert_eq!(f.services.len(), 1);
-            assert!(f
-                .package
-                .starts_with(&format!("operation.method.{}.", blob.manifest.plugin_id)));
+            assert!(
+                f.package
+                    .starts_with(&format!("operation.method.{}.", blob.manifest.plugin_id))
+            );
         }
     }
 }
@@ -143,18 +145,20 @@ fn catalog_insert_lists_service_and_remove_unlists() {
 
     let blob = blobify(&unix_socket_schema());
     cat.upsert_blob(&blob).unwrap();
-    assert!(cat
-        .list_services()
-        .contains(&"operation.method.unix_socket.bind.BindService".to_string()));
+    assert!(
+        cat.list_services()
+            .contains(&"operation.method.unix_socket.bind.BindService".to_string())
+    );
 
     // file_by_filename / symbol lookup serve descriptor bytes.
     let file = cat
         .file_by_filename("operation/method/unix_socket/bind.proto")
         .expect("descriptor file bytes");
     assert!(!file.is_empty());
-    assert!(cat
-        .symbol_by_name("operation.method.unix_socket.bind.BindService")
-        .is_some());
+    assert!(
+        cat.symbol_by_name("operation.method.unix_socket.bind.BindService")
+            .is_some()
+    );
 
     // Reload from disk: persistence layout works.
     let cat2 = ActiveReflectionCatalog::open(&dir).unwrap();

@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use std::process::Stdio;
 use tokio::process::Command;
-use tokio::time::{timeout, Duration};
+use tokio::time::{Duration, timeout};
 
 const MAX_OUTPUT_BYTES: usize = 1024 * 1024;
 
@@ -240,9 +240,11 @@ mod tests {
         let result = shell_agent()
             .execute_command("sh", &["-c", "while :; do printf x; done"], None, 5)
             .await;
-        assert!(result
-            .expect_err("chatty child must hit output bound")
-            .contains("1MiB bound"));
+        assert!(
+            result
+                .expect_err("chatty child must hit output bound")
+                .contains("1MiB bound")
+        );
     }
 
     #[tokio::test]
@@ -251,9 +253,11 @@ mod tests {
         let result = shell_agent()
             .execute_command("sh", &["-c", "while :; do :; done"], None, 1)
             .await;
-        assert!(result
-            .expect_err("looping child must time out")
-            .contains("timed out"));
+        assert!(
+            result
+                .expect_err("looping child must time out")
+                .contains("timed out")
+        );
         assert!(started.elapsed() < Duration::from_secs(5));
     }
 }

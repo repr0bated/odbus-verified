@@ -7,7 +7,7 @@ use crate::proto::{
     CreateCronJobRequest, CronJob, DeleteCronJobRequest, Empty, ListCronJobsRequest,
     ListCronJobsResponse, TriggerCronJobRequest,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tonic::{Request, Response, Status};
 
 pub struct CronServiceImpl {

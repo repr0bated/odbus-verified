@@ -6,8 +6,8 @@ use crate::grpc::proto::mcp_service_client::McpServiceClient;
 use crate::grpc::proto::*;
 use anyhow::Result;
 use prost_types::{ListValue as ProstListValue, Struct as ProstStruct, Value as ProstValue};
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 use std::collections::BTreeMap;
 use std::time::Duration;
 #[cfg(feature = "grpc")]

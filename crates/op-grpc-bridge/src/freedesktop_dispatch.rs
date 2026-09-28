@@ -8,11 +8,11 @@ use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use op_plugins::canonical;
 use op_plugins::state_plugins::freedesktop::*;
 use op_state_store::{FieldType, PluginSchema, SideEffect};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::mutation_engine::MutationEngine;
 use crate::sealed_schema_reader::{
@@ -760,13 +760,15 @@ mod tests {
         );
         assert_eq!(object["object"]["plugin_id"], "fixture_control");
         assert_eq!(object["object"]["properties"], json!({"selected":"old"}));
-        assert!(prepare_local(
-            catalog.path(),
-            state.path(),
-            "GetAll",
-            &json!({"plugin_id":"stale_only"})
-        )
-        .is_err());
+        assert!(
+            prepare_local(
+                catalog.path(),
+                state.path(),
+                "GetAll",
+                &json!({"plugin_id":"stale_only"})
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -789,21 +791,25 @@ mod tests {
         );
         assert_eq!(value["object"]["projection_available"], false);
         assert_eq!(value["object"]["properties"], json!({}));
-        assert!(prepare_local(
-            catalog.path(),
-            state.path(),
-            "Get",
-            &json!({"plugin_id":"fixture_control", "property_name":"selected"})
-        )
-        .is_err());
+        assert!(
+            prepare_local(
+                catalog.path(),
+                state.path(),
+                "Get",
+                &json!({"plugin_id":"fixture_control", "property_name":"selected"})
+            )
+            .is_err()
+        );
         std::fs::write(state.path().join("fixture_control.json"), b"not JSON").unwrap();
-        assert!(prepare_local(
-            catalog.path(),
-            state.path(),
-            "GetAll",
-            &json!({"plugin_id":"fixture_control"})
-        )
-        .is_err());
+        assert!(
+            prepare_local(
+                catalog.path(),
+                state.path(),
+                "GetAll",
+                &json!({"plugin_id":"fixture_control"})
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -852,14 +858,18 @@ mod tests {
                 "accepted {args}"
             );
         }
-        assert!(serde_json::from_value::<GetMachineIdInput>(
-            json!({"plugin_id":"fixture_control", "destination":"elsewhere"})
-        )
-        .is_err());
-        assert!(serde_json::from_value::<PingInput>(
-            json!({"plugin_id":"fixture_control", "object_path":"/elsewhere"})
-        )
-        .is_err());
+        assert!(
+            serde_json::from_value::<GetMachineIdInput>(
+                json!({"plugin_id":"fixture_control", "destination":"elsewhere"})
+            )
+            .is_err()
+        );
+        assert!(
+            serde_json::from_value::<PingInput>(
+                json!({"plugin_id":"fixture_control", "object_path":"/elsewhere"})
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -1114,13 +1124,15 @@ mod tests {
         assert!(!present.object.projection_available);
         assert!(present.object.properties.is_empty());
         assert!(resolve_write(&present, input()).is_ok());
-        assert!(prepare_local(
-            catalog.path(),
-            state.path(),
-            "Get",
-            &json!({"plugin_id":"fixture_control","property_name":"selected"})
-        )
-        .is_err());
+        assert!(
+            prepare_local(
+                catalog.path(),
+                state.path(),
+                "Get",
+                &json!({"plugin_id":"fixture_control","property_name":"selected"})
+            )
+            .is_err()
+        );
         commit(state.path(), br#"{"selected":"old","locked":true}"#);
         let present = read_present_plugin(catalog.path(), state.path(), "fixture_control").unwrap();
         assert!(resolve_write(&present, input()).is_err());
@@ -1149,13 +1161,15 @@ mod tests {
             present.object.properties,
             [("selected".into(), json!("old"))].into_iter().collect()
         );
-        assert!(prepare_local(
-            catalog.path(),
-            state.path(),
-            "Get",
-            &json!({"plugin_id":"fixture_control","property_name":"config"})
-        )
-        .is_err());
+        assert!(
+            prepare_local(
+                catalog.path(),
+                state.path(),
+                "Get",
+                &json!({"plugin_id":"fixture_control","property_name":"config"})
+            )
+            .is_err()
+        );
         schema.public_state.paths.push("/config".into());
         seal(catalog.path(), schema);
         assert!(read_present_plugin(catalog.path(), state.path(), "fixture_control").is_err());
@@ -1264,11 +1278,13 @@ mod tests {
             .build()
             .await
             .expect("connect service to private bus");
-        assert!(service
-            .object_server()
-            .at(canonical::plugin_path("fixture_control"), PeerFixture)
-            .await
-            .expect("mount peer fixture"));
+        assert!(
+            service
+                .object_server()
+                .at(canonical::plugin_path("fixture_control"), PeerFixture)
+                .await
+                .expect("mount peer fixture")
+        );
         service
             .request_name(canonical::BASE_SERVICE_NAME)
             .await
@@ -1349,8 +1365,10 @@ mod tests {
         assert_eq!(machine["plugin_id"], "fixture_control");
         assert_eq!(machine["machine_id"], expected_machine_id);
         assert_eq!(expected_machine_id.len(), 32);
-        assert!(expected_machine_id
-            .bytes()
-            .all(|byte| byte.is_ascii_hexdigit()));
+        assert!(
+            expected_machine_id
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit())
+        );
     }
 }

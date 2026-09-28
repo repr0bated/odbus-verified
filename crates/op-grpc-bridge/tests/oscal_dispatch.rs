@@ -3,12 +3,12 @@ mod support;
 
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use op_grpc_bridge::MutationEngine;
 use op_plugins::state_plugins::oscal_subid_registry::OscalSubidRegistryPlugin;
 use op_state::StatePlugin;
 use op_state_store::{ChainConfig, EventChain, MethodDecl, PluginSchema, SideEffect};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::sync::RwLock;
 
 fn make_engine() -> MutationEngine {
@@ -161,11 +161,13 @@ async fn sealed_dispatch_is_typed_scoped_and_durable_across_engine_recreation() 
     )
     .await
     .unwrap();
-    assert!(listed["entries"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|entry| entry["subid"] == target));
+    assert!(
+        listed["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| entry["subid"] == target)
+    );
 
     let resolved = call_typed(
         &reopened,
@@ -187,13 +189,11 @@ async fn sealed_dispatch_is_typed_scoped_and_durable_across_engine_recreation() 
     )
     .await
     .unwrap();
-    assert!(exported["entries"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .all(|entry| entry["bindings"]
+    assert!(exported["entries"].as_array().unwrap().iter().all(|entry| {
+        entry["bindings"]
             .as_array()
             .unwrap()
             .iter()
-            .all(|binding| binding["plugin_id"] == "fixture")));
+            .all(|binding| binding["plugin_id"] == "fixture")
+    }));
 }

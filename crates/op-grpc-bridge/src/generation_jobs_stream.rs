@@ -16,8 +16,8 @@ use crate::{
     generation_jobs_dispatch::{CommittedGeneration, GenerationPublisher, GenerationSubscription},
     generation_jobs_selection::GenerationSelection,
     grpc_server::{
-        simd_to_prost_struct, simd_to_prost_value, state_heartbeat_frame,
-        state_snapshot_frames_with_views, DECLARED_CAPABILITY_HEADER,
+        DECLARED_CAPABILITY_HEADER, simd_to_prost_struct, simd_to_prost_value,
+        state_heartbeat_frame, state_snapshot_frames_with_views,
     },
     interceptor::load_capability_grants,
     mutation_engine::MutationEngine,

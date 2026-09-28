@@ -5,7 +5,7 @@
 //! OP-DBUS service. Successful operations modify the running handler only;
 //! /etc/xray/xray_config.json is neither read, written nor reloaded here.
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use op_plugins::state_plugins::xray::{
     AddInboundInput, AddInboundOutput, AddUserInput, AddUserOutput, RemoveUserInput,
     RemoveUserOutput, XrayHandlerAccount, XrayHandlerProtocol, XrayHandlerUser,
@@ -15,7 +15,7 @@ use op_xray_daemon::commander_client::{self, handler, xray};
 use prost::Message;
 use serde_json::Value;
 use std::{collections::HashSet, io::Cursor, net::IpAddr, sync::Arc, time::Duration};
-use tonic::{transport::Channel, Request};
+use tonic::{Request, transport::Channel};
 
 type Client = handler::handler_service_client::HandlerServiceClient<Channel>;
 type TypedMessage = xray::common::serial::TypedMessage;

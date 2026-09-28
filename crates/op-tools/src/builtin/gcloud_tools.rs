@@ -4,11 +4,11 @@
 //! allowing agents to discover and understand gcloud commands, flags,
 //! and arguments.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use op_inspector::{GCloudCommand, GCloudParser, GCloudSchema};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 

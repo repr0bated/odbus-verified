@@ -206,7 +206,7 @@ pub async fn get_device(name: &str) -> Result<Option<KernelDeviceSnapshot>> {
             if error.kind() == std::io::ErrorKind::NotFound
                 || error.raw_os_error() == Some(libc::ENODEV) =>
         {
-            return Ok(None)
+            return Ok(None);
         }
         Err(error) => return Err(error).context("read Linux kernel WireGuard device"),
     };
@@ -337,9 +337,11 @@ mod tests {
                 .unwrap();
             assert!(device.admin_up);
             assert_eq!(device.mtu, Some(1420));
-            assert!(device
-                .addresses
-                .contains(&("192.0.2.1".parse().unwrap(), 32)));
+            assert!(
+                device
+                    .addresses
+                    .contains(&("192.0.2.1".parse().unwrap(), 32))
+            );
             delete_device(name).await.unwrap();
             assert!(get_device(name).await.unwrap().is_none());
         });

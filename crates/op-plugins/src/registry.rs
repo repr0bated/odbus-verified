@@ -177,11 +177,7 @@ impl PluginRegistry {
             }
         }
 
-        if out.is_empty() {
-            "_".to_string()
-        } else {
-            out
-        }
+        if out.is_empty() { "_".to_string() } else { out }
     }
 }
 

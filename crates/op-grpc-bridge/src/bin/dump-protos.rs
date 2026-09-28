@@ -16,7 +16,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use op_blob::catalog::{read_manifest_plugin_ids_shm, read_plugin_schema_shm, DEFAULT_SHM_DIR};
+use op_blob::catalog::{DEFAULT_SHM_DIR, read_manifest_plugin_ids_shm, read_plugin_schema_shm};
 use op_grpc_bridge::plugin_grpc_gen::generate_plugin_method_protos;
 use op_grpc_bridge::proto_gen::{ProtoGenConfig, ProtoGenerator};
 use op_state_store::{PluginSchema, SchemaCatalog};

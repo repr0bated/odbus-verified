@@ -131,7 +131,7 @@ impl OvsCapabilities {
 
     /// Check if OVSDB responds to list_dbs
     async fn check_ovsdb_responds() -> bool {
-        use tokio::time::{timeout, Duration};
+        use tokio::time::{Duration, timeout};
 
         let result = timeout(Duration::from_secs(2), async {
             crate::ovsdb::OvsdbClient::new().list_dbs().await

@@ -93,14 +93,16 @@ async fn fixture(initial: Value) -> Fixture {
     assert_eq!(requested.len(), 4);
     for (table, columns) in COLUMNS {
         assert_eq!(requested[*table]["columns"], json!(columns));
-        assert!(!requested[*table]["columns"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|value| matches!(
-                value.as_str(),
-                Some("options" | "other_config" | "external_ids")
-            )));
+        assert!(
+            !requested[*table]["columns"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| matches!(
+                    value.as_str(),
+                    Some("options" | "other_config" | "external_ids")
+                ))
+        );
     }
     let monitor = request.params[1].as_str().unwrap().to_owned();
     peer.send_message(&Message::Response(Response::success(
@@ -283,11 +285,13 @@ fn malformed_rows_private_columns_and_size_limits_are_rejected() {
     assert!(validate_update(&json!({"SSL":{}}), true).is_err());
     assert!(validate_update(&json!({"Bridge":{"bad-id":{"new":{}}}}), true).is_err());
     assert!(validate_update(&json!({"Bridge":{(BRIDGE):{"new":{"name":"only"}}}}), true).is_err());
-    assert!(validate_update(
-        &json!({"Bridge":{(BRIDGE):{"old":{},"new":{"other_config":"private"}}}}),
-        false
-    )
-    .is_err());
+    assert!(
+        validate_update(
+            &json!({"Bridge":{(BRIDGE):{"old":{},"new":{"other_config":"private"}}}}),
+            false
+        )
+        .is_err()
+    );
     assert!(bounded_json(&"x".repeat(MAX_JSON_BYTES)).is_err());
     let rows: serde_json::Map<_, _> = (0..=MAX_SNAPSHOT_ROWS)
         .map(|index| {

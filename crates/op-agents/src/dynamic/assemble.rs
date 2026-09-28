@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
-use super::pieces::{tokenize, AgentPiece, PieceKind, PieceLibrary, PieceSource};
+use super::pieces::{AgentPiece, PieceKind, PieceLibrary, PieceSource, tokenize};
 
 /// Everything the assembler knows about the task at hand. The caller (the
 /// bridge) fills it from the verified session: the question, the path being
@@ -426,9 +426,10 @@ mod tests {
         let n = lib.add_from_markdown(md).expect("parse");
         assert!(n >= 4, "pieces: {n}");
         assert!(lib.pieces().iter().any(|p| p.kind == PieceKind::Capability));
-        assert!(lib
-            .pieces()
-            .iter()
-            .any(|p| matches!(p.source, PieceSource::Markdown { .. })));
+        assert!(
+            lib.pieces()
+                .iter()
+                .any(|p| matches!(p.source, PieceSource::Markdown { .. }))
+        );
     }
 }

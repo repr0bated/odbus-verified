@@ -3,7 +3,7 @@
 
 use crate::error::{AssistantError, Result};
 use crate::transport::{Transport, TransportConfig};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 #[derive(Clone)]

@@ -1,7 +1,7 @@
 use super::*;
 use std::{
     cell::RefCell,
-    sync::{mpsc, Arc, Barrier},
+    sync::{Arc, Barrier, mpsc},
     time::Duration,
 };
 
@@ -233,9 +233,11 @@ fn generic_snapshot_never_contains_credentials_and_pair_rolls_back_together() {
             )))
         })
         .unwrap();
-    assert!(!String::from_utf8(commit.current.unwrap())
-        .unwrap()
-        .contains("sealed_id"));
+    assert!(
+        !String::from_utf8(commit.current.unwrap())
+            .unwrap()
+            .contains("sealed_id")
+    );
     let public = read_projection_snapshot_in(root(&directory), &["identity_sled".into()]).unwrap();
     assert_eq!(
         std::fs::metadata(directory.path().join("identity_sled.json"))
@@ -253,18 +255,15 @@ fn generic_snapshot_never_contains_credentials_and_pair_rolls_back_together() {
         br#"{"session_id":"one","sealed_id":"secret"}"#
     );
     inject(MANIFEST_NAME, 2, false);
-    assert!(update_projection_with_credentials_in(
-        root(&directory),
-        "identity_sled",
-        group,
-        |_| {
+    assert!(
+        update_projection_with_credentials_in(root(&directory), "identity_sled", group, |_| {
             Ok(Some((
                 br#"{"session_id":"two"}"#.to_vec(),
                 br#"{"sealed_id":"replacement"}"#.to_vec(),
             )))
-        }
-    )
-    .is_err());
+        })
+        .is_err()
+    );
     assert_eq!(
         read_credential_in(root(&directory), "identity_sled")
             .unwrap()
@@ -299,13 +298,12 @@ fn generic_snapshot_never_contains_credentials_and_pair_rolls_back_together() {
         .unwrap();
     assert_eq!(unchanged.generation, 1);
     inject(MANIFEST_NAME, 2, false);
-    assert!(update_projection_with_credentials_in(
-        root(&directory),
-        "identity_sled",
-        group,
-        |_| Ok(None)
-    )
-    .is_err());
+    assert!(
+        update_projection_with_credentials_in(root(&directory), "identity_sled", group, |_| Ok(
+            None
+        ))
+        .is_err()
+    );
     assert!(private_file.exists());
     assert_eq!(
         read_credential_in(root(&directory), "identity_sled")

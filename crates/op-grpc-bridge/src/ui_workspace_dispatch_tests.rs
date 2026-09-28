@@ -97,20 +97,22 @@ async fn private_workspace_publication_is_complete_scoped_recoverable_and_cancel
         ))),
         Arc::new(op_network::rovs_proxy::OvsdbDbusClient::new()),
     );
-    assert!(fixture
-        .publisher
-        .subscribe_workspace(
-            &engine,
-            "principal-a",
-            Some("session-a"),
-            Some("genesis-a"),
-            "gemma.invoke",
-        )
-        .await
-        .err()
-        .unwrap()
-        .to_string()
-        .contains("exact gemma.read"));
+    assert!(
+        fixture
+            .publisher
+            .subscribe_workspace(
+                &engine,
+                "principal-a",
+                Some("session-a"),
+                Some("genesis-a"),
+                "gemma.invoke",
+            )
+            .await
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("exact gemma.read")
+    );
     let owner = Fixture::owner("principal-a", "session-a");
     let slot = fixture.publisher.owner_slot(&owner.key).unwrap();
     let mut wakes = slot.wake.subscribe();

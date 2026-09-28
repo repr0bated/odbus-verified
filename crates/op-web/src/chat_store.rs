@@ -3,7 +3,7 @@
 //! No SQLite, no drift. Desired state = file contents.
 //! Every mutation rewrites the entire file atomically (write+rename).
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use op_llm::provider::ChatMessage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

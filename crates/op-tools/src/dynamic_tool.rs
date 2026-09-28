@@ -2,7 +2,7 @@ use crate::tool::Tool;
 use anyhow::Result;
 use async_trait::async_trait;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 
 /// A dynamically generated tool wrapping a specific D-Bus method
 #[derive(Clone)]

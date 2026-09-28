@@ -6,7 +6,7 @@ use crate::proto::model_service_server::ModelService;
 use crate::proto::{
     GetModelRequest, ListModelsRequest, ListModelsResponse, Model, SwitchModelRequest,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tonic::{Request, Response, Status};
 
 pub struct ModelServiceImpl {

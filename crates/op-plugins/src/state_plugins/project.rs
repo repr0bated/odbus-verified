@@ -1,6 +1,6 @@
 //! Container-backed projects. Membership names authenticated sessions until
 //! user profiles exist; a project is never an identity credential or a grant.
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{Result, anyhow, bail, ensure};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
@@ -405,8 +405,12 @@ impl StatePlugin for ProjectPlugin {
 
 pub fn project_schema() -> PluginSchema {
     let root = serde_json::to_value(schemars::schema_for!(ProjectState)).expect("project schema");
-    let mut schema = super::schemars_adapter::plugin_schema_from_json("project", "1.1.0",
-        "Container-backed projects with session ACLs, invitations, persistent memory/context/artifacts and agent selection", &root);
+    let mut schema = super::schemars_adapter::plugin_schema_from_json(
+        "project",
+        "1.1.0",
+        "Container-backed projects with session ACLs, invitations, persistent memory/context/artifacts and agent selection",
+        &root,
+    );
     schema.category = "workspace".into();
     schema.display_name = Some("Projects".into());
     macro_rules! method {
@@ -597,10 +601,12 @@ mod tests {
         ] {
             assert!(schema.methods.contains_key(name));
         }
-        assert!(serde_json::from_value::<CreateProjectInput>(
-            serde_json::json!({"title":"x", "owner_session_id":"victim"})
-        )
-        .is_err());
+        assert!(
+            serde_json::from_value::<CreateProjectInput>(
+                serde_json::json!({"title":"x", "owner_session_id":"victim"})
+            )
+            .is_err()
+        );
     }
 
     #[test]

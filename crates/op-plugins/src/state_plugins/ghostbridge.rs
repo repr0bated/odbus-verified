@@ -22,8 +22,7 @@ use simd_json::OwnedValue as Value;
 const PLUGIN_NAME: &str = "ghostbridge";
 const PLUGIN_VERSION: &str = "1.0.0";
 const PLUGIN_CATEGORY: &str = "network";
-const PLUGIN_DESCRIPTION: &str =
-    "Ghostbridge TLS/identity bridge for Ghostrunner UI, gRPC-Web surface, and WireGuard pubkey transport";
+const PLUGIN_DESCRIPTION: &str = "Ghostbridge TLS/identity bridge for Ghostrunner UI, gRPC-Web surface, and WireGuard pubkey transport";
 const PLUGIN_DISPLAY_NAME: &str = "Ghostbridge";
 
 /// TLS certificate identity carried by the bridge.

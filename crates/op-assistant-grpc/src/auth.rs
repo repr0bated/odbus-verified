@@ -52,7 +52,7 @@ pub fn wireguard_auth_interceptor(req: Request<()>) -> Result<Request<()>, Statu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tonic::{metadata::MetadataValue, Code};
+    use tonic::{Code, metadata::MetadataValue};
 
     #[test]
     fn missing_identity_is_rejected() {

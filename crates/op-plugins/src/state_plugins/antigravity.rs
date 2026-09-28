@@ -930,9 +930,11 @@ mod tests {
         assert_eq!(example["usage"]["source"], "local_provider_response_ledger");
         assert!(example["usage"].get("quotas").is_none());
         assert!(example["usage"].get("cost_tracking").is_none());
-        assert!(!serde_json::to_string(&example)
-            .unwrap()
-            .contains("billingAccounts"));
+        assert!(
+            !serde_json::to_string(&example)
+                .unwrap()
+                .contains("billingAccounts")
+        );
     }
 
     #[test]

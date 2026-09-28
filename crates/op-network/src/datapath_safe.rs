@@ -78,7 +78,7 @@
 //! Do not byte-compare dumped actions to expected bytes — OVS normalizes
 //! instruction order and drops empty Apply/Write-Actions.
 //!
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::Serialize;
 use std::process::Stdio;
 use std::time::Duration;

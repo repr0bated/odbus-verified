@@ -495,9 +495,11 @@ mod tests {
         let sequence = resolver.resolve(&request).await.unwrap();
 
         assert!(!sequence.is_complete());
-        assert!(sequence
-            .missing_capabilities
-            .contains(&AgentCapability::Embedding));
+        assert!(
+            sequence
+                .missing_capabilities
+                .contains(&AgentCapability::Embedding)
+        );
     }
 
     #[tokio::test]

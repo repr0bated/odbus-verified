@@ -3,7 +3,7 @@
 //! Registration/verification flows publish desired Incus state through
 //! `org.opdbus.StateManager` instead of shelling out to `incus` directly.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tracing::{debug, info};

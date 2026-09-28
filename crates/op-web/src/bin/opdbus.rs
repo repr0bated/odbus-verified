@@ -17,8 +17,8 @@ use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use op_grpc_bridge::run_grpc_server;
 use op_grpc_bridge::MutationEngine;
+use op_grpc_bridge::run_grpc_server;
 
 use op_network::rovs_proxy::OvsdbDbusClient;
 use op_network::rtnetlink::list_interfaces;

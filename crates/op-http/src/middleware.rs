@@ -4,11 +4,11 @@
 //! This ensures consistent behavior across all HTTP endpoints.
 
 use axum::{
+    Router,
     body::Body,
     http::Request,
     middleware::{self, Next},
     response::Response,
-    Router,
 };
 use std::time::{Duration, Instant};
 use tower_http::{

@@ -11,11 +11,11 @@ use tonic::{Request, Response, Status};
 use tracing::{debug, info, warn};
 
 use super::proto::{
-    agent_service_server::AgentService, Agent, Empty, ExecuteAgentChunk, ExecuteAgentRequest,
-    ExecuteAgentResponse, FindByCapabilityRequest, FindByCapabilityResponse, GetAgentRequest,
-    HealthCheckRequest, HealthCheckResponse, ListAgentsRequest, ListAgentsResponse,
-    ListCapabilitiesResponse, RegisterAgentRequest, RegisterAgentResponse, UnregisterAgentRequest,
-    UnregisterAgentResponse,
+    Agent, Empty, ExecuteAgentChunk, ExecuteAgentRequest, ExecuteAgentResponse,
+    FindByCapabilityRequest, FindByCapabilityResponse, GetAgentRequest, HealthCheckRequest,
+    HealthCheckResponse, ListAgentsRequest, ListAgentsResponse, ListCapabilitiesResponse,
+    RegisterAgentRequest, RegisterAgentResponse, UnregisterAgentRequest, UnregisterAgentResponse,
+    agent_service_server::AgentService,
 };
 
 /// Agent executor function type

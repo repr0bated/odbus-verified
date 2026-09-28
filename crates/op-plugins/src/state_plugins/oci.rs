@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use simd_json::OwnedValue as Value;
 use std::collections::BTreeMap;
 
-use super::incus::{instance_path, validate_segment, IncusApi};
+use super::incus::{IncusApi, instance_path, validate_segment};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -950,9 +950,11 @@ mod tests {
         let error = fixture("run_container", create_args(), steps)
             .await
             .unwrap_err();
-        assert!(error
-            .to_string()
-            .contains("instance was created but start failed"));
+        assert!(
+            error
+                .to_string()
+                .contains("instance was created but start failed")
+        );
     }
 
     #[tokio::test]
@@ -975,9 +977,11 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(error
-            .to_string()
-            .contains("not an OCI application container"));
+        assert!(
+            error
+                .to_string()
+                .contains("not an OCI application container")
+        );
     }
 
     #[tokio::test]

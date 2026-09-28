@@ -4,12 +4,12 @@
 //! CozoDB and a per-run Qdrant collection. The temporary collection is deleted
 //! after the probe, and the test skips cleanly when either service is absent.
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_chat::memory_loop::MemoryLoop;
 use op_cognitive_mcp::memory_store::{CognitiveMemoryStore, NamespaceKind};
 use op_cognitive_mcp::{CozoGraphShuttle, QdrantSemanticShuttle};
-use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder};
 use qdrant_client::Qdrant;
+use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder};
 use serde_json::json;
 use std::sync::Arc;
 

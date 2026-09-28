@@ -1,6 +1,6 @@
 //! Pure folding of authoritative object/property changes into one plugin state tree.
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use serde_json::{Map, Value as JsonValue};
 use simd_json::OwnedValue;
 
@@ -296,20 +296,24 @@ mod tests {
             json!({"ovs":"new","cozo":"keep"})
         );
         assert_eq!(state["selected_model"], json!("model"));
-        assert!(merge_plugin_object_fields(
-            Some(&state),
-            "router",
-            "/org/opdbus/v1/plugins/other",
-            &json!({"x":1})
-        )
-        .is_err());
-        assert!(merge_plugin_object_fields(
-            Some(&state),
-            "router",
-            "/org/opdbus/v1/plugins/router/status",
-            &json!({"x":1})
-        )
-        .is_err());
+        assert!(
+            merge_plugin_object_fields(
+                Some(&state),
+                "router",
+                "/org/opdbus/v1/plugins/other",
+                &json!({"x":1})
+            )
+            .is_err()
+        );
+        assert!(
+            merge_plugin_object_fields(
+                Some(&state),
+                "router",
+                "/org/opdbus/v1/plugins/router/status",
+                &json!({"x":1})
+            )
+            .is_err()
+        );
     }
 
     fn folded(
@@ -462,31 +466,37 @@ mod tests {
 
     #[test]
     fn rejects_wrong_root_traversal_and_scalar_descent() {
-        assert!(folded(
-            None,
-            "/org/opdbus/v1/plugins/other",
-            ChangeType::PropertySet,
-            None,
-            &json!({})
-        )
-        .is_err());
-        assert!(folded(
-            None,
-            "/org/opdbus/v1/plugins/demo/../other",
-            ChangeType::ObjectAdded,
-            None,
-            &json!({})
-        )
-        .is_err());
+        assert!(
+            folded(
+                None,
+                "/org/opdbus/v1/plugins/other",
+                ChangeType::PropertySet,
+                None,
+                &json!({})
+            )
+            .is_err()
+        );
+        assert!(
+            folded(
+                None,
+                "/org/opdbus/v1/plugins/demo/../other",
+                ChangeType::ObjectAdded,
+                None,
+                &json!({})
+            )
+            .is_err()
+        );
         let scalar = json!({"child":5,"keep":true});
-        assert!(folded(
-            Some(&scalar),
-            "/org/opdbus/v1/plugins/demo/child/grandchild",
-            ChangeType::PropertySet,
-            Some("value"),
-            &json!(1)
-        )
-        .is_err());
+        assert!(
+            folded(
+                Some(&scalar),
+                "/org/opdbus/v1/plugins/demo/child/grandchild",
+                ChangeType::PropertySet,
+                Some("value"),
+                &json!(1)
+            )
+            .is_err()
+        );
         assert_eq!(scalar, json!({"child":5,"keep":true}));
     }
 
@@ -511,27 +521,31 @@ mod tests {
     #[test]
     fn ovsdb_delta_path_is_rejected_until_it_has_a_row_fold_contract() {
         let prior = json!({"Open_vSwitch":{"old":1}});
-        assert!(fold_plugin_state(
-            Some(&prior),
-            "net",
-            "/org/opdbus/v1/ovsdb/Bridge",
-            ChangeType::PropertySet,
-            Some("Bridge"),
-            &json!({"uuid":{"new":{"name":"br0"}}}),
-        )
-        .is_err());
+        assert!(
+            fold_plugin_state(
+                Some(&prior),
+                "net",
+                "/org/opdbus/v1/ovsdb/Bridge",
+                ChangeType::PropertySet,
+                Some("Bridge"),
+                &json!({"uuid":{"new":{"name":"br0"}}}),
+            )
+            .is_err()
+        );
         assert_eq!(prior, json!({"Open_vSwitch":{"old":1}}));
     }
 
     #[test]
     fn schema_migration_requires_an_explicit_owner_contract() {
-        assert!(folded(
-            None,
-            "/org/opdbus/v1/plugins/demo",
-            ChangeType::SchemaMigration,
-            None,
-            &json!({"schema":"not state"})
-        )
-        .is_err());
+        assert!(
+            folded(
+                None,
+                "/org/opdbus/v1/plugins/demo",
+                ChangeType::SchemaMigration,
+                None,
+                &json!({"schema":"not state"})
+            )
+            .is_err()
+        );
     }
 }

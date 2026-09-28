@@ -21,12 +21,12 @@
 //! 6. Create templates for similar objects
 
 use anyhow::Result;
-use base64::engine::general_purpose;
 use base64::Engine;
+use base64::engine::general_purpose;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 use std::path::Path;
 

@@ -283,7 +283,14 @@ fn every_source_file_under_src_is_reachable_from_a_compile_root() {
         "unreachable source files (never compiled, so never verified) — delete them or declare the module:\n{}",
         orphans
             .iter()
-            .map(|(c, files)| format!("  {c}:\n{}", files.iter().map(|f| format!("    {f}")).collect::<Vec<_>>().join("\n")))
+            .map(|(c, files)| format!(
+                "  {c}:\n{}",
+                files
+                    .iter()
+                    .map(|f| format!("    {f}"))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ))
             .collect::<Vec<_>>()
             .join("\n")
     );

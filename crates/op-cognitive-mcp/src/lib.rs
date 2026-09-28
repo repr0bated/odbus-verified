@@ -37,8 +37,8 @@ pub mod typed_tools;
 pub mod voyage;
 
 pub use activity_filter::{
-    derive_significance, is_pii, ActivityEvent, ActivityFilter, FilterDecision, FilterTunables,
-    OpKind, Significance, SuppressReason,
+    ActivityEvent, ActivityFilter, FilterDecision, FilterTunables, OpKind, Significance,
+    SuppressReason, derive_significance, is_pii,
 };
 pub use chain_vectors::ChainVectorIndex;
 pub use code_tools::register_code_tools;
@@ -52,7 +52,7 @@ pub use grpc_service::CognitiveGrpcService;
 pub use memory_store::CognitiveMemoryStore;
 pub use qdrant_shuttle::{QdrantSemanticShuttle, SessionTraceContext};
 pub use quota::{QuotaManager, QuotaTier};
-pub use rag_pipeline::{CodeFilter, RagPipeline, RagResult, DEFAULT_COLLECTION};
+pub use rag_pipeline::{CodeFilter, DEFAULT_COLLECTION, RagPipeline, RagResult};
 pub use server::CognitiveMcpServer;
 pub use session::SessionManager;
 pub use soul_memory::{AgentNamespaceBinding, SoulMemory, SoulMemoryStore, SoulUpdate};

@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{PluginSchema, SideEffect};
@@ -637,7 +637,9 @@ fn dispatch_with_backend(
             if info.parent_uuid.as_deref() != Some(source.uuid.as_str())
                 || info.readonly != i.readonly
             {
-                bail!("snapshot completed but readback does not match requested source/readonly state");
+                bail!(
+                    "snapshot completed but readback does not match requested source/readonly state"
+                );
             }
             let after = backend
                 .list_subvolumes(parent)
@@ -1294,13 +1296,15 @@ mod tests {
                         "00000000-0000-0000-0000-000000000300"
                     );
                     assert_eq!(output["total_subvolumes"], 2);
-                    assert!(backend
-                        .state
-                        .lock()
-                        .unwrap()
-                        .subvolumes
-                        .iter()
-                        .any(|subvolume| subvolume.name == "new"));
+                    assert!(
+                        backend
+                            .state
+                            .lock()
+                            .unwrap()
+                            .subvolumes
+                            .iter()
+                            .any(|subvolume| subvolume.name == "new")
+                    );
                 }
                 "snapshot" => {
                     assert_eq!(output["operation"], "snapshotted");
@@ -1312,13 +1316,15 @@ mod tests {
                     );
                     assert_eq!(output["subvolume"]["readonly"], true);
                     assert_eq!(output["total_subvolumes"], 3);
-                    assert!(backend
-                        .state
-                        .lock()
-                        .unwrap()
-                        .subvolumes
-                        .iter()
-                        .any(|subvolume| subvolume.name == "snap" && subvolume.readonly));
+                    assert!(
+                        backend
+                            .state
+                            .lock()
+                            .unwrap()
+                            .subvolumes
+                            .iter()
+                            .any(|subvolume| subvolume.name == "snap" && subvolume.readonly)
+                    );
                 }
                 "list_subvolumes" => {
                     assert_eq!(output["filesystem_uuid"], "fs-uuid");
@@ -1382,34 +1388,40 @@ mod tests {
                     assert_eq!(output["filesystem_uuid"], "fs-uuid");
                     assert_eq!(output["device"], "/dev/test3");
                     assert_eq!(output["devices"].as_array().unwrap().len(), 3);
-                    assert!(output["devices"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .any(|device| device["path"] == "/dev/test3" && device["id"] == 3));
+                    assert!(
+                        output["devices"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .any(|device| device["path"] == "/dev/test3" && device["id"] == 3)
+                    );
                 }
                 "device_remove" => {
                     assert_eq!(output["operation"], "removed");
                     assert_eq!(output["filesystem_uuid"], "fs-uuid");
                     assert_eq!(output["device"], "/dev/test3");
                     assert_eq!(output["devices"].as_array().unwrap().len(), 2);
-                    assert!(output["devices"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .all(|device| device["path"] != "/dev/test3"));
+                    assert!(
+                        output["devices"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .all(|device| device["path"] != "/dev/test3")
+                    );
                 }
                 "delete_subvolume" => {
                     assert_eq!(output["path"], "/mnt/new");
                     assert_eq!(output["removed_subvolume_id"], 300);
                     assert_eq!(output["remaining_subvolumes"], 2);
-                    assert!(backend
-                        .state
-                        .lock()
-                        .unwrap()
-                        .subvolumes
-                        .iter()
-                        .all(|subvolume| subvolume.name != "new"));
+                    assert!(
+                        backend
+                            .state
+                            .lock()
+                            .unwrap()
+                            .subvolumes
+                            .iter()
+                            .all(|subvolume| subvolume.name != "new")
+                    );
                 }
                 _ => unreachable!("fixture lists every declared btrfs method"),
             }
@@ -1468,13 +1480,15 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.to_string().contains("not found"));
-        assert!(backend
-            .state
-            .lock()
-            .unwrap()
-            .subvolumes
-            .iter()
-            .all(|subvolume| subvolume.name != "missing"));
+        assert!(
+            backend
+                .state
+                .lock()
+                .unwrap()
+                .subvolumes
+                .iter()
+                .all(|subvolume| subvolume.name != "missing")
+        );
 
         let mut failing = TestBackend::new();
         failing.backend_error = true;
@@ -1528,11 +1542,13 @@ mod tests {
         )
         .unwrap();
         assert_eq!(output["operation"], "removed");
-        assert!(output["devices"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .all(|device| device["id"] != 2));
+        assert!(
+            output["devices"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|device| device["id"] != 2)
+        );
     }
 
     #[test]
@@ -1564,10 +1580,12 @@ mod tests {
             .map(String::as_str)
             .collect::<BTreeSet<_>>();
         assert_eq!(actual, expected);
-        assert!(schema
-            .methods
-            .values()
-            .all(|m| m.returns.is_some() && m.args["type"] == "object"));
+        assert!(
+            schema
+                .methods
+                .values()
+                .all(|m| m.returns.is_some() && m.args["type"] == "object")
+        );
     }
 }
 

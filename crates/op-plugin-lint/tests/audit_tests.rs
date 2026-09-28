@@ -1,5 +1,5 @@
 use op_plugin_lint::{
-    audit_source, audit_source_with_coverage, resolve_introspect_target, CoverageInputs, Severity,
+    CoverageInputs, Severity, audit_source, audit_source_with_coverage, resolve_introspect_target,
 };
 use std::path::PathBuf;
 

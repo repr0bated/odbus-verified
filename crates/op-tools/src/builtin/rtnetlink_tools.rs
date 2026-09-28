@@ -8,7 +8,7 @@ use crate::ToolRegistry;
 use anyhow::Result;
 use async_trait::async_trait;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tracing::info;
 

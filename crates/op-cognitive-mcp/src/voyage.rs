@@ -1,7 +1,7 @@
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use futures::StreamExt;
 use op_plugins::state_plugins::embedding_model::methods::validate_voyage_credential_endpoint;
-use op_plugins::state_plugins::embedding_model::{voyage_embed_params, VoyageModel};
+use op_plugins::state_plugins::embedding_model::{VoyageModel, voyage_embed_params};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 

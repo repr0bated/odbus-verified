@@ -25,8 +25,8 @@ use tracing::{debug, info};
 
 use crate::dbus_identity::DbusIdentityResolver;
 // Import exact-principal capability enforcement (VAL-ENFORCE-002).
-use crate::interceptor::{load_capability_grants, GhostbridgeIdentity};
-use zbus::{message::Header, Connection, Proxy};
+use crate::interceptor::{GhostbridgeIdentity, load_capability_grants};
+use zbus::{Connection, Proxy, message::Header};
 
 use crate::mutation_engine::MutationEngine;
 
@@ -1298,18 +1298,22 @@ mod tests {
             Ok(Some(b"{bad-json".to_vec()))
         })
         .unwrap();
-        assert!(fixture
-            .interface("test_plugin")
-            .get_all_properties()
-            .await
-            .is_err());
+        assert!(
+            fixture
+                .interface("test_plugin")
+                .get_all_properties()
+                .await
+                .is_err()
+        );
 
         fixture.commit("test_plugin", json!(["not", "an", "object"]));
-        assert!(fixture
-            .interface("test_plugin")
-            .get_property("status".into())
-            .await
-            .is_err());
+        assert!(
+            fixture
+                .interface("test_plugin")
+                .get_property("status".into())
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -1352,11 +1356,13 @@ mod tests {
             br#"{"generation":2,"publishing":true}"#,
         )
         .unwrap();
-        assert!(fixture
-            .interface("test_plugin")
-            .get_all_properties()
-            .await
-            .is_err());
+        assert!(
+            fixture
+                .interface("test_plugin")
+                .get_all_properties()
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -1368,9 +1374,11 @@ mod tests {
             .read_present_state()
             .await
             .unwrap_err();
-        assert!(error
-            .to_string()
-            .contains("not a current sealed catalog member"));
+        assert!(
+            error
+                .to_string()
+                .contains("not a current sealed catalog member")
+        );
     }
 
     #[tokio::test]
@@ -1411,11 +1419,13 @@ mod tests {
     #[tokio::test]
     async fn set_property_remains_rejected() {
         let fixture = StateFixture::sealed("test_plugin");
-        assert!(fixture
-            .interface("test_plugin")
-            .set_property("status".into(), "\"x\"".into())
-            .await
-            .is_err());
+        assert!(
+            fixture
+                .interface("test_plugin")
+                .set_property("status".into(), "\"x\"".into())
+                .await
+                .is_err()
+        );
     }
 
     // ── R4.1-R4.4 / VAL-BRIDGE-003/004/005 — Bridge registration from SHM ──

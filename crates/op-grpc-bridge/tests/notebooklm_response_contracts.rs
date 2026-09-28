@@ -7,7 +7,7 @@ use op_state::StatePlugin;
 use prost::Message;
 use prost_reflect::{DescriptorPool, DynamicMessage, SerializeOptions};
 use serde::de::DeserializeSeed;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn response_name(method: &str) -> String {
     let suffix: String = method

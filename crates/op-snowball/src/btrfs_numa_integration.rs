@@ -11,9 +11,9 @@
 //! - Unified snapshot management
 //! - Shared compression and deduplication
 
+use crate::PluginFootprint;
 use crate::snapshot::SnapshotInterval;
 use crate::snowball::{StreamingSnowball, WriterPlacement};
-use crate::PluginFootprint;
 use anyhow::{Context, Result};
 use op_cache::{BtrfsCache, NumaMemoryPolicy, NumaOptimizer, NumaTopology};
 use simd_json::prelude::*;

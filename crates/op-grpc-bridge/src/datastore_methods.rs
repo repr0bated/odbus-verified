@@ -4,19 +4,19 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use async_trait::async_trait;
 use op_plugins::state_plugins::datastore::{
     DataStoreObject, DataStoreObjectRef, ExportOutput, GetObjectInput, GetObjectOutput,
-    GetStatsInput, GetStatsOutput, ListObjectsOutput, PluginSelection, PublicObjectExposure,
-    QueryInput, QueryOutput, SnapshotBinding, MAX_DATASTORE_RESPONSE_BYTES,
-    MAX_DATASTORE_SELECTION,
+    GetStatsInput, GetStatsOutput, ListObjectsOutput, MAX_DATASTORE_RESPONSE_BYTES,
+    MAX_DATASTORE_SELECTION, PluginSelection, PublicObjectExposure, QueryInput, QueryOutput,
+    SnapshotBinding,
 };
 
 #[cfg(test)]
 use crate::state_stream::PluginSnapshot;
 use crate::state_stream::{
-    read_public_state_snapshot, read_public_state_snapshot_in, StateSnapshot,
+    StateSnapshot, read_public_state_snapshot, read_public_state_snapshot_in,
 };
 
 #[async_trait]
@@ -455,39 +455,49 @@ mod tests {
             br#"{"generation":99,"publishing":true}"#,
         )
         .unwrap();
-        assert!(fixture
-            .methods()
-            .dispatch("get_stats", &serde_json::json!({}))
-            .await
-            .is_err());
+        assert!(
+            fixture
+                .methods()
+                .dispatch("get_stats", &serde_json::json!({}))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
     async fn invalid_or_unbounded_requests_fail_before_read() {
         let fixture = Fixture::new();
         let methods = fixture.methods();
-        assert!(methods
-            .dispatch(
-                "list_objects",
-                &serde_json::json!({"plugin_ids":["present","present"]}),
-            )
-            .await
-            .is_err());
-        assert!(methods
-            .dispatch("query", &serde_json::json!({"raw_query":"?[x] := *x{x}"}))
-            .await
-            .is_err());
-        assert!(methods
-            .dispatch("get_object", &serde_json::json!({"plugin_id":"../private"}))
-            .await
-            .is_err());
-        assert!(methods
-            .dispatch(
-                "get_object",
-                &serde_json::json!({"plugin_id":"x".repeat(129)}),
-            )
-            .await
-            .is_err());
+        assert!(
+            methods
+                .dispatch(
+                    "list_objects",
+                    &serde_json::json!({"plugin_ids":["present","present"]}),
+                )
+                .await
+                .is_err()
+        );
+        assert!(
+            methods
+                .dispatch("query", &serde_json::json!({"raw_query":"?[x] := *x{x}"}))
+                .await
+                .is_err()
+        );
+        assert!(
+            methods
+                .dispatch("get_object", &serde_json::json!({"plugin_id":"../private"}))
+                .await
+                .is_err()
+        );
+        assert!(
+            methods
+                .dispatch(
+                    "get_object",
+                    &serde_json::json!({"plugin_id":"x".repeat(129)}),
+                )
+                .await
+                .is_err()
+        );
 
         let plugins = (0..=MAX_DATASTORE_SELECTION)
             .map(|index| {
@@ -501,11 +511,13 @@ mod tests {
                 )
             })
             .collect();
-        assert!(snapshot_records(StateSnapshot {
-            generation: 1,
-            catalog_hash: "b".repeat(64),
-            plugins,
-        })
-        .is_err());
+        assert!(
+            snapshot_records(StateSnapshot {
+                generation: 1,
+                catalog_hash: "b".repeat(64),
+                plugins,
+            })
+            .is_err()
+        );
     }
 }

@@ -13,6 +13,6 @@
 //! - `op_blob::btrfs` — seal a blob store into a mountable btrfs image
 
 pub use op_blob::{
-    blobify_plugin_schema, blobify_plugin_schema_with_identity, BlobMethod, DbusObjectIdentity,
-    GrpcObjectIdentity, PluginObjectBlob,
+    BlobMethod, DbusObjectIdentity, GrpcObjectIdentity, PluginObjectBlob, blobify_plugin_schema,
+    blobify_plugin_schema_with_identity,
 };

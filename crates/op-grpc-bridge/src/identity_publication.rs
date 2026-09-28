@@ -1,6 +1,6 @@
 //! Identity's durable intent/publication boundary, owned by MutationEngine.
 //! The identity producer supplies typed state; only it mints SealedId bytes.
-use super::{identity_projection_gid, ChangeSource, ChangeType, MutationEngine, StateChange};
+use super::{ChangeSource, ChangeType, MutationEngine, StateChange, identity_projection_gid};
 use anyhow::{Context, Result};
 use op_core::projection_shm::{CredentialPublication, ProjectionCommit};
 use simd_json::OwnedValue;

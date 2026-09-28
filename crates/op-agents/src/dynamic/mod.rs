@@ -23,5 +23,5 @@
 pub mod assemble;
 pub mod pieces;
 
-pub use assemble::{assemble, AssembledPersona, TaskContext};
+pub use assemble::{AssembledPersona, TaskContext, assemble};
 pub use pieces::{AgentPiece, PieceKind, PieceLibrary, PieceSource};

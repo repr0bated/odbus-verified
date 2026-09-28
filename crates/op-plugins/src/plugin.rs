@@ -2,9 +2,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
 use simd_json::ValueBuilder;
+use simd_json::prelude::*;
 use std::any::Any;
 use std::collections::HashMap;
 use std::path::PathBuf;

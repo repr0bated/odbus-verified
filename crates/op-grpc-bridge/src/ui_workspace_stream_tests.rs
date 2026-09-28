@@ -2,16 +2,16 @@ use super::*;
 use crate::{
     grpc_server::OperationGrpcServer,
     human_principal_dispatch::tests::{
-        pk, register, temp_cozo, temp_shm_with_schemas, test_engine, TempCozo, TempShm,
+        TempCozo, TempShm, pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
     },
-    identity_sled_dispatch::{tests::write_identity, IdentitySledStore},
-    proto::{state_sync_server::StateSync, ChangeType},
+    identity_sled_dispatch::{IdentitySledStore, tests::write_identity},
+    proto::{ChangeType, state_sync_server::StateSync},
 };
 use futures::StreamExt;
 use op_plugins::state_plugins::{
     gemma_brain::{
-        workspace::{UiAccessContext, UiWorkspaceMethods},
         GemmaBrainPlugin,
+        workspace::{UiAccessContext, UiWorkspaceMethods},
     },
     human_principal::HumanPrincipalPlugin,
     identity_sled::IdentitySledPlugin,
@@ -338,14 +338,18 @@ async fn gallery_facades_read_only_the_verified_owners_committed_workspace() {
     assert_eq!(other["result"]["rendering"], Value::Null);
     assert_eq!(other["result"]["render_admitted"], false);
     grants(&["schema_renderer.read"], &["gemma.read"]);
-    assert!(call(&fixture.first, "get_rendering", args.clone())
-        .await
-        .unwrap_err()
-        .to_string()
-        .contains("nested Gemma"));
-    assert!(call(&fixture.second, "get_rendering", args.clone())
-        .await
-        .is_err());
+    assert!(
+        call(&fixture.first, "get_rendering", args.clone())
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("nested Gemma")
+    );
+    assert!(
+        call(&fixture.second, "get_rendering", args.clone())
+            .await
+            .is_err()
+    );
     grants(&["schema_renderer.read", "gemma.read"], &[]);
     // A durable-only deletion must not change the gallery's committed SHM view.
     fixture
@@ -441,14 +445,18 @@ async fn web_ui_render_and_update_use_committed_owner_state_and_preserve_sibling
     assert_eq!(before[id]["spec"], canvas("changed"));
     assert_eq!(before[sibling_id]["spec"], canvas("sibling stays"));
     assert_eq!(before.as_object().unwrap().len(), 2);
-    assert!(fixture
-        .web_ui(&fixture.first, "update_component", args.clone())
-        .await
-        .is_err());
-    assert!(fixture
-        .web_ui(&fixture.second, "update_component", args)
-        .await
-        .is_err());
+    assert!(
+        fixture
+            .web_ui(&fixture.first, "update_component", args.clone())
+            .await
+            .is_err()
+    );
+    assert!(
+        fixture
+            .web_ui(&fixture.second, "update_component", args)
+            .await
+            .is_err()
+    );
     let after = fixture.get(&fixture.first, &path("specs")).await.unwrap();
     assert_eq!(json_value(after.value.as_ref().unwrap()), before);
 
@@ -475,10 +483,12 @@ async fn web_ui_render_and_update_use_committed_owner_state_and_preserve_sibling
         .unwrap();
     assert_eq!(still_committed, readback);
     fixture.grant_first(false);
-    assert!(fixture
-        .web_ui(&fixture.first, "render_page", json!({"spec_id":id}))
-        .await
-        .is_err());
+    assert!(
+        fixture
+            .web_ui(&fixture.first, "render_page", json!({"spec_id":id}))
+            .await
+            .is_err()
+    );
     assert!(fixture.engine.get_state("gemma_brain").await.is_none());
 }
 fn event_canvas() -> Value {
@@ -596,25 +606,27 @@ async fn web_ui_handle_event_commits_pinned_set_state_to_owners_private_shm() {
     assert!(format!("{stale:#}").contains("stale UI spec revision"));
     let mut forged = fixture.first.clone();
     forged.session_id = fixture.second.session_id.clone();
-    assert!(fixture
-        .engine
-        .dispatch_method_call_with_identity(
-            "web_ui",
-            "handle_event",
-            &json!({
-                "spec_id":spec_id,
-                "expected_revision":2,
-                "element_id":"tile",
-                "event":"resize"
-            })
-            .to_string(),
-            Some("gemma.invoke"),
-            &forged.principal_id,
-            Some(&forged.session_id),
-            Some(&forged.session_genesis),
-        )
-        .await
-        .is_err());
+    assert!(
+        fixture
+            .engine
+            .dispatch_method_call_with_identity(
+                "web_ui",
+                "handle_event",
+                &json!({
+                    "spec_id":spec_id,
+                    "expected_revision":2,
+                    "element_id":"tile",
+                    "event":"resize"
+                })
+                .to_string(),
+                Some("gemma.invoke"),
+                &forged.principal_id,
+                Some(&forged.session_id),
+                Some(&forged.session_genesis),
+            )
+            .await
+            .is_err()
+    );
     let still_committed = fixture.get(&fixture.first, &path("specs")).await.unwrap();
     assert_eq!(
         json_value(still_committed.value.as_ref().unwrap())[spec_id.as_str()]["revision"].as_f64(),

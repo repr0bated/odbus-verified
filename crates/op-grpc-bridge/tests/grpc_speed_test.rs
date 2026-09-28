@@ -34,7 +34,7 @@ async fn try_connect(uri: &str) -> Option<Channel> {
 
 /// Measure N sequential unary RPCs and report p50/p99/throughput.
 async fn bench_get_state(channel: Channel, label: &str, n: usize) {
-    use op_grpc_bridge::proto::{state_sync_client::StateSyncClient, GetStateRequest};
+    use op_grpc_bridge::proto::{GetStateRequest, state_sync_client::StateSyncClient};
 
     let mut client = StateSyncClient::new(channel);
     let mut latencies = Vec::with_capacity(n);
@@ -113,8 +113,8 @@ async fn bench_health(channel: Channel, label: &str, n: usize) {
 /// Measure reflection ListServices latency.
 async fn bench_reflection(channel: Channel, label: &str, n: usize) {
     use tonic_reflection::pb::v1::{
-        server_reflection_client::ServerReflectionClient,
-        server_reflection_request::MessageRequest, ServerReflectionRequest,
+        ServerReflectionRequest, server_reflection_client::ServerReflectionClient,
+        server_reflection_request::MessageRequest,
     };
 
     let mut latencies = Vec::with_capacity(n);

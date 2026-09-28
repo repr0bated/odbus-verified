@@ -13,9 +13,8 @@ use tonic::{Request, Response, Status};
 use tracing::{debug, error, info};
 
 use crate::orchestration::proto::op_chat_orchestration::{
-    rust_pro_service_server::RustProService, AnalyzeRequest, AnalyzeResponse, CargoMetadata,
-    CargoOutputLine, CargoRequest, CargoResponse, OutputStreamType, VersionRequest,
-    VersionResponse,
+    AnalyzeRequest, AnalyzeResponse, CargoMetadata, CargoOutputLine, CargoRequest, CargoResponse,
+    OutputStreamType, VersionRequest, VersionResponse, rust_pro_service_server::RustProService,
 };
 
 use super::OrchestrationServer;

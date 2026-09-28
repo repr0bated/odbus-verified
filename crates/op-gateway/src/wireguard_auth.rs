@@ -19,7 +19,7 @@ use tokio::time::interval;
 use tracing::{debug, info, warn};
 
 use argon2::Argon2;
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use blake2::{Blake2s256, Digest};
 use ring::rand::{SecureRandom, SystemRandom};
 
@@ -466,7 +466,7 @@ impl WireGuardAuthManager {
                 return Err(anyhow::anyhow!(
                     "Invalid peer public key format: {}",
                     peer_pubkey
-                ))
+                ));
             }
         };
 
@@ -522,7 +522,7 @@ impl WireGuardAuthManager {
                 return Err(anyhow::anyhow!(
                     "Invalid peer public key format: {}",
                     peer_pubkey
-                ))
+                ));
             }
         };
 

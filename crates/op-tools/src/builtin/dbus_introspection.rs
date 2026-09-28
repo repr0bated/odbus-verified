@@ -3,12 +3,12 @@
 //! These tools provide the public-facing D-Bus and introspection helpers that
 //! show up in the tool registry.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use op_core::{BusType, InterfaceInfo, ObjectInfo};
 use op_introspection::IntrospectionService;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 use zbus::Connection;

@@ -53,12 +53,12 @@ pub mod schema;
 pub mod subid;
 
 pub use adapter::{
-    apply_state_defaults, method_decl_from_schemars_with_output, plugin_schema_from_json,
-    schema_diffs, AckOutput, EmptyInput,
+    AckOutput, EmptyInput, apply_state_defaults, method_decl_from_schemars_with_output,
+    plugin_schema_from_json, schema_diffs,
 };
 pub use blob::{
-    blobify, blobify_with_identity, canonical_plugin_id, BlobManifest, BlobRef, DbusIdentity,
-    GrpcIdentity, MethodManifest, PluginObjectBlob,
+    BlobManifest, BlobRef, DbusIdentity, GrpcIdentity, MethodManifest, PluginObjectBlob, blobify,
+    blobify_with_identity, canonical_plugin_id,
 };
 pub use catalog::{ActiveReflectionCatalog, BlobStore};
 pub use identity::{BlobIdentity, WgKeypair};

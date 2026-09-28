@@ -78,11 +78,13 @@ fn held_namespace_and_owner_descriptors_survive_path_replacement() {
     assert!(moved.join("later").is_dir());
     assert!(!original.join("later").exists());
     let ids = ["gemma_brain".to_string()];
-    assert!(replacement_owner
-        .read_snapshot(&ids)
-        .unwrap()
-        .states
-        .is_empty());
+    assert!(
+        replacement_owner
+            .read_snapshot(&ids)
+            .unwrap()
+            .states
+            .is_empty()
+    );
     assert_eq!(
         std::fs::read(moved.join("owner/gemma_brain.json")).unwrap(),
         b"old-inode"
@@ -117,9 +119,11 @@ fn private_namespace_rejects_permissive_or_redirected_paths_and_does_not_create_
     std::os::unix::fs::symlink(&outside, path.join("redirect")).unwrap();
     assert!(namespace.prepare_child("redirect").is_err());
     assert!(namespace.open_child("redirect").is_err());
-    assert!(namespace
-        .update("identity_sled", |_| Ok(Some(b"{}".to_vec())))
-        .is_err());
+    assert!(
+        namespace
+            .update("identity_sled", |_| Ok(Some(b"{}".to_vec())))
+            .is_err()
+    );
     // Permissions are rechecked through the held descriptor before each use.
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o750)).unwrap();
     assert!(namespace.read_snapshot(&["gemma_brain".into()]).is_err());
@@ -133,9 +137,11 @@ fn failed_private_publication_preserves_previous_committed_document() {
         .update("gemma_brain", |_| Ok(Some(b"before".to_vec())))
         .unwrap();
     super::super::tests::inject("gemma_brain.json", 1, false);
-    assert!(owner
-        .update("gemma_brain", |_| Ok(Some(b"after".to_vec())))
-        .is_err());
+    assert!(
+        owner
+            .update("gemma_brain", |_| Ok(Some(b"after".to_vec())))
+            .is_err()
+    );
     let snapshot = owner.read_snapshot(&["gemma_brain".into()]).unwrap();
     assert_eq!(snapshot.generation, 1);
     assert_eq!(snapshot.states["gemma_brain"], b"before");

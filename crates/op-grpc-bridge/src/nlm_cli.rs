@@ -3,7 +3,7 @@
 //! The executable lives at `/usr/local/bin/nlm` (override with `OP_NLM_BIN`).
 //! `/usr/bin/nlm` is a different Node package and must never be invoked.
 
-use anyhow::{anyhow, bail, Context};
+use anyhow::{Context, anyhow, bail};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -1050,7 +1050,9 @@ fn tag_argv(args: &Value, selected: Option<&str>) -> anyhow::Result<Vec<String>>
 
 fn save_auth_tokens_argv(args: &Value) -> anyhow::Result<Vec<String>> {
     if arg_str(args, &["cookies", "cookie"]).is_some() {
-        bail!("save_auth_tokens refuses inline cookies; pass file_path and never set NOTEBOOKLM_COOKIES");
+        bail!(
+            "save_auth_tokens refuses inline cookies; pass file_path and never set NOTEBOOKLM_COOKIES"
+        );
     }
     let path = require_str(args, &["file_path", "path"])?;
     Ok(vec_owned(["login", "--manual", "--file", &path]))

@@ -1,5 +1,5 @@
 //! Network-manager authority through the runit D-Bus lifecycle gate.
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use zbus::{Connection, Proxy};
 
 pub struct NetworkAuthority;

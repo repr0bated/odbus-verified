@@ -1,10 +1,10 @@
 //! gRPC Server Transport with Infrastructure Integration
 
+use crate::ServerMode; // Unified ServerMode from lib.rs
 #[cfg(feature = "grpc")]
-use crate::grpc::proto::{mcp_service_server::McpServiceServer, FILE_DESCRIPTOR_SET};
+use crate::grpc::proto::{FILE_DESCRIPTOR_SET, mcp_service_server::McpServiceServer};
 #[cfg(feature = "grpc")]
 use crate::grpc::service::{GrpcInfrastructure, McpGrpcService};
-use crate::ServerMode; // Unified ServerMode from lib.rs
 use anyhow::Result;
 use std::net::SocketAddr;
 use std::path::PathBuf;

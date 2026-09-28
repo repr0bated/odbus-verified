@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 
 use crate::node::{NodePort, NodeResult, NodeState, WorkflowNode};
@@ -42,13 +42,17 @@ impl WorkflowNode for ToolNode {
     }
 
     fn inputs(&self) -> Vec<NodePort> {
-        vec![NodePort::optional("arguments", "Arguments", "object")
-            .with_description("Arguments to pass to the tool")]
+        vec![
+            NodePort::optional("arguments", "Arguments", "object")
+                .with_description("Arguments to pass to the tool"),
+        ]
     }
 
     fn outputs(&self) -> Vec<NodePort> {
-        vec![NodePort::required("result", "Result", "object")
-            .with_description("Result from tool execution")]
+        vec![
+            NodePort::required("result", "Result", "object")
+                .with_description("Result from tool execution"),
+        ]
     }
 
     fn state(&self) -> NodeState {
@@ -106,10 +110,12 @@ mod tests {
             let result = node.execute(HashMap::new()).await.unwrap();
             assert!(!result.success, "{} claimed success", node.name());
             assert!(result.outputs.is_empty());
-            assert!(result
-                .error
-                .as_deref()
-                .is_some_and(|message| message.contains("no authorized")));
+            assert!(
+                result
+                    .error
+                    .as_deref()
+                    .is_some_and(|message| message.contains("no authorized"))
+            );
         }
     }
 }

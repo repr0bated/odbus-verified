@@ -14,10 +14,10 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use anyhow::Context as _;
-use op_agents::dynamic::{assemble, AssembledPersona, PieceLibrary, TaskContext};
+use op_agents::dynamic::{AssembledPersona, PieceLibrary, TaskContext, assemble};
+use op_cognitive_mcp::CognitiveMcpServer;
 use op_cognitive_mcp::context_awareness::ActivityType;
 use op_cognitive_mcp::memory_store::EntryQuery;
-use op_cognitive_mcp::CognitiveMcpServer;
 use op_plugins::state_plugins::cognitive_mcp::{
     SpecialistInput, SpecialistOutput, SpecialistPersona,
 };

@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use op_cozo_store::CozoGraphShuttle;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -616,14 +616,16 @@ mod tests {
             .await
             .unwrap();
         let entry_id = inserted["entry"]["id"].as_str().unwrap().to_string();
-        assert!(service
-            .dispatch(
-                &owner,
-                "insert_entry",
-                &json!({"namespace":"notes","key":"two","value":2}),
-            )
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch(
+                    &owner,
+                    "insert_entry",
+                    &json!({"namespace":"notes","key":"two","value":2}),
+                )
+                .await
+                .is_err()
+        );
 
         let updated = service
             .dispatch(
@@ -704,14 +706,16 @@ mod tests {
             })
             .await
             .unwrap();
-        assert!(service
-            .dispatch(
-                &owner,
-                "insert_entry",
-                &json!({"namespace":"locked","key":"no","value":1}),
-            )
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch(
+                    &owner,
+                    "insert_entry",
+                    &json!({"namespace":"locked","key":"no","value":1}),
+                )
+                .await
+                .is_err()
+        );
         assert!(validate_domain_value(&json!({"api_key":"forbidden"})).is_err());
         for (method, input) in [
             (
@@ -767,10 +771,12 @@ mod tests {
             .await
             .unwrap();
         assert!(hidden["entry"].is_null());
-        assert!(service
-            .dispatch(&context("", "session-a"), "get_stats", &json!({}),)
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch(&context("", "session-a"), "get_stats", &json!({}),)
+                .await
+                .is_err()
+        );
         assert_ne!(
             owner_document_key(&context("ab", "c")),
             owner_document_key(&context("a", "bc"))
@@ -785,10 +791,12 @@ mod tests {
             documents,
             Arc::new(|| bail!("unsupported fixture backend")),
         );
-        assert!(service
-            .dispatch(&context("principal", "session"), "compact", &json!({}))
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch(&context("principal", "session"), "compact", &json!({}))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]

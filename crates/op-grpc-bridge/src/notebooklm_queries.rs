@@ -3,12 +3,12 @@
 //! process-local, expire after 30 minutes, and never enter public projections.
 use anyhow::{Context, Result};
 use op_plugins::state_plugins::notebooklm::{
+    NotebookQueryInput,
     outputs::{
         NotebookQueryFailure, NotebookQueryStartOutput, NotebookQueryState,
         NotebookQueryStatusOutput,
     },
     provider_outputs::NotebookQueryOutput,
-    NotebookQueryInput,
 };
 use std::{
     collections::HashMap,
@@ -16,7 +16,7 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use tokio::sync::{oneshot, Mutex, Semaphore};
+use tokio::sync::{Mutex, Semaphore, oneshot};
 
 const RETENTION: Duration = Duration::from_secs(1800);
 const MAX_JOBS: usize = 64;
@@ -236,22 +236,28 @@ mod tests {
                 .state,
             NotebookQueryState::Running
         ));
-        assert!(queries
-            .status("other", "session", &job.query_id)
-            .await
-            .is_err());
-        assert!(queries
-            .status("principal", "other", &job.query_id)
-            .await
-            .is_err());
+        assert!(
+            queries
+                .status("other", "session", &job.query_id)
+                .await
+                .is_err()
+        );
+        assert!(
+            queries
+                .status("principal", "other", &job.query_id)
+                .await
+                .is_err()
+        );
         sender.send(json!({"answer":"資料 🌊", "question":"q", "conversation_id":null, "sources_used":[{"id":"s"}], "citations":{"1":{"source":"s"}}, "references":[]})).unwrap();
         let result = settle(&queries, &job.query_id).await;
         assert!(matches!(result.state, NotebookQueryState::Completed));
         assert_eq!(result.result.unwrap().answer, "資料 🌊");
-        assert!(NotebookQueries::default()
-            .status("principal", "session", &job.query_id)
-            .await
-            .is_err());
+        assert!(
+            NotebookQueries::default()
+                .status("principal", "session", &job.query_id)
+                .await
+                .is_err()
+        );
         queries
             .jobs
             .lock()
@@ -259,10 +265,12 @@ mod tests {
             .get_mut(&job.query_id)
             .unwrap()
             .expires = Instant::now();
-        assert!(queries
-            .status("principal", "session", &job.query_id)
-            .await
-            .is_err());
+        assert!(
+            queries
+                .status("principal", "session", &job.query_id)
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -322,19 +330,21 @@ mod tests {
         let permits = queries.active.clone().acquire_many_owned(8).await.unwrap();
         let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let observed = calls.clone();
-        assert!(queries
-            .start(
-                "principal",
-                "session",
-                "n".into(),
-                Duration::from_secs(1),
-                async move {
-                    observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-                    Ok(json!({}))
-                }
-            )
-            .await
-            .is_err());
+        assert!(
+            queries
+                .start(
+                    "principal",
+                    "session",
+                    "n".into(),
+                    Duration::from_secs(1),
+                    async move {
+                        observed.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                        Ok(json!({}))
+                    }
+                )
+                .await
+                .is_err()
+        );
         drop(permits);
         assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 0);
         let input = NotebookQueryInput {

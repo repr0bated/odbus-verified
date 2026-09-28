@@ -3,7 +3,7 @@ use crate::{
     human_principal_dispatch::tests::{
         pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
     },
-    identity_sled_dispatch::{tests::write_identity, IdentitySledStore},
+    identity_sled_dispatch::{IdentitySledStore, tests::write_identity},
     oracle_assertion::HumanPrincipalIdentity,
 };
 use op_state::StatePlugin;
@@ -157,9 +157,11 @@ async fn project_membership_and_context_methods_enforce_durable_session_ownershi
         .as_str()
         .unwrap();
     let acceptance = json!({"project_id":id,"invitation_id":invitation});
-    assert!(invoke(&engine, owner, "accept_invite", acceptance.clone())
-        .await
-        .is_err());
+    assert!(
+        invoke(&engine, owner, "accept_invite", acceptance.clone())
+            .await
+            .is_err()
+    );
     let accepted = invoke(&engine, member, "accept_invite", acceptance.clone())
         .await
         .unwrap();
@@ -169,9 +171,11 @@ async fn project_membership_and_context_methods_enforce_durable_session_ownershi
     );
     assert_eq!(accepted["project"]["members"][0]["role"], "contributor");
     assert_eq!(accepted["project"]["invitations"], json!([]));
-    assert!(invoke(&engine, member, "accept_invite", acceptance)
-        .await
-        .is_err());
+    assert!(
+        invoke(&engine, member, "accept_invite", acceptance)
+            .await
+            .is_err()
+    );
     let durable = get_project(&engine, &id).await.unwrap();
     assert_eq!(
         durable.role_for(&member.session_id),
@@ -183,14 +187,16 @@ async fn project_membership_and_context_methods_enforce_durable_session_ownershi
         id
     );
     // A global admin capability does not grant membership administration.
-    assert!(invoke(
-        &engine,
-        member,
-        "select_agent",
-        json!({"project_id":id,"agent_id":agent})
-    )
-    .await
-    .is_err());
+    assert!(
+        invoke(
+            &engine,
+            member,
+            "select_agent",
+            json!({"project_id":id,"agent_id":agent})
+        )
+        .await
+        .is_err()
+    );
     let revoked = invoke(
         &engine,
         owner,
@@ -200,20 +206,24 @@ async fn project_membership_and_context_methods_enforce_durable_session_ownershi
     .await
     .unwrap();
     assert_eq!(revoked["project"]["members"], json!([]));
-    assert!(get_project(&engine, &id)
-        .await
-        .unwrap()
-        .role_for(&member.session_id)
-        .is_none());
+    assert!(
+        get_project(&engine, &id)
+            .await
+            .unwrap()
+            .role_for(&member.session_id)
+            .is_none()
+    );
     assert!(invoke(&engine, member, "get", args.clone()).await.is_err());
-    assert!(invoke(
-        &engine,
-        owner,
-        "revoke_member",
-        json!({"project_id":id,"session_id":owner.session_id})
-    )
-    .await
-    .is_err());
+    assert!(
+        invoke(
+            &engine,
+            owner,
+            "revoke_member",
+            json!({"project_id":id,"session_id":owner.session_id})
+        )
+        .await
+        .is_err()
+    );
 
     for (mode, suffix, read_only, caps) in [
         (
@@ -255,14 +265,16 @@ async fn project_membership_and_context_methods_enforce_durable_session_ownershi
         assert_eq!(context["effective_capabilities"], caps);
         assert_eq!(context["project_id"], Value::Null);
     }
-    assert!(invoke(
-        &engine,
-        member,
-        "resolve_context",
-        json!({"mode":"control_plane"})
-    )
-    .await
-    .is_err());
+    assert!(
+        invoke(
+            &engine,
+            member,
+            "resolve_context",
+            json!({"mode":"control_plane"})
+        )
+        .await
+        .is_err()
+    );
     // OD-65: the selection is per session, persisted, re-resolved on read,
     // and every memory call binds to it (see memory_binding).
     let selected = invoke(

@@ -6,13 +6,13 @@
 //! **Proto Generation:** Automatically generates gRPC proto method definitions
 //! from plugin schemas, following gRPC best practices (typed enums, Structs, no success fields).
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use op_agents::{create_agent, AgentTask};
+use op_agents::{AgentTask, create_agent};
 use op_state::StatePlugin;
 use op_state_store::PluginSchema;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;

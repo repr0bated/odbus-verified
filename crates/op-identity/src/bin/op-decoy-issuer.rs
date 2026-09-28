@@ -33,7 +33,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use base64::Engine;
 use ed25519_dalek::SigningKey;
 use op_identity::oracle_assertion::DecoyIssuer;

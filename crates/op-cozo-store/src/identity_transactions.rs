@@ -330,7 +330,9 @@ impl PersistentIdentityBoundary {
         }
         let custom_options = has_custom_options(&root)?;
         if private && custom_options {
-            return Err(err("private identity store refuses custom Cozo options with unverified data/WAL locations"));
+            return Err(err(
+                "private identity store refuses custom Cozo options with unverified data/WAL locations",
+            ));
         }
         Ok(Self {
             path,
@@ -361,7 +363,9 @@ impl PersistentIdentityBoundary {
     pub(super) fn require_default_layout(&self) -> std::result::Result<(), CozoError> {
         self.verify()?;
         if self.custom_options {
-            return Err(err("identity durability requires default Cozo root/data layout; custom options WAL/data locations are unverified"));
+            return Err(err(
+                "identity durability requires default Cozo root/data layout; custom options WAL/data locations are unverified",
+            ));
         }
         Ok(())
     }
@@ -705,7 +709,13 @@ impl CozoGraphShuttle {
         let events = if event_limit == 0 {
             Vec::new()
         } else {
-            let rows = query(&tx, &format!("?[session_id, seq, kind, subid, content, created_at] := *session_events[session_id, seq, kind, subid, content, created_at] :order -created_at, session_id, -seq :limit {event_limit}"), BTreeMap::new())?;
+            let rows = query(
+                &tx,
+                &format!(
+                    "?[session_id, seq, kind, subid, content, created_at] := *session_events[session_id, seq, kind, subid, content, created_at] :order -created_at, session_id, -seq :limit {event_limit}"
+                ),
+                BTreeMap::new(),
+            )?;
             let mut bytes = 0usize;
             rows.rows
                 .iter()
@@ -750,7 +760,11 @@ impl CozoGraphShuttle {
             directory.require_default_layout()?;
         }
         let tx = self.db.multi_transaction(true);
-        let max = query(&tx, "?[max(seq)] := *session_events[session_id, seq, kind, subid, content, created_at], session_id = $sid", sid_params(session_id))?;
+        let max = query(
+            &tx,
+            "?[max(seq)] := *session_events[session_id, seq, kind, subid, content, created_at], session_id = $sid",
+            sid_params(session_id),
+        )?;
         let seq = match max.rows.as_slice() {
             [] => 0,
             [row] if row.as_slice() == [DataValue::Null] => 0,
@@ -765,11 +779,18 @@ impl CozoGraphShuttle {
             }
             _ => return Err(err("corrupt session event sequence result")),
         };
-        query(&tx, "?[session_id, seq, kind, subid, content, created_at] <- [[$sid,$seq,$kind,$subid,$content,$created]] :put session_events {session_id, seq => kind, subid, content, created_at}", BTreeMap::from([
-            ("sid".into(),DataValue::Str(session_id.into())), ("seq".into(),dv_int(seq)),
-            ("kind".into(),DataValue::Str(kind.into())), ("subid".into(),DataValue::Str(subid.into())),
-            ("content".into(),DataValue::Str(content.into())), ("created".into(),dv_int(created_at)),
-        ]))?;
+        query(
+            &tx,
+            "?[session_id, seq, kind, subid, content, created_at] <- [[$sid,$seq,$kind,$subid,$content,$created]] :put session_events {session_id, seq => kind, subid, content, created_at}",
+            BTreeMap::from([
+                ("sid".into(), DataValue::Str(session_id.into())),
+                ("seq".into(), dv_int(seq)),
+                ("kind".into(), DataValue::Str(kind.into())),
+                ("subid".into(), DataValue::Str(subid.into())),
+                ("content".into(), DataValue::Str(content.into())),
+                ("created".into(), dv_int(created_at)),
+            ]),
+        )?;
         #[cfg(test)]
         tests::fault("before_commit")?;
         commit_checked(&tx)?;
@@ -898,18 +919,34 @@ impl CozoGraphShuttle {
                 String::new()
             },
         };
-        query(&tx,
+        query(
+            &tx,
             "?[session_id,version,plan_sha256,operation_id,phase,expected_revision,expected_revision_operation_id,committed_revision,committed_genesis,updated_at] <- [[$sid,$version,$plan,$op,$phase,$revision,$revision_op,$committed,$genesis,$updated]] :put identity_seed_provisions {session_id => version,plan_sha256,operation_id,phase,expected_revision,expected_revision_operation_id,committed_revision,committed_genesis,updated_at}",
             BTreeMap::from([
-                ("sid".into(), DataValue::Str(session_id.into())), ("version".into(), dv_int(1)),
-                ("plan".into(), DataValue::Str(plan_sha256.into())), ("op".into(), DataValue::Str(operation_id.into())),
+                ("sid".into(), DataValue::Str(session_id.into())),
+                ("version".into(), dv_int(1)),
+                ("plan".into(), DataValue::Str(plan_sha256.into())),
+                ("op".into(), DataValue::Str(operation_id.into())),
                 ("phase".into(), DataValue::Str(phase.into())),
-                ("revision".into(), dv_int(i64::try_from(row.expected_revision).map_err(native)?)),
-                ("revision_op".into(), DataValue::Str(row.expected_revision_operation_id.clone().into())),
-                ("committed".into(), dv_int(i64::try_from(row.committed_revision).map_err(native)?)),
-                ("genesis".into(), DataValue::Str(row.committed_genesis.clone().into())),
+                (
+                    "revision".into(),
+                    dv_int(i64::try_from(row.expected_revision).map_err(native)?),
+                ),
+                (
+                    "revision_op".into(),
+                    DataValue::Str(row.expected_revision_operation_id.clone().into()),
+                ),
+                (
+                    "committed".into(),
+                    dv_int(i64::try_from(row.committed_revision).map_err(native)?),
+                ),
+                (
+                    "genesis".into(),
+                    DataValue::Str(row.committed_genesis.clone().into()),
+                ),
                 ("updated".into(), dv_int(created_at)),
-            ]))?;
+            ]),
+        )?;
         commit_checked(&tx)?;
         self.sync_identity_store()?;
         Ok(row)
@@ -1060,10 +1097,22 @@ impl CozoGraphShuttle {
                 ("plan".into(), DataValue::Str(plan_sha256.into())),
                 ("op".into(), DataValue::Str(operation_id.into())),
                 ("phase".into(), DataValue::Str(phase.into())),
-                ("revision".into(), dv_int(i64::try_from(row.expected_revision).map_err(native)?)),
-                ("revision_op".into(), DataValue::Str(row.expected_revision_operation_id.clone().into())),
-                ("committed".into(), dv_int(i64::try_from(row.committed_revision).map_err(native)?)),
-                ("receipt".into(), DataValue::Str(row.stub_receipt_json.clone().into())),
+                (
+                    "revision".into(),
+                    dv_int(i64::try_from(row.expected_revision).map_err(native)?),
+                ),
+                (
+                    "revision_op".into(),
+                    DataValue::Str(row.expected_revision_operation_id.clone().into()),
+                ),
+                (
+                    "committed".into(),
+                    dv_int(i64::try_from(row.committed_revision).map_err(native)?),
+                ),
+                (
+                    "receipt".into(),
+                    DataValue::Str(row.stub_receipt_json.clone().into()),
+                ),
                 ("updated".into(), dv_int(created_at)),
             ]),
         )?;
@@ -1252,8 +1301,18 @@ impl CozoGraphShuttle {
             None => metadata.principal_kind.as_deref(),
         }
         .unwrap_or("");
-        query(&tx, "?[session_id, revision, operation_id, intent_kind, intent_value, principal_kind] <- [[$sid,$revision,$op,$kind,$value,$actor]] :put identity_revisions { session_id => revision, operation_id, intent_kind, intent_value, principal_kind }",
-            BTreeMap::from([("sid".into(), DataValue::Str(session_id.into())), ("revision".into(), dv_int(revision as i64)), ("op".into(), DataValue::Str(operation_id.into())), ("kind".into(), DataValue::Str(kind.into())), ("value".into(), dv_int(value)),("actor".into(),DataValue::Str(actor_class.into()))]))?;
+        query(
+            &tx,
+            "?[session_id, revision, operation_id, intent_kind, intent_value, principal_kind] <- [[$sid,$revision,$op,$kind,$value,$actor]] :put identity_revisions { session_id => revision, operation_id, intent_kind, intent_value, principal_kind }",
+            BTreeMap::from([
+                ("sid".into(), DataValue::Str(session_id.into())),
+                ("revision".into(), dv_int(revision as i64)),
+                ("op".into(), DataValue::Str(operation_id.into())),
+                ("kind".into(), DataValue::Str(kind.into())),
+                ("value".into(), dv_int(value)),
+                ("actor".into(), DataValue::Str(actor_class.into())),
+            ]),
+        )?;
         #[cfg(test)]
         tests::fault("before_commit")?;
         commit_checked(&tx)?;

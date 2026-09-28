@@ -1,17 +1,17 @@
 use super::*;
 use crate::cron_methods::CronMethods;
 use axum::{
+    Json, Router,
     body::to_bytes,
     extract::{Request, State},
-    http::{header::AUTHORIZATION, Method, StatusCode},
+    http::{Method, StatusCode, header::AUTHORIZATION},
     response::IntoResponse,
     routing::any,
-    Json, Router,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::{
-    atomic::{AtomicUsize, Ordering},
     Arc,
+    atomic::{AtomicUsize, Ordering},
 };
 use tokio::sync::Mutex;
 

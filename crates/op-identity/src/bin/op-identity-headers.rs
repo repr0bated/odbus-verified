@@ -86,16 +86,18 @@ mod tests {
             .unwrap(),
             "bea37ecb-92be-197c-660f-09e806f1a34f"
         );
-        assert!(parse_selector(
-            [
-                "--session".into(),
-                "bea37ecb-92be-197c-660f-09e806f1a34f".into(),
-                "--session".into(),
-                "87b0decc-8464-5abf-05d8-b52ec88ff9f1".into()
-            ]
-            .into_iter()
-        )
-        .is_err());
+        assert!(
+            parse_selector(
+                [
+                    "--session".into(),
+                    "bea37ecb-92be-197c-660f-09e806f1a34f".into(),
+                    "--session".into(),
+                    "87b0decc-8464-5abf-05d8-b52ec88ff9f1".into()
+                ]
+                .into_iter()
+            )
+            .is_err()
+        );
         assert!(parse_selector(["--session".into()].into_iter()).is_err());
         assert!(parse_selector(std::iter::empty()).is_err());
         assert!(parse_selector(["--session".into(), "not-a-session".into()].into_iter()).is_err());

@@ -35,17 +35,17 @@ use tracing::warn;
 
 // Re-export main types
 pub use orchestration_plugin::{
-    create_tool_event, get_orchestration_registry, LlmDecisionEvent, OrchestrationActivityPlugin,
-    OrchestrationPluginRegistry, SessionEvent, ToolExecutedEvent,
+    LlmDecisionEvent, OrchestrationActivityPlugin, OrchestrationPluginRegistry, SessionEvent,
+    ToolExecutedEvent, create_tool_event, get_orchestration_registry,
 };
 
 // Re-export code_search module (feature-gated in consuming crates)
 pub use builtin::code_search;
 
 pub use registry::ToolRegistry;
-pub use router::{create_router, ToolsServiceRouter, ToolsState};
+pub use router::{ToolsServiceRouter, ToolsState, create_router};
 pub use security::{
-    get_security_validator, AccessLevel, SecurityError, SecurityValidator, ToolSecurityProfile,
+    AccessLevel, SecurityError, SecurityValidator, ToolSecurityProfile, get_security_validator,
 };
 pub use tool::{BoxedTool, Tool};
 pub use validation::{InputValidator, ValidatedInput, ValidationConfig};

@@ -5,7 +5,7 @@
 //! - vectors: ML embeddings for semantic search
 //! - state: Current system state for DR/reinstall
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use chrono::{DateTime, Datelike, Utc};
 use nix::fcntl::{Flock, FlockArg};
 use std::cmp::Reverse;
@@ -17,10 +17,10 @@ use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::time::Duration;
 use std::time::SystemTime;
-use tokio::sync::{oneshot, Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock, oneshot};
 use tokio::time::Instant;
 use tracing::{debug, info, warn};
 
@@ -884,7 +884,7 @@ impl StreamingSnowball {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
             Err(error) => {
                 return Err(error)
-                    .with_context(|| format!("read snapshot state {}", state_file.display()))
+                    .with_context(|| format!("read snapshot state {}", state_file.display()));
             }
         };
         ensure!(
@@ -1242,7 +1242,7 @@ async fn highest_block_number(timing_dir: &Path) -> Result<u64> {
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(0),
         Err(err) => {
             return Err(anyhow::Error::from(err)
-                .context(format!("failed to read {}", timing_dir.display())))
+                .context(format!("failed to read {}", timing_dir.display())));
         }
     };
 
@@ -1980,9 +1980,11 @@ mod tests {
             anyhow::bail!("injected member deletion failure")
         })
         .unwrap_err();
-        assert!(error
-            .to_string()
-            .contains("injected member deletion failure"));
+        assert!(
+            error
+                .to_string()
+                .contains("injected member deletion failure")
+        );
         assert!(!set.join(".committed").exists());
         for label in SNAPSHOT_LABELS {
             verify_readonly_snapshot(&set.join(label)).unwrap();
@@ -2016,12 +2018,14 @@ mod tests {
         std::fs::create_dir(incomplete.join("timing")).unwrap();
         std::fs::write(incomplete.join(".committed"), b"").unwrap();
         assert!(chain.read_snapshot_state("SNP-000003").await.is_err());
-        assert!(!chain
-            .list_snapshots()
-            .await
-            .unwrap()
-            .iter()
-            .any(|(name, _)| name == "SNP-000003"));
+        assert!(
+            !chain
+                .list_snapshots()
+                .await
+                .unwrap()
+                .iter()
+                .any(|(name, _)| name == "SNP-000003")
+        );
 
         let copied = snapshots.join("SNP-000004");
         std::fs::create_dir(&copied).unwrap();
@@ -2046,12 +2050,14 @@ mod tests {
 
         let partial_legacy = snapshots.join("SNP-timing-000042");
         btrfs_snapshot_readonly(chain.timing_subvolume_path(), &partial_legacy).unwrap();
-        assert!(!chain
-            .list_snapshots()
-            .await
-            .unwrap()
-            .iter()
-            .any(|(name, _)| name == "SNP-state-000042"));
+        assert!(
+            !chain
+                .list_snapshots()
+                .await
+                .unwrap()
+                .iter()
+                .any(|(name, _)| name == "SNP-state-000042")
+        );
         assert!(chain.read_snapshot_state("SNP-state-000042").await.is_err());
         assert_eq!(chain.create_snapshot().await.unwrap(), "SNP-000043");
         assert!(
@@ -2076,12 +2082,14 @@ mod tests {
             btrfs_snapshot_readonly(source, &snapshots.join(format!("SNP-{label}-000009")))
                 .unwrap();
         }
-        assert!(chain
-            .list_snapshots()
-            .await
-            .unwrap()
-            .iter()
-            .any(|(name, _)| name == "SNP-state-000009"));
+        assert!(
+            chain
+                .list_snapshots()
+                .await
+                .unwrap()
+                .iter()
+                .any(|(name, _)| name == "SNP-state-000009")
+        );
         assert_eq!(
             chain
                 .read_snapshot_state("SNP-state-000009")
@@ -2334,9 +2342,11 @@ mod tests {
         let mut sorted = keys.clone();
         sorted.sort();
         assert_eq!(keys, sorted, "flattened fields must be key-sorted");
-        assert!(first
-            .embedding_text()
-            .starts_with("block: 42\nplugin: zeroclaw"));
+        assert!(
+            first
+                .embedding_text()
+                .starts_with("block: 42\nplugin: zeroclaw")
+        );
     }
 
     #[test]
@@ -2447,16 +2457,20 @@ mod tests {
         let value = simd_json::OwnedValue::Static(simd_json::StaticNode::Bool(true));
 
         // Exact match
-        assert!(snowball
-            .write_state_validated("plugin_foo", &value, &declared)
-            .await
-            .is_ok());
+        assert!(
+            snowball
+                .write_state_validated("plugin_foo", &value, &declared)
+                .await
+                .is_ok()
+        );
 
         // Prefix match: "plugin_bar_baz" starts with "plugin_bar" (from "plugin_bar/*")
-        assert!(snowball
-            .write_state_validated("plugin_bar_baz", &value, &declared)
-            .await
-            .is_ok());
+        assert!(
+            snowball
+                .write_state_validated("plugin_bar_baz", &value, &declared)
+                .await
+                .is_ok()
+        );
     }
 
     #[tokio::test]
@@ -2471,10 +2485,12 @@ mod tests {
         let value = simd_json::OwnedValue::Static(simd_json::StaticNode::Bool(true));
 
         // Undeclared key should succeed (warn, not block)
-        assert!(snowball
-            .write_state_validated("undeclared_key", &value, &declared)
-            .await
-            .is_ok());
+        assert!(
+            snowball
+                .write_state_validated("undeclared_key", &value, &declared)
+                .await
+                .is_ok()
+        );
     }
 
     #[tokio::test]
@@ -2495,9 +2511,11 @@ mod tests {
         assert!(result.is_err());
 
         // Declared key should still succeed
-        assert!(snowball
-            .write_state_validated("plugin_foo", &value, &declared)
-            .await
-            .is_ok());
+        assert!(
+            snowball
+                .write_state_validated("plugin_foo", &value, &declared)
+                .await
+                .is_ok()
+        );
     }
 }

@@ -10,7 +10,7 @@
 //! and integration tests can drive the gRPC service impls against in-memory
 //! Cozo.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use op_cognitive_mcp::memory_store::{
     CognitiveMemoryStore, EntryQuery, MemoryEntry as StoreEntry, NamespaceKind,
@@ -18,7 +18,7 @@ use op_cognitive_mcp::memory_store::{
 use op_cognitive_mcp::soul_memory::{
     AgentNamespaceBinding, SoulMemory as StoreSoul, SoulMemoryStore, SoulUpdate,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 /// Well-known session bus. Same default as `op-mcp::cognitive_bridge`.

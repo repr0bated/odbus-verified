@@ -14,8 +14,8 @@ use tracing::{debug, info, warn};
 use super::agent_service::AgentServiceImpl;
 use super::orchestrator_service::OrchestratorServiceImpl;
 use super::proto::{
-    agent_service_server::AgentService, mcp_service_server::McpService, ListAgentsRequest,
-    ListToolsRequest, ListToolsResponse, McpError, McpRequest, McpResponse, McpTool,
+    ListAgentsRequest, ListToolsRequest, ListToolsResponse, McpError, McpRequest, McpResponse,
+    McpTool, agent_service_server::AgentService, mcp_service_server::McpService,
 };
 
 /// MCP service implementation backed by the agent registry and orchestrator.

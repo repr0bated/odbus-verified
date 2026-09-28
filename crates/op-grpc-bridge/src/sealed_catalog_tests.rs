@@ -161,11 +161,13 @@ async fn reflection_reseal_missing_manifest_and_corrupt_pin_replace_advertisemen
     let catalog = crate::dynamic_reflection::ActiveReflectionCatalog::with_dir(dir.path().into());
     let first = seal(dir.path(), &schema("tched_router", "1.0.0"));
     assert_eq!(catalog.sync_from_shm().await, 1);
-    assert!(catalog
-        .list_services()
-        .await
-        .iter()
-        .any(|name| name == "operation.plugin.v1.TchedRouterPluginMethods"));
+    assert!(
+        catalog
+            .list_services()
+            .await
+            .iter()
+            .any(|name| name == "operation.plugin.v1.TchedRouterPluginMethods")
+    );
     let second = seal(dir.path(), &schema("tched_router", "2.0.0"));
     assert_ne!(first.manifest.schema_hash, second.manifest.schema_hash);
     assert_eq!(catalog.sync_from_shm().await, 1);
@@ -223,10 +225,12 @@ async fn sealed_method_metadata_keeps_exact_descriptor_bytes_and_replaces_old_me
         )
         .await
         .unwrap();
-    assert!(registry
-        .get_services_for_plugin("tched_router")
-        .await
-        .is_empty());
+    assert!(
+        registry
+            .get_services_for_plugin("tched_router")
+            .await
+            .is_empty()
+    );
     assert_eq!(
         registry.frozen_descriptor_set_bytes(),
         replacement.descriptor_set
@@ -318,11 +322,13 @@ async fn historical_transport_name_manifest_requires_explicit_reseal_without_rea
     let mut historical = seal(dir.path(), &schema);
     let catalog = crate::dynamic_reflection::ActiveReflectionCatalog::with_dir(dir.path().into());
     assert_eq!(catalog.sync_from_shm().await, 1);
-    assert!(catalog
-        .list_services()
-        .await
-        .iter()
-        .any(|service| service == "operation.plugin.v1.DnsresolverPluginMethods"));
+    assert!(
+        catalog
+            .list_services()
+            .await
+            .iter()
+            .any(|service| service == "operation.plugin.v1.DnsresolverPluginMethods")
+    );
     let method = historical
         .manifest
         .methods

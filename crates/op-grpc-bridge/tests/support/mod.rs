@@ -98,7 +98,7 @@ pub fn provision_identity_record(
 ) -> anyhow::Result<()> {
     use op_cozo_store::{IdentityCompareExchange, IdentityIntent, IdentitySledRecord};
     use op_plugins::state_plugins::{
-        identity_sled::{ContainerIdentitySled, SledBtrfsDevice, RECORD_FORMAT},
+        identity_sled::{ContainerIdentitySled, RECORD_FORMAT, SledBtrfsDevice},
         incus::IncusInstance,
     };
 

@@ -33,11 +33,11 @@ pub mod wireguard_kernel;
 
 pub use controller::{OpenFlowController, OpenFlowControllerHandle};
 pub use datapath_safe::{
-    attach_controller_safe, del_controller, ensure_fallback_normal, get_datapath_health,
-    set_controller, set_fail_mode, DatapathHealth, FALLBACK_COOKIE, MANAGED_COOKIE,
+    DatapathHealth, FALLBACK_COOKIE, MANAGED_COOKIE, attach_controller_safe, del_controller,
+    ensure_fallback_normal, get_datapath_health, set_controller, set_fail_mode,
 };
 pub use openflow::{FlowAction, FlowEntry, FlowMatch, OpenFlowClient, OpenFlowVersion};
-pub use ovs_capabilities::{counter_excuses, excuses_to_llm_context, OvsCapabilities};
+pub use ovs_capabilities::{OvsCapabilities, counter_excuses, excuses_to_llm_context};
 pub use ovs_error::OvsError;
 pub use ovs_netlink::{Datapath, KernelFlow, OvsNetlinkClient, Vport, VportConfig, VportType};
 pub use ovsdb::OvsdbClient;

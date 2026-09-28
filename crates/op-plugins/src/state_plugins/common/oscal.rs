@@ -248,7 +248,7 @@ mod tests {
 
 #[cfg(test)]
 mod category_alias_tests {
-    use super::{canonical_category, validate_subid, CATEGORY_ALIASES, OSCAL_COMPONENT_TYPES};
+    use super::{CATEGORY_ALIASES, OSCAL_COMPONENT_TYPES, canonical_category, validate_subid};
 
     #[test]
     fn an_aliased_category_is_accepted_in_a_subid() {

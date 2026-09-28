@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::generator::md_parser::{parse_agent_markdown, AgentDefinition};
+use crate::generator::md_parser::{AgentDefinition, parse_agent_markdown};
 use crate::unified::agent_trait::{AgentCapability, AgentCategory, UnifiedAgent};
 
 /// What a piece contributes to an assembled persona.

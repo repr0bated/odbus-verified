@@ -15,10 +15,10 @@ use tracing::{debug, info};
 use super::agent_service::AgentServiceImpl;
 use super::cache_service::CacheServiceImpl;
 use super::proto::{
-    agent_service_server::AgentService, orchestrator_service_server::OrchestratorService, Empty,
-    ExecuteAgentsRequest, FindByCapabilityRequest, GetPatternsResponse, OrchestratorRequest,
+    Empty, ExecuteAgentsRequest, FindByCapabilityRequest, GetPatternsResponse, OrchestratorRequest,
     OrchestratorResponse, OrchestratorStats, PatternSuggestion, PromotePatternRequest,
     PromotePatternResponse, ResolveRequest, ResolveResponse, WorkstackStepResult,
+    agent_service_server::AgentService, orchestrator_service_server::OrchestratorService,
 };
 
 /// Tracked pattern for promotion suggestions

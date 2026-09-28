@@ -4,17 +4,17 @@
 //! the bridge's schema-declared gRPC method pipeline on port 8090.
 
 use axum::{
+    Json,
     body::Body,
     extract::Extension,
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
-    Json,
 };
 use base64::Engine as _;
 use op_grpc_bridge::GhostbridgeCallMetadata;
 use serde::Deserialize;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tracing::{error, info, warn};
 

@@ -12,7 +12,7 @@ use anyhow::Context;
 use axum::{
     body::Body,
     extract::{Request, State},
-    http::{header, HeaderMap, HeaderName, HeaderValue, Method, Uri, Version},
+    http::{HeaderMap, HeaderName, HeaderValue, Method, Uri, Version, header},
     middleware::Next,
     response::Response,
 };
@@ -179,7 +179,7 @@ fn unavailable() -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::Bytes, http::StatusCode, Router};
+    use axum::{Router, body::Bytes, http::StatusCode};
 
     const CALL: &str = "/operation.v1.PluginService/CallMethod";
     const GRPC_WEB: &str = "application/grpc-web+proto";

@@ -65,12 +65,14 @@ fn uncertain_durable_work_blocks_stale_reads_and_requires_exact_recovery() {
     unavailable(&reopened);
     let calls = AtomicUsize::new(0);
     for (plugin, operation) in [(PLUGIN, "wrong"), ("other", "uncertain")] {
-        assert!(reopened
-            .recover_document(plugin, operation, || {
-                calls.fetch_add(1, Ordering::SeqCst);
-                Ok((Some(OLD.to_vec()), ()))
-            })
-            .is_err());
+        assert!(
+            reopened
+                .recover_document(plugin, operation, || {
+                    calls.fetch_add(1, Ordering::SeqCst);
+                    Ok((Some(OLD.to_vec()), ()))
+                })
+                .is_err()
+        );
     }
     assert_eq!(calls.load(Ordering::SeqCst), 0);
     // Unrelated publication must retain the pending metadata.
@@ -208,14 +210,18 @@ fn panic_and_document_deletion_use_the_same_gate() {
             .unwrap(),
     );
     assert!(projection.current.is_none());
-    assert!(owner
-        .read_snapshot(&[PLUGIN.into()])
-        .unwrap()
-        .states
-        .is_empty());
-    assert!(owner
-        .commit_document_durable("identity_sled", "invalid", |_| Ok((None, ())))
-        .is_err());
+    assert!(
+        owner
+            .read_snapshot(&[PLUGIN.into()])
+            .unwrap()
+            .states
+            .is_empty()
+    );
+    assert!(
+        owner
+            .commit_document_durable("identity_sled", "invalid", |_| Ok((None, ())))
+            .is_err()
+    );
 }
 
 #[test]

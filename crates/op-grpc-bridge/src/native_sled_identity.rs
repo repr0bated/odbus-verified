@@ -3,7 +3,7 @@
 //! This module only reads the private identity projection. It never mints,
 //! re-encodes, or logs identity credentials.
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 
 /// Return the exact canonical SID1 payload for the verified caller.
 ///

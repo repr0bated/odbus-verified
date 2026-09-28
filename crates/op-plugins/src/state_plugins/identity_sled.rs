@@ -249,11 +249,15 @@ impl StatePlugin for IdentitySledPlugin {
     }
 
     async fn calculate_diff(&self, _current: &Value, _desired: &Value) -> Result<StateDiff> {
-        anyhow::bail!("identity changes require the canonical identity owner; generic reconciliation is unsupported")
+        anyhow::bail!(
+            "identity changes require the canonical identity owner; generic reconciliation is unsupported"
+        )
     }
 
     async fn apply_state(&self, _diff: &StateDiff) -> Result<ApplyResult> {
-        anyhow::bail!("identity changes require the canonical identity owner; generic reconciliation is unsupported")
+        anyhow::bail!(
+            "identity changes require the canonical identity owner; generic reconciliation is unsupported"
+        )
     }
 
     async fn verify_state(&self, _desired: &Value) -> Result<bool> {
@@ -265,7 +269,9 @@ impl StatePlugin for IdentitySledPlugin {
     }
 
     async fn rollback(&self, _checkpoint: &Checkpoint) -> Result<()> {
-        anyhow::bail!("identity recovery requires the canonical durable owner; generic rollback is unsupported")
+        anyhow::bail!(
+            "identity recovery requires the canonical durable owner; generic rollback is unsupported"
+        )
     }
 
     fn capabilities(&self) -> PluginCapabilities {
@@ -625,12 +631,14 @@ mod tests {
         );
         let args = serde_json::to_value(&provision.args).unwrap();
         let validator = jsonschema::Validator::new(&args).unwrap();
-        assert!(validator
-            .validate(&serde_json::json!({
-                "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-                "plan_sha256":"a".repeat(64)
-            }))
-            .is_ok());
+        assert!(
+            validator
+                .validate(&serde_json::json!({
+                    "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                    "plan_sha256":"a".repeat(64)
+                }))
+                .is_ok()
+        );
         for extra in ["instance", "btrfs_device", "sealed_id"] {
             let mut input = serde_json::json!({
                 "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
@@ -647,9 +655,11 @@ mod tests {
                 .unwrap();
         let preflight = jsonschema::Validator::new(&preflight).unwrap();
         assert!(preflight.validate(&serde_json::json!({})).is_ok());
-        assert!(preflight
-            .validate(&serde_json::json!({"session_id":"caller-selected"}))
-            .is_err());
+        assert!(
+            preflight
+                .validate(&serde_json::json!({"session_id":"caller-selected"}))
+                .is_err()
+        );
     }
 
     #[test]
@@ -672,24 +682,30 @@ mod tests {
             "session_id":"00000000-0000-4000-8000-000000000001",
             "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         });
-        assert!(validate(
-            "touch_session",
-            "returns",
-            serde_json::json!({"identity":identity})
-        )
-        .is_ok());
-        assert!(validate(
-            "record_session_event",
-            "returns",
-            serde_json::json!({"session_id":"s","seq":7})
-        )
-        .is_ok());
-        assert!(validate(
-            "get_session_history",
-            "args",
-            serde_json::json!({"session_id":"s","limit":4097})
-        )
-        .is_err());
+        assert!(
+            validate(
+                "touch_session",
+                "returns",
+                serde_json::json!({"identity":identity})
+            )
+            .is_ok()
+        );
+        assert!(
+            validate(
+                "record_session_event",
+                "returns",
+                serde_json::json!({"session_id":"s","seq":7})
+            )
+            .is_ok()
+        );
+        assert!(
+            validate(
+                "get_session_history",
+                "args",
+                serde_json::json!({"session_id":"s","limit":4097})
+            )
+            .is_err()
+        );
         let mut preflight = serde_json::json!({
             "session_id":"00000000-0000-4000-8000-000000000001",
             "genesis":"g",
@@ -711,20 +727,24 @@ mod tests {
             "native_status":"Stopped",
             "root_subvolume":"missing"
         });
-        assert!(validate(
-            "inspect_own_root_repair_preflight",
-            "returns",
-            preflight.clone()
-        )
-        .is_ok());
+        assert!(
+            validate(
+                "inspect_own_root_repair_preflight",
+                "returns",
+                preflight.clone()
+            )
+            .is_ok()
+        );
         preflight["expected_first_start_idmap_sha256"] = "B".repeat(64).into();
         assert!(validate("inspect_own_root_repair_preflight", "returns", preflight).is_err());
-        assert!(validate(
-            "touch_session",
-            "args",
-            serde_json::json!({"session_id":"s","sealed_id":"caller"})
-        )
-        .is_err());
+        assert!(
+            validate(
+                "touch_session",
+                "args",
+                serde_json::json!({"session_id":"s","sealed_id":"caller"})
+            )
+            .is_err()
+        );
     }
 
     #[test]

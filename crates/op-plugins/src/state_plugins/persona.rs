@@ -3,7 +3,7 @@
 //! Projects the live agent-persona catalog from `op-agents` through the
 //! `org.opdbus.v1.plugins` surface. The catalog is live, not mocked.
 
-use super::plugin_scaffold_helpers::{method_decl_from_schemars_with_output, AckOutput};
+use super::plugin_scaffold_helpers::{AckOutput, method_decl_from_schemars_with_output};
 use anyhow::Result;
 use async_trait::async_trait;
 use op_agents::builtin_agent_descriptors;
@@ -594,28 +594,36 @@ mod methods_tests {
             .await
             .unwrap();
         assert_eq!(identity["persona"]["agent_type"], "rust-pro");
-        assert!(identity["persona"]["name"]
-            .as_str()
-            .unwrap()
-            .contains("Rust"));
-        assert!(identity["persona"]["operations"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|operation| operation == "check"));
-        assert!(!identity["persona"]["operation_schemas"]
-            .as_array()
-            .unwrap()
-            .is_empty());
+        assert!(
+            identity["persona"]["name"]
+                .as_str()
+                .unwrap()
+                .contains("Rust")
+        );
+        assert!(
+            identity["persona"]["operations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|operation| operation == "check")
+        );
+        assert!(
+            !identity["persona"]["operation_schemas"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
         let expert =
             dispatch_persona_method("get_identity", &json!({"agent_type":"backend-architect"}))
                 .await
                 .unwrap();
-        assert!(expert["persona"]["operations"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|operation| operation == "consult"));
+        assert!(
+            expert["persona"]["operations"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|operation| operation == "consult")
+        );
         let query = "How should API design handle retries?";
         let executed = dispatch_persona_method(
             "execute",
@@ -628,22 +636,26 @@ mod methods_tests {
         assert_eq!(executed["success"], false);
         assert_eq!(executed["agent_type"], "backend-architect");
         assert_eq!(executed["operation"], "consult");
-        assert!(executed["message"]
-            .as_str()
-            .unwrap()
-            .contains("authenticated"));
+        assert!(
+            executed["message"]
+                .as_str()
+                .unwrap()
+                .contains("authenticated")
+        );
         let unknown =
             dispatch_persona_method("get_identity", &json!({"agent_type":"absent-persona"}))
                 .await
                 .unwrap();
         assert_eq!(unknown["persona"], serde_json::Value::Null);
-        assert!(dispatch_persona_method(
-            "execute",
-            &json!({
-                "agent_type":"absent-persona", "operation":"consult", "query":query
-            })
-        )
-        .await
-        .is_err());
+        assert!(
+            dispatch_persona_method(
+                "execute",
+                &json!({
+                    "agent_type":"absent-persona", "operation":"consult", "query":query
+                })
+            )
+            .await
+            .is_err()
+        );
     }
 }

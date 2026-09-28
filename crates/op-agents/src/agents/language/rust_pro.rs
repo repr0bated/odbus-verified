@@ -8,8 +8,8 @@
 use async_trait::async_trait;
 use std::process::Command;
 
-use crate::agents::base::{validation, AgentTask, AgentTrait, TaskResult};
-use crate::security::{profiles::presets, SecurityProfile};
+use crate::agents::base::{AgentTask, AgentTrait, TaskResult, validation};
+use crate::security::{SecurityProfile, profiles::presets};
 use simd_json::prelude::*;
 
 const ALLOWED_DIRS: &[&str] = &["/tmp", "/home", "/opt"];

@@ -9,8 +9,8 @@ use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use op_web::routes;
 use op_web::AppState;
+use op_web::routes;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

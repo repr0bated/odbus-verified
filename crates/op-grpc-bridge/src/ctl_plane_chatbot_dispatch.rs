@@ -13,16 +13,16 @@ use op_cozo_store::{EpisodeEmbeddingRecord, EpisodeScope, ScopedEpisodeRecord};
 use op_plugins::state_plugins::{
     ctl_plane_chatbot::{InputType, OutputDtype, ReasoningEpisode},
     ctl_plane_chatbot_methods::{
+        ClassifySignificanceInput, ConfigPublication, ContextMatch, CtlPlaneChatbotMethods,
+        GetConfigInput, GetDoorbellInput, GetDoorbellOutput, GetEpisodeInput, GetEpisodeOutput,
+        ListEpisodesInput, ListEpisodesOutput, ListKnowledgeInput, ListKnowledgeOutput,
+        QueryContextInput, QueryContextOutput, SetConfigInput, VectorizeInput,
         complete_vectorization, config_state_fields, cosine_similarity, plan_vectorization,
-        validate_episode, ClassifySignificanceInput, ConfigPublication, ContextMatch,
-        CtlPlaneChatbotMethods, GetConfigInput, GetDoorbellInput, GetDoorbellOutput,
-        GetEpisodeInput, GetEpisodeOutput, ListEpisodesInput, ListEpisodesOutput,
-        ListKnowledgeInput, ListKnowledgeOutput, QueryContextInput, QueryContextOutput,
-        SetConfigInput, VectorizeInput,
+        validate_episode,
     },
     embedding_model::{
-        methods::{EmbedInput, EmbedOutput, EmbeddingInputType},
         EmbeddingModelPlugin,
+        methods::{EmbedInput, EmbedOutput, EmbeddingInputType},
     },
     runtime_documents::runtime_documents,
 };
@@ -750,7 +750,7 @@ mod tests {
         human_principal_dispatch::tests::{
             pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
         },
-        identity_sled_dispatch::{tests::write_identity, IdentitySledStore},
+        identity_sled_dispatch::{IdentitySledStore, tests::write_identity},
     };
     use op_plugins::state_plugins::{
         ctl_plane_chatbot::{
@@ -1270,11 +1270,13 @@ mod tests {
             doorbell["result"]["listener"],
             crate::mqtt_doorbell_relay::PUBLIC_LISTENER
         );
-        assert!(doorbell["result"]["knowledge_paths"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|p| p.as_str().unwrap().ends_with("/knowledge")));
+        assert!(
+            doorbell["result"]["knowledge_paths"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|p| p.as_str().unwrap().ends_with("/knowledge"))
+        );
 
         let empty = canonical_call(
             &engine,
@@ -1373,9 +1375,11 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(missing_read
-            .to_string()
-            .contains("chatbot capability grant"));
+        assert!(
+            missing_read
+                .to_string()
+                .contains("chatbot capability grant")
+        );
         native.assert_no_request().await;
 
         write_grants(&grants_path, &actor, &["embedding.invoke"]);
@@ -1391,9 +1395,11 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(missing_outer
-            .to_string()
-            .contains("chatbot capability grant"));
+        assert!(
+            missing_outer
+                .to_string()
+                .contains("chatbot capability grant")
+        );
         native.assert_no_request().await;
 
         write_grants(&grants_path, &actor, &["chatbot.invoke"]);
@@ -1409,9 +1415,11 @@ mod tests {
         )
         .await
         .unwrap_err();
-        assert!(missing_target
-            .to_string()
-            .contains("nested embedding capability"));
+        assert!(
+            missing_target
+                .to_string()
+                .contains("nested embedding capability")
+        );
         native.assert_no_request().await;
 
         write_grants(
@@ -1441,12 +1449,14 @@ mod tests {
         native
             .respond(200, serde_json::json!({"embeddings": [[0.25]]}))
             .await;
-        assert!(dimension
-            .await
-            .unwrap()
-            .unwrap_err()
-            .to_string()
-            .contains("dimension does not match"));
+        assert!(
+            dimension
+                .await
+                .unwrap()
+                .unwrap_err()
+                .to_string()
+                .contains("dimension does not match")
+        );
 
         let provider_engine = engine.clone();
         let provider_actor = actor.clone();
@@ -1553,11 +1563,13 @@ mod tests {
         assert_eq!(output.revision, 11);
         assert!(output.changed);
         assert_eq!(output.publication, ConfigPublication::Pending);
-        assert!(output
-            .diagnostic
-            .as_deref()
-            .unwrap()
-            .contains("pending recovery"));
+        assert!(
+            output
+                .diagnostic
+                .as_deref()
+                .unwrap()
+                .contains("pending recovery")
+        );
     }
 
     #[test]

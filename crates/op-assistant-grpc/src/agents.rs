@@ -11,7 +11,7 @@ use crate::proto::{
 };
 use async_stream::try_stream;
 use futures::Stream;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::pin::Pin;
 use tonic::{Request, Response, Status};
 

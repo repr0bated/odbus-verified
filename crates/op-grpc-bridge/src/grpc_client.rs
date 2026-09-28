@@ -8,19 +8,19 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use base64::Engine as _;
-use prost_types::{value::Kind as ProstKind, Struct as ProstStruct, Value as ProstValue};
+use prost_types::{Struct as ProstStruct, Value as ProstValue, value::Kind as ProstKind};
 use tokio::sync::RwLock;
+use tonic::Request;
 use tonic::metadata::MetadataValue;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
-use tonic::Request;
 use tracing::info;
 
 use crate::oracle_assertion_client::DecoyAssertionClient;
 use crate::proto::{
-    event_chain_service_client::EventChainServiceClient,
-    plugin_service_client::PluginServiceClient, state_sync_client::StateSyncClient,
     CallMethodRequest, GetStateRequest, GetStateResponse, MutateRequest,
     OperationType as ProtoOperationType, SubscribeEventsRequest, SubscribeRequest,
+    event_chain_service_client::EventChainServiceClient,
+    plugin_service_client::PluginServiceClient, state_sync_client::StateSyncClient,
 };
 
 /// Bounded response envelope for complete plugin documents and SHM state.
@@ -1007,10 +1007,12 @@ mod identity_metadata_tests {
         };
         let mut public = Request::new(GetStateRequest::default());
         attach_identity_metadata(&mut public, &identity, None).unwrap();
-        assert!(public
-            .metadata()
-            .get_bin(op_identity::sealed_id::HTTP_HEADER_NAME)
-            .is_some());
+        assert!(
+            public
+                .metadata()
+                .get_bin(op_identity::sealed_id::HTTP_HEADER_NAME)
+                .is_some()
+        );
         assert!(public.metadata().get("x-opdbus-capability").is_none());
 
         let mut private = Request::new(SubscribeRequest::default());
@@ -1103,18 +1105,22 @@ mod identity_metadata_tests {
     #[test]
     fn get_state_rejects_missing_or_malformed_payloads() {
         assert!(decode_get_state_response(GetStateResponse::default()).is_err());
-        assert!(decode_get_state_response(GetStateResponse {
-            value: Some(ProstValue { kind: None }),
-            ..Default::default()
-        })
-        .is_err());
-        assert!(decode_get_state_response(GetStateResponse {
-            value: Some(ProstValue {
-                kind: Some(ProstKind::NumberValue(f64::NAN)),
-            }),
-            ..Default::default()
-        })
-        .is_err());
+        assert!(
+            decode_get_state_response(GetStateResponse {
+                value: Some(ProstValue { kind: None }),
+                ..Default::default()
+            })
+            .is_err()
+        );
+        assert!(
+            decode_get_state_response(GetStateResponse {
+                value: Some(ProstValue {
+                    kind: Some(ProstKind::NumberValue(f64::NAN)),
+                }),
+                ..Default::default()
+            })
+            .is_err()
+        );
     }
 
     #[test]

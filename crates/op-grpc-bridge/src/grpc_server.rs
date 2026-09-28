@@ -15,7 +15,7 @@ use prost_types::{Struct as ProstStruct, Timestamp as ProstTimestamp, Value as P
 use serde::de::DeserializeSeed;
 use serde_json::Value as JsonValue;
 use simd_json::prelude::{ValueAsContainer, ValueAsScalar};
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use tokio_stream::Stream;
 use tonic::transport::{Identity, ServerTlsConfig};
 use tonic::{Request, Response, Status};
@@ -23,17 +23,15 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-use crate::interceptor::{self, load_capability_grants, GhostbridgeIdentity};
+use crate::interceptor::{self, GhostbridgeIdentity, load_capability_grants};
 use crate::oracle_assertion::{AssertionValidator, DecoyTrustStore};
 
 use crate::dynamic_reflection::{ActiveReflectionCatalog, DynamicReflectionService};
 use crate::mutation_engine::{ChangeType, MutationEngine};
 use crate::plugin_grpc_gen::MethodServiceRegistry;
 use crate::proto::{
-    event_chain_service_server::EventChainService, ovsdb_mirror_server::OvsdbMirror,
-    plugin_service_server::PluginService, runtime_mirror_server::RuntimeMirror,
-    state_sync_server::StateSync, BatchMutateRequest, BatchMutateResponse, CallMethodRequest,
-    CallMethodResponse, CapabilityMissing as ProtoCapabilityMissing, ChainEvent as ProtoChainEvent,
+    BatchMutateRequest, BatchMutateResponse, CallMethodRequest, CallMethodResponse,
+    CapabilityMissing as ProtoCapabilityMissing, ChainEvent as ProtoChainEvent,
     ChangeType as ProtoChangeType, ConstraintFail as ProtoConstraintFail, CreateSnapshotRequest,
     CreateSnapshotResponse, Decision as ProtoDecision, DenyReason as ProtoDenyReason,
     ErrorCode as ProtoErrorCode, GetEventsRequest, GetEventsResponse, GetProofRequest,
@@ -59,6 +57,9 @@ use crate::proto::{
     SetPropertyResponse, Signal, StateChange as ProtoStateChange,
     StateFrameKind as ProtoStateFrameKind, SubscribeEventsRequest, SubscribeRequest,
     SubscribeSignalsRequest, TagLock as ProtoTagLock, VerifyChainRequest, VerifyChainResponse,
+    event_chain_service_server::EventChainService, ovsdb_mirror_server::OvsdbMirror,
+    plugin_service_server::PluginService, runtime_mirror_server::RuntimeMirror,
+    state_sync_server::StateSync,
 };
 use op_state_store::{Decision, DenyReason, PluginSchema};
 use zbus::Proxy;
@@ -2021,7 +2022,9 @@ impl EventChainService for OperationGrpcServer {
     ) -> Result<Response<GetSnapshotResponse>, Status> {
         let _access =
             AuditAccess::admit(&self.mutation_engine, &request, AuditMethod::GetSnapshot).await?;
-        Err(Status::failed_precondition("legacy EventChain snapshot hashes and state are not a canonical Snowball snapshot contract; use snowball.get_snapshot"))
+        Err(Status::failed_precondition(
+            "legacy EventChain snapshot hashes and state are not a canonical Snowball snapshot contract; use snowball.get_snapshot",
+        ))
     }
 
     async fn create_snapshot(
@@ -2031,7 +2034,9 @@ impl EventChainService for OperationGrpcServer {
         let _access =
             AuditAccess::admit(&self.mutation_engine, &request, AuditMethod::CreateSnapshot)
                 .await?;
-        Err(Status::failed_precondition("legacy EventChain snapshot creation bypasses canonical Snowball mutation; use snowball.create_snapshot"))
+        Err(Status::failed_precondition(
+            "legacy EventChain snapshot creation bypasses canonical Snowball mutation; use snowball.create_snapshot",
+        ))
     }
 
     async fn search_semantic_trace(
@@ -3404,10 +3409,10 @@ impl OperationGrpcServer {
 // =============================================================================
 
 use crate::proto::registry::{
-    component_registry_server::ComponentRegistry, ComponentInfo, ComponentStatus,
-    DeregisterRequest, DeregisterResponse, DiscoverRequest, DiscoverResponse, GetComponentRequest,
-    GetComponentResponse, HeartbeatRequest, HeartbeatResponse, RegisterRequest, RegisterResponse,
-    RegistryEvent, RegistryEventType, WatchRequest,
+    ComponentInfo, ComponentStatus, DeregisterRequest, DeregisterResponse, DiscoverRequest,
+    DiscoverResponse, GetComponentRequest, GetComponentResponse, HeartbeatRequest,
+    HeartbeatResponse, RegisterRequest, RegisterResponse, RegistryEvent, RegistryEventType,
+    WatchRequest, component_registry_server::ComponentRegistry,
 };
 
 #[tonic::async_trait]
@@ -3487,10 +3492,10 @@ impl ComponentRegistry for OperationGrpcServer {
                 return Ok(Response::new(DeregisterResponse {
                     success: false,
                     message: "component not found".to_string(),
-                }))
+                }));
             }
             Some(stored) if stored != &req.lease_token => {
-                return Err(Status::permission_denied("invalid lease token"))
+                return Err(Status::permission_denied("invalid lease token"));
             }
             _ => {}
         }
@@ -3641,7 +3646,7 @@ impl ComponentRegistry for OperationGrpcServer {
                 }));
             }
             Some(stored) if stored != &req.lease_token => {
-                return Err(Status::permission_denied("invalid lease token"))
+                return Err(Status::permission_denied("invalid lease token"));
             }
             _ => {}
         }
@@ -3687,10 +3692,11 @@ impl ComponentRegistry for OperationGrpcServer {
 // =============================================================================
 
 use crate::proto::mail::{
-    mail_service_server::MailService, AdminMailActionRequest, AdminMailActionResponse,
-    CheckMailServerRequest, CheckMailServerResponse, GetInboxRequest, GetInboxResponse,
-    GetMailStatusRequest, GetMailStatusResponse, GetMessageRequest, GetMessageResponse,
-    ListMailAccountsRequest, ListMailAccountsResponse, SendEmailRequest, SendEmailResponse,
+    AdminMailActionRequest, AdminMailActionResponse, CheckMailServerRequest,
+    CheckMailServerResponse, GetInboxRequest, GetInboxResponse, GetMailStatusRequest,
+    GetMailStatusResponse, GetMessageRequest, GetMessageResponse, ListMailAccountsRequest,
+    ListMailAccountsResponse, SendEmailRequest, SendEmailResponse,
+    mail_service_server::MailService,
 };
 
 impl OperationGrpcServer {
@@ -4270,13 +4276,13 @@ impl MailService for OperationGrpcServer {
 // =============================================================================
 
 use crate::proto::privacy::{
-    privacy_network_service_server::PrivacyNetworkService, ConfigurePacketRoutingRequest,
-    ConfigurePacketRoutingResponse, EnsurePrivacyNetworkRequest, EnsurePrivacyNetworkResponse,
-    GenerateWireGuardKeyPairRequest, GenerateWireGuardKeyPairResponse, GetNetworkStatusRequest,
-    GetNetworkStatusResponse, GetNetworkTopologyRequest, GetNetworkTopologyResponse,
-    GetPrivacyWireGuardConfigRequest, GetPrivacyWireGuardConfigResponse, HealthCheckRequest,
-    HealthCheckResponse, ManageComponentRequest, ManageComponentResponse, ProvisionUserRequest,
-    ProvisionUserResponse,
+    ConfigurePacketRoutingRequest, ConfigurePacketRoutingResponse, EnsurePrivacyNetworkRequest,
+    EnsurePrivacyNetworkResponse, GenerateWireGuardKeyPairRequest,
+    GenerateWireGuardKeyPairResponse, GetNetworkStatusRequest, GetNetworkStatusResponse,
+    GetNetworkTopologyRequest, GetNetworkTopologyResponse, GetPrivacyWireGuardConfigRequest,
+    GetPrivacyWireGuardConfigResponse, HealthCheckRequest, HealthCheckResponse,
+    ManageComponentRequest, ManageComponentResponse, ProvisionUserRequest, ProvisionUserResponse,
+    privacy_network_service_server::PrivacyNetworkService,
 };
 
 impl OperationGrpcServer {
@@ -5151,11 +5157,11 @@ impl PrivacyNetworkService for OperationGrpcServer {
 // =============================================================================
 
 use crate::proto::registration::{
-    registration_service_server::RegistrationService, AdminUserActionRequest,
-    AdminUserActionResponse, GetUserStatusRequest, GetUserStatusResponse,
+    AdminUserActionRequest, AdminUserActionResponse, GetUserStatusRequest, GetUserStatusResponse,
     GetWireGuardConfigRequest, GetWireGuardConfigResponse, ListUsersRequest, ListUsersResponse,
     RegisterUserRequest, RegisterUserResponse, SendMagicLinkRequest, SendMagicLinkResponse,
     VerifyMagicLinkRequest, VerifyMagicLinkResponse,
+    registration_service_server::RegistrationService,
 };
 
 impl OperationGrpcServer {

@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 use std::net::ToSocketAddrs;
 
-use crate::agents::base::{validation, AgentTask, AgentTrait, TaskResult};
+use crate::agents::base::{AgentTask, AgentTrait, TaskResult, validation};
 use crate::security::SecurityProfile;
 
 pub struct NetworkEngineerAgent {

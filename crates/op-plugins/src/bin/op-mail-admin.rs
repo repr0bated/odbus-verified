@@ -1,6 +1,6 @@
 //! Private Postfix/Dovecot administration D-Bus peer for `mail-3tched`.
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use nix::fcntl::{Flock, FlockArg};
 use op_plugins::state_plugins::mail_server::{methods, native_owner::MailAdminService};
 use std::os::unix::fs::{FileTypeExt, MetadataExt, OpenOptionsExt, PermissionsExt};

@@ -1,7 +1,7 @@
 //! Exact v0.8.4 cron route mapping over the existing hardened tched-router
 //! runtime client. No second reqwest client or bearer authority is introduced.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use op_plugins::state_plugins::cron::*;
 use serde::Deserialize;

@@ -12,15 +12,15 @@
 
 use async_trait::async_trait;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::os::fd::AsRawFd;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::io::AsyncReadExt;
 
+use crate::Tool;
 use crate::registry::ToolDefinition;
 use crate::security::get_security_validator;
-use crate::Tool;
 
 /// Register all file tools
 pub async fn register_file_tools(registry: &crate::ToolRegistry) -> anyhow::Result<()> {

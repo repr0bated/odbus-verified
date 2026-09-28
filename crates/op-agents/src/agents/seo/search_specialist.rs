@@ -5,7 +5,7 @@ use crate::security::SecurityProfile;
 use async_trait::async_trait;
 use reqwest::Client;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 
 #[derive(Debug, Clone)]
 struct WebResult {

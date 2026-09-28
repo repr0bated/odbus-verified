@@ -9,12 +9,12 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Component, Path};
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-use crate::seeded_root::{provision_seeded_leaf, SeededProvisionDescriptor, SeededRootDescriptor};
+use crate::seeded_root::{SeededProvisionDescriptor, SeededRootDescriptor, provision_seeded_leaf};
 
 const PLAN_DIR: &str = "/var/lib/op-dbus/identity-leaf-plans";
 const MAX_PLAN_BYTES: u64 = 16 * 1024;
@@ -253,7 +253,7 @@ pub fn prepare_leaf(session_id: &str, plan_sha256: &str) -> Result<PreparedLeafR
 mod tests {
     use super::*;
     use std::fs::{self, OpenOptions};
-    use std::os::unix::fs::{symlink, PermissionsExt};
+    use std::os::unix::fs::{PermissionsExt, symlink};
 
     #[test]
     fn rejects_weak_mode_and_wrong_owner() {

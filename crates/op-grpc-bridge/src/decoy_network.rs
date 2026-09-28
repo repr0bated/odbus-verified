@@ -4,7 +4,7 @@
 //! reconstructed claims. The decoy requires both its private transport CA and
 //! the configured bridge leaf-certificate SHA-256 pin; a SID1 integrity seal
 //! alone is deliberately NOT remote authentication.
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use async_trait::async_trait;
 use base64::Engine as _;
 use op_network::dbus_tls::TlsDbusSocket;
@@ -720,15 +720,17 @@ mod tests {
                 "wireguard.read",
             ),
         ] {
-            assert!(service
-                .call_owned(
-                    "wireguard".into(),
-                    method.into(),
-                    arguments.to_string(),
-                    fixture_metadata(schema_hash.clone(), capability),
-                )
-                .await
-                .is_err());
+            assert!(
+                service
+                    .call_owned(
+                        "wireguard".into(),
+                        method.into(),
+                        arguments.to_string(),
+                        fixture_metadata(schema_hash.clone(), capability),
+                    )
+                    .await
+                    .is_err()
+            );
         }
         assert_eq!(backend.effects.load(Ordering::SeqCst), 1);
     }

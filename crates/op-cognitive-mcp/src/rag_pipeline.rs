@@ -12,12 +12,12 @@
 use crate::voyage::VoyageClient;
 use anyhow::{Context, Result};
 use qdrant_client::{
-    qdrant::{
-        vectors_config::Config as VectorsConfigEnum, Condition, CreateCollectionBuilder, Distance,
-        Filter, PointStruct, ScoredPoint, SearchPointsBuilder, UpsertPointsBuilder,
-        VectorParamsBuilder, VectorsConfig,
-    },
     Payload, Qdrant, QdrantError,
+    qdrant::{
+        Condition, CreateCollectionBuilder, Distance, Filter, PointStruct, ScoredPoint,
+        SearchPointsBuilder, UpsertPointsBuilder, VectorParamsBuilder, VectorsConfig,
+        vectors_config::Config as VectorsConfigEnum,
+    },
 };
 use regex::Regex;
 use serde::Serialize;

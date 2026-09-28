@@ -140,24 +140,30 @@ async fn concurrent_role_writes_preserve_siblings() {
 #[tokio::test]
 async fn malformed_or_ambiguous_inputs_fail_before_durable_write() {
     let methods = methods();
-    assert!(methods
-        .assign(ModelRole::OvsRouting, "missing", &observed())
-        .await
-        .is_err());
-    assert!(methods
-        .observe(
-            "ResolveRoute",
-            &json!({"hint":"fast","extra":1}),
-            &observed()
-        )
-        .await
-        .is_err());
+    assert!(
+        methods
+            .assign(ModelRole::OvsRouting, "missing", &observed())
+            .await
+            .is_err()
+    );
+    assert!(
+        methods
+            .observe(
+                "ResolveRoute",
+                &json!({"hint":"fast","extra":1}),
+                &observed()
+            )
+            .await
+            .is_err()
+    );
     let mut ambiguous = observed();
     ambiguous.model_routes.push(route("other", "p2", "m1"));
-    assert!(methods
-        .assign(ModelRole::OvsRouting, "m1", &ambiguous)
-        .await
-        .is_err());
+    assert!(
+        methods
+            .assign(ModelRole::OvsRouting, "m1", &ambiguous)
+            .await
+            .is_err()
+    );
     assert_eq!(methods.assignments().await.unwrap().0, 0);
 }
 

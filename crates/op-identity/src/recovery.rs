@@ -11,10 +11,10 @@
 //! If the machine is lost and no off-machine mnemonic backup exists, the identity
 //! is unrecoverable by design — there is no server lever to pull.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use bip39::Mnemonic;
-use rand::rngs::OsRng;
 use rand::RngCore;
+use rand::rngs::OsRng;
 
 use crate::registration::WireGuardKeyPair;
 
@@ -52,7 +52,7 @@ pub fn mnemonic_to_seed(mnemonic: &str) -> Result<[u8; 32]> {
 /// Deterministically derive the WireGuard keypair from a recovery seed.
 /// The same seed always yields the same pubkey (= the stable identity).
 pub fn derive_keypair(seed: &[u8; 32]) -> WireGuardKeyPair {
-    use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+    use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
     use x25519_dalek::{PublicKey, StaticSecret};
 
     let key_material = blake3::derive_key(KDF_CONTEXT, seed);

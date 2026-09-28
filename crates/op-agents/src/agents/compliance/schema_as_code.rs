@@ -8,7 +8,7 @@ use crate::agents::base::{AgentTask, AgentTrait, TaskResult};
 use crate::security::SecurityProfile;
 use async_trait::async_trait;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 
 pub struct SchemaAsCodeAgent {
     agent_id: String,
@@ -428,11 +428,12 @@ mod tests {
         assert_eq!(v.get("valid").and_then(|x| x.as_bool()), Some(false));
         assert_eq!(v.get("mode").and_then(|x| x.as_str()), Some("jsonschema"));
         assert!(v.get("error_count").and_then(|x| x.as_u64()).unwrap_or(0) >= 1);
-        assert!(v
-            .get("input")
-            .and_then(|x| x.as_str())
-            .unwrap()
-            .contains("nope"));
+        assert!(
+            v.get("input")
+                .and_then(|x| x.as_str())
+                .unwrap()
+                .contains("nope")
+        );
     }
 
     #[test]
@@ -455,16 +456,18 @@ mod tests {
             simd_json::to_string(&a).unwrap(),
             simd_json::to_string(&b).unwrap()
         );
-        assert!(a
-            .get("input")
-            .and_then(|x| x.as_str())
-            .unwrap()
-            .contains("AAA"));
-        assert!(b
-            .get("input")
-            .and_then(|x| x.as_str())
-            .unwrap()
-            .contains("BBB"));
+        assert!(
+            a.get("input")
+                .and_then(|x| x.as_str())
+                .unwrap()
+                .contains("AAA")
+        );
+        assert!(
+            b.get("input")
+                .and_then(|x| x.as_str())
+                .unwrap()
+                .contains("BBB")
+        );
     }
 
     #[test]

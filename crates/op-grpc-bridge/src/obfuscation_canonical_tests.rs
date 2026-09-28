@@ -3,7 +3,7 @@ use super::*;
 use crate::human_principal_dispatch::tests::{
     pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
 };
-use crate::identity_sled_dispatch::{tests::write_identity, IdentitySledStore};
+use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
 use crate::obfuscation_methods::{FlowOwner, ObfuscationMethods};
 use anyhow::Result;
 use op_plugins::state_plugins::{
@@ -11,7 +11,7 @@ use op_plugins::state_plugins::{
     openflow_obfuscation::OpenFlowObfuscationPlugin, runtime_documents::RuntimeDocuments,
 };
 use op_state::StatePlugin;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Default)]
 struct Switch(Mutex<Vec<FlowEntry>>);
@@ -73,15 +73,17 @@ async fn flow_methods_commit_verified_children_and_reject_revoked_identity() {
         ))
         .unwrap();
     let owner = Arc::new(Switch::default());
-    assert!(engine
-        .obfuscation_methods
-        .set(Arc::new(ObfuscationMethods::new(
-            Arc::new(RuntimeDocuments::new(
-                op_cozo_store::CozoGraphShuttle::new_in_memory().unwrap()
-            )),
-            owner.clone(),
-        )))
-        .is_ok());
+    assert!(
+        engine
+            .obfuscation_methods
+            .set(Arc::new(ObfuscationMethods::new(
+                Arc::new(RuntimeDocuments::new(
+                    op_cozo_store::CozoGraphShuttle::new_in_memory().unwrap()
+                )),
+                owner.clone(),
+            )))
+            .is_ok()
+    );
     let public_key = pk(0xD5);
     register(&public_key, "flow-fixture").await.unwrap();
     let identity = write_identity(&engine, &public_key).await.unwrap();
@@ -142,20 +144,22 @@ async fn flow_methods_commit_verified_children_and_reject_revoked_identity() {
     let remove = json!({"bridge":"fixture0","flow_id":ids[0],"expected_revision":2});
     let before = op_core::projection_shm::read_projection_bytes("openflow_obfuscation").unwrap();
     std::fs::write(&grant_path, "{}").unwrap();
-    assert!(engine
-        .dispatch_method_call_with_identity(
-            "openflow_obfuscation",
-            "deobfuscate_flow",
-            &remove.to_string(),
-            schema.methods["deobfuscate_flow"]
-                .required_capability
-                .as_deref(),
-            &principal,
-            Some(&identity.session_id),
-            identity.genesis.as_deref(),
-        )
-        .await
-        .is_err());
+    assert!(
+        engine
+            .dispatch_method_call_with_identity(
+                "openflow_obfuscation",
+                "deobfuscate_flow",
+                &remove.to_string(),
+                schema.methods["deobfuscate_flow"]
+                    .required_capability
+                    .as_deref(),
+                &principal,
+                Some(&identity.session_id),
+                identity.genesis.as_deref(),
+            )
+            .await
+            .is_err()
+    );
     assert_eq!(owner.0.lock().await.len(), 2);
     assert_eq!(
         op_core::projection_shm::read_projection_bytes("openflow_obfuscation").unwrap(),

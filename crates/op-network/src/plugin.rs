@@ -452,11 +452,13 @@ mod tests {
             fail_secure: false,
         };
         assert!(admit_default_flow_rules(&config).is_err());
-        assert!(admit_default_flow_rules(&OpenFlowConfig {
-            default_rules: Vec::new(),
-            ..config
-        })
-        .is_ok());
+        assert!(
+            admit_default_flow_rules(&OpenFlowConfig {
+                default_rules: Vec::new(),
+                ..config
+            })
+            .is_ok()
+        );
     }
 
     #[test]

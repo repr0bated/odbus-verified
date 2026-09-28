@@ -10,10 +10,10 @@ use tonic::{Request, Response, Status};
 use tracing::info;
 
 use crate::orchestration::proto::op_chat_orchestration::{
-    sequential_thinking_service_server::SequentialThinkingService, AddThoughtRequest,
-    AddThoughtResponse, ChainStatus, ConcludeRequest, ConcludeResponse, ForkChainRequest,
-    ForkChainResponse, GetChainRequest, GetChainResponse, StartChainRequest, StartChainResponse,
-    ThoughtEvent,
+    AddThoughtRequest, AddThoughtResponse, ChainStatus, ConcludeRequest, ConcludeResponse,
+    ForkChainRequest, ForkChainResponse, GetChainRequest, GetChainResponse, StartChainRequest,
+    StartChainResponse, ThoughtEvent,
+    sequential_thinking_service_server::SequentialThinkingService,
 };
 
 use super::{ChainStatusInternal, OrchestrationServer, ThinkingChain, ThoughtEntry};

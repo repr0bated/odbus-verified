@@ -15,7 +15,7 @@ pub mod workstack;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock, broadcast};
 use tonic::{Request, Status};
 use tonic_reflection;
 use tonic_web;
@@ -224,14 +224,14 @@ pub async fn run_orchestration_server(
 mod admission_tests {
     use super::*;
     use crate::orchestration::proto::op_chat_orchestration::{
+        CargoRequest,
         agent_execution_server::AgentExecutionServer,
         rust_pro_service_server::{RustProService, RustProServiceServer},
-        CargoRequest,
     };
     use crate::orchestration::workstack_executor::ToolExecutor;
-    use tonic::codegen::{http, Service};
-    use tonic::service::interceptor::InterceptedService;
     use tonic::Code;
+    use tonic::codegen::{Service, http};
+    use tonic::service::interceptor::InterceptedService;
 
     struct NeverExecuteTool;
 

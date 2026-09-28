@@ -4,7 +4,7 @@ use op_state_store::{MethodDecl, PluginSchema, SideEffect};
 use prost::Message;
 use prost_reflect::{DescriptorPool, DynamicMessage, MessageDescriptor, SerializeOptions};
 use serde::de::DeserializeSeed;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[test]
 fn public_state_policy_survives_the_actual_sealed_blob_boundary() {

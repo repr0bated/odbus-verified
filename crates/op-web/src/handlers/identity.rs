@@ -7,7 +7,7 @@
 use axum::{
     body::Body,
     extract::{Extension, Query},
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     response::Response,
 };
 use serde::Deserialize;

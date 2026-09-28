@@ -200,8 +200,11 @@ fn read_knowledge_rows(
     rows.rows
         .into_iter()
         .map(|row| {
-            let [DataValue::Str(push_id), DataValue::Str(content_hash), DataValue::Str(push_json)] =
-                row.as_slice()
+            let [
+                DataValue::Str(push_id),
+                DataValue::Str(content_hash),
+                DataValue::Str(push_json),
+            ] = row.as_slice()
             else {
                 return Err(error("corrupt knowledge push row"));
             };
@@ -271,8 +274,12 @@ fn read_rows(
     rows.rows
         .into_iter()
         .map(|row| {
-            let [DataValue::Str(episode_id), DataValue::Str(content_hash), DataValue::Str(episode_json), DataValue::Str(embedding_json)] =
-                row.as_slice()
+            let [
+                DataValue::Str(episode_id),
+                DataValue::Str(content_hash),
+                DataValue::Str(episode_json),
+                DataValue::Str(embedding_json),
+            ] = row.as_slice()
             else {
                 return Err(error("corrupt chatbot episode row"));
             };
@@ -311,11 +318,10 @@ fn read_scope_state(
     match rows.rows.as_slice() {
         [] => Ok((0, 0)),
         [row] => match row.as_slice() {
-            [DataValue::Num(Num::Int(revision)), DataValue::Num(Num::Int(count))]
-                if *revision >= 0 && *count >= 0 =>
-            {
-                Ok((*revision as u64, *count as u64))
-            }
+            [
+                DataValue::Num(Num::Int(revision)),
+                DataValue::Num(Num::Int(count)),
+            ] if *revision >= 0 && *count >= 0 => Ok((*revision as u64, *count as u64)),
             _ => Err(error("corrupt chatbot episode scope row")),
         },
         _ => Err(error("corrupt chatbot episode scope row")),
@@ -922,10 +928,12 @@ mod tests {
         assert_eq!(bob_rows.len(), 1);
         assert_eq!(bob_rows[0].content_hash, "cc".repeat(32));
         // A third principal on the same session/genesis sees nothing.
-        assert!(store
-            .list_scoped_episodes(&scope("carol"), None, 10)
-            .unwrap()
-            .is_empty());
+        assert!(
+            store
+                .list_scoped_episodes(&scope("carol"), None, 10)
+                .unwrap()
+                .is_empty()
+        );
     }
 
     /// The store only checks the hash shape; the plugin owns the real digest.
@@ -1001,10 +1009,12 @@ mod tests {
             "newest first"
         );
         assert_eq!(snapshot.revision, 5);
-        assert!(store
-            .list_scoped_knowledge(&scope("bob"), 10)
-            .unwrap()
-            .is_empty());
+        assert!(
+            store
+                .list_scoped_knowledge(&scope("bob"), 10)
+                .unwrap()
+                .is_empty()
+        );
         assert_eq!(store.list_scoped_knowledge(&alice, 10).unwrap().len(), 4);
     }
 
@@ -1030,15 +1040,19 @@ mod tests {
         store
             .insert_scoped_episode_and_snapshot(&hidden, 32)
             .unwrap();
-        assert!(store
-            .insert_scoped_episode_and_snapshot(&first, 32)
-            .is_err());
+        assert!(
+            store
+                .insert_scoped_episode_and_snapshot(&first, 32)
+                .is_err()
+        );
         let before_invalid = store.snapshot_scoped_episodes(&alice, 32).unwrap();
         let mut invalid = row(alice.clone(), "003", &"dd".repeat(32));
         invalid.episode["on_behalf_of"] = serde_json::json!("another-principal");
-        assert!(store
-            .insert_scoped_episode_and_snapshot(&invalid, 32)
-            .is_err());
+        assert!(
+            store
+                .insert_scoped_episode_and_snapshot(&invalid, 32)
+                .is_err()
+        );
         assert_eq!(
             store.snapshot_scoped_episodes(&alice, 32).unwrap(),
             before_invalid
@@ -1076,32 +1090,36 @@ mod tests {
                 .embedding,
             Some(replacement.clone())
         );
-        assert!(store
-            .compare_exchange_episode_embedding(
-                &alice,
-                "001",
-                "wrong",
-                Some(&replacement),
-                &embedding(0.75),
-                32,
-            )
-            .is_err());
+        assert!(
+            store
+                .compare_exchange_episode_embedding(
+                    &alice,
+                    "001",
+                    "wrong",
+                    Some(&replacement),
+                    &embedding(0.75),
+                    32,
+                )
+                .is_err()
+        );
         assert_eq!(
             store.snapshot_scoped_episodes(&alice, 32).unwrap().revision,
             3
         );
         let mut invalid_embedding = embedding(0.5);
         invalid_embedding.vector[0] = f32::NAN;
-        assert!(store
-            .compare_exchange_episode_embedding(
-                &alice,
-                "001",
-                &first_hash,
-                Some(&replacement),
-                &invalid_embedding,
-                32,
-            )
-            .is_err());
+        assert!(
+            store
+                .compare_exchange_episode_embedding(
+                    &alice,
+                    "001",
+                    &first_hash,
+                    Some(&replacement),
+                    &invalid_embedding,
+                    32,
+                )
+                .is_err()
+        );
     }
 
     #[test]
@@ -1121,14 +1139,16 @@ mod tests {
                 matches!(value, DataValue::Str(name) if name.starts_with("ctl_plane_chatbot_episode"))
             })
         }));
-        assert!(generic
-            .db
-            .run_script(
-                "?[episode_id] := *ctl_plane_chatbot_episodes{episode_id}",
-                BTreeMap::new(),
-                ScriptMutability::Mutable,
-            )
-            .is_err());
+        assert!(
+            generic
+                .db
+                .run_script(
+                    "?[episode_id] := *ctl_plane_chatbot_episodes{episode_id}",
+                    BTreeMap::new(),
+                    ScriptMutability::Mutable,
+                )
+                .is_err()
+        );
 
         generic
             .db

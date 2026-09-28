@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use op_plugins::state_plugins::agent_triggers::{enabled_triggers, topic_matches, AgentTrigger};
+use op_plugins::state_plugins::agent_triggers::{AgentTrigger, enabled_triggers, topic_matches};
 use tokio::sync::Mutex;
 
 use crate::agent_runs::{RunQueue, TriggerEvent};

@@ -1064,10 +1064,11 @@ mod tests {
             serde_json::from_slice(&fs.read_bytes(result.ino, 0).unwrap()).unwrap();
         assert_eq!(receipt["result"]["method"], "record_event");
         assert_eq!(receipt["result"]["args"], r#"{"event":"arrival"}"#);
-        assert!(fs
-            .read_bytes(method_node(&fs, "error").ino, 0)
-            .unwrap()
-            .is_empty());
+        assert!(
+            fs.read_bytes(method_node(&fs, "error").ino, 0)
+                .unwrap()
+                .is_empty()
+        );
         assert_eq!(bound.lock().unwrap().as_deref(), Some("b0c777e3"));
         server.join().unwrap();
     }
@@ -1123,10 +1124,11 @@ mod tests {
         // same stage and errno as a refused SID1 registration.
         assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Err(EACCES));
         assert_eq!(error_stage(&fs), "register");
-        assert!(fs
-            .read_bytes(method_node(&fs, "result").ino, 0)
-            .unwrap()
-            .is_empty());
+        assert!(
+            fs.read_bytes(method_node(&fs, "result").ino, 0)
+                .unwrap()
+                .is_empty()
+        );
         server.join().unwrap();
     }
 

@@ -40,7 +40,7 @@ use op_tools::ToolRegistry;
 
 use crate::agent_tools::register_context_agents;
 use crate::forced_execution::{
-    detect_raw_text_output, ForcedExecutionOrchestrator, HallucinationCheck, ToolCall,
+    ForcedExecutionOrchestrator, HallucinationCheck, ToolCall, detect_raw_text_output,
 };
 use crate::tool_executor::TrackedToolExecutor;
 

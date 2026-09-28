@@ -3,12 +3,12 @@
 //! Supports HTTP/SSE upstreams. Unsupported transports are rejected at construction.
 
 use crate::config::{ServerAuth, TransportType, UpstreamServer};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
-use std::sync::atomic::{AtomicU64, Ordering};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 

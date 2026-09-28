@@ -5,7 +5,7 @@ use op_state_store::MemoryStore;
 use prost::Message;
 use prost_reflect::{DescriptorPool, DynamicMessage, SerializeOptions};
 use serde::de::DeserializeSeed;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 fn pascal(name: &str) -> String {

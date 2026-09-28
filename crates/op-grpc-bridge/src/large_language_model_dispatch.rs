@@ -10,7 +10,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use op_plugins::state_plugins::large_language_model_methods::{
-    complete_method, plan_method, TargetPlan,
+    TargetPlan, complete_method, plan_method,
 };
 
 fn admit_target(plan: &TargetPlan, actor: &str) -> Result<()> {

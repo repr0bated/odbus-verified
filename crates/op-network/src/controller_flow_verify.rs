@@ -1,11 +1,11 @@
 //! OpenFlow 1.5 flow-description readback, used inside the sole connection
 //! command queue. Layout: OVS include/openflow/openflow-1.5.h ofp15_flow_desc.
 //! A successful socket write is never an installation receipt.
-use super::{build_barrier_request, build_echo_reply, recv_msg, send_msg, OfIo, OF_VERSION};
-use anyhow::{ensure, Context, Result};
+use super::{OF_VERSION, OfIo, build_barrier_request, build_echo_reply, recv_msg, send_msg};
+use anyhow::{Context, Result, ensure};
 use rovs_openflow::{Flow, FlowStatsRequest, InstructionList, Match};
 use std::time::Duration;
-use tokio::time::{timeout_at, Instant};
+use tokio::time::{Instant, timeout_at};
 
 #[derive(Debug)]
 pub(crate) struct Description {

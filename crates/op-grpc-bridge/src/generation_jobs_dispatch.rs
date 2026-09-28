@@ -21,11 +21,11 @@ use std::{
     collections::HashMap,
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc, Mutex as StdMutex,
+        atomic::{AtomicBool, Ordering},
     },
 };
-use tokio::sync::{broadcast, watch, Mutex};
+use tokio::sync::{Mutex, broadcast, watch};
 
 const MAX_OWNERS: usize = 256;
 const MAX_OWNER_CALLS: usize = 32;
@@ -622,7 +622,9 @@ impl GenerationPublisher {
             } => {
                 slot.activated.store(false, Ordering::Release);
                 let revision = durable.flatten().map(|state| state.generation_revision);
-                anyhow::bail!("generation_publication_pending operation_id={operation_id} document_revision={revision:?}")
+                anyhow::bail!(
+                    "generation_publication_pending operation_id={operation_id} document_revision={revision:?}"
+                )
             }
         }
     }

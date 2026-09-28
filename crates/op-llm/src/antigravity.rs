@@ -16,12 +16,12 @@ use op_plugins::state_plugins::{
         LocalUsageReport, SafetySetting,
     },
     antigravity_chat::{ConfigureInput, ConfigureOutput, NativeBridgeStatus, TokenRefreshReceipt},
-    runtime_documents::{runtime_documents, RuntimeDocuments},
+    runtime_documents::{RuntimeDocuments, runtime_documents},
 };
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
@@ -1137,9 +1137,11 @@ mod tests {
         assert!(receipt.token_available);
         let request = String::from_utf8(request_task.await.unwrap()).unwrap();
         assert!(request.starts_with("POST /token HTTP/1.1"));
-        assert!(request
-            .to_ascii_lowercase()
-            .contains("content-type: application/json"));
+        assert!(
+            request
+                .to_ascii_lowercase()
+                .contains("content-type: application/json")
+        );
         let payload: serde_json::Value = serde_json::from_str(
             request
                 .split_once("\r\n\r\n")
@@ -1202,8 +1204,10 @@ mod tests {
             .unwrap();
         assert_eq!(result.usage.unwrap().total_tokens, 10);
         let request = String::from_utf8(request_task.await.unwrap()).unwrap();
-        assert!(request
-            .starts_with("POST /models/fixture-model:generateContent?key=PRIVATE_KEY HTTP/1.1"));
+        assert!(
+            request
+                .starts_with("POST /models/fixture-model:generateContent?key=PRIVATE_KEY HTTP/1.1")
+        );
         let payload: serde_json::Value = serde_json::from_str(
             request
                 .split_once("\r\n\r\n")

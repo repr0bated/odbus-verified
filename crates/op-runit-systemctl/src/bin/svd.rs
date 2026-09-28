@@ -1,7 +1,7 @@
 //! s6d — D-Bus wrapper for the canonical runit control-plane service.
 
-use anyhow::{bail, Context, Result};
-use zbus::{proxy, Connection};
+use anyhow::{Context, Result, bail};
+use zbus::{Connection, proxy};
 
 const RUNIT_BUS_NAME: &str = "org.opdbus.v1.Runit.Systemctl";
 const RUNIT_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/runit/systemctl";
@@ -94,11 +94,7 @@ fn required_unit(mut args: impl Iterator<Item = String>) -> Result<String> {
 
 fn print_result((ok, message): (bool, String)) -> Result<()> {
     println!("{message}");
-    if ok {
-        Ok(())
-    } else {
-        bail!("{message}")
-    }
+    if ok { Ok(()) } else { bail!("{message}") }
 }
 
 fn usage() {

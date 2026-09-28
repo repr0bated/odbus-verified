@@ -38,6 +38,7 @@ use tracing_subscriber::EnvFilter;
 
 use op_agents::agent_catalog::builtin_agent_descriptors;
 use op_agents::agents::{
+    AgentTrait,
     aiml::{
         AIEngineerAgent, DataEngineerAgent, DataScientistAgent, MLEngineerAgent,
         MLOpsEngineerAgent, PromptEngineerAgent,
@@ -75,7 +76,6 @@ use op_agents::agents::{
         SnowballDeveloperAgent, UIUXDesignerAgent, UnityDeveloperAgent,
     },
     webframeworks::{DjangoProAgent, FastAPIProAgent, TemporalPythonProAgent},
-    AgentTrait,
 };
 use op_agents::dbus_service::{generate_agent_id, start_agent, start_unified_execution_service};
 

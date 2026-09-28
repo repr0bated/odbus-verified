@@ -14,14 +14,14 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use tokio::sync::Mutex;
-use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::Stream;
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
 
 use crate::orchestration::proto::op_chat_chat::{
-    chat_frame, chat_service_server::ChatService, ApproveRequest, ApproveResponse, CancelRequest,
-    CancelResponse, ChatFrame, Heartbeat, SendRequest, StreamDone, UiMessagePart,
+    ApproveRequest, ApproveResponse, CancelRequest, CancelResponse, ChatFrame, Heartbeat,
+    SendRequest, StreamDone, UiMessagePart, chat_frame, chat_service_server::ChatService,
 };
 
 /// Shared state for the ChatService.

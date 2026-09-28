@@ -33,11 +33,11 @@
 //!   --seed-only     Write OVSDB system bridge/port rows and exit.  This is
 //!                   for the runit ovs-vswitchd run script before vswitchd starts.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use rovs_jsonrpc::Connection;
 use rovs_ovsdb::{Client, Transaction};
 use rovs_transport::{Address, Stream};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::Path;
 use std::process::Command;
 use std::time::Duration;

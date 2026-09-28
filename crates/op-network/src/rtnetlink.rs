@@ -5,7 +5,7 @@ use futures::TryStreamExt;
 use netlink_packet_route::address::AddressAttribute;
 use netlink_packet_route::link::LinkAttribute;
 use netlink_packet_route::route::{RouteAddress, RouteAttribute, RouteMessage};
-use rtnetlink::{new_connection, IpVersion};
+use rtnetlink::{IpVersion, new_connection};
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 
@@ -396,15 +396,15 @@ pub async fn add_default_route(ifname: &str, gateway: &str) -> Result<()> {
 /// expose this flag through its typed builder.
 pub async fn add_default_route_onlink(ifname: &str, gateway: &str) -> Result<()> {
     use netlink_packet_core::{
-        NetlinkHeader, NetlinkMessage, NetlinkPayload, NLM_F_ACK, NLM_F_CREATE, NLM_F_REPLACE,
-        NLM_F_REQUEST,
+        NLM_F_ACK, NLM_F_CREATE, NLM_F_REPLACE, NLM_F_REQUEST, NetlinkHeader, NetlinkMessage,
+        NetlinkPayload,
     };
+    use netlink_packet_route::RouteNetlinkMessage;
     use netlink_packet_route::route::{
         RouteAddress, RouteAttribute, RouteHeader, RouteMessage, RouteNextHop, RouteNextHopFlag,
         RouteProtocol, RouteScope, RouteType,
     };
-    use netlink_packet_route::RouteNetlinkMessage;
-    use netlink_sys::{protocols::NETLINK_ROUTE, Socket};
+    use netlink_sys::{Socket, protocols::NETLINK_ROUTE};
 
     // Resolve interface index
     let (connection, handle, _) = new_connection()?;

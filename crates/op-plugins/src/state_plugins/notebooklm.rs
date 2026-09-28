@@ -10,8 +10,8 @@ use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateD
 use op_state_store::SideEffect;
 use op_state_store::{CapabilityDecl, PluginSchema};
 use serde::{Deserialize, Serialize};
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 use std::path::Path;
 
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;

@@ -7,10 +7,10 @@ use tonic::{Request, Response, Status};
 use tracing::{info, warn};
 
 use crate::orchestration::proto::op_chat_orchestration::{
-    agent_lifecycle_server::AgentLifecycle, AgentInfo, AgentStatus, AgentStatusEvent,
-    EndSessionRequest, EndSessionResponse, HealthCheckRequest, HealthCheckResponse,
-    ShutdownRequest, ShutdownResponse, StartSessionRequest, StartSessionResponse,
-    WatchAgentsRequest,
+    AgentInfo, AgentStatus, AgentStatusEvent, EndSessionRequest, EndSessionResponse,
+    HealthCheckRequest, HealthCheckResponse, ShutdownRequest, ShutdownResponse,
+    StartSessionRequest, StartSessionResponse, WatchAgentsRequest,
+    agent_lifecycle_server::AgentLifecycle,
 };
 
 use super::{OrchestrationServer, SessionInfo};

@@ -8,7 +8,7 @@
 //! the whitepaper.
 
 use crate::adapter::{
-    apply_state_defaults, method_decl_from_schemars_with_output, plugin_schema_from_json, AckOutput,
+    AckOutput, apply_state_defaults, method_decl_from_schemars_with_output, plugin_schema_from_json,
 };
 use crate::schema::{PluginSchema, SideEffect};
 use serde::{Deserialize, Serialize};

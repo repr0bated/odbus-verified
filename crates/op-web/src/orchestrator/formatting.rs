@@ -1,7 +1,7 @@
-use super::types::ToolResult;
 use super::UnifiedOrchestrator;
-use simd_json::prelude::*;
+use super::types::ToolResult;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 
 impl UnifiedOrchestrator {
     /// Format results for display in the LLM context

@@ -5,7 +5,7 @@
 //! cannot prove ownership, mutation semantics, defaults, or runtime dispatch.
 
 use crate::emit::CompletePluginDocument;
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::collections::BTreeSet;
 
 pub fn emit_inspector_rust(source: &str, doc: &CompletePluginDocument) -> Result<String> {

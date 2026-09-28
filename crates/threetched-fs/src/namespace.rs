@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::ffi::OsString;
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use parking_lot::RwLock;
 use serde::Serialize;
 use serde_json::Value;

@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use anyhow::{ensure, Context};
+use anyhow::{Context, ensure};
 use op_plugins::state_plugins::tched_router::{ChatInput, ChatOutput};
 use serde::Serialize;
 
@@ -92,13 +92,13 @@ async fn complete_with_client(
 mod tests {
     use super::*;
     use axum::{
+        Json, Router,
         extract::Query,
         http::{HeaderMap, HeaderValue},
         response::IntoResponse,
         routing::{get, post},
-        Json, Router,
     };
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     use std::{
         collections::HashMap,
         sync::atomic::{AtomicUsize, Ordering},

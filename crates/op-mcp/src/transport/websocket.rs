@@ -2,19 +2,19 @@
 //!
 //! Full-duplex WebSocket transport for MCP.
 
-use super::http::{wireguard_auth_middleware, AuthValidator, EnvAllowListValidator};
+use super::http::{AuthValidator, EnvAllowListValidator, wireguard_auth_middleware};
 use super::{McpHandler, Transport};
 use crate::{JsonRpcError, McpRequest, McpResponse};
 use anyhow::Result;
 use axum::{
+    Router,
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
         State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
-    Router,
 };
 use futures::{SinkExt, StreamExt};
 use simd_json::json;

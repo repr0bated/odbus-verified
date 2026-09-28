@@ -1,10 +1,10 @@
 //! Base Persona Agent Implementation
 
 use async_trait::async_trait;
+use simd_json::OwnedValue as Value;
 #[cfg(test)]
 use simd_json::json;
 use simd_json::prelude::*;
-use simd_json::OwnedValue as Value;
 
 use super::super::agent_trait::{
     AgentCapability, AgentCategory, AgentRequest, AgentResponse, UnifiedAgent,

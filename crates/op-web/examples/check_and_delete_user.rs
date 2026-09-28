@@ -19,7 +19,9 @@ async fn main() -> anyhow::Result<()> {
                 u.privacy_network_connected
             );
             if u.privacy_container_name.is_some() || u.privacy_network_connected {
-                println!("REFUSING: user has a provisioned container/route — needs proper storage detach first, not a bare delete.");
+                println!(
+                    "REFUSING: user has a provisioned container/route — needs proper storage detach first, not a bare delete."
+                );
                 return Ok(());
             }
             store.delete_user(&u.id).await?;

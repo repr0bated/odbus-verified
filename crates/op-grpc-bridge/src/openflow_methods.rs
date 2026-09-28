@@ -1,6 +1,6 @@
 //! Canonical exact compare-and-exchange adapter for OpenFlow flow members.
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::openflow::{
     AddFlowInput, DeleteFlowInput, FlowAction, FlowEntry, FlowMutationKind, FlowMutationOutput,
     ModifyFlowInput,
@@ -285,7 +285,7 @@ mod tests {
     use super::*;
     use crate::{
         mutation_engine::ChangeType,
-        state_tree_fold::{fold_plugin_state, StateTreeFold},
+        state_tree_fold::{StateTreeFold, fold_plugin_state},
     };
     use simd_json::json as simd_json_value;
     use simd_json::prelude::*;
@@ -332,26 +332,32 @@ mod tests {
 
     #[test]
     fn wildcard_delete_identity_change_and_fallback_are_unrepresentable() {
-        assert!(cas_request(
-            "delete_flow",
-            &serde_json::json!({"bridge":"ovsbr0","match_fields":{}})
-        )
-        .is_err());
+        assert!(
+            cas_request(
+                "delete_flow",
+                &serde_json::json!({"bridge":"ovsbr0","match_fields":{}})
+            )
+            .is_err()
+        );
         let expected = flow(vec![FlowAction::Normal]);
         let mut changed = expected.clone();
         changed.priority += 1;
-        assert!(cas_request(
-            "modify_flow",
-            &serde_json::json!({"bridge":"ovsbr0","expected":expected,"replacement":changed})
-        )
-        .is_err());
+        assert!(
+            cas_request(
+                "modify_flow",
+                &serde_json::json!({"bridge":"ovsbr0","expected":expected,"replacement":changed})
+            )
+            .is_err()
+        );
         let mut fallback = flow(vec![FlowAction::Normal]);
         fallback.priority = 0;
-        assert!(cas_request(
-            "add_flow",
-            &serde_json::json!({"bridge":"ovsbr0","flow":fallback})
-        )
-        .is_err());
+        assert!(
+            cas_request(
+                "add_flow",
+                &serde_json::json!({"bridge":"ovsbr0","flow":fallback})
+            )
+            .is_err()
+        );
     }
 
     #[test]

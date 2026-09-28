@@ -151,8 +151,11 @@ pub(crate) fn large_language_model_schema() -> PluginSchema {
     let root = serde_json::to_value(schemars::schema_for!(LargeLanguageModelState))
         .expect("schema serializes");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
-        "large_language_model", "3.0.0",
-        "Compatibility LLM method surface; tched_router exclusively owns provider, model, configuration, inference, and state", &root);
+        "large_language_model",
+        "3.0.0",
+        "Compatibility LLM method surface; tched_router exclusively owns provider, model, configuration, inference, and state",
+        &root,
+    );
     let state = simd_json::serde::to_owned_value(LargeLanguageModelPlugin::state())
         .expect("state serializes");
     super::schemars_adapter::apply_state_defaults(&mut schema, &state);

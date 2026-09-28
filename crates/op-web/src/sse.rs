@@ -2,7 +2,7 @@
 //! Hydration always reads the pinned catalog and committed SHM; replayed RAM
 //! frames are never the source for a new or lagging connection.
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use axum::{
     extract::Extension,
     response::sse::{Event, Sse},
@@ -12,7 +12,7 @@ use op_grpc_bridge::{
     grpc_client::StateUpdateMessage,
     proto::{ChangeType, StateFrameKind},
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{convert::Infallible, future::Future, pin::Pin, sync::Arc, time::Duration};
 use tokio::sync::broadcast;
 

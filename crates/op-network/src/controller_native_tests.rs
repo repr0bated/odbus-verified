@@ -263,9 +263,11 @@ async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
     crate::datapath_safe::ensure_fallback_normal("fixture0")
         .await
         .unwrap();
-    assert!(crate::datapath_safe::fallback_present("fixture0")
-        .await
-        .unwrap());
+    assert!(
+        crate::datapath_safe::fallback_present("fixture0")
+            .await
+            .unwrap()
+    );
     crate::datapath_safe::del_controller("fixture0")
         .await
         .unwrap();
@@ -274,9 +276,11 @@ async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
         .output()
         .unwrap();
     assert!(controllers.status.success());
-    assert!(String::from_utf8_lossy(&controllers.stdout)
-        .trim()
-        .is_empty());
+    assert!(
+        String::from_utf8_lossy(&controllers.stdout)
+            .trim()
+            .is_empty()
+    );
     crate::datapath_safe::set_controller("fixture0", &format!("ssl:{address}"))
         .await
         .unwrap();
@@ -290,33 +294,41 @@ async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
     assert!(!attached.disable_in_band);
     let original = serde_json::json!({"table":7,"priority":123,"cookie":0x4f42_0000_0000_0001u64,
         "match_fields":{"ip":""},"actions":[{"type":"set_field","field":"nw_ttl","value":"64"},{"type":"normal"}],"idle_timeout":0,"hard_timeout":0}).to_string();
-    assert!(handle
-        .verify_flow("fixture0".into(), original.clone(), true)
-        .await
-        .unwrap());
+    assert!(
+        handle
+            .verify_flow("fixture0".into(), original.clone(), true)
+            .await
+            .unwrap()
+    );
     handle
         .compare_exchange_flow("fixture0".into(), original.clone(), None, false)
         .await
         .unwrap();
-    assert!(handle
-        .verify_flow("fixture0".into(), original.clone(), false)
-        .await
-        .unwrap());
+    assert!(
+        handle
+            .verify_flow("fixture0".into(), original.clone(), false)
+            .await
+            .unwrap()
+    );
     let mut changed: serde_json::Value = serde_json::from_str(&original).unwrap();
     changed["actions"][0]["value"] = "63".into();
     let changed = changed.to_string();
-    assert!(handle
-        .compare_exchange_flow("fixture0".into(), changed.clone(), None, false)
-        .await
-        .is_err());
+    assert!(
+        handle
+            .compare_exchange_flow("fixture0".into(), changed.clone(), None, false)
+            .await
+            .is_err()
+    );
     handle
         .compare_exchange_flow("fixture0".into(), changed.clone(), Some(original), false)
         .await
         .unwrap();
-    assert!(handle
-        .verify_flow("fixture0".into(), changed.clone(), false)
-        .await
-        .unwrap());
+    assert!(
+        handle
+            .verify_flow("fixture0".into(), changed.clone(), false)
+            .await
+            .unwrap()
+    );
     handle
         .compare_exchange_flow(
             "fixture0".into(),
@@ -326,10 +338,12 @@ async fn native_ovs_exact_add_modify_delete_and_recovery_readback() {
         )
         .await
         .unwrap();
-    assert!(handle
-        .verify_flow("fixture0".into(), changed, true)
-        .await
-        .unwrap());
+    assert!(
+        handle
+            .verify_flow("fixture0".into(), changed, true)
+            .await
+            .unwrap()
+    );
     controller.abort();
     let _ = controller.await;
 }

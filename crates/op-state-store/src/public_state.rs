@@ -6,8 +6,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde::{Deserialize, Serialize, Serializer};
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 use thiserror::Error;
 
 use crate::plugin_schema::{FieldSchema, FieldType, PluginSchema};
@@ -168,7 +168,7 @@ fn decode_pointer_component(
             _ => {
                 return Err(invalid_policy(format!(
                     "path {pointer:?} contains invalid RFC 6901 escaping"
-                )))
+                )));
             }
         }
     }
@@ -843,9 +843,11 @@ mod typed_map_privacy_tests {
                 .unwrap(),
             Some(json!({"jobs":{}}))
         );
-        assert!(schema
-            .project_public_state(&json!({"jobs":{"public":{"status":false}}}))
-            .is_err());
+        assert!(
+            schema
+                .project_public_state(&json!({"jobs":{"public":{"status":false}}}))
+                .is_err()
+        );
     }
     #[test]
     fn whole_maps_wildcards_and_opaque_values_are_not_public() {

@@ -7,7 +7,7 @@
 //! (`10.200.0.1:50051`) is dead; xray + the gRPC-bridge now run on the host.
 
 use anyhow::Result;
-use op_assistant_grpc::{run_grpc_server, ServerConfig};
+use op_assistant_grpc::{ServerConfig, run_grpc_server};
 use tracing::info;
 
 #[tokio::main]

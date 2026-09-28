@@ -57,14 +57,18 @@ async fn startup_restores_observations_without_publishing_schema_examples_or_res
         Arc::new(op_network::rovs_proxy::OvsdbDbusClient::new()),
     );
     assert_eq!(engine.seed_missing_plugin_projections().await.unwrap(), 0);
-    assert!(engine
-        .get_state("fixture_uncompiled_plugin")
-        .await
-        .is_none());
-    assert!(!root
-        .path()
-        .join("state/fixture_uncompiled_plugin.json")
-        .exists());
+    assert!(
+        engine
+            .get_state("fixture_uncompiled_plugin")
+            .await
+            .is_none()
+    );
+    assert!(
+        !root
+            .path()
+            .join("state/fixture_uncompiled_plugin.json")
+            .exists()
+    );
     assert!(!root.path().join("state/.manifest.json").exists());
     assert!(engine.get_state("tched_router").await.is_none());
     assert_eq!(engine.seed_missing_plugin_projections().await.unwrap(), 0);
@@ -171,10 +175,12 @@ async fn startup_restores_observations_without_publishing_schema_examples_or_res
         .update("config", |_| Ok(serde_json::json!({"configs":"corrupt"})))
         .await
         .unwrap();
-    assert!(engine
-        .seed_plugin_projections_with_documents(Some(documents))
-        .await
-        .is_err());
+    assert!(
+        engine
+            .seed_plugin_projections_with_documents(Some(documents))
+            .await
+            .is_err()
+    );
     assert_eq!(
         serde_json::to_value(engine.get_state("config").await.unwrap()).unwrap(),
         config

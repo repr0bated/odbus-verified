@@ -14,8 +14,8 @@ use prost_types::{
     DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorProto,
     FileDescriptorSet,
 };
-use tokio::sync::{mpsc, RwLock};
-use tokio_stream::{wrappers::ReceiverStream, StreamExt};
+use tokio::sync::{RwLock, mpsc};
+use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 use tonic::{Request, Response, Status, Streaming};
 use tonic_reflection::pb::v1::server_reflection_request::MessageRequest;
 use tonic_reflection::pb::v1::server_reflection_response::MessageResponse;
@@ -554,11 +554,13 @@ mod tests {
                 .unwrap(),
             expected
         );
-        assert!(catalog
-            .list_services()
-            .await
-            .iter()
-            .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods"));
+        assert!(
+            catalog
+                .list_services()
+                .await
+                .iter()
+                .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods")
+        );
     }
 
     #[tokio::test]
@@ -566,12 +568,16 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let catalog = ActiveReflectionCatalog::with_dir(dir.path().into());
         let before = catalog.list_services().await;
-        assert!(before
-            .iter()
-            .any(|service| service == "grpc.reflection.v1.ServerReflection"));
-        assert!(!before
-            .iter()
-            .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods"));
+        assert!(
+            before
+                .iter()
+                .any(|service| service == "grpc.reflection.v1.ServerReflection")
+        );
+        assert!(
+            !before
+                .iter()
+                .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods")
+        );
 
         let mut sealer = op_blob::BlobStore::open(dir.path()).unwrap();
         sealer
@@ -580,9 +586,11 @@ mod tests {
         catalog.sync_from_shm().await;
         let after = catalog.list_services().await;
         // Legacy service (mounted via build.rs) is advertised.
-        assert!(after
-            .iter()
-            .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods"));
+        assert!(
+            after
+                .iter()
+                .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods")
+        );
         assert!(after.iter().all(|service| {
             service == "grpc.reflection.v1.ServerReflection"
                 || service == "operation.plugin.v1.TchedRouterPluginMethods"
@@ -591,9 +599,11 @@ mod tests {
         sealer.remove_blob("tched_router").unwrap();
         catalog.sync_from_shm().await;
         let removed = catalog.list_services().await;
-        assert!(!removed
-            .iter()
-            .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods"));
+        assert!(
+            !removed
+                .iter()
+                .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods")
+        );
     }
 
     #[tokio::test]
@@ -621,9 +631,11 @@ mod tests {
 
         catalog.sync_from_shm().await;
         let after = catalog.list_services().await;
-        assert!(after
-            .iter()
-            .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods"));
+        assert!(
+            after
+                .iter()
+                .any(|service| service == "operation.plugin.v1.TchedRouterPluginMethods")
+        );
         for service in &descriptor_only_services {
             assert!(
                 !after.iter().any(|s| s == service),

@@ -7,7 +7,7 @@
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use base64::Engine as _;
 use futures::StreamExt;
 use reqwest::redirect::Policy;
@@ -146,10 +146,10 @@ impl DecoyAssertionClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Router;
     use axum::extract::ConnectInfo;
     use axum::http::{HeaderValue, StatusCode, Uri};
     use axum::routing::any;
-    use axum::Router;
     use ed25519_dalek::SigningKey;
     use op_identity::oracle_assertion::DecoyIssuer;
     use std::sync::{Arc, Mutex};

@@ -11,7 +11,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio_tungstenite::{
     connect_async_with_config,
-    tungstenite::{client::IntoClientRequest, protocol::WebSocketConfig, Message},
+    tungstenite::{Message, client::IntoClientRequest, protocol::WebSocketConfig},
 };
 
 const WS_PROTOCOL: &str = "tched_router.generation.v1";
@@ -54,7 +54,7 @@ pub(crate) trait NativeGenerationAdmission: Send + Sync {
     }
 
     fn check(&self)
-        -> Pin<Box<dyn Future<Output = Result<(), NativeGenerationError>> + Send + '_>>;
+    -> Pin<Box<dyn Future<Output = Result<(), NativeGenerationError>> + Send + '_>>;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -564,7 +564,7 @@ fn ws_url(request: &NativeGenerationRequest) -> Result<String, NativeGenerationE
         _ => {
             return Err(NativeGenerationError::InvalidRequest(
                 "endpoint must use HTTP",
-            ))
+            ));
         }
     };
     endpoint
@@ -707,11 +707,13 @@ mod tests {
             let (stream, _) = listener.accept().await.unwrap();
             let socket = accept_hdr_async(stream, |request: &Request, mut response: Response| {
                 assert_eq!(request.uri().path(), "/ws/chat");
-                assert!(request
-                    .uri()
-                    .query()
-                    .unwrap()
-                    .contains("agent_alias=fixture-agent"));
+                assert!(
+                    request
+                        .uri()
+                        .query()
+                        .unwrap()
+                        .contains("agent_alias=fixture-agent")
+                );
                 assert_eq!(
                     request.headers().get("authorization").unwrap(),
                     "Bearer fixture-token"

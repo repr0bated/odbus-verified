@@ -3,7 +3,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use op_network::seeded_root::{
-    ensure_seeded_root_mounted, verify_seeded_root_mounted, SeededRootDescriptor,
+    SeededRootDescriptor, ensure_seeded_root_mounted, verify_seeded_root_mounted,
 };
 use uuid::Uuid;
 

@@ -13,7 +13,7 @@
 use anyhow::Result;
 use op_agents::{
     create_agent,
-    dbus_service::{start_agent, DbusAgentService},
+    dbus_service::{DbusAgentService, start_agent},
 };
 use op_core::BusType;
 use std::collections::HashMap;

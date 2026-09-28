@@ -2298,21 +2298,25 @@ mod tests {
         )
         .unwrap();
         let wrong_digest = hex::encode(Sha256::digest(b"foreign"));
-        assert!(verify_native_runtime_config_with_repair_pin(
-            &before,
-            &Some(running.clone()),
-            "Running",
-            Some(&wrong_digest),
-        )
-        .is_err());
+        assert!(
+            verify_native_runtime_config_with_repair_pin(
+                &before,
+                &Some(running.clone()),
+                "Running",
+                Some(&wrong_digest),
+            )
+            .is_err()
+        );
         running.insert("volatile.uuid".into(), "other".into());
-        assert!(verify_native_runtime_config_with_repair_pin(
-            &before,
-            &Some(running),
-            "Running",
-            Some(&digest),
-        )
-        .is_err());
+        assert!(
+            verify_native_runtime_config_with_repair_pin(
+                &before,
+                &Some(running),
+                "Running",
+                Some(&digest),
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -2448,34 +2452,40 @@ mod tests {
         assert!(verify_after_effect(&persisted_rebuilt, &moved_rebuilt, "seeded", &plan).is_err());
         let mut wrong_move = moved_rebuilt.clone();
         wrong_move["config"]["volatile.idmap.next"] = "foreign".into();
-        assert!(verify_after_move(
-            &before_rebuild,
-            &persisted_rebuilt,
-            &wrong_move,
-            "seeded",
-            &plan
-        )
-        .is_err());
+        assert!(
+            verify_after_move(
+                &before_rebuild,
+                &persisted_rebuilt,
+                &wrong_move,
+                "seeded",
+                &plan
+            )
+            .is_err()
+        );
         wrong_move = moved_rebuilt.clone();
         wrong_move["expanded_config"]["volatile.cloud-init.instance-id"] = "malformed".into();
-        assert!(verify_after_move(
-            &before_rebuild,
-            &persisted_rebuilt,
-            &wrong_move,
-            "seeded",
-            &plan
-        )
-        .is_err());
+        assert!(
+            verify_after_move(
+                &before_rebuild,
+                &persisted_rebuilt,
+                &wrong_move,
+                "seeded",
+                &plan
+            )
+            .is_err()
+        );
         wrong_move = moved_rebuilt;
         wrong_move["config"]["user.marker"] = "changed".into();
-        assert!(verify_after_move(
-            &before_rebuild,
-            &persisted_rebuilt,
-            &wrong_move,
-            "seeded",
-            &plan
-        )
-        .is_err());
+        assert!(
+            verify_after_move(
+                &before_rebuild,
+                &persisted_rebuilt,
+                &wrong_move,
+                "seeded",
+                &plan
+            )
+            .is_err()
+        );
         moved = original.clone();
         moved["expanded_devices"]["eth0"] = serde_json::json!({"type":"nic"});
         assert!(verify_after_effect(&original, &moved, "source", &plan).is_err());
@@ -2560,23 +2570,27 @@ mod tests {
         plan.validate_completed_journal(&journal, &revision, &sled)
             .unwrap();
         journal.phase = "moved".into();
-        assert!(plan
-            .validate_completed_journal(&journal, &revision, &sled)
-            .is_err());
+        assert!(
+            plan.validate_completed_journal(&journal, &revision, &sled)
+                .is_err()
+        );
         journal.phase = "identity-committed".into();
         sled.genesis = Some("e".repeat(64));
-        assert!(plan
-            .validate_completed_journal(&journal, &revision, &sled)
-            .is_err());
+        assert!(
+            plan.validate_completed_journal(&journal, &revision, &sled)
+                .is_err()
+        );
         sled.genesis = Some("c".repeat(64));
         revision.revision = 1;
-        assert!(plan
-            .validate_completed_journal(&journal, &revision, &sled)
-            .is_err());
+        assert!(
+            plan.validate_completed_journal(&journal, &revision, &sled)
+                .is_err()
+        );
         revision.revision = 3;
         sled.btrfs_device.as_mut().unwrap().cozo_id = "untrusted".into();
-        assert!(plan
-            .validate_completed_journal(&journal, &revision, &sled)
-            .is_err());
+        assert!(
+            plan.validate_completed_journal(&journal, &revision, &sled)
+                .is_err()
+        );
     }
 }

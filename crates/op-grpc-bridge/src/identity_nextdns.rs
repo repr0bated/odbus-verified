@@ -4,7 +4,7 @@
 //! Request arguments and headers never configure them.
 use std::collections::BTreeMap;
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use base64::Engine as _;
 use op_identity::sealed_id::NextDnsContext;
 use serde::Deserialize;
@@ -91,9 +91,11 @@ mod tests {
                 .profile_id,
             "689ec7"
         );
-        assert!(bindings
-            .get(&base64::engine::general_purpose::STANDARD.encode([2; 32]))
-            .is_none());
+        assert!(
+            bindings
+                .get(&base64::engine::general_purpose::STANDARD.encode([2; 32]))
+                .is_none()
+        );
         assert!(NextDnsBindings::parse("[]").unwrap().0.is_empty());
     }
 

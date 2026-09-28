@@ -8,7 +8,7 @@ use futures::Stream;
 use tonic::{Request, Status};
 
 use crate::{
-    grpc_server::{proto_chain_event, DECLARED_CAPABILITY_HEADER},
+    grpc_server::{DECLARED_CAPABILITY_HEADER, proto_chain_event},
     interceptor::load_capability_grants,
     method_contract_admission::admit_compiled_invocation,
     mutation_engine::MutationEngine,
@@ -192,7 +192,9 @@ fn replay_after(
     for event in pending {
         count += 1;
         if count > REPLAY_LIMIT {
-            return Err(Status::resource_exhausted("audit replay exceeds 1000 events; page GetEvents then resume from the next event id"));
+            return Err(Status::resource_exhausted(
+                "audit replay exceeds 1000 events; page GetEvents then resume from the next event id",
+            ));
         }
         if matches_filters(event, plugin, tags) {
             result.push(proto_chain_event(event));
@@ -307,9 +309,11 @@ mod tests {
         assert_eq!(result.events.len(), 4);
         assert!(!result.has_more);
         let bytes = prost::Message::encode_to_vec(&result);
-        assert!(!bytes
-            .windows(b"never-on-audit-wire".len())
-            .any(|bytes| bytes == b"never-on-audit-wire"));
+        assert!(
+            !bytes
+                .windows(b"never-on-audit-wire".len())
+                .any(|bytes| bytes == b"never-on-audit-wire")
+        );
         assert_eq!(events[0].input_payload, input_before);
         assert_eq!(events[0].event_hash, events[0].compute_hash());
     }
@@ -326,14 +330,18 @@ mod tests {
                 .collect::<Vec<_>>(),
             [3]
         );
-        assert!(replay_after(&events, cursor, "demo", &[])
-            .unwrap()
-            .1
-            .is_empty());
-        assert!(replay_after(&events, 0, "demo", &["missing".into()])
-            .unwrap()
-            .1
-            .is_empty());
+        assert!(
+            replay_after(&events, cursor, "demo", &[])
+                .unwrap()
+                .1
+                .is_empty()
+        );
+        assert!(
+            replay_after(&events, 0, "demo", &["missing".into()])
+                .unwrap()
+                .1
+                .is_empty()
+        );
     }
 
     #[test]

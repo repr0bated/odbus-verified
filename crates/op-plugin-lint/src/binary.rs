@@ -7,7 +7,7 @@
 //! Local: spawn `binary … --help`.
 //! Remote: `--ssh user@host` wraps each help call in `ssh host -- binary … --help`.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;

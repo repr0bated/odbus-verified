@@ -9,10 +9,10 @@ use tonic::{Request, Response, Status};
 use tracing::info;
 
 use crate::orchestration::proto::op_chat_orchestration::{
-    memory_service_server::MemoryService, BulkForgetRequest, BulkOperationError,
-    BulkOperationResponse, BulkRecallRequest, ForgetRequest, ForgetResponse, ListKeysRequest,
-    ListKeysResponse, MemorySearchResult, RecallRequest, RecallResponse, RememberRequest,
-    RememberResponse, SearchMemoryRequest, SearchMemoryResponse,
+    BulkForgetRequest, BulkOperationError, BulkOperationResponse, BulkRecallRequest, ForgetRequest,
+    ForgetResponse, ListKeysRequest, ListKeysResponse, MemorySearchResult, RecallRequest,
+    RecallResponse, RememberRequest, RememberResponse, SearchMemoryRequest, SearchMemoryResponse,
+    memory_service_server::MemoryService,
 };
 
 use super::{MemoryEntry, OrchestrationServer};

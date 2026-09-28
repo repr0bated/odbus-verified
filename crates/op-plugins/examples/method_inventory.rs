@@ -1,7 +1,7 @@
 //! Build-time evidence of declared method contracts. This report is never read
 //! by runtime discovery, admission or dispatch: only the sealed catalog serves
 //! those purposes. Run from the workspace root and redirect stdout as needed.
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_plugins::default_registry::DefaultPluginRegistry;
 use op_state_store::MemoryStore;
 use std::sync::Arc;

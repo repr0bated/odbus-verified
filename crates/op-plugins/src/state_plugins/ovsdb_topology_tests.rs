@@ -53,9 +53,11 @@ fn actual_uuid_hierarchy_preserves_bonds_optional_scalars_zero_and_false() {
     assert_eq!(port.interfaces[0].mac, None);
     let serialized = serde_json::to_value(&state).unwrap();
     assert!(serialized["bridges"][0].get("other_config").is_none());
-    assert!(serialized["bridges"][0]["ports"][0]["interfaces"][0]
-        .get("options")
-        .is_none());
+    assert!(
+        serialized["bridges"][0]["ports"][0]["interfaces"][0]
+            .get("options")
+            .is_none()
+    );
     let schema = super::super::ovsdb_bridge_schema();
     assert!(
         schema
@@ -81,9 +83,11 @@ fn whole_snapshot_replacement_removes_actual_children_including_last_bridge() {
     row(&mut source, "Bridge", BRIDGE).insert("ports".into(), json!(["set", []]));
     source.tables.get_mut("Port").unwrap().clear();
     source.tables.get_mut("Interface").unwrap().clear();
-    assert!(project_topology(&source).unwrap().bridges[0]
-        .ports
-        .is_empty());
+    assert!(
+        project_topology(&source).unwrap().bridges[0]
+            .ports
+            .is_empty()
+    );
     row(&mut source, "Open_vSwitch", ROOT).insert("bridges".into(), json!(["set", []]));
     source.tables.get_mut("Bridge").unwrap().clear();
     assert!(project_topology(&source).unwrap().bridges.is_empty());

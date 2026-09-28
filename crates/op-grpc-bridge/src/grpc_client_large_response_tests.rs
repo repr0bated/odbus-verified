@@ -9,11 +9,11 @@ use tokio_stream::StreamExt;
 use tonic::{Request, Response, Status};
 
 use crate::proto::{
-    plugin_service_server::{PluginService, PluginServiceServer},
-    state_sync_server::{StateSync, StateSyncServer},
     CallMethodResponse, GetPropertyResponse, GetSchemaResponse, GetStateResponse,
     ListPluginsResponse, MutateResponse, SetPropertyResponse, Signal, StateChange,
     SubscribeRequest, SubscribeSignalsRequest,
+    plugin_service_server::{PluginService, PluginServiceServer},
+    state_sync_server::{StateSync, StateSyncServer},
 };
 
 const LARGE: usize = 5 * 1024 * 1024;

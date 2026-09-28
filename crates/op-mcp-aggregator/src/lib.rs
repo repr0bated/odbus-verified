@@ -80,7 +80,7 @@ pub mod profile; // Used by op-web for IP-based security
 pub use aggregator::{Aggregator, AggregatorStats, HealthStatus, ToolMode};
 pub use cache::ToolCache;
 pub use client::McpClient;
-pub use compact::{compact_mode_summary, create_compact_tools, CompactModeConfig};
+pub use compact::{CompactModeConfig, compact_mode_summary, create_compact_tools};
 pub use config::{AggregatorConfig, ProfileConfig, UpstreamServer};
 pub use groups::{builtin_groups, builtin_presets};
 pub use op_core::security::{AccessZone, NetworkConfig, SecurityLevel};
@@ -89,8 +89,8 @@ pub use profile::ProfileManager;
 /// Prelude for convenient imports
 pub mod prelude {
     pub use super::{
-        create_compact_tools, AccessZone, Aggregator, AggregatorConfig, CompactModeConfig,
-        McpClient, NetworkConfig, ProfileConfig, ProfileManager, SecurityLevel, ToolCache,
-        ToolMode, UpstreamServer,
+        AccessZone, Aggregator, AggregatorConfig, CompactModeConfig, McpClient, NetworkConfig,
+        ProfileConfig, ProfileManager, SecurityLevel, ToolCache, ToolMode, UpstreamServer,
+        create_compact_tools,
     };
 }

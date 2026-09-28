@@ -2,4 +2,4 @@
 //!
 //! Schema, queries, and helpers all live in `op-cozo-store::lib`.
 
-pub use op_cozo_store::{named_rows_to_json, CozoGraphShuttle, PolicyVerdict};
+pub use op_cozo_store::{CozoGraphShuttle, PolicyVerdict, named_rows_to_json};

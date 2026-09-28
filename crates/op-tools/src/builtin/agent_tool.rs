@@ -11,7 +11,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use op_agents::builtin_agent_descriptors;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, OnceLock};
 use tokio::sync::RwLock;

@@ -12,12 +12,12 @@
 //!   --surface-out /tmp/zeroclaw.surface.json
 //! ```
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::{Parser, ValueEnum};
 use op_plugin_lint::{
-    audit_source, audit_source_with_coverage, complete_to_json, complete_to_markdown,
-    emit_complete_plugin, emit_inspector_rust, resolve_introspect_target_with, CoverageInputs,
-    IntrospectOpts,
+    CoverageInputs, IntrospectOpts, audit_source, audit_source_with_coverage, complete_to_json,
+    complete_to_markdown, emit_complete_plugin, emit_inspector_rust,
+    resolve_introspect_target_with,
 };
 use std::fs;
 use std::path::{Path, PathBuf};

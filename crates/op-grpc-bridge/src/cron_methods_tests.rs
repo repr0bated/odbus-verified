@@ -300,24 +300,28 @@ async fn all_nine_methods_return_provider_observations() {
 async fn invalid_mutation_is_rejected_before_provider_call() {
     let backend = fixture(Duration::ZERO, false);
     let methods = CronMethods::new(backend.clone());
-    assert!(methods
-        .dispatch(
-            "create_job",
-            &serde_json::json!({
-                "job_type":"agent", "agent":"operator", "schedule":"*/5 * * * *", "prompt":""
-            })
-        )
-        .await
-        .is_err());
-    assert!(methods
-        .dispatch(
-            "update_job",
-            &serde_json::json!({
-                "job_id":"one", "tz":"UTC", "clear_tz":true
-            })
-        )
-        .await
-        .is_err());
+    assert!(
+        methods
+            .dispatch(
+                "create_job",
+                &serde_json::json!({
+                    "job_type":"agent", "agent":"operator", "schedule":"*/5 * * * *", "prompt":""
+                })
+            )
+            .await
+            .is_err()
+    );
+    assert!(
+        methods
+            .dispatch(
+                "update_job",
+                &serde_json::json!({
+                    "job_id":"one", "tz":"UTC", "clear_tz":true
+                })
+            )
+            .await
+            .is_err()
+    );
     assert_eq!(backend.calls.load(Ordering::SeqCst), 0);
 }
 
@@ -362,24 +366,28 @@ async fn observed_receipts_reuse_exact_readback_and_never_invent_state() {
         .await
         .unwrap();
     let created_id = created.output["job"]["id"].as_str().unwrap().to_string();
-    assert!(created
-        .state
-        .unwrap()
-        .jobs
-        .iter()
-        .any(|job| job.id == created_id));
+    assert!(
+        created
+            .state
+            .unwrap()
+            .jobs
+            .iter()
+            .any(|job| job.id == created_id)
+    );
 
     let deleted = methods
         .dispatch_observed("delete_job", &serde_json::json!({"job_id":"created"}))
         .await
         .unwrap();
     assert_eq!(deleted.output["absent_on_readback"], true);
-    assert!(!deleted
-        .state
-        .unwrap()
-        .jobs
-        .iter()
-        .any(|job| job.id == "created"));
+    assert!(
+        !deleted
+            .state
+            .unwrap()
+            .jobs
+            .iter()
+            .any(|job| job.id == "created")
+    );
 
     let indeterminate = CronMethods::new(fixture_with_run(Duration::ZERO, false, true, false))
         .dispatch_observed("run_job", &serde_json::json!({"job_id":"one"}))
@@ -399,10 +407,12 @@ async fn completed_delete_with_failed_readback_is_not_falsely_failed() {
         .unwrap();
     assert_eq!(result["provider_completed"], true);
     assert!(result["absent_on_readback"].is_null());
-    assert!(!result["readback_error"]
-        .as_str()
-        .unwrap()
-        .contains("bearer="));
+    assert!(
+        !result["readback_error"]
+            .as_str()
+            .unwrap()
+            .contains("bearer=")
+    );
 }
 
 #[tokio::test]

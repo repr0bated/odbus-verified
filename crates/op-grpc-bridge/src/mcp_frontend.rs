@@ -9,22 +9,22 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use axum::body::{to_bytes, Body};
+use axum::Router;
+use axum::body::{Body, to_bytes};
 use axum::extract::State;
 use axum::http::{HeaderMap, Request, StatusCode};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
-use axum::Router;
 use base64::Engine as _;
 use serde::Deserialize;
-use serde_json::{json, Value};
-use tokio::sync::{broadcast, RwLock};
+use serde_json::{Value, json};
+use tokio::sync::{RwLock, broadcast};
 use tonic::transport::server::{TcpConnectInfo, TlsConnectInfo};
 
 use crate::grpc_server::DECLARED_CAPABILITY_HEADER;
@@ -32,7 +32,7 @@ use crate::grpc_server::DECLARED_CAPABILITY_HEADER;
 use crate::interceptor::capabilities_for_principal;
 use crate::interceptor::load_capability_grants;
 use crate::mcp_policy::{
-    McpPolicyOwner, McpProjectionPolicy, ToolTemperature, ToolsetDefinition, HOT_TOOL_NAMES,
+    HOT_TOOL_NAMES, McpPolicyOwner, McpProjectionPolicy, ToolTemperature, ToolsetDefinition,
 };
 use crate::mutation_engine::MutationEngine;
 use crate::oracle_assertion::AssertionValidator;
@@ -290,7 +290,7 @@ impl OracleHttpAuthenticator {
             Err(error) => {
                 return Err(McpAuthError(format!(
                     "principal registry unavailable: {error:?}"
-                )))
+                )));
             }
         }
 
@@ -343,7 +343,7 @@ trait McpBackend: Send + Sync {
 
     async fn list_resources(&self, caller: &AuthenticatedCaller) -> anyhow::Result<Vec<Value>>;
     async fn read_resource(&self, caller: &AuthenticatedCaller, uri: &str)
-        -> anyhow::Result<Value>;
+    -> anyhow::Result<Value>;
 
     async fn session_closed(&self, _caller: &AuthenticatedCaller) -> anyhow::Result<()> {
         Ok(())
@@ -957,7 +957,7 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
                 None,
                 -32600,
                 "body too large",
-            )
+            );
         }
     };
     let rpc: JsonRpcRequest = match serde_json::from_slice(&bytes) {
@@ -968,7 +968,7 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
                 None,
                 -32700,
                 &format!("parse error: {error}"),
-            )
+            );
         }
     };
 
@@ -991,7 +991,7 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
                 rpc.id,
                 -32600,
                 "x-opdbus-capability is not accepted on MCP; authority is resolved server-side",
-            )
+            );
         }
         Err(error) => return jsonrpc_error(StatusCode::BAD_REQUEST, rpc.id, -32600, &error),
     }
@@ -1019,7 +1019,7 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
                         rpc.id,
                         -32001,
                         "MCP session not found",
-                    )
+                    );
                 }
             }
         }
@@ -1187,7 +1187,7 @@ async fn handle_mcp_events(
                 StatusCode::UNAUTHORIZED,
                 axum::Json(json!({"error": "unauthenticated", "message": error.0})),
             )
-                .into_response()
+                .into_response();
         }
     };
     if let Err(error) = validate_event_stream_headers(&headers) {
@@ -1204,7 +1204,7 @@ async fn handle_mcp_events(
                 StatusCode::BAD_REQUEST,
                 axum::Json(json!({"error": "invalid_request", "message": error})),
             )
-                .into_response()
+                .into_response();
         }
     };
     let Some(session) = state.sessions.read().await.get(session_id).cloned() else {
@@ -1273,14 +1273,14 @@ async fn handle_mcp_delete(
                     "message": format!("unsupported MCP protocol version: {version}")
                 })),
             )
-                .into_response()
+                .into_response();
         }
         Err(error) => {
             return (
                 StatusCode::BAD_REQUEST,
                 axum::Json(json!({"error": "invalid_request", "message": error})),
             )
-                .into_response()
+                .into_response();
         }
     }
     let caller = match state.authenticator.authenticate(&headers, peer).await {
@@ -1290,7 +1290,7 @@ async fn handle_mcp_delete(
                 StatusCode::UNAUTHORIZED,
                 axum::Json(json!({"error": "unauthenticated", "message": error.0})),
             )
-                .into_response()
+                .into_response();
         }
     };
     let session_id = match one_required_header(&headers, MCP_SESSION_HEADER) {
@@ -1300,7 +1300,7 @@ async fn handle_mcp_delete(
                 StatusCode::BAD_REQUEST,
                 axum::Json(json!({"error": "invalid_request", "message": error})),
             )
-                .into_response()
+                .into_response();
         }
     };
     let session = state.sessions.read().await.get(&session_id).cloned();
@@ -1573,8 +1573,12 @@ fn protocol_version_supported(version: &str) -> bool {
 
 fn initialize_result(protocol_version: &str, view: McpView) -> Value {
     let instructions = match view {
-        McpView::Typed => "Each request requires exactly one authenticated identity. tools/list returns the real typed tools declared by the broker-curated toolsets. HOT tools—including Rust Pro, memory/code context, and healthy NotebookLM providers—are immediately callable. Before calling a non-HOT tool, use toolsets to select the toolset containing it.",
-        McpView::Compact => "Five compact meta-tools expose only the current caller's broker-curated tools. Use list_tools or search_tools, then get_tool_schema and execute_tool. Select a non-HOT toolset through execute_tool(tool_name=toolsets) before calling its tools. Every call rechecks the caller's current identity and grants.",
+        McpView::Typed => {
+            "Each request requires exactly one authenticated identity. tools/list returns the real typed tools declared by the broker-curated toolsets. HOT tools—including Rust Pro, memory/code context, and healthy NotebookLM providers—are immediately callable. Before calling a non-HOT tool, use toolsets to select the toolset containing it."
+        }
+        McpView::Compact => {
+            "Five compact meta-tools expose only the current caller's broker-curated tools. Use list_tools or search_tools, then get_tool_schema and execute_tool. Select a non-HOT toolset through execute_tool(tool_name=toolsets) before calling its tools. Every call rechecks the caller's current identity and grants."
+        }
     };
     json!({
         "protocolVersion": protocol_version,
@@ -2606,12 +2610,16 @@ mod tests {
             selected["result"]["structuredContent"]["toolset_generation"],
             5
         );
-        assert!(selected["result"]["structuredContent"]
-            .get("catalog_generation")
-            .is_none());
-        assert!(selected["result"]["structuredContent"]["result"]
-            .get("tools")
-            .is_none());
+        assert!(
+            selected["result"]["structuredContent"]
+                .get("catalog_generation")
+                .is_none()
+        );
+        assert!(
+            selected["result"]["structuredContent"]["result"]
+                .get("tools")
+                .is_none()
+        );
         assert_eq!(
             selected["result"]["structuredContent"]["relist_required"],
             false
@@ -2801,10 +2809,12 @@ mod tests {
         )
         .await;
         assert_eq!(denied["error"]["code"], -32603);
-        assert!(denied["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("AccessDenied"));
+        assert!(
+            denied["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("AccessDenied")
+        );
         let missing = response_json(
             session_call_at(
                 &router,
@@ -2977,30 +2987,30 @@ mod tests {
     #[test]
     fn sealed_id_requires_an_exact_active_registry_binding() {
         assert!(validate_registered_sealed_id_principal(None, "p", "k").is_err());
-        assert!(validate_registered_sealed_id_principal(
-            Some(&principal_record("p", "k", 2)),
-            "p",
-            "k"
-        )
-        .is_err());
-        assert!(validate_registered_sealed_id_principal(
-            Some(&principal_record("other", "k", 0)),
-            "p",
-            "k"
-        )
-        .is_err());
-        assert!(validate_registered_sealed_id_principal(
-            Some(&principal_record("p", "other", 0)),
-            "p",
-            "k"
-        )
-        .is_err());
-        assert!(validate_registered_sealed_id_principal(
-            Some(&principal_record("p", "k", 0)),
-            "p",
-            "k"
-        )
-        .is_ok());
+        assert!(
+            validate_registered_sealed_id_principal(Some(&principal_record("p", "k", 2)), "p", "k")
+                .is_err()
+        );
+        assert!(
+            validate_registered_sealed_id_principal(
+                Some(&principal_record("other", "k", 0)),
+                "p",
+                "k"
+            )
+            .is_err()
+        );
+        assert!(
+            validate_registered_sealed_id_principal(
+                Some(&principal_record("p", "other", 0)),
+                "p",
+                "k"
+            )
+            .is_err()
+        );
+        assert!(
+            validate_registered_sealed_id_principal(Some(&principal_record("p", "k", 0)), "p", "k")
+                .is_ok()
+        );
     }
 
     #[tokio::test]
@@ -3146,13 +3156,10 @@ mod tests {
             "subid": "obs.service.cognitive-mcp.test.read@v1",
             "input_schema": {"type": "object"}
         });
-        assert!(authorize_and_validate_tool_call(
-            &missing_capability,
-            "safe_read",
-            &json!({}),
-            &grants
-        )
-        .is_err());
+        assert!(
+            authorize_and_validate_tool_call(&missing_capability, "safe_read", &json!({}), &grants)
+                .is_err()
+        );
 
         let missing_subid = json!({
             "name": "safe_read",
@@ -3187,27 +3194,33 @@ mod tests {
             "cognitive_mcp.invoke".to_string(),
             "cognitive_mcp.read".to_string(),
         ]);
-        assert!(authorize_and_validate_tool_call(
-            &descriptor,
-            "safe_read",
-            &json!({"filter": {"limit": 2}}),
-            &grants
-        )
-        .is_ok());
-        assert!(authorize_and_validate_tool_call(
-            &descriptor,
-            "safe_read",
-            &json!({"filter": {"limit": 0}}),
-            &grants
-        )
-        .is_err());
-        assert!(authorize_and_validate_tool_call(
-            &descriptor,
-            "safe_read",
-            &json!({"filter": {}}),
-            &grants
-        )
-        .is_err());
+        assert!(
+            authorize_and_validate_tool_call(
+                &descriptor,
+                "safe_read",
+                &json!({"filter": {"limit": 2}}),
+                &grants
+            )
+            .is_ok()
+        );
+        assert!(
+            authorize_and_validate_tool_call(
+                &descriptor,
+                "safe_read",
+                &json!({"filter": {"limit": 0}}),
+                &grants
+            )
+            .is_err()
+        );
+        assert!(
+            authorize_and_validate_tool_call(
+                &descriptor,
+                "safe_read",
+                &json!({"filter": {}}),
+                &grants
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -3258,9 +3271,11 @@ mod tests {
         let error =
             authorize_and_validate_tool_call(&descriptor, "code_index", &json!({}), &grants)
                 .unwrap_err();
-        assert!(error
-            .to_string()
-            .contains("no independent sealed capability"));
+        assert!(
+            error
+                .to_string()
+                .contains("no independent sealed capability")
+        );
     }
 
     #[test]
@@ -3468,11 +3483,13 @@ mod tests {
         assert_eq!(result["uri"], "blob://snowball");
         assert_eq!(result["schema"], expected_snowball);
         assert_eq!(result["schema_hash"].as_str().unwrap().len(), 64);
-        assert!(result["oscal_subids"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|value| value == "evt.service.snowball.message.archive@v1"));
+        assert!(
+            result["oscal_subids"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == "evt.service.snowball.message.archive@v1")
+        );
 
         let all = read_oscal_subids_result(dir.path(), None, None).unwrap();
         assert_eq!(all["plugin_count"], 2);

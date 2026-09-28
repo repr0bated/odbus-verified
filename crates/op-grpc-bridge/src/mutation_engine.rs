@@ -34,7 +34,7 @@ use serde_json;
 use simd_json::prelude::{ValueAsContainer, ValueAsScalar, ValueObjectAccess};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use tokio::sync::{broadcast, Mutex, OnceCell, RwLock, Semaphore};
+use tokio::sync::{Mutex, OnceCell, RwLock, Semaphore, broadcast};
 use zbus::zvariant::OwnedValue as ZOwnedValue;
 use zbus::{Connection, Proxy};
 
@@ -2690,7 +2690,9 @@ impl MutationEngine {
                 }
             }
         } else if plugin_id == "unix_socket" && change_type == ChangeType::MethodCall {
-            anyhow::bail!("socket lifecycle requires the authenticated PluginV1 method path; service metadata is registered through shared_unix_socket.create_unix_socket");
+            anyhow::bail!(
+                "socket lifecycle requires the authenticated PluginV1 method path; service metadata is registered through shared_unix_socket.create_unix_socket"
+            );
         } else if plugin_id == "identity_sled" && change_type == ChangeType::MethodCall {
             // PluginService.CallMethod wraps object arguments in a one-element
             // array. The identity dispatcher owns provisioning, durable Cozo
@@ -5855,9 +5857,7 @@ async fn dispatch_xray_method(
     args: &serde_json::Value,
 ) -> anyhow::Result<serde_json::Value> {
     match method {
-        "get_stats" => {
-            crate::xray_methods::dispatch_stats_method(args).await
-        }
+        "get_stats" => crate::xray_methods::dispatch_stats_method(args).await,
         "add_user" | "remove_user" | "add_inbound" => {
             crate::xray_methods::dispatch_handler_method(method, args).await
         }
@@ -6331,20 +6331,24 @@ mod cognitive_dispatch_tests {
         assert_eq!(projected["authority_method"], "code_search");
         assert_eq!(projected["required_capability"], "cognitive_mcp.read");
 
-        assert!(project_sealed_cognitive_tool_descriptor(serde_json::json!({
-            "name": "search_blob_vectors",
-            "required_capability": "cognitive_mcp.read",
-            "subid": "obs.service.cognitive-mcp.blob-vectors.search@v1",
-            "input_schema": {"type": "object"}
-        }))
-        .is_none());
-        assert!(project_sealed_cognitive_tool_descriptor(serde_json::json!({
-            "name": "code_index",
-            "required_capability": "cognitive_mcp.read",
-            "subid": "mut.service.code-rag.index@v1",
-            "input_schema": {"type": "object"}
-        }))
-        .is_none());
+        assert!(
+            project_sealed_cognitive_tool_descriptor(serde_json::json!({
+                "name": "search_blob_vectors",
+                "required_capability": "cognitive_mcp.read",
+                "subid": "obs.service.cognitive-mcp.blob-vectors.search@v1",
+                "input_schema": {"type": "object"}
+            }))
+            .is_none()
+        );
+        assert!(
+            project_sealed_cognitive_tool_descriptor(serde_json::json!({
+                "name": "code_index",
+                "required_capability": "cognitive_mcp.read",
+                "subid": "mut.service.code-rag.index@v1",
+                "input_schema": {"type": "object"}
+            }))
+            .is_none()
+        );
     }
 
     #[test]
@@ -6377,11 +6381,13 @@ mod cognitive_dispatch_tests {
         assert_eq!(args["path"], "/srv/git/odbus");
         assert!(args.get("release").is_none());
 
-        assert!(map_schema_method_to_tool(
-            "rust_pro",
-            &serde_json::json!({"operation": "shell", "path": "/tmp"})
-        )
-        .is_err());
+        assert!(
+            map_schema_method_to_tool(
+                "rust_pro",
+                &serde_json::json!({"operation": "shell", "path": "/tmp"})
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -6416,16 +6422,20 @@ mod cognitive_dispatch_tests {
 
         // Operations outside the agent's catalog are refused; static advisor
         // personas are not registry tools any more (see `specialist`).
-        assert!(map_schema_method_to_tool(
-            "python_pro",
-            &serde_json::json!({"operation": "clippy", "path": "/x"})
-        )
-        .is_err());
-        assert!(map_schema_method_to_tool(
-            "dbus_expert",
-            &serde_json::json!({"operation": "explain", "args": "q"})
-        )
-        .is_err());
+        assert!(
+            map_schema_method_to_tool(
+                "python_pro",
+                &serde_json::json!({"operation": "clippy", "path": "/x"})
+            )
+            .is_err()
+        );
+        assert!(
+            map_schema_method_to_tool(
+                "dbus_expert",
+                &serde_json::json!({"operation": "explain", "args": "q"})
+            )
+            .is_err()
+        );
         let (tool, args) = map_schema_method_to_tool(
             "memory_semantic_query",
             &serde_json::json!({"query": "what did we decide about ledger ids?"}),

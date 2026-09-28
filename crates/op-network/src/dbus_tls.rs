@@ -3,11 +3,11 @@
 //! starts. D-Bus ANONYMOUS here performs framing negotiation only; TLS is the
 //! node authentication layer. This module never accepts plaintext, uses system
 //! CA roots, mints a user identity, or authorizes a plugin method.
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use async_trait::async_trait;
 use rustls::{
-    pki_types::{CertificateDer, PrivateKeyDer, ServerName},
     ClientConfig, RootCertStore, ServerConfig,
+    pki_types::{CertificateDer, PrivateKeyDer, ServerName},
 };
 use std::{
     io,
@@ -22,8 +22,8 @@ use tokio::{
 };
 use tokio_rustls::{TlsAcceptor, TlsConnector, TlsStream};
 use zbus::connection::{
-    socket::{ReadHalf, Socket, Split, WriteHalf},
     AuthMechanism,
+    socket::{ReadHalf, Socket, Split, WriteHalf},
 };
 
 fn roots(certificates: Vec<CertificateDer<'static>>) -> Result<RootCertStore> {

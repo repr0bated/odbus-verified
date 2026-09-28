@@ -95,11 +95,13 @@ async fn force_close_shuts_down_real_connections_and_nonforce_refuses_them() {
     controller.start(8).unwrap();
     let mut incoming = controller.take_incoming().unwrap();
     let (mut client, mut accepted) = accept_native(&controller, &mut incoming).await;
-    assert!(controller
-        .close(false)
-        .unwrap_err()
-        .to_string()
-        .contains("active connections"));
+    assert!(
+        controller
+            .close(false)
+            .unwrap_err()
+            .to_string()
+            .contains("active connections")
+    );
     assert_eq!(controller.snapshot().unwrap().phase, "listening");
     let closed = call(&controller, "close", json!({"force":true})).await;
     assert_eq!(closed["active_connections"], 0);
@@ -158,21 +160,25 @@ async fn intentional_close_keeps_incoming_pending_and_rebind_resumes_same_accept
 async fn unknown_files_symlinks_and_live_sockets_are_never_unlinked() {
     let (root, controller) = fixture();
     fs::write(controller.path(), b"unrelated").unwrap();
-    assert!(controller
-        .start(8)
-        .unwrap_err()
-        .to_string()
-        .contains("no bridge ownership proof"));
+    assert!(
+        controller
+            .start(8)
+            .unwrap_err()
+            .to_string()
+            .contains("no bridge ownership proof")
+    );
     assert_eq!(fs::read(controller.path()).unwrap(), b"unrelated");
     fs::remove_file(controller.path()).unwrap();
     let target = root.path().join("target");
     fs::write(&target, b"still here").unwrap();
     std::os::unix::fs::symlink(&target, controller.path()).unwrap();
     assert!(controller.bind().is_err());
-    assert!(fs::symlink_metadata(controller.path())
-        .unwrap()
-        .file_type()
-        .is_symlink());
+    assert!(
+        fs::symlink_metadata(controller.path())
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
     fs::remove_file(controller.path()).unwrap();
     let foreign = std::os::unix::net::UnixListener::bind(controller.path()).unwrap();
     let inode = fs::metadata(controller.path()).unwrap().ino();
@@ -218,11 +224,13 @@ async fn matching_record_does_not_authorize_removing_a_live_listener() {
     let restarted =
         SharedListenerController::open_with_lease_dir(path.clone(), &root.path().join("leases"))
             .unwrap();
-    assert!(restarted
-        .start(8)
-        .unwrap_err()
-        .to_string()
-        .contains("live listener"));
+    assert!(
+        restarted
+            .start(8)
+            .unwrap_err()
+            .to_string()
+            .contains("live listener")
+    );
     assert_eq!(fs::metadata(&path).unwrap().ino(), inode);
     drop(live);
 }
@@ -234,11 +242,13 @@ async fn close_refuses_to_unlink_a_replacement_socket() {
     fs::rename(controller.path(), root.path().join("old-owned.sock")).unwrap();
     let replacement = std::os::unix::net::UnixListener::bind(controller.path()).unwrap();
     let inode = fs::metadata(controller.path()).unwrap().ino();
-    assert!(controller
-        .close(false)
-        .unwrap_err()
-        .to_string()
-        .contains("ownership changed"));
+    assert!(
+        controller
+            .close(false)
+            .unwrap_err()
+            .to_string()
+            .contains("ownership changed")
+    );
     assert_eq!(fs::metadata(controller.path()).unwrap().ino(), inode);
     drop(replacement);
 }
@@ -248,19 +258,23 @@ async fn cursor_boundaries_use_real_accept_events_and_reject_expired_history() {
     let (_root, controller) = fixture();
     controller.start(8).unwrap();
     let mut incoming = controller.take_incoming().unwrap();
-    assert!(controller
-        .observation(1, false)
-        .unwrap_err()
-        .to_string()
-        .contains("ahead"));
+    assert!(
+        controller
+            .observation(1, false)
+            .unwrap_err()
+            .to_string()
+            .contains("ahead")
+    );
     for _ in 0..EVENT_CAPACITY + 2 {
         let (_client, _accepted) = accept_native(&controller, &mut incoming).await;
     }
-    assert!(controller
-        .observation(0, false)
-        .unwrap_err()
-        .to_string()
-        .contains("expired"));
+    assert!(
+        controller
+            .observation(0, false)
+            .unwrap_err()
+            .to_string()
+            .contains("expired")
+    );
     assert_eq!(
         controller
             .observation(2, false)
@@ -270,16 +284,20 @@ async fn cursor_boundaries_use_real_accept_events_and_reject_expired_history() {
             .sequence,
         3
     );
-    assert!(controller
-        .observation(EVENT_CAPACITY as u64 + 3, false)
-        .is_err());
+    assert!(
+        controller
+            .observation(EVENT_CAPACITY as u64 + 3, false)
+            .is_err()
+    );
     let input = json!({"path":controller.path(),"generation":"previous-bridge","after_sequence":2});
-    assert!(controller
-        .dispatch("accept", &input)
-        .await
-        .unwrap_err()
-        .to_string()
-        .contains("generation changed"));
+    assert!(
+        controller
+            .dispatch("accept", &input)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("generation changed")
+    );
 }
 
 #[tokio::test]
@@ -308,32 +326,40 @@ async fn observer_waits_for_native_accept_and_reports_actual_timeout() {
     .await;
     assert!(timed_out["event"].is_null());
     assert_eq!(timed_out["timed_out"], true);
-    assert!(controller
-        .dispatch("bind", &json!({"path":"/tmp/not-configured"}))
-        .await
-        .is_err());
-    assert!(controller
-        .dispatch("bind", &json!({"path":controller.path(),"protocol":"raw"}))
-        .await
-        .is_err());
-    assert!(controller
-        .dispatch(
-            "accept",
-            &json!({"path":controller.path(),"timeout_secs":61})
-        )
-        .await
-        .is_err());
+    assert!(
+        controller
+            .dispatch("bind", &json!({"path":"/tmp/not-configured"}))
+            .await
+            .is_err()
+    );
+    assert!(
+        controller
+            .dispatch("bind", &json!({"path":controller.path(),"protocol":"raw"}))
+            .await
+            .is_err()
+    );
+    assert!(
+        controller
+            .dispatch(
+                "accept",
+                &json!({"path":controller.path(),"timeout_secs":61})
+            )
+            .await
+            .is_err()
+    );
 }
 
 #[tokio::test]
 async fn failed_bind_setup_cleans_its_owned_inode_and_checks_generation_before_bind() {
     let (root, controller) = fixture();
     controller.lock().unwrap().binding_generation = u64::MAX;
-    assert!(controller
-        .bind()
-        .unwrap_err()
-        .to_string()
-        .contains("generation exhausted"));
+    assert!(
+        controller
+            .bind()
+            .unwrap_err()
+            .to_string()
+            .contains("generation exhausted")
+    );
     assert!(!controller.path().exists());
     controller.lock().unwrap().binding_generation = 0;
     // A read-only lease descriptor injects a real persistence error after the
@@ -367,8 +393,10 @@ fn bind_rejects_a_parent_writable_by_other_users() {
     .unwrap();
     fs::set_permissions(root.path(), fs::Permissions::from_mode(0o777)).unwrap();
     let error = controller.bind().unwrap_err();
-    assert!(error
-        .to_string()
-        .contains("socket parent must be service-owned"));
+    assert!(
+        error
+            .to_string()
+            .contains("socket parent must be service-owned")
+    );
     assert!(!controller.path().exists());
 }

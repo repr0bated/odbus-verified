@@ -118,32 +118,40 @@ async fn native_owner_round_trip_covers_rovs_commands_and_ovsdb_bridge_methods()
     );
 
     client.create_bridge("fixture-br").await.unwrap();
-    assert!(client
-        .list_bridges()
-        .await
-        .unwrap()
-        .iter()
-        .any(|name| name == "fixture-br"));
+    assert!(
+        client
+            .list_bridges()
+            .await
+            .unwrap()
+            .iter()
+            .any(|name| name == "fixture-br")
+    );
 
     client
         .add_port_with_type("fixture-br", "fixture-int", Some("internal"))
         .await
         .unwrap();
-    assert!(client
-        .list_bridge_ports("fixture-br")
-        .await
-        .unwrap()
-        .iter()
-        .any(|name| name == "fixture-int"));
+    assert!(
+        client
+            .list_bridge_ports("fixture-br")
+            .await
+            .unwrap()
+            .iter()
+            .any(|name| name == "fixture-int")
+    );
 
-    assert!(!client
-        .ensure_internal_port("fixture-br", "fixture-int")
-        .await
-        .unwrap());
-    assert!(client
-        .ensure_internal_port("fixture-br", "fixture-int2")
-        .await
-        .unwrap());
+    assert!(
+        !client
+            .ensure_internal_port("fixture-br", "fixture-int")
+            .await
+            .unwrap()
+    );
+    assert!(
+        client
+            .ensure_internal_port("fixture-br", "fixture-int2")
+            .await
+            .unwrap()
+    );
     let ports = client.list_bridge_ports("fixture-br").await.unwrap();
     assert!(ports.iter().any(|name| name == "fixture-int2"));
 
@@ -203,18 +211,22 @@ async fn native_owner_round_trip_covers_rovs_commands_and_ovsdb_bridge_methods()
         monitor::ProtocolObservation::Snapshot(snapshot) => snapshot,
         monitor::ProtocolObservation::Unavailable(reason) => panic!("monitor failed: {reason}"),
     };
-    assert!(protocol.tables["Bridge"]
-        .values()
-        .any(|row| row["name"] == "monitor-added"));
+    assert!(
+        protocol.tables["Bridge"]
+            .values()
+            .any(|row| row["name"] == "monitor-added")
+    );
     let cancel = client
         .cancel_monitor("caller-a", "fixture-monitor")
         .await
         .unwrap();
     assert_eq!(cancel, serde_json::json!({}));
-    assert!(client
-        .cancel_monitor("caller-a", "fixture-monitor")
-        .await
-        .is_err());
+    assert!(
+        client
+            .cancel_monitor("caller-a", "fixture-monitor")
+            .await
+            .is_err()
+    );
 
     // monitor_cond uses update2 semantics: an insert that begins matching is
     // materialized and a delete/condition exit removes the row.
@@ -268,17 +280,21 @@ async fn native_owner_round_trip_covers_rovs_commands_and_ovsdb_bridge_methods()
         .delete_port("fixture-br", "fixture-int2")
         .await
         .unwrap();
-    assert!(!client
-        .list_bridge_ports("fixture-br")
-        .await
-        .unwrap()
-        .iter()
-        .any(|name| name == "fixture-int2"));
+    assert!(
+        !client
+            .list_bridge_ports("fixture-br")
+            .await
+            .unwrap()
+            .iter()
+            .any(|name| name == "fixture-int2")
+    );
     client.delete_bridge("fixture-br").await.unwrap();
-    assert!(!client
-        .list_bridges()
-        .await
-        .unwrap()
-        .iter()
-        .any(|name| name == "fixture-br"));
+    assert!(
+        !client
+            .list_bridges()
+            .await
+            .unwrap()
+            .iter()
+            .any(|name| name == "fixture-br")
+    );
 }

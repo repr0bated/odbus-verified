@@ -9,7 +9,7 @@ use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use op_plugins::state_plugins::mcp::{
     ConfigureToolGroupsInput, ConfigureToolGroupsOutput, ToolsetConfig, ToolsetTemperature,
 };
@@ -637,14 +637,16 @@ mod tests {
         .unwrap();
         assert_eq!(policy.rotation_epoch, 2);
 
-        assert!(parse_audience_policy(
-            br#"{
+        assert!(
+            parse_audience_policy(
+                br#"{
               "version": 1,
               "rotation_epoch": 2,
               "singleton_chatbot_principal_id": "chatbot-*"
             }"#
-        )
-        .is_err());
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -662,16 +664,20 @@ mod tests {
             "notebooklm_auth",
             "notebooklm_research",
         ] {
-            assert!(manifest
+            assert!(
+                manifest
+                    .sets
+                    .iter()
+                    .any(|set| set.id == id && set.temperature == ToolTemperature::Hot)
+            );
+        }
+        assert!(
+            manifest
                 .sets
                 .iter()
-                .any(|set| set.id == id && set.temperature == ToolTemperature::Hot));
-        }
-        assert!(manifest
-            .sets
-            .iter()
-            .any(|set| set.id == "notebooklm_research"
-                && set.provider == "notebooklm-mcp-authenticated"));
+                .any(|set| set.id == "notebooklm_research"
+                    && set.provider == "notebooklm-mcp-authenticated")
+        );
         assert!(manifest.sets.iter().any(|set| set.id == "mongodb_data"
             && set.provider == "mongodb-mcp-server-authenticated"
             && set.temperature == ToolTemperature::Warm));
@@ -816,16 +822,20 @@ mod tests {
             "identity_sled.write",
             "cap.identity.sled.root_repair@v1",
         ] {
-            assert!(human
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|cap| cap == capability));
-            assert!(!service
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|cap| cap == capability));
+            assert!(
+                human
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|cap| cap == capability)
+            );
+            assert!(
+                !service
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|cap| cap == capability)
+            );
         }
     }
 }

@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -2319,9 +2319,11 @@ mod tests {
         // Check that propertyDependencies is generated
         assert!(json_schema.get("propertyDependencies").is_some());
         let deps = &json_schema["propertyDependencies"];
-        assert!(deps["status"]["locked"]["properties"]["id"]["readOnly"]
-            .as_bool()
-            .unwrap_or(false));
+        assert!(
+            deps["status"]["locked"]["properties"]["id"]["readOnly"]
+                .as_bool()
+                .unwrap_or(false)
+        );
     }
 
     #[test]
@@ -2340,11 +2342,13 @@ mod tests {
         // Check that id has readOnly
         assert!(properties["id"]["readOnly"].as_bool().unwrap_or(false));
         // name should not be readOnly
-        assert!(!properties
-            .get("name")
-            .and_then(|value| value.get("readOnly"))
-            .and_then(|value| value.as_bool())
-            .unwrap_or(false));
+        assert!(
+            !properties
+                .get("name")
+                .and_then(|value| value.get("readOnly"))
+                .and_then(|value| value.as_bool())
+                .unwrap_or(false)
+        );
     }
 
     #[test]
@@ -2360,12 +2364,16 @@ mod tests {
         let json_schema = schema.to_json_schema();
 
         // All fields should be readOnly
-        assert!(json_schema["properties"]["id"]["readOnly"]
-            .as_bool()
-            .unwrap_or(false));
-        assert!(json_schema["properties"]["name"]["readOnly"]
-            .as_bool()
-            .unwrap_or(false));
+        assert!(
+            json_schema["properties"]["id"]["readOnly"]
+                .as_bool()
+                .unwrap_or(false)
+        );
+        assert!(
+            json_schema["properties"]["name"]["readOnly"]
+                .as_bool()
+                .unwrap_or(false)
+        );
     }
 
     #[test]
@@ -2456,8 +2464,8 @@ mod typed_map_tests {
         assert!(!format!("{errors:?}").contains("PRIVATE_KEY"));
         let exported = serde_json::to_value(decoded.to_json_schema()).unwrap();
         assert_eq!(
-            exported["properties"]["jobs"]["additionalProperties"]["properties"]["children"]
-                ["additionalProperties"]["properties"]["ready"]["type"],
+            exported["properties"]["jobs"]["additionalProperties"]["properties"]["children"]["additionalProperties"]
+                ["properties"]["ready"]["type"],
             "boolean"
         );
         assert_eq!(

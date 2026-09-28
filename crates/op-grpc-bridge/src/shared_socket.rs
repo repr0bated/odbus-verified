@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::task::{Context as TaskContext, Poll};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use futures::task::AtomicWaker;
 use nix::fcntl::{Flock, FlockArg};
 use op_plugins::state_plugins::unix_socket::{
@@ -535,7 +535,7 @@ impl Stream for ControlledIncoming {
             Err(_) => {
                 return Poll::Ready(Some(Err(io::Error::other(
                     "listener controller lock poisoned",
-                ))))
+                ))));
             }
         };
         if !state.listening {

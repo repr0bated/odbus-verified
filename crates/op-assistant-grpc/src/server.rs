@@ -8,7 +8,7 @@
 use crate::agents::AgentServiceImpl;
 use crate::auth::wireguard_auth_interceptor;
 use crate::client::AssistantClient;
-use crate::cognitive_client::{default_cognitive_bus_address, CognitivePluginClient};
+use crate::cognitive_client::{CognitivePluginClient, default_cognitive_bus_address};
 use crate::cron::CronServiceImpl;
 use crate::memory::MemoryServiceImpl;
 use crate::models::ModelServiceImpl;

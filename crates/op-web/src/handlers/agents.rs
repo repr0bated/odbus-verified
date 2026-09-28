@@ -4,9 +4,9 @@ use axum::{
     extract::{Extension, Path},
     response::Json,
 };
-use op_agents::{load_default_specs, AgentTask};
+use op_agents::{AgentTask, load_default_specs};
 use serde::Deserialize;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tracing::info;
 

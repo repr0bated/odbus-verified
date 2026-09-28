@@ -5,7 +5,7 @@ use op_grpc_bridge::MutationEngine;
 use op_plugins::state_plugins::json_render::JsonRenderPlugin;
 use op_state::StatePlugin;
 use op_state_store::{ChainConfig, EventChain, PluginSchema};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 

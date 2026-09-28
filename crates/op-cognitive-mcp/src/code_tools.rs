@@ -15,13 +15,13 @@
 
 use crate::context_awareness::{ActivityType, ContextAwarenessEngine};
 use crate::rag_pipeline::{
-    with_retrieval_deadline, CodeFilter, RagPipeline, RagResult, RetrievalMode, RetrievalProfile,
+    CodeFilter, RagPipeline, RagResult, RetrievalMode, RetrievalProfile, with_retrieval_deadline,
 };
 use anyhow::Result;
 use async_trait::async_trait;
 use op_mcp::tool_registry::{BoxedTool, Tool, ToolRegistry};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tracing::warn;
 
@@ -538,11 +538,13 @@ mod tests {
             serde_json::from_str(&serde_json::to_string(&output).unwrap()).unwrap();
         let typed: CodeContextOutput = serde_json::from_value(output_json).unwrap();
         assert_eq!(typed.count, 0);
-        assert!(typed
-            .retrieval_error
-            .as_deref()
-            .unwrap()
-            .contains("deadline exceeded"));
+        assert!(
+            typed
+                .retrieval_error
+                .as_deref()
+                .unwrap()
+                .contains("deadline exceeded")
+        );
         acceptor.abort();
     }
 }

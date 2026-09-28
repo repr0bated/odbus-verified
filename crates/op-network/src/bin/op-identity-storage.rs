@@ -1,5 +1,5 @@
 //! Root-only identity storage preparation and Incus boot prerequisite.
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 
 fn main() -> Result<()> {
     let args: Vec<_> = std::env::args_os().collect();

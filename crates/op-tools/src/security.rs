@@ -648,14 +648,18 @@ mod tests {
 
         // All commands should pass for admin
         assert!(validator.check_command("rm -rf /").await.is_ok());
-        assert!(validator
-            .check_command("systemctl restart sshd")
-            .await
-            .is_ok());
-        assert!(validator
-            .check_command("curl http://example.com")
-            .await
-            .is_ok());
+        assert!(
+            validator
+                .check_command("systemctl restart sshd")
+                .await
+                .is_ok()
+        );
+        assert!(
+            validator
+                .check_command("curl http://example.com")
+                .await
+                .is_ok()
+        );
     }
 
     #[tokio::test]
@@ -698,10 +702,12 @@ mod tests {
         ] {
             assert!(validator.check_command(command).await.is_err(), "{command}");
         }
-        assert!(validator
-            .check_command("find /tmp -name '*.log' -print")
-            .await
-            .is_ok());
+        assert!(
+            validator
+                .check_command("find /tmp -name '*.log' -print")
+                .await
+                .is_ok()
+        );
         assert!(validator.check_command("date +%s").await.is_ok());
     }
 
@@ -728,10 +734,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let link = dir.path().join("outside");
         std::os::unix::fs::symlink("/etc/passwd", &link).unwrap();
-        assert!(validator
-            .validate_read_path(link.to_str().unwrap())
-            .await
-            .is_err());
+        assert!(
+            validator
+                .validate_read_path(link.to_str().unwrap())
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -748,10 +756,12 @@ mod tests {
         let validator = SecurityValidator::with_admin_profile();
 
         // Path traversal always blocked
-        assert!(validator
-            .validate_read_path("/tmp/../etc/shadow")
-            .await
-            .is_err());
+        assert!(
+            validator
+                .validate_read_path("/tmp/../etc/shadow")
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]

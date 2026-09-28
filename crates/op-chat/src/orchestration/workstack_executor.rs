@@ -14,9 +14,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
-use simd_json::prelude::ValueAsScalar;
 use simd_json::OwnedValue as Value;
-use tokio::sync::{mpsc, RwLock};
+use simd_json::prelude::ValueAsScalar;
+use tokio::sync::{RwLock, mpsc};
 use tracing::{debug, error, info, instrument, warn};
 
 use super::error::{ErrorCode, OrchestrationError, OrchestrationResult};

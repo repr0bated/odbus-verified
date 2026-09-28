@@ -12,11 +12,11 @@ use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use op_cozo_store::{CozoGraphShuttle, DataValue, NamedRows, Num, ScriptMutability, Vector};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 use super::{
@@ -379,7 +379,11 @@ fn supported_metadata(meta: &RelationDescription) -> Result<Vec<TypeSpec>> {
                 && column.is_key == (index < meta.relation.n_keys as usize),
             "{name}: column ordering/key metadata is inconsistent"
         );
-        ensure!(!column.has_default, "{name}.{}: Cozo exposes has_default but not its expression; archive would lose schema behavior", column.column);
+        ensure!(
+            !column.has_default,
+            "{name}.{}: Cozo exposes has_default but not its expression; archive would lose schema behavior",
+            column.column
+        );
         types.push(TypeSpec::parse(&column.type_name)?);
     }
     ensure!(
@@ -815,7 +819,11 @@ fn restore_archive(store: &CozoGraphShuttle, archive: &RelationArchive) -> Resul
             .find(|(current, _)| current.relation.name == meta.relation.name)
         {
             supported_metadata(current)?;
-            ensure!(current == meta, "existing relation {} has different metadata; restore requires a matching schema or a missing relation", meta.relation.name);
+            ensure!(
+                current == meta,
+                "existing relation {} has different metadata; restore requires a matching schema or a missing relation",
+                meta.relation.name
+            );
         }
     }
     let mut script = String::new();

@@ -3,8 +3,8 @@
 //! Provides workstack step caching with TTL and compression.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use sha2::{Digest, Sha256};
 use tokio::sync::RwLock;
@@ -12,10 +12,10 @@ use tonic::{Request, Response, Status};
 use tracing::debug;
 
 use super::proto::{
-    cache_service_server::CacheService, CacheStats, CleanupRequest, CleanupResponse, Empty,
-    GetStepRequest, GetStepResponse, GetWorkstackStatsRequest, InvalidateStepRequest,
-    InvalidateStepResponse, InvalidateWorkstackRequest, InvalidateWorkstackResponse,
-    PutStepRequest, PutStepResponse, WorkstackCacheStats,
+    CacheStats, CleanupRequest, CleanupResponse, Empty, GetStepRequest, GetStepResponse,
+    GetWorkstackStatsRequest, InvalidateStepRequest, InvalidateStepResponse,
+    InvalidateWorkstackRequest, InvalidateWorkstackResponse, PutStepRequest, PutStepResponse,
+    WorkstackCacheStats, cache_service_server::CacheService,
 };
 
 const MAX_ENTRY_BYTES: usize = 16 * 1024 * 1024;

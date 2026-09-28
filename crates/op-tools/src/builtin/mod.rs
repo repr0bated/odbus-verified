@@ -21,8 +21,8 @@ pub mod sv;
 // pub mod self_tools;
 // pub mod shell;
 
-use crate::registry::ToolDefinition;
 use crate::ToolRegistry;
+use crate::registry::ToolDefinition;
 use anyhow::Result;
 
 /// Register all built-in tools
@@ -104,6 +104,6 @@ pub async fn register_response_tools(registry: &ToolRegistry) -> Result<()> {
 
 // Re-exports
 pub use agent_tool::{
-    create_agent_tool, create_agent_tool_with_executor, AgentConnectionRegistry, AgentDef,
-    AgentExecutor, AgentTool, BusType, DbusAgentExecutor, AGENT_DEFINITIONS,
+    AGENT_DEFINITIONS, AgentConnectionRegistry, AgentDef, AgentExecutor, AgentTool, BusType,
+    DbusAgentExecutor, create_agent_tool, create_agent_tool_with_executor,
 };

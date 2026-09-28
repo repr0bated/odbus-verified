@@ -8,5 +8,5 @@
 pub mod md_parser;
 pub mod template;
 
-pub use md_parser::{parse_agent_markdown, AgentDefinition, ParsedCapabilities};
-pub use template::{generate_agent_code, AgentOperation, AgentTemplate};
+pub use md_parser::{AgentDefinition, ParsedCapabilities, parse_agent_markdown};
+pub use template::{AgentOperation, AgentTemplate, generate_agent_code};

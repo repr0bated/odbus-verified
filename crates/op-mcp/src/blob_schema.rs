@@ -5,11 +5,11 @@
 //! and never write.
 
 use crate::server::{ToolExecutor, ToolInfo};
-use anyhow::{anyhow, Context, Result};
-use op_blob::catalog::{read_manifest_plugin_ids, DEFAULT_SHM_DIR, MANIFEST_FILENAME};
+use anyhow::{Context, Result, anyhow};
 use op_blob::BlobRef;
+use op_blob::catalog::{DEFAULT_SHM_DIR, MANIFEST_FILENAME, read_manifest_plugin_ids};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::path::{Path, PathBuf};
 
 /// MCP tool executor that serves sealed blob schema/manifest/methods.

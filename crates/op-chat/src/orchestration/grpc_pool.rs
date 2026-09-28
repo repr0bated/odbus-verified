@@ -10,12 +10,12 @@
 //! - Comprehensive metrics and logging
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use simd_json::prelude::{ValueAsScalar, ValueObjectAccess};
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::{ValueAsScalar, ValueObjectAccess};
 use tokio::sync::{RwLock, Semaphore};
 use tokio::time::timeout;
 use tracing::{debug, error, info, instrument, warn};

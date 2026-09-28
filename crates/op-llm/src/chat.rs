@@ -25,7 +25,7 @@
 //! ANTHROPIC_API_KEY=xxx
 //! ```
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::RwLock;

@@ -21,9 +21,9 @@ pub use runtime_document_transactions::{
 };
 mod ctl_plane_chatbot_episodes;
 pub use ctl_plane_chatbot_episodes::{
-    EpisodeEmbeddingRecord, EpisodePage, EpisodeScope, EpisodeSnapshot, ScopedEpisodeRecord,
-    ScopedKnowledgeRecord, KNOWLEDGE_SNAPSHOT_LIMIT, MAX_CHATBOT_EPISODE_BYTES,
-    MAX_CHATBOT_SNAPSHOT_BYTES,
+    EpisodeEmbeddingRecord, EpisodePage, EpisodeScope, EpisodeSnapshot, KNOWLEDGE_SNAPSHOT_LIMIT,
+    MAX_CHATBOT_EPISODE_BYTES, MAX_CHATBOT_SNAPSHOT_BYTES, ScopedEpisodeRecord,
+    ScopedKnowledgeRecord,
 };
 
 /// Strongly-typed error for CozoDB graph operations.
@@ -607,7 +607,10 @@ impl CozoGraphShuttle {
                     "expires_at",
                 ];
                 for name in required {
-                    anyhow::ensure!(names.contains(name), "populated legacy identity_sleds missing required field {name}; retired identity requires an authored credential");
+                    anyhow::ensure!(
+                        names.contains(name),
+                        "populated legacy identity_sleds missing required field {name}; retired identity requires an authored credential"
+                    );
                 }
                 let legacy_fields = required.join(", ");
                 // Named fields tolerate unrelated added columns without inventing
@@ -632,9 +635,11 @@ impl CozoGraphShuttle {
             }
         }
         if !migration_done {
-            cozo_run(&self.db,
+            cozo_run(
+                &self.db,
                 "?[name, completed] <- [['identity-sessions-v3', true]] :put schema_migrations {name => completed}",
-                BTreeMap::new())?;
+                BTreeMap::new(),
+            )?;
         }
 
         info!("CozoDB schema ready");
@@ -2073,11 +2078,7 @@ fn row_to_wg_session(row: &[DataValue]) -> WgSessionRecord {
     let s = |i: usize| dv_as_str(&row[i]).unwrap_or("").to_string();
     let opt = |i: usize| {
         let v = s(i);
-        if v.is_empty() {
-            None
-        } else {
-            Some(v)
-        }
+        if v.is_empty() { None } else { Some(v) }
     };
     WgSessionRecord {
         session_id: s(0),
@@ -2093,11 +2094,7 @@ fn row_to_wg_session(row: &[DataValue]) -> WgSessionRecord {
         key_rotation_count: dv_as_int(&row[10]) as u32,
         flags_json: {
             let v = s(11);
-            if v.is_empty() {
-                "{}".to_string()
-            } else {
-                v
-            }
+            if v.is_empty() { "{}".to_string() } else { v }
         },
     }
 }
@@ -2606,10 +2603,12 @@ mod human_principal_tests {
 
         // Unknown lookups are absent, never fabricated.
         assert!(store.get_human_principal("nope").unwrap().is_none());
-        assert!(store
-            .get_human_principal_by_pubkey("nope")
-            .unwrap()
-            .is_none());
+        assert!(
+            store
+                .get_human_principal_by_pubkey("nope")
+                .unwrap()
+                .is_none()
+        );
 
         // Alias update is a partial-column update: nothing else is clobbered.
         store

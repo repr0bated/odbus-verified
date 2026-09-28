@@ -1,7 +1,8 @@
 use super::*;
 use std::sync::{
+    Arc, Barrier,
     atomic::{AtomicUsize, Ordering},
-    mpsc, Arc, Barrier,
+    mpsc,
 };
 
 fn root(dir: &tempfile::TempDir) -> &str {
@@ -55,9 +56,11 @@ fn durable_callback_runs_after_synced_marker_and_sees_only_private_predecessor()
     assert_eq!(receipt.generation, 2);
     assert_eq!(receipt.current, pair(2).map(|(public, _)| public));
     assert!(!receipt.current.unwrap().windows(7).any(|v| v == b"private"));
-    assert!(pending_identity_publication_in(root(&dir))
-        .unwrap()
-        .is_none());
+    assert!(
+        pending_identity_publication_in(root(&dir))
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[test]

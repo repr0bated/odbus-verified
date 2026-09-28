@@ -415,7 +415,9 @@ pub async fn verify_redirect(
                             provisioned_user.id
                         ))
                         .into_response();
-                        let cookie = format!("privacy_access={token}; HttpOnly; Secure; SameSite=Strict; Path=/privacy/access");
+                        let cookie = format!(
+                            "privacy_access={token}; HttpOnly; Secure; SameSite=Strict; Path=/privacy/access"
+                        );
                         response.headers_mut().insert(
                             axum::http::header::SET_COOKIE,
                             cookie.parse().expect("generated token is safe in cookie"),

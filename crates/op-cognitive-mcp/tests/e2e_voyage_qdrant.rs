@@ -18,8 +18,8 @@
 
 use anyhow::{Context, Result};
 use op_cognitive_mcp::QdrantSemanticShuttle;
-use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder};
 use qdrant_client::Qdrant;
+use qdrant_client::qdrant::{CreateCollectionBuilder, Distance, VectorParamsBuilder};
 
 /// Voyage shared-space dimension (voyage-4-large / voyage-4 / voyage-4-lite).
 const PROBE_DIMS: u64 = 1024;

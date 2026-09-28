@@ -11,7 +11,7 @@ use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use op_grpc_bridge::mcp_policy::{parse_audience_policy, parse_toolset_manifest};
 use serde_json::Value;
 
@@ -303,14 +303,16 @@ mod tests {
     #[test]
     fn rejects_wildcard_and_legacy_footprint_keys() {
         assert!(validate_document(br#"{"*":{"capabilities":[]}}"#).is_err());
-        assert!(validate_document(
-            br#"{
+        assert!(
+            validate_document(
+                br#"{
                 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef": {
                     "capabilities": []
                 }
             }"#
-        )
-        .is_err());
+            )
+            .is_err()
+        );
     }
 
     #[test]

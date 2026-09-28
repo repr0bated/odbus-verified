@@ -2,9 +2,9 @@
 //! canonical method admission; the catalog selects an implementation, never
 //! supplies authority or accepts a caller-chosen tool name.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use op_plugins::state_plugins::cognitive_agents::{self, CatalogAgentMethod};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::{mutation_engine::MutationEngine, specialist::CognitiveCaller};
 

@@ -3,13 +3,13 @@
 //! Contracts come from the cognitive plugin. Authenticated persona and workflow
 //! execution lives in the bridge; this registry is its implementation inventory.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
-use op_agents::{builtin_agent_descriptors, create_agent, AgentDescriptor, AgentTask};
+use op_agents::{AgentDescriptor, AgentTask, builtin_agent_descriptors, create_agent};
 use op_mcp::tool_registry::{BoxedTool, Tool, ToolRegistry};
 use op_plugins::state_plugins::cognitive_agents;
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
 

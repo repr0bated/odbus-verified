@@ -1,9 +1,9 @@
 //! Syn-based static walk of a plugin `.rs` source against the render contract.
 
 use crate::report::Report;
-use crate::subid::{validate_subid, KNOWN_X_KEYS};
+use crate::subid::{KNOWN_X_KEYS, validate_subid};
 use anyhow::{Context, Result};
-use syn::{parse_file, Attribute, Expr, Fields, Item, ItemStruct, Lit, Meta, MetaNameValue};
+use syn::{Attribute, Expr, Fields, Item, ItemStruct, Lit, Meta, MetaNameValue, parse_file};
 
 /// Optional Inspector-Gadget coverage inputs.
 #[derive(Debug, Clone, Default)]
@@ -681,9 +681,11 @@ mod inventory_detection_tests {
             struct Example;
         "#;
         let report = audit_source("comment_only.rs", source).unwrap();
-        assert!(report
-            .findings
-            .iter()
-            .any(|finding| finding.code == "missing_inventory_submit"));
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|finding| finding.code == "missing_inventory_submit")
+        );
     }
 }

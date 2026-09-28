@@ -1,7 +1,7 @@
 //! The tched_router-owned private generation contract and durable transitions.
 //! Native execution and SHM publication belong to MutationEngine. This module
 //! never contacts a model, writes SHM, grants access, or stores a raw prompt.
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -755,12 +755,35 @@ pub fn declare_methods(schema: &mut op_state_store::PluginSchema) {
         "mut.service.tched-router.generation.recover@v1"
     );
     for (id, description) in [
-        (START_CAPABILITY,"Start native generation for this verified principal and session"),
-        (READ_CAPABILITY,"Read this verified principal and session's private generation jobs"),
-        (CANCEL_CAPABILITY,"Request cancellation of this verified principal and session's generation job"),
-        (DELETE_CAPABILITY,"Delete a terminal generation job owned by this principal and session"),
-        (RECOVER_CAPABILITY,"Recover this principal and session's durable generation jobs without replaying prompts"),
-    ] { schema.capabilities.insert(id.into(), CapabilityDecl { id:id.into(), description:description.into() }); }
+        (
+            START_CAPABILITY,
+            "Start native generation for this verified principal and session",
+        ),
+        (
+            READ_CAPABILITY,
+            "Read this verified principal and session's private generation jobs",
+        ),
+        (
+            CANCEL_CAPABILITY,
+            "Request cancellation of this verified principal and session's generation job",
+        ),
+        (
+            DELETE_CAPABILITY,
+            "Delete a terminal generation job owned by this principal and session",
+        ),
+        (
+            RECOVER_CAPABILITY,
+            "Recover this principal and session's durable generation jobs without replaying prompts",
+        ),
+    ] {
+        schema.capabilities.insert(
+            id.into(),
+            CapabilityDecl {
+                id: id.into(),
+                description: description.into(),
+            },
+        );
+    }
     for method in ["get_generation_job", "get_generation_jobs"] {
         schema.methods.get_mut(method).unwrap().idempotent = true;
     }

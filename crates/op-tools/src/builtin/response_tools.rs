@@ -16,7 +16,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::info;
@@ -537,13 +537,15 @@ mod tests {
             result.get("message").unwrap(),
             "Bridge created successfully"
         );
-        assert!(result
-            .get("_internal")
-            .unwrap()
-            .get("is_response_tool")
-            .unwrap()
-            .as_bool()
-            .unwrap());
+        assert!(
+            result
+                .get("_internal")
+                .unwrap()
+                .get("is_response_tool")
+                .unwrap()
+                .as_bool()
+                .unwrap()
+        );
 
         // Check accumulator
         let acc_arc = get_response_accumulator();

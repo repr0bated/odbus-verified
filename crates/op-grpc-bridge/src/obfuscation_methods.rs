@@ -1,7 +1,7 @@
 //! The obfuscation plugin owns only its explicit normalization rules. The
 //! existing OpenFlow D-Bus controller owns wire encoding, live comparison,
 //! barriers and readback. No legacy rule string is installed here.
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use async_trait::async_trait;
 use op_plugins::state_plugins::{
     openflow::{FlowAction, FlowEntry},
@@ -189,7 +189,12 @@ impl ObfuscationMethods {
             ));
         }
         if let Some(pending) = &document.pending {
-            ensure!(pending.is_retry(method, &args), "normalization operation {} for {} needs its exact request retried before another change", pending.method, pending.flow_id);
+            ensure!(
+                pending.is_retry(method, &args),
+                "normalization operation {} for {} needs its exact request retried before another change",
+                pending.method,
+                pending.flow_id
+            );
             return self.finish(document, document_revision).await;
         }
         let revision = document.revision;
@@ -493,10 +498,12 @@ mod tests {
         let removal =
             serde_json::json!({"bridge":"fixture0","flow_id":flow_id,"expected_revision":1});
         owner.0.lock().await.as_mut().unwrap().priority = 999;
-        assert!(service
-            .dispatch("deobfuscate_flow", removal.clone())
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch("deobfuscate_flow", removal.clone())
+                .await
+                .is_err()
+        );
         *owner.0.lock().await = Some(installed);
         let (reply, state) = service.dispatch("deobfuscate_flow", removal).await.unwrap();
         assert_eq!(reply["installed"], false);

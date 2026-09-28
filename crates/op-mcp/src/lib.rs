@@ -35,8 +35,8 @@ pub mod grpc;
 pub use agents_server::AgentsServer;
 pub use blob_schema::BlobSchemaExecutor;
 pub use compact::{
-    run_compact_stdio_server, run_compact_unix_server, CompactServer, PrewarmedOpToolsExecutor,
-    SessionContext,
+    CompactServer, PrewarmedOpToolsExecutor, SessionContext, run_compact_stdio_server,
+    run_compact_unix_server,
 };
 pub use external_client::{
     AuthMethod, ExternalMcpClient, ExternalMcpConfig, ExternalMcpManager, ExternalTool,

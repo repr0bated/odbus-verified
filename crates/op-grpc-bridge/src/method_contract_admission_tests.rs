@@ -292,9 +292,11 @@ fn generated_artifact_contains_full_declarations_keyed_by_canonical_method() {
     }
     // These contracts distinguish a real backend response from the old Ack.
     assert!(contracts["unix_socket"].methods["bind"].returns.is_some());
-    assert!(contracts["embedding_model"].methods["embed"]
-        .returns
-        .is_some());
+    assert!(
+        contracts["embedding_model"].methods["embed"]
+            .returns
+            .is_some()
+    );
 }
 
 #[test]

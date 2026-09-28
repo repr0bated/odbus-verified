@@ -2,7 +2,7 @@ use super::*;
 use crate::human_principal_dispatch::tests::{
     pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
 };
-use crate::identity_sled_dispatch::{tests::write_identity, IdentitySledStore};
+use crate::identity_sled_dispatch::{IdentitySledStore, tests::write_identity};
 use op_llm::antigravity::record_usage_with_documents;
 use op_llm::provider::TokenUsage;
 use op_plugins::state_plugins::{
@@ -14,7 +14,7 @@ use op_plugins::state_plugins::{
 };
 use op_state::StatePlugin;
 use op_state_store::PluginSchema;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 struct GrantsEnvironment(Option<std::ffi::OsString>);
@@ -178,21 +178,23 @@ async fn six_methods_pass_canonical_admission_native_refresh_and_shm_publication
     // The SDK starts its own refresh worker when credentials are constructed.
     // Prove rejection before that worker exists, so unrelated SDK cache work
     // cannot be mistaken for a side effect of the rejected canonical call.
-    assert!(fixture
-        .engine
-        .dispatch_method_call_with_identity(
-            "antigravity_chat",
-            "refresh_token",
-            "{}",
-            fixture.chat.methods["refresh_token"]
-                .required_capability
-                .as_deref(),
-            &fixture.principal,
-            None,
-            None,
-        )
-        .await
-        .is_err());
+    assert!(
+        fixture
+            .engine
+            .dispatch_method_call_with_identity(
+                "antigravity_chat",
+                "refresh_token",
+                "{}",
+                fixture.chat.methods["refresh_token"]
+                    .required_capability
+                    .as_deref(),
+                &fixture.principal,
+                None,
+                None,
+            )
+            .await
+            .is_err()
+    );
     assert!(received.lock().unwrap().is_empty());
     assert!(fixture.engine.antigravity_credentials.get().is_none());
     assert!(op_core::projection_shm::read_projection_bytes("antigravity_chat").is_none());
@@ -205,13 +207,15 @@ async fn six_methods_pass_canonical_admission_native_refresh_and_shm_publication
     .with_scopes(scopes.clone())
     .build_access_token_credentials()
     .unwrap();
-    assert!(fixture
-        .engine
-        .antigravity_credentials
-        .set(Arc::new(
-            op_llm::antigravity::GoogleCredentialOwner::from_credentials(sdk, scopes)
-        ))
-        .is_ok());
+    assert!(
+        fixture
+            .engine
+            .antigravity_credentials
+            .set(Arc::new(
+                op_llm::antigravity::GoogleCredentialOwner::from_credentials(sdk, scopes)
+            ))
+            .is_ok()
+    );
 
     let configured = fixture
         .call(
@@ -262,11 +266,13 @@ async fn six_methods_pass_canonical_admission_native_refresh_and_shm_publication
     assert_eq!(requests[0]["client_id"], "PRIVATE_CLIENT");
     assert_eq!(requests[0]["client_secret"], "PRIVATE_SECRET");
     assert_eq!(requests[0]["refresh_token"], "PRIVATE_REFRESH");
-    assert!(!String::from_utf8(
-        op_core::projection_shm::read_projection_bytes("antigravity_chat").unwrap()
-    )
-    .unwrap()
-    .contains("PRIVATE_"));
+    assert!(
+        !String::from_utf8(
+            op_core::projection_shm::read_projection_bytes("antigravity_chat").unwrap()
+        )
+        .unwrap()
+        .contains("PRIVATE_")
+    );
     record_usage_with_documents(
         fixture.documents.clone(),
         "fixture-model".into(),

@@ -4,15 +4,15 @@
 //! a disposable mongod and the pinned MongoDB MCP provider.  It never uses
 //! the host provider, credentials, sockets, database path, or service ports.
 
-use anyhow::{bail, Context, Result};
-use serde_json::{json, Value};
+use anyhow::{Context, Result, bail};
+use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 use tokio::net::TcpStream;
 use tokio::process::{Child, Command};
 
-use super::{dispatch_mongodb_mcp_owner, SupervisedMcpProvider};
+use super::{SupervisedMcpProvider, dispatch_mongodb_mcp_owner};
 use op_plugins::state_plugins::mongodb_mcp::MongoDbMcpPlugin;
 use op_state::StatePlugin;
 use op_state_store::PluginSchema;

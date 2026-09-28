@@ -8,8 +8,8 @@
 
 use anyhow::{Context, Result};
 use op_grpc_bridge::{GhostbridgeCallMetadata, GrpcClientPool, RemoteOperationClient};
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::sync::{Arc, OnceLock};
 
 static GRPC_CLIENT: OnceLock<RemoteOperationClient> = OnceLock::new();

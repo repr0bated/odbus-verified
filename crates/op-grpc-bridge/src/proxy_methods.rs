@@ -2,7 +2,7 @@
 //! Cozo owns configuration; live listener handles own running state. A restart
 //! retains configuration and requires an explicit start, never a fabricated
 //! persisted `running` flag. No subprocess or independent control listener.
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::{
     proxy_server::{
         ConfigureProxyInput, ProxyConfig, ProxyMethodOutput, ProxyServerState, ProxyStatus,
@@ -16,14 +16,14 @@ use std::{
     collections::BTreeMap,
     net::{IpAddr, SocketAddr},
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
     time::Duration,
 };
 use tokio::{
     net::{TcpListener, TcpStream},
-    sync::{oneshot, watch, Mutex, Notify},
+    sync::{Mutex, Notify, oneshot, watch},
     task::{JoinHandle, JoinSet},
 };
 
@@ -382,9 +382,11 @@ mod tests {
         let port = free_port().await;
         let (_, state) = service.dispatch("configure", serde_json::json!({"name":"fixture", "enabled":true,"port":port,"upstream":upstream.to_string(),"expected_revision":0})).await.unwrap();
         assert!(!state.proxies["fixture"].running);
-        assert!(TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
-            .await
-            .is_err());
+        assert!(
+            TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
+                .await
+                .is_err()
+        );
         let (_, state) = service
             .dispatch(
                 "start_proxy",
@@ -403,13 +405,15 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(&response, b"through-real-upstream");
-        assert!(service
-            .dispatch(
-                "stop_proxy",
-                serde_json::json!({"name":"fixture","expected_revision":1})
-            )
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch(
+                    "stop_proxy",
+                    serde_json::json!({"name":"fixture","expected_revision":1})
+                )
+                .await
+                .is_err()
+        );
         let replacement = free_port().await;
         let (_, state) = service
             .dispatch(
@@ -419,9 +423,11 @@ mod tests {
             .await
             .unwrap();
         assert!(state.proxies["fixture"].running);
-        assert!(TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
-            .await
-            .is_err());
+        assert!(
+            TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port))
+                .await
+                .is_err()
+        );
         let (_, state) = service
             .dispatch(
                 "stop_proxy",
@@ -477,13 +483,15 @@ mod tests {
         let occupied = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = occupied.local_addr().unwrap().port();
         service.dispatch("configure", serde_json::json!({"name":"fixture","enabled":true,"port":port,"upstream":"127.0.0.1:1","expected_revision":0})).await.unwrap();
-        assert!(service
-            .dispatch(
-                "start_proxy",
-                serde_json::json!({"name":"fixture","expected_revision":1})
-            )
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch(
+                    "start_proxy",
+                    serde_json::json!({"name":"fixture","expected_revision":1})
+                )
+                .await
+                .is_err()
+        );
         assert_eq!(documents.read(PLUGIN).await.unwrap().unwrap().revision, 1);
         drop(occupied);
         service

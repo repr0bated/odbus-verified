@@ -23,7 +23,7 @@ use op_cozo_store::{
 use op_plugins::state_plugins::incus_device::Device;
 use op_plugins::state_plugins::{
     identity_sled::{
-        ContainerIdentitySled, IdentitySledState, SessionEvent, RECORD_FORMAT, SCHEMA_CONTENT_HASH,
+        ContainerIdentitySled, IdentitySledState, RECORD_FORMAT, SCHEMA_CONTENT_HASH, SessionEvent,
     },
     incus::{IdentitySessionPowerState, IncusInstance, IncusPlugin},
 };
@@ -333,8 +333,8 @@ fn state_value(snapshot: &IdentityRecoverySnapshot) -> anyhow::Result<simd_json:
     )?)?)
 }
 
-fn strict_identity_contract(
-) -> anyhow::Result<crate::sealed_schema_reader::ManifestPinnedSchemaDocument> {
+fn strict_identity_contract()
+-> anyhow::Result<crate::sealed_schema_reader::ManifestPinnedSchemaDocument> {
     let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
         &crate::sealed_schema_reader::blob_catalog_dir_from_env(),
         "identity_sled",
@@ -2022,7 +2022,7 @@ pub async fn current_state(_engine: &MutationEngine) -> anyhow::Result<IdentityS
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::human_principal_dispatch::tests::{pk, temp_shm, test_engine, TempShm};
+    use crate::human_principal_dispatch::tests::{TempShm, pk, temp_shm, test_engine};
     use std::sync::{Arc, Mutex};
 
     #[test]
@@ -2579,9 +2579,11 @@ pub(crate) mod tests {
             device_name: "Ghostbridge-Incus".into(),
         });
         assert_eq!(claims, expected);
-        assert!(authenticate_sid1_wire(&engine, &old_wire, "grpc")
-            .await
-            .is_err());
+        assert!(
+            authenticate_sid1_wire(&engine, &old_wire, "grpc")
+                .await
+                .is_err()
+        );
         let mut forged = claims.clone();
         forged.nextdns.as_mut().unwrap().profile_id = "abcdef".into();
         assert!(
@@ -2614,9 +2616,11 @@ pub(crate) mod tests {
                 op_identity::sealed_id::SealedId::from_inline_ref(&stamp.sealed_id).unwrap();
             assert_eq!(claims.nextdns.is_some(), assigned);
         }
-        assert!(engine
-            .configure_nextdns_bindings(crate::identity_nextdns::NextDnsBindings::default())
-            .is_err());
+        assert!(
+            engine
+                .configure_nextdns_bindings(crate::identity_nextdns::NextDnsBindings::default())
+                .is_err()
+        );
         restore_grants_path(previous);
     }
 
@@ -2688,42 +2692,46 @@ pub(crate) mod tests {
         .await
         .unwrap_err();
         assert!(error.to_string().contains("verified session metadata"));
-        assert!(dispatch_identity_sled_method_for_verified_session(
-            &engine,
-            "refresh_credential",
-            &serde_json::json!({}),
-            &actor,
-            Some(&identity.session_id),
-            Some("wrong-genesis")
-        )
-        .await
-        .is_err());
-        assert!(dispatch_identity_sled_method_for_verified_session(
-            &engine,
-            "refresh_credential",
-            &serde_json::json!({}),
-            &actor,
-            Some("wrong-session"),
-            current.genesis.as_deref()
-        )
-        .await
-        .is_err());
-        assert!(dispatch_with_fixtures(
-            &engine,
-            Arc::new(RecordingLifecycle::default()),
-            no_btrfs_mount_verifier(),
-            "refresh_credential",
-            serde_json::json!({})
-        )
-        .await
-        .is_err());
-        assert!(dispatch_identity_sled_method(
-            &engine,
-            "refresh_credential",
-            &serde_json::json!({})
-        )
-        .await
-        .is_err());
+        assert!(
+            dispatch_identity_sled_method_for_verified_session(
+                &engine,
+                "refresh_credential",
+                &serde_json::json!({}),
+                &actor,
+                Some(&identity.session_id),
+                Some("wrong-genesis")
+            )
+            .await
+            .is_err()
+        );
+        assert!(
+            dispatch_identity_sled_method_for_verified_session(
+                &engine,
+                "refresh_credential",
+                &serde_json::json!({}),
+                &actor,
+                Some("wrong-session"),
+                current.genesis.as_deref()
+            )
+            .await
+            .is_err()
+        );
+        assert!(
+            dispatch_with_fixtures(
+                &engine,
+                Arc::new(RecordingLifecycle::default()),
+                no_btrfs_mount_verifier(),
+                "refresh_credential",
+                serde_json::json!({})
+            )
+            .await
+            .is_err()
+        );
+        assert!(
+            dispatch_identity_sled_method(&engine, "refresh_credential", &serde_json::json!({}))
+                .await
+                .is_err()
+        );
         restore_grants_path(previous);
     }
 
@@ -2735,16 +2743,18 @@ pub(crate) mod tests {
                 refresh_test_fixture_with_claims(0x84, Some("dbus,mqtt"), 0).await;
             let bad_actor =
                 op_identity::session::derive_principal_id(&bad_identity.wireguard_pubkey);
-            assert!(dispatch_identity_sled_method_for_verified_session(
-                &bad_engine,
-                "refresh_credential",
-                &serde_json::json!({}),
-                &bad_actor,
-                Some(&bad_identity.session_id),
-                bad_identity.genesis.as_deref()
-            )
-            .await
-            .is_err());
+            assert!(
+                dispatch_identity_sled_method_for_verified_session(
+                    &bad_engine,
+                    "refresh_credential",
+                    &serde_json::json!({}),
+                    &bad_actor,
+                    Some(&bad_identity.session_id),
+                    bad_identity.genesis.as_deref()
+                )
+                .await
+                .is_err()
+            );
             restore_grants_path(bad_previous);
         }
         {
@@ -2758,32 +2768,36 @@ pub(crate) mod tests {
             ) = refresh_test_fixture_with_claims(0x85, None, now() - 1).await;
             let expired_actor =
                 op_identity::session::derive_principal_id(&expired_identity.wireguard_pubkey);
-            assert!(dispatch_identity_sled_method_for_verified_session(
-                &expired_engine,
-                "refresh_credential",
-                &serde_json::json!({}),
-                &expired_actor,
-                Some(&expired_identity.session_id),
-                expired_identity.genesis.as_deref()
-            )
-            .await
-            .is_err());
+            assert!(
+                dispatch_identity_sled_method_for_verified_session(
+                    &expired_engine,
+                    "refresh_credential",
+                    &serde_json::json!({}),
+                    &expired_actor,
+                    Some(&expired_identity.session_id),
+                    expired_identity.genesis.as_deref()
+                )
+                .await
+                .is_err()
+            );
             restore_grants_path(expired_previous);
         }
         let (engine, _shm, identity, grants_dir, previous, _registry) =
             refresh_test_fixture(0x83).await;
         let actor = op_identity::session::derive_principal_id(&identity.wireguard_pubkey);
         std::fs::write(grants_dir.path().join("capability-grants.json"), b"{}").unwrap();
-        assert!(dispatch_identity_sled_method_for_verified_session(
-            &engine,
-            "refresh_credential",
-            &serde_json::json!({}),
-            &actor,
-            Some(&identity.session_id),
-            identity.genesis.as_deref()
-        )
-        .await
-        .is_err());
+        assert!(
+            dispatch_identity_sled_method_for_verified_session(
+                &engine,
+                "refresh_credential",
+                &serde_json::json!({}),
+                &actor,
+                Some(&identity.session_id),
+                identity.genesis.as_deref()
+            )
+            .await
+            .is_err()
+        );
         std::fs::write(
             grants_dir.path().join("capability-grants.json"),
             serde_json::to_vec(
@@ -2798,16 +2812,18 @@ pub(crate) mod tests {
         )
         .await
         .unwrap();
-        assert!(dispatch_identity_sled_method_for_verified_session(
-            &engine,
-            "refresh_credential",
-            &serde_json::json!({}),
-            &actor,
-            Some(&identity.session_id),
-            identity.genesis.as_deref()
-        )
-        .await
-        .is_err());
+        assert!(
+            dispatch_identity_sled_method_for_verified_session(
+                &engine,
+                "refresh_credential",
+                &serde_json::json!({}),
+                &actor,
+                Some(&identity.session_id),
+                identity.genesis.as_deref()
+            )
+            .await
+            .is_err()
+        );
         restore_grants_path(previous);
     }
 
@@ -2838,10 +2854,12 @@ pub(crate) mod tests {
             .await
             .unwrap();
         let wire = inline_sid1_wire(expired.sealed_id.as_deref().unwrap());
-        assert!(authenticate_sid1_wire(&engine, &wire, "grpc")
-            .await
-            .unwrap_err()
-            .contains("expired"));
+        assert!(
+            authenticate_sid1_wire(&engine, &wire, "grpc")
+                .await
+                .unwrap_err()
+                .contains("expired")
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -3003,13 +3021,15 @@ pub(crate) mod tests {
                     .is_err()
             );
         }
-        assert!(dispatch_identity_sled_method(
-            &engine,
-            "inspect_own_root_repair_preflight",
-            &serde_json::json!({}),
-        )
-        .await
-        .is_err());
+        assert!(
+            dispatch_identity_sled_method(
+                &engine,
+                "inspect_own_root_repair_preflight",
+                &serde_json::json!({}),
+            )
+            .await
+            .is_err()
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -3270,10 +3290,12 @@ pub(crate) mod tests {
                 identity.session_id
             );
         }
-        assert!(session_record_for_actor(&engine, "")
-            .await
-            .unwrap()
-            .is_none());
+        assert!(
+            session_record_for_actor(&engine, "")
+                .await
+                .unwrap()
+                .is_none()
+        );
     }
 
     include!("identity_sled_private_fixture_tests.rs");

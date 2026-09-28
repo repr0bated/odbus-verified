@@ -8,17 +8,17 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use base64::Engine as _;
 use futures::StreamExt as _;
 use tokio::sync::{Mutex, RwLock};
+use zbus::Connection;
 use zbus::message::Header;
 use zbus::names::BusName;
-use zbus::Connection;
 
-use crate::interceptor::{load_capability_grants, GhostbridgeIdentity};
+use crate::interceptor::{GhostbridgeIdentity, load_capability_grants};
 use crate::mutation_engine::MutationEngine;
 use crate::oracle_assertion::AssertionValidator;
 

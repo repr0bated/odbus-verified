@@ -12,7 +12,7 @@ use crate::cozo_shuttle::CozoGraphShuttle;
 use crate::memory_store::CognitiveMemoryStore;
 use crate::qdrant_shuttle::QdrantSemanticShuttle;
 use crate::quota::QuotaManager;
-use crate::rag_pipeline::{default_collection_from_env, RagPipeline};
+use crate::rag_pipeline::{RagPipeline, default_collection_from_env};
 use crate::session::SessionManager;
 use crate::typed_tools;
 use op_mcp::tool_registry::ToolRegistry;

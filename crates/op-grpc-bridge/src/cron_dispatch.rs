@@ -8,12 +8,12 @@
 
 use crate::{
     cron_gateway::TchedRouterCronGateway,
-    cron_methods::{mark_publication_unverified, CronMethods},
+    cron_methods::{CronMethods, mark_publication_unverified},
     method_contract_admission,
     mutation_engine::MutationEngine,
     sealed_schema_reader::{
-        blob_catalog_dir_from_env, read_manifest_pinned_schema_document,
-        ManifestPinnedSchemaDocument,
+        ManifestPinnedSchemaDocument, blob_catalog_dir_from_env,
+        read_manifest_pinned_schema_document,
     },
 };
 use anyhow::{Context, Result};

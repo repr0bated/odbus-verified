@@ -6,13 +6,13 @@
 
 use crate::state::AppState;
 use axum::{
+    Json,
     extract::{Extension, Path, Query},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
-    Json,
 };
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use simd_json::prelude::*;
 use std::sync::Arc;
 
@@ -213,10 +213,12 @@ mod tests {
             serde_json::from_value::<DeleteSpecRequest>(json!({"expected_revision":3})).is_ok()
         );
         assert!(serde_json::from_value::<DeleteSpecRequest>(json!({})).is_err());
-        assert!(serde_json::from_value::<DeleteSpecRequest>(
-            json!({"expected_revision":3,"latest":true})
-        )
-        .is_err());
+        assert!(
+            serde_json::from_value::<DeleteSpecRequest>(
+                json!({"expected_revision":3,"latest":true})
+            )
+            .is_err()
+        );
 
         let call = delete_spec_call(
             "spec-a".into(),

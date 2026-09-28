@@ -698,11 +698,13 @@ mod tests {
             .expect("user memory persisted");
         assert_eq!(editor.value, serde_json::json!("helix"));
         // Namespaces do not bleed into each other.
-        assert!(store
-            .retrieve_entry("user:alice", "ledger_id_decision")
-            .await
-            .unwrap()
-            .is_none());
+        assert!(
+            store
+                .retrieve_entry("user:alice", "ledger_id_decision")
+                .await
+                .unwrap()
+                .is_none()
+        );
         let entries = store
             .query_entries(EntryQuery {
                 namespace_id: Some("agent_pieces".into()),

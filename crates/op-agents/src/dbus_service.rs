@@ -27,15 +27,15 @@
 //! ```
 
 use crate::agents::base::{AgentTask, AgentTrait};
-use crate::unified::{agent_trait::AgentRequest, AgentCategory, GLOBAL_REGISTRY};
+use crate::unified::{AgentCategory, GLOBAL_REGISTRY, agent_trait::AgentRequest};
 use op_core::BusType;
 use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info};
 use zbus::{
-    connection::Builder, fdo::DBusProxy, interface, message::Header, object_server::SignalEmitter,
-    Connection,
+    Connection, connection::Builder, fdo::DBusProxy, interface, message::Header,
+    object_server::SignalEmitter,
 };
 
 /// Error type for D-Bus agent service operations

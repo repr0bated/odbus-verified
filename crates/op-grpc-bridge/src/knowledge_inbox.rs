@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use op_cognitive_mcp::context_awareness::KnowledgePush;
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{Mutex, broadcast};
 
 /// Pushes kept per session.
 const MAX_PER_SESSION: usize = 32;
@@ -144,9 +144,11 @@ mod tests {
         let lines = inbox.take("s1").await;
         assert_eq!(lines.len(), MAX_PER_SESSION);
         assert!(lines[0].contains("r8"), "oldest kept first: {}", lines[0]);
-        assert!(lines
-            .iter()
-            .all(|l| l.contains("suggested: run rust_pro check")));
+        assert!(
+            lines
+                .iter()
+                .all(|l| l.contains("suggested: run rust_pro check"))
+        );
         assert!(inbox.take("s1").await.is_empty(), "drained");
         assert_eq!(inbox.take("s2").await.len(), 1);
     }

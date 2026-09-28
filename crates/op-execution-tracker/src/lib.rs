@@ -25,4 +25,4 @@ pub use metrics::ExecutionMetrics;
 pub use telemetry::ExecutionTelemetry;
 
 pub use record::ExecutionStatus as RecordExecutionStatus;
-pub use record::{hash_execution, ExecutionRecord, ExecutionRecordBuilder, ExecutionTiming};
+pub use record::{ExecutionRecord, ExecutionRecordBuilder, ExecutionTiming, hash_execution};

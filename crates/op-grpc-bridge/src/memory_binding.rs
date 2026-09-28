@@ -19,9 +19,9 @@
 
 use std::collections::BTreeSet;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use op_plugins::state_plugins::project::{
-    namespace_prefix_for_session, validate_personal_namespace, ChatMode, ResolvedChatContext,
+    ChatMode, ResolvedChatContext, namespace_prefix_for_session, validate_personal_namespace,
 };
 
 use crate::mutation_engine::MutationEngine;
@@ -186,12 +186,14 @@ mod tests {
             bind_args("memory_query", &personal, &mut traversal).unwrap(),
             "session/sess/personal"
         );
-        assert!(bind_args(
-            "memory_store",
-            &personal,
-            &mut serde_json::json!({"namespace": "Bad Name"})
-        )
-        .is_err());
+        assert!(
+            bind_args(
+                "memory_store",
+                &personal,
+                &mut serde_json::json!({"namespace": "Bad Name"})
+            )
+            .is_err()
+        );
 
         let project = context(ChatMode::Project, "project/p1", false);
         let mut named = serde_json::json!({"namespace": "notes"});
@@ -338,18 +340,22 @@ mod tests {
             .await
             .unwrap();
         validate("memory_delete", &deleted);
-        assert!(store
-            .retrieve_entry(&namespace, "closeout")
-            .await
-            .unwrap()
-            .is_none());
+        assert!(
+            store
+                .retrieve_entry(&namespace, "closeout")
+                .await
+                .unwrap()
+                .is_none()
+        );
         for method in WRITE_METHODS {
-            assert!(bind_args(
-                method,
-                &personal,
-                &mut serde_json::json!({"key":"_identity"})
-            )
-            .is_err());
+            assert!(
+                bind_args(
+                    method,
+                    &personal,
+                    &mut serde_json::json!({"key":"_identity"})
+                )
+                .is_err()
+            );
         }
         assert_eq!(
             store

@@ -15,12 +15,12 @@ pub mod security;
 pub mod unified;
 
 // Re-export key types
-pub use agent_catalog::{builtin_agent_descriptors, AgentDescriptor};
-pub use agent_registry::{load_default_specs, AgentRegistry, AgentStatus};
+pub use agent_catalog::{AgentDescriptor, builtin_agent_descriptors};
+pub use agent_registry::{AgentRegistry, AgentStatus, load_default_specs};
 pub use agent_schema::AgentOperationSchema;
 pub use agents::base::{AgentContext, AgentTask, AgentTrait, TaskResult};
-pub use router::{create_router, AgentsServiceRouter, AgentsState};
-pub use unified::{AgentCategory, UnifiedAgentRegistry, GLOBAL_REGISTRY};
+pub use router::{AgentsServiceRouter, AgentsState, create_router};
+pub use unified::{AgentCategory, GLOBAL_REGISTRY, UnifiedAgentRegistry};
 
 /// Create an agent by type name
 ///

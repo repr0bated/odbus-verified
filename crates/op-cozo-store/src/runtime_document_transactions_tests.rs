@@ -2,7 +2,7 @@ use super::*;
 use serde_json::json;
 use std::{
     cell::RefCell,
-    sync::{mpsc, Arc, Barrier},
+    sync::{Arc, Barrier, mpsc},
     time::Duration,
 };
 
@@ -152,12 +152,14 @@ fn drifted_document_column_rejects_without_leaking_the_bound_private_workspace()
         assert!(!rendered.contains("private-owner"));
         assert!(rendered.contains("runtime_document_write_failed"));
     }
-    assert!(store
-        .run_query("?[plugin_id] := *plugin_runtime_documents{plugin_id}", None)
-        .unwrap()
-        .as_array()
-        .unwrap()
-        .is_empty());
+    assert!(
+        store
+            .run_query("?[plugin_id] := *plugin_runtime_documents{plugin_id}", None)
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
     assert_eq!(barrier_calls(), 0);
 }
 
@@ -230,9 +232,11 @@ fn independent_clones_compare_complete_expected_row_and_only_one_wins() {
         revision: first.revision,
         document: json!("wrong"),
     };
-    assert!(store
-        .compare_exchange_runtime_document("ui", Some(&wrong), json!(1))
-        .is_err());
+    assert!(
+        store
+            .compare_exchange_runtime_document("ui", Some(&wrong), json!(1))
+            .is_err()
+    );
     let go = Arc::new(Barrier::new(3));
     let mut jobs = vec![];
     for value in [1, 2] {
@@ -269,9 +273,11 @@ fn malformed_rows_and_revision_exhaustion_never_write_or_flush() {
         } else {
             None
         };
-        assert!(store
-            .compare_exchange_runtime_document("ui", expected.as_ref(), json!({"changed":true}))
-            .is_err());
+        assert!(
+            store
+                .compare_exchange_runtime_document("ui", expected.as_ref(), json!({"changed":true}))
+                .is_err()
+        );
         let raw = store.run_query("?[revision, document] := *plugin_runtime_documents{plugin_id, revision, document}, plugin_id='ui'", None).unwrap();
         assert_eq!(raw[0]["revision"], revision);
         assert_eq!(raw[0]["document"], document);
@@ -290,9 +296,11 @@ fn failure_before_commit_keeps_old_row_and_never_calls_barrier() {
     );
     reset();
     inject("before_commit");
-    assert!(store
-        .compare_exchange_runtime_document("ui", Some(&previous), json!("new"))
-        .is_err());
+    assert!(
+        store
+            .compare_exchange_runtime_document("ui", Some(&previous), json!("new"))
+            .is_err()
+    );
     assert_eq!(store.read_runtime_document("ui").unwrap(), Some(previous));
     assert_eq!(barrier_calls(), 0);
 }
@@ -330,9 +338,11 @@ fn lost_commit_reply_and_failed_barrier_return_uncertain_not_false_rollback() {
             store.read_runtime_document("ui").unwrap(),
             Some(candidate.clone())
         );
-        assert!(store
-            .compare_exchange_runtime_document("ui", Some(&previous), json!("new"))
-            .is_err());
+        assert!(
+            store
+                .compare_exchange_runtime_document("ui", Some(&previous), json!("new"))
+                .is_err()
+        );
         assert_eq!(
             store.read_runtime_document_durable("ui").unwrap(),
             Some(candidate)
@@ -407,15 +417,19 @@ fn options_and_replaced_data_directory_fail_before_native_write() {
             }
             _ => unreachable!(),
         }
-        assert!(store
-            .compare_exchange_runtime_document("ui", None, json!(1))
-            .is_err());
-        assert!(store
-            .run_query("?[plugin_id] := *plugin_runtime_documents{plugin_id}", None)
-            .unwrap()
-            .as_array()
-            .unwrap()
-            .is_empty());
+        assert!(
+            store
+                .compare_exchange_runtime_document("ui", None, json!(1))
+                .is_err()
+        );
+        assert!(
+            store
+                .run_query("?[plugin_id] := *plugin_runtime_documents{plugin_id}", None)
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
         // Restore paths before native handle drop, keeping fixtures isolated.
         if corruption != "options" {
             if corruption == "replacement" {

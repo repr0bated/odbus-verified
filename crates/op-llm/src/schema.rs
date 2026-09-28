@@ -14,7 +14,7 @@ pub use op_plugins::state_plugins::common::llm_projection::{
     ConfigSchema, LlmProjection, LlmTool, ModelRoute, Provider, Router, StructuredOutput, UiSurface,
 };
 pub use op_plugins::state_plugins::tched_router::{
-    tched_router_plugin_schema, LlmTransport, TchedRouterPlugin, TchedRouterState,
+    LlmTransport, TchedRouterPlugin, TchedRouterState, tched_router_plugin_schema,
 };
 
 /// The single 3tched Router `PluginSchema`, included from the plugin. op-llm
