@@ -29,6 +29,22 @@ another agent's uncommitted work.
 
 ## Handoffs
 
+### 2026-09-28 · Claude (cloud: toolsets vs the original design; owner moving to local)
+
+State: branch `claude/amazing-carson-8bg4yr` (PR repr0bated/odbus-verified#6), head `5f0b069`. threetched-fs tests (28) and clippy pass; op-plugins and op-grpc-bridge pass `cargo check --tests` only. Owner rule: run every cargo command through a low-cost (Haiku) subagent.
+
+Findings from `operation-dbus-proto/.kiro/specs/unified-authenticated-mcp-cognitive-control-plane/` (design §5; requirements FR-4, FR-5):
+- HOT = the tools a connection starts with; the singleton chatbot starts with exactly five (`memory_recall`, `memory_store`, `workflow_query`, `workflow_run`, `toolsets`). WARM/COLD sets are reached through `toolsets`, which selects exactly ONE set (no union) and returns an opaque principal-bound selector that the client re-lists with and carries on calls. Visible = grants ∩ audience ∩ (HOT ∪ selected set) ∩ provider health; provider health gates only WARM/COLD. Execution re-checks set membership, target capability and schemas, with one MutationEngine crossing. Re-tiering is a reviewed manifest change with a generation bump.
+- EMQX: internal broker, loopback MQTT plus authenticated ExHook only, never an MCP endpoint; it "supplies asynchronous health/catalog/hook signals". The ExHook → gRPC → MutationEngine signal path is live (`emqx_hook_provider.rs::record_event`); catalog and health signals driving the toolset projection were never built.
+- The authority it cites, `standalone-emqx-identity-mcp` FR-12..FR-15, is in neither repo (checked the last 400 proto commits); probably `~/.kiro` on the host. Find it before changing tiers.
+
+Drift to resolve (owner deciding; configurable toolsets OD-33 deferred):
+1. 3tchedFS `mcp` toolsets allow loading several sets at once, and `--compact` exposes the meta-tools the design removes from MCP (AGENTS.md still lists op-web compact mode for the chatbot; the sources disagree).
+2. `deploy/config/mcp-toolsets.json` generation 9 has 19 HOT tools and marks large sets (agents_advisory 567, notebooklm_research) HOT, against the design's five.
+3. `emqx.publish_toolsets` (`5f0b069`) pushes bridge → broker; the design's direction is broker health/catalog signals → ExHook → MutationEngine → WARM availability.
+
+Proposed next: (a) align 3tchedFS toolsets to one-set selection and drop `--compact`; (b) rework the EMQX path to inbound health/catalog signals; then record identity MCP calls in the principal-scoped Cozo graph (learned preload, automatic semantic search, OD-47).
+
 ### 2026-09-28 · Claude (cloud: MongoDB MCP retired, one /mcp for any client)
 
 - MongoDB MCP retired per owner ("get rid of mongo"): the `mongodb_mcp` plugin, its bridge dispatch and `SupervisedMcpProvider`, native tests, the `mongodb_knowledge`/`mongodb_data` toolsets (manifest now generation 9), the `mongodb_mcp.read` grants, the `mongodb-mcp-server` runit service (now in `retired-services`) and its golden staging/provenance are gone. `mongodb_mcp` is in `RETIRED_PLUGIN_IDS`. The Voyage embedding endpoint `ai.mongodb.com` is a different thing and stays. Reseal after the build: the catalog loses the `mongodb_mcp` blob.
