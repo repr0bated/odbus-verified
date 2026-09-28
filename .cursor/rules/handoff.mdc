@@ -1,0 +1,12 @@
+---
+description: Shared handoff between Claude, Codex and Grok
+alwaysApply: true
+---
+
+# Shared handoff
+
+Read `HANDOFF.md` at the start of every session, after `AGENTS.md`. Add a row to
+*Active work* before you change anything, and never reset, stash or overwrite
+work another agent has claimed there. Before the session ends, or before a
+context or usage limit, update your row and add a *Handoff* entry at the top of
+that section.
