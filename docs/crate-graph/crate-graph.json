@@ -541,7 +541,7 @@
         ],
         "has_lib": true,
         "rs_files": 152,
-        "loc": 93287,
+        "loc": 93289,
         "tests": 729,
         "unsafe_refs": 178,
         "todo": 166,
@@ -1932,8 +1932,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-28T01:39:16Z",
-        "commit": "5aa0bf56e8bd7614cc9bc67ad99c61504889dfa5",
+        "generated_at": "2026-09-28T01:49:30Z",
+        "commit": "d5d6d2f927ee5bcea1ac6127552c5b9d8d8042c2",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -5340,7 +5340,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1246
+        "loc": 1248
       }
     },
     {

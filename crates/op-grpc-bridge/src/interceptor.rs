@@ -358,9 +358,11 @@ fn ghostbridge_interceptor_with_validator(
                 .map_err(|error| Status::unauthenticated(error.to_string()))?;
             return authenticate_sid1_grpc(req, wire);
         }
-        (Some(wire), None) => {
-            insert_identity_metadata(&mut req, None, Some(wire), None)
-                .map_err(|error| Status::unauthenticated(error.to_string()))?;
+        (Some(_), None) => {
+            // Bytes are already on the request. Re-running the writer helper
+            // rejects a missing OIA1 magic as "invalid OIA1 credential" and
+            // hides AssertionRejection::Malformed, which is the admission
+            // result for undecodable assertion metadata.
         }
         (None, None) => {
             return Err(Status::unauthenticated("Missing Oracle identity assertion"));
