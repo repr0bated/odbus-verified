@@ -50,6 +50,11 @@ until incus list -f csv -c ns 2>/dev/null | rg -q "^${NAME},RUNNING$"; do
     sleep 1
 done
 
+# The container's /etc/xray is the host directory. One folder, one config.
+if ! incus config device get "$NAME" etc-xray source >/dev/null 2>&1; then
+    incus config device add "$NAME" etc-xray disk source=/etc/xray path=/etc/xray
+fi
+
 # The sole live path is inside the container. Refuse readiness if the baked
 # bootstrap is missing or invalid; never copy from /dev/shm or a host runtime
 # path and never reload Xray directly.

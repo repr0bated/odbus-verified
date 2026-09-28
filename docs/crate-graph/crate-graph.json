@@ -1932,8 +1932,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-28T01:49:30Z",
-        "commit": "d5d6d2f927ee5bcea1ac6127552c5b9d8d8042c2",
+        "generated_at": "2026-09-28T02:48:31Z",
+        "commit": "35a83a1cacfb703ceb370ae6152c2f210ad8b3a7",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
