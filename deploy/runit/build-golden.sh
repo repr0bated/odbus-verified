@@ -60,7 +60,6 @@ EMQX_CONFIG_DIR="$SCRIPT_DIR/../emqx"
 EMQX_ARTIFACT_CACHE_DIR=${EMQX_ARTIFACT_CACHE_DIR:-/var/cache/op-dbus/source-artifacts}
 MCP_PROVIDER_ARTIFACT_CACHE_DIR=${MCP_PROVIDER_ARTIFACT_CACHE_DIR:-/var/cache/op-dbus/source-artifacts}
 NOTEBOOKLM_MCP_VERSION_FILE="$SCRIPT_DIR/../config/notebooklm-mcp.version"
-MONGODB_MCP_VERSION_FILE="$SCRIPT_DIR/../config/mongodb-mcp-server.version"
 EXECUTION_PYTHON_LOCK="$SCRIPT_DIR/../config/execution-python-requirements.lock"
 EXECUTION_PYTHON_PREPARE="$SCRIPT_DIR/prepare-execution-python.sh"
 NLM_CLI_ROOT=/opt/opdbus
@@ -104,17 +103,6 @@ run() {
         printf '  would run: %s\n' "$*"
     else
         "$@"
-    fi
-}
-
-apply_provider_patch() {
-    patch_root=$1
-    patch_source=$2
-    if [ "$DRY_RUN" = 1 ]; then
-        printf '  would patch: %s with %s\n' "$patch_root" "$patch_source"
-    else
-        patch --batch --silent -d "$patch_root" -p1 < "$patch_source" ||
-            die "failed to apply provider patch: $patch_source"
     fi
 }
 
@@ -189,18 +177,6 @@ case "${NOTEBOOKLM_MCP_SHA256:-}" in *[!0-9a-f]*|'') die "invalid NOTEBOOKLM_MCP
     die "NOTEBOOKLM_MCP_SHA256 must contain 64 lowercase hex characters"
 NOTEBOOKLM_MCP_ARTIFACT_PATH="$MCP_PROVIDER_ARTIFACT_CACHE_DIR/$NOTEBOOKLM_MCP_ARTIFACT"
 NOTEBOOKLM_MCP_INSTALL_NAME="nlm-cli-$NOTEBOOKLM_MCP_VERSION-$NOTEBOOKLM_MCP_SHA256"
-
-[ -r "$MONGODB_MCP_VERSION_FILE" ] ||
-    die "missing MongoDB MCP artifact declaration: $MONGODB_MCP_VERSION_FILE"
-# shellcheck disable=SC1090 -- release-owned, fixed-key declaration validated below.
-. "$MONGODB_MCP_VERSION_FILE"
-case "${MONGODB_MCP_VERSION:-}" in *[!0-9.]*|'') die "invalid MONGODB_MCP_VERSION" ;; esac
-case "${MONGODB_MCP_ARTIFACT:-}" in *[!A-Za-z0-9._-]*|'') die "invalid MONGODB_MCP_ARTIFACT" ;; esac
-case "${MONGODB_MCP_SHA256:-}" in *[!0-9a-f]*|'') die "invalid MONGODB_MCP_SHA256" ;; esac
-[ "${#MONGODB_MCP_SHA256}" -eq 64 ] ||
-    die "MONGODB_MCP_SHA256 must contain 64 lowercase hex characters"
-MONGODB_MCP_ARTIFACT_PATH="$MCP_PROVIDER_ARTIFACT_CACHE_DIR/$MONGODB_MCP_ARTIFACT"
-MONGODB_MCP_INSTALL_NAME="mongodb-mcp-server-$MONGODB_MCP_VERSION-$MONGODB_MCP_SHA256"
 
 [ -r "$TCHED_ROUTER_SOURCE_PIN" ] ||
     die "missing tched_router native source pin: $TCHED_ROUTER_SOURCE_PIN"
@@ -457,18 +433,6 @@ if "nlm =" not in text and "nlm=" not in text:
 PY
     die "pinned nlm wheel failed integrity checks"
 
-[ -f "$MONGODB_MCP_ARTIFACT_PATH" ] ||
-    die "missing pinned MongoDB MCP artifact: $MONGODB_MCP_ARTIFACT_PATH"
-[ "$(sha256sum "$MONGODB_MCP_ARTIFACT_PATH" | cut -d' ' -f1)" = "$MONGODB_MCP_SHA256" ] ||
-    die "MongoDB MCP artifact digest does not match deploy/config/mongodb-mcp-server.version"
-tar -tzf "$MONGODB_MCP_ARTIFACT_PATH" | awk '
-    /^\// || /(^|\/)\.\.($|\/)/ { bad = 1 }
-    END { exit bad ? 1 : 0 }
-' || die "MongoDB MCP artifact contains an unsafe path"
-tar -tzf "$MONGODB_MCP_ARTIFACT_PATH" |
-    grep -qx 'node_modules/mongodb-mcp-server/dist/esm/index.js' ||
-    die "MongoDB MCP artifact is missing its provider entry point"
-
 if [ -f "$GRANTS_SOURCE" ]; then
     [ -x "$RELEASE_DIR/op-grants-materializer" ] ||
         die "release is missing op-grants-materializer"
@@ -649,83 +613,13 @@ build_golden() {
     done
     ok "staged pinned standalone EMQX $EMQX_VERSION into golden/opt"
 
-    # Provider packages are immutable, digest-pinned release inputs. Their
-    # runit services talk to these versioned trees through stable local links;
-    # neither provider creates another externally reachable MCP endpoint.
-    stage_golden_mcp_provider() {
-        provider_alias=$1
-        provider_install_name=$2
-        provider_artifact_path=$3
-        provider_sha256=$4
-        provider_entry=$5
-        provider_overlay_source=${6:-}
-        provider_overlay_target=${7:-}
-        provider_patch_source=${8:-}
-        provider_patch_target=${9:-}
-        provider_root="$GOLDEN_DIR/opt/op-mcp-providers/$provider_install_name"
-        provider_marker="$provider_root/.opdbus-artifact-sha256"
-        provider_current=0
-        if [ -f "$provider_marker" ] &&
-           [ "$(sed -n '1p' "$provider_marker")" = "$provider_sha256" ]; then
-            provider_current=1
-            if [ -n "$provider_overlay_source" ] &&
-               ! cmp -s "$provider_overlay_source" "$provider_root/$provider_overlay_target"; then
-                die "$provider_alias content-addressed overlay does not match its digest marker"
-            fi
-            if [ -n "$provider_patch_source" ] &&
-               ! patch --batch --silent --dry-run --reverse \
-                    -d "$provider_root" -p1 < "$provider_patch_source" >/dev/null; then
-                die "$provider_alias content-addressed auth patch does not match its digest marker"
-            fi
-        fi
-        if [ "$provider_current" != 1 ]; then
-            [ ! -e "$provider_root" ] || run rm -r -- "$provider_root"
-            run mkdir -p "$provider_root"
-            run tar -xzf "$provider_artifact_path" -C "$provider_root"
-            if [ -n "$provider_overlay_source" ]; then
-                run install -Dm644 "$provider_overlay_source" \
-                    "$provider_root/$provider_overlay_target"
-            fi
-            if [ -n "$provider_patch_source" ]; then
-                apply_provider_patch "$provider_root" "$provider_patch_source"
-            fi
-            if [ "$DRY_RUN" != 1 ]; then
-                [ -f "$provider_root/$provider_entry" ] ||
-                    die "$provider_alias staged tree is missing $provider_entry"
-                if [ -n "$provider_overlay_source" ]; then
-                    cmp -s "$provider_overlay_source" \
-                        "$provider_root/$provider_overlay_target" ||
-                        die "$provider_alias staged overlay verification failed"
-                fi
-                if [ -n "$provider_patch_source" ]; then
-                    patch --batch --silent --dry-run --reverse \
-                        -d "$provider_root" -p1 < "$provider_patch_source" >/dev/null ||
-                        die "$provider_alias staged auth patch verification failed"
-                    /usr/bin/node --check "$provider_root/$provider_patch_target" >/dev/null ||
-                        die "$provider_alias patched auth manager is not valid JavaScript"
-                fi
-                printf '%s\n' "$provider_sha256" > "$provider_marker"
-            fi
-        fi
-        run chmod 0755 "$provider_root"
-        provider_link="$GOLDEN_DIR/opt/op-mcp-providers/$provider_alias"
-        if [ ! -L "$provider_link" ] ||
-           [ "$(readlink "$provider_link" 2>/dev/null || true)" != "$provider_install_name" ]; then
-            if [ -e "$provider_link" ] || [ -L "$provider_link" ]; then
-                run rm -r -- "$provider_link"
-            fi
-            run ln -s "$provider_install_name" "$provider_link"
-        fi
-    }
-    run mkdir -p "$GOLDEN_DIR/opt/op-mcp-providers"
+    # Retired MCP provider trees (MongoDB MCP) must not survive in a reused
+    # golden subvolume.
+    if [ -e "$GOLDEN_DIR/opt/op-mcp-providers" ] || [ -L "$GOLDEN_DIR/opt/op-mcp-providers" ]; then
+        run rm -r -- "$GOLDEN_DIR/opt/op-mcp-providers"
+    fi
     install_nlm_cli "$GOLDEN_DIR" "$GOLDEN_DIR/bin/nlm"
-    stage_golden_mcp_provider \
-        mongodb-mcp-server "$MONGODB_MCP_INSTALL_NAME" \
-        "$MONGODB_MCP_ARTIFACT_PATH" "$MONGODB_MCP_SHA256" \
-        node_modules/mongodb-mcp-server/dist/esm/index.js
-    run mkdir -p \
-        "$GOLDEN_DIR/var/log/runit/mongodb-mcp-server"
-    ok "staged pinned nlm CLI and MongoDB MCP provider into golden/opt"
+    ok "staged pinned nlm CLI into golden/opt"
 
     # Runit service definitions tracked in the repo. Explicit retirement is
     # subtractive so a reused golden subvolume cannot resurrect an old unit.
@@ -830,8 +724,6 @@ build_golden() {
             printf 'emqx-sha256: %s\n' "$EMQX_SHA256"
             printf 'nlm-cli-artifact: %s\n' "$NOTEBOOKLM_MCP_ARTIFACT"
             printf 'nlm-cli-sha256: %s\n' "$NOTEBOOKLM_MCP_SHA256"
-            printf 'mongodb-mcp-artifact: %s\n' "$MONGODB_MCP_ARTIFACT"
-            printf 'mongodb-mcp-sha256: %s\n' "$MONGODB_MCP_SHA256"
             printf 'execution-python-lock-sha256: %s\n' "$EXECUTION_PYTHON_LOCK_SHA256"
             printf '\n[sha256]\n'
             printf '%s\n' "$BINARIES" | while IFS= read -r bin; do

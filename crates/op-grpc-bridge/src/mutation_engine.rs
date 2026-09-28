@@ -22,9 +22,6 @@ mod antigravity_canonical_tests;
 #[path = "mail_canonical_tests.rs"]
 mod mail_canonical_tests;
 #[cfg(test)]
-#[path = "mongodb_native_tests.rs"]
-mod mongodb_native_tests;
-#[cfg(test)]
 #[path = "obfuscation_canonical_tests.rs"]
 mod obfuscation_canonical_tests;
 
@@ -40,9 +37,6 @@ use zbus::{Connection, Proxy};
 
 use op_cognitive_mcp::CognitiveMcpServer;
 use op_llm::chat::ChatManager;
-use op_mcp::external_client::{
-    AuthMethod, ExternalMcpClient, ExternalMcpConfig, ExternalMcpTransport,
-};
 use op_network::rovs_proxy::OvsdbDbusClient;
 use op_plugins::state_plugins::snowball_plugin::{
     AuditEventRecord, QueryEventsInput, QueryEventsOutput, VerifyChainInput, VerifyChainOutput,
@@ -55,8 +49,6 @@ use op_state_store::{ChainEvent, Decision, EventChain, OperationType};
 /// `snowball_plugin::DEFAULT_BASE_PATH` so both read the same chain.
 const DEFAULT_SNOWBALL_PATH: &str = "/var/lib/opdbus/snowball";
 const DEFAULT_CACHE_PATH: &str = "/var/lib/opdbus/cache";
-const DEFAULT_MONGODB_MCP_URL: &str = "http://127.0.0.1:3102/mcp";
-const DEFAULT_MCP_PROVIDER_CALL_TIMEOUT_SECS: u64 = 30;
 
 fn completed_effect_time(
     started_at: chrono::DateTime<chrono::Utc>,
@@ -86,152 +78,6 @@ mod completed_effect_time_tests {
             ),
             chrono::DateTime::<chrono::Utc>::MAX_UTC
         );
-    }
-}
-
-/// Reconnecting client for a runit-supervised loopback MCP provider.
-/// Provider startup and browser/database authentication are deliberately not
-/// part of the bridge process or the HOT request path.
-struct SupervisedMcpProvider {
-    name: String,
-    url: String,
-    client: Mutex<Option<ExternalMcpClient>>,
-}
-
-/// The MongoDB plugin schema uses Rust snake_case names while the pinned MCP
-/// provider advertises hyphenated upstream tool names. Keep this owner mapping
-/// in one place so normal dispatch and native coverage exercise the same route.
-async fn dispatch_mongodb_mcp_owner(
-    provider: &SupervisedMcpProvider,
-    method: &str,
-    arguments: serde_json::Value,
-) -> anyhow::Result<serde_json::Value> {
-    let upstream_name = method.replace('_', "-");
-    provider.call_tool(&upstream_name, arguments).await
-}
-
-impl SupervisedMcpProvider {
-    fn new(name: &str, url: String) -> Self {
-        Self {
-            name: name.to_string(),
-            url,
-            client: Mutex::new(None),
-        }
-    }
-
-    fn new_client(&self) -> ExternalMcpClient {
-        ExternalMcpClient::new(ExternalMcpConfig {
-            name: self.name.clone(),
-            command: String::new(),
-            args: vec![],
-            transport: ExternalMcpTransport::StreamableHttp,
-            url: Some(self.url.clone()),
-            env: HashMap::new(),
-            api_key: None,
-            api_key_env: "API_KEY".to_string(),
-            auth_method: AuthMethod::None,
-            headers: HashMap::new(),
-        })
-    }
-
-    fn call_timeout(&self, _upstream_name: &str) -> std::time::Duration {
-        let seconds = std::env::var("OP_MCP_PROVIDER_CALL_TIMEOUT_SECS")
-            .ok()
-            .and_then(|value| value.parse::<u64>().ok())
-            .filter(|seconds| (1..=300).contains(seconds))
-            .unwrap_or(DEFAULT_MCP_PROVIDER_CALL_TIMEOUT_SECS);
-        std::time::Duration::from_secs(seconds)
-    }
-
-    async fn discard_client(&self, client: &mut Option<ExternalMcpClient>) {
-        if let Some(mut client) = client.take() {
-            match tokio::time::timeout(std::time::Duration::from_secs(2), client.stop()).await {
-                Ok(Ok(())) => {}
-                Ok(Err(error)) => tracing::warn!(
-                    provider = %self.name,
-                    %error,
-                    "could not close supervised MCP session cleanly"
-                ),
-                Err(_) => tracing::warn!(
-                    provider = %self.name,
-                    "timed out closing supervised MCP session"
-                ),
-            }
-        }
-    }
-
-    async fn call_tool(
-        &self,
-        upstream_name: &str,
-        arguments: serde_json::Value,
-    ) -> anyhow::Result<serde_json::Value> {
-        let mut guard = self.client.lock().await;
-        if guard.is_none() {
-            let mut client = self.new_client();
-            if let Err(error) = client.start().await {
-                let mut failed_client = Some(client);
-                self.discard_client(&mut failed_client).await;
-                return Err(anyhow::anyhow!(
-                    "provider_unavailable: {}: {error}",
-                    self.name
-                ));
-            }
-            *guard = Some(client);
-        }
-
-        let advertised = guard
-            .as_ref()
-            .expect("provider client initialized")
-            .get_tools()
-            .await
-            .iter()
-            .any(|tool| {
-                tool.name
-                    .strip_prefix(&format!("{}:", self.name))
-                    .is_some_and(|name| name == upstream_name)
-            });
-        if !advertised {
-            anyhow::bail!(
-                "provider_tool_unavailable: {} does not advertise '{}'",
-                self.name,
-                upstream_name
-            );
-        }
-
-        let mut bytes = serde_json::to_vec(&arguments)?;
-        let input = simd_json::to_owned_value(&mut bytes)?;
-        let call = guard
-            .as_mut()
-            .expect("provider client initialized")
-            .call_tool(upstream_name, input);
-        let call_timeout = self.call_timeout(upstream_name);
-        match tokio::time::timeout(call_timeout, call).await {
-            Ok(Ok(value)) => serde_json::to_value(value).map_err(Into::into),
-            Ok(Err(error)) => {
-                tracing::warn!(
-                    provider = %self.name,
-                    %error,
-                    "supervised MCP session failed; closing without replay"
-                );
-                self.discard_client(&mut guard).await;
-                Err(anyhow::anyhow!(
-                    "provider_unavailable: {}: {error}",
-                    self.name
-                ))
-            }
-            Err(_) => {
-                tracing::warn!(
-                    provider = %self.name,
-                    timeout_seconds = call_timeout.as_secs(),
-                    "supervised MCP call timed out; closing without replay"
-                );
-                self.discard_client(&mut guard).await;
-                Err(anyhow::anyhow!(
-                    "provider_unavailable: {}: call timed out",
-                    self.name
-                ))
-            }
-        }
     }
 }
 
@@ -432,9 +278,6 @@ pub struct MutationEngine {
     antigravity_projection: Arc<Mutex<()>>,
     mail_projection: Arc<Mutex<()>>,
     decoy_network_projection: Arc<Mutex<()>>,
-    /// WARM provider client. Connects only after an admitted typed call;
-    /// it does not participate in HOT discovery or execution.
-    mongodb_mcp: Arc<SupervisedMcpProvider>,
     /// Verified session identities, keyed by session_id. Projection of the
     /// session records for the mutation path — not a second store.
     sessions: Arc<RwLock<HashMap<String, SessionContext>>>,
@@ -1201,11 +1044,6 @@ impl MutationEngine {
             antigravity_projection: Arc::new(Mutex::new(())),
             mail_projection: Arc::new(Mutex::new(())),
             decoy_network_projection: Arc::new(Mutex::new(())),
-            mongodb_mcp: Arc::new(SupervisedMcpProvider::new(
-                "mongodb",
-                std::env::var("OP_MONGODB_MCP_URL")
-                    .unwrap_or_else(|_| DEFAULT_MONGODB_MCP_URL.to_string()),
-            )),
             sessions: Arc::new(RwLock::new(HashMap::new())),
             principal_logins: Arc::new(RwLock::new(HashMap::new())),
         }
@@ -4362,10 +4200,6 @@ impl MutationEngine {
                 service
                     .dispatch(&context, method, &serde_json::to_value(&parsed_value)?)
                     .await?
-            }
-            "mongodb_mcp" => {
-                let args = serde_json::to_value(&parsed_value)?;
-                dispatch_mongodb_mcp_owner(&self.mongodb_mcp, method, args).await?
             }
             // The same initialized chain owns both audit persistence and the
             // Snowball data snapshots. Never open an empty replacement store.

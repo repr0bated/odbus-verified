@@ -657,7 +657,7 @@ mod tests {
         )))
         .unwrap();
         assert_eq!(manifest.hot.as_slice(), HOT_TOOL_NAMES);
-        assert_eq!(manifest.generation, 8);
+        assert_eq!(manifest.generation, 9);
         for id in [
             "context_code",
             "context_knowledge",
@@ -678,9 +678,14 @@ mod tests {
                 .any(|set| set.id == "notebooklm_research"
                     && set.provider == "notebooklm-mcp-authenticated")
         );
-        assert!(manifest.sets.iter().any(|set| set.id == "mongodb_data"
-            && set.provider == "mongodb-mcp-server-authenticated"
-            && set.temperature == ToolTemperature::Warm));
+        // MongoDB MCP is retired: no set may project its provider or tools.
+        assert!(manifest.sets.iter().all(|set| {
+            !set.provider.starts_with("mongodb")
+                && !set
+                    .tools
+                    .iter()
+                    .any(|tool| tool.starts_with("plugin.mongodb_mcp."))
+        }));
         assert!(manifest.sets.iter().all(|set| {
             set.tools
                 .iter()

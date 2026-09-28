@@ -53,7 +53,6 @@
       "notebooklm.read",
       "notebooklm.invoke",
       "notebooklm.admin",
-      "mongodb_mcp.read",
       "mcp.read",
       "mcp.write",
       "agent.read",
@@ -210,8 +209,7 @@
       "workflows.read",
       "workflows.write",
       "notebooklm.read",
-      "notebooklm.invoke",
-      "mongodb_mcp.read"
+      "notebooklm.invoke"
     ]
   }
 }

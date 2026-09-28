@@ -11,9 +11,9 @@ manifest-pinned plugin schema in the sealed blob catalog.
 
 ## Catalog and discovery
 
-The generation-8 toolset manifest retains 19 short HOT tool names and exposes
+The generation-9 toolset manifest retains 19 short HOT tool names and exposes
 644 canonical operations across 99 agents, all 47 NotebookLM methods, and the
-retained identity, context, EMQX and MongoDB sets. Catalog membership does not
+retained identity, context and EMQX sets (MongoDB MCP was retired in generation 9). Catalog membership does not
 establish provider readiness; unavailable provider sets are filtered out.
 
 `tools/list` lists all authorized, ready sets and paginates its response.

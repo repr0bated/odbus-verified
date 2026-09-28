@@ -29,6 +29,13 @@ another agent's uncommitted work.
 
 ## Handoffs
 
+### 2026-09-28 · Claude (cloud: MongoDB MCP retired, one /mcp for any client)
+
+- MongoDB MCP retired per owner ("get rid of mongo"): the `mongodb_mcp` plugin, its bridge dispatch and `SupervisedMcpProvider`, native tests, the `mongodb_knowledge`/`mongodb_data` toolsets (manifest now generation 9), the `mongodb_mcp.read` grants, the `mongodb-mcp-server` runit service (now in `retired-services`) and its golden staging/provenance are gone. `mongodb_mcp` is in `RETIRED_PLUGIN_IDS`. The Voyage embedding endpoint `ai.mongodb.com` is a different thing and stays. Reseal after the build: the catalog loses the `mongodb_mcp` blob.
+- The door's `/mcp` now behaves like the reference MCP SDK servers, so any client works on the one endpoint: a missing `MCP-Protocol-Version` means 2025-03-26, JSON-RPC batches work, client replies get 202, and HTTP+SSE (2024-11-05) clients `GET /mcp` without a session to get an `endpoint` event and post to `/mcp?sessionId=…`. Replies go only to the owning caller's stream. Stdio-only clients still need a generic stdio-to-HTTP adapter; no new shim was added.
+- Built/tested: `cargo check -p op-grpc-bridge --tests` here; owner runs the full build and tests locally.
+- Next: router `[mcp.servers.opdbus]` on the door, repoint client configs from `10.0.0.3` to `https://10.0.0.2:8090/mcp`, model_registry plugin plus its D-Bus cron job.
+
 ### 2026-09-28 · Claude (cloud: OD-93 gallery, Grok picker removed, OpenCode Go)
 - **Owner direction:** "get rid of grok code" (the whole `8943f9c` commit), then "fix opencode to be a provider like openrouter", "should be go not zen", "you have to use Messages API".
 - **Removed (source only):** op-web's sudo-password picker (`/api/control-plane/model(s)`, `unix_chkpwd`) and 3tched.com's `ControlPlaneModelPicker`. **The live release `20260928T145511Z-2bdeb27` still runs the picker and the Zen profiles** until a release built from this branch is received and activated.

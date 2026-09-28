@@ -24,7 +24,7 @@ use axum::routing::post;
 use base64::Engine as _;
 use serde::Deserialize;
 use serde_json::{Value, json};
-use tokio::sync::{RwLock, broadcast};
+use tokio::sync::{RwLock, broadcast, mpsc};
 use tonic::transport::server::{TcpConnectInfo, TlsConnectInfo};
 
 use crate::grpc_server::DECLARED_CAPABILITY_HEADER;
@@ -69,12 +69,34 @@ enum McpView {
     Compact,
 }
 
-fn requested_view(query: Option<&str>) -> Result<Option<McpView>, &'static str> {
-    match query {
-        None | Some("") => Ok(None),
-        Some(COMPACT_MODE_QUERY) => Ok(Some(McpView::Compact)),
-        Some(_) => Err("unsupported MCP view query"),
+/// The `/mcp` query: the compact view flag and, for HTTP+SSE (2024-11-05)
+/// clients, the `sessionId` of the endpoint their event stream announced.
+#[derive(Debug, Default)]
+struct McpQuery {
+    view: Option<McpView>,
+    sse_session: Option<String>,
+}
+
+fn parse_query(query: Option<&str>) -> Result<McpQuery, &'static str> {
+    let mut parsed = McpQuery::default();
+    for pair in query
+        .unwrap_or_default()
+        .split('&')
+        .filter(|pair| !pair.is_empty())
+    {
+        match pair.split_once('=') {
+            _ if pair == COMPACT_MODE_QUERY && parsed.view.is_none() => {
+                parsed.view = Some(McpView::Compact);
+            }
+            Some(("sessionId", id))
+                if parsed.sse_session.is_none() && uuid::Uuid::parse_str(id).is_ok() =>
+            {
+                parsed.sse_session = Some(id.to_string());
+            }
+            _ => return Err("unsupported MCP query"),
+        }
     }
+    Ok(parsed)
 }
 
 /// Raw HTTP uses the same canonical header name as gRPC metadata. Its value is
@@ -127,6 +149,8 @@ struct McpSession {
     selection: RwLock<Option<ToolsetSelection>>,
     events: broadcast::Sender<String>,
     event_stream_active: Arc<AtomicBool>,
+    /// HTTP+SSE sessions answer on their event stream, not the POST body.
+    sse_replies: Option<mpsc::Sender<String>>,
     created_at: Instant,
 }
 
@@ -141,7 +165,20 @@ impl McpSession {
             selection: RwLock::new(None),
             events,
             event_stream_active: Arc::new(AtomicBool::new(false)),
+            sse_replies: None,
             created_at: Instant::now(),
+        }
+    }
+
+    fn with_sse_replies(
+        caller: &AuthenticatedCaller,
+        view: McpView,
+        replies: mpsc::Sender<String>,
+    ) -> Self {
+        Self {
+            sse_replies: Some(replies),
+            event_stream_active: Arc::new(AtomicBool::new(true)),
+            ..Self::new(caller, view)
         }
     }
 
@@ -924,11 +961,16 @@ struct JsonRpcRequest {
     params: Value,
 }
 
+/// One endpoint for every MCP client, as the reference SDK servers behave:
+/// Streamable HTTP (any revision, with or without `MCP-Protocol-Version`),
+/// JSON-RPC batches, and HTTP+SSE clients posting to the `?sessionId=`
+/// endpoint their GET stream announced. Authentication and admission are the
+/// same for all of them.
 async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body>) -> Response {
     let peer = peer_addr(request.extensions());
     let headers = request.headers().clone();
-    let requested_view = match requested_view(request.uri().query()) {
-        Ok(view) => view,
+    let query = match parse_query(request.uri().query()) {
+        Ok(query) => query,
         Err(message) => return jsonrpc_error(StatusCode::BAD_REQUEST, None, -32600, message),
     };
     if let Err(error) = validate_origin(&headers, &state.allowed_origins) {
@@ -960,8 +1002,8 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
             );
         }
     };
-    let rpc: JsonRpcRequest = match serde_json::from_slice(&bytes) {
-        Ok(request) => request,
+    let message: Value = match serde_json::from_slice(&bytes) {
+        Ok(message) => message,
         Err(error) => {
             return jsonrpc_error(
                 StatusCode::BAD_REQUEST,
@@ -971,7 +1013,164 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
             );
         }
     };
+    let response = match message {
+        Value::Array(batch) => handle_batch(&state, &headers, &caller, &query, batch).await,
+        message => handle_message(&state, &headers, &caller, &query, message).await,
+    };
+    match query.sse_session.as_deref() {
+        Some(session_id) => reply_on_sse_stream(&state, &caller, session_id, response).await,
+        None => response,
+    }
+}
 
+const MAX_BATCH_MESSAGES: usize = 64;
+const SSE_REPLY_QUEUE: usize = 64;
+const SSE_REPLY_SEND_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// JSON-RPC batch (2025-03-26 clients). Each member is admitted exactly as a
+/// single request; notifications and client replies produce no member.
+async fn handle_batch(
+    state: &McpFrontendState,
+    headers: &HeaderMap,
+    caller: &AuthenticatedCaller,
+    query: &McpQuery,
+    batch: Vec<Value>,
+) -> Response {
+    if batch.is_empty() || batch.len() > MAX_BATCH_MESSAGES {
+        return jsonrpc_error(
+            StatusCode::BAD_REQUEST,
+            None,
+            -32600,
+            "a JSON-RPC batch must hold 1 to 64 messages",
+        );
+    }
+    if batch
+        .iter()
+        .any(|message| message.get("method").and_then(Value::as_str) == Some("initialize"))
+    {
+        return jsonrpc_error(
+            StatusCode::BAD_REQUEST,
+            None,
+            -32600,
+            "initialize must not be part of a JSON-RPC batch",
+        );
+    }
+    let mut replies = Vec::new();
+    for message in batch {
+        let response = handle_message(state, headers, caller, query, message).await;
+        if let Some(reply) = jsonrpc_body(response).await {
+            replies.push(reply);
+        }
+    }
+    if replies.is_empty() {
+        StatusCode::ACCEPTED.into_response()
+    } else {
+        (StatusCode::OK, axum::Json(Value::Array(replies))).into_response()
+    }
+}
+
+/// The JSON-RPC message a response carries, if any.
+async fn jsonrpc_body(response: Response) -> Option<Value> {
+    if response.status() == StatusCode::ACCEPTED {
+        return None;
+    }
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.ok()?;
+    serde_json::from_slice::<Value>(&bytes)
+        .ok()
+        .filter(|message| message.get("jsonrpc").is_some() || message.is_array())
+}
+
+async fn handle_message(
+    state: &McpFrontendState,
+    headers: &HeaderMap,
+    caller: &AuthenticatedCaller,
+    query: &McpQuery,
+    message: Value,
+) -> Response {
+    if message.get("method").is_none()
+        && (message.get("result").is_some() || message.get("error").is_some())
+    {
+        // A client's reply to a server request. This server sends none, so
+        // there is nothing to route; acknowledge it as the SDK servers do.
+        return StatusCode::ACCEPTED.into_response();
+    }
+    let rpc: JsonRpcRequest = match serde_json::from_value(message) {
+        Ok(rpc) => rpc,
+        Err(error) => {
+            return jsonrpc_error(
+                StatusCode::BAD_REQUEST,
+                None,
+                -32600,
+                &format!("invalid request: {error}"),
+            );
+        }
+    };
+    process_rpc(state, headers, caller, query, rpc).await
+}
+
+/// HTTP+SSE clients get their reply as a `message` event on the stream that
+/// announced this session; the POST itself is acknowledged with 202. A reply
+/// is only ever delivered to the stream of the caller that owns the session.
+async fn reply_on_sse_stream(
+    state: &McpFrontendState,
+    caller: &AuthenticatedCaller,
+    session_id: &str,
+    response: Response,
+) -> Response {
+    let replies = match state.sessions.read().await.get(session_id) {
+        Some(session) if session.belongs_to(caller) => session.sse_replies.clone(),
+        _ => None,
+    };
+    let Some(replies) = replies else {
+        return response;
+    };
+    let status = response.status();
+    if status == StatusCode::ACCEPTED {
+        return response;
+    }
+    let Some(reply) = jsonrpc_body(response).await else {
+        return status.into_response();
+    };
+    match tokio::time::timeout(SSE_REPLY_SEND_TIMEOUT, replies.send(reply.to_string())).await {
+        Ok(Ok(())) => StatusCode::ACCEPTED.into_response(),
+        Ok(Err(_)) => StatusCode::NOT_FOUND.into_response(),
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
+}
+
+/// Insert a new MCP session, sweeping expired ones. Returns false at
+/// capacity.
+async fn insert_session(
+    state: &McpFrontendState,
+    session_id: String,
+    session: Arc<McpSession>,
+) -> bool {
+    let mut sessions = state.sessions.write().await;
+    let expired_callers = sessions
+        .values()
+        .filter(|session| session.created_at.elapsed() >= MCP_SESSION_MAX_AGE)
+        .map(|session| session.caller())
+        .collect::<Vec<_>>();
+    sessions.retain(|_, session| session.created_at.elapsed() < MCP_SESSION_MAX_AGE);
+    let inserted = sessions.len() < MAX_ACTIVE_MCP_SESSIONS;
+    if inserted {
+        sessions.insert(session_id, session);
+    }
+    drop(sessions);
+    for expired_caller in expired_callers {
+        schedule_session_close(state.backend.clone(), expired_caller);
+    }
+    inserted
+}
+
+async fn process_rpc(
+    state: &McpFrontendState,
+    headers: &HeaderMap,
+    caller: &AuthenticatedCaller,
+    query: &McpQuery,
+    rpc: JsonRpcRequest,
+) -> Response {
+    let requested_view = query.view;
     if rpc.jsonrpc != "2.0" {
         return jsonrpc_error(
             StatusCode::BAD_REQUEST,
@@ -996,11 +1195,24 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
         Err(error) => return jsonrpc_error(StatusCode::BAD_REQUEST, rpc.id, -32600, &error),
     }
 
-    let supplied_session_id = match one_optional_header(&headers, MCP_SESSION_HEADER) {
+    let header_session_id = match one_optional_header(headers, MCP_SESSION_HEADER) {
         Ok(value) => value.map(str::to_string),
         Err(error) => return jsonrpc_error(StatusCode::BAD_REQUEST, rpc.id, -32600, &error),
     };
-    if rpc.method == "initialize" && supplied_session_id.is_some() {
+    let supplied_session_id = match (header_session_id, query.sse_session.as_deref()) {
+        (Some(header), Some(sse)) if header != sse => {
+            return jsonrpc_error(
+                StatusCode::BAD_REQUEST,
+                rpc.id,
+                -32600,
+                "Mcp-Session-Id differs from the sessionId query",
+            );
+        }
+        (header, sse) => header.or_else(|| sse.map(str::to_string)),
+    };
+    // An HTTP+SSE session exists from its GET stream; the client still sends
+    // initialize on it. Streamable HTTP sessions are created by initialize.
+    if rpc.method == "initialize" && supplied_session_id.is_some() && query.sse_session.is_none() {
         return jsonrpc_error(
             StatusCode::BAD_REQUEST,
             rpc.id,
@@ -1082,34 +1294,16 @@ async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body
                         axum::Json(json!({"jsonrpc": "2.0", "id": id.clone(), "result": result})),
                     )
                         .into_response();
-                    if rpc.method == "initialize" {
+                    if rpc.method == "initialize" && session.is_none() {
                         let session_id = uuid::Uuid::new_v4().to_string();
-                        let mut sessions = state.sessions.write().await;
-                        let expired_callers = sessions
-                            .values()
-                            .filter(|session| session.created_at.elapsed() >= MCP_SESSION_MAX_AGE)
-                            .map(|session| session.caller())
-                            .collect::<Vec<_>>();
-                        sessions.retain(|_, session| {
-                            session.created_at.elapsed() < MCP_SESSION_MAX_AGE
-                        });
-                        if sessions.len() >= MAX_ACTIVE_MCP_SESSIONS {
-                            drop(sessions);
-                            for expired_caller in expired_callers {
-                                schedule_session_close(state.backend.clone(), expired_caller);
-                            }
+                        let created = Arc::new(McpSession::new(caller, view));
+                        if !insert_session(state, session_id.clone(), created).await {
                             return jsonrpc_error(
                                 StatusCode::SERVICE_UNAVAILABLE,
                                 Some(id),
                                 -32000,
                                 "MCP session capacity reached",
                             );
-                        }
-                        sessions
-                            .insert(session_id.clone(), Arc::new(McpSession::new(&caller, view)));
-                        drop(sessions);
-                        for expired_caller in expired_callers {
-                            schedule_session_close(state.backend.clone(), expired_caller);
                         }
                         response.headers_mut().insert(
                             MCP_SESSION_HEADER,
@@ -1173,6 +1367,16 @@ async fn handle_mcp_events(
 ) -> Response {
     let peer = peer_addr(request.extensions());
     let headers = request.headers().clone();
+    let query = match parse_query(request.uri().query()) {
+        Ok(query) if query.sse_session.is_none() => query,
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                axum::Json(json!({"error": "invalid_request", "message": "unsupported MCP query"})),
+            )
+                .into_response();
+        }
+    };
     if let Err(error) = validate_origin(&headers, &state.allowed_origins) {
         return (
             StatusCode::FORBIDDEN,
@@ -1197,8 +1401,10 @@ async fn handle_mcp_events(
         )
             .into_response();
     }
-    let session_id = match one_required_header(&headers, MCP_SESSION_HEADER) {
-        Ok(value) => value,
+    let session_id = match one_optional_header(&headers, MCP_SESSION_HEADER) {
+        Ok(Some(value)) => value,
+        // No session: an HTTP+SSE client opening its transport stream.
+        Ok(None) => return open_sse_transport(&state, caller, query.view).await,
         Err(error) => {
             return (
                 StatusCode::BAD_REQUEST,
@@ -1250,6 +1456,93 @@ async fn handle_mcp_events(
         .into_response()
 }
 
+/// HTTP+SSE transport (MCP 2024-11-05) on the same path: the stream first
+/// announces the endpoint to POST to, then carries every reply and
+/// notification for the session. Closing the stream ends the session.
+async fn open_sse_transport(
+    state: &McpFrontendState,
+    caller: AuthenticatedCaller,
+    view: Option<McpView>,
+) -> Response {
+    let view = view.unwrap_or(McpView::Typed);
+    let session_id = uuid::Uuid::new_v4().to_string();
+    let (replies, mut reply_rx) = mpsc::channel::<String>(SSE_REPLY_QUEUE);
+    let session = Arc::new(McpSession::with_sse_replies(&caller, view, replies));
+    let mut events = session.events.subscribe();
+    if !insert_session(state, session_id.clone(), session).await {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            axum::Json(json!({"error": "capacity", "message": "MCP session capacity reached"})),
+        )
+            .into_response();
+    }
+    let endpoint = match view {
+        McpView::Compact => format!("{MCP_PATH}?{COMPACT_MODE_QUERY}&sessionId={session_id}"),
+        McpView::Typed => format!("{MCP_PATH}?sessionId={session_id}"),
+    };
+    let lease = SseSessionLease {
+        sessions: state.sessions.clone(),
+        backend: state.backend.clone(),
+        session_id,
+        caller,
+    };
+    let stream = async_stream::stream! {
+        let _lease = lease;
+        yield Ok::<Event, Infallible>(Event::default().event("endpoint").data(endpoint));
+        loop {
+            let message = tokio::select! {
+                reply = reply_rx.recv() => reply,
+                notification = next_notification(&mut events) => notification,
+            };
+            match message {
+                Some(message) => yield Ok(Event::default().event("message").data(message)),
+                None => break,
+            }
+        }
+    };
+    Sse::new(stream)
+        .keep_alive(
+            KeepAlive::new()
+                .interval(Duration::from_secs(15))
+                .text("keepalive"),
+        )
+        .into_response()
+}
+
+async fn next_notification(events: &mut broadcast::Receiver<String>) -> Option<String> {
+    loop {
+        match events.recv().await {
+            Ok(message) => return Some(message),
+            Err(broadcast::error::RecvError::Lagged(_)) => continue,
+            Err(broadcast::error::RecvError::Closed) => return None,
+        }
+    }
+}
+
+/// Ends an HTTP+SSE session when its stream is dropped.
+struct SseSessionLease {
+    sessions: Arc<RwLock<HashMap<String, Arc<McpSession>>>>,
+    backend: Arc<dyn McpBackend>,
+    session_id: String,
+    caller: AuthenticatedCaller,
+}
+
+impl Drop for SseSessionLease {
+    fn drop(&mut self) {
+        let sessions = self.sessions.clone();
+        let backend = self.backend.clone();
+        let session_id = std::mem::take(&mut self.session_id);
+        let caller = self.caller.clone();
+        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+            runtime.spawn(async move {
+                if sessions.write().await.remove(&session_id).is_some() {
+                    let _ = backend.session_closed(&caller).await;
+                }
+            });
+        }
+    }
+}
+
 async fn handle_mcp_delete(
     State(state): State<McpFrontendState>,
     request: Request<Body>,
@@ -1263,25 +1556,12 @@ async fn handle_mcp_delete(
         )
             .into_response();
     }
-    match one_required_header(&headers, MCP_VERSION_HEADER) {
-        Ok(version) if protocol_version_supported(version) => {}
-        Ok(version) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                axum::Json(json!({
-                    "error": "invalid_request",
-                    "message": format!("unsupported MCP protocol version: {version}")
-                })),
-            )
-                .into_response();
-        }
-        Err(error) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                axum::Json(json!({"error": "invalid_request", "message": error})),
-            )
-                .into_response();
-        }
+    if let Err(error) = validate_protocol_version_header(&headers, false) {
+        return (
+            StatusCode::BAD_REQUEST,
+            axum::Json(json!({"error": "invalid_request", "message": error})),
+        )
+            .into_response();
     }
     let caller = match state.authenticator.authenticate(&headers, peer).await {
         Ok(caller) => caller,
@@ -1599,8 +1879,11 @@ fn discovery_result() -> Value {
         "protocolVersions": SUPPORTED_PROTOCOL_VERSIONS,
         "endpoint": MCP_PATH,
         "transport": "streamable-http",
+        "transports": ["streamable-http", "http+sse"],
+        "batching": true,
         "sessionMode": "stateful-toolset-admission",
-        "requiredHeaders": ["MCP-Protocol-Version"],
+        "requiredHeaders": [],
+        "defaultProtocolVersion": "2025-03-26",
         "identityHeaderAlternatives": [HTTP_ASSERTION_HEADER, HTTP_SEALED_ID_HEADER],
         "optionalIntegrityHeaders": ["Mcp-Method", "Mcp-Name"],
         "capabilities": initialize_result(MCP_PROTOCOL_VERSION, McpView::Typed)["capabilities"].clone()
@@ -1608,20 +1891,12 @@ fn discovery_result() -> Value {
 }
 
 fn validate_protocol_headers(headers: &HeaderMap, rpc: &JsonRpcRequest) -> Result<(), String> {
-    // Per Streamable HTTP, the initialize request negotiates the protocol and
-    // therefore need not carry MCP-Protocol-Version yet. All later requests
-    // must carry a negotiated value this frontend can speak.
-    match one_optional_header(headers, MCP_VERSION_HEADER)? {
-        Some(version) if !protocol_version_supported(version) => {
-            if rpc.method != "initialize" {
-                return Err(format!("unsupported MCP protocol version: {version}"));
-            }
-        }
-        None if rpc.method != "initialize" => {
-            return Err(format!("missing {MCP_VERSION_HEADER} header"));
-        }
-        _ => {}
-    }
+    // The initialize request negotiates the protocol, so it may name any
+    // revision. A later request that names one must name a revision this
+    // frontend speaks. Without the header the spec has the server assume
+    // 2025-03-26 (clients of that revision and HTTP+SSE clients never send
+    // it), which this frontend speaks.
+    validate_protocol_version_header(headers, rpc.method == "initialize")?;
     if one_optional_header(headers, MCP_METHOD_HEADER)?.is_some_and(|method| method != rpc.method) {
         return Err("Mcp-Method header does not match JSON-RPC method".into());
     }
@@ -1652,11 +1927,17 @@ fn validate_protocol_headers(headers: &HeaderMap, rpc: &JsonRpcRequest) -> Resul
     Ok(())
 }
 
-fn validate_event_stream_headers(headers: &HeaderMap) -> Result<(), String> {
-    let version = one_required_header(headers, MCP_VERSION_HEADER)?;
-    if !protocol_version_supported(version) {
-        return Err(format!("unsupported MCP protocol version: {version}"));
+fn validate_protocol_version_header(headers: &HeaderMap, negotiating: bool) -> Result<(), String> {
+    match one_optional_header(headers, MCP_VERSION_HEADER)? {
+        Some(version) if !negotiating && !protocol_version_supported(version) => {
+            Err(format!("unsupported MCP protocol version: {version}"))
+        }
+        _ => Ok(()),
     }
+}
+
+fn validate_event_stream_headers(headers: &HeaderMap) -> Result<(), String> {
+    validate_protocol_version_header(headers, false)?;
     let accept = one_required_header(headers, axum::http::header::ACCEPT.as_str())?;
     if !accept
         .split(',')
@@ -3632,5 +3913,183 @@ mod tests {
                 assert_eq!(error.to_string(), expected, "selection {}", selection.id);
             }
         }
+    }
+
+    fn plain_post(uri: &str, session_id: Option<&str>, auth: &str, body: Value) -> Request<Body> {
+        let mut builder = Request::builder()
+            .method("POST")
+            .uri(uri)
+            .header(CONTENT_TYPE, "application/json")
+            .header("x-test-auth", auth);
+        if let Some(session_id) = session_id {
+            builder = builder.header(MCP_SESSION_HEADER, session_id);
+        }
+        builder.body(Body::from(body.to_string())).unwrap()
+    }
+
+    /// Read SSE text until it contains `needle` (bounded wait).
+    async fn read_sse_until(
+        stream: &mut (impl futures::Stream<Item = Result<axum::body::Bytes, axum::Error>> + Unpin),
+        seen: &mut String,
+        needle: &str,
+    ) {
+        use futures::StreamExt;
+        while !seen.contains(needle) {
+            let chunk = tokio::time::timeout(Duration::from_secs(5), stream.next())
+                .await
+                .expect("SSE event within 5s")
+                .expect("SSE stream open")
+                .unwrap();
+            seen.push_str(std::str::from_utf8(&chunk).unwrap());
+        }
+    }
+
+    #[tokio::test]
+    async fn requests_without_protocol_header_assume_the_default_revision() {
+        let router = test_router();
+        let session_id = initialize_session(&router).await;
+        let response = router
+            .clone()
+            .oneshot(plain_post(
+                MCP_PATH,
+                Some(&session_id),
+                "ok",
+                json!({"jsonrpc": "2.0", "id": 7, "method": "ping"}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response_json(response).await["id"], 7);
+    }
+
+    #[tokio::test]
+    async fn batches_answer_each_request_and_skip_notifications() {
+        let router = test_router();
+        let session_id = initialize_session(&router).await;
+        let response = router
+            .clone()
+            .oneshot(plain_post(
+                MCP_PATH,
+                Some(&session_id),
+                "ok",
+                json!([
+                    {"jsonrpc": "2.0", "id": 1, "method": "ping"},
+                    {"jsonrpc": "2.0", "method": "notifications/initialized"},
+                    {"jsonrpc": "2.0", "id": 2, "method": "ping"}
+                ]),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response_json(response).await;
+        let ids = body
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|reply| reply["id"].clone())
+            .collect::<Vec<_>>();
+        assert_eq!(ids, vec![json!(1), json!(2)]);
+
+        let batched_initialize = router
+            .clone()
+            .oneshot(plain_post(
+                MCP_PATH,
+                None,
+                "ok",
+                json!([{"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                        "params": {"protocolVersion": "2025-03-26"}}]),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(batched_initialize.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn client_replies_are_acknowledged() {
+        let router = test_router();
+        let session_id = initialize_session(&router).await;
+        let response = router
+            .clone()
+            .oneshot(plain_post(
+                MCP_PATH,
+                Some(&session_id),
+                "ok",
+                json!({"jsonrpc": "2.0", "id": "s-1", "result": {}}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
+    }
+
+    #[tokio::test]
+    async fn http_sse_clients_use_the_same_endpoint() {
+        let router = test_router();
+        let stream = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(MCP_PATH)
+                    .header("accept", "text/event-stream")
+                    .header("x-test-auth", "ok")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(stream.status(), StatusCode::OK);
+        let mut events = stream.into_body().into_data_stream();
+        let mut seen = String::new();
+        read_sse_until(&mut events, &mut seen, "\n\n").await;
+        assert!(seen.contains("event: endpoint"), "{seen}");
+        let endpoint = seen
+            .lines()
+            .find_map(|line| line.strip_prefix("data: "))
+            .expect("endpoint data")
+            .trim()
+            .to_string();
+        assert!(endpoint.starts_with("/mcp?sessionId="), "{endpoint}");
+
+        let initialize = router
+            .clone()
+            .oneshot(plain_post(
+                &endpoint,
+                None,
+                "ok",
+                json!({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                       "params": {"protocolVersion": "2024-11-05"}}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(initialize.status(), StatusCode::ACCEPTED);
+        read_sse_until(&mut events, &mut seen, "\"protocolVersion\"").await;
+        assert!(seen.contains("event: message"), "{seen}");
+        assert!(seen.contains("2024-11-05"), "{seen}");
+
+        let ping = router
+            .clone()
+            .oneshot(plain_post(
+                &endpoint,
+                None,
+                "ok",
+                json!({"jsonrpc": "2.0", "id": 42, "method": "ping"}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(ping.status(), StatusCode::ACCEPTED);
+        read_sse_until(&mut events, &mut seen, "\"id\":42").await;
+
+        // Another identity cannot post into, or read from, this session.
+        let foreign = router
+            .clone()
+            .oneshot(plain_post(
+                &endpoint,
+                None,
+                "other",
+                json!({"jsonrpc": "2.0", "id": 9, "method": "ping"}),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(foreign.status(), StatusCode::NOT_FOUND);
     }
 }
