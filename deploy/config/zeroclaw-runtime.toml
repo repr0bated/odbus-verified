@@ -20,68 +20,77 @@ allow_remote_admin = false
 request_timeout_secs = 30
 long_running_request_timeout_secs = 600
 
-# OpenCode Zen, the same kind of upstream as Anthropic or OpenRouter.
-# The daemon injects /etc/op-dbus/secrets/opencode-api-key at startup.
-# Model ids are the Zen catalog ids. Chat-completions models use that wire;
-# Responses-API models (Grok, GPT) set wire_api = "responses".
-# Claude Fable and Qwen 3.8 are Messages-API models. They use the Anthropic
-# client, which posts to `{uri}/v1/messages` with `x-api-key`. Zen's base is
-# `https://opencode.ai/zen`, so the request URL is `https://opencode.ai/zen/v1/messages`.
+# Local OpenCode session transport. The daemon injects the root-owned server
+# password at startup; no upstream provider credential is stored here.
 [providers.models.custom.opencode_dashboard]
-model = "nemotron-3-ultra-free"
-uri = "https://opencode.ai/zen/v1"
+model = "opencode/nemotron-3-ultra-free"
+uri = "http://127.0.0.1:4096"
 wire_api = "chat_completions"
 native_tools = false
+provider_extra = { opdbus_transport = "opencode_session" }
 
 [providers.models.custom.opencode_accountability]
-model = "glm-5.3-flash"
-uri = "https://opencode.ai/zen/v1"
+model = "opencode/glm-5.3-flash"
+uri = "http://127.0.0.1:4096"
 wire_api = "chat_completions"
 native_tools = false
+provider_extra = { opdbus_transport = "opencode_session" }
 
 [providers.models.custom.opencode_control_plane]
-model = "glm-5.3-flash"
-uri = "https://opencode.ai/zen/v1"
+model = "opencode/glm-5.3-flash"
+uri = "http://127.0.0.1:4096"
 wire_api = "chat_completions"
 native_tools = false
+provider_extra = { opdbus_transport = "opencode_session" }
 
 [providers.models.custom.opencode_cp_route_grok_47]
-model = "grok-4.7"
-uri = "https://opencode.ai/zen/v1"
-wire_api = "responses"
+model = "xai/grok-4.7"
+uri = "http://127.0.0.1:4096"
+wire_api = "chat_completions"
 native_tools = false
+provider_extra = { opdbus_transport = "opencode_session" }
 
 [providers.models.custom.opencode_cp_route_nemotron_3_ultra]
-model = "nemotron-3-ultra-free"
-uri = "https://opencode.ai/zen/v1"
+model = "opencode/nemotron-3-ultra-free"
+uri = "http://127.0.0.1:4096"
 wire_api = "chat_completions"
 native_tools = false
+provider_extra = { opdbus_transport = "opencode_session" }
 
 [providers.models.custom.opencode_cp_route_deepseek_v41_flash]
-model = "deepseek-v4.1-flash"
-uri = "https://opencode.ai/zen/v1"
+model = "opencode/deepseek-v4.1-flash"
+uri = "http://127.0.0.1:4096"
 wire_api = "chat_completions"
 native_tools = false
+provider_extra = { opdbus_transport = "opencode_session" }
 
 [providers.models.custom.opencode_cp_route_glm_53_flash]
-model = "glm-5.3-flash"
-uri = "https://opencode.ai/zen/v1"
+model = "opencode/glm-5.3-flash"
+uri = "http://127.0.0.1:4096"
 wire_api = "chat_completions"
 native_tools = false
+provider_extra = { opdbus_transport = "opencode_session" }
 
-[providers.models.anthropic.zen_qwen38_flash]
-model = "qwen3.8-flash"
-uri = "https://opencode.ai/zen"
+[providers.models.custom.opencode_cp_route_qwen3_coder_flash]
+model = "qwen/qwen3-coder-flash"
+uri = "http://127.0.0.1:4096"
+wire_api = "chat_completions"
+native_tools = false
+provider_extra = { opdbus_transport = "opencode_session" }
 
 [providers.models.custom.opencode_cp_route_gpt6_astra]
-model = "gpt-6-astra"
-uri = "https://opencode.ai/zen/v1"
-wire_api = "responses"
+model = "openai/gpt-6-astra"
+uri = "http://127.0.0.1:4096"
+wire_api = "chat_completions"
 native_tools = false
+provider_extra = { opdbus_transport = "opencode_session" }
 
-[providers.models.anthropic.zen_claude_fable_51]
-model = "claude-fable-5-1"
-uri = "https://opencode.ai/zen"
+[providers.models.custom.opencode_cp_route_claude_fable_51]
+model = "anthropic/claude-fable-5-1"
+uri = "http://127.0.0.1:4096"
+wire_api = "chat_completions"
+native_tools = false
+provider_extra = { opdbus_transport = "opencode_session" }
 
 [agents.dashboard]
 runtime_profile = "chatbot_500"
@@ -210,7 +219,7 @@ backend = "none"
 [agents.cp_route_qwen3_coder_flash]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "anthropic.zen_qwen38_flash"
+model_provider = "custom.opencode_cp_route_qwen3_coder_flash"
 risk_profile = "control_plane"
 skill_bundles = ["default"]
 
@@ -238,7 +247,7 @@ backend = "none"
 [agents.cp_route_claude_fable_51]
 runtime_profile = "chatbot_500"
 enabled = true
-model_provider = "anthropic.zen_claude_fable_51"
+model_provider = "custom.opencode_cp_route_claude_fable_51"
 risk_profile = "control_plane"
 skill_bundles = ["default"]
 
