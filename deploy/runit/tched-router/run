@@ -95,6 +95,19 @@ while IFS='|' read -r agent kind model wire risk; do
     agent_provider=$provider
     if [ "$agent" = control_plane ]; then
         agent_provider=$CONTROL_PLANE_MODEL_PROVIDER
+        # A model chosen at run time through the door (tched_router
+        # config_set on agents.control_plane.model_provider) survives
+        # restarts: keep a current OpenCode Go selection unless the service
+        # environment names a provider explicitly.
+        current=$(native_config get agents.control_plane.model_provider --json 2>/dev/null |
+            jq -r '.value // ""' 2>/dev/null || true)
+        case "$current" in
+            opencode.go_*|anthropic.go_*)
+                if [ "$CONTROL_PLANE_MODEL_PROVIDER" = opencode.go_control_plane ]; then
+                    agent_provider=$current
+                fi
+                ;;
+        esac
     fi
     existing=$(native_config get "providers.models.$kind.$profile.model" --json 2>/dev/null || true)
     created=true
