@@ -25,9 +25,9 @@ use op_plugins::state_plugins::model_registry::{
     DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput, ListProvidersInput,
     ListProvidersOutput, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES,
     ModelListFormat, ModelRecord, ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh,
-    ProviderStatus, ProvidersFile, RefreshInput, RefreshOutput, SECRETS_DIR, bounded_error,
-    page_limit, parse_models_response, parse_providers_toml, valid_provider_id,
-    validate_list_models,
+    ProviderStatus, ProvidersFile, RefreshInput, RefreshOutput, SECRETS_DIR, SetModelProfileInput,
+    SetModelProfileOutput, bounded_error, page_limit, parse_models_response, parse_providers_toml,
+    valid_provider_id, validate_list_models, validate_set_model_profile,
 };
 use op_state_store::PluginSchema;
 use serde_json::Value;
@@ -392,6 +392,11 @@ pub(crate) async fn list_providers(
                 succeeded_at: row.and_then(|row| row.succeeded_at.clone()),
                 available_models: row.map_or(0, |row| row.available_count),
                 known_models: row.map_or(0, |row| row.known_count),
+                control_plane_profiles: provider
+                    .control_plane
+                    .as_ref()
+                    .map(|routing| routing.profiles().into_iter().map(str::to_string).collect())
+                    .unwrap_or_default(),
             }
         })
         .collect();
@@ -410,6 +415,7 @@ pub(crate) async fn list_providers(
                 succeeded_at: row.succeeded_at.clone(),
                 available_models: row.available_count,
                 known_models: row.known_count,
+                control_plane_profiles: Vec::new(),
             }),
     );
     Ok(ListProvidersOutput {
@@ -418,7 +424,15 @@ pub(crate) async fn list_providers(
     })
 }
 
-fn model_record(row: RegistryModelRecord) -> ModelRecord {
+fn model_record(
+    row: RegistryModelRecord,
+    providers: &ProvidersFile,
+    recorded: Option<&str>,
+) -> ModelRecord {
+    let provider = providers
+        .providers
+        .iter()
+        .find(|provider| provider.id == row.provider_id);
     ModelRecord {
         provider_id: row.provider_id,
         model_id: row.model.model_id,
@@ -429,22 +443,36 @@ fn model_record(row: RegistryModelRecord) -> ModelRecord {
         available: row.available,
         first_seen: row.first_seen,
         last_seen: row.last_seen,
+        recorded_profile: recorded.map(str::to_string),
+        control_plane_profile: provider
+            .and_then(|provider| provider.control_plane_profile(recorded).map(str::to_string)),
     }
 }
 
 pub(crate) async fn list_models(
+    env: &Environment,
     store: Arc<CozoGraphShuttle>,
     input: ListModelsInput,
 ) -> Result<ListModelsOutput> {
     validate_list_models(&input)?;
+    let file = load_providers(env)?;
     let limit = page_limit(input.limit)?;
     let provider = input.provider_id.clone();
-    let (rows, revision) = blocking(move || {
-        store
+    let store_for_profiles = Arc::clone(&store);
+    let (rows, profiles, revision) = blocking(move || {
+        let (rows, revision) = store
             .list_model_registry_models(provider.as_deref())
-            .map_err(cozo)
+            .map_err(cozo)?;
+        let profiles = store_for_profiles
+            .list_model_registry_profiles()
+            .map_err(cozo)?;
+        Ok((rows, profiles, revision))
     })
     .await?;
+    let recorded: std::collections::BTreeMap<(String, String), String> = profiles
+        .into_iter()
+        .map(|(provider_id, model_id, profile)| ((provider_id, model_id), profile))
+        .collect();
     let query = input.query.as_deref().map(str::to_lowercase);
     let include_unavailable = input.include_unavailable.unwrap_or(false);
     let mut models: Vec<ModelRecord> = rows
@@ -469,7 +497,11 @@ pub(crate) async fn list_models(
             None => true,
         })
         .take(limit + 1)
-        .map(model_record)
+        .map(|row| {
+            let key = (row.provider_id.clone(), row.model.model_id.clone());
+            let profile = recorded.get(&key).map(String::as_str);
+            model_record(row, &file, profile)
+        })
         .collect();
     let more = models.len() > limit;
     models.truncate(limit);
@@ -478,6 +510,54 @@ pub(crate) async fn list_models(
         more,
         revision,
     })
+}
+
+pub(crate) async fn set_model_profile(
+    env: &Environment,
+    store: Arc<CozoGraphShuttle>,
+    input: SetModelProfileInput,
+) -> Result<SetModelProfileOutput> {
+    validate_set_model_profile(&input)?;
+    let file = load_providers(env)?;
+    let provider = file
+        .providers
+        .iter()
+        .find(|provider| provider.id == input.provider_id)
+        .context("provider is not in the provider list")?;
+    if let Some(profile) = &input.profile {
+        let offered = provider
+            .control_plane
+            .as_ref()
+            .map(|routing| routing.profiles())
+            .unwrap_or_default();
+        ensure!(
+            offered.iter().any(|candidate| *candidate == profile),
+            "profile is not one this provider offers the Control Plane"
+        );
+    }
+    let provider_id = input.provider_id.clone();
+    let model_id = input.model_id.clone();
+    let profile = input.profile.clone();
+    let reading = Arc::clone(&store);
+    let revision = blocking(move || {
+        store
+            .set_model_registry_profile(&provider_id, &model_id, profile.as_deref())
+            .map_err(cozo)
+    })
+    .await?;
+    let provider_id = input.provider_id.clone();
+    let model_id = input.model_id.clone();
+    let row = blocking(move || {
+        let (rows, _) = reading
+            .list_model_registry_models(Some(&provider_id))
+            .map_err(cozo)?;
+        rows.into_iter()
+            .find(|row| row.model.model_id == model_id)
+            .context("model is not in the catalog")
+    })
+    .await?;
+    let model = model_record(row, &file, input.profile.as_deref());
+    Ok(SetModelProfileOutput { model, revision })
 }
 
 fn required_capability<'a>(schema: &'a PluginSchema, method: &str) -> Result<&'a str> {
@@ -518,7 +598,10 @@ pub(crate) async fn dispatch(
             let _: ListProvidersInput = args(arguments)?;
             serde_json::to_value(list_providers(&env, store).await?)?
         }
-        "list_models" => serde_json::to_value(list_models(store, args(arguments)?).await?)?,
+        "list_models" => serde_json::to_value(list_models(&env, store, args(arguments)?).await?)?,
+        "set_model_profile" => {
+            serde_json::to_value(set_model_profile(&env, store, args(arguments)?).await?)?
+        }
         "refresh" => {
             serde_json::to_value(refresh(&env, &HttpLister, store, args(arguments)?).await?)?
         }

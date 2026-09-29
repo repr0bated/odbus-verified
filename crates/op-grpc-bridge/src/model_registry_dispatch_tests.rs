@@ -4,7 +4,7 @@ use std::{
     sync::Mutex,
 };
 
-use op_plugins::state_plugins::model_registry::{ModelRef, bounded_error};
+use op_plugins::state_plugins::model_registry::{bounded_error, ModelRef};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use super::*;
@@ -157,23 +157,19 @@ async fn refresh_folds_every_enabled_provider_into_the_catalog() {
     // Cheaper Inference has no key file here: an error, never a guess.
     let cheaper = by_id(&output, "cheaper_inference");
     assert_eq!(cheaper.status, "error");
-    assert!(
-        cheaper
-            .error
-            .as_deref()
-            .unwrap()
-            .contains("key file is unavailable")
-    );
+    assert!(cheaper
+        .error
+        .as_deref()
+        .unwrap()
+        .contains("key file is unavailable"));
     assert!(output.revision >= 3);
 
     let keys = lister.keys.lock().unwrap().clone();
     assert!(keys.contains(&("openrouter".into(), None)));
     assert!(keys.contains(&("opencode_go".into(), Some("go-key-123".into()))));
-    assert!(
-        !keys
-            .iter()
-            .any(|(id, _)| id == "cheaper_inference" || id == "parked")
-    );
+    assert!(!keys
+        .iter()
+        .any(|(id, _)| id == "cheaper_inference" || id == "parked"));
 
     let providers = list_providers(&fixture.env, fixture.store.clone())
         .await
@@ -192,9 +188,13 @@ async fn refresh_folds_every_enabled_provider_into_the_catalog() {
     assert_eq!(go.available_models, 1);
     assert!(go.succeeded_at.is_some());
 
-    let models = list_models(fixture.store.clone(), ListModelsInput::default())
-        .await
-        .unwrap();
+    let models = list_models(
+        &fixture.env,
+        fixture.store.clone(),
+        ListModelsInput::default(),
+    )
+    .await
+    .unwrap();
     let ids: Vec<_> = models
         .models
         .iter()
@@ -248,6 +248,7 @@ async fn later_refreshes_add_drop_and_retire() {
     assert_eq!(go.available_models, 1);
 
     let unavailable = list_models(
+        &fixture.env,
         fixture.store.clone(),
         ListModelsInput {
             provider_id: Some("openrouter".into()),
@@ -294,6 +295,7 @@ async fn later_refreshes_add_drop_and_retire() {
     assert!(!gone.configured);
     assert_eq!(gone.status, "removed");
     let available = list_models(
+        &fixture.env,
         fixture.store.clone(),
         ListModelsInput {
             provider_id: Some("openrouter".into()),
@@ -377,12 +379,11 @@ async fn provider_list_and_keys_must_be_protected() {
     .unwrap();
     let go = by_id(&output, "opencode_go");
     assert_eq!(go.status, "error");
-    assert!(
-        go.error
-            .as_deref()
-            .unwrap()
-            .contains("key file is unavailable")
-    );
+    assert!(go
+        .error
+        .as_deref()
+        .unwrap()
+        .contains("key file is unavailable"));
     assert!(
         lister.keys.lock().unwrap().is_empty(),
         "no call without a key"
@@ -424,9 +425,9 @@ async fn list_models_pages_filters_and_searches() {
             limit: Some(2),
             ..Default::default()
         };
-        async move { list_models(store, input).await.unwrap() }
+        list_models(&fixture.env, store, input)
     };
-    let first = page(None, None).await;
+    let first = page(None, None).await.unwrap();
     assert_eq!(
         first
             .models
@@ -436,24 +437,23 @@ async fn list_models_pages_filters_and_searches() {
         ["Gamma-Pro", "alpha-1"]
     );
     assert!(first.more);
-    let last = page(Some("beta"), None).await;
+    let last = page(Some("beta"), None).await.unwrap();
     assert_eq!(last.models.len(), 1);
     assert!(!last.more);
-    let search = page(None, Some("gamma")).await;
+    let search = page(None, Some("gamma")).await.unwrap();
     assert_eq!(search.models[0].model_id, "Gamma-Pro");
-    let by_name = page(None, Some("ALPHA-2 MODEL")).await;
+    let by_name = page(None, Some("ALPHA-2 MODEL")).await.unwrap();
     assert_eq!(by_name.models.len(), 1);
-    assert!(
-        list_models(
-            fixture.store.clone(),
-            ListModelsInput {
-                limit: Some(0),
-                ..Default::default()
-            }
-        )
-        .await
-        .is_err()
-    );
+    assert!(list_models(
+        &fixture.env,
+        fixture.store.clone(),
+        ListModelsInput {
+            limit: Some(0),
+            ..Default::default()
+        }
+    )
+    .await
+    .is_err());
 }
 
 /// Serve one HTTP response on loopback; resolves to the raw request.
@@ -521,13 +521,11 @@ async fn fetch_sends_the_key_only_as_declared_and_bounds_the_answer() {
     fetch_models(&url, ModelListFormat::Openai, ProviderAuth::None, None)
         .await
         .unwrap();
-    assert!(
-        !request
-            .await
-            .unwrap()
-            .to_lowercase()
-            .contains("authorization")
-    );
+    assert!(!request
+        .await
+        .unwrap()
+        .to_lowercase()
+        .contains("authorization"));
 
     let (url, _) = serve_once(http("401 Unauthorized", r#"{"error":"no"}"#, "")).await;
     let error = fetch_models(
@@ -586,4 +584,99 @@ async fn fetch_sends_the_key_only_as_declared_and_bounds_the_answer() {
 #[test]
 fn stored_errors_never_carry_a_second_line() {
     assert_eq!(bounded_error("HTTP 503\nretry"), "HTTP 503 retry");
+}
+
+#[tokio::test]
+async fn set_model_profile_records_only_an_offered_control_plane_profile() {
+    let fixture = fixture(
+        r#"
+[[providers]]
+id = "opencode_go"
+name = "OpenCode Go"
+models_url = "https://opencode.ai/zen/go/v1/models"
+format = "openai"
+auth = "bearer"
+key_file = "/etc/op-dbus/secrets/opencode-api-key"
+control_plane = { profile = "opencode.go_control_plane", alternatives = ["opencode.go_control_plane_responses"] }
+"#,
+    );
+    let lister = FakeLister::new(&[("opencode_go", Ok(vec!["glm-5.3-flash"]))]);
+    refresh(
+        &fixture.env,
+        &lister,
+        fixture.store.clone(),
+        RefreshInput::default(),
+    )
+    .await
+    .unwrap();
+
+    let refused = set_model_profile(
+        &fixture.env,
+        fixture.store.clone(),
+        SetModelProfileInput {
+            provider_id: "opencode_go".into(),
+            model_id: "glm-5.3-flash".into(),
+            profile: Some("openai.control_plane".into()),
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(format!("{refused:#}").contains("not one this provider offers"));
+
+    let recorded = set_model_profile(
+        &fixture.env,
+        fixture.store.clone(),
+        SetModelProfileInput {
+            provider_id: "opencode_go".into(),
+            model_id: "glm-5.3-flash".into(),
+            profile: Some("opencode.go_control_plane_responses".into()),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        recorded.model.recorded_profile.as_deref(),
+        Some("opencode.go_control_plane_responses")
+    );
+    assert_eq!(
+        recorded.model.control_plane_profile.as_deref(),
+        Some("opencode.go_control_plane_responses")
+    );
+
+    refresh(
+        &fixture.env,
+        &lister,
+        fixture.store.clone(),
+        RefreshInput::default(),
+    )
+    .await
+    .unwrap();
+    let models = list_models(
+        &fixture.env,
+        fixture.store.clone(),
+        ListModelsInput::default(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        models.models[0].control_plane_profile.as_deref(),
+        Some("opencode.go_control_plane_responses")
+    );
+
+    let cleared = set_model_profile(
+        &fixture.env,
+        fixture.store.clone(),
+        SetModelProfileInput {
+            provider_id: "opencode_go".into(),
+            model_id: "glm-5.3-flash".into(),
+            profile: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        cleared.model.control_plane_profile.as_deref(),
+        Some("opencode.go_control_plane")
+    );
+    assert!(cleared.model.recorded_profile.is_none());
 }

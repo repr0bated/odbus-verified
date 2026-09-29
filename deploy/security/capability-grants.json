@@ -47,6 +47,7 @@
       "cognitive_mcp.typescript_pro",
       "cognitive_mcp.read",
       "chatbot.read",
+      "chat_response.read",
       "cognitive_mcp.memory.write",
       "cognitive_mcp.code.write",
       "workflows.read",
@@ -200,7 +201,8 @@
       "elevation.authorize",
       "elevation.read",
       "model_registry.read",
-      "model_registry.refresh"
+      "model_registry.refresh",
+      "model_registry.maintain"
     ]
   },
   "1262e982-14c1-44d4-0771-7ce74213211b": {
@@ -215,7 +217,9 @@
       "notebooklm.read",
       "notebooklm.invoke",
       "model_registry.read",
-      "model_registry.refresh"
+      "model_registry.refresh",
+      "model_registry.maintain",
+      "chat_response.respond"
     ]
   }
 }

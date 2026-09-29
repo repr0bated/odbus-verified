@@ -37,10 +37,10 @@
 ,[___"crate:op-blob"___, ___"crate"___, ___"{"path":"crates/op-blob","description":"Schema-driven plugin object blobs: schemars struct -> PluginSchema (single source of truth) -> sealed zero-copy blob (schema + D-Bus/gRPC identity + reflection descriptors + OSCAL metadata) -> active reflection catalog -> btrfs filesystem image","bins":[],"has_lib":true,"rs_files":15,"loc":4334,"tests":33,"unsafe_refs":0,"todo":0,"unwrap_expect":33}"___]
 ,[___"crate:op-cache"___, ___"crate"___, ___"{"path":"crates/op-cache","description":"BTRFS-based caching with NUMA awareness and gRPC services","bins":[],"has_lib":true,"rs_files":20,"loc":10433,"tests":67,"unsafe_refs":14,"todo":3,"unwrap_expect":215}"___]
 ,[___"crate:op-chat"___, ___"crate"___, ___"{"path":"crates/op-chat","description":"Chat functionality and LLM integration for op-dbus-v2","bins":["list_tools_client"],"has_lib":true,"rs_files":31,"loc":21285,"tests":36,"unsafe_refs":3,"todo":6,"unwrap_expect":33}"___]
-,[___"crate:op-cognitive-mcp"___, ___"crate"___, ___"{"path":"crates/op-cognitive-mcp","description":"","bins":["op-chain-vectors","op-cog-admin"],"has_lib":true,"rs_files":31,"loc":11797,"tests":54,"unsafe_refs":9,"todo":11,"unwrap_expect":66}"___]
+,[___"crate:op-cognitive-mcp"___, ___"crate"___, ___"{"path":"crates/op-cognitive-mcp","description":"","bins":["op-chain-vectors","op-cog-admin"],"has_lib":true,"rs_files":30,"loc":11520,"tests":52,"unsafe_refs":9,"todo":11,"unwrap_expect":65}"___]
 ,[___"crate:op-compliance"___, ___"crate"___, ___"{"path":"crates/op-compliance","description":"","bins":[],"has_lib":true,"rs_files":1,"loc":324,"tests":6,"unsafe_refs":0,"todo":0,"unwrap_expect":2}"___]
 ,[___"crate:op-core"___, ___"crate"___, ___"{"path":"crates/op-core","description":"Core types and utilities for op-dbus-v2","bins":[],"has_lib":true,"rs_files":19,"loc":4961,"tests":53,"unsafe_refs":5,"todo":1,"unwrap_expect":19}"___]
-,[___"crate:op-cozo-store"___, ___"crate"___, ___"{"path":"crates/op-cozo-store","description":"","bins":["identity-sled-bind"],"has_lib":true,"rs_files":10,"loc":8995,"tests":59,"unsafe_refs":3,"todo":2,"unwrap_expect":168}"___]
+,[___"crate:op-cozo-store"___, ___"crate"___, ___"{"path":"crates/op-cozo-store","description":"","bins":["identity-sled-bind"],"has_lib":true,"rs_files":12,"loc":11011,"tests":68,"unsafe_refs":3,"todo":2,"unwrap_expect":220}"___]
 ,[___"crate:op-dbus"___, ___"crate"___, ___"{"path":".","description":"OP-DBUS: Native, Deterministic Control Plane for Linux Systems","bins":[],"has_lib":false,"rs_files":0,"loc":0,"tests":0,"unsafe_refs":0,"todo":0,"unwrap_expect":0}"___]
 ,[___"crate:op-dbus-cli"___, ___"crate"___, ___"{"path":"crates/op-dbus-cli","description":"CLI tool for introspecting the org.opdbus.v1.plugins D-Bus tree","bins":["dbus-plugin-cli"],"has_lib":false,"rs_files":3,"loc":1455,"tests":2,"unsafe_refs":0,"todo":0,"unwrap_expect":3}"___]
 ,[___"crate:op-dbus-model"___, ___"crate"___, ___"{"path":"crates/op-dbus-model","description":"","bins":[],"has_lib":true,"rs_files":2,"loc":113,"tests":0,"unsafe_refs":0,"todo":0,"unwrap_expect":3}"___]
@@ -48,7 +48,7 @@
 ,[___"crate:op-dynamic-loader"___, ___"crate"___, ___"{"path":"crates/op-dynamic-loader","description":"Dynamic Tool Loading Enhancement - Complements existing MCP tool loading with intelligent caching and execution tracking","bins":[],"has_lib":true,"rs_files":5,"loc":406,"tests":1,"unsafe_refs":0,"todo":0,"unwrap_expect":0}"___]
 ,[___"crate:op-execution-tracker"___, ___"crate"___, ___"{"path":"crates/op-execution-tracker","description":"MCP Execution Tracking Layer - Lightweight execution monitoring that complements existing state management","bins":[],"has_lib":true,"rs_files":6,"loc":1030,"tests":2,"unsafe_refs":0,"todo":0,"unwrap_expect":1}"___]
 ,[___"crate:op-gateway"___, ___"crate"___, ___"{"path":"crates/op-gateway","description":"MCP Gateway with WireGuard authentication and smart routing","bins":[],"has_lib":true,"rs_files":5,"loc":1877,"tests":4,"unsafe_refs":0,"todo":0,"unwrap_expect":9}"___]
-,[___"crate:op-grpc-bridge"___, ___"crate"___, ___"{"path":"crates/op-grpc-bridge","description":"Bidirectional D-Bus <-> gRPC bridge with event chain integration","bins":["dump-protos","op-decoy-network","op-grants-materializer","op-grpc-bridge"],"has_lib":true,"rs_files":157,"loc":96011,"tests":751,"unsafe_refs":189,"todo":169,"unwrap_expect":1762}"___]
+,[___"crate:op-grpc-bridge"___, ___"crate"___, ___"{"path":"crates/op-grpc-bridge","description":"Bidirectional D-Bus <-> gRPC bridge with event chain integration","bins":["dump-protos","op-decoy-network","op-grants-materializer","op-grpc-bridge"],"has_lib":true,"rs_files":163,"loc":100191,"tests":765,"unsafe_refs":192,"todo":172,"unwrap_expect":1773}"___]
 ,[___"crate:op-http"___, ___"crate"___, ___"{"path":"crates/op-http","description":"Central HTTP/TLS server for all op-dbus modules","bins":[],"has_lib":true,"rs_files":5,"loc":1040,"tests":1,"unsafe_refs":0,"todo":0,"unwrap_expect":9}"___]
 ,[___"crate:op-identity"___, ___"crate"___, ___"{"path":"crates/op-identity","description":"","bins":["op-decoy-issuer","op-identity-headers"],"has_lib":true,"rs_files":17,"loc":4346,"tests":74,"unsafe_refs":9,"todo":1,"unwrap_expect":88}"___]
 ,[___"crate:op-inspector"___, ___"crate"___, ___"{"path":"crates/op-inspector","description":"Inspector Gadget - Universal object inspector with AI gap-filling and Proxmox introspection","bins":[],"has_lib":true,"rs_files":4,"loc":2342,"tests":16,"unsafe_refs":2,"todo":0,"unwrap_expect":28}"___]
@@ -59,7 +59,7 @@
 ,[___"crate:op-mcp-aggregator"___, ___"crate"___, ___"{"path":"crates/op-mcp-aggregator","description":"MCP Server Aggregator - proxies and aggregates multiple MCP servers behind a single endpoint","bins":[],"has_lib":true,"rs_files":8,"loc":5029,"tests":33,"unsafe_refs":3,"todo":2,"unwrap_expect":17}"___]
 ,[___"crate:op-network"___, ___"crate"___, ___"{"path":"crates/op-network","description":"Native networking: OpenFlow (all versions, pure Rust), OVSDB JSON-RPC, rtnetlink, Proxmox API, container networking","bins":["op-identity-storage","op-of-controller","op-ovsbr0-setup","op-rtnetlink-init"],"has_lib":true,"rs_files":31,"loc":16454,"tests":74,"unsafe_refs":96,"todo":14,"unwrap_expect":170}"___]
 ,[___"crate:op-plugin-lint"___, ___"crate"___, ___"{"path":"crates/op-plugin-lint","description":"Static audit of plugin .rs files against PLUGIN-RENDER-CONTRACT.md","bins":["op-plugin-lint"],"has_lib":true,"rs_files":15,"loc":5063,"tests":18,"unsafe_refs":1,"todo":0,"unwrap_expect":16}"___]
-,[___"crate:op-plugins"___, ___"crate"___, ___"{"path":"crates/op-plugins","description":"Plugin system with state management, domain plugins, and snowball footprints","bins":["gen_tched_router_config_surface","op-mail-admin","opblob"],"has_lib":true,"rs_files":148,"loc":116668,"tests":538,"unsafe_refs":15,"todo":1,"unwrap_expect":1258}"___]
+,[___"crate:op-plugins"___, ___"crate"___, ___"{"path":"crates/op-plugins","description":"Plugin system with state management, domain plugins, and snowball footprints","bins":["gen_tched_router_config_surface","op-mail-admin","opblob"],"has_lib":true,"rs_files":151,"loc":119422,"tests":557,"unsafe_refs":15,"todo":1,"unwrap_expect":1309}"___]
 ,[___"crate:op-runit-systemctl"___, ___"crate"___, ___"{"path":"crates/op-runit-systemctl","description":"D-Bus service for systemctl-to-runit command mapping on Artix Linux","bins":["op-runit-systemctl","svd"],"has_lib":false,"rs_files":3,"loc":997,"tests":3,"unsafe_refs":0,"todo":0,"unwrap_expect":5}"___]
 ,[___"crate:op-services"___, ___"crate"___, ___"{"path":"crates/op-services","description":"System-wide runit service manager","bins":["op-services","op-svctl"],"has_lib":true,"rs_files":11,"loc":1436,"tests":9,"unsafe_refs":0,"todo":0,"unwrap_expect":28}"___]
 ,[___"crate:op-snowball"___, ___"crate"___, ___"{"path":"crates/op-snowball","description":"Streaming snowball with BTRFS subvolumes for op-dbus-v2","bins":[],"has_lib":true,"rs_files":8,"loc":4350,"tests":47,"unsafe_refs":11,"todo":4,"unwrap_expect":150}"___]
@@ -218,7 +218,7 @@
 ,[___"ext:zeroize"___, ___"ext_crate"___, ___"{"req":"^1"}"___]
 ,[___"ext:zeroize"___, ___"ext_crate"___, ___"{"req":"^1.6"}"___]
 ,[___"ext:zstd"___, ___"ext_crate"___, ___"{"req":"^0.13"}"___]
-,[___"meta:crate-graph"___, ___"meta"___, ___"{"generated_at":"2026-09-29T08:01:58Z","commit":"5e203257b45278d6898f83b72495c676d3fd3168","generator":"scripts/crate-graph.sh","relations":["graph_node","graph_edge"]}"___]
+,[___"meta:crate-graph"___, ___"meta"___, ___"{"generated_at":"2026-09-29T22:04:24Z","commit":"d57c49754bda8744fbee075a5d19617588a508a2","generator":"scripts/crate-graph.sh","relations":["graph_node","graph_edge"]}"___]
 ,[___"mod:crates/op-agents/src/agent_catalog.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":78}"___]
 ,[___"mod:crates/op-agents/src/agent_registry.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":477}"___]
 ,[___"mod:crates/op-agents/src/agent_schema.rs"___, ___"module"___, ___"{"crate":"op-agents","kind":"src","loc":192}"___]
@@ -472,11 +472,10 @@
 ,[___"mod:crates/op-cognitive-mcp/src/dbus_interface.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":66}"___]
 ,[___"mod:crates/op-cognitive-mcp/src/doctor.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":217}"___]
 ,[___"mod:crates/op-cognitive-mcp/src/gemini_fallback.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":470}"___]
-,[___"mod:crates/op-cognitive-mcp/src/grpc_service.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":1193}"___]
+,[___"mod:crates/op-cognitive-mcp/src/grpc_service.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":1190}"___]
 ,[___"mod:crates/op-cognitive-mcp/src/interceptor.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":65}"___]
-,[___"mod:crates/op-cognitive-mcp/src/lib.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":71}"___]
+,[___"mod:crates/op-cognitive-mcp/src/lib.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":69}"___]
 ,[___"mod:crates/op-cognitive-mcp/src/memory_store.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":769}"___]
-,[___"mod:crates/op-cognitive-mcp/src/models_provider.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":272}"___]
 ,[___"mod:crates/op-cognitive-mcp/src/qdrant_shuttle.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":848}"___]
 ,[___"mod:crates/op-cognitive-mcp/src/quota.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":140}"___]
 ,[___"mod:crates/op-cognitive-mcp/src/rag_pipeline.rs"___, ___"module"___, ___"{"crate":"op-cognitive-mcp","kind":"src","loc":1316}"___]
@@ -511,10 +510,12 @@
 ,[___"mod:crates/op-cozo-store/examples/delete_identity_session.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"example","loc":24}"___]
 ,[___"mod:crates/op-cozo-store/examples/load_crate_graph.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"example","loc":86}"___]
 ,[___"mod:crates/op-cozo-store/src/bin/identity_sled_bind.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"bin","loc":75}"___]
+,[___"mod:crates/op-cozo-store/src/chat_response_conversations.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"src","loc":1092}"___]
 ,[___"mod:crates/op-cozo-store/src/ctl_plane_chatbot_episodes.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"src","loc":1237}"___]
 ,[___"mod:crates/op-cozo-store/src/identity_transactions.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"src","loc":1712}"___]
 ,[___"mod:crates/op-cozo-store/src/identity_transactions_tests.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"src","loc":1454}"___]
-,[___"mod:crates/op-cozo-store/src/lib.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"src","loc":2722}"___]
+,[___"mod:crates/op-cozo-store/src/lib.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"src","loc":2731}"___]
+,[___"mod:crates/op-cozo-store/src/model_registry.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"src","loc":915}"___]
 ,[___"mod:crates/op-cozo-store/src/runtime_document_transactions.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"src","loc":265}"___]
 ,[___"mod:crates/op-cozo-store/src/runtime_document_transactions_tests.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"src","loc":444}"___]
 ,[___"mod:crates/op-cozo-store/src/ui_gallery.rs"___, ___"module"___, ___"{"crate":"op-cozo-store","kind":"src","loc":976}"___]
@@ -562,6 +563,10 @@
 ,[___"mod:crates/op-grpc-bridge/src/bin/op-grpc-bridge.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"bin","loc":31}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chain_vector_projector.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":405}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chat_mode_routing.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":142}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_dispatch.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":820}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_state.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":548}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":706}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_turns.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":379}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chat_service.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":918}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chatbot_episode_state.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":831}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chatbot_episode_stream.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":712}"___]
@@ -600,7 +605,7 @@
 ,[___"mod:crates/op-grpc-bridge/src/identity_publication_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":486}"___]
 ,[___"mod:crates/op-grpc-bridge/src/identity_root_repair.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":2596}"___]
 ,[___"mod:crates/op-grpc-bridge/src/identity_seed_provision.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":1237}"___]
-,[___"mod:crates/op-grpc-bridge/src/identity_sled_dispatch.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":3302}"___]
+,[___"mod:crates/op-grpc-bridge/src/identity_sled_dispatch.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":3331}"___]
 ,[___"mod:crates/op-grpc-bridge/src/identity_sled_private_fixture_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":603}"___]
 ,[___"mod:crates/op-grpc-bridge/src/incus_observer.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":250}"___]
 ,[___"mod:crates/op-grpc-bridge/src/interceptor.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":1264}"___]
@@ -610,7 +615,7 @@
 ,[___"mod:crates/op-grpc-bridge/src/knowledge_delivery.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":178}"___]
 ,[___"mod:crates/op-grpc-bridge/src/knowledge_inbox.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":170}"___]
 ,[___"mod:crates/op-grpc-bridge/src/large_language_model_dispatch.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":161}"___]
-,[___"mod:crates/op-grpc-bridge/src/lib.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":371}"___]
+,[___"mod:crates/op-grpc-bridge/src/lib.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":375}"___]
 ,[___"mod:crates/op-grpc-bridge/src/lungs_socket.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":233}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mail_canonical_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":359}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mcp_config_dispatch.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":141}"___]
@@ -620,8 +625,10 @@
 ,[___"mod:crates/op-grpc-bridge/src/memory_binding.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":370}"___]
 ,[___"mod:crates/op-grpc-bridge/src/method_contract_admission.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":231}"___]
 ,[___"mod:crates/op-grpc-bridge/src/method_contract_admission_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":344}"___]
+,[___"mod:crates/op-grpc-bridge/src/model_registry_dispatch.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":617}"___]
+,[___"mod:crates/op-grpc-bridge/src/model_registry_dispatch_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":682}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mqtt_doorbell_relay.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":311}"___]
-,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":6509}"___]
+,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":6895}"___]
 ,[___"mod:crates/op-grpc-bridge/src/native_sled_identity.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":58}"___]
 ,[___"mod:crates/op-grpc-bridge/src/nlm_cli.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":1596}"___]
 ,[___"mod:crates/op-grpc-bridge/src/notebooklm_queries.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":357}"___]
@@ -650,7 +657,7 @@
 ,[___"mod:crates/op-grpc-bridge/src/schema_router.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":2838}"___]
 ,[___"mod:crates/op-grpc-bridge/src/sealed_catalog_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":353}"___]
 ,[___"mod:crates/op-grpc-bridge/src/sealed_schema_reader.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":369}"___]
-,[___"mod:crates/op-grpc-bridge/src/server.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":1510}"___]
+,[___"mod:crates/op-grpc-bridge/src/server.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":1519}"___]
 ,[___"mod:crates/op-grpc-bridge/src/shared_socket.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":644}"___]
 ,[___"mod:crates/op-grpc-bridge/src/shared_socket_tests.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":402}"___]
 ,[___"mod:crates/op-grpc-bridge/src/specialist.rs"___, ___"module"___, ___"{"crate":"op-grpc-bridge","kind":"src","loc":621}"___]
@@ -798,19 +805,19 @@
 ,[___"mod:crates/op-network/src/ovs_error.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":236}"___]
 ,[___"mod:crates/op-network/src/ovs_netlink.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":1064}"___]
 ,[___"mod:crates/op-network/src/ovsdb.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":690}"___]
-,[___"mod:crates/op-network/src/ovsdb_monitor.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":1069}"___]
+]
+:put graph_node { id => label, props }
+}
+{
+?[id, label, props] <- [
+[___"mod:crates/op-network/src/ovsdb_monitor.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":1069}"___]
 ,[___"mod:crates/op-network/src/ovsdb_monitor_tests.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":317}"___]
 ,[___"mod:crates/op-network/src/plugin.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":501}"___]
 ,[___"mod:crates/op-network/src/proxmox.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":645}"___]
 ,[___"mod:crates/op-network/src/rovs_proxy.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":1131}"___]
 ,[___"mod:crates/op-network/src/rovs_proxy_native_tests.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":300}"___]
 ,[___"mod:crates/op-network/src/rtnetlink.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":996}"___]
-]
-:put graph_node { id => label, props }
-}
-{
-?[id, label, props] <- [
-[___"mod:crates/op-network/src/seeded_boot.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":406}"___]
+,[___"mod:crates/op-network/src/seeded_boot.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":406}"___]
 ,[___"mod:crates/op-network/src/seeded_prepare.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":308}"___]
 ,[___"mod:crates/op-network/src/seeded_root.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":2102}"___]
 ,[___"mod:crates/op-network/src/unixctl.rs"___, ___"module"___, ___"{"crate":"op-network","kind":"src","loc":289}"___]
@@ -854,6 +861,8 @@
 ,[___"mod:crates/op-plugins/src/state_plugins/antigravity.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":989}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/antigravity_chat.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":374}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/btrfs_plugin.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":1576}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/chat_response.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":808}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/chat_response_methods.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":876}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/cognitive_agents.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":458}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/cognitive_mcp.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":1783}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/common/errors.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":47}"___]
@@ -918,7 +927,8 @@
 ,[___"mod:crates/op-plugins/src/state_plugins/mcp_methods.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":176}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/memory_methods.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":834}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/memory_plugin.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":420}"___]
-,[___"mod:crates/op-plugins/src/state_plugins/mod.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":158}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/mod.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":162}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/model_registry.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":1066}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/net.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":1784}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/notebooklm.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":1089}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/notebooklm/outputs.rs"___, ___"module"___, ___"{"crate":"op-plugins","kind":"src","loc":115}"___]
@@ -1141,6 +1151,7 @@
 ,[___"plugin:antigravity"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/antigravity.rs","line":988,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/antigravity"}"___]
 ,[___"plugin:antigravity_chat"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/antigravity_chat.rs","line":373,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/antigravity_chat"}"___]
 ,[___"plugin:btrfs"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/btrfs_plugin.rs","line":1576,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/btrfs"}"___]
+,[___"plugin:chat_response"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/chat_response.rs","line":807,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/chat_response"}"___]
 ,[___"plugin:cognitive_mcp"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/cognitive_mcp.rs","line":1782,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/cognitive_mcp"}"___]
 ,[___"plugin:config"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/config.rs","line":509,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/config"}"___]
 ,[___"plugin:cozo"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/cozo.rs","line":448,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/cozo"}"___]
@@ -1170,6 +1181,7 @@
 ,[___"plugin:mail_server"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/mail_server.rs","line":724,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/mail_server"}"___]
 ,[___"plugin:mcp"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/mcp.rs","line":406,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/mcp"}"___]
 ,[___"plugin:memory"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/memory_plugin.rs","line":419,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/memory"}"___]
+,[___"plugin:model_registry"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/model_registry.rs","line":841,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/model_registry"}"___]
 ,[___"plugin:net"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/net.rs","line":1783,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/net"}"___]
 ,[___"plugin:notebooklm"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/notebooklm.rs","line":1088,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/notebooklm"}"___]
 ,[___"plugin:oci"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/oci.rs","line":669,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/oci"}"___]
@@ -1198,7 +1210,12 @@
 ,[___"plugin:users"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/users.rs","line":624,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/users"}"___]
 ,[___"plugin:web_ui"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/web_ui.rs","line":615,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/web_ui"}"___]
 ,[___"plugin:wg_opdbus"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/wg_opdbus.rs","line":231,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/wg_opdbus"}"___]
-,[___"plugin:wgcf"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/wgcf.rs","line":330,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/wgcf"}"___]
+]
+:put graph_node { id => label, props }
+}
+{
+?[id, label, props] <- [
+[___"plugin:wgcf"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/wgcf.rs","line":330,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/wgcf"}"___]
 ,[___"plugin:wireguard"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/wireguard.rs","line":310,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/wireguard"}"___]
 ,[___"plugin:workflows"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/workflows_plugin.rs","line":416,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/workflows"}"___]
 ,[___"plugin:xray"___, ___"plugin"___, ___"{"file":"crates/op-plugins/src/state_plugins/xray.rs","line":638,"declared":true,"dbus_path":"/org/opdbus/v1/plugins/xray"}"___]
@@ -1210,12 +1227,7 @@
 ,[___"proto:operation.v1.DbusPassthrough"___, ___"proto_service"___, ___"{"file":"crates/op-grpc-bridge/proto/operation.proto","package":"operation.v1"}"___]
 ,[___"proto:operation.v1.EventChainService"___, ___"proto_service"___, ___"{"file":"crates/op-grpc-bridge/proto/operation.proto","package":"operation.v1"}"___]
 ,[___"proto:operation.v1.OvsdbMirror"___, ___"proto_service"___, ___"{"file":"crates/op-grpc-bridge/proto/operation.proto","package":"operation.v1"}"___]
-]
-:put graph_node { id => label, props }
-}
-{
-?[id, label, props] <- [
-[___"proto:operation.v1.PluginService"___, ___"proto_service"___, ___"{"file":"crates/op-grpc-bridge/proto/operation.proto","package":"operation.v1"}"___]
+,[___"proto:operation.v1.PluginService"___, ___"proto_service"___, ___"{"file":"crates/op-grpc-bridge/proto/operation.proto","package":"operation.v1"}"___]
 ,[___"proto:operation.v1.RuntimeMirror"___, ___"proto_service"___, ___"{"file":"crates/op-grpc-bridge/proto/operation.proto","package":"operation.v1"}"___]
 ,[___"proto:operation.v1.StateSync"___, ___"proto_service"___, ___"{"file":"crates/op-grpc-bridge/proto/operation.proto","package":"operation.v1"}"___]
 ,[___"runit:incusd"___, ___"runit_service"___, ___"{"run":"deploy/runit/incusd/run","enabled":false,"retired":false}"___]
@@ -1647,7 +1659,6 @@
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/interceptor.rs"___, ___"{}"___]
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/lib.rs"___, ___"{}"___]
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/memory_store.rs"___, ___"{}"___]
-,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/models_provider.rs"___, ___"{}"___]
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/qdrant_shuttle.rs"___, ___"{}"___]
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/quota.rs"___, ___"{}"___]
 ,[___"crate:op-cognitive-mcp"___, ___"contains"___, ___"mod:crates/op-cognitive-mcp/src/rag_pipeline.rs"___, ___"{}"___]
@@ -1743,10 +1754,12 @@
 ,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/examples/delete_identity_session.rs"___, ___"{}"___]
 ,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/examples/load_crate_graph.rs"___, ___"{}"___]
 ,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/src/bin/identity_sled_bind.rs"___, ___"{}"___]
+,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/src/chat_response_conversations.rs"___, ___"{}"___]
 ,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/src/ctl_plane_chatbot_episodes.rs"___, ___"{}"___]
 ,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/src/identity_transactions.rs"___, ___"{}"___]
 ,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/src/identity_transactions_tests.rs"___, ___"{}"___]
 ,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/src/lib.rs"___, ___"{}"___]
+,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/src/model_registry.rs"___, ___"{}"___]
 ,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/src/runtime_document_transactions.rs"___, ___"{}"___]
 ,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/src/runtime_document_transactions_tests.rs"___, ___"{}"___]
 ,[___"crate:op-cozo-store"___, ___"contains"___, ___"mod:crates/op-cozo-store/src/ui_gallery.rs"___, ___"{}"___]
@@ -1939,6 +1952,10 @@
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/bin/op-grpc-bridge.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/chain_vector_projector.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/chat_mode_routing.rs"___, ___"{}"___]
+,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/chat_response_dispatch.rs"___, ___"{}"___]
+,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/chat_response_state.rs"___, ___"{}"___]
+,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/chat_response_tests.rs"___, ___"{}"___]
+,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/chat_response_turns.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/chat_service.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/chatbot_episode_state.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/chatbot_episode_stream.rs"___, ___"{}"___]
@@ -1997,6 +2014,8 @@
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/memory_binding.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/method_contract_admission.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/method_contract_admission_tests.rs"___, ___"{}"___]
+,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/model_registry_dispatch.rs"___, ___"{}"___]
+,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/model_registry_dispatch_tests.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/mqtt_doorbell_relay.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/native_sled_identity.rs"___, ___"{}"___]
@@ -2027,19 +2046,19 @@
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/schema_router.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/sealed_catalog_tests.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/sealed_schema_reader.rs"___, ___"{}"___]
-,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/server.rs"___, ___"{}"___]
+]
+:put graph_edge { src, rel, dst => props }
+}
+{
+?[src, rel, dst, props] <- [
+[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/server.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/shared_socket.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/shared_socket_tests.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/specialist.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/state_stream.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/state_tree_fold.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/task_elevation.rs"___, ___"{}"___]
-]
-:put graph_edge { src, rel, dst => props }
-}
-{
-?[src, rel, dst, props] <- [
-[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/task_elevation_tests.rs"___, ___"{}"___]
+,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/task_elevation_tests.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_config_dispatch.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_config_engine.rs"___, ___"{}"___]
 ,[___"crate:op-grpc-bridge"___, ___"contains"___, ___"mod:crates/op-grpc-bridge/src/tched_config_secret_policy.rs"___, ___"{}"___]
@@ -2432,19 +2451,19 @@
 ,[___"crate:op-network"___, ___"contains"___, ___"mod:crates/op-network/src/rtnetlink.rs"___, ___"{}"___]
 ,[___"crate:op-network"___, ___"contains"___, ___"mod:crates/op-network/src/seeded_boot.rs"___, ___"{}"___]
 ,[___"crate:op-network"___, ___"contains"___, ___"mod:crates/op-network/src/seeded_prepare.rs"___, ___"{}"___]
-,[___"crate:op-network"___, ___"contains"___, ___"mod:crates/op-network/src/seeded_root.rs"___, ___"{}"___]
+]
+:put graph_edge { src, rel, dst => props }
+}
+{
+?[src, rel, dst, props] <- [
+[___"crate:op-network"___, ___"contains"___, ___"mod:crates/op-network/src/seeded_root.rs"___, ___"{}"___]
 ,[___"crate:op-network"___, ___"contains"___, ___"mod:crates/op-network/src/unixctl.rs"___, ___"{}"___]
 ,[___"crate:op-network"___, ___"contains"___, ___"mod:crates/op-network/src/wireguard_kernel.rs"___, ___"{}"___]
 ,[___"crate:op-network"___, ___"depends_on"___, ___"crate:op-core"___, ___"{"optional":false}"___]
 ,[___"crate:op-network"___, ___"provides_bin"___, ___"bin:op-identity-storage"___, ___"{}"___]
 ,[___"crate:op-network"___, ___"provides_bin"___, ___"bin:op-of-controller"___, ___"{}"___]
 ,[___"crate:op-network"___, ___"provides_bin"___, ___"bin:op-ovsbr0-setup"___, ___"{}"___]
-]
-:put graph_edge { src, rel, dst => props }
-}
-{
-?[src, rel, dst, props] <- [
-[___"crate:op-network"___, ___"provides_bin"___, ___"bin:op-rtnetlink-init"___, ___"{}"___]
+,[___"crate:op-network"___, ___"provides_bin"___, ___"bin:op-rtnetlink-init"___, ___"{}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:anyhow"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:async-trait"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-network"___, ___"uses_ext"___, ___"ext:byteorder"___, ___"{"kind":"normal","optional":false}"___]
@@ -2531,6 +2550,8 @@
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/antigravity.rs"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/antigravity_chat.rs"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/btrfs_plugin.rs"___, ___"{}"___]
+,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/chat_response.rs"___, ___"{}"___]
+,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/chat_response_methods.rs"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/cognitive_agents.rs"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/cognitive_mcp.rs"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/common/errors.rs"___, ___"{}"___]
@@ -2596,6 +2617,7 @@
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/memory_methods.rs"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/memory_plugin.rs"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/mod.rs"___, ___"{}"___]
+,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/model_registry.rs"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/net.rs"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/notebooklm.rs"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"contains"___, ___"mod:crates/op-plugins/src/state_plugins/notebooklm/outputs.rs"___, ___"{}"___]
@@ -2672,6 +2694,7 @@
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:antigravity"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:antigravity_chat"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:btrfs"___, ___"{}"___]
+,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:chat_response"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:cognitive_mcp"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:config"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:cozo"___, ___"{}"___]
@@ -2701,6 +2724,7 @@
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:mail_server"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:mcp"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:memory"___, ___"{}"___]
+,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:model_registry"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:net"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:notebooklm"___, ___"{}"___]
 ,[___"crate:op-plugins"___, ___"registers_plugin"___, ___"plugin:oci"___, ___"{}"___]
@@ -2832,7 +2856,12 @@
 ,[___"crate:op-snowball"___, ___"uses_ext"___, ___"ext:serde"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-snowball"___, ___"uses_ext"___, ___"ext:serde_json"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-snowball"___, ___"uses_ext"___, ___"ext:sha2"___, ___"{"kind":"normal","optional":false}"___]
-,[___"crate:op-snowball"___, ___"uses_ext"___, ___"ext:simd-json"___, ___"{"kind":"normal","optional":false}"___]
+]
+:put graph_edge { src, rel, dst => props }
+}
+{
+?[src, rel, dst, props] <- [
+[___"crate:op-snowball"___, ___"uses_ext"___, ___"ext:simd-json"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-snowball"___, ___"uses_ext"___, ___"ext:tempfile"___, ___"{"kind":"dev","optional":false}"___]
 ,[___"crate:op-snowball"___, ___"uses_ext"___, ___"ext:thiserror"___, ___"{"kind":"normal","optional":false}"___]
 ,[___"crate:op-snowball"___, ___"uses_ext"___, ___"ext:tokio"___, ___"{"kind":"normal","optional":false}"___]
@@ -2844,12 +2873,7 @@
 ,[___"crate:op-state"___, ___"contains"___, ___"mod:crates/op-state/src/dbus_plugin_base.rs"___, ___"{}"___]
 ,[___"crate:op-state"___, ___"contains"___, ___"mod:crates/op-state/src/dbus_server.rs"___, ___"{}"___]
 ,[___"crate:op-state"___, ___"contains"___, ___"mod:crates/op-state/src/lib.rs"___, ___"{}"___]
-]
-:put graph_edge { src, rel, dst => props }
-}
-{
-?[src, rel, dst, props] <- [
-[___"crate:op-state"___, ___"contains"___, ___"mod:crates/op-state/src/plugin.rs"___, ___"{}"___]
+,[___"crate:op-state"___, ___"contains"___, ___"mod:crates/op-state/src/plugin.rs"___, ___"{}"___]
 ,[___"crate:op-state"___, ___"contains"___, ___"mod:crates/op-state/src/plugin_workflow.rs"___, ___"{}"___]
 ,[___"crate:op-state"___, ___"contains"___, ___"mod:crates/op-state/src/plugtree.rs"___, ___"{}"___]
 ,[___"crate:op-state"___, ___"contains"___, ___"mod:crates/op-state/src/schema_validator.rs"___, ___"{}"___]
@@ -3237,7 +3261,12 @@
 ,[___"mod:crates/op-dbus-cli/src/introspect.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-dbus-model/src/models.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-dynamic-loader/src/dynamic_registry.rs"___, ___"imports"___, ___"crate:op-execution-tracker"___, ___"{"refs":1}"___]
-,[___"mod:crates/op-dynamic-loader/src/dynamic_registry.rs"___, ___"imports"___, ___"crate:op-tools"___, ___"{"refs":1}"___]
+]
+:put graph_edge { src, rel, dst => props }
+}
+{
+?[src, rel, dst, props] <- [
+[___"mod:crates/op-dynamic-loader/src/dynamic_registry.rs"___, ___"imports"___, ___"crate:op-tools"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-dynamic-loader/src/execution_aware_loader.rs"___, ___"imports"___, ___"crate:op-execution-tracker"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-dynamic-loader/src/execution_aware_loader.rs"___, ___"imports"___, ___"crate:op-tools"___, ___"{"refs":7}"___]
 ,[___"mod:crates/op-dynamic-loader/src/loading_strategy.rs"___, ___"imports"___, ___"crate:op-execution-tracker"___, ___"{"refs":1}"___]
@@ -3249,12 +3278,7 @@
 ,[___"mod:crates/op-grpc-bridge/src/agent_catalog_dispatch.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-grpc-bridge/src/agent_catalog_dispatch.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/agent_runs.rs"___, ___"imports"___, ___"crate:op-agents"___, ___"{"refs":1}"___]
-]
-:put graph_edge { src, rel, dst => props }
-}
-{
-?[src, rel, dst, props] <- [
-[___"mod:crates/op-grpc-bridge/src/agent_runs.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/agent_runs.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/agent_runs.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-grpc-bridge/src/agent_runs.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/agent_runs.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":5}"___]
@@ -3280,6 +3304,20 @@
 ,[___"mod:crates/op-grpc-bridge/src/chain_vector_projector.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chain_vector_projector.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chat_mode_routing.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_dispatch.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":4}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_dispatch.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":2}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_dispatch.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_state.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":3}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_state.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":2}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_state.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":3}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_state.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_tests.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_tests.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_tests.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_tests.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":4}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_tests.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_tests.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":2}"___]
+,[___"mod:crates/op-grpc-bridge/src/chat_response_turns.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chat_service.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chat_service.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-grpc-bridge/src/chat_service.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":1}"___]
@@ -3464,14 +3502,18 @@
 ,[___"mod:crates/op-grpc-bridge/src/method_contract_admission_tests.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/method_contract_admission_tests.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/method_contract_admission_tests.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/model_registry_dispatch.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/model_registry_dispatch.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/model_registry_dispatch.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-grpc-bridge/src/model_registry_dispatch_tests.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mqtt_doorbell_relay.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-cognitive-mcp"___, ___"{"refs":5}"___]
-,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":24}"___]
-,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":18}"___]
+,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":25}"___]
+,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":29}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":7}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-llm"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-network"___, ___"{"refs":6}"___]
-,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":126}"___]
+,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":130}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-snowball"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-grpc-bridge/src/mutation_engine.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":5}"___]
 ,[___"mod:crates/op-grpc-bridge/src/native_sled_identity.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":3}"___]
@@ -3624,7 +3666,12 @@
 ,[___"mod:crates/op-grpc-bridge/tests/oracle_assertion_e2e.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-grpc-bridge/tests/oracle_assertion_e2e.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":4}"___]
 ,[___"mod:crates/op-grpc-bridge/tests/oracle_assertion_e2e.rs"___, ___"imports"___, ___"crate:op-network"___, ___"{"refs":2}"___]
-,[___"mod:crates/op-grpc-bridge/tests/oracle_assertion_e2e.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":6}"___]
+]
+:put graph_edge { src, rel, dst => props }
+}
+{
+?[src, rel, dst, props] <- [
+[___"mod:crates/op-grpc-bridge/tests/oracle_assertion_e2e.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":6}"___]
 ,[___"mod:crates/op-grpc-bridge/tests/oracle_assertion_e2e.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/tests/oracle_assertion_e2e.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-grpc-bridge/tests/oscal_dispatch.rs"___, ___"imports"___, ___"crate:op-network"___, ___"{"refs":1}"___]
@@ -3654,12 +3701,7 @@
 ,[___"mod:crates/op-grpc-bridge/tests/tched_router_backing.rs"___, ___"imports"___, ___"crate:op-cozo-store"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-grpc-bridge/tests/tched_router_backing.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":6}"___]
 ,[___"mod:crates/op-grpc-bridge/tests/tched_router_backing.rs"___, ___"imports"___, ___"crate:op-network"___, ___"{"refs":1}"___]
-]
-:put graph_edge { src, rel, dst => props }
-}
-{
-?[src, rel, dst, props] <- [
-[___"mod:crates/op-grpc-bridge/tests/tched_router_backing.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":16}"___]
+,[___"mod:crates/op-grpc-bridge/tests/tched_router_backing.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":16}"___]
 ,[___"mod:crates/op-grpc-bridge/tests/tched_router_backing.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":5}"___]
 ,[___"mod:crates/op-grpc-bridge/tests/tched_router_backing.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":3}"___]
 ,[___"mod:crates/op-grpc-bridge/tests/tched_router_integration.rs"___, ___"imports"___, ___"crate:op-blob"___, ___"{"refs":2}"___]
@@ -3743,6 +3785,9 @@
 ,[___"mod:crates/op-plugins/src/state_plugins/btrfs_plugin.rs"___, ___"defines_plugin"___, ___"plugin:btrfs"___, ___"{}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/btrfs_plugin.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/btrfs_plugin.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":2}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/chat_response.rs"___, ___"defines_plugin"___, ___"plugin:chat_response"___, ___"{}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/chat_response.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/chat_response.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":9}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/cognitive_agents.rs"___, ___"imports"___, ___"crate:op-agents"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/cognitive_agents.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":2}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/cognitive_mcp.rs"___, ___"defines_plugin"___, ___"plugin:cognitive_mcp"___, ___"{}"___]
@@ -3862,6 +3907,10 @@
 ,[___"mod:crates/op-plugins/src/state_plugins/memory_plugin.rs"___, ___"defines_plugin"___, ___"plugin:memory"___, ___"{}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/memory_plugin.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/memory_plugin.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/model_registry.rs"___, ___"defines_plugin"___, ___"plugin:model_registry"___, ___"{}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/model_registry.rs"___, ___"imports"___, ___"crate:op-blob"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/model_registry.rs"___, ___"imports"___, ___"crate:op-state"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-plugins/src/state_plugins/model_registry.rs"___, ___"imports"___, ___"crate:op-state-store"___, ___"{"refs":4}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/net.rs"___, ___"defines_plugin"___, ___"plugin:net"___, ___"{}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/net.rs"___, ___"imports"___, ___"crate:op-network"___, ___"{"refs":22}"___]
 ,[___"mod:crates/op-plugins/src/state_plugins/net.rs"___, ___"imports"___, ___"crate:op-snowball"___, ___"{"refs":1}"___]
@@ -4022,7 +4071,12 @@
 ,[___"mod:crates/op-web/src/handlers/chat.rs"___, ___"imports"___, ___"crate:op-llm"___, ___"{"refs":6}"___]
 ,[___"mod:crates/op-web/src/handlers/identity.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-web/src/handlers/identity.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":2}"___]
-,[___"mod:crates/op-web/src/handlers/llm.rs"___, ___"imports"___, ___"crate:op-llm"___, ___"{"refs":1}"___]
+]
+:put graph_edge { src, rel, dst => props }
+}
+{
+?[src, rel, dst, props] <- [
+[___"mod:crates/op-web/src/handlers/llm.rs"___, ___"imports"___, ___"crate:op-llm"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-web/src/handlers/plugin_schema.rs"___, ___"imports"___, ___"crate:op-blob"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-web/src/handlers/status.rs"___, ___"imports"___, ___"crate:op-agents"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-web/src/handlers/tched_router.rs"___, ___"imports"___, ___"crate:op-blob"___, ___"{"refs":1}"___]
@@ -4059,12 +4113,7 @@
 ,[___"mod:crates/op-web/src/users.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-web/src/websocket.rs"___, ___"imports"___, ___"crate:op-llm"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-web/src/wireguard.rs"___, ___"imports"___, ___"crate:op-identity"___, ___"{"refs":1}"___]
-]
-:put graph_edge { src, rel, dst => props }
-}
-{
-?[src, rel, dst, props] <- [
-[___"mod:crates/op-workflows/src/orchestrator.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
+,[___"mod:crates/op-workflows/src/orchestrator.rs"___, ___"imports"___, ___"crate:op-core"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-workflows/src/orchestrator.rs"___, ___"imports"___, ___"crate:op-execution-tracker"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-workflows/src/orchestrator.rs"___, ___"imports"___, ___"crate:op-plugins"___, ___"{"refs":1}"___]
 ,[___"mod:crates/op-workflows/src/orchestrator.rs"___, ___"imports"___, ___"crate:op-tools"___, ___"{"refs":1}"___]

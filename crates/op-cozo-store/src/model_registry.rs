@@ -7,8 +7,11 @@
 //! and last sighting survive. A failed refresh changes only the provider's
 //! status; its last good list stays. A provider removed from the
 //! configuration is marked `removed` and its models unavailable. Every
-//! refresh advances the registry revision. The model_registry plugin owns
-//! the typed contract; this module stores what it is given.
+//! refresh advances the registry revision. A model's Control Plane profile,
+//! recorded by `set_model_registry_profile`, lives in its own relation so a
+//! refresh replaces the provider's list without erasing that record. The
+//! model_registry plugin owns the typed contract; this module stores what
+//! it is given.
 
 use std::collections::BTreeSet;
 
@@ -22,6 +25,7 @@ const PUT_CHUNK: usize = 100;
 const MODEL_COLUMNS: &str = "provider_id, model_id, name, context_length, prompt_price, completion_price, available, first_seen, last_seen";
 const PROVIDER_COLUMNS: &str =
     "provider_id, status, error, refreshed_at, succeeded_at, available_count, known_count";
+const PROFILE_COLUMNS: &str = "provider_id, model_id, profile";
 
 /// A model as a provider listed it.
 #[derive(Debug, Clone, PartialEq)]
@@ -357,6 +361,11 @@ impl CozoGraphShuttle {
                 key: String
                 => revision: Int
             }"#,
+            r#":create model_registry_profiles {
+                provider_id: String, model_id: String
+                =>
+                profile: String
+            }"#,
         ] {
             if let Err(error) =
                 self.db
@@ -379,6 +388,9 @@ impl CozoGraphShuttle {
                 "?[{PROVIDER_COLUMNS}] := *model_registry_providers{{{PROVIDER_COLUMNS}}} :limit 0"
             ),
             "?[key, revision] := *model_registry_state{key, revision} :limit 0".to_string(),
+            format!(
+                "?[{PROFILE_COLUMNS}] := *model_registry_profiles{{{PROFILE_COLUMNS}}} :limit 0"
+            ),
         ] {
             self.db
                 .run_script(&probe, BTreeMap::new(), ScriptMutability::Immutable)
@@ -615,6 +627,96 @@ impl CozoGraphShuttle {
             Ok((models, revision(tx)?))
         })
     }
+
+    /// The Control Plane profile recorded for each model, if one was set.
+    pub fn list_model_registry_profiles(
+        &self,
+    ) -> std::result::Result<Vec<(String, String, String)>, CozoError> {
+        self.model_registry_read(|tx| profiles(tx))
+    }
+
+    /// Record which Control Plane profile `model_id` needs, or clear it when
+    /// `profile` is absent. The model must already be in the catalog. An
+    /// unchanged record does not advance the revision.
+    pub fn set_model_registry_profile(
+        &self,
+        provider_id: &str,
+        model_id: &str,
+        profile: Option<&str>,
+    ) -> std::result::Result<u64, CozoError> {
+        if !bounded(provider_id, MAX_ID_BYTES) || !bounded(model_id, MAX_ID_BYTES) {
+            return Err(error("invalid model registry profile key"));
+        }
+        if let Some(profile) = profile {
+            if !bounded(profile, MAX_ID_BYTES) {
+                return Err(error("invalid model registry profile"));
+            }
+        }
+        let provider_id = provider_id.to_string();
+        let model_id = model_id.to_string();
+        let profile = profile.map(str::to_string);
+        self.model_registry_write(|tx| {
+            let known = provider_models(tx, &provider_id)?;
+            if !known.iter().any(|row| row.model.model_id == model_id) {
+                return Err(error("model is not in the catalog"));
+            }
+            let current = profiles(tx)?
+                .into_iter()
+                .find(|(provider, model, _)| provider == &provider_id && model == &model_id)
+                .map(|(_, _, recorded)| recorded);
+            if current.as_deref() == profile.as_deref() {
+                return revision(tx);
+            }
+            match &profile {
+                Some(profile) => {
+                    run(
+                        tx,
+                        &format!(
+                            "?[{PROFILE_COLUMNS}] <- [[$provider, $model, $profile]] :put model_registry_profiles {{provider_id, model_id => profile}}"
+                        ),
+                        BTreeMap::from([
+                            ("provider".into(), text(&provider_id)),
+                            ("model".into(), text(&model_id)),
+                            ("profile".into(), text(profile)),
+                        ]),
+                        "profile write",
+                    )?;
+                }
+                None => {
+                    run(
+                        tx,
+                        "?[provider_id, model_id] <- [[$provider, $model]] :rm model_registry_profiles {provider_id, model_id}",
+                        BTreeMap::from([
+                            ("provider".into(), text(&provider_id)),
+                            ("model".into(), text(&model_id)),
+                        ]),
+                        "profile clear",
+                    )?;
+                }
+            }
+            advance(tx)
+        })
+    }
+}
+
+fn profiles(
+    tx: &MultiTransaction,
+) -> std::result::Result<Vec<(String, String, String)>, CozoError> {
+    let rows = run(
+        tx,
+        &format!("?[{PROFILE_COLUMNS}] := *model_registry_profiles{{{PROFILE_COLUMNS}}}"),
+        BTreeMap::new(),
+        "profile read",
+    )?;
+    rows.rows
+        .into_iter()
+        .map(|row| match row.as_slice() {
+            [provider_id, model_id, profile] => {
+                Ok((as_str(provider_id)?, as_str(model_id)?, as_str(profile)?))
+            }
+            _ => Err(error("corrupt model registry profile row")),
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -763,5 +865,51 @@ mod tests {
                 .is_err()
         );
         assert_eq!(store.list_model_registry_providers().unwrap().1, 0);
+    }
+
+    #[test]
+    fn a_recorded_profile_survives_refresh_and_clears() {
+        let store = store();
+        store
+            .record_model_registry_refresh("opencode_go", "t1", Ok(&[model("glm")]))
+            .unwrap();
+        assert!(
+            store
+                .set_model_registry_profile("opencode_go", "missing", Some("opencode.go_responses"))
+                .is_err()
+        );
+        let revision = store
+            .set_model_registry_profile(
+                "opencode_go",
+                "glm",
+                Some("opencode.go_control_plane_responses"),
+            )
+            .unwrap();
+        assert_eq!(revision, 2);
+        let same = store
+            .set_model_registry_profile(
+                "opencode_go",
+                "glm",
+                Some("opencode.go_control_plane_responses"),
+            )
+            .unwrap();
+        assert_eq!(same, revision);
+        store
+            .record_model_registry_refresh("opencode_go", "t2", Ok(&[model("glm"), model("kimi")]))
+            .unwrap();
+        let profiles = store.list_model_registry_profiles().unwrap();
+        assert_eq!(
+            profiles,
+            [(
+                "opencode_go".into(),
+                "glm".into(),
+                "opencode.go_control_plane_responses".into()
+            )]
+        );
+        let cleared = store
+            .set_model_registry_profile("opencode_go", "glm", None)
+            .unwrap();
+        assert!(cleared > revision);
+        assert!(store.list_model_registry_profiles().unwrap().is_empty());
     }
 }

@@ -2204,6 +2204,35 @@ pub(crate) mod tests {
         );
     }
 
+    /// A second anchored session for an already registered key, with its own
+    /// session id and genesis: the provenance a later login leaves for owners
+    /// scoped by principal alone. Fixture only; the production genesis path
+    /// derives the session id from the key.
+    pub(crate) async fn write_second_session(
+        engine: &MutationEngine,
+        pubkey: &str,
+        session_id: &str,
+    ) -> anyhow::Result<ContainerIdentitySled> {
+        use sha2::Digest as _;
+        let store = engine.identity_sled_store()?;
+        let mut sled = write_identity(engine, pubkey).await?;
+        anyhow::ensure!(sled.session_id != session_id, "fixture needs a new session");
+        let expected = load_revision(store, session_id).await?;
+        anyhow::ensure!(
+            revision_sled(&expected)?.is_none(),
+            "fixture session already exists"
+        );
+        sled.session_id = session_id.into();
+        sled.instance = Some(prepare_parked_instance(
+            session_id,
+            IncusInstance::default(),
+        )?);
+        sled.genesis = Some(hex::encode(sha2::Sha256::digest(
+            format!("{}:{session_id}", sled.genesis.clone().unwrap_or_default()).as_bytes(),
+        )));
+        commit_sled_update(engine, store, opid("fixture"), expected, sled.clone(), sled).await
+    }
+
     async fn write_identity_term(
         engine: &MutationEngine,
         pubkey: &str,

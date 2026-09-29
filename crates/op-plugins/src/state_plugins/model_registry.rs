@@ -12,13 +12,24 @@
 //! through its own lungs, and every identity reads the catalog with
 //! `list_providers` and `list_models`.
 //!
-//! The catalog is read-only evidence of what providers serve. Choosing the
-//! Control Plane model remains a protected `tched_router` task (elevation);
-//! this plugin never changes a route.
+//! The list is the owner's keyed providers: each entry names the variable in
+//! the owner's secrets file its key is installed from (`key_env`), and
+//! `scripts/install-provider-keys.sh` copies those keys into the root-owned
+//! files the bridge and the router read.
+//!
+//! The file lists providers only; models are never written there. The
+//! catalog holds them, and the control-plane LLM maintains what is known
+//! about each one: `set_model_profile` records which of its provider's
+//! router profiles a model needs (another wire format on the same provider,
+//! such as OpenCode Go's Messages or Responses endpoints). Each provider
+//! names its default Control Plane profile and the alternatives it offers,
+//! so a model chosen from the catalog maps to exactly one profile. Choosing
+//! the Control Plane model remains a protected `tched_router` task
+//! (elevation); this plugin never changes a route.
 
 use std::collections::BTreeSet;
 
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{bail, ensure, Context, Result};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{PluginSchema, SideEffect};
@@ -32,6 +43,7 @@ pub const PLUGIN_ID: &str = "model_registry";
 const PLUGIN_VERSION: &str = "1.0.0";
 pub const READ_CAPABILITY: &str = "model_registry.read";
 pub const REFRESH_CAPABILITY: &str = "model_registry.refresh";
+pub const MAINTAIN_CAPABILITY: &str = "model_registry.maintain";
 
 /// Where the bridge reads the provider list unless `OP_MODEL_PROVIDERS_PATH`
 /// names another root-owned file.
@@ -49,6 +61,21 @@ pub const MAX_MODEL_ID_BYTES: usize = 200;
 pub const MAX_NAME_BYTES: usize = 200;
 pub const MAX_QUERY_BYTES: usize = 100;
 pub const MAX_ERROR_BYTES: usize = 300;
+const MAX_ALTERNATIVES: usize = 8;
+/// Router provider families a control-plane profile may name
+/// (`providers.models.<family>.<alias>` in the tched_router contract).
+pub const ROUTER_FAMILIES: &[&str] = &[
+    "anthropic",
+    "custom",
+    "deepseek",
+    "gemini",
+    "groq",
+    "ollama",
+    "openai",
+    "opencode",
+    "openrouter",
+    "xai",
+];
 const MAX_PRICE_BYTES: usize = 32;
 const MAX_CONTEXT_LENGTH: u64 = 100_000_000;
 
@@ -94,8 +121,75 @@ pub struct ProviderConfig {
     /// `auth = "none"`. The key is only ever sent to `models_url`.
     #[serde(default)]
     pub key_file: Option<String>,
+    /// The variable in the owner's secrets file (`~/.bash_secrets`) the key
+    /// is installed from by `scripts/install-provider-keys.sh`.
+    #[serde(default)]
+    pub key_env: Option<String>,
+    /// The router profiles the Control Plane uses for this provider's models.
+    #[serde(default)]
+    pub control_plane: Option<ControlPlaneRouting>,
     #[serde(default = "enabled_default")]
     pub enabled: bool,
+}
+
+/// The router profiles (`family.alias`) a provider offers the Control
+/// Plane: `profile` serves its models unless the catalog records that a
+/// model needs one of the `alternatives` (another wire format on the same
+/// provider).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ControlPlaneRouting {
+    pub profile: String,
+    #[serde(default)]
+    pub alternatives: Vec<String>,
+}
+
+impl ControlPlaneRouting {
+    /// Every profile this provider offers, default first.
+    pub fn profiles(&self) -> Vec<&str> {
+        std::iter::once(self.profile.as_str())
+            .chain(self.alternatives.iter().map(String::as_str))
+            .collect()
+    }
+
+    /// The profile serving a model: the one the catalog recorded for it when
+    /// this provider still offers it, else the default.
+    pub fn resolve<'a>(&'a self, recorded: Option<&str>) -> &'a str {
+        recorded
+            .and_then(|recorded| self.profiles().into_iter().find(|p| *p == recorded))
+            .unwrap_or(self.profile.as_str())
+    }
+}
+
+impl ProviderConfig {
+    /// The Control Plane profile for one of this provider's models, given
+    /// the profile the catalog recorded for it.
+    pub fn control_plane_profile(&self, recorded: Option<&str>) -> Option<&str> {
+        self.control_plane
+            .as_ref()
+            .map(|routing| routing.resolve(recorded))
+    }
+}
+
+/// A router profile reference: `family.alias`, a known family and an alias
+/// of lowercase letters, digits and `_` starting with a letter.
+pub fn valid_profile(reference: &str) -> bool {
+    reference.split_once('.').is_some_and(|(family, alias)| {
+        ROUTER_FAMILIES.contains(&family)
+            && (1..=64).contains(&alias.len())
+            && alias.as_bytes()[0].is_ascii_lowercase()
+            && alias
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+    })
+}
+
+fn valid_env_name(name: &str) -> bool {
+    (1..=64).contains(&name.len())
+        && name.as_bytes()[0].is_ascii_uppercase()
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
 }
 
 /// The whole provider list: `[[providers]]` tables.
@@ -187,6 +281,38 @@ pub fn validate_provider(provider: &ProviderConfig) -> Result<()> {
             validate_key_file(path).with_context(|| format!("provider {}", provider.id))?
         }
     }
+    if let Some(name) = &provider.key_env {
+        ensure!(
+            valid_env_name(name),
+            "provider {} key_env {name:?} must be an upper-case variable name",
+            provider.id
+        );
+        ensure!(
+            provider.key_file.is_some(),
+            "provider {} names a key_env but no key_file to install it into",
+            provider.id
+        );
+    }
+    if let Some(routing) = &provider.control_plane {
+        ensure!(
+            routing.alternatives.len() <= MAX_ALTERNATIVES,
+            "provider {} offers more than {MAX_ALTERNATIVES} alternative profiles",
+            provider.id
+        );
+        let mut seen = BTreeSet::new();
+        for profile in routing.profiles() {
+            ensure!(
+                valid_profile(profile),
+                "provider {} control_plane profile {profile:?} must be family.alias with a router family",
+                provider.id
+            );
+            ensure!(
+                seen.insert(profile),
+                "provider {} lists control_plane profile {profile} twice",
+                provider.id
+            );
+        }
+    }
     Ok(())
 }
 
@@ -202,6 +328,7 @@ pub fn parse_providers_toml(text: &str) -> Result<ProvidersFile> {
         "provider list names more than {MAX_PROVIDERS} providers"
     );
     let mut ids = BTreeSet::new();
+    let mut profiles = BTreeSet::new();
     for provider in &file.providers {
         validate_provider(provider)?;
         ensure!(
@@ -209,6 +336,19 @@ pub fn parse_providers_toml(text: &str) -> Result<ProvidersFile> {
             "provider id {} is listed twice",
             provider.id
         );
+        // A profile belongs to one provider, so the current Control Plane
+        // profile names its provider unambiguously.
+        for profile in provider
+            .control_plane
+            .as_ref()
+            .map(ControlPlaneRouting::profiles)
+            .unwrap_or_default()
+        {
+            ensure!(
+                profiles.insert(profile),
+                "control_plane profile {profile} is used by two providers"
+            );
+        }
     }
     Ok(file)
 }
@@ -344,6 +484,10 @@ pub struct ProviderStatus {
     pub succeeded_at: Option<String>,
     pub available_models: u64,
     pub known_models: u64,
+    /// Router profiles the Control Plane uses for this provider's models,
+    /// default first; empty when the provider cannot serve it.
+    #[serde(default)]
+    pub control_plane_profiles: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -398,6 +542,41 @@ pub struct ModelRecord {
     pub available: bool,
     pub first_seen: String,
     pub last_seen: String,
+    /// The profile the catalog records this model needs, when one was set
+    /// with `set_model_profile`.
+    #[serde(default)]
+    pub recorded_profile: Option<String>,
+    /// The router profile (`family.alias`) the Control Plane uses for this
+    /// model; absent when its provider cannot serve the Control Plane.
+    #[serde(default)]
+    pub control_plane_profile: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SetModelProfileInput {
+    pub provider_id: String,
+    pub model_id: String,
+    /// One of the provider's control-plane profiles, or absent to clear the
+    /// record so the provider's default applies.
+    #[serde(default)]
+    pub profile: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SetModelProfileOutput {
+    pub model: ModelRecord,
+    pub revision: u64,
+}
+
+pub fn validate_set_model_profile(input: &SetModelProfileInput) -> Result<()> {
+    ensure!(valid_provider_id(&input.provider_id), "invalid provider_id");
+    ensure!(valid_model_id(&input.model_id), "invalid model_id");
+    if let Some(profile) = &input.profile {
+        ensure!(valid_profile(profile), "profile must be family.alias");
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -542,6 +721,16 @@ pub fn model_registry_schema() -> PluginSchema {
             "mut.service.model-registry.catalog.refresh@v1",
         ),
     );
+    schema.methods.insert(
+        "set_model_profile".to_string(),
+        method_decl_from_schemars_with_output::<SetModelProfileInput, SetModelProfileOutput>(
+            "set_model_profile",
+            SideEffect::Mutation,
+            true,
+            MAINTAIN_CAPABILITY,
+            "mut.service.model-registry.model-profile.set@v1",
+        ),
+    );
     schema.capabilities.insert(
         READ_CAPABILITY.to_string(),
         op_state_store::CapabilityDecl {
@@ -555,6 +744,15 @@ pub fn model_registry_schema() -> PluginSchema {
             id: REFRESH_CAPABILITY.to_string(),
             description: "Grants: refresh (ask every configured provider for its current models)."
                 .to_string(),
+        },
+    );
+    schema.capabilities.insert(
+        MAINTAIN_CAPABILITY.to_string(),
+        op_state_store::CapabilityDecl {
+            id: MAINTAIN_CAPABILITY.to_string(),
+            description:
+                "Grants: set_model_profile (record which of its provider's profiles a model needs)."
+                    .to_string(),
         },
     );
     schema
@@ -726,9 +924,7 @@ enabled = false
             "{PROVIDERS}\n{}",
             &PROVIDERS[PROVIDERS.find("[[providers]]").unwrap()..]
         );
-        assert!(
-            format!("{:#}", parse_providers_toml(&twice).unwrap_err()).contains("listed twice")
-        );
+        assert!(format!("{:#}", parse_providers_toml(&twice).unwrap_err()).contains("listed twice"));
         let bad_id = PROVIDERS.replace("\"opencode_go\"", "\"OpenCode\"");
         assert!(parse_providers_toml(&bad_id).is_err());
     }
@@ -802,26 +998,22 @@ enabled = false
     #[test]
     fn list_models_input_is_bounded() {
         assert!(validate_list_models(&ListModelsInput::default()).is_ok());
-        assert!(
-            validate_list_models(&ListModelsInput {
-                limit: Some(MAX_PAGE + 1),
-                ..Default::default()
-            })
-            .is_err()
-        );
-        assert!(
-            validate_list_models(&ListModelsInput {
-                query: Some(" padded".into()),
-                ..Default::default()
-            })
-            .is_err()
-        );
+        assert!(validate_list_models(&ListModelsInput {
+            limit: Some(MAX_PAGE + 1),
+            ..Default::default()
+        })
+        .is_err());
+        assert!(validate_list_models(&ListModelsInput {
+            query: Some(" padded".into()),
+            ..Default::default()
+        })
+        .is_err());
     }
 
     #[test]
-    fn schema_declares_three_methods_with_valid_subids() {
+    fn schema_declares_its_methods_with_valid_subids() {
         let schema = model_registry_schema();
-        assert_eq!(schema.methods.len(), 3);
+        assert_eq!(schema.methods.len(), 4);
         for method in schema.methods.values() {
             validate_subid(&method.subid).unwrap();
         }
@@ -844,5 +1036,31 @@ enabled = false
             schema.methods["list_models"].required_capability.as_deref(),
             Some(READ_CAPABILITY)
         );
+        assert_eq!(
+            schema.methods["set_model_profile"]
+                .required_capability
+                .as_deref(),
+            Some(MAINTAIN_CAPABILITY)
+        );
+    }
+
+    #[test]
+    fn control_plane_profile_falls_back_to_the_provider_default() {
+        let routing = ControlPlaneRouting {
+            profile: "opencode.go_control_plane".into(),
+            alternatives: vec!["opencode.go_control_plane_responses".into()],
+        };
+        assert_eq!(routing.resolve(None), "opencode.go_control_plane");
+        assert_eq!(
+            routing.resolve(Some("opencode.go_control_plane_responses")),
+            "opencode.go_control_plane_responses"
+        );
+        assert_eq!(
+            routing.resolve(Some("openai.control_plane")),
+            "opencode.go_control_plane"
+        );
+        assert!(valid_profile("custom.huggingface_control_plane"));
+        assert!(!valid_profile("OpenCode.go_control_plane"));
+        assert!(!valid_profile("factory.control_plane"));
     }
 }

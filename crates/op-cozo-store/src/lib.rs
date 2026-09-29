@@ -28,6 +28,11 @@ pub use ui_gallery::{
     MAX_UI_GALLERY_DOCUMENT_BYTES, UiCandidatePage, UiCandidateRecord, UiCatalogPage,
     UiCatalogRecord,
 };
+mod chat_response_conversations;
+pub use chat_response_conversations::{
+    ChatConversationRecord, ChatResponseSnapshot, ChatTurnDraft, ChatTurnPage, ChatTurnRecord,
+    MAX_CHAT_CONVERSATION_BYTES, MAX_CHAT_TURN_BYTES, MAX_CHAT_TURN_WINDOW_BYTES,
+};
 mod ctl_plane_chatbot_episodes;
 pub use ctl_plane_chatbot_episodes::{
     EpisodeEmbeddingRecord, EpisodePage, EpisodeScope, EpisodeSnapshot, KNOWLEDGE_SNAPSHOT_LIMIT,
