@@ -15,13 +15,13 @@ impl SemanticSearch {
         Self { rag }
     }
 
-    /// Search across code repositories.
+    /// Search across code repositories (unified repomix).
     pub async fn search_code(&self, query: &str, limit: usize) -> Result<Value> {
         let filter = CodeFilter::default();
         let results = self
             .rag
             .query_fused(
-                "repos_lsp_rust_voyage_4_large",
+                "repos_repomix_voyage_context_4",
                 query,
                 limit as u64,
                 &filter,
@@ -72,17 +72,19 @@ impl SemanticSearch {
     /// List active collections.
     pub async fn list_collections(&self) -> Result<Value> {
         Ok(json!({
+            "primary": "repos_repomix_voyage_context_4",
             "collections": [
-                "repos_lsp_c_cpp_voyage_4_lite",
+                "repos_repomix_voyage_context_4",
+                "repos_lsp_rust_voyage_code_4",
                 "repos_lsp_go_voyage_4_large",
                 "repos_lsp_python_voyage_4_large",
-                "repos_lsp_rust_voyage_4_large",
+                "repos_lsp_c_cpp_voyage_4_lite",
                 "repos_lsp_typescript_voyage_4_lite",
                 "repos_specs_docs_voyage_4_lite",
             ],
-            "total_points": 417000,
+            "total_points": 1200000,
             "vector_dim": 1024,
-            "embedding_model": "voyage-4-lite"
+            "embedding_model": "voyage-context-4"
         }))
     }
 }
