@@ -244,6 +244,9 @@ pub struct MutationEngine {
     /// The control plane's json_render UI gallery and active catalog owner:
     /// one system database, read and written only through grants.
     ui_gallery_cozo: Arc<OnceCell<Arc<op_cozo_store::CozoGraphShuttle>>>,
+    /// The system-wide model registry: providers' refresh status and the
+    /// models each one lists, one system database behind grants.
+    model_registry_cozo: Arc<OnceCell<Arc<op_cozo_store::CozoGraphShuttle>>>,
     /// One-time sudo elevation tickets for protected tasks.
     task_elevation: Arc<crate::task_elevation::TaskElevation>,
     /// Private memory methods share one writer lock and the existing Cozo
@@ -1021,6 +1024,7 @@ impl MutationEngine {
             vector_projector: Arc::new(OnceCell::new()),
             chatbot_episode_cozo: Arc::new(OnceCell::new()),
             ui_gallery_cozo: Arc::new(OnceCell::new()),
+            model_registry_cozo: Arc::new(OnceCell::new()),
             task_elevation: Arc::new(crate::task_elevation::TaskElevation::default()),
             memory_methods: Arc::new(OnceCell::new()),
             sess_decl_methods: Arc::new(OnceCell::new()),
@@ -1170,6 +1174,65 @@ impl MutationEngine {
             })
             .await
             .cloned()
+    }
+
+    /// The model registry owner. Its database is distinct from the generic
+    /// cognitive database, the chatbot's episodes and the UI gallery.
+    pub(crate) async fn model_registry_cozo(
+        &self,
+    ) -> anyhow::Result<Arc<op_cozo_store::CozoGraphShuttle>> {
+        self.model_registry_cozo
+            .get_or_try_init(|| async {
+                let path = std::env::var("MODEL_REGISTRY_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/model-registry.db".to_string());
+                anyhow::ensure!(
+                    !path.is_empty() && path != ":memory:" && path != "memory",
+                    "model registry store requires a durable path"
+                );
+                let episodes = std::env::var("CTL_PLANE_CHATBOT_EPISODE_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/chatbot-episodes.db".to_string());
+                let gallery = std::env::var("UI_GALLERY_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/ui-gallery.db".to_string());
+                let others: Vec<Arc<op_cozo_store::CozoGraphShuttle>> = self
+                    .cognitive_mcp
+                    .get()
+                    .map(|server| server.cozo_shuttle())
+                    .into_iter()
+                    .chain(self.chatbot_episode_cozo.get().cloned())
+                    .chain(self.ui_gallery_cozo.get().cloned())
+                    .collect();
+                tokio::task::spawn_blocking(move || {
+                    crate::chatbot_episode_state::require_distinct_database_paths(&path)?;
+                    for other in [&episodes, &gallery] {
+                        crate::chatbot_episode_state::distinct_databases(
+                            std::path::Path::new(&path),
+                            std::path::Path::new(other),
+                        )?;
+                    }
+                    let store = op_cozo_store::CozoGraphShuttle::new_persistent_private(
+                        std::path::PathBuf::from(path),
+                    )?;
+                    for other in &others {
+                        store.ensure_distinct_from(other)?;
+                    }
+                    store.initialize_model_registry_store()?;
+                    Ok::<_, anyhow::Error>(Arc::new(store))
+                })
+                .await
+                .context("model registry store initialization worker failed")?
+            })
+            .await
+            .cloned()
+    }
+
+    pub fn configure_model_registry_store(
+        &self,
+        store: Arc<op_cozo_store::CozoGraphShuttle>,
+    ) -> anyhow::Result<()> {
+        store.initialize_model_registry_store()?;
+        self.model_registry_cozo
+            .set(store)
+            .map_err(|_| anyhow::anyhow!("model registry Cozo owner is already configured"))
     }
 
     pub(crate) fn task_elevation(&self) -> &Arc<crate::task_elevation::TaskElevation> {
@@ -3099,6 +3162,17 @@ impl MutationEngine {
                     actor_id,
                     session_id,
                     session_genesis,
+                )
+                .await?
+            }
+            "model_registry" => {
+                crate::model_registry_dispatch::dispatch(
+                    self,
+                    method,
+                    &serde_json::to_value(&parsed_value)?,
+                    actor_id,
+                    session_id,
+                    &admitted_schema,
                 )
                 .await?
             }

@@ -1,0 +1,10 @@
+# Control-plane chatbot (session b0c777e3-0955-cd8b-3d01-ca12998cae28):
+# hourly model_registry refresh, run as the chatbot through its own lungs.
+#
+# Install inside the chatbot's container (it needs a cron daemon there). The
+# identity sees its lungs at /opt/run-mounts/3tched; writing the arguments to
+# a method's `call` file dispatches that method as the chatbot through the
+# bridge's lungs socket and MutationEngine, under the chatbot's own
+# model_registry.refresh grant. The receipt lands in `result`, a failure in
+# `error`. Minute 17 keeps it off the top of the hour.
+17 * * * * printf '{}' > /opt/run-mounts/3tched/plugins/model_registry/operations/refresh/call

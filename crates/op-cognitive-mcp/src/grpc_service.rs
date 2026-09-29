@@ -27,7 +27,6 @@ use uuid::Uuid;
 
 use crate::gemini_fallback::GeminiFallback;
 use crate::memory_store::{CognitiveMemoryStore, NamespaceKind};
-use crate::models_provider::ModelsProvider;
 use crate::proto::cognitive_tool_service_server::CognitiveToolService;
 use crate::proto::*;
 use crate::quota::QuotaManager;
@@ -44,7 +43,6 @@ pub struct CognitiveGrpcService {
     session_manager: Arc<SessionManager>,
     quota_manager: Arc<QuotaManager>,
     gemini_fallback: Arc<GeminiFallback>,
-    models_provider: Arc<tokio::sync::Mutex<ModelsProvider>>,
 }
 
 impl CognitiveGrpcService {
@@ -59,7 +57,6 @@ impl CognitiveGrpcService {
             session_manager,
             quota_manager,
             gemini_fallback,
-            models_provider: Arc::new(tokio::sync::Mutex::new(ModelsProvider::new())),
         }
     }
 }

@@ -198,7 +198,9 @@
       "json_render.gallery",
       "json_render.promote",
       "elevation.authorize",
-      "elevation.read"
+      "elevation.read",
+      "model_registry.read",
+      "model_registry.refresh"
     ]
   },
   "1262e982-14c1-44d4-0771-7ce74213211b": {
@@ -211,7 +213,9 @@
       "workflows.read",
       "workflows.write",
       "notebooklm.read",
-      "notebooklm.invoke"
+      "notebooklm.invoke",
+      "model_registry.read",
+      "model_registry.refresh"
     ]
   }
 }

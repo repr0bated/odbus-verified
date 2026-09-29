@@ -19,6 +19,10 @@ pub use runtime_document_transactions::{
     RuntimeDocumentCommit, RuntimeDocumentFailure, RuntimeDocumentRecord,
     RuntimeDocumentUncertainPhase,
 };
+mod model_registry;
+pub use model_registry::{
+    RegistryModel, RegistryModelRecord, RegistryProviderRecord, RegistryRefreshCounts,
+};
 mod ui_gallery;
 pub use ui_gallery::{
     MAX_UI_GALLERY_DOCUMENT_BYTES, UiCandidatePage, UiCandidateRecord, UiCatalogPage,

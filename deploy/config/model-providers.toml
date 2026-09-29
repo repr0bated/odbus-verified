@@ -1,0 +1,45 @@
+# Providers whose model lists the model_registry plugin keeps current.
+#
+# Installed root-owned at /etc/op-dbus/model-providers.toml. The control-plane
+# chatbot calls model_registry.refresh hourly through its lungs: each enabled
+# provider is asked for its current models, new ones are added, and models a
+# provider stops listing stay in the catalog marked unavailable. OpenCode and
+# OpenRouter change their lists often, which is why this is refreshed rather
+# than written down.
+#
+# Fields: id (lowercase, digits, _), name, models_url (https), format
+# ("openai" or "anthropic" response shape), auth ("none", "bearer" or
+# "x_api_key"), key_file (root-owned 0400/0600 file directly under
+# /etc/op-dbus/secrets/, required unless auth = "none"), enabled (default
+# true). A key is only ever sent to its own provider's models_url.
+
+[[providers]]
+id = "opencode_go"
+name = "OpenCode Go"
+models_url = "https://opencode.ai/zen/go/v1/models"
+format = "openai"
+auth = "bearer"
+key_file = "/etc/op-dbus/secrets/opencode-api-key"
+
+[[providers]]
+id = "openrouter"
+name = "OpenRouter"
+models_url = "https://openrouter.ai/api/v1/models"
+format = "openai"
+auth = "none"
+
+[[providers]]
+id = "cheaper_inference"
+name = "Cheaper Inference"
+models_url = "https://api.cheaperinference.com/v1/models"
+format = "openai"
+auth = "bearer"
+key_file = "/etc/op-dbus/secrets/cheaper-inference-api-key"
+
+[[providers]]
+id = "openai"
+name = "OpenAI"
+models_url = "https://api.openai.com/v1/models"
+format = "openai"
+auth = "bearer"
+key_file = "/etc/op-dbus/secrets/openai-api-key"

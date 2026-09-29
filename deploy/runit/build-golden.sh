@@ -73,6 +73,7 @@ TCHED_ROUTER_GENERATION_PATCH="$PROJECT_ROOT/vendor/tched-router/patches/0002-st
 TCHED_ROUTER_PATCH_INVENTORY="$PROJECT_ROOT/vendor/tched-router/patch-inventory"
 TCHED_ROUTER_BASE_MANIFEST="$PROJECT_ROOT/vendor/tched-router/base-sha256sums"
 TCHED_ROUTER_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/zeroclaw-runtime.toml"
+MODEL_PROVIDERS_SOURCE="$SCRIPT_DIR/../config/model-providers.toml"
 TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/zeroclaw-skills/default"
 OPENCODE_RUNTIME_CONFIG="$SCRIPT_DIR/../config/opencode-runtime.json"
 OPENCODE_BINARY_SOURCE=${OPENCODE_BINARY_SOURCE:-/usr/bin/opencode}
@@ -670,6 +671,10 @@ build_golden() {
         "$GOLDEN_DIR/etc/opdbus/host-runtime-packages.txt"
     run install -Dm644 "$TCHED_ROUTER_BOOTSTRAP_CONFIG" \
         "$GOLDEN_DIR/etc/op-dbus/zeroclaw-runtime.toml"
+    # model_registry's provider list: root-owned and not writable by others,
+    # or the bridge refuses it.
+    run install -Dm644 "$MODEL_PROVIDERS_SOURCE" \
+        "$GOLDEN_DIR/etc/op-dbus/model-providers.toml"
     golden_tched_router_skills="$GOLDEN_DIR/etc/op-dbus/zeroclaw-skills/default"
     [ ! -e "$golden_tched_router_skills" ] || run rm -r -- "$golden_tched_router_skills"
     run install -d -m 0755 "$golden_tched_router_skills"

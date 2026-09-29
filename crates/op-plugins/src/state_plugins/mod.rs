@@ -55,6 +55,7 @@ pub mod mail_server;
 pub mod mcp;
 pub mod memory_methods;
 pub mod memory_plugin;
+pub mod model_registry;
 pub mod net;
 pub mod notebooklm;
 pub mod oci;
