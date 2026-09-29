@@ -82,7 +82,7 @@ Findings from `operation-dbus-proto/.kiro/specs/unified-authenticated-mcp-cognit
 - The authority it cites, `standalone-emqx-identity-mcp` FR-12..FR-15, is in neither repo (checked the last 400 proto commits); probably `~/.kiro` on the host. Find it before changing tiers.
 
 Drift to resolve (owner deciding; configurable toolsets OD-33 deferred):
-1. 3tchedFS `mcp` toolsets allow loading several sets at once, and `--compact` exposes the meta-tools the design removes from MCP (AGENTS.md still lists op-web compact mode for the chatbot; the sources disagree).
+1. 3tchedFS `mcp` toolsets allow loading several sets at once. **Owner decision 2026-09-29: compact MCP stays: it is how the control plane reaches every tool on the system** (op-web compact mode and `threetched-fs mcp --compact`). The design's one-set-at-a-time toolsets apply to other identities, not the control plane.
 2. `deploy/config/mcp-toolsets.json` generation 9 has 19 HOT tools and marks large sets (agents_advisory 567, notebooklm_research) HOT, against the design's five.
 3. `emqx.publish_toolsets` (`5f0b069`) pushes bridge → broker; the design's direction is broker health/catalog signals → ExHook → MutationEngine → WARM availability.
 
