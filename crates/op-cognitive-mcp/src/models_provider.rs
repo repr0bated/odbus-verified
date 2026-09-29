@@ -175,6 +175,47 @@ impl ModelsProvider {
         }
         self.messaging_enabled = std::env::var("CLAUDE_CODE_MESSAGING_TOKEN").is_ok();
     }
+
+    /// Add a new provider.
+    pub async fn add_provider(&mut self, id: String, name: String, kind: String) -> Value {
+        let provider = Provider {
+            id: id.clone(),
+            name,
+            kind,
+            models: vec![],
+            configured: false,
+        };
+        self.providers.push(provider);
+        json!({
+            "status": "added",
+            "provider_id": id,
+        })
+    }
+
+    /// Remove a provider by ID.
+    pub async fn remove_provider(&mut self, id: &str) -> Value {
+        self.providers.retain(|p| p.id != id);
+        json!({
+            "status": "removed",
+            "provider_id": id,
+        })
+    }
+
+    /// Add a model to a provider.
+    pub async fn add_model(&mut self, provider_id: &str, model: Model) -> Value {
+        if let Some(provider) = self.providers.iter_mut().find(|p| p.id == provider_id) {
+            provider.models.push(model.clone());
+            return json!({
+                "status": "added",
+                "provider_id": provider_id,
+                "model_id": model.id,
+            });
+        }
+        json!({
+            "status": "error",
+            "message": "provider not found",
+        })
+    }
 }
 
 #[cfg(test)]
