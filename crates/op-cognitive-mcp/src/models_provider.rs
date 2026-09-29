@@ -95,6 +95,20 @@ impl ModelsProvider {
                     }],
                     configured: std::env::var("CHEAPERINFERENE_API_KEY").is_ok(),
                 },
+                Provider {
+                    id: "spacexai".to_string(),
+                    name: "SpaceXai".to_string(),
+                    kind: "api".to_string(),
+                    models: vec![Model {
+                        id: "grok-1".to_string(),
+                        name: "Grok 1".to_string(),
+                        kind: "chat".to_string(),
+                        available: true,
+                        identity: Some("grok-1".to_string()),
+                        provider_id: "spacexai".to_string(),
+                    }],
+                    configured: std::env::var("SPACEXAI_API_KEY").is_ok(),
+                },
             ],
             messaging_enabled: std::env::var("CLAUDE_CODE_MESSAGING_TOKEN").is_ok(),
         }
