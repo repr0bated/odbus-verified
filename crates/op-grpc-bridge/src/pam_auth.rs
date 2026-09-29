@@ -22,7 +22,6 @@ const PAM_NEW_AUTHTOK_REQD: c_int = 12;
 const PAM_ACCT_EXPIRED: c_int = 13;
 const PAM_PERM_DENIED: c_int = 6;
 const PAM_PROMPT_ECHO_OFF: c_int = 1;
-const PAM_PROMPT_ECHO_ON: c_int = 2;
 const PAM_ERROR_MSG: c_int = 3;
 const PAM_TEXT_INFO: c_int = 4;
 const PAM_SILENT: c_int = 0x8000;
@@ -92,7 +91,8 @@ unsafe extern "C" fn converse(
                     (*responses.add(index)).resp = copy;
                 }
                 PAM_ERROR_MSG | PAM_TEXT_INFO => {}
-                PAM_PROMPT_ECHO_ON | _ => {
+                // Echo-on prompts (a username) and anything unknown end the conversation.
+                _ => {
                     free_responses(responses, count);
                     return PAM_CONV_ERR;
                 }

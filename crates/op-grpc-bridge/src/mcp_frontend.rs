@@ -1179,10 +1179,10 @@ async fn process_rpc(
             "jsonrpc must be 2.0",
         );
     }
-    if let Err(error) = validate_protocol_headers(&headers, &rpc) {
+    if let Err(error) = validate_protocol_headers(headers, &rpc) {
         return jsonrpc_error(StatusCode::BAD_REQUEST, rpc.id, -32600, &error);
     }
-    match one_optional_header(&headers, DECLARED_CAPABILITY_HEADER) {
+    match one_optional_header(headers, DECLARED_CAPABILITY_HEADER) {
         Ok(None) => {}
         Ok(Some(_)) => {
             return jsonrpc_error(
@@ -1224,7 +1224,7 @@ async fn process_rpc(
         Some(session_id) => {
             let session = state.sessions.read().await.get(session_id).cloned();
             match session {
-                Some(session) if session.belongs_to(&caller) => Some(session),
+                Some(session) if session.belongs_to(caller) => Some(session),
                 _ => {
                     return jsonrpc_error(
                         StatusCode::NOT_FOUND,
@@ -1270,7 +1270,7 @@ async fn process_rpc(
         request_timeout,
         dispatch_rpc(
             state.backend.as_ref(),
-            &caller,
+            caller,
             &rpc.method,
             rpc.params,
             session_selection.as_ref(),
