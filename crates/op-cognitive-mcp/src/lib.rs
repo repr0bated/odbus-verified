@@ -27,6 +27,7 @@ pub mod memory_store;
 pub mod qdrant_shuttle;
 pub mod quota;
 pub mod rag_pipeline;
+pub mod semantic_search;
 pub mod server;
 pub mod session;
 pub mod soul_memory;

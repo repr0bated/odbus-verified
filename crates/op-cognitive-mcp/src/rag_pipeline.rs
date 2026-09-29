@@ -681,7 +681,7 @@ pub fn default_collection_from_env() -> String {
     std::env::var("COGNITIVE_MCP_RAG_COLLECTION")
         .or_else(|_| std::env::var("COGNITIVE_MCP_CODE_COLLECTION"))
         .or_else(|_| std::env::var("COGNITIVE_MCP_REPOMIX_COLLECTION"))
-        .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string())
+        .unwrap_or_else(|_| DEFAULT_VOYAGE4_COLLECTIONS[0].to_string())
 }
 
 pub fn default_collections_for_mode(mode: RetrievalMode) -> Vec<String> {

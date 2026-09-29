@@ -355,11 +355,11 @@
           "op-cog-admin"
         ],
         "has_lib": true,
-        "rs_files": 29,
-        "loc": 11429,
+        "rs_files": 30,
+        "loc": 11518,
         "tests": 52,
         "unsafe_refs": 9,
-        "todo": 10,
+        "todo": 11,
         "unwrap_expect": 65
       }
     },
@@ -731,7 +731,7 @@
         ],
         "has_lib": true,
         "rs_files": 148,
-        "loc": 117070,
+        "loc": 116668,
         "tests": 538,
         "unsafe_refs": 15,
         "todo": 1,
@@ -1953,8 +1953,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-29T03:33:26Z",
-        "commit": "03f7fbb8b3d88fd63f1edc949f6aad1462820bc1",
+        "generated_at": "2026-09-29T04:43:10Z",
+        "commit": "99fdd385f5748529fb30e8b0f57ab8e2ef436f65",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -4218,7 +4218,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 68
+        "loc": 69
       }
     },
     {
@@ -4255,6 +4255,15 @@
         "crate": "op-cognitive-mcp",
         "kind": "src",
         "loc": 1316
+      }
+    },
+    {
+      "id": "mod:crates/op-cognitive-mcp/src/semantic_search.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cognitive-mcp",
+        "kind": "src",
+        "loc": 88
       }
     },
     {
@@ -7530,7 +7539,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 496
+        "loc": 494
       }
     },
     {
@@ -7539,7 +7548,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 462
+        "loc": 460
       }
     },
     {
@@ -7548,7 +7557,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 991
+        "loc": 989
       }
     },
     {
@@ -7566,7 +7575,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1592
+        "loc": 1576
       }
     },
     {
@@ -7584,7 +7593,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1785
+        "loc": 1783
       }
     },
     {
@@ -7656,7 +7665,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 418
+        "loc": 406
       }
     },
     {
@@ -7665,7 +7674,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 592
+        "loc": 586
       }
     },
     {
@@ -7683,7 +7692,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1162
+        "loc": 1156
       }
     },
     {
@@ -7710,7 +7719,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1098
+        "loc": 1090
       }
     },
     {
@@ -7728,7 +7737,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 514
+        "loc": 510
       }
     },
     {
@@ -7737,7 +7746,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1464
+        "loc": 1462
       }
     },
     {
@@ -7764,7 +7773,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1237
+        "loc": 1220
       }
     },
     {
@@ -7782,7 +7791,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 632
+        "loc": 622
       }
     },
     {
@@ -7809,7 +7818,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 899
+        "loc": 895
       }
     },
     {
@@ -7818,7 +7827,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 684
+        "loc": 674
       }
     },
     {
@@ -7854,7 +7863,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 369
+        "loc": 367
       }
     },
     {
@@ -7872,7 +7881,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 670
+        "loc": 664
       }
     },
     {
@@ -7890,7 +7899,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 935
+        "loc": 921
       }
     },
     {
@@ -7908,7 +7917,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 4117
+        "loc": 4101
       }
     },
     {
@@ -7944,7 +7953,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 166
+        "loc": 160
       }
     },
     {
@@ -7953,7 +7962,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 462
+        "loc": 456
       }
     },
     {
@@ -7989,7 +7998,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1032
+        "loc": 1011
       }
     },
     {
@@ -8007,7 +8016,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 223
+        "loc": 217
       }
     },
     {
@@ -8025,7 +8034,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 218
+        "loc": 217
       }
     },
     {
@@ -8070,7 +8079,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 651
+        "loc": 649
       }
     },
     {
@@ -8106,7 +8115,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 668
+        "loc": 662
       }
     },
     {
@@ -8124,7 +8133,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 180
+        "loc": 176
       }
     },
     {
@@ -8133,7 +8142,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 842
+        "loc": 834
       }
     },
     {
@@ -8196,7 +8205,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1034
+        "loc": 1030
       }
     },
     {
@@ -8214,7 +8223,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 683
+        "loc": 681
       }
     },
     {
@@ -8232,7 +8241,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1315
+        "loc": 1305
       }
     },
     {
@@ -8259,7 +8268,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 146
+        "loc": 142
       }
     },
     {
@@ -8268,7 +8277,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 999
+        "loc": 997
       }
     },
     {
@@ -8286,7 +8295,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 661
+        "loc": 649
       }
     },
     {
@@ -8304,7 +8313,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 697
+        "loc": 693
       }
     },
     {
@@ -8313,7 +8322,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1021
+        "loc": 1017
       }
     },
     {
@@ -8322,7 +8331,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 692
+        "loc": 690
       }
     },
     {
@@ -8349,7 +8358,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 351
+        "loc": 349
       }
     },
     {
@@ -8376,7 +8385,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 539
+        "loc": 537
       }
     },
     {
@@ -8403,7 +8412,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 412
+        "loc": 406
       }
     },
     {
@@ -8412,7 +8421,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 857
+        "loc": 853
       }
     },
     {
@@ -8430,7 +8439,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 243
+        "loc": 241
       }
     },
     {
@@ -8439,7 +8448,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 563
+        "loc": 555
       }
     },
     {
@@ -8457,7 +8466,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 343
+        "loc": 339
       }
     },
     {
@@ -8466,7 +8475,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 464
+        "loc": 452
       }
     },
     {
@@ -8493,7 +8502,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 2878
+        "loc": 2868
       }
     },
     {
@@ -8529,7 +8538,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 418
+        "loc": 392
       }
     },
     {
@@ -8547,7 +8556,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 213
+        "loc": 207
       }
     },
     {
@@ -8565,7 +8574,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1776
+        "loc": 1754
       }
     },
     {
@@ -8574,7 +8583,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 494
+        "loc": 459
       }
     },
     {
@@ -8583,7 +8592,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 244
+        "loc": 240
       }
     },
     {
@@ -8610,7 +8619,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 227
+        "loc": 221
       }
     },
     {
@@ -8619,7 +8628,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 268
+        "loc": 266
       }
     },
     {
@@ -8655,7 +8664,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 645
+        "loc": 639
       }
     },
     {
@@ -10122,7 +10131,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/agent_config.rs",
-        "line": 495,
+        "line": 493,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/agent_config"
       }
@@ -10132,7 +10141,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/antigravity.rs",
-        "line": 990,
+        "line": 988,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/antigravity"
       }
@@ -10152,7 +10161,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/btrfs_plugin.rs",
-        "line": 1592,
+        "line": 1576,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/btrfs"
       }
@@ -10162,7 +10171,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/cognitive_mcp.rs",
-        "line": 1784,
+        "line": 1782,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/cognitive_mcp"
       }
@@ -10192,7 +10201,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/cron.rs",
-        "line": 591,
+        "line": 585,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/cron"
       }
@@ -10222,7 +10231,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/dnsresolver.rs",
-        "line": 1011,
+        "line": 1009,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/dnsresolver"
       }
@@ -10252,7 +10261,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/emqx.rs",
-        "line": 1417,
+        "line": 1421,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/emqx"
       }
@@ -10282,7 +10291,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/freedesktop.rs",
-        "line": 683,
+        "line": 673,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/freedesktop"
       }
@@ -10332,7 +10341,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/hardware.rs",
-        "line": 669,
+        "line": 663,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/hardware"
       }
@@ -10352,7 +10361,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/identity_sled.rs",
-        "line": 934,
+        "line": 920,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/identity_sled"
       }
@@ -10362,7 +10371,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/incus.rs",
-        "line": 3128,
+        "line": 3124,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/incus"
       }
@@ -10492,7 +10501,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/openflow_obfuscation.rs",
-        "line": 682,
+        "line": 680,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/openflow_obfuscation"
       }
@@ -10552,7 +10561,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/privacy_routes.rs",
-        "line": 696,
+        "line": 692,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/privacy_routes"
       }
@@ -10562,7 +10571,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/procfs.rs",
-        "line": 918,
+        "line": 914,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/procfs"
       }
@@ -10642,7 +10651,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/sessdecl.rs",
-        "line": 562,
+        "line": 554,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/sess_decl"
       }
@@ -10682,7 +10691,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/tched_router.rs",
-        "line": 2728,
+        "line": 2718,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/tched_router"
       }
@@ -10692,7 +10701,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/unix_socket.rs",
-        "line": 243,
+        "line": 239,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/unix_socket"
       }
@@ -10762,7 +10771,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/xray.rs",
-        "line": 644,
+        "line": 638,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/xray"
       }
@@ -13764,6 +13773,12 @@
       "src": "crate:op-cognitive-mcp",
       "rel": "contains",
       "dst": "mod:crates/op-cognitive-mcp/src/rag_pipeline.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cognitive-mcp",
+      "rel": "contains",
+      "dst": "mod:crates/op-cognitive-mcp/src/semantic_search.rs",
       "props": {}
     },
     {
