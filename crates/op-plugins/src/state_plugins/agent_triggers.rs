@@ -6,7 +6,7 @@
 //! the event; the table here is the only policy, and it is plugin state
 //! (schema-validated, revisioned), never broker state.
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -419,17 +419,15 @@ mod tests {
         assert!(created.created);
         assert_eq!(created.revision, 1);
         // Stale revision is refused before the closure runs.
-        assert!(
-            set_trigger(
-                &documents,
-                SetTriggerInput {
-                    trigger: trigger("t2", "plant/#"),
-                    expected_revision: 0,
-                },
-            )
-            .await
-            .is_err()
-        );
+        assert!(set_trigger(
+            &documents,
+            SetTriggerInput {
+                trigger: trigger("t2", "plant/#"),
+                expected_revision: 0,
+            },
+        )
+        .await
+        .is_err());
         let updated = set_trigger(
             &documents,
             SetTriggerInput {

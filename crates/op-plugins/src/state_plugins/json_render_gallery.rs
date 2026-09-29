@@ -14,7 +14,7 @@
 //! This module is the contract: typed inputs and outputs, their checks and
 //! the method declarations. MutationEngine owns identity, grants, the
 //! durable store and canvas validation against the sealed profile.
-use anyhow::{Result, ensure};
+use anyhow::{ensure, Result};
 use op_state_store::{PluginSchema, SideEffect};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

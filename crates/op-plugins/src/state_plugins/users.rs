@@ -628,7 +628,7 @@ mod tests {
     use super::*;
     use std::sync::{Arc, Mutex};
     use tokio::time::Duration;
-    use zbus::{Guid, connection::Builder};
+    use zbus::{connection::Builder, Guid};
 
     const USER_PATH: &str = "/org/freedesktop/Accounts/User1000";
 

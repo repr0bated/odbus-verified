@@ -8,7 +8,7 @@
 //!
 //! Compliance refs live in metadata arrays — never inside the subid string itself.
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use op_state::{ApplyResult, Checkpoint, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::PluginSchema;
 use serde::{Deserialize, Serialize};

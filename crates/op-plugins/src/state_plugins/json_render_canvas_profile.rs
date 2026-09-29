@@ -2,10 +2,10 @@
 //! The component declarations below are the sole backend profile definition.
 //! Source evidence describes inspected implementation bytes, not deployment.
 use super::{
+    validation_bounds::{check_children_graph, check_json, GraphLimits, JsonLimits},
     ActionDecl, ComponentDecl, RendererTarget,
-    validation_bounds::{GraphLimits, JsonLimits, check_children_graph, check_json},
 };
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::BTreeMap, sync::Arc};

@@ -64,25 +64,21 @@ async fn production_profile_crud_is_revision_checked_and_does_not_return_sibling
         changed.projection.specs["spec-b"].spec,
         spec("PRIVATE_SIBLING")
     );
-    assert!(
-        !changed
-            .method_result()
-            .unwrap()
-            .to_string()
-            .contains("PRIVATE_SIBLING")
-    );
-    assert!(
-        service
-            .update_spec_properties(
-                &owner,
-                "spec-a",
-                1,
-                "root",
-                json!({"text":"stale","className":null})
-            )
-            .await
-            .is_err()
-    );
+    assert!(!changed
+        .method_result()
+        .unwrap()
+        .to_string()
+        .contains("PRIVATE_SIBLING"));
+    assert!(service
+        .update_spec_properties(
+            &owner,
+            "spec-a",
+            1,
+            "root",
+            json!({"text":"stale","className":null})
+        )
+        .await
+        .is_err());
     let listed = service
         .list_specs(
             &owner,
@@ -99,17 +95,15 @@ async fn production_profile_crud_is_revision_checked_and_does_not_return_sibling
     assert!(!deleted.projection.specs.contains_key("spec-a"));
     assert!(deleted.projection.specs.contains_key("spec-b"));
     assert_eq!(first.document_revision, 1);
-    assert!(
-        service
-            .snapshot(&UiAccessContext {
-                principal_id: "principal-b".into(),
-                session_id: owner.session_id.clone(),
-                session_genesis: None,
-            })
-            .await
-            .unwrap()
-            .is_none()
-    );
+    assert!(service
+        .snapshot(&UiAccessContext {
+            principal_id: "principal-b".into(),
+            session_id: owner.session_id.clone(),
+            session_genesis: None,
+        })
+        .await
+        .unwrap()
+        .is_none());
 }
 
 #[tokio::test]
@@ -121,23 +115,19 @@ async fn invalid_active_props_and_forged_owner_fail_before_any_domain_write() {
         .as_object_mut()
         .unwrap()
         .remove("className");
-    assert!(
-        service
-            .create_spec(&owner, "spec", invalid, vec![])
-            .await
-            .is_err()
-    );
-    assert!(
-        service
-            .dispatch_mutation(
-                &owner,
-                "create_ui_spec",
-                &json!({"spec":spec("value"),"principal_id":"other"}),
-                Some("spec")
-            )
-            .await
-            .is_err()
-    );
+    assert!(service
+        .create_spec(&owner, "spec", invalid, vec![])
+        .await
+        .is_err());
+    assert!(service
+        .dispatch_mutation(
+            &owner,
+            "create_ui_spec",
+            &json!({"spec":spec("value"),"principal_id":"other"}),
+            Some("spec")
+        )
+        .await
+        .is_err());
     assert!(service.snapshot(&owner).await.unwrap().is_none());
 }
 
@@ -168,32 +158,28 @@ async fn pinned_event_binding_commits_exact_state_with_revision_cas() {
     let result = changed.method_result().unwrap();
     assert_eq!(result["action"], "setState");
     assert_eq!(result["event"], "resize");
-    assert!(
-        service
-            .dispatch_mutation(
-                &owner,
-                "handle_ui_event",
-                &json!({
-                    "spec_id":"event","expected_revision":1,"element_id":"tile","event":"resize"
-                }),
-                None
-            )
-            .await
-            .is_err()
-    );
-    assert!(
-        service
-            .dispatch_mutation(
-                &owner,
-                "handle_ui_event",
-                &json!({
-                    "spec_id":"event","expected_revision":2,"element_id":"tile","event":"delete"
-                }),
-                None
-            )
-            .await
-            .is_err()
-    );
+    assert!(service
+        .dispatch_mutation(
+            &owner,
+            "handle_ui_event",
+            &json!({
+                "spec_id":"event","expected_revision":1,"element_id":"tile","event":"resize"
+            }),
+            None
+        )
+        .await
+        .is_err());
+    assert!(service
+        .dispatch_mutation(
+            &owner,
+            "handle_ui_event",
+            &json!({
+                "spec_id":"event","expected_revision":2,"element_id":"tile","event":"delete"
+            }),
+            None
+        )
+        .await
+        .is_err());
     assert_eq!(
         service
             .get_spec(&owner, "event")
@@ -214,12 +200,10 @@ async fn empty_rebind_checks_exact_document_revision_and_never_relabels_artifact
     old.create_spec(&owner, "spec", spec("retained"), vec![])
         .await
         .unwrap();
-    assert!(
-        current
-            .rebind_renderer(&owner, 1, old.catalog_hash())
-            .await
-            .is_err()
-    );
+    assert!(current
+        .rebind_renderer(&owner, 1, old.catalog_hash())
+        .await
+        .is_err());
     assert_eq!(
         current
             .get_spec(&owner, "spec")
@@ -230,12 +214,10 @@ async fn empty_rebind_checks_exact_document_revision_and_never_relabels_artifact
         old.catalog_hash()
     );
     let empty = current.delete_spec(&owner, "spec", 1).await.unwrap();
-    assert!(
-        current
-            .rebind_renderer(&owner, empty.document_revision - 1, old.catalog_hash())
-            .await
-            .is_err()
-    );
+    assert!(current
+        .rebind_renderer(&owner, empty.document_revision - 1, old.catalog_hash())
+        .await
+        .is_err());
     let (left, right) = tokio::join!(
         current.rebind_renderer(&owner, empty.document_revision, old.catalog_hash()),
         current.rebind_renderer(&owner, empty.document_revision, old.catalog_hash())
@@ -248,11 +230,10 @@ async fn empty_rebind_checks_exact_document_revision_and_never_relabels_artifact
         .create_spec(&owner, "new", spec("new profile"), vec![])
         .await
         .unwrap();
-    assert!(
-        old.create_spec(&owner, "old", spec("old profile"), vec![])
-            .await
-            .is_err()
-    );
+    assert!(old
+        .create_spec(&owner, "old", spec("old profile"), vec![])
+        .await
+        .is_err());
 }
 
 #[tokio::test]
@@ -269,12 +250,10 @@ async fn history_requires_explicit_terminal_deletion_before_rebind() {
         .fail_job(&owner, "job", 1, UiJobFailureCode::CatalogChanged)
         .await
         .unwrap();
-    assert!(
-        current
-            .rebind_renderer(&owner, failed.document_revision, old.catalog_hash())
-            .await
-            .is_err()
-    );
+    assert!(current
+        .rebind_renderer(&owner, failed.document_revision, old.catalog_hash())
+        .await
+        .is_err());
     let removed = current.delete_job(&owner, "job", 2).await.unwrap();
     assert!(removed.projection.jobs.is_empty());
     let rebound = current
@@ -319,13 +298,11 @@ fn canonical_workspace_schema_owns_private_children_and_all_method_dtos() {
     for field in ["document_revision", "catalog_hash", "jobs", "specs"] {
         assert!(schema.fields.contains_key(field));
     }
-    assert!(
-        schema
-            .public_state
-            .paths
-            .iter()
-            .all(|path| !path.starts_with("/jobs") && !path.starts_with("/specs"))
-    );
+    assert!(schema
+        .public_state
+        .paths
+        .iter()
+        .all(|path| !path.starts_with("/jobs") && !path.starts_with("/specs")));
     for method in [
         "get_ui_workspace",
         "get_ui_spec",
@@ -340,11 +317,9 @@ fn canonical_workspace_schema_owns_private_children_and_all_method_dtos() {
     ] {
         let declaration = &schema.methods[method];
         assert!(declaration.returns.is_some());
-        assert!(
-            schema
-                .capabilities
-                .contains_key(declaration.required_capability.as_ref().unwrap())
-        );
+        assert!(schema
+            .capabilities
+            .contains_key(declaration.required_capability.as_ref().unwrap()));
     }
     let input = serde_json::to_value(&schema.methods["create_ui_spec"].args).unwrap();
     assert!(jsonschema::is_valid(&input, &json!({"spec":spec("valid")})));
@@ -403,32 +378,26 @@ async fn pure_committed_reads_ignore_newer_durable_rows_and_validate_flat_envelo
     assert_eq!(view["specs"][0]["record"]["id"], "first");
     assert_eq!(view["next_cursor"], Value::Null);
     assert!(view["specs"][0]["render_admitted"].as_bool().unwrap());
-    assert!(
-        service
-            .dispatch_committed_read(
-                "get_ui_spec",
-                &json!({"spec_id":"later"}),
-                Some(committed.clone())
-            )
-            .unwrap()["spec"]
-            .is_null()
-    );
-    assert!(
-        service
-            .dispatch_committed_read(
-                "get_ui_job",
-                &json!({"job_id":"absent"}),
-                Some(committed.clone())
-            )
-            .unwrap()["job"]
-            .is_null()
-    );
-    assert!(
-        service
-            .dispatch_committed_read("get_ui_workspace", &json!({}), None)
-            .unwrap()["workspace"]
-            .is_null()
-    );
+    assert!(service
+        .dispatch_committed_read(
+            "get_ui_spec",
+            &json!({"spec_id":"later"}),
+            Some(committed.clone())
+        )
+        .unwrap()["spec"]
+        .is_null());
+    assert!(service
+        .dispatch_committed_read(
+            "get_ui_job",
+            &json!({"job_id":"absent"}),
+            Some(committed.clone())
+        )
+        .unwrap()["job"]
+        .is_null());
+    assert!(service
+        .dispatch_committed_read("get_ui_workspace", &json!({}), None)
+        .unwrap()["workspace"]
+        .is_null());
     for (method, args) in [
         (
             "get_ui_spec",
@@ -437,24 +406,20 @@ async fn pure_committed_reads_ignore_newer_durable_rows_and_validate_flat_envelo
         ("list_ui_specs", json!({"limit":201})),
         ("get_ui_job", json!({"job_id":"../bad"})),
     ] {
-        assert!(
-            service
-                .dispatch_committed_read(method, &args, Some(committed.clone()))
-                .is_err()
-        );
+        assert!(service
+            .dispatch_committed_read(method, &args, Some(committed.clone()))
+            .is_err());
     }
     let next = renderer(documents, true);
-    assert!(
-        !next
-            .dispatch_committed_read(
-                "get_ui_spec",
-                &json!({"spec_id":"first"}),
-                Some(committed.clone())
-            )
-            .unwrap()["render_admitted"]
-            .as_bool()
-            .unwrap()
-    );
+    assert!(!next
+        .dispatch_committed_read(
+            "get_ui_spec",
+            &json!({"spec_id":"first"}),
+            Some(committed.clone())
+        )
+        .unwrap()["render_admitted"]
+        .as_bool()
+        .unwrap());
     let mut forged = first.plugin_state().unwrap();
     forged["principal_id"] = json!("FORGED");
     assert!(UiWorkspaceRecovery::from_plugin_state(&forged).is_err());

@@ -477,15 +477,13 @@ mod tests {
             .unwrap()["config"]["enabled"],
             false
         );
-        assert!(
-            dispatch_agent_config_with_store(
-                store,
-                "list_tools",
-                &serde_json::json!({"name":"missing"})
-            )
-            .await
-            .is_err()
-        );
+        assert!(dispatch_agent_config_with_store(
+            store,
+            "list_tools",
+            &serde_json::json!({"name":"missing"})
+        )
+        .await
+        .is_err());
     }
 }
 

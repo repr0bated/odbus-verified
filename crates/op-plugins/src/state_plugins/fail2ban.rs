@@ -3,7 +3,7 @@
 //! Runtime calls use the daemon's configured Unix control socket through the
 //! native adapter in `fail2ban_methods`; this module never invents daemon state.
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::PluginSchema;
@@ -154,7 +154,7 @@ pub(crate) fn fail2ban_schema() -> PluginSchema {
     );
     schema.category = "security".to_string();
 
-    use super::plugin_scaffold_helpers::{EmptyInput, method_decl_from_schemars_with_output};
+    use super::plugin_scaffold_helpers::{method_decl_from_schemars_with_output, EmptyInput};
     use op_state_store::SideEffect;
 
     schema.methods.insert(

@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use anyhow::{Result, ensure};
+use anyhow::{ensure, Result};
 use serde::{Deserialize, Serialize};
 
 const MAX_TAGS: usize = 256;
@@ -354,16 +354,14 @@ mod tests {
     fn invalid_or_stale_registration_never_mutates_taxonomy() {
         let mut taxonomy = GemmaTaxonomy::default();
         let before = taxonomy.clone();
-        assert!(
-            register_tag(
-                &mut taxonomy,
-                RegisterTagInput {
-                    expected_taxonomy_revision: 1,
-                    tag: tag("deploy", &["deploy"], &[]),
-                },
-            )
-            .is_err()
-        );
+        assert!(register_tag(
+            &mut taxonomy,
+            RegisterTagInput {
+                expected_taxonomy_revision: 1,
+                tag: tag("deploy", &["deploy"], &[]),
+            },
+        )
+        .is_err());
         assert_eq!(taxonomy, before);
     }
 }

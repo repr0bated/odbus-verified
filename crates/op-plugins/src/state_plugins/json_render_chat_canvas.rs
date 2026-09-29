@@ -8,7 +8,7 @@
 //! profile, and it admits no actions, bindings or state: a chat canvas is a
 //! static composition.
 use super::ComponentDecl;
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};

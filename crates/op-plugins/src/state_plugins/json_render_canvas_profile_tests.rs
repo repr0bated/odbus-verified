@@ -129,13 +129,11 @@ fn graph_and_json_limits_apply_before_unbounded_render_work() {
     let mut cycle = text();
     cycle["elements"]["root"] =
         json!({"type":"container","props":{"className":null},"children":["root"]});
-    assert!(
-        validator
-            .validate(&cycle)
-            .unwrap_err()
-            .to_string()
-            .contains("cycle")
-    );
+    assert!(validator
+        .validate(&cycle)
+        .unwrap_err()
+        .to_string()
+        .contains("cycle"));
     let mut graph = serde_json::Map::new();
     for index in 0..14 {
         graph.insert(
@@ -145,22 +143,18 @@ fn graph_and_json_limits_apply_before_unbounded_render_work() {
         );
     }
     let amplified = json!({"root":"n0","elements":graph});
-    assert!(
-        validator
-            .validate(&amplified)
-            .unwrap_err()
-            .to_string()
-            .contains("expanded")
-    );
+    assert!(validator
+        .validate(&amplified)
+        .unwrap_err()
+        .to_string()
+        .contains("expanded"));
     let mut deep = Value::Null;
     for _ in 0..70 {
         deep = json!([deep]);
     }
-    assert!(
-        validator
-            .validate(&deep)
-            .unwrap_err()
-            .to_string()
-            .contains("depth")
-    );
+    assert!(validator
+        .validate(&deep)
+        .unwrap_err()
+        .to_string()
+        .contains("depth"));
 }

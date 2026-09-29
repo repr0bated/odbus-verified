@@ -1,6 +1,6 @@
 //! Container-backed projects. Membership names authenticated sessions until
 //! user profiles exist; a project is never an identity credential or a grant.
-use anyhow::{Result, anyhow, bail, ensure};
+use anyhow::{anyhow, bail, ensure, Result};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
@@ -601,12 +601,10 @@ mod tests {
         ] {
             assert!(schema.methods.contains_key(name));
         }
-        assert!(
-            serde_json::from_value::<CreateProjectInput>(
-                serde_json::json!({"title":"x", "owner_session_id":"victim"})
-            )
-            .is_err()
-        );
+        assert!(serde_json::from_value::<CreateProjectInput>(
+            serde_json::json!({"title":"x", "owner_session_id":"victim"})
+        )
+        .is_err());
     }
 
     #[test]

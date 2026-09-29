@@ -429,13 +429,9 @@ mod tests {
             serde_json::json!({"levels":{"-1":null}}),
         ] {
             assert!(!validator.is_valid(&invalid));
-            assert!(
-                schema
-                    .validate_exact_schema_fields(
-                        &simd_json::serde::to_owned_value(invalid).unwrap()
-                    )
-                    .is_err()
-            );
+            assert!(schema
+                .validate_exact_schema_fields(&simd_json::serde::to_owned_value(invalid).unwrap())
+                .is_err());
         }
         let canonical = xray_schema();
         assert_eq!(
@@ -459,11 +455,9 @@ mod tests {
             ["add_inbound", "add_user", "get_stats", "remove_user"]
         );
         for retired in ["restart", "start_trace", "end_trace", "record_span"] {
-            assert!(
-                !schema.capabilities["xray.write"]
-                    .description
-                    .contains(retired)
-            );
+            assert!(!schema.capabilities["xray.write"]
+                .description
+                .contains(retired));
         }
     }
 

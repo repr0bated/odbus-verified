@@ -11,7 +11,7 @@ use super::embedding_model::methods::{
 };
 use super::runtime_documents::RuntimeDocuments;
 use super::tched_router::{MAX_CHAT_REQUEST_BYTES, MAX_CHAT_RESPONSE_BYTES};
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -808,15 +808,13 @@ mod tests {
             .unwrap();
         assert_eq!(first.output.revision, 1);
         assert!(first.output.changed);
-        assert!(
-            service
-                .set_config(SetConfigInput {
-                    expected_revision: 0,
-                    config: CtlPlaneChatbotConfig::default(),
-                })
-                .await
-                .is_err()
-        );
+        assert!(service
+            .set_config(SetConfigInput {
+                expected_revision: 0,
+                config: CtlPlaneChatbotConfig::default(),
+            })
+            .await
+            .is_err());
         assert_eq!(
             service
                 .get_config(GetConfigInput {})
@@ -886,15 +884,13 @@ mod tests {
             .unwrap();
         let error = service.get_config(GetConfigInput {}).await.unwrap_err();
         assert!(error.to_string().contains("expected_revision=1"));
-        assert!(
-            service
-                .set_config(SetConfigInput {
-                    expected_revision: 0,
-                    config: CtlPlaneChatbotConfig::default(),
-                })
-                .await
-                .is_err()
-        );
+        assert!(service
+            .set_config(SetConfigInput {
+                expected_revision: 0,
+                config: CtlPlaneChatbotConfig::default(),
+            })
+            .await
+            .is_err());
         let repaired = service
             .set_config(SetConfigInput {
                 expected_revision: 1,
@@ -1009,24 +1005,22 @@ mod tests {
             }))
             .is_err()
         );
-        assert!(
-            serde_json::from_value::<SetConfigInput>(serde_json::json!({
-                "expected_revision":0,
-                "config":{
-                    "embedding_plugin":"embedding_model",
-                    "qdrant_collection":"ctl_plane_reasoning_episodes",
-                    "vector_dims":"1024",
-                    "output_dtype":"float",
-                    "input_type":"document",
-                    "dedup_window_hrs":24,
-                    "queue_alert_threshold":50,
-                    "nesting_policy":"flat",
-                    "vectorization_enabled":true,
-                    "credential":"must-not-be-accepted"
-                }
-            }))
-            .is_err()
-        );
+        assert!(serde_json::from_value::<SetConfigInput>(serde_json::json!({
+            "expected_revision":0,
+            "config":{
+                "embedding_plugin":"embedding_model",
+                "qdrant_collection":"ctl_plane_reasoning_episodes",
+                "vector_dims":"1024",
+                "output_dtype":"float",
+                "input_type":"document",
+                "dedup_window_hrs":24,
+                "queue_alert_threshold":50,
+                "nesting_policy":"flat",
+                "vectorization_enabled":true,
+                "credential":"must-not-be-accepted"
+            }
+        }))
+        .is_err());
     }
 
     #[test]

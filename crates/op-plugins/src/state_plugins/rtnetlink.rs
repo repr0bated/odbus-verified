@@ -13,7 +13,7 @@ use op_state_store::{CapabilityDecl, FieldSchema, FieldType, PluginSchema};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use simd_json::prelude::*;
-use simd_json::{OwnedValue as Value, json};
+use simd_json::{json, OwnedValue as Value};
 use std::collections::HashMap;
 
 /// Rtnetlink interface configuration

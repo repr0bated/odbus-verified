@@ -3,6 +3,7 @@
     "display_alias": "jeremy-remote-wg",
     "capabilities": [
       "cap.identity.dbus.bind@v1",
+      "cap.identity.api.identity.self@v1",
       "identity_sled.read",
       "identity_sled.credential.refresh",
       "cap.service.lifecycle.init@v1",

@@ -11,7 +11,7 @@ use super::{
     QuotaMutationOutput, RemoveAliasInput, RemoveMailboxInput,
 };
 use anyhow::{Context, Result};
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use std::{path::Path, time::Duration};
 use tokio::net::UnixStream;

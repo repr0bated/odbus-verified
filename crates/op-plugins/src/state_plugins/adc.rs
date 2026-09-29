@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::PluginSchema;
 use serde::{Deserialize, Serialize};
-use simd_json::OwnedValue as Value;
 use simd_json::prelude::*;
+use simd_json::OwnedValue as Value;
 
 const ADC_PROBE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 

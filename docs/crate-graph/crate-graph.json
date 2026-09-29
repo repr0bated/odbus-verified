@@ -1953,8 +1953,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-29T07:02:19Z",
-        "commit": "e59f79958d3bbf0683c984530f7e1e95bce348c7",
+        "generated_at": "2026-09-29T08:01:58Z",
+        "commit": "5e203257b45278d6898f83b72495c676d3fd3168",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",

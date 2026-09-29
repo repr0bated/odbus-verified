@@ -5,8 +5,8 @@ use op_state::{
 };
 use op_state_store::{FieldSchema, FieldType, PluginSchema};
 use serde::{Deserialize, Serialize};
-use simd_json::OwnedValue as Value;
 use simd_json::json;
+use simd_json::OwnedValue as Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -428,7 +428,7 @@ pub(crate) fn privacy_routes_schema() -> PluginSchema {
         fields
     };
 
-    use super::plugin_scaffold_helpers::{EmptyInput, method_decl_from_schemars_with_output};
+    use super::plugin_scaffold_helpers::{method_decl_from_schemars_with_output, EmptyInput};
     use op_state_store::SideEffect;
 
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -605,23 +605,19 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(readback["routes"], deleted["routes"]);
-        assert!(
-            readback["routes"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .all(|entry| entry["route_id"] != "route-a")
-        );
+        assert!(readback["routes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|entry| entry["route_id"] != "route-a"));
 
-        assert!(
-            dispatch_privacy_routes_method_at(
-                &store,
-                "delete_route",
-                &json!({"route_id":"route-a"}),
-            )
-            .await
-            .is_err()
-        );
+        assert!(dispatch_privacy_routes_method_at(
+            &store,
+            "delete_route",
+            &json!({"route_id":"route-a"}),
+        )
+        .await
+        .is_err());
         assert!(
             dispatch_privacy_routes_method_at(&store, "delete_route", &json!({}))
                 .await

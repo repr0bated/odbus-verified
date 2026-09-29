@@ -2535,20 +2535,16 @@ mod tests {
     #[test]
     fn declared_routes_do_not_invent_factory_routing_or_availability() {
         let state = TchedRouterPlugin::current_state();
-        assert!(
-            state
-                .catalog
-                .model_routes
-                .iter()
-                .all(|route| !route.available)
-        );
-        assert!(
-            state
-                .catalog
-                .model_routes
-                .iter()
-                .all(|route| route.provider != "factory")
-        );
+        assert!(state
+            .catalog
+            .model_routes
+            .iter()
+            .all(|route| !route.available));
+        assert!(state
+            .catalog
+            .model_routes
+            .iter()
+            .all(|route| route.provider != "factory"));
         let factory = state
             .catalog
             .providers
@@ -2612,13 +2608,11 @@ mod tests {
             )
             .unwrap()
         );
-        assert!(
-            !schema
-                .public_state
-                .paths
-                .iter()
-                .any(|path| path == "/native_config" || path.starts_with("/native_config/"))
-        );
+        assert!(!schema
+            .public_state
+            .paths
+            .iter()
+            .any(|path| path == "/native_config" || path.starts_with("/native_config/")));
     }
 
     #[test]
@@ -2631,11 +2625,9 @@ mod tests {
                 // MutationEngine owns authenticated private generation state;
                 // the synchronous helper must not bypass that owner.
                 let error = dispatch_tched_router_method(method, "{}", &state).unwrap_err();
-                assert!(
-                    error
-                        .to_string()
-                        .contains("requires admitted native bridge dispatch")
-                );
+                assert!(error
+                    .to_string()
+                    .contains("requires admitted native bridge dispatch"));
                 continue;
             }
             if method == "Chat" {
@@ -2702,11 +2694,9 @@ mod tests {
             assert_eq!(binding.argument, argument);
             let method = &schema.methods[method_name];
             assert_eq!(method.side_effect, op_state_store::SideEffect::Mutation);
-            assert!(
-                schema
-                    .capabilities
-                    .contains_key(method.required_capability.as_ref().unwrap())
-            );
+            assert!(schema
+                .capabilities
+                .contains_key(method.required_capability.as_ref().unwrap()));
             let args = serde_json::to_value(&method.args).unwrap();
             assert!(args["properties"].get(argument).is_some());
         }

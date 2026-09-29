@@ -1,6 +1,6 @@
 //! Runtime specification contract derived from the pinned json-render core types.
 
-use serde_json::{Map, Value, json};
+use serde_json::{json, Map, Value};
 
 use super::{ActionDecl, ComponentDecl, JsonSchemaMode, RendererTarget};
 

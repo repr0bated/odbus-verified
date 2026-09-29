@@ -7,7 +7,7 @@
 
 use std::sync::Arc;
 
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{bail, ensure, Context, Result};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema};
@@ -346,7 +346,7 @@ pub(crate) fn sess_decl_schema() -> PluginSchema {
         &root,
     );
 
-    use super::plugin_scaffold_helpers::{EmptyInput, method_decl_from_schemars_with_output};
+    use super::plugin_scaffold_helpers::{method_decl_from_schemars_with_output, EmptyInput};
     use op_state_store::SideEffect;
 
     schema.methods.insert(
@@ -422,12 +422,10 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(repeated["created"], false);
-        assert!(
-            service
-                .dispatch(&owner, "declare_session", &json!({"label":"other"}))
-                .await
-                .is_err()
-        );
+        assert!(service
+            .dispatch(&owner, "declare_session", &json!({"label":"other"}))
+            .await
+            .is_err());
     }
 
     #[tokio::test]
@@ -501,25 +499,19 @@ mod tests {
             json!({"label":"ok","id":"forged"}),
             json!({"label":"ok","user":"forged"}),
         ] {
-            assert!(
-                service
-                    .dispatch(&owner, "declare_session", &args)
-                    .await
-                    .is_err()
-            );
+            assert!(service
+                .dispatch(&owner, "declare_session", &args)
+                .await
+                .is_err());
         }
-        assert!(
-            service
-                .dispatch(&context("", "session"), "list_sessions", &json!({}))
-                .await
-                .is_err()
-        );
-        assert!(
-            service
-                .dispatch(&owner, "list_sessions", &json!({"principal":"forged"}))
-                .await
-                .is_err()
-        );
+        assert!(service
+            .dispatch(&context("", "session"), "list_sessions", &json!({}))
+            .await
+            .is_err());
+        assert!(service
+            .dispatch(&owner, "list_sessions", &json!({"principal":"forged"}))
+            .await
+            .is_err());
     }
 
     #[test]

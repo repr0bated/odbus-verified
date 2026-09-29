@@ -7,8 +7,8 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use simd_json::OwnedValue as Value;
 use simd_json::prelude::*;
+use simd_json::OwnedValue as Value;
 use std::collections::HashMap;
 use zbus::{proxy, zvariant::OwnedObjectPath};
 
@@ -747,8 +747,8 @@ mod tests {
     use super::*;
     use serde_json::json;
     use std::sync::{Arc, Mutex};
-    use tokio::time::{Duration, timeout};
-    use zbus::{Guid, connection::Builder, object_server::SignalContext};
+    use tokio::time::{timeout, Duration};
+    use zbus::{connection::Builder, object_server::SignalContext, Guid};
 
     const TX_PATH: &str = "/org/freedesktop/PackageKit/transactions/test1";
     type Calls = Arc<Mutex<Vec<(String, u64, Vec<String>)>>>;
@@ -890,7 +890,7 @@ mod tests {
         ) -> zbus::Result<()>;
         #[zbus(signal)]
         async fn error_code(ctxt: &SignalContext<'_>, code: u32, details: &str)
-        -> zbus::Result<()>;
+            -> zbus::Result<()>;
         #[zbus(signal)]
         async fn finished(ctxt: &SignalContext<'_>, exit: u32, runtime: u32) -> zbus::Result<()>;
     }
@@ -984,16 +984,14 @@ mod tests {
     async fn errors_failed_exit_malformed_and_missing_finished_fail() {
         for mode in [Mode::Error, Mode::Failed, Mode::Malformed, Mode::NoFinished] {
             let (_server, conn, _) = fixture(mode).await;
-            assert!(
-                dispatch_packagekit_on_connection_with_deadline(
-                    &conn,
-                    "resolve",
-                    &args("resolve"),
-                    Duration::from_millis(100)
-                )
-                .await
-                .is_err()
-            );
+            assert!(dispatch_packagekit_on_connection_with_deadline(
+                &conn,
+                "resolve",
+                &args("resolve"),
+                Duration::from_millis(100)
+            )
+            .await
+            .is_err());
         }
     }
 }

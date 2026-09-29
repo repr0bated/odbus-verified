@@ -324,12 +324,10 @@ mod tests {
                 .await
                 .unwrap();
             assert_eq!(row.revision, 1);
-            assert!(
-                store
-                    .update("config", |_| Err(anyhow!("invalid setting")))
-                    .await
-                    .is_err()
-            );
+            assert!(store
+                .update("config", |_| Err(anyhow!("invalid setting")))
+                .await
+                .is_err());
             assert_eq!(
                 store.read("config").await.unwrap().unwrap().document["configs"]["limit"],
                 3

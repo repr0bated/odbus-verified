@@ -1,6 +1,6 @@
 //! Provider-free Web UI facade plans over the canonical Gemma UI workspace.
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use op_state_store::{PluginSchema, SideEffect};
 use serde_json::Value;
 
@@ -181,33 +181,27 @@ mod tests {
             target_capability("update_ui_spec").unwrap()
         );
 
-        assert!(
-            plan_method(
-                "render_page",
-                &serde_json::json!({"page_id":"old","locale":"en"})
-            )
-            .is_err()
-        );
-        assert!(
-            plan_method(
-                "update_component",
-                &serde_json::json!({"component_path":"old","properties":{}})
-            )
-            .is_err()
-        );
+        assert!(plan_method(
+            "render_page",
+            &serde_json::json!({"page_id":"old","locale":"en"})
+        )
+        .is_err());
+        assert!(plan_method(
+            "update_component",
+            &serde_json::json!({"component_path":"old","properties":{}})
+        )
+        .is_err());
         let event = plan_method(
             "handle_event",
             &serde_json::json!({"spec_id":"spec","expected_revision":1,"element_id":"tile","event":"resize"}),
         )
         .unwrap();
         assert_eq!(event.method, "handle_ui_event");
-        assert!(
-            plan_method(
-                "handle_event",
-                &serde_json::json!({"event_type":"submit","payload":{}})
-            )
-            .is_err()
-        );
+        assert!(plan_method(
+            "handle_event",
+            &serde_json::json!({"event_type":"submit","payload":{}})
+        )
+        .is_err());
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use super::plugin_scaffold_helpers::{EmptyInput, method_decl_from_schemars_with_output};
+use super::plugin_scaffold_helpers::{method_decl_from_schemars_with_output, EmptyInput};
 use anyhow::Result;
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};

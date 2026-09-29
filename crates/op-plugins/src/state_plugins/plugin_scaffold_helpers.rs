@@ -71,7 +71,7 @@ pub(crate) use super::shared_unix_socket::shared_unix_socket_schema as shared_un
 
 use op_state_store::{FieldSchema, FieldType, MethodDecl, PluginSchema, SideEffect};
 use serde::{Deserialize, Serialize};
-use simd_json::{OwnedValue as Value, json};
+use simd_json::{json, OwnedValue as Value};
 
 /// Materialize a deterministic initial live state from a plugin schema.
 ///

@@ -1,9 +1,9 @@
 //! Native wire mappings for the plugin's login1 contract.
 //! Signature source: systemd/man/org.freedesktop.login1.xml (also used by elogind).
 use super::*;
-use anyhow::{Context, bail, ensure};
+use anyhow::{bail, ensure, Context};
 use serde::de::DeserializeOwned;
-use serde_json::{Value as Json, to_value};
+use serde_json::{to_value, Value as Json};
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 use tokio::sync::Mutex;
@@ -357,7 +357,7 @@ mod tests {
     use serde_json::json;
     use std::os::fd::AsFd;
     use std::sync::{Arc, Mutex as StdMutex};
-    use zbus::{Guid, connection::Builder};
+    use zbus::{connection::Builder, Guid};
 
     type Calls = Arc<StdMutex<Vec<(String, Json)>>>;
     struct Manager {
@@ -637,15 +637,13 @@ mod tests {
             .await
             .unwrap_err();
         assert!(error.to_string().contains("fixture missing seat"));
-        assert!(
-            dispatch_with_proxy(
-                &proxy,
-                &leases,
-                "kill_session",
-                &json!({"session_id":"s7","who":"anything","signal_number":9})
-            )
-            .await
-            .is_err()
-        );
+        assert!(dispatch_with_proxy(
+            &proxy,
+            &leases,
+            "kill_session",
+            &json!({"session_id":"s7","who":"anything","signal_number":9})
+        )
+        .await
+        .is_err());
     }
 }

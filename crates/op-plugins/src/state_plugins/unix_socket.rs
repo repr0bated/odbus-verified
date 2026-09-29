@@ -1,7 +1,7 @@
 //! The bridge-owned shared tonic listener. Registration metadata belongs to
 //! shared_unix_socket; this plugin never creates an independent listener.
 
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
@@ -222,18 +222,14 @@ mod tests {
         let schema = unix_socket_schema_derived();
         assert_eq!(schema.version, "2.0.0");
         assert_eq!(schema.methods.len(), 4);
-        assert!(
-            schema
-                .methods
-                .values()
-                .all(|method| method.returns.is_some())
-        );
-        assert!(
-            serde_json::from_value::<BindInput>(
-                serde_json::json!({"path":"/tmp/x","name":"ignored"})
-            )
-            .is_err()
-        );
+        assert!(schema
+            .methods
+            .values()
+            .all(|method| method.returns.is_some()));
+        assert!(serde_json::from_value::<BindInput>(
+            serde_json::json!({"path":"/tmp/x","name":"ignored"})
+        )
+        .is_err());
         assert!(
             serde_json::from_value::<AcceptInput>(serde_json::json!({"path":"/tmp/x"})).is_ok()
         );

@@ -231,8 +231,8 @@ pub(crate) fn human_principal_schema() -> PluginSchema {
         pub principals: Vec<HumanPrincipal>,
     }
 
-    use super::plugin_scaffold_helpers::EmptyInput;
     use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
+    use super::plugin_scaffold_helpers::EmptyInput;
     use op_state_store::SideEffect;
 
     schema.methods.insert(

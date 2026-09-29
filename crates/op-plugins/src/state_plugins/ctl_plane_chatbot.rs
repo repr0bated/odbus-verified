@@ -16,8 +16,8 @@ use op_state::{
 };
 use op_state_store::PluginSchema;
 use serde::{Deserialize, Serialize};
-use simd_json::OwnedValue as Value;
 use simd_json::prelude::*;
+use simd_json::OwnedValue as Value;
 use std::collections::BTreeMap;
 
 const DEFAULT_COLLECTION: &str = "ctl_plane_reasoning_episodes";

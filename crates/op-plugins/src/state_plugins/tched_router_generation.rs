@@ -1,7 +1,7 @@
 //! The tched_router-owned private generation contract and durable transitions.
 //! Native execution and SHM publication belong to MutationEngine. This module
 //! never contacts a model, writes SHM, grants access, or stores a raw prompt.
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};

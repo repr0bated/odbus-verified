@@ -12,7 +12,7 @@ use op_state_store::{CapabilityDecl, PluginSchema};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use simd_json::{OwnedValue as Value, prelude::*};
+use simd_json::{prelude::*, OwnedValue as Value};
 use std::collections::HashMap;
 // use std::net::Ipv4Addr; // not needed currently
 
@@ -308,7 +308,11 @@ impl NetStatePlugin {
             }
         }
 
-        if found_ipv4 { Some(ipv4_config) } else { None }
+        if found_ipv4 {
+            Some(ipv4_config)
+        } else {
+            None
+        }
     }
 
     /// Parse CIDR notation like "192.168.1.100/24" into (ip, prefix)
@@ -1662,12 +1666,10 @@ mod tests {
         assert_eq!(output.link_state, "up");
         assert_eq!(output.attached_ports, ["eth0"]);
         assert_eq!(output.default_gateway.as_deref(), Some("192.0.2.1"));
-        assert!(
-            output
-                .ipv4_addresses
-                .iter()
-                .any(|address| address.ip == "192.0.2.2" && address.prefix == 24)
-        );
+        assert!(output
+            .ipv4_addresses
+            .iter()
+            .any(|address| address.ip == "192.0.2.2" && address.prefix == 24));
         assert_eq!(
             backend.operations(),
             [
@@ -1707,13 +1709,11 @@ mod tests {
             ports: Vec::new(),
             ipv4: None,
         };
-        assert!(
-            apply_interface_with_backend(&backend, &virtual_config)
-                .await
-                .unwrap_err()
-                .to_string()
-                .contains("virtual interface")
-        );
+        assert!(apply_interface_with_backend(&backend, &virtual_config)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("virtual interface"));
     }
 
     #[tokio::test]

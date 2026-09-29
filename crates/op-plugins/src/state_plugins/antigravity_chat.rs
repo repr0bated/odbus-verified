@@ -200,7 +200,7 @@ pub(crate) fn antigravity_chat_schema() -> PluginSchema {
         &root,
     );
 
-    use super::plugin_scaffold_helpers::{EmptyInput, method_decl_from_schemars_with_output};
+    use super::plugin_scaffold_helpers::{method_decl_from_schemars_with_output, EmptyInput};
     use op_state_store::SideEffect;
 
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]

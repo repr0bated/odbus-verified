@@ -749,7 +749,11 @@ fn toolsets_payload(input: &PublishToolsetsInput) -> Result<(String, usize)> {
     let mut tools = 0usize;
     for set in &input.sets {
         anyhow::ensure!(valid_toolset_id(&set.id), "invalid toolset id {:?}", set.id);
-        anyhow::ensure!(ids.insert(set.id.as_str()), "duplicate toolset id {}", set.id);
+        anyhow::ensure!(
+            ids.insert(set.id.as_str()),
+            "duplicate toolset id {}",
+            set.id
+        );
         anyhow::ensure!(
             set.title.len() <= 256 && set.description.len() <= 2048,
             "toolset {} title or description too long",
@@ -1458,12 +1462,10 @@ mod tests {
     #[test]
     fn declared_endpoints_are_local_or_fabric_and_mcp_gateway_is_absent() {
         let state = EmqxState::declared();
-        assert!(
-            state
-                .listeners
-                .iter()
-                .all(|listener| local_endpoint(&listener.bind))
-        );
+        assert!(state
+            .listeners
+            .iter()
+            .all(|listener| local_endpoint(&listener.bind)));
         assert!(local_endpoint(&state.exhook.target));
         assert!(
             !local_endpoint("0.0.0.0:8083"),
@@ -1591,11 +1593,9 @@ mod tests {
             assert!(properties.get(field).is_some(), "missing {field}");
         }
         assert!(payload_json.get("required").is_some());
-        assert!(
-            !serde_json::to_string(&payload_json)
-                .unwrap()
-                .contains("payload")
-        );
+        assert!(!serde_json::to_string(&payload_json)
+            .unwrap()
+            .contains("payload"));
     }
 
     #[test]

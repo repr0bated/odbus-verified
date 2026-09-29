@@ -13,9 +13,9 @@ use crate::state_plugins::{
         WireGuardPeerConfig, WireGuardState,
     },
 };
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use async_trait::async_trait;
-use base64::{Engine as _, engine::general_purpose::STANDARD};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use op_network::wireguard_kernel::{
     self, KernelDeviceConfig, KernelDeviceSnapshot, KernelPeerConfig,
 };

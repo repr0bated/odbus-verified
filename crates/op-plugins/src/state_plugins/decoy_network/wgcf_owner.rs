@@ -3,11 +3,11 @@
 use super::super::runtime_documents::RuntimeDocuments;
 use super::super::wgcf::*;
 use super::super::wireguard::WireGuardState;
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use async_trait::async_trait;
-use base64::{Engine as _, engine::general_purpose::STANDARD};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use serde_json::{Value, json};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::{collections::BTreeMap, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
@@ -871,10 +871,8 @@ mod tests {
                         source_with(false, "decoy", "PRIVATE_LICENSE")
                     }
                     2 => {
-                        assert!(
-                            request
-                                .starts_with("PATCH /v0a1922/reg/device-1/account/reg/device-1 ")
-                        );
+                        assert!(request
+                            .starts_with("PATCH /v0a1922/reg/device-1/account/reg/device-1 "));
                         assert!(request.contains("\"name\":\"renamed\""));
                         json!([])
                     }
@@ -903,11 +901,9 @@ mod tests {
                     _ => unreachable!(),
                 };
                 if index != 0 {
-                    assert!(
-                        request
-                            .to_ascii_lowercase()
-                            .contains("authorization: bearer private_token")
-                    );
+                    assert!(request
+                        .to_ascii_lowercase()
+                        .contains("authorization: bearer private_token"));
                 }
                 let body = serde_json::to_vec(&body).unwrap();
                 socket.write_all(format!("HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",body.len()).as_bytes()).await.unwrap();
@@ -1077,18 +1073,14 @@ mod tests {
             CozoGraphShuttle::new_in_memory().unwrap(),
         ));
         let owner = WgcfOwner::new(documents, Arc::new(Kernel), endpoint, true).unwrap();
-        assert!(
-            owner
-                .dispatch("register", json!({"accept_tos":false,"device_model":"PC"}))
-                .await
-                .is_err()
-        );
-        assert!(
-            owner
-                .dispatch("update", json!({"license":"one","device_name":"two"}),)
-                .await
-                .is_err()
-        );
+        assert!(owner
+            .dispatch("register", json!({"accept_tos":false,"device_model":"PC"}))
+            .await
+            .is_err());
+        assert!(owner
+            .dispatch("update", json!({"license":"one","device_name":"two"}),)
+            .await
+            .is_err());
         assert!(
             tokio::time::timeout(Duration::from_millis(50), listener.accept())
                 .await

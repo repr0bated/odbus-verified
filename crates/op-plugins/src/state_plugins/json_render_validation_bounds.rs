@@ -1,7 +1,7 @@
 //! Shared, iterative resource gates for reference and private Canvas specs.
 use std::collections::{HashMap, VecDeque};
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use serde_json::{Map, Value};
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
@@ -175,12 +175,10 @@ mod tests {
         let mut elements = Map::new();
         elements.insert("root".into(), node(vec![]));
         elements.insert("hidden".into(), node(vec!["hidden".into()]));
-        assert!(
-            check_children_graph("root", &elements, GRAPH)
-                .unwrap_err()
-                .to_string()
-                .contains("cycle")
-        );
+        assert!(check_children_graph("root", &elements, GRAPH)
+            .unwrap_err()
+            .to_string()
+            .contains("cycle"));
         elements.clear();
         for index in 0..14 {
             let next = (index + 1).to_string();
@@ -193,12 +191,10 @@ mod tests {
                 }),
             );
         }
-        assert!(
-            check_children_graph("0", &elements, GRAPH)
-                .unwrap_err()
-                .to_string()
-                .contains("expanded")
-        );
+        assert!(check_children_graph("0", &elements, GRAPH)
+            .unwrap_err()
+            .to_string()
+            .contains("expanded"));
     }
     #[test]
     fn bounds_depth_before_recursive_serialization_and_counts_bytes() {
@@ -211,12 +207,10 @@ mod tests {
         for _ in 0..66 {
             deep = json!([deep]);
         }
-        assert!(
-            check_json(&deep, limits)
-                .unwrap_err()
-                .to_string()
-                .contains("depth")
-        );
+        assert!(check_json(&deep, limits)
+            .unwrap_err()
+            .to_string()
+            .contains("depth"));
         assert!(check_json(&json!("x".repeat(4096)), limits).is_err());
         assert!(check_json(&json!([1, 2, 3]), limits).is_ok());
     }
