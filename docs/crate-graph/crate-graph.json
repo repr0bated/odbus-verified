@@ -355,12 +355,12 @@
           "op-cog-admin"
         ],
         "has_lib": true,
-        "rs_files": 30,
-        "loc": 11520,
-        "tests": 52,
+        "rs_files": 31,
+        "loc": 11721,
+        "tests": 54,
         "unsafe_refs": 9,
         "todo": 11,
-        "unwrap_expect": 65
+        "unwrap_expect": 66
       }
     },
     {
@@ -1953,8 +1953,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-29T05:08:14Z",
-        "commit": "6c66cb9fad0e78c2da8dd55e86ee671e7d858d01",
+        "generated_at": "2026-09-29T05:59:45Z",
+        "commit": "852bab0e7ca9965108be074091d1b682a8ca51d7",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -4218,7 +4218,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 69
+        "loc": 71
       }
     },
     {
@@ -4228,6 +4228,15 @@
         "crate": "op-cognitive-mcp",
         "kind": "src",
         "loc": 769
+      }
+    },
+    {
+      "id": "mod:crates/op-cognitive-mcp/src/models_provider.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cognitive-mcp",
+        "kind": "src",
+        "loc": 199
       }
     },
     {
@@ -13755,6 +13764,12 @@
       "src": "crate:op-cognitive-mcp",
       "rel": "contains",
       "dst": "mod:crates/op-cognitive-mcp/src/memory_store.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cognitive-mcp",
+      "rel": "contains",
+      "dst": "mod:crates/op-cognitive-mcp/src/models_provider.rs",
       "props": {}
     },
     {
