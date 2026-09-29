@@ -27,7 +27,6 @@ use tracing::{info, warn};
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
-pub const DEFAULT_COLLECTION: &str = "repomix_rag";
 /// The fused voyage-4 retrieval set — one shared embedding space, so `_large`
 /// and `_lite` collections compare directly. Best available tier per language:
 /// go/python/rust were re-vectorized to voyage-4-large (see ../logs

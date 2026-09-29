@@ -355,9 +355,9 @@
           "op-cog-admin"
         ],
         "has_lib": true,
-        "rs_files": 30,
-        "loc": 11716,
-        "tests": 54,
+        "rs_files": 29,
+        "loc": 11429,
+        "tests": 52,
         "unsafe_refs": 9,
         "todo": 10,
         "unwrap_expect": 65
@@ -405,12 +405,12 @@
           "identity-sled-bind"
         ],
         "has_lib": true,
-        "rs_files": 9,
-        "loc": 8014,
-        "tests": 55,
+        "rs_files": 10,
+        "loc": 8995,
+        "tests": 59,
         "unsafe_refs": 3,
         "todo": 2,
-        "unwrap_expect": 144
+        "unwrap_expect": 168
       }
     },
     {
@@ -540,12 +540,12 @@
           "op-grpc-bridge"
         ],
         "has_lib": true,
-        "rs_files": 153,
-        "loc": 94270,
-        "tests": 736,
-        "unsafe_refs": 178,
-        "todo": 166,
-        "unwrap_expect": 1748
+        "rs_files": 157,
+        "loc": 96011,
+        "tests": 751,
+        "unsafe_refs": 189,
+        "todo": 169,
+        "unwrap_expect": 1762
       }
     },
     {
@@ -730,12 +730,12 @@
           "opblob"
         ],
         "has_lib": true,
-        "rs_files": 145,
-        "loc": 115635,
-        "tests": 522,
+        "rs_files": 148,
+        "loc": 117070,
+        "tests": 538,
         "unsafe_refs": 15,
         "todo": 1,
-        "unwrap_expect": 1242
+        "unwrap_expect": 1258
       }
     },
     {
@@ -853,8 +853,8 @@
           "opdbus"
         ],
         "has_lib": true,
-        "rs_files": 60,
-        "loc": 13877,
+        "rs_files": 59,
+        "loc": 13661,
         "tests": 67,
         "unsafe_refs": 1,
         "todo": 6,
@@ -905,12 +905,12 @@
           "threetched-fs"
         ],
         "has_lib": false,
-        "rs_files": 7,
-        "loc": 4555,
-        "tests": 22,
+        "rs_files": 8,
+        "loc": 5961,
+        "tests": 28,
         "unsafe_refs": 2,
         "todo": 0,
-        "unwrap_expect": 92
+        "unwrap_expect": 137
       }
     },
     {
@@ -1264,6 +1264,13 @@
       }
     },
     {
+      "id": "ext:libloading",
+      "label": "ext_crate",
+      "props": {
+        "req": "^0.8"
+      }
+    },
+    {
       "id": "ext:linemux",
       "label": "ext_crate",
       "props": {
@@ -1513,6 +1520,13 @@
       "label": "ext_crate",
       "props": {
         "req": "^0.17"
+      }
+    },
+    {
+      "id": "ext:rmcp",
+      "label": "ext_crate",
+      "props": {
+        "req": "^3.5"
       }
     },
     {
@@ -1918,6 +1932,13 @@
       "id": "ext:zeroize",
       "label": "ext_crate",
       "props": {
+        "req": "^1"
+      }
+    },
+    {
+      "id": "ext:zeroize",
+      "label": "ext_crate",
+      "props": {
         "req": "^1.6"
       }
     },
@@ -1932,8 +1953,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-28T20:48:13Z",
-        "commit": "8943f9ce129230dde492aa146ea93218251b34c3",
+        "generated_at": "2026-09-29T03:33:26Z",
+        "commit": "03f7fbb8b3d88fd63f1edc949f6aad1462820bc1",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -4197,7 +4218,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 70
+        "loc": 68
       }
     },
     {
@@ -4207,15 +4228,6 @@
         "crate": "op-cognitive-mcp",
         "kind": "src",
         "loc": 769
-      }
-    },
-    {
-      "id": "mod:crates/op-cognitive-mcp/src/notebooklm.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-cognitive-mcp",
-        "kind": "src",
-        "loc": 284
       }
     },
     {
@@ -4242,7 +4254,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 1317
+        "loc": 1316
       }
     },
     {
@@ -4548,7 +4560,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 2717
+        "loc": 2722
       }
     },
     {
@@ -4567,6 +4579,15 @@
         "crate": "op-cozo-store",
         "kind": "src",
         "loc": 444
+      }
+    },
+    {
+      "id": "mod:crates/op-cozo-store/src/ui_gallery.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "src",
+        "loc": 976
       }
     },
     {
@@ -4980,7 +5001,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 828
+        "loc": 831
       }
     },
     {
@@ -5344,6 +5365,24 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/json_render_gallery_dispatch.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 413
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/json_render_gallery_tests.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 514
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/json_schema_proto.rs",
       "label": "module",
       "props": {
@@ -5385,7 +5424,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 368
+        "loc": 371
       }
     },
     {
@@ -5430,7 +5469,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 3636
+        "loc": 4095
       }
     },
     {
@@ -5439,7 +5478,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 841
+        "loc": 846
       }
     },
     {
@@ -5470,15 +5509,6 @@
       }
     },
     {
-      "id": "mod:crates/op-grpc-bridge/src/mongodb_native_tests.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-grpc-bridge",
-        "kind": "src",
-        "loc": 369
-      }
-    },
-    {
       "id": "mod:crates/op-grpc-bridge/src/mqtt_doorbell_relay.rs",
       "label": "module",
       "props": {
@@ -5493,7 +5523,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 6571
+        "loc": 6509
       }
     },
     {
@@ -5611,6 +5641,15 @@
         "crate": "op-grpc-bridge",
         "kind": "src",
         "loc": 215
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/pam_auth.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 210
       }
     },
     {
@@ -5794,6 +5833,24 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/task_elevation.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 274
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/task_elevation_tests.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 215
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/tched_config_dispatch.rs",
       "label": "module",
       "props": {
@@ -5871,7 +5928,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 3580
+        "loc": 3622
       }
     },
     {
@@ -5934,7 +5991,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 410
+        "loc": 444
       }
     },
     {
@@ -7684,6 +7741,15 @@
       }
     },
     {
+      "id": "mod:crates/op-plugins/src/state_plugins/elevation.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-plugins",
+        "kind": "src",
+        "loc": 528
+      }
+    },
+    {
       "id": "mod:crates/op-plugins/src/state_plugins/embedding_model.rs",
       "label": "module",
       "props": {
@@ -7707,7 +7773,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1571
+        "loc": 1736
       }
     },
     {
@@ -7860,7 +7926,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1514
+        "loc": 1526
       }
     },
     {
@@ -7888,6 +7954,33 @@
         "crate": "op-plugins",
         "kind": "src",
         "loc": 462
+      }
+    },
+    {
+      "id": "mod:crates/op-plugins/src/state_plugins/json_render_chat_canvas.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-plugins",
+        "kind": "src",
+        "loc": 421
+      }
+    },
+    {
+      "id": "mod:crates/op-plugins/src/state_plugins/json_render_chat_canvas_contract.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-plugins",
+        "kind": "src",
+        "loc": 9
+      }
+    },
+    {
+      "id": "mod:crates/op-plugins/src/state_plugins/json_render_gallery.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-plugins",
+        "kind": "src",
+        "loc": 636
       }
     },
     {
@@ -8058,16 +8151,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 159
-      }
-    },
-    {
-      "id": "mod:crates/op-plugins/src/state_plugins/mongodb_mcp.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-plugins",
-        "kind": "src",
-        "loc": 335
+        "loc": 158
       }
     },
     {
@@ -9358,15 +9442,6 @@
       }
     },
     {
-      "id": "mod:crates/op-web/src/handlers/control_plane_picker.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-web",
-        "kind": "src",
-        "loc": 207
-      }
-    },
-    {
       "id": "mod:crates/op-web/src/handlers/dashboard.rs",
       "label": "module",
       "props": {
@@ -9435,7 +9510,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 23
+        "loc": 22
       }
     },
     {
@@ -9714,7 +9789,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 364
+        "loc": 356
       }
     },
     {
@@ -9984,7 +10059,16 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 417
+        "loc": 541
+      }
+    },
+    {
+      "id": "mod:crates/threetched-fs/src/mcp.rs",
+      "label": "module",
+      "props": {
+        "crate": "threetched-fs",
+        "kind": "src",
+        "loc": 1282
       }
     },
     {
@@ -10144,6 +10228,16 @@
       }
     },
     {
+      "id": "plugin:elevation",
+      "label": "plugin",
+      "props": {
+        "file": "crates/op-plugins/src/state_plugins/elevation.rs",
+        "line": 360,
+        "declared": true,
+        "dbus_path": "/org/opdbus/v1/plugins/elevation"
+      }
+    },
+    {
       "id": "plugin:embedding_model",
       "label": "plugin",
       "props": {
@@ -10158,7 +10252,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/emqx.rs",
-        "line": 1287,
+        "line": 1417,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/emqx"
       }
@@ -10278,7 +10372,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/json_render.rs",
-        "line": 1513,
+        "line": 1525,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/json_render"
       }
@@ -10351,16 +10445,6 @@
         "line": 419,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/memory"
-      }
-    },
-    {
-      "id": "plugin:mongodb_mcp",
-      "label": "plugin",
-      "props": {
-        "file": "crates/op-plugins/src/state_plugins/mongodb_mcp.rs",
-        "line": 334,
-        "declared": true,
-        "dbus_path": "/org/opdbus/v1/plugins/mongodb_mcp"
       }
     },
     {
@@ -13667,12 +13751,6 @@
     {
       "src": "crate:op-cognitive-mcp",
       "rel": "contains",
-      "dst": "mod:crates/op-cognitive-mcp/src/notebooklm.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-cognitive-mcp",
-      "rel": "contains",
       "dst": "mod:crates/op-cognitive-mcp/src/qdrant_shuttle.rs",
       "props": {}
     },
@@ -14436,6 +14514,12 @@
       "src": "crate:op-cozo-store",
       "rel": "contains",
       "dst": "mod:crates/op-cozo-store/src/runtime_document_transactions_tests.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/ui_gallery.rs",
       "props": {}
     },
     {
@@ -16228,6 +16312,18 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/json_render_gallery_dispatch.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/json_render_gallery_tests.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/json_schema_proto.rs",
       "props": {}
     },
@@ -16307,12 +16403,6 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/method_contract_admission_tests.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-grpc-bridge",
-      "rel": "contains",
-      "dst": "mod:crates/op-grpc-bridge/src/mongodb_native_tests.rs",
       "props": {}
     },
     {
@@ -16403,6 +16493,12 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/owned_method_task_tests.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/pam_auth.rs",
       "props": {}
     },
     {
@@ -16523,6 +16619,18 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/state_tree_fold.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/task_elevation.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/task_elevation_tests.rs",
       "props": {}
     },
     {
@@ -17105,6 +17213,24 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "uses_ext",
+      "dst": "ext:libc",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "uses_ext",
+      "dst": "ext:libloading",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "uses_ext",
       "dst": "ext:memmap2",
       "props": {
         "kind": "normal",
@@ -17439,6 +17565,15 @@
       "src": "crate:op-grpc-bridge",
       "rel": "uses_ext",
       "dst": "ext:zbus",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "uses_ext",
+      "dst": "ext:zeroize",
       "props": {
         "kind": "normal",
         "optional": false
@@ -20320,6 +20455,12 @@
     {
       "src": "crate:op-plugins",
       "rel": "contains",
+      "dst": "mod:crates/op-plugins/src/state_plugins/elevation.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/embedding_model.rs",
       "props": {}
     },
@@ -20458,6 +20599,24 @@
     {
       "src": "crate:op-plugins",
       "rel": "contains",
+      "dst": "mod:crates/op-plugins/src/state_plugins/json_render_chat_canvas.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "contains",
+      "dst": "mod:crates/op-plugins/src/state_plugins/json_render_chat_canvas_contract.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "contains",
+      "dst": "mod:crates/op-plugins/src/state_plugins/json_render_gallery.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/json_render_methods.rs",
       "props": {}
     },
@@ -20567,12 +20726,6 @@
       "src": "crate:op-plugins",
       "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/mod.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "contains",
-      "dst": "mod:crates/op-plugins/src/state_plugins/mongodb_mcp.rs",
       "props": {}
     },
     {
@@ -21094,6 +21247,12 @@
     {
       "src": "crate:op-plugins",
       "rel": "registers_plugin",
+      "dst": "plugin:elevation",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "registers_plugin",
       "dst": "plugin:embedding_model",
       "props": {}
     },
@@ -21215,12 +21374,6 @@
       "src": "crate:op-plugins",
       "rel": "registers_plugin",
       "dst": "plugin:memory",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "registers_plugin",
-      "dst": "plugin:mongodb_mcp",
       "props": {}
     },
     {
@@ -23317,12 +23470,6 @@
     {
       "src": "crate:op-web",
       "rel": "contains",
-      "dst": "mod:crates/op-web/src/handlers/control_plane_picker.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-web",
-      "rel": "contains",
       "dst": "mod:crates/op-web/src/handlers/dashboard.rs",
       "props": {}
     },
@@ -24530,6 +24677,12 @@
     {
       "src": "crate:threetched-fs",
       "rel": "contains",
+      "dst": "mod:crates/threetched-fs/src/mcp.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "contains",
       "dst": "mod:crates/threetched-fs/src/model.rs",
       "props": {}
     },
@@ -24641,6 +24794,24 @@
       "src": "crate:threetched-fs",
       "rel": "uses_ext",
       "dst": "ext:regex",
+      "props": {
+        "kind": "normal",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:rmcp",
+      "props": {
+        "kind": "dev",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:threetched-fs",
+      "rel": "uses_ext",
+      "dst": "ext:rmcp",
       "props": {
         "kind": "normal",
         "optional": false
@@ -25170,14 +25341,6 @@
       "src": "mod:crates/op-cognitive-mcp/src/interceptor.rs",
       "rel": "imports",
       "dst": "crate:op-identity",
-      "props": {
-        "refs": 3
-      }
-    },
-    {
-      "src": "mod:crates/op-cognitive-mcp/src/notebooklm.rs",
-      "rel": "imports",
-      "dst": "crate:op-mcp",
       "props": {
         "refs": 3
       }
@@ -26687,6 +26850,62 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/json_render_gallery_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 6
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/json_render_gallery_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/json_render_gallery_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/json_render_gallery_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/json_render_gallery_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/json_render_gallery_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/json_render_gallery_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/json_schema_proto.rs",
       "rel": "imports",
       "dst": "crate:op-blob",
@@ -27015,30 +27234,6 @@
       }
     },
     {
-      "src": "mod:crates/op-grpc-bridge/src/mongodb_native_tests.rs",
-      "rel": "imports",
-      "dst": "crate:op-plugins",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-grpc-bridge/src/mongodb_native_tests.rs",
-      "rel": "imports",
-      "dst": "crate:op-state",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-grpc-bridge/src/mongodb_native_tests.rs",
-      "rel": "imports",
-      "dst": "crate:op-state-store",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
       "src": "mod:crates/op-grpc-bridge/src/mqtt_doorbell_relay.rs",
       "rel": "imports",
       "dst": "crate:op-plugins",
@@ -27067,7 +27262,7 @@
       "rel": "imports",
       "dst": "crate:op-cozo-store",
       "props": {
-        "refs": 14
+        "refs": 18
       }
     },
     {
@@ -27084,14 +27279,6 @@
       "dst": "crate:op-llm",
       "props": {
         "refs": 3
-      }
-    },
-    {
-      "src": "mod:crates/op-grpc-bridge/src/mutation_engine.rs",
-      "rel": "imports",
-      "dst": "crate:op-mcp",
-      "props": {
-        "refs": 1
       }
     },
     {
@@ -27775,6 +27962,14 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/task_elevation.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/tched_config_dispatch.rs",
       "rel": "imports",
       "dst": "crate:op-plugins",
@@ -28035,7 +28230,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 9
+        "refs": 11
       }
     },
     {
@@ -29471,6 +29666,36 @@
       }
     },
     {
+      "src": "mod:crates/op-plugins/src/state_plugins/elevation.rs",
+      "rel": "defines_plugin",
+      "dst": "plugin:elevation",
+      "props": {}
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/elevation.rs",
+      "rel": "imports",
+      "dst": "crate:op-blob",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/elevation.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/elevation.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
       "src": "mod:crates/op-plugins/src/state_plugins/embedding_model.rs",
       "rel": "defines_plugin",
       "dst": "plugin:embedding_model",
@@ -29875,6 +30100,22 @@
       }
     },
     {
+      "src": "mod:crates/op-plugins/src/state_plugins/json_render_chat_canvas.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/json_render_gallery.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
       "src": "mod:crates/op-plugins/src/state_plugins/json_render_methods.rs",
       "rel": "imports",
       "dst": "crate:op-cozo-store",
@@ -30062,28 +30303,6 @@
     },
     {
       "src": "mod:crates/op-plugins/src/state_plugins/memory_plugin.rs",
-      "rel": "imports",
-      "dst": "crate:op-state-store",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/mongodb_mcp.rs",
-      "rel": "defines_plugin",
-      "dst": "plugin:mongodb_mcp",
-      "props": {}
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/mongodb_mcp.rs",
-      "rel": "imports",
-      "dst": "crate:op-state",
-      "props": {
-        "refs": 1
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/mongodb_mcp.rs",
       "rel": "imports",
       "dst": "crate:op-state-store",
       "props": {

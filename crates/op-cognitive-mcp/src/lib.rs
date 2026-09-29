@@ -5,11 +5,10 @@
 //! - Memory storage and retrieval
 //! - Dynamic content loading
 //! - Cognitive state management
-//! - Context-aware tool discovery
-//! - NotebookLM cognitive tools behind the authenticated bridge (R1-R16)
-//! - Typed namespace tools for Operation D-Bus (R16)
-//! - Conversation session management (R2, R10)
-//! - Quota awareness (R11)
+//! - Context-aware tool discovery (code_search, code_context, code_index)
+//! - Typed namespace tools for Operation D-Bus
+//! - Conversation session management
+//! - Quota awareness
 
 pub mod activity_filter;
 pub mod agent_tools;
@@ -25,7 +24,6 @@ pub mod doctor;
 pub mod gemini_fallback;
 pub mod grpc_service;
 pub mod memory_store;
-pub mod notebooklm;
 pub mod qdrant_shuttle;
 pub mod quota;
 pub mod rag_pipeline;
@@ -52,7 +50,7 @@ pub use grpc_service::CognitiveGrpcService;
 pub use memory_store::CognitiveMemoryStore;
 pub use qdrant_shuttle::{QdrantSemanticShuttle, SessionTraceContext};
 pub use quota::{QuotaManager, QuotaTier};
-pub use rag_pipeline::{CodeFilter, DEFAULT_COLLECTION, RagPipeline, RagResult};
+pub use rag_pipeline::{CodeFilter, RagPipeline, RagResult};
 pub use server::CognitiveMcpServer;
 pub use session::SessionManager;
 pub use soul_memory::{AgentNamespaceBinding, SoulMemory, SoulMemoryStore, SoulUpdate};
