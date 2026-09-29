@@ -11,6 +11,8 @@ pub struct Model {
     pub name: String,
     pub kind: String, // "chat", "embedding", etc
     pub available: bool,
+    pub identity: Option<String>, // LLM identity (e.g., "claude-haiku-4-5")
+    pub provider_id: String,      // which provider this model is from
 }
 
 #[derive(Clone, Debug)]
@@ -41,12 +43,16 @@ impl ModelsProvider {
                             name: "GPT-4 Turbo".to_string(),
                             kind: "chat".to_string(),
                             available: true,
+                            identity: Some("gpt-4-turbo".to_string()),
+                            provider_id: "openai".to_string(),
                         },
                         Model {
                             id: "gpt-3.5-turbo".to_string(),
                             name: "GPT-3.5 Turbo".to_string(),
                             kind: "chat".to_string(),
                             available: true,
+                            identity: Some("gpt-3.5-turbo".to_string()),
+                            provider_id: "openai".to_string(),
                         },
                     ],
                     configured: std::env::var("OPENAI_API_KEY").is_ok(),
@@ -61,12 +67,16 @@ impl ModelsProvider {
                             name: "GPT-4 Turbo".to_string(),
                             kind: "chat".to_string(),
                             available: true,
+                            identity: Some("gpt-4-turbo".to_string()),
+                            provider_id: "openrouter".to_string(),
                         },
                         Model {
                             id: "anthropic/claude-3-opus".to_string(),
                             name: "Claude 3 Opus".to_string(),
                             kind: "chat".to_string(),
                             available: true,
+                            identity: Some("claude-3-opus".to_string()),
+                            provider_id: "openrouter".to_string(),
                         },
                     ],
                     configured: std::env::var("OPENROUTER_API_KEY").is_ok(),
@@ -80,6 +90,8 @@ impl ModelsProvider {
                         name: "Claude".to_string(),
                         kind: "chat".to_string(),
                         available: true,
+                        identity: Some("claude-haiku-4-5".to_string()),
+                        provider_id: "cheaper-inference".to_string(),
                     }],
                     configured: std::env::var("CHEAPERINFERENE_API_KEY").is_ok(),
                 },
@@ -103,6 +115,8 @@ impl ModelsProvider {
                             "name": m.name,
                             "kind": m.kind,
                             "available": m.available,
+                            "identity": m.identity,
+                            "provider_id": m.provider_id,
                         })
                     }).collect::<Vec<_>>(),
                 })
@@ -128,6 +142,8 @@ impl ModelsProvider {
                         "name": m.name,
                         "kind": m.kind,
                         "available": m.available,
+                        "identity": m.identity,
+                        "provider_id": m.provider_id,
                     })
                 }).collect::<Vec<_>>(),
             })
@@ -145,6 +161,8 @@ impl ModelsProvider {
                     "provider": provider.id,
                     "kind": model.kind,
                     "available": model.available,
+                    "identity": model.identity,
+                    "provider_id": model.provider_id,
                 }));
             }
         }

@@ -356,7 +356,7 @@
         ],
         "has_lib": true,
         "rs_files": 31,
-        "loc": 11765,
+        "loc": 11783,
         "tests": 54,
         "unsafe_refs": 9,
         "todo": 11,
@@ -1953,8 +1953,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-29T06:02:35Z",
-        "commit": "5ff7769b5f2b3883e9beacf62004cba457fdd29b",
+        "generated_at": "2026-09-29T07:00:58Z",
+        "commit": "08a09488a67cc4fa56b3a9d2f3af245fc8c8f6a4",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -4236,7 +4236,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 240
+        "loc": 258
       }
     },
     {
