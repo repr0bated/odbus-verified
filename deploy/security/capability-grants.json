@@ -219,6 +219,8 @@
       "model_registry.read",
       "model_registry.refresh",
       "model_registry.maintain",
+      "cron.read",
+      "cron.invoke",
       "chat_response.respond"
     ]
   }

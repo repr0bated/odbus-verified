@@ -38,6 +38,8 @@ op-web-tls
 netmaker-op-grpc-adapters.retired-netns
 nm-ovs-nic.retired
 notebooklm-mcp
+# Local OpenCode server. OpenCode is a provider list entry, not a binary.
+opencode
 
 # Host-side WireGuard peer link into the decoy's identity WireGuard (wg-opdbus),
 # tunnelled inside WARP. Retired 2026-09-19: the host is never a WireGuard
