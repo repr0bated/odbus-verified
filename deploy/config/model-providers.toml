@@ -74,17 +74,39 @@ key_file = "/etc/op-dbus/secrets/openai-api-key"
 key_env = "OPENAI_API_KEY"
 control_plane = { profile = "openai.control_plane" }
 
-# xAI. On 2026-09-29 the key was accepted but the team had no credits left
-# (HTTP 403); the provider shows as failing until billing is restored.
+# SpaceXAI (the xAI API). On 2026-09-29 the key was accepted but the team had
+# no credits left (HTTP 403); the provider shows as failing until billing is
+# restored.
 [[providers]]
 id = "xai"
-name = "xAI"
+name = "SpaceXAI"
 models_url = "https://api.x.ai/v1/models"
 format = "openai"
 auth = "bearer"
 key_file = "/etc/op-dbus/secrets/xai-api-key"
 key_env = "XAI_API_KEY"
 control_plane = { profile = "xai.control_plane" }
+
+# Anthropic's own model list. The menu reads whatever the hourly refresh
+# writes for this provider; no model ids live here.
+[[providers]]
+id = "anthropic"
+name = "Anthropic"
+models_url = "https://api.anthropic.com/v1/models"
+format = "anthropic"
+auth = "x_api_key"
+key_file = "/etc/op-dbus/secrets/anthropic-api-key"
+key_env = "ANTHROPIC_API_KEY"
+
+# Salad AI. OpenAI-compatible list at the same host the router already uses.
+[[providers]]
+id = "salad"
+name = "Salad AI"
+models_url = "https://ai.salad.cloud/v1/models"
+format = "openai"
+auth = "bearer"
+key_file = "/etc/op-dbus/secrets/salad-api-key"
+key_env = "SALAD_API_KEY"
 
 # Hugging Face Inference Providers (OpenAI-compatible router).
 [[providers]]

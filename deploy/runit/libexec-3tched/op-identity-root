@@ -72,6 +72,33 @@ loop_for() {
     losetup -j "$1" -O NAME -n 2>/dev/null | head -n 1
 }
 
+# Soul functions on the identity's Cozo device. Cozo itself is the
+# persistence. truths, boundaries and vibe are subvolumes a user-owned
+# process writes through the persist mount. Agents and hooks see the same
+# subvolumes read-only at /soul/<name>.
+ensure_soul() {
+    session=$1
+    cozo=$IDENTITIES/$session/device/cozo
+    [ -d "$cozo" ] || return 0
+    mountpoint -q "$IDENTITIES/$session/device" || return 0
+    incus info "$session" >/dev/null 2>&1 || return 0
+    for name in truths boundaries vibe; do
+        path=$cozo/$name
+        if ! btrfs subvolume show "$path" >/dev/null 2>&1; then
+            btrfs subvolume create "$path" || return 1
+        fi
+        chown 1000000:1000000 "$path"
+        chmod 0755 "$path"
+        if incus config device get "$session" "soul-$name" source >/dev/null 2>&1; then
+            incus config device set "$session" "soul-$name" \
+                source="$path" path="/soul/$name" readonly=true || return 1
+        else
+            incus config device add "$session" "soul-$name" disk \
+                source="$path" path="/soul/$name" readonly=true >/dev/null || return 1
+        fi
+    done
+}
+
 mount_device() {
     session=$1
     dir=$IDENTITIES/$session
@@ -131,6 +158,7 @@ up_one() {
     session=$1
     valid_session "$session" || { log "skipping '$session': not a session id"; return 1; }
     mount_device "$session" || { log "$session: device failed"; return 1; }
+    ensure_soul "$session" || log "$session: soul subvolumes failed"
     mount_root "$session" || { log "$session: root overlay failed"; return 1; }
     if mount_lungs "$session"; then
         # The identity sees its lungs at /opt/run-mounts/3tched. Writes there
@@ -215,6 +243,7 @@ create_one() {
         source=/run/ghostbridge path=/opt/run-mounts/ghostbridge >/dev/null
     incus config device add "$session" persist disk \
         source="$dir/device/cozo" path=/opt/run-mounts/persist >/dev/null
+    ensure_soul "$session" || { log "$session: soul subvolumes failed"; return 1; }
     log "$session: device and identity root created; run: $0 up $session"
 }
 
