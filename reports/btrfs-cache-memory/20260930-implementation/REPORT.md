@@ -117,7 +117,9 @@ Clippy/tests. All ten owned Rust files pass their formatting check, and
 `git diff --check` passes. The nine model-registry dispatch tests also pass in
 the normal GNU Cargo harness. Changed-target Clippy with dependencies stops at
 two pre-existing `collapsible_if` warnings in `op-cozo-store`; this is not a
-passing workspace gate. Full target Cargo tests and changed-target
+passing workspace gate. The separate `--no-deps` Clippy run for `op-cache`,
+`op-snowball`, `op-cognitive-mcp` and `op-grpc-bridge` passes with warnings
+denied after correcting four owned style warnings. Full target Cargo tests and changed-target
 checks are recorded separately in `verification/`; consult their final results.
 An initial test build repeated the same native RocksDB compilation and was
 stopped; subsequent tests reuse the GNU static archive freshly built by the

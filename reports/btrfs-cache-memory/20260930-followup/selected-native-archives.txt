@@ -1,0 +1,4 @@
+target/debug/build/cozorocks-aaa2420676be3fb2/out/librocksdb.a
+target/debug/build/zstd-sys-28416255e3ec3e56/out/libzstd.a
+target/debug/build/libsqlite3-sys-05c34502d2d87e7f/out/libsqlite3.a
+target/debug/build/lz4-sys-5ac3f5adaa1889a1/out/liblz4.a

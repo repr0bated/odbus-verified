@@ -1,0 +1,4 @@
+e42ec802da304fb74dbd9ed6afc5ce07c1192b4e48a8e0989e88299e13d45d6e  target/debug/build/cozorocks-aaa2420676be3fb2/out/librocksdb.a
+875f7870caf38c6f7cfc2c2bfabd778eb3615a8050ed31e0d1dcf72bb58826e3  target/debug/build/zstd-sys-28416255e3ec3e56/out/libzstd.a
+d25d5c9bb7948298c62850e2abfc181c7fed7bf59de1a1aae961b81d8c1b0039  target/debug/build/libsqlite3-sys-05c34502d2d87e7f/out/libsqlite3.a
+bb088331f71d85438c82a25dc87d748cfc398d959892dede73542d76aa203b7e  target/debug/build/lz4-sys-5ac3f5adaa1889a1/out/liblz4.a

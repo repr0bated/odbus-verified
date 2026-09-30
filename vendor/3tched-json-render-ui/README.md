@@ -3,7 +3,9 @@
 This directory closes the source and release boundary for the active standalone
 Vite UI. `source.tar.gz` is a deterministic archive of the explicitly
 allowlisted files from the tested production checkout at `/srv/git/3tched.com`;
-it records the source checkout HEAD and the tested modified worktree. The content manifest covers the exact archived bytes.
+it records the source checkout HEAD and its worktree state. The current capture
+is the clean committed identity workspace scaffold at `999651e`. The content
+manifest covers the exact archived bytes.
 
 The archive contains `AGENTS.md`, licensing and guidance, `package.json`, the
 lockfile, Vite/TypeScript/ESLint configuration, `index.html`, and `src/` (plus

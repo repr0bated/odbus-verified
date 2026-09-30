@@ -1,0 +1,11 @@
+npm notice run 3tched.com@0.1.0 test
+npm notice run vitest run
+
+ RUN  v4.1.11 /srv/git/3tched.com
+
+
+ Test Files  21 passed | 1 skipped (22)
+      Tests  128 passed | 1 skipped (129)
+   Start at  10:32:50
+   Duration  6.10s (transform 7.53s, setup 4.05s, import 16.93s, tests 11.34s, environment 33.71s)
+
