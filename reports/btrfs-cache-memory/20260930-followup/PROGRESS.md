@@ -1,0 +1,9 @@
+# Progress
+
+2026-09-30: Located existing current checkout and prior concurrent investigation; preserved its files. Read repository instruction and mandatory four skills. Loaded debug and testing-strategy from installed local engineering bundle. Reviewed current baseline; created separate report-only instrumentation area and assigned independent source/NUMA reviews. No matching specialist Rust/Linux-memory/Btrfs/NUMA skill was found.
+
+Next: build hash-pinned native helper probe, run three successful local snapshot transfer/cleanup cycles and three bounded child cancellation trials; parallel probe covers fallback cache steady-state and retention. Capture /verify result without repairing unrelated formatting. Consolidate evidence and limitations, update shared handoff.
+
+2026-09-30 complete: 39 API processes x10 cycles; three negative and controlled-retention runs; three cold corruption/recovery runs; expiry baseline/variant x3. Nine successful native Btrfs transfer/explicit-cleanup cycles across3 processes; all six member payloads checked and fixtures removed. Three cancellation trials left both children running, then explicit cleanup removed them. Three baseline/variant NUMA comparisons: bind/interleave fail vs successful readback. NUMA regression script baseline exit1, variant exit0. Unit scope10passed/3ignored; complete verify exited1 at existing formatting drift before later gates. Production source and Cargo.lock hash checks match original capture. Report, source maps, raw metrics, prototype diffs and rollback/validation limits finalized; shared HANDOFF/SIGNALS updated under OD-96.
+
+No investigation process or task-owned native/tmpfs fixture remains. Next exact commands are in REPORT.md and COMMANDS.md for reproduction. Remaining production attribution/failure/concurrency work is explicitly bounded future validation, not another speculative test loop. No push, deployment, restart or catalog reseal occurred.

@@ -20,6 +20,7 @@ use std::{
 
 use anyhow::{Context, Result, bail, ensure};
 use async_trait::async_trait;
+use futures::StreamExt;
 use op_cozo_store::{CozoError, CozoGraphShuttle, RegistryModel, RegistryModelRecord};
 use op_plugins::state_plugins::model_registry::{
     DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput, ListProvidersInput,
@@ -38,6 +39,8 @@ use crate::{
 
 const PLUGIN: &str = "model_registry";
 const FETCH_TIMEOUT: Duration = Duration::from_secs(30);
+// Bound provider response/parse working sets independently of the list size.
+const MAX_CONCURRENT_MODEL_LISTS: usize = 4;
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 
 /// One refresh at a time; a second waits rather than interleaving.
@@ -300,15 +303,23 @@ pub(crate) async fn refresh(
             .collect(),
     };
     let at = now();
-    let observed = futures::future::join_all(
-        targets
-            .iter()
-            .map(|provider| async move { (*provider, observe(env, lister, provider).await) }),
-    )
-    .await;
+    // Persist each completed provider before admitting more responses. An
+    // ordered bounded stream preserves configured reporting order without
+    // retaining every provider's full model list until the slowest finishes.
+    // Erase the request future type before buffering. This keeps the admitted
+    // dispatch future Send across the async-trait lister's borrowed lifetime.
+    type Request<'a> =
+        futures::future::BoxFuture<'a, (&'a ProviderConfig, Result<Vec<RegistryModel>>)>;
+    let requests: Vec<Request<'_>> = targets
+        .into_iter()
+        .map(|provider| {
+            Box::pin(async move { (provider, observe(env, lister, provider).await) }) as Request<'_>
+        })
+        .collect();
+    let mut observed = futures::stream::iter(requests).buffered(MAX_CONCURRENT_MODEL_LISTS);
     let mut providers = Vec::new();
     let mut revision = 0;
-    for (provider, result) in observed {
+    while let Some((provider, result)) = observed.next().await {
         let listed = result.map_err(|error| bounded_error(&format!("{error:#}")));
         let failure = listed.as_ref().err().cloned();
         let (store, id, when) = (store.clone(), provider.id.clone(), at.clone());

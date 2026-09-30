@@ -1,0 +1,13 @@
+trial=1 policy=Default child={"cpus":[0],"mask":[0],"mode":0} parent_unchanged=true
+trial=1 policy=Preferred(0) child={"cpus":[0],"mask":[1],"mode":1} parent_unchanged=true
+trial=1 policy=Bind([0]) child={"cpus":[0],"mask":[1],"mode":2} parent_unchanged=true
+trial=1 policy=Interleave([0]) child={"cpus":[0],"mask":[1],"mode":3} parent_unchanged=true
+trial=2 policy=Default child={"cpus":[0],"mask":[0],"mode":0} parent_unchanged=true
+trial=2 policy=Preferred(0) child={"cpus":[0],"mask":[1],"mode":1} parent_unchanged=true
+trial=2 policy=Bind([0]) child={"cpus":[0],"mask":[1],"mode":2} parent_unchanged=true
+trial=2 policy=Interleave([0]) child={"cpus":[0],"mask":[1],"mode":3} parent_unchanged=true
+trial=3 policy=Default child={"cpus":[0],"mask":[0],"mode":0} parent_unchanged=true
+trial=3 policy=Preferred(0) child={"cpus":[0],"mask":[1],"mode":1} parent_unchanged=true
+trial=3 policy=Bind([0]) child={"cpus":[0],"mask":[1],"mode":2} parent_unchanged=true
+trial=3 policy=Interleave([0]) child={"cpus":[0],"mask":[1],"mode":3} parent_unchanged=true
+guard_exit=0 peak_group_rss_kib=6512 limit_kib=524288 limit_exceeded=0 timeout_seconds=120

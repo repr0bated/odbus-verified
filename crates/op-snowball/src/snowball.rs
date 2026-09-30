@@ -9,7 +9,7 @@ use anyhow::{Context, Result, ensure};
 use chrono::{DateTime, Datelike, Utc};
 use nix::fcntl::{Flock, FlockArg};
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BinaryHeap, HashSet};
 use std::fs::{File as StdFile, OpenOptions as StdOpenOptions};
 use std::io::Write as _;
 use std::os::fd::AsRawFd;
@@ -17,7 +17,7 @@ use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::{Arc, mpsc};
+use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
 use tokio::sync::{Mutex, RwLock, oneshot};
@@ -43,6 +43,8 @@ pub struct SnowballTransferReport {
 /// Cap on a single flattened field's length in embedding text, so one large
 /// payload cannot dominate a block's vector.
 const MAX_EMBEDDING_FIELD_LEN: usize = 512;
+/// Admission bounds queued closures; timing history has its own retention owner.
+const MAX_PENDING_WRITER_JOBS: usize = 64;
 
 /// One snapshot considered by the retention policy.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -144,12 +146,20 @@ type WriterJob = Box<dyn FnOnce() + Send + 'static>;
 /// page or filesystem placement. This is also the serialization point that
 /// the writer flock assumes.
 struct SnowballWriter {
-    jobs: std::sync::Mutex<mpsc::Sender<WriterJob>>,
+    jobs: tokio::sync::mpsc::Sender<WriterJob>,
 }
 
 impl SnowballWriter {
     fn spawn(name: String, placement: Option<WriterPlacement>) -> Result<Self> {
-        let (tx, rx) = mpsc::channel::<WriterJob>();
+        Self::spawn_with_capacity(name, placement, MAX_PENDING_WRITER_JOBS)
+    }
+
+    fn spawn_with_capacity(
+        name: String,
+        placement: Option<WriterPlacement>,
+        capacity: usize,
+    ) -> Result<Self> {
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<WriterJob>(capacity);
         let thread_name = name.clone();
         std::thread::Builder::new()
             .name(name)
@@ -159,7 +169,7 @@ impl SnowballWriter {
                 {
                     warn!("{thread_name}: writer placement failed, continuing unpinned: {error}");
                 }
-                for job in rx {
+                while let Some(job) = rx.blocking_recv() {
                     // A panicking job must not take the writer down with it;
                     // the caller sees a dropped oneshot and reports an error.
                     let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(job));
@@ -167,9 +177,7 @@ impl SnowballWriter {
                 debug!("{thread_name}: writer thread exiting");
             })
             .context("spawn snowball writer thread")?;
-        Ok(Self {
-            jobs: std::sync::Mutex::new(tx),
-        })
+        Ok(Self { jobs: tx })
     }
 
     /// Run `f` on the writer thread and await its result.
@@ -178,15 +186,19 @@ impl SnowballWriter {
         T: Send + 'static,
         F: FnOnce() -> Result<T> + Send + 'static,
     {
+        // Waiting for admission yields the async caller; the pinned writer is
+        // the only blocking receiver. Cancellation before admission submits
+        // nothing. Once submitted, a job still completes if its caller leaves.
+        let permit = self
+            .jobs
+            .reserve()
+            .await
+            .map_err(|_| anyhow::anyhow!("snowball writer thread is gone"))?;
         let (reply_tx, reply_rx) = oneshot::channel();
         let job: WriterJob = Box::new(move || {
             let _ = reply_tx.send(f());
         });
-        self.jobs
-            .lock()
-            .map_err(|_| anyhow::anyhow!("snowball writer queue poisoned"))?
-            .send(job)
-            .map_err(|_| anyhow::anyhow!("snowball writer thread is gone"))?;
+        permit.send(job);
         reply_rx
             .await
             .context("snowball writer job did not complete")?
@@ -559,12 +571,20 @@ impl StreamingSnowball {
     /// Blocks whose vector projection has not landed yet — the work queue for
     /// an embedding pass.
     pub async fn blocks_missing_vectors(&self) -> Result<Vec<ChainBlockRef>> {
-        Ok(self
-            .blocks()
-            .await?
-            .into_iter()
-            .filter(|block| !block.has_vector)
-            .collect())
+        Ok(self.pending_blocks(usize::MAX).await?.0)
+    }
+
+    /// Select pending timing records before parsing their payloads.
+    ///
+    /// Full filename/presence scans retain at most `limit` candidate paths,
+    /// independent of retained history. Numeric ordering includes gaps below
+    /// any index watermark. Malformed JSON is warned/skipped as in `blocks`;
+    /// another bounded scan fills the batch after those records, so a corrupt
+    /// old record cannot hide later valid work. I/O failures are returned.
+    /// The second return value counts timing filenames with a vector present,
+    /// without parsing already-projected timing documents.
+    pub async fn pending_blocks(&self, limit: usize) -> Result<(Vec<ChainBlockRef>, usize)> {
+        pending_blocks_in(&self.timing_subvol, &self.vector_subvol, limit).await
     }
 
     fn timing_path(&self, block_num: u64) -> PathBuf {
@@ -1027,6 +1047,88 @@ fn system_time_to_utc(ts: SystemTime) -> Option<DateTime<Utc>> {
     Some(DateTime::<Utc>::from(ts))
 }
 
+type TimingCandidate = (u64, PathBuf);
+
+fn select_pending_timing(
+    timing: &Path,
+    vectors: &Path,
+    after: Option<&TimingCandidate>,
+    limit: usize,
+) -> Result<(Vec<TimingCandidate>, usize)> {
+    let mut candidates = BinaryHeap::new();
+    let mut already_present = 0;
+    for entry in std::fs::read_dir(timing)
+        .with_context(|| format!("failed to read timing directory {}", timing.display()))?
+    {
+        let entry = entry?;
+        let Some(number) = parse_block_number(&entry.file_name().to_string_lossy()) else {
+            continue;
+        };
+        let has_vector = vectors
+            .join(vector_file_name(number))
+            .try_exists()
+            .with_context(|| format!("failed to inspect vector for block {number}"))?;
+        if has_vector {
+            already_present += 1;
+            continue;
+        }
+        if limit == 0 {
+            continue;
+        }
+        let candidate = (number, entry.path());
+        if after.is_some_and(|after| &candidate <= after) {
+            continue;
+        }
+        if candidates.len() < limit {
+            candidates.push(candidate);
+        } else if candidates.peek().is_some_and(|last| &candidate < last) {
+            candidates.pop();
+            candidates.push(candidate);
+        }
+    }
+    Ok((candidates.into_sorted_vec(), already_present))
+}
+
+async fn pending_blocks_in(
+    timing: &Path,
+    vectors: &Path,
+    limit: usize,
+) -> Result<(Vec<ChainBlockRef>, usize)> {
+    let mut blocks = Vec::new();
+    let mut after = None;
+    loop {
+        let timing = timing.to_path_buf();
+        let vectors = vectors.to_path_buf();
+        let cursor = after.clone();
+        let remaining = limit - blocks.len();
+        let (selected, already_present) = tokio::task::spawn_blocking(move || {
+            select_pending_timing(&timing, &vectors, cursor.as_ref(), remaining)
+        })
+        .await
+        .context("Snowball pending selection task failed")??;
+        if selected.is_empty() {
+            return Ok((blocks, already_present));
+        }
+        for (number, path) in selected {
+            let bytes = tokio::fs::read(&path)
+                .await
+                .with_context(|| format!("failed to read timing record {}", path.display()))?;
+            match ChainBlockRef::from_timing_bytes(number, bytes, false) {
+                Ok(block) => blocks.push(block),
+                Err(error) => warn!(
+                    "skipping unparseable timing record {}: {}",
+                    path.display(),
+                    error
+                ),
+            }
+            after = Some((number, path));
+        }
+        if blocks.len() == limit {
+            return Ok((blocks, already_present));
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 // Block references and vector encoding
 // ----------------------------------------------------------------------------
@@ -1055,13 +1157,17 @@ pub struct ChainBlockRef {
 
 impl ChainBlockRef {
     fn from_timing_bytes(block_num: u64, mut bytes: Vec<u8>, has_vector: bool) -> Result<Self> {
-        let value = simd_json::to_owned_value(&mut bytes)
+        let mut value = simd_json::to_owned_value(&mut bytes)
             .map_err(|e| anyhow::anyhow!("invalid JSON in timing record: {e}"))?;
 
         let mut data_fields = Vec::new();
-        let data = owned_get(&value, "data")
-            .cloned()
-            .unwrap_or(simd_json::OwnedValue::Static(simd_json::StaticNode::Null));
+        // Move the structured payload out of the parsed record rather than
+        // cloning every nested value before flattening it.
+        let data = match &mut value {
+            simd_json::OwnedValue::Object(map) => map.remove("data"),
+            _ => None,
+        }
+        .unwrap_or(simd_json::OwnedValue::Static(simd_json::StaticNode::Null));
         flatten_sorted(&data, "data", &mut data_fields);
 
         Ok(Self {
@@ -1081,15 +1187,15 @@ impl ChainBlockRef {
     /// schema-described projection, which decides what is signal and what is
     /// noise; the header keeps block identity stable across policies.
     pub fn embedding_text_from(&self, lines: &[(String, String)]) -> String {
-        let mut out = vec![
-            format!("block: {}", self.block_num),
-            format!("plugin: {}", self.category),
-            format!("action: {}", self.action),
-        ];
+        use std::fmt::Write;
+        let mut out = format!(
+            "block: {}\nplugin: {}\naction: {}",
+            self.block_num, self.category, self.action
+        );
         for (label, value) in lines {
-            out.push(format!("{label}: {value}"));
+            let _ = write!(out, "\n{label}: {value}");
         }
-        out.join("\n")
+        out
     }
 
     /// Value of one flattened field, e.g. `data.metadata.event_hash`.
@@ -1106,17 +1212,15 @@ impl ChainBlockRef {
     /// after a policy change) must derive identical text from identical
     /// timing records, so this is the single renderer for block embeddings.
     pub fn embedding_text(&self) -> String {
-        let mut lines = vec![
-            format!("block: {}", self.block_num),
-            format!("plugin: {}", self.category),
-            format!("action: {}", self.action),
-            format!("hash: {}", self.hash),
-            format!("timestamp: {}", self.timestamp),
-        ];
+        use std::fmt::Write;
+        let mut text = format!(
+            "block: {}\nplugin: {}\naction: {}\nhash: {}\ntimestamp: {}",
+            self.block_num, self.category, self.action, self.hash, self.timestamp
+        );
         for (key, value) in &self.data_fields {
-            lines.push(format!("{key}: {value}"));
+            let _ = write!(text, "\n{key}: {value}");
         }
-        lines.join("\n")
+        text
     }
 }
 
@@ -1155,6 +1259,22 @@ fn scalar_to_string(value: &simd_json::OwnedValue) -> Option<String> {
     }
 }
 
+fn bounded_scalar_to_string(value: &simd_json::OwnedValue) -> Option<String> {
+    match value {
+        simd_json::OwnedValue::String(text) if text.len() > MAX_EMBEDDING_FIELD_LEN => {
+            let mut end = MAX_EMBEDDING_FIELD_LEN;
+            while !text.is_char_boundary(end) {
+                end -= 1;
+            }
+            let mut clipped = String::with_capacity(end + '…'.len_utf8());
+            clipped.push_str(&text[..end]);
+            clipped.push('…');
+            Some(clipped)
+        }
+        other => scalar_to_string(other),
+    }
+}
+
 /// Flatten a JSON value into sorted `dotted.path` / value pairs.
 fn flatten_sorted(value: &simd_json::OwnedValue, prefix: &str, out: &mut Vec<(String, String)>) {
     match value {
@@ -1173,11 +1293,7 @@ fn flatten_sorted(value: &simd_json::OwnedValue, prefix: &str, out: &mut Vec<(St
             }
         }
         scalar => {
-            if let Some(mut text) = scalar_to_string(scalar) {
-                if text.len() > MAX_EMBEDDING_FIELD_LEN {
-                    text.truncate(MAX_EMBEDDING_FIELD_LEN);
-                    text.push('…');
-                }
+            if let Some(text) = bounded_scalar_to_string(scalar) {
                 out.push((prefix.to_string(), text));
             }
         }
@@ -1832,14 +1948,14 @@ fn commit_snapshot_set_sync(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    struct BtrfsFixture(TempDir);
+    pub(crate) struct BtrfsFixture(TempDir);
 
     impl BtrfsFixture {
-        fn path(&self) -> &Path {
+        pub(crate) fn path(&self) -> &Path {
             self.0.path()
         }
     }
@@ -1881,7 +1997,7 @@ mod tests {
         }
     }
 
-    fn tempdir() -> Result<BtrfsFixture> {
+    pub(crate) fn tempdir() -> Result<BtrfsFixture> {
         Ok(BtrfsFixture(tempfile::tempdir()?))
     }
 
@@ -1934,6 +2050,203 @@ mod tests {
       "hash": "027ef6db",
       "vector": []
     }"#;
+
+    fn pending_fixture() -> (TempDir, PathBuf, PathBuf) {
+        let root = tempfile::tempdir().unwrap();
+        let timing = root.path().join("timing");
+        let vectors = root.path().join("vectors");
+        std::fs::create_dir(&timing).unwrap();
+        std::fs::create_dir(&vectors).unwrap();
+        (root, timing, vectors)
+    }
+
+    #[tokio::test]
+    async fn pending_selection_does_not_parse_large_vectorized_history() {
+        let (_root, timing, vectors) = pending_fixture();
+        // Already projected records need no payload parsing, even when their
+        // historical payload is malformed. Only filenames count as coverage.
+        for number in 1..=4096 {
+            std::fs::write(timing.join(timing_file_name(number)), b"not JSON").unwrap();
+            std::fs::write(
+                vectors.join(vector_file_name(number)),
+                encode_vector(&[0.25]),
+            )
+            .unwrap();
+        }
+        let (pending, already_present) = pending_blocks_in(&timing, &vectors, 256).await.unwrap();
+        assert!(pending.is_empty());
+        assert_eq!(already_present, 4096);
+        assert_eq!(std::fs::read_dir(&timing).unwrap().count(), 4096);
+    }
+
+    #[tokio::test]
+    async fn pending_selection_recovers_gaps_and_orders_before_limiting() {
+        let (_root, timing, vectors) = pending_fixture();
+        for number in [900, 7, 2, 100] {
+            std::fs::write(timing.join(timing_file_name(number)), TIMING_RECORD).unwrap();
+        }
+        std::fs::write(vectors.join(vector_file_name(100)), encode_vector(&[0.25])).unwrap();
+        // The high-watermark vector does not hide the missing older vectors.
+        let (pending, count) = pending_blocks_in(&timing, &vectors, 2).await.unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(
+            pending.iter().map(|b| b.block_num).collect::<Vec<_>>(),
+            [2, 7]
+        );
+        assert!(pending.iter().all(|block| !block.has_vector));
+    }
+
+    #[tokio::test]
+    async fn pending_selection_refills_after_malformed_oldest_record() {
+        let (_root, timing, vectors) = pending_fixture();
+        for number in 1..=4 {
+            std::fs::write(
+                timing.join(timing_file_name(number)),
+                if number <= 2 {
+                    b"not JSON"
+                } else {
+                    TIMING_RECORD
+                },
+            )
+            .unwrap();
+        }
+        let (pending, count) = pending_blocks_in(&timing, &vectors, 1).await.unwrap();
+        assert_eq!(count, 0);
+        assert_eq!(pending[0].block_num, 3);
+        assert_eq!(pending.len(), 1);
+        // Repeated passes still reach valid work instead of starving on 1/2.
+        std::fs::write(vectors.join(vector_file_name(3)), encode_vector(&[0.25])).unwrap();
+        let (next, _) = pending_blocks_in(&timing, &vectors, 1).await.unwrap();
+        assert_eq!(next[0].block_num, 4);
+        assert_eq!(
+            std::fs::read(timing.join(timing_file_name(1))).unwrap(),
+            b"not JSON"
+        );
+    }
+
+    #[tokio::test]
+    async fn pending_zero_limit_counts_coverage_without_reading_payloads() {
+        let (_root, timing, vectors) = pending_fixture();
+        // A selected directory would fail its payload read. With a zero limit
+        // it must never be opened as a record.
+        std::fs::create_dir(timing.join(timing_file_name(1))).unwrap();
+        std::fs::write(timing.join(timing_file_name(2)), b"not JSON").unwrap();
+        std::fs::write(vectors.join(vector_file_name(2)), encode_vector(&[0.25])).unwrap();
+        let (pending, count) = pending_blocks_in(&timing, &vectors, 0).await.unwrap();
+        assert!(pending.is_empty());
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn pending_selection_propagates_selected_io_failure() {
+        let (_root, timing, vectors) = pending_fixture();
+        std::fs::create_dir(timing.join(timing_file_name(1))).unwrap();
+        let error = pending_blocks_in(&timing, &vectors, 1).await.unwrap_err();
+        assert!(error.to_string().contains("failed to read timing record"));
+        assert!(
+            pending_blocks_in(&timing.join("missing"), &vectors, 0)
+                .await
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn pending_retry_keeps_work_after_partial_projection_failure() {
+        let (_root, timing, vectors) = pending_fixture();
+        for number in [1, 2, 3] {
+            std::fs::write(timing.join(timing_file_name(number)), TIMING_RECORD).unwrap();
+        }
+        let (first, _) = pending_blocks_in(&timing, &vectors, 3).await.unwrap();
+        assert_eq!(first.len(), 3);
+        // Simulate a pass that committed 1 then failed embedding 2. A later
+        // pass sees 2 and 3 regardless of unrelated index watermarks.
+        std::fs::write(vectors.join(vector_file_name(1)), encode_vector(&[0.25])).unwrap();
+        let (retry, count) = pending_blocks_in(&timing, &vectors, 3).await.unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(
+            retry.iter().map(|b| b.block_num).collect::<Vec<_>>(),
+            [2, 3]
+        );
+    }
+
+    #[tokio::test]
+    async fn bounded_writer_admission_yields_and_preserves_fifo() {
+        use std::future::Future;
+        use std::task::Poll;
+        let writer =
+            SnowballWriter::spawn_with_capacity("bounded-test-writer".into(), None, 1).unwrap();
+        let (release, wait) = std::sync::mpsc::channel();
+        let (started_tx, started_rx) = oneshot::channel();
+        let mut first = Box::pin(writer.run(move || {
+            let _ = started_tx.send(());
+            wait.recv().unwrap();
+            Ok(1)
+        }));
+        std::future::poll_fn(|cx| {
+            assert!(first.as_mut().poll(cx).is_pending());
+            Poll::Ready(())
+        })
+        .await;
+        started_rx.await.unwrap();
+        let mut second = Box::pin(writer.run(|| Ok(2)));
+        let mut third = Box::pin(writer.run(|| Ok(3)));
+        std::future::poll_fn(|cx| {
+            assert!(second.as_mut().poll(cx).is_pending());
+            assert_eq!(writer.jobs.capacity(), 0);
+            assert!(third.as_mut().poll(cx).is_pending());
+            assert_eq!(writer.jobs.capacity(), 0);
+            Poll::Ready(())
+        })
+        .await;
+        // This task is still running on a current-thread runtime even though
+        // the writer and its queue are both occupied.
+        tokio::task::yield_now().await;
+        release.send(()).unwrap();
+        let (first, second, third) = tokio::join!(first, second, third);
+        assert_eq!((first.unwrap(), second.unwrap(), third.unwrap()), (1, 2, 3));
+    }
+
+    #[tokio::test]
+    async fn bounded_writer_drains_admitted_jobs_after_sender_drop() {
+        let writer =
+            SnowballWriter::spawn_with_capacity("draining-test-writer".into(), None, 1).unwrap();
+        let (reply, result) = oneshot::channel();
+        writer
+            .jobs
+            .send(Box::new(move || {
+                let _ = reply.send(42);
+            }))
+            .await
+            .unwrap();
+        drop(writer);
+        assert_eq!(result.await.unwrap(), 42);
+    }
+
+    #[tokio::test]
+    async fn bounded_writer_recovers_after_panicking_job() {
+        let writer =
+            SnowballWriter::spawn_with_capacity("panic-test-writer".into(), None, 1).unwrap();
+        let error = writer
+            .run::<(), _>(|| panic!("injected job panic"))
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("did not complete"));
+        assert_eq!(writer.run(|| Ok(42)).await.unwrap(), 42);
+    }
+
+    #[test]
+    fn bounded_fields_preserve_utf8_and_release_oversized_capacity() {
+        for text in ["x".repeat(65536), "a".repeat(511) + "💾💾", "é".repeat(300)] {
+            let value = simd_json::OwnedValue::String(text.clone());
+            let clipped = bounded_scalar_to_string(&value).unwrap();
+            assert!(clipped.len() <= MAX_EMBEDDING_FIELD_LEN + '…'.len_utf8());
+            assert!(clipped.capacity() <= MAX_EMBEDDING_FIELD_LEN + '…'.len_utf8());
+            assert!(clipped.ends_with('…'));
+            assert!(text.starts_with(clipped.trim_end_matches('…')));
+        }
+        let short = simd_json::OwnedValue::String("é💾".into());
+        assert_eq!(bounded_scalar_to_string(&short).as_deref(), Some("é💾"));
+    }
 
     #[tokio::test]
     async fn separate_handles_allocate_distinct_committed_snapshot_counters() {

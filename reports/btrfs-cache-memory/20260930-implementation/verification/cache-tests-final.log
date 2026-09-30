@@ -1,0 +1,116 @@
+    Blocking waiting for file lock on build directory
+   Compiling cozorocks v0.1.7
+   Compiling op-core v0.1.0 (/srv/git/odbus-verified/crates/op-core)
+   Compiling cozo v0.7.6
+   Compiling op-identity v0.1.0 (/srv/git/odbus-verified/crates/op-identity)
+   Compiling zstd-safe v7.2.4
+   Compiling futures-executor v0.3.33
+   Compiling futures v0.3.33
+   Compiling tonic-web v0.12.3
+   Compiling tonic-reflection v0.12.3
+   Compiling zstd v0.13.3
+   Compiling op-cozo-store v1.0.0 (/srv/git/odbus-verified/crates/op-cozo-store)
+   Compiling tonic-health v0.12.3
+   Compiling op-cache v0.1.0 (/srv/git/odbus-verified/crates/op-cache)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 13m 03s
+     Running unittests src/lib.rs (target/debug/deps/op_cache-b44602266435005b)
+
+running 95 tests
+test agent_registry::tests::test_agent_builder ... ok
+test agent_registry::tests::test_agent_registration ... ok
+test agent_registry::tests::test_capability_parsing ... ok
+test agent_registry::tests::test_find_by_capability ... ok
+test btrfs_cache::tests::btrfs_cache_reopens_children_and_snapshot_contains_child_data ... ignored, native Btrfs send/receive requires root; isolated fixture deletes only its own subvolumes
+test btrfs_cache::tests::clear_preserves_category_roots_and_releases_all_derived_owners ... ok
+test btrfs_cache::tests::compute_does_not_hold_lock_or_overwrite_a_concurrent_put ... ok
+test btrfs_cache::tests::concurrent_memory_inserts_never_publish_over_budget ... ok
+test btrfs_cache::tests::embedding_put_get ... ok
+test btrfs_cache::tests::expiry_invalidates_memory_evicted_metadata_and_recomputed_values ... ok
+test btrfs_cache::tests::expiry_reports_backing_failure_without_pretending_success ... ok
+test btrfs_cache::tests::failed_backing_file_delete_is_reported_and_retains_index ... ok
+test btrfs_cache::tests::index_is_compact_bounded_and_disk_fallback_survives_reopen ... ok
+test btrfs_cache::tests::kv_get_or_compute ... ok
+test btrfs_cache::tests::kv_memory_cache_serves_fast_path ... ok
+test btrfs_cache::tests::kv_overwrite_replaces_value ... ok
+test btrfs_cache::tests::kv_put_get_delete_round_trip ... ok
+test btrfs_cache::tests::malformed_embedding_and_oversized_payloads_are_rejected ... ok
+test btrfs_cache::tests::memory_budget_counts_keys_capacity_and_container_nodes ... ok
+test btrfs_cache::tests::memory_cache_clear ... ok
+test btrfs_cache::tests::memory_cache_evicts_lru_on_entry_limit ... ok
+test btrfs_cache::tests::memory_cache_evicts_on_memory_limit ... ok
+test btrfs_cache::tests::memory_cache_put_and_get ... ok
+test btrfs_cache::tests::memory_cache_remove ... ok
+test btrfs_cache::tests::numa_placement_is_stable_allowed_and_uses_free_memory ... ok
+test btrfs_cache::tests::ordinary_filesystem_creates_cache_directory_without_btrfs_command ... ok
+test btrfs_cache::tests::owning_user_can_delete_complete_readonly_cache_set ... ok
+test btrfs_cache::tests::remote_stream_arguments_reject_shell_syntax_and_traversal ... ok
+test btrfs_cache::tests::separate_handles_detect_replacement_and_deletion ... ok
+test btrfs_cache::tests::test_text_hashing ... ok
+test capability_resolver::tests::test_agent_reuse ... ok
+test capability_resolver::tests::test_excluded_agent ... ok
+test capability_resolver::tests::test_missing_capability ... ok
+test capability_resolver::tests::test_multi_capability_resolution ... ok
+test capability_resolver::tests::test_preferred_agent ... ok
+test capability_resolver::tests::test_simple_resolution ... ok
+test grpc::cache_service::tests::oversized_output_is_rejected_without_insertion ... ok
+test grpc::cache_service::tests::workstack_and_step_invalidation_match_hashed_entries ... ok
+test grpc::server::transport_security_tests::cache_compatibility_listener_cannot_bypass_plugin_admission ... ok
+test managed_process::tests::cancellation_kills_and_reaps_the_owner ... ok
+test managed_process::tests::cancelling_pipeline_kills_both_processes ... ok
+test managed_process::tests::failed_receiver_spawn_reaps_sender ... ok
+test managed_process::tests::failed_sender_does_not_wait_for_stalled_receiver ... ok
+test managed_process::tests::output_rejects_unbounded_diagnostics ... ok
+test managed_process::tests::pipeline_streams_bytes_without_capturing_them ... ok
+test numa::tests::child_default_policy_only_tolerates_restricted_or_missing_syscall ... ok
+test numa::tests::child_seccomp_denial_keeps_default_transport_usable_and_explicit_policies_strict ... ok
+test numa::tests::dynamic_nodemasks_include_machine_word_boundaries ... ok
+test numa::tests::effective_affinity_is_a_checked_allowed_intersection ... ok
+test numa::tests::malformed_and_unbounded_cpu_lists_are_rejected ... ok
+test numa::tests::native_affinity_readback_is_exact_and_caller_is_unchanged ... ok
+test numa::tests::spawned_child_affinity_leaves_parent_untouched ... ok
+test numa::tests::strategies_use_stable_sparse_node_ids_and_free_memory ... ok
+test numa::tests::system_and_node_meminfo_values_have_the_same_parser ... ok
+test numa::tests::test_apply_cpu_affinity_multi_node ... ignored, requires multi-node NUMA hardware to test meaningfully
+test numa::tests::test_apply_cpu_affinity_single_node ... ok
+test numa::tests::test_apply_memory_policy_bind ... ok
+test numa::tests::test_apply_memory_policy_default ... ok
+test numa::tests::test_apply_memory_policy_interleave ... ignored, requires multi-node NUMA hardware to test meaningfully
+test numa::tests::test_apply_memory_policy_interleave_single_node ... ok
+test numa::tests::test_numa_detection ... ok
+test numa::tests::test_numa_optimizer ... ok
+test numa::tests::test_numa_stats ... ok
+test numa::tests::test_numa_strategy_from_str ... ok
+test numa::tests::test_parse_cpu_range ... ok
+test orchestrator::tests::test_direct_agent_execution ... ok
+test orchestrator::tests::test_multi_capability_workstack ... ok
+test orchestrator::tests::test_single_capability_resolution ... ok
+test pattern_tracker::tests::test_pattern_tracker_creation ... ok
+test pattern_tracker::tests::test_promotion ... ok
+test pattern_tracker::tests::test_record_sequence ... ok
+test snapshot_manager::tests::cleanup_refuses_unowned_contents ... ok
+test snapshot_manager::tests::legacy_and_incomplete_sets_are_preserved_and_never_listed ... ok
+test snapshot_manager::tests::original_retention_and_set_naming ... ok
+test snapshot_manager::tests::transport_sets_are_excluded_from_manual_rotation ... ok
+test snapshot_manager::tests::zero_retention_fails_before_filesystem_work ... ok
+test workflow_cache::tests::test_cache_miss ... ok
+test workflow_cache::tests::test_expiration ... ok
+test workflow_cache::tests::test_invalidation ... ok
+test workflow_cache::tests::test_put_and_get ... ok
+test workflow_cache::tests::test_stats ... ok
+test workflow_cache::tests::test_workflow_cache_creation ... ok
+test workflow_executor::tests::test_agent_registration ... ok
+test workflow_executor::tests::test_caching ... ok
+test workflow_executor::tests::test_executor_creation ... ok
+test workflow_executor::tests::test_pattern_detection ... ok
+test workflow_executor::tests::test_sequence_execution ... ok
+test workflow_tracker::tests::test_pattern_promotion ... ok
+test workflow_tracker::tests::test_record_sequence ... ok
+test workflow_tracker::tests::test_stats ... ok
+test workflow_tracker::tests::test_workflow_tracker_creation ... ok
+test workstack_cache::tests::test_cache_miss ... ok
+test workstack_cache::tests::test_invalidation ... ok
+test workstack_cache::tests::test_put_and_get ... ok
+test workstack_cache::tests::test_workstack_cache_creation ... ok
+
+test result: ok. 92 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 3.79s
+

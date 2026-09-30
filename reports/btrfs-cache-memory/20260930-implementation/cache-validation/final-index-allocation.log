@@ -1,0 +1,7 @@
+case=index fixture=temporary ordinary-filesystem memory_accounting=Rust_requested_bytes
+phase=empty rust_live_bytes=254048 delta_bytes=0 peak_bytes=331865
+phase=128_rows rust_live_bytes=321504 delta_bytes=67456 peak_bytes=452200
+phase=256_rows rust_live_bytes=388960 delta_bytes=134912 peak_bytes=519112
+embedding_files=256
+phase=cleared_index rust_live_bytes=254048 delta_bytes=0 peak_bytes=577344
+phase=cache_dropped rust_live_bytes=186357 delta_bytes=-67691 peak_bytes=254048

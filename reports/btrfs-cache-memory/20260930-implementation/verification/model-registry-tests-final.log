@@ -1,0 +1,27 @@
+    Blocking waiting for file lock on build directory
+   Compiling op-cache v0.1.0 (/srv/git/odbus-verified/crates/op-cache)
+   Compiling op-snowball v1.0.0 (/srv/git/odbus-verified/crates/op-snowball)
+   Compiling op-introspection v1.0.0 (/srv/git/odbus-verified/crates/op-introspection)
+   Compiling op-inspector v1.0.0 (/srv/git/odbus-verified/crates/op-inspector)
+   Compiling op-plugins v1.0.0 (/srv/git/odbus-verified/crates/op-plugins)
+   Compiling op-tools v0.1.0 (/srv/git/odbus-verified/crates/op-tools)
+   Compiling op-mcp v0.4.0 (/srv/git/odbus-verified/crates/op-mcp)
+   Compiling op-grpc-bridge v0.1.0 (/srv/git/odbus-verified/crates/op-grpc-bridge)
+   Compiling op-cognitive-mcp v0.1.0 (/srv/git/odbus-verified/crates/op-cognitive-mcp)
+   Compiling op-llm v1.0.0 (/srv/git/odbus-verified/crates/op-llm)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 13m 49s
+     Running unittests src/lib.rs (target/debug/deps/op_grpc_bridge-4a2181cc2d09c6e1)
+
+running 9 tests
+test model_registry_dispatch::tests::fetch_sends_the_key_only_as_declared_and_bounds_the_answer ... ok
+test model_registry_dispatch::tests::later_refreshes_add_drop_and_retire ... ok
+test model_registry_dispatch::tests::list_models_pages_filters_and_searches ... ok
+test model_registry_dispatch::tests::provider_list_and_keys_must_be_protected ... ok
+test model_registry_dispatch::tests::refresh_bounds_provider_fetches_and_persists_every_provider ... ok
+test model_registry_dispatch::tests::refresh_folds_every_enabled_provider_into_the_catalog ... ok
+test model_registry_dispatch::tests::set_model_profile_records_only_an_offered_control_plane_profile ... ok
+test model_registry_dispatch::tests::single_provider_refresh_is_exact ... ok
+test model_registry_dispatch::tests::stored_errors_never_carry_a_second_line ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 634 filtered out; finished in 0.69s
+

@@ -1,0 +1,12 @@
+// Aggregate turnover/CPU counters only: these are not live-allocation counters.
+config = { max_map_keys=128; }
+uprobe:/usr/lib/libc.so.6:malloc /pid == cpid/ {
+  @malloc_calls = count();
+  @malloc_requested_bytes = sum(arg0);
+}
+uprobe:/usr/lib/libc.so.6:free /pid == cpid/ { @free_calls = count(); }
+profile:hz:49 /pid == cpid/ { @cpu_samples = count(); }
+tracepoint:kmem:kmalloc /pid == cpid/ {
+  @kernel_alloc_calls = count();
+  @kernel_allocated_bytes = sum(args.bytes_alloc);
+}

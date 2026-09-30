@@ -1,0 +1,7 @@
+case=cleanup fixture=temporary ordinary-filesystem memory_accounting=Rust_requested_bytes
+phase=empty rust_live_bytes=254050 delta_bytes=0 peak_bytes=331219
+phase=8_embeddings rust_live_bytes=2357226 delta_bytes=2103176 peak_bytes=2632335
+phase=after_cleanup_old rust_live_bytes=255810 delta_bytes=1760 peak_bytes=2366045
+removed_rows=8 remaining_files=0 hit_after_cleanup=false
+phase=after_explicit_fast_path_clear rust_live_bytes=254050 delta_bytes=0 peak_bytes=268882
+phase=cache_dropped rust_live_bytes=186359 delta_bytes=-67691 peak_bytes=264034

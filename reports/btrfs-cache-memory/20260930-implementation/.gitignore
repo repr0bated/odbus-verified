@@ -1,0 +1,13 @@
+# Rebuildable probe executables and local admitted runtime captures.
+/verification/cache-unit
+/verification/transport-unit
+/transport/native
+/numa/unit-tests
+/numa/native-policy-probe
+/snowball/focused-tests
+/snowball/profile-before
+/snowball/profile-after
+/cron/*
+!/cron/*.md
+!/cron/*.sh
+!/cron/identity-job.proposed.json

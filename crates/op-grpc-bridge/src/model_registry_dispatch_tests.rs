@@ -4,7 +4,7 @@ use std::{
     sync::Mutex,
 };
 
-use op_plugins::state_plugins::model_registry::{bounded_error, ModelRef};
+use op_plugins::state_plugins::model_registry::{ModelRef, bounded_error};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use super::*;
@@ -157,19 +157,23 @@ async fn refresh_folds_every_enabled_provider_into_the_catalog() {
     // Cheaper Inference has no key file here: an error, never a guess.
     let cheaper = by_id(&output, "cheaper_inference");
     assert_eq!(cheaper.status, "error");
-    assert!(cheaper
-        .error
-        .as_deref()
-        .unwrap()
-        .contains("key file is unavailable"));
+    assert!(
+        cheaper
+            .error
+            .as_deref()
+            .unwrap()
+            .contains("key file is unavailable")
+    );
     assert!(output.revision >= 3);
 
     let keys = lister.keys.lock().unwrap().clone();
     assert!(keys.contains(&("openrouter".into(), None)));
     assert!(keys.contains(&("opencode_go".into(), Some("go-key-123".into()))));
-    assert!(!keys
-        .iter()
-        .any(|(id, _)| id == "cheaper_inference" || id == "parked"));
+    assert!(
+        !keys
+            .iter()
+            .any(|(id, _)| id == "cheaper_inference" || id == "parked")
+    );
 
     let providers = list_providers(&fixture.env, fixture.store.clone())
         .await
@@ -379,11 +383,12 @@ async fn provider_list_and_keys_must_be_protected() {
     .unwrap();
     let go = by_id(&output, "opencode_go");
     assert_eq!(go.status, "error");
-    assert!(go
-        .error
-        .as_deref()
-        .unwrap()
-        .contains("key file is unavailable"));
+    assert!(
+        go.error
+            .as_deref()
+            .unwrap()
+            .contains("key file is unavailable")
+    );
     assert!(
         lister.keys.lock().unwrap().is_empty(),
         "no call without a key"
@@ -444,16 +449,18 @@ async fn list_models_pages_filters_and_searches() {
     assert_eq!(search.models[0].model_id, "Gamma-Pro");
     let by_name = page(None, Some("ALPHA-2 MODEL")).await.unwrap();
     assert_eq!(by_name.models.len(), 1);
-    assert!(list_models(
-        &fixture.env,
-        fixture.store.clone(),
-        ListModelsInput {
-            limit: Some(0),
-            ..Default::default()
-        }
-    )
-    .await
-    .is_err());
+    assert!(
+        list_models(
+            &fixture.env,
+            fixture.store.clone(),
+            ListModelsInput {
+                limit: Some(0),
+                ..Default::default()
+            }
+        )
+        .await
+        .is_err()
+    );
 }
 
 /// Serve one HTTP response on loopback; resolves to the raw request.
@@ -521,11 +528,13 @@ async fn fetch_sends_the_key_only_as_declared_and_bounds_the_answer() {
     fetch_models(&url, ModelListFormat::Openai, ProviderAuth::None, None)
         .await
         .unwrap();
-    assert!(!request
-        .await
-        .unwrap()
-        .to_lowercase()
-        .contains("authorization"));
+    assert!(
+        !request
+            .await
+            .unwrap()
+            .to_lowercase()
+            .contains("authorization")
+    );
 
     let (url, _) = serve_once(http("401 Unauthorized", r#"{"error":"no"}"#, "")).await;
     let error = fetch_models(
@@ -679,4 +688,65 @@ control_plane = { profile = "opencode.go_control_plane", alternatives = ["openco
         Some("opencode.go_control_plane")
     );
     assert!(cleared.model.recorded_profile.is_none());
+}
+
+#[tokio::test]
+async fn refresh_bounds_provider_fetches_and_persists_every_provider() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    struct BoundedLister {
+        active: AtomicUsize,
+        peak: AtomicUsize,
+    }
+    #[async_trait]
+    impl ModelLister for BoundedLister {
+        async fn list(
+            &self,
+            provider: &ProviderConfig,
+            _: Option<&str>,
+        ) -> Result<Vec<ObservedModel>> {
+            let active = self.active.fetch_add(1, Ordering::SeqCst) + 1;
+            self.peak.fetch_max(active, Ordering::SeqCst);
+            tokio::time::sleep(Duration::from_millis(5)).await;
+            self.active.fetch_sub(1, Ordering::SeqCst);
+            Ok(vec![ObservedModel {
+                model_id: format!("{}-model", provider.id),
+                name: None,
+                context_length: None,
+                prompt_price: None,
+                completion_price: None,
+            }])
+        }
+    }
+    let config = (0..12).map(|id| format!(
+        "[[providers]]\nid = \"p{id}\"\nname = \"Provider {id}\"\nmodels_url = \"https://provider{id}.test/models\"\nformat = \"openai\"\nauth = \"none\"\n"
+    )).collect::<String>();
+    let fixture = fixture(&config);
+    let lister = BoundedLister {
+        active: AtomicUsize::new(0),
+        peak: AtomicUsize::new(0),
+    };
+    let result = refresh(
+        &fixture.env,
+        &lister,
+        fixture.store.clone(),
+        RefreshInput { provider_id: None },
+    )
+    .await
+    .unwrap();
+    assert_eq!(result.providers.len(), 12);
+    assert_eq!(
+        lister.peak.load(Ordering::SeqCst),
+        MAX_CONCURRENT_MODEL_LISTS
+    );
+    assert_eq!(lister.active.load(Ordering::SeqCst), 0);
+    for (id, provider) in result.providers.iter().enumerate() {
+        assert_eq!(provider.provider_id, format!("p{id}"));
+        assert_eq!(provider.status, "ok");
+        let (models, _) = fixture
+            .store
+            .list_model_registry_models(Some(&provider.provider_id))
+            .unwrap();
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].model.model_id, format!("p{id}-model"));
+    }
 }

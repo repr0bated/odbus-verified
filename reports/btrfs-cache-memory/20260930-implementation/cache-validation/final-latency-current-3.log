@@ -1,0 +1,2 @@
+payload_bytes=256 reads=1000 elapsed_us=1364452 us_per_read=1364.453
+payload_bytes=65536 reads=1000 elapsed_us=1389436 us_per_read=1389.437

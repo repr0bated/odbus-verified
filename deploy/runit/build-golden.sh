@@ -75,9 +75,12 @@ TCHED_ROUTER_BASE_MANIFEST="$PROJECT_ROOT/vendor/tched-router/base-sha256sums"
 TCHED_ROUTER_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/zeroclaw-runtime.toml"
 MODEL_PROVIDERS_SOURCE="$SCRIPT_DIR/../config/model-providers.toml"
 TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/zeroclaw-skills/default"
-UI_REPO="${UI_REPO:-/srv/git/3tched.com}"
-UI_DOOR="${UI_DOOR:-https://10.0.0.2:8090}"
-UI_ARTIFACT_DIR="$PROJECT_ROOT/target/ui-artifacts/3tched-ui"
+UI_SOURCE_DIR="$PROJECT_ROOT/vendor/3tched-json-render-ui"
+UI_SOURCE_PIN="$UI_SOURCE_DIR/source.pin"
+UI_SOURCE_ARCHIVE="$UI_SOURCE_DIR/source.tar.gz"
+UI_SOURCE_MANIFEST="$UI_SOURCE_DIR/source-sha256sums"
+UI_ASSET_BUILD_HELPER="$UI_SOURCE_DIR/build-assets.sh"
+UI_ARTIFACT_DIR="$PROJECT_ROOT/target/ui-artifacts/3tched-json-render-ui"
 UI_ASSET_ARCHIVE="$UI_ARTIFACT_DIR/assets.tar.gz"
 UI_ASSET_MANIFEST="$UI_ARTIFACT_DIR/manifest.json"
 
@@ -298,42 +301,85 @@ TCHED_ROUTER_BOOTSTRAP_SKILLS_SHA256=$(
             printf '%s  %s\n' "$(sha256sum "$skill" | cut -d' ' -f1)" "$relative"
         done | sha256sum | cut -d' ' -f1
 )
-[ -d "$UI_REPO/.git" ] || die "UI repo is not a git checkout: $UI_REPO"
-[ -f "$UI_REPO/dist/index.html" ] && [ -d "$UI_REPO/dist/assets" ] ||
-    die "missing UI build; from $UI_REPO run VITE_OPDBUS_DOOR=$UI_DOOR npm run build -- --base /"
-grep -R -Fq "$UI_DOOR" "$UI_REPO/dist" ||
-    die "UI build does not contain the production door $UI_DOOR"
-[ -z "$(find "$UI_REPO/dist" -type l -print -quit)" ] ||
-    die "UI build contains a symlink"
-UI_SOURCE_HEAD=$(git -C "$UI_REPO" rev-parse HEAD)
-if [ -z "$(git -C "$UI_REPO" status --porcelain --untracked-files=no)" ]; then
-    UI_SOURCE_WORKTREE=clean
-else
-    UI_SOURCE_WORKTREE=modified
-fi
-UI_SOURCE_ARCHIVE_SHA256=$(git -C "$UI_REPO" rev-parse 'HEAD^{tree}')
-UI_SOURCE_CONTENT_SHA256=$(sha256sum "$UI_REPO/package-lock.json" | cut -d' ' -f1)
-mkdir -p "$UI_ARTIFACT_DIR"
-(
-    cd "$UI_REPO/dist" &&
-        tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
-            --mode='u+rwX,go+rX,go-w' -cf - . | gzip -n -9 > "$UI_ASSET_ARCHIVE"
-)
-UI_ASSET_SHA256=$(sha256sum "$UI_ASSET_ARCHIVE" | cut -d' ' -f1)
-UI_ASSET_BYTES=$(wc -c < "$UI_ASSET_ARCHIVE" | tr -d ' ')
-jq -n \
-    --arg head "$UI_SOURCE_HEAD" \
-    --arg worktree "$UI_SOURCE_WORKTREE" \
-    --arg tree "$UI_SOURCE_ARCHIVE_SHA256" \
-    --arg lock "$UI_SOURCE_CONTENT_SHA256" \
-    --arg door "$UI_DOOR" \
-    --arg sha "$UI_ASSET_SHA256" \
-    --argjson bytes "$UI_ASSET_BYTES" \
-    '{format:"opdbus.3tched-ui-assets.v1",
-      source:{repository:"/srv/git/3tched.com",head:$head,worktree:$worktree,tree:$tree,package_lock_sha256:$lock},
-      build:{base:"/",door:$door},
-      artifact:{name:"assets.tar.gz",sha256:$sha,bytes:$bytes}}' \
-    > "$UI_ASSET_MANIFEST"
+[ -x "$UI_ASSET_BUILD_HELPER" ] || die "missing pinned UI asset builder: $UI_ASSET_BUILD_HELPER"
+[ -f "$UI_SOURCE_PIN" ] && [ -f "$UI_SOURCE_ARCHIVE" ] && [ -f "$UI_SOURCE_MANIFEST" ] ||
+    die "pinned UI source archive, pin, or content manifest is missing under $UI_SOURCE_DIR"
+[ -f "$UI_ASSET_ARCHIVE" ] && [ -f "$UI_ASSET_MANIFEST" ] || die "missing pinned UI asset artifact; build it with:
+  $UI_ASSET_BUILD_HELPER --npm-cache /var/cache/op-dbus-build/npm --output-dir $UI_ARTIFACT_DIR"
+
+ui_pin() {
+    key=$1
+    sed -n "s/^${key}=//p" "$UI_SOURCE_PIN"
+}
+UI_PIN_FORMAT=$(ui_pin format)
+UI_PIN_HEAD=$(ui_pin source_head)
+UI_PIN_WORKTREE=$(ui_pin source_worktree)
+UI_PIN_ARCHIVE_SHA256=$(ui_pin source_archive_sha256)
+UI_PIN_CONTENT_MANIFEST_SHA256=$(ui_pin content_manifest_sha256)
+UI_PIN_ASSET_BASE=$(ui_pin asset_base)
+UI_PIN_DOOR=$(ui_pin door_default)
+[ "$UI_PIN_FORMAT" = opdbus.3tched-json-render-ui-source.v1 ] || die "unsupported pinned UI source format: $UI_PIN_FORMAT"
+case "$UI_PIN_HEAD" in *[!0-9a-f]*|'') die "invalid pinned UI source revision" ;; esac
+[ "${#UI_PIN_HEAD}" -eq 40 ] || die "pinned UI source revision must contain 40 lowercase hex characters"
+case "$UI_PIN_WORKTREE" in clean|modified) ;; *) die "invalid pinned UI worktree state" ;; esac
+[ "$UI_PIN_ASSET_BASE" = / ] || die "pinned UI asset base must be the dashboard root"
+[ -n "$UI_PIN_DOOR" ] || die "pinned UI production door is empty"
+case "$UI_PIN_ARCHIVE_SHA256" in *[!0-9a-f]*|'') die "invalid pinned UI archive digest" ;; esac
+[ "${#UI_PIN_ARCHIVE_SHA256}" -eq 64 ] || die "pinned UI archive digest must contain 64 lowercase hex characters"
+case "$UI_PIN_CONTENT_MANIFEST_SHA256" in *[!0-9a-f]*|'') die "invalid pinned UI content manifest digest" ;; esac
+[ "${#UI_PIN_CONTENT_MANIFEST_SHA256}" -eq 64 ] || die "pinned UI content manifest digest must contain 64 lowercase hex characters"
+[ "$(sha256sum "$UI_SOURCE_ARCHIVE" | cut -d' ' -f1)" = "$UI_PIN_ARCHIVE_SHA256" ] ||
+    die "pinned UI source archive does not match source.pin"
+[ "$(sha256sum "$UI_SOURCE_MANIFEST" | cut -d' ' -f1)" = "$UI_PIN_CONTENT_MANIFEST_SHA256" ] ||
+    die "pinned UI source manifest does not match source.pin"
+tar -tzf "$UI_SOURCE_ARCHIVE" | awk '
+    /^\// || /(^|\/)\.\.($|\/)/ { bad=1 }
+    !/^3tched-json-render-ui\// { bad=1 }
+    END { exit bad ? 1 : 0 }
+' || die "pinned UI source archive contains an unsafe or unexpected path"
+tar -tzf "$UI_SOURCE_ARCHIVE" | grep -qx '3tched-json-render-ui/package-lock.json' ||
+    die "pinned UI source archive is missing package-lock.json"
+"$UI_ASSET_BUILD_HELPER" --verify-only || die "pinned UI source archive failed verification"
+
+UI_SOURCE_HEAD=$(jq -er 'select(.format == "opdbus.3tched-json-render-ui-assets.v1") | .source.head | strings' "$UI_ASSET_MANIFEST") ||
+    die "UI asset manifest has an invalid format or source head"
+UI_SOURCE_WORKTREE=$(jq -er '.source.worktree | strings' "$UI_ASSET_MANIFEST") ||
+    die "UI asset manifest is missing source worktree provenance"
+UI_SOURCE_ARCHIVE_SHA256=$(jq -er '.source.archive_sha256 | strings' "$UI_ASSET_MANIFEST") ||
+    die "UI asset manifest is missing source archive provenance"
+UI_SOURCE_CONTENT_MANIFEST_SHA256=$(jq -er '.source.content_manifest_sha256 | strings' "$UI_ASSET_MANIFEST") ||
+    die "UI asset manifest is missing source content manifest provenance"
+UI_SOURCE_CONTENT_SHA256=$(jq -er '.source.package_lock_sha256 | strings' "$UI_ASSET_MANIFEST") ||
+    die "UI asset manifest is missing package-lock provenance"
+UI_PIN_PACKAGE_LOCK_SHA256=$(tar -xOzf "$UI_SOURCE_ARCHIVE" 3tched-json-render-ui/package-lock.json | sha256sum | cut -d' ' -f1)
+UI_ASSET_DOOR=$(jq -er '.build.door | strings' "$UI_ASSET_MANIFEST") ||
+    die "UI asset manifest is missing the production door"
+UI_ASSET_BASE=$(jq -er '.build.base | strings' "$UI_ASSET_MANIFEST") ||
+    die "UI asset manifest is missing the UI asset base"
+UI_ASSET_SHA256=$(jq -er '.artifact.sha256 | strings' "$UI_ASSET_MANIFEST") ||
+    die "UI asset manifest is missing the artifact digest"
+UI_ASSET_BYTES=$(jq -er '.artifact.bytes | numbers' "$UI_ASSET_MANIFEST") ||
+    die "UI asset manifest is missing the artifact size"
+UI_ASSET_NAME=$(jq -er '.artifact.name | strings' "$UI_ASSET_MANIFEST") ||
+    die "UI asset manifest is missing the artifact name"
+[ "$UI_SOURCE_HEAD" = "$UI_PIN_HEAD" ] && [ "$UI_SOURCE_WORKTREE" = "$UI_PIN_WORKTREE" ] ||
+    die "UI asset manifest source revision does not match source.pin"
+[ "$UI_SOURCE_ARCHIVE_SHA256" = "$UI_PIN_ARCHIVE_SHA256" ] ||
+    die "UI asset manifest source archive digest does not match source.pin"
+[ "$UI_SOURCE_CONTENT_MANIFEST_SHA256" = "$UI_PIN_CONTENT_MANIFEST_SHA256" ] ||
+    die "UI asset manifest content manifest digest does not match source.pin"
+[ "$UI_SOURCE_CONTENT_SHA256" = "$UI_PIN_PACKAGE_LOCK_SHA256" ] ||
+    die "UI asset manifest package-lock digest does not match the pinned source archive"
+[ "$UI_ASSET_BASE" = "$UI_PIN_ASSET_BASE" ] && [ "$UI_ASSET_BASE" = / ] ||
+    die "UI asset manifest base does not match the pinned dashboard root"
+[ "$UI_ASSET_DOOR" = "$UI_PIN_DOOR" ] || die "UI asset manifest door does not match source.pin"
+[ "$UI_ASSET_NAME" = assets.tar.gz ] || die "UI asset manifest names an unexpected artifact"
+case "$UI_ASSET_SHA256" in *[!0-9a-f]*|'') die "invalid UI asset digest in manifest" ;; esac
+[ "${#UI_ASSET_SHA256}" -eq 64 ] || die "UI asset digest must contain 64 lowercase hex characters"
+[ "$(sha256sum "$UI_ASSET_ARCHIVE" | cut -d' ' -f1)" = "$UI_ASSET_SHA256" ] ||
+    die "UI asset archive does not match its provenance manifest"
+[ "$(wc -c < "$UI_ASSET_ARCHIVE" | tr -d ' ')" = "$UI_ASSET_BYTES" ] ||
+    die "UI asset archive size does not match its provenance manifest"
 UI_ASSET_MANIFEST_SHA256=$(sha256sum "$UI_ASSET_MANIFEST" | cut -d' ' -f1)
 tar -tzf "$UI_ASSET_ARCHIVE" | awk '
     /^\// || /(^|\/)\.\.($|\/)/ { bad=1 }

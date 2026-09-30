@@ -310,13 +310,10 @@ impl ChainVectorIndex {
             .context("project_pending requires an embedder; this index was opened as a replica")?;
         let write_qdrant = project_writes_qdrant(upsert_qdrant);
 
-        let all = self.chain.blocks().await?;
-        let already_present = all.iter().filter(|block| block.has_vector).count();
-        let pending: Vec<ChainBlockRef> = all
-            .into_iter()
-            .filter(|block| !block.has_vector)
-            .take(limit.unwrap_or(usize::MAX))
-            .collect();
+        let (pending, already_present) = self
+            .chain
+            .pending_blocks(limit.unwrap_or(usize::MAX))
+            .await?;
 
         let mut embedded = 0usize;
         let mut upserted_to_qdrant = 0usize;

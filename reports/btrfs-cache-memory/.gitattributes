@@ -1,0 +1,2 @@
+# Preserve captured command output verbatim, including diff output and EOF lines.
+*.log -whitespace

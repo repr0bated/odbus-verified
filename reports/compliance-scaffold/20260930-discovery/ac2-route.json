@@ -1,0 +1,77 @@
+{
+  "captured_at": "2026-09-30T10:19:33Z",
+  "command": "../.venv/bin/python -m compliance_index route nist-sp800-53:rev5:ac-2 --limit 8",
+  "source_package": "/srv/git/repos-bulk/compliance-index",
+  "snapshot_kind": "read_only_command_capture",
+  "result": {
+    "generation": "38cdcec0a21a316013fcc13efe8682347fceb628a2b5be362ab21197c08f7173",
+    "tag": "nist-sp800-53:rev5:ac-2",
+    "retrieval_policy": "explicit_mappings_first",
+    "nodes": [
+      {
+        "data": {},
+        "id": "urn:compliance:corpus-tags:1:tag:nist-sp800-53%3Arev5%3Aac-2",
+        "kind": "tag",
+        "local_id": "nist-sp800-53:rev5:ac-2",
+        "namespace": "corpus-tags",
+        "status": "verified",
+        "title": "nist-sp800-53:rev5:ac-2",
+        "version": "1"
+      },
+      {
+        "data": {
+          "path": "rev5@5.2.0/ac-2.json",
+          "repo": "nist.gov/sp800-53"
+        },
+        "id": "urn:compliance:nist.gov%2Fsp800-53:document-v1:document:rev5%405.2.0%2Fac-2.json",
+        "kind": "document",
+        "local_id": "rev5@5.2.0/ac-2.json",
+        "namespace": "nist.gov/sp800-53",
+        "status": "verified",
+        "title": "Account Management",
+        "version": "document-v1"
+      },
+      {
+        "data": {
+          "catalog_uuid": "ea7c7688-79c5-463b-a91b-0650f2d98623",
+          "catalog_version": "5.2.0",
+          "withdrawn": false
+        },
+        "id": "urn:compliance:nist.gov%2Fsp800-53:rev5%405.2.0:control:ac-2",
+        "kind": "control",
+        "local_id": "ac-2",
+        "namespace": "nist.gov/sp800-53",
+        "status": "verified",
+        "title": "Account Management",
+        "version": "rev5@5.2.0"
+      }
+    ],
+    "paths": [
+      {
+        "src": "urn:compliance:corpus-tags:1:tag:nist-sp800-53%3Arev5%3Aac-2",
+        "dst": "urn:compliance:nist.gov%2Fsp800-53:rev5%405.2.0:control:ac-2",
+        "kind": "tagged",
+        "status": "source_asserted",
+        "evidence": {
+          "pointer": "control:ac-2",
+          "revision": "78650f02ad9321bb7b817846f8fbd4f2bcd620de",
+          "sha256": "01f37cf90ea99d92242c936cbfbdebcc338eef1f71454e2acac36cc56e9bc062",
+          "source": "https://raw.githubusercontent.com/usnistgov/oscal-content/78650f02ad9321bb7b817846f8fbd4f2bcd620de/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog.json"
+        }
+      },
+      {
+        "src": "urn:compliance:nist.gov%2Fsp800-53:rev5%405.2.0:control:ac-2",
+        "dst": "urn:compliance:nist.gov%2Fsp800-53:document-v1:document:rev5%405.2.0%2Fac-2.json",
+        "kind": "defined_in",
+        "status": "source_asserted",
+        "evidence": {
+          "pointer": "control:ac-2",
+          "revision": "78650f02ad9321bb7b817846f8fbd4f2bcd620de",
+          "sha256": "01f37cf90ea99d92242c936cbfbdebcc338eef1f71454e2acac36cc56e9bc062",
+          "source": "https://raw.githubusercontent.com/usnistgov/oscal-content/78650f02ad9321bb7b817846f8fbd4f2bcd620de/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog.json"
+        }
+      }
+    ],
+    "truncated": false
+  }
+}
