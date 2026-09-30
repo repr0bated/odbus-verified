@@ -48,9 +48,8 @@ set +a
 # accept the secret itself from the broad environment file.
 export TCHED_ROUTER_RUNTIME_ENDPOINT="${TCHED_ROUTER_RUNTIME_ENDPOINT:-http://127.0.0.1:8084}"
 export TCHED_ROUTER_RUNTIME_AGENT="${TCHED_ROUTER_RUNTIME_AGENT:-dashboard}"
-# Personal model choices use the native OpenCode session adapter. Control
-# Plane separately inherits any operator-configured native provider profile.
-export TCHED_ROUTER_REQUIRE_OPENCODE=1
+# Door selection is not limited to OpenCode profiles.
+export TCHED_ROUTER_REQUIRE_OPENCODE=0
 TCHED_ROUTER_RUNTIME_TOKEN_FILE=${TCHED_ROUTER_RUNTIME_TOKEN_FILE:-/etc/op-dbus/secrets/tched-router-runtime-token}
 unset TCHED_ROUTER_RUNTIME_TOKEN
 if [ ! -f "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ] || [ -L "$TCHED_ROUTER_RUNTIME_TOKEN_FILE" ]; then

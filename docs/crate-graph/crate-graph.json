@@ -269,7 +269,7 @@
         ],
         "has_lib": true,
         "rs_files": 146,
-        "loc": 21676,
+        "loc": 21686,
         "tests": 50,
         "unsafe_refs": 0,
         "todo": 2,
@@ -656,7 +656,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 19,
-        "loc": 6757,
+        "loc": 6756,
         "tests": 35,
         "unsafe_refs": 12,
         "todo": 0,
@@ -1953,8 +1953,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-30T01:31:43Z",
-        "commit": "d1e5edcd51def88a2aa7480dfd4b54a636d277d9",
+        "generated_at": "2026-09-30T04:48:32Z",
+        "commit": "9dd11564a13563e6c251dc2ec18aa22548c53242",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -3057,7 +3057,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 499
+        "loc": 505
       }
     },
     {
@@ -3156,7 +3156,7 @@
       "props": {
         "crate": "op-agents",
         "kind": "src",
-        "loc": 126
+        "loc": 130
       }
     },
     {
@@ -6972,7 +6972,7 @@
       "props": {
         "crate": "op-mcp",
         "kind": "src",
-        "loc": 868
+        "loc": 867
       }
     },
     {

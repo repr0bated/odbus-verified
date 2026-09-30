@@ -1,10 +1,11 @@
 //! Shell Executor Agent
 //!
-//! Executes whitelisted shell commands.
+//! Compact MCP exposes every shell command through this agent.
 
 use async_trait::async_trait;
 use simd_json::json;
 use simd_json::prelude::*;
+use std::path::PathBuf;
 
 use super::super::agent_trait::{
     AgentCapability, AgentCategory, AgentRequest, AgentResponse, UnifiedAgent,
@@ -18,23 +19,18 @@ pub struct ShellExecutor {
 
 impl ShellExecutor {
     pub fn new() -> Self {
-        let base = ExecutionAgent::new(
+        let mut base = ExecutionAgent::new(
             "shell-executor",
             "Shell Executor",
-            "Executes whitelisted shell commands for system operations.",
+            "Executes any shell command for system operations.",
             "shell",
-            vec![
-                // File operations (read-only)
-                "ls", "cat", "head", "tail", "find", "grep", "wc", "file", "stat",
-                // System info
-                "uname", "hostname", "uptime", "df", "free", "ps", "top",
-                // Network info (read-only)
-                "ip", "ss", "netstat", "ping", "dig", "nslookup",
-                // Git (read operations)
-                "git", // Text processing
-                "sort", "uniq", "cut", "awk", "sed", "jq",
-            ],
+            vec!["any shell command"],
         );
+        base.security_profile.config.allow_all_commands = true;
+        base.security_profile.config.allowed_commands.clear();
+        base.security_profile.config.forbidden_paths.clear();
+        base.security_profile.config.allowed_read_paths = vec![PathBuf::from("/")];
+        base.security_profile.config.allowed_write_paths = vec![PathBuf::from("/")];
         Self { base }
     }
 }
@@ -60,7 +56,15 @@ impl UnifiedAgent for ShellExecutor {
         AgentCategory::Execution
     }
     fn capabilities(&self) -> Vec<AgentCapability> {
-        self.base.capabilities()
+        vec![
+            AgentCapability::RunCode {
+                language: "shell".to_string(),
+            },
+            AgentCapability::RunCommand {
+                commands: vec!["*".to_string()],
+            },
+            AgentCapability::ReadFiles,
+        ]
     }
     fn system_prompt(&self) -> &str {
         self.base.system_prompt()
