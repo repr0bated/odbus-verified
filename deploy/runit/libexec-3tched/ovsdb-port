@@ -18,7 +18,7 @@ SOCK = "unix:/var/run/openvswitch/db.sock"
 def iface_mtu(port: str) -> int:
     if port == os.environ.get("NETMAKER_PORT", "netmaker"):
         return int(os.environ.get("NETMAKER_MTU", "1420"))
-    return int(os.environ.get("BRIDGE_MTU", "1420"))
+    return int(os.environ.get("BRIDGE_MTU", "1500"))
 
 
 def dump(table: str) -> dict[str, Any]:

@@ -28,6 +28,10 @@ another agent's uncommitted work.
 
 ## Handoffs
 
+### 2026-10-01 · Grok (Cursor cloud: pub0 MTU)
+- **Where:** branch `cursor/pub0-uplink-mtu-5bbc`. Source only. This session has no `pub0`. The live uplink is still MTU 1420 until `ovsbr0-eth0-up` runs with the new `BRIDGE_MTU`.
+- **What:** Open vSwitch drops non-GSO egress on `pub0` when the packet is larger than the port MTU (`1480 > 1420`, `1448 > 1420`). `BRIDGE_MTU` was 1420 on both `eth0` and `pub0`. It is 1500. `NETMAKER_MTU` stays 1420.
+
 ### 2026-09-28 · Grok (Cursor: golden and activate, picker binary)
 - **Live:** `current` → `releases/20260928T145511Z-2bdeb27`. Same commit as the previous release, with the rebuilt `op-web-server` (`197d3115…`). Grants, bridge, EMQX, and op-web pass `sv check`. Catalog unchanged (66 plugins, generation 264).
 - **Rollback:** `releases/20260928T125401Z-2bdeb27`.
@@ -51,23 +55,3 @@ another agent's uncommitted work.
 - **`cognitive_mcp.get_health`** answers from the in-process runtime and quota, matching `GetHealthOutput`. No unit test covers it, because it needs the durable Cozo runtime; `op-lungs-check` with `LUNGS_CHECK_CALL=cognitive_mcp.get_health` proves it after the release.
 - **Verified in the host worktree:** clippy `-D warnings` is clean on threetched-fs, op-grpc-bridge and op-plugins. threetched-fs passes 22/22. op-grpc-bridge passes 725, with 0 failed and 8 ignored (`-j 1`; see the SIGNALS build concern).
 - **After merge, host steps:** the usual release. An existing lungs mount keeps its old per-identity arguments, and `up` skips a mounted identity, so run `op-identity-root down` and then `up` for the chatbot, then `op-lungs-check`. From then on, `up` gives socket lungs to every identity whose session is anchored and active, including the owner's `414fbc56`.
-
-### 2026-09-28 · Claude (cloud session, lungs proven)
-- **Chatbot lungs proven live** (Grok ran it on the host at `3860fe3`): `LUNGS_CHECK_CALL=workflows.query_workflows op-lungs-check` passed every link. Chain event **84953** names actor `1262e982-14c1-44d4-0771-7ce74213211b` (the control-plane chatbot) for session `b0c777e3-0955-cd8b-3d01-ca12998cae28`. No grant was added; `snowball.read` stays off the chatbot because it is chain-wide.
-- **Found on the way:** `cognitive_mcp.get_health` fails with "cognitive_mcp projection not available", although the chatbot holds four cognitive_mcp grants. Being traced.
-- **Next:** replace the per-identity socket with one shared `/run/opdbus/lungs.sock` before humans get lungs (owner decision, OD-86).
-
-### 2026-09-28 · Grok (Cursor, host)
-- **Release:** `main` is `79a47c7` (PR #1) plus this handoff. Catalog backup is `/var/tmp/opdbus-release-20260928-preseal` (66 persisted, 66 SHM). Seal with `COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334`. Review any plugin ID missing from that backup before `opblob persist`.
-- **Chatbot Cozo:** `create` with `ARCHIVE_EXISTING=1` leaves the old persist device on `<session>-archived-<date>`. The new device's `cozo` directory starts empty. Do not copy the old store onto it.
-- **Before create:** `/run/opdbus/lungs/b0c777e3-0955-cd8b-3d01-ca12998cae28.sock` must exist after activation. If it does not, the new bridge is not the one running, and `up` would fall back to the credential path.
-
-### 2026-09-28 · Claude (cloud session, later)
-- **Rust 2024 migration** (Grok) is on `main` as `d5d6d2f` and is merged into this branch. `rustfmt.toml` still pins the 2021 style until the follow-up reformat commit.
-- **Control-plane lungs** (`d35a7c3`): the bridge serves root-only peer-to-peer D-Bus on `/run/opdbus/lungs/<session>.sock` for `OP_CONTROL_PLANE_CHATBOT_SESSION_ID`. The socket is the proof, and no SID1 is stored. Each call re-checks the session and runs through MutationEngine under the chatbot's grants. 3tchedFS has `--lungs-socket`, and `op-identity-root` prefers the socket. Tests: threetched-fs 21/21, `lungs_socket` 5/5, `dbus_identity` 4/4, clippy clean.
-- **Host steps, in order** (owner decision: the chatbot starts fresh on Raccoon):
-  1. The release, per `docs/src/getting-started/local-release-activation.md` (not scripted, by rule). It ships the new bridge, 3tchedFS, `op-identity-root` and `op-lungs-check`.
-  2. `sudo ARCHIVE_EXISTING=1 /usr/local/libexec/3tched/op-identity-root create b0c777e3-0955-cd8b-3d01-ca12998cae28`: stops the chatbot, keeps its old instance as `<session>-archived-<date>`, and makes its device and identity root with the same `user.opdbus.*` keys.
-  3. `sudo /usr/local/libexec/3tched/op-identity-root up b0c777e3-0955-cd8b-3d01-ca12998cae28`
-  4. `sudo /usr/local/libexec/3tched/op-lungs-check`: prints PASS/FAIL per link, ending with the chain event's actor. Agents (Claude, Codex, Grok) still need their own service identities before they get lungs.
-- **Cloud setup script:** retries the toolchain install until `rustc --version` runs, and installs `libprotobuf-dev libudev-dev`.

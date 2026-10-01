@@ -34,8 +34,8 @@ OVSDB_PORT=/usr/local/libexec/3tched/ovsdb-port
 
 # --- Already cut over? Then only make sure pub0 still holds the address. ---
 if [ "$("$OVSDB_PORT" port-to-br "$PHYS" 2>/dev/null || true)" = "$BRIDGE" ]; then
-    "$OVSDB_PORT" set-mtu "$PHYS" "${BRIDGE_MTU:-1420}"
-    "$OVSDB_PORT" set-mtu "$PUB" "${BRIDGE_MTU:-1420}"
+    "$OVSDB_PORT" set-mtu "$PHYS" "${BRIDGE_MTU:-1500}"
+    "$OVSDB_PORT" set-mtu "$PUB" "${BRIDGE_MTU:-1500}"
     if ip -4 -o addr show dev "$PUB" scope global | grep -q .; then
         echo "ovsbr0-eth0: $PHYS already on $BRIDGE, $PUB addressed — nothing to do"
         exit 0
@@ -70,8 +70,8 @@ fi
 
 # --- 2. Enslave. Nothing has moved yet, so a failure here is harmless. ---
 "$OVSDB_PORT" add-port "$BRIDGE" "$PHYS"
-"$OVSDB_PORT" set-mtu "$PHYS" "${BRIDGE_MTU:-1420}"
-"$OVSDB_PORT" set-mtu "$PUB" "${BRIDGE_MTU:-1420}"
+"$OVSDB_PORT" set-mtu "$PHYS" "${BRIDGE_MTU:-1500}"
+"$OVSDB_PORT" set-mtu "$PUB" "${BRIDGE_MTU:-1500}"
 ip link set dev "$PHYS" up
 
 # --- 3. One batch: the address and the route land together. ---
