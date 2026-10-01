@@ -1,0 +1,178 @@
+#!/bin/sh
+#
+# Point Cursor's Electron safeStorage at KeePassXC for the Chrome Remote
+# Desktop Plasma session.
+#
+# On KDE, Cursor otherwise selects KWallet. Inside this session that store is
+# ksecretd, so the login key never lands in KeePass. gnome-libsecret talks to
+# org.freedesktop.secrets. This script makes KeePassXC that provider and
+# stops ksecretd from claiming the name on the next login.
+#
+# Usage: cursor-use-keepass <home> <user> <group>
+# The database group KeePassXC exposes is stored inside the kdbx. This script
+# does not open the database and does not migrate existing KWallet entries.
+
+set -eu
+
+if [ "$#" -ne 3 ]; then
+    echo "usage: ${0##*/} <home> <user> <group>" >&2
+    exit 2
+fi
+
+CRD_HOME=$1
+CRD_USER=$2
+CRD_GROUP=$3
+
+if [ ! -d "$CRD_HOME" ]; then
+    echo "cursor-use-keepass: no home directory: $CRD_HOME" >&2
+    exit 1
+fi
+
+KEEPASSXC=$(command -v keepassxc || true)
+if [ -z "$KEEPASSXC" ]; then
+    echo "cursor-use-keepass: keepassxc is not installed; Cursor stays on the desktop default" >&2
+    exit 0
+fi
+
+own() {
+    chown "$CRD_USER:$CRD_GROUP" "$1"
+}
+
+ensure_dir() {
+    mkdir -p "$1"
+    own "$1"
+}
+
+# Set KEY=VALUE inside [SECTION], preserving every other line.
+ini_set() {
+    file=$1
+    section=$2
+    key=$3
+    value=$4
+    ensure_dir "$(dirname "$file")"
+    if [ ! -f "$file" ]; then
+        printf '[%s]\n%s=%s\n' "$section" "$key" "$value" > "$file"
+        own "$file"
+        return
+    fi
+    tmp=$(mktemp "${file}.XXXXXX")
+    awk -v section="$section" -v key="$key" -v value="$value" '
+        BEGIN { in_section = 0; found = 0; wrote = 0 }
+        {
+            line = $0
+            if (line ~ /^\[/) {
+                if (in_section && !wrote) {
+                    print key "=" value
+                    wrote = 1
+                }
+                name = line
+                sub(/^\[/, "", name)
+                sub(/\].*$/, "", name)
+                gsub(/^[ \t]+|[ \t]+$/, "", name)
+                in_section = (name == section)
+                if (in_section) found = 1
+            }
+            if (in_section) {
+                keyline = line
+                sub(/^[ \t]+/, "", keyline)
+                split_key = keyline
+                sub(/[ \t]*=.*/, "", split_key)
+                if (split_key == key) {
+                    print key "=" value
+                    wrote = 1
+                    next
+                }
+            }
+            print
+        }
+        END {
+            if (!found) {
+                print ""
+                print "[" section "]"
+                print key "=" value
+            } else if (!wrote) {
+                print key "=" value
+            }
+        }
+    ' "$file" > "$tmp"
+    mv "$tmp" "$file"
+    own "$file"
+}
+
+set_cursor_password_store() {
+    file=$1
+    ensure_dir "$(dirname "$file")"
+    if [ ! -f "$file" ]; then
+        cat > "$file" <<'EOF'
+// gnome-libsecret: Cursor safeStorage uses org.freedesktop.secrets (KeePassXC).
+{
+	"password-store": "gnome-libsecret"
+}
+EOF
+        own "$file"
+        return
+    fi
+    tmp=$(mktemp "${file}.XXXXXX")
+    if grep -q '"password-store"[[:space:]]*:' "$file"; then
+        sed -E 's/("password-store"[[:space:]]*:[[:space:]]*)"[^"]*"/\1"gnome-libsecret"/' "$file" > "$tmp"
+    else
+        awk '
+            BEGIN { done = 0 }
+            done == 0 && index($0, "{") > 0 {
+                brace = index($0, "{")
+                print substr($0, 1, brace)
+                print "\t\"password-store\": \"gnome-libsecret\","
+                rest = substr($0, brace + 1)
+                if (length(rest) > 0) print rest
+                done = 1
+                next
+            }
+            { print }
+            END {
+                if (done == 0) {
+                    print "{"
+                    print "\t\"password-store\": \"gnome-libsecret\""
+                    print "}"
+                }
+            }
+        ' "$file" > "$tmp"
+    fi
+    mv "$tmp" "$file"
+    own "$file"
+}
+
+set_cursor_password_store "$CRD_HOME/.cursor/argv.json"
+
+# Plasma 6: kwalletd stays as the KWallet API proxy. ksecretd must not own
+# org.freedesktop.secrets, or KeePassXC will refuse the integration.
+ini_set "$CRD_HOME/.config/kwalletrc" KSecretD Enabled false
+
+# KeePassXC reads FdoSecrets/Enabled from the roaming config. The exposed
+# group itself stays in the database.
+ini_set "$CRD_HOME/.config/keepassxc/keepassxc.ini" FdoSecrets Enabled true
+ini_set "$CRD_HOME/.config/keepassxc/keepassxc.ini" GUI LaunchAtStartup true
+
+ensure_dir "$CRD_HOME/.local/share/dbus-1/services"
+cat > "$CRD_HOME/.local/share/dbus-1/services/org.freedesktop.secrets.service" <<EOF
+[D-BUS Service]
+Name=org.freedesktop.secrets
+Exec=$KEEPASSXC
+EOF
+own "$CRD_HOME/.local/share/dbus-1/services/org.freedesktop.secrets.service"
+
+ensure_dir "$CRD_HOME/.config/autostart"
+cat > "$CRD_HOME/.config/autostart/org.keepassxc.KeePassXC.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=KeePassXC
+Comment=Secret service for this Plasma session
+Exec=$KEEPASSXC
+TryExec=$KEEPASSXC
+Terminal=false
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+EOF
+own "$CRD_HOME/.config/autostart/org.keepassxc.KeePassXC.desktop"
+
+echo "cursor-use-keepass: Cursor will use KeePassXC ($KEEPASSXC) on the next login" >&2

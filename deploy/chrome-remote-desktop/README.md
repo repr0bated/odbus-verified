@@ -40,7 +40,18 @@ there is no systemd user manager and there should not be one.
   `x11`; `wayland` sets `XDG_SESSION_TYPE=wayland` and adds
   `CHROME_REMOTE_DESKTOP_USE_WAYLAND=KDE`. The variable is tested for
   *presence* by the host script, so it is omitted entirely in x11 mode rather
-  than set empty.
+  than set empty. Before the session starts it runs `cursor-use-keepass`.
+- `cursor-use-keepass` — makes KeePassXC the Secret Service for Cursor.
+  Both the X11 (`kwin_x11`) and Wayland (`startplasma-wayland`) sessions are
+  Plasma, and Electron on Plasma picks KWallet. That puts Cursor's
+  safeStorage key in `ksecretd`, not in KeePass. The helper writes
+  `~/.cursor/argv.json` (`"password-store": "gnome-libsecret"`), sets
+  `[KSecretD] Enabled=false` in `~/.config/kwalletrc` so kwalletd stays a
+  proxy and does not own `org.freedesktop.secrets`, turns on
+  `FdoSecrets/Enabled` in KeePassXC's roaming config, and installs a session
+  autostart plus a per-user D-Bus activation file for `keepassxc`. It does
+  not open the database, does not copy KWallet entries, and does not disable
+  the KWallet subsystem.
 
 Neither is installed. Nothing on the host has been changed.
 
@@ -57,9 +68,12 @@ sudo cp /opt/google/chrome-remote-desktop/chrome-remote-desktop \
 sudo patch -d /opt/google/chrome-remote-desktop -p1 \
      < deploy/chrome-remote-desktop/wayland-no-systemd.patch
 
-# 2. Install the launcher with the session switch
+# 2. Install the launcher and the KeePassXC helper beside it
 sudo cp deploy/chrome-remote-desktop/crd-launch \
-        /usr/local/lib/chrome-remote-desktop/crd-launch
+        deploy/chrome-remote-desktop/cursor-use-keepass \
+        /usr/local/lib/chrome-remote-desktop/
+sudo chmod 755 /usr/local/lib/chrome-remote-desktop/crd-launch \
+               /usr/local/lib/chrome-remote-desktop/cursor-use-keepass
 
 # 3. Select the mode
 sudo mkdir -p /etc/opt/chrome-remote-desktop
@@ -93,6 +107,34 @@ sudo sv restart chrome-remote-desktop-jeremy
 The patch is additive — x11 mode does not enter any of the changed code — so
 reverting the mode is enough. To remove the patch entirely, restore
 `chrome-remote-desktop.bak-pre-wayland`.
+
+## Cursor and KeePassXC
+
+The helper runs as root at session start and then `chown`s the files it
+writes to the desktop user. It takes effect the next time this service
+starts. Do not restart `chrome-remote-desktop-jeremy` from inside the
+remote session; that disconnects the desktop. Have SSH open first.
+
+KeePassXC still needs one database setting, because the exposed group is
+stored inside the kdbx and this script cannot unlock it:
+
+1. Tools → Settings → Secret Service Integration → Enable KeePassXC
+   Freedesktop.org Secret Service integration.
+2. Database → Database Settings → Secret Service Integration → expose one
+   group.
+
+Until that group is exposed, KeePassXC has nowhere to put Cursor's key.
+Quit Cursor fully and open it again after the new session is up. The
+previous login was encrypted with KWallet, so Cursor asks you to sign in
+once. The new item shows up in the exposed group (Cursor / Chromium safe
+storage). `busctl --user status org.freedesktop.secrets` should name
+`keepassxc`, not `ksecretd`.
+
+KeePassXC running on the physical console is a different session bus. The
+copy that serves Cursor is the one autostarted inside this remote Plasma
+session. The native `/usr/bin/keepassxc` binary is required; if it is
+absent the helper leaves Cursor on the desktop default and the session
+still starts.
 
 ## Unknowns worth watching on first run
 
