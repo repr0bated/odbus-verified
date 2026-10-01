@@ -29,7 +29,7 @@ another agent's uncommitted work.
 ## Handoffs
 
 ### 2026-10-01 · Grok (Cursor cloud: pub0 MTU)
-- **Where:** branch `cursor/pub0-uplink-mtu-5bbc`. Source only. This session has no `pub0`. The live uplink is still MTU 1420 until `ovsbr0-eth0-up` runs with the new `BRIDGE_MTU`.
+- **Where:** branch `cursor/pub0-uplink-mtu-5bbc`, pushed, draft PR #8. This session has no `pub0`. The live uplink is still MTU 1420 until `ovsbr0-eth0-up` runs with the new `BRIDGE_MTU`.
 - **What:** Open vSwitch drops non-GSO egress on `pub0` when the packet is larger than the port MTU (`1480 > 1420`, `1448 > 1420`). `BRIDGE_MTU` was 1420 on both `eth0` and `pub0`. It is 1500. `NETMAKER_MTU` stays 1420.
 
 ### 2026-09-28 · Grok (Cursor: golden and activate, picker binary)
