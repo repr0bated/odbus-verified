@@ -1,11 +1,11 @@
-//! elevation — per-task sudo elevation for protected operations.
+//! elevation — per-task root-password elevation for protected operations.
 //!
 //! Some operations change what every user gets: the Control Plane model and
 //! the router's provider profiles, and the system-wide UI catalog. Each of
 //! these is a *protected task*. Besides the caller's verified identity (the
 //! stored SID1 session) and exact grant, a protected task needs a one-time
-//! elevation ticket for that exact call: the caller re-enters their current
-//! sudo password through `authorize_task`, which binds the ticket to the
+//! elevation ticket for that exact call: the caller enters the root
+//! password through `authorize_task`, which binds the ticket to the
 //! target plugin, method and canonical arguments. The ticket is consumed by
 //! the call it names and expires shortly after; nothing stays unlocked.
 //!
@@ -16,7 +16,7 @@
 //! protected-task policy; MutationEngine enforces it at its single dispatch
 //! choke point (op-grpc-bridge `task_elevation`).
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{PluginSchema, SideEffect};
@@ -27,7 +27,7 @@ use simd_json::OwnedValue as Value;
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 
 pub const PLUGIN_ID: &str = "elevation";
-const PLUGIN_VERSION: &str = "1.0.0";
+const PLUGIN_VERSION: &str = "1.0.1";
 pub const AUTHORIZE_CAPABILITY: &str = "elevation.authorize";
 pub const READ_CAPABILITY: &str = "elevation.read";
 /// Seconds an unused ticket stays valid.
@@ -164,7 +164,7 @@ pub struct AuthorizeTaskInput {
     pub plugin: String,
     pub method: String,
     pub args: JsonValue,
-    /// The caller's current sudo password. Checked once and discarded.
+    /// The root password. Checked once and discarded; no user map is used.
     #[schemars(extend("x-secret" = true))]
     pub password: String,
 }
@@ -229,7 +229,7 @@ pub fn elevation_schema() -> PluginSchema {
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         PLUGIN_ID,
         PLUGIN_VERSION,
-        "Per-task sudo elevation for protected operations",
+        "Per-task root-password elevation for protected operations",
         &root,
     );
     schema.category = "service".to_string();
@@ -264,7 +264,9 @@ pub fn elevation_schema() -> PluginSchema {
         AUTHORIZE_CAPABILITY.to_string(),
         op_state_store::CapabilityDecl {
             id: AUTHORIZE_CAPABILITY.to_string(),
-            description: "Grants: authorize_task (one protected call, with the caller's current sudo password).".to_string(),
+            description:
+                "Grants: authorize_task (one protected call, verified with the root password)."
+                    .to_string(),
         },
     );
     schema.capabilities.insert(

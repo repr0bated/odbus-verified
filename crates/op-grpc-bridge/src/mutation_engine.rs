@@ -137,6 +137,12 @@ struct AdmittedMethodCall {
 }
 
 fn audit_method_arguments(plugin_id: &str, method: &str, json_args: &str) -> String {
+    if plugin_id == "elevation" && method == "authorize_task" {
+        // Even a digest of this request would let audit readers test password
+        // guesses offline. Retain event attribution and the action result,
+        // but neither the password nor any password-derived request hash.
+        return serde_json::json!({ "arguments_redacted": true }).to_string();
+    }
     let private = matches!(
         plugin_id,
         "project"
@@ -1534,7 +1540,10 @@ impl MutationEngine {
             .context(
                 "this conversation's answer turn needs OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID",
             )?;
-        anyhow::ensure!(!message.is_empty(), "a conversation turn requires the human message");
+        anyhow::ensure!(
+            !message.is_empty(),
+            "a conversation turn requires the human message"
+        );
         self.open_chat_turn(
             crate::chat_response_turns::TurnOwner {
                 principal_id: scope.principal_id.clone(),
@@ -3820,8 +3829,15 @@ impl MutationEngine {
             }
             "cozo" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                let store = self.cognitive_mcp().await?.cozo_shuttle();
-                op_plugins::state_plugins::cozo::dispatch_cozo_method(store, method, &args).await?
+                if method == "refresh_system_graph" {
+                    let input: op_plugins::state_plugins::cozo::RefreshSystemGraphInput =
+                        serde_json::from_value(args)?;
+                    serde_json::to_value(self.refresh_system_graph(input.expected_revision).await?)?
+                } else {
+                    let store = self.cognitive_mcp().await?.cozo_shuttle();
+                    op_plugins::state_plugins::cozo::dispatch_cozo_method(store, method, &args)
+                        .await?
+                }
             }
             "memory" => {
                 use op_plugins::state_plugins::memory_methods::{
@@ -6795,6 +6811,19 @@ mod cognitive_dispatch_tests {
 #[cfg(test)]
 mod private_method_audit_tests {
     use super::audit_method_arguments;
+
+    #[test]
+    fn elevation_audit_contains_no_password_verifier() {
+        let first = r#"{"plugin":"tched_router","method":"config_set","args":{"path":"agents.control_plane.model_provider","value":"custom.route"},"password":"first-password"}"#;
+        let second = first.replace("first-password", "different-password");
+        let audit = audit_method_arguments("elevation", "authorize_task", first);
+        assert_eq!(
+            audit,
+            audit_method_arguments("elevation", "authorize_task", &second)
+        );
+        assert_eq!(audit, r#"{"arguments_redacted":true}"#);
+        assert!(!audit.contains("request_hash"));
+    }
 
     #[test]
     fn nested_embedding_text_and_mcp_credentials_are_digest_only() {

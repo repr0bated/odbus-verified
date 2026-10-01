@@ -94,6 +94,12 @@ struct ConfiguredProvider {
     selected_model: String,
 }
 
+fn matches_provider_selector(selector: &str, observed: &ConfiguredProvider) -> bool {
+    selector.trim().is_empty()
+        || selector.eq_ignore_ascii_case(&observed.family)
+        || selector.eq_ignore_ascii_case(&observed.reference)
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct RuntimeSelection {
     pub(crate) provider: String,
@@ -329,10 +335,7 @@ impl TchedRouterRuntimeClient {
             .with_sealed_identity(before_prompt.sealed_identity());
         let prompt = conversation_prompt(&input)?;
         let observed = client.current_provider().await?;
-        if !input.provider.trim().is_empty()
-            && !input.provider.eq_ignore_ascii_case(&observed.family)
-            && !input.provider.eq_ignore_ascii_case(&observed.reference)
-        {
+        if !matches_provider_selector(&input.provider, &observed) {
             return Err(anyhow!(
                 "requested provider '{}' differs from native selection '{}'",
                 input.provider,
@@ -1518,13 +1521,11 @@ impl TchedRouterRuntimeClient {
         );
         self.health().await?;
         let observed = self.current_provider().await?;
-        if !input.provider.trim().is_empty()
-            && !input.provider.eq_ignore_ascii_case(&observed.family)
-        {
+        if !matches_provider_selector(&input.provider, &observed) {
             return Err(anyhow!(
                 "requested provider '{}' differs from tched_router's selected provider '{}'",
                 input.provider,
-                observed.family
+                observed.reference
             ));
         }
         if !input.model.trim().is_empty()
@@ -2305,6 +2306,22 @@ mod tests {
             handshake::server::{Request, Response},
         },
     };
+
+    #[test]
+    fn chat_selector_accepts_exact_native_reference_without_confusing_catalog_keys() {
+        let selected = provider("opencode", "opencode.go_dashboard", "current-model");
+        for selector in ["", "opencode", "opencode.go_dashboard"] {
+            assert!(matches_provider_selector(selector, &selected));
+        }
+        for selector in [
+            "opencode_go",
+            "opencode.go",
+            "opencode.go_control_plane",
+            "custom.go_dashboard",
+        ] {
+            assert!(!matches_provider_selector(selector, &selected));
+        }
+    }
 
     #[tokio::test]
     async fn a2a_forwards_canonical_sid1_and_requires_native_ack() {

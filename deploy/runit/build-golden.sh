@@ -49,6 +49,7 @@ RELEASE_DIR="$PROJECT_ROOT/target/release"
 MAIL_ARTIFACT_NAME=mail-3tched-x86_64-linux-gnu-bundle.tar
 MAIL_ARTIFACT_PATH="$PROJECT_ROOT/target/container-artifacts/$MAIL_ARTIFACT_NAME"
 GRANTS_SOURCE="$SCRIPT_DIR/../security/capability-grants.json"
+ELEVATION_PAM_SOURCE="$SCRIPT_DIR/../pam/op-dbus-elevate"
 MCP_AUDIENCE_POLICY_SOURCE="$SCRIPT_DIR/../config/mcp-audience-policy.json"
 MCP_TOOLSETS_SOURCE="$SCRIPT_DIR/../config/mcp-toolsets.json"
 HOST_RUNTIME_PACKAGES_SOURCE="$SCRIPT_DIR/../config/host-runtime-packages.txt"
@@ -75,6 +76,7 @@ TCHED_ROUTER_BASE_MANIFEST="$PROJECT_ROOT/vendor/tched-router/base-sha256sums"
 TCHED_ROUTER_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/zeroclaw-runtime.toml"
 MODEL_PROVIDERS_SOURCE="$SCRIPT_DIR/../config/model-providers.toml"
 TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/zeroclaw-skills/default"
+AGENT_BUNDLE_SOURCE="$SCRIPT_DIR/../config/agents"
 UI_SOURCE_DIR="$PROJECT_ROOT/vendor/3tched-json-render-ui"
 UI_SOURCE_PIN="$UI_SOURCE_DIR/source.pin"
 UI_SOURCE_ARCHIVE="$UI_SOURCE_DIR/source.tar.gz"
@@ -221,7 +223,13 @@ BINARIES=$(find "$RELEASE_DIR" -maxdepth 1 -type f -executable ! -name '*.d' ! -
         is_retired_binary "$(basename "$bin")" || printf '%s\n' "$bin"
     done)
 [ -n "$BINARIES" ] || die "$RELEASE_DIR contains no executables"
+[ -f "$RELEASE_DIR/threetched-fs" ] && [ -x "$RELEASE_DIR/threetched-fs" ] ||
+    die "release is missing threetched-fs required by identity provisioning"
+printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/threetched-fs" ||
+    die "threetched-fs is absent from the release binary inventory"
 [ -x "$RELEASE_DIR/opblob" ] || die "release is missing opblob"
+[ -x "$RELEASE_DIR/system_graph_inventory" ] ||
+    die "release is missing system_graph_inventory; rebuild the workspace"
 [ -x "$RELEASE_DIR/op-mail-admin" ] || die "build op-mail-admin before preparing the release"
 [ -f "$MAIL_ARTIFACT_PATH" ] || die "missing mail bundle; run deploy/mail-3tched/build-container-artifact.sh after the release build"
 tar -tf "$MAIL_ARTIFACT_PATH" | awk '
@@ -293,6 +301,10 @@ strings "$TCHED_ROUTER_NATIVE_BIN" | grep -Fq 'tched_router.generation.v1' ||
 TCHED_ROUTER_BOOTSTRAP_SKILL_COUNT=$(find "$TCHED_ROUTER_BOOTSTRAP_SKILLS" -type f | wc -l)
 [ "$TCHED_ROUTER_BOOTSTRAP_SKILL_COUNT" -gt 0 ] ||
     die "tched_router bootstrap skill bundle is empty"
+[ -f "$AGENT_BUNDLE_SOURCE/AGENTS.md" ] ||
+    die "missing shared agent bundle instructions: $AGENT_BUNDLE_SOURCE/AGENTS.md"
+[ -z "$(find "$AGENT_BUNDLE_SOURCE" ! -type f ! -type d -print -quit)" ] ||
+    die "shared agent bundle must contain only regular files and directories"
 TCHED_ROUTER_BOOTSTRAP_CONFIG_SHA256=$(sha256sum "$TCHED_ROUTER_BOOTSTRAP_CONFIG" | cut -d' ' -f1)
 TCHED_ROUTER_BOOTSTRAP_SKILLS_SHA256=$(
     find "$TCHED_ROUTER_BOOTSTRAP_SKILLS" -type f -print | sort |
@@ -460,6 +472,8 @@ if [ -f "$GRANTS_SOURCE" ]; then
 fi
 [ -x "$RELEASE_DIR/op-grants-materializer" ] ||
     die "release is missing op-grants-materializer"
+[ -r "$ELEVATION_PAM_SOURCE" ] ||
+    die "missing tracked elevation PAM service: $ELEVATION_PAM_SOURCE"
 "$RELEASE_DIR/op-grants-materializer" validate-audience "$MCP_AUDIENCE_POLICY_SOURCE" >/dev/null ||
     die "MCP audience policy is invalid"
 "$RELEASE_DIR/op-grants-materializer" validate-toolsets "$MCP_TOOLSETS_SOURCE" >/dev/null ||
@@ -590,7 +604,7 @@ build_golden() {
         run install -Dm755 "$SCRIPT_DIR/../agent-runit-guard.sh" \
             "$GOLDEN_DIR/sbin/agent-runit-guard.sh"
     for helper in xray-config-mount-up emqx-prepare mcp-provider-probe opdbus-rundirs-up runit-ready-signal \
-                  op-identity-root op-lungs-check; do
+                  op-identity-root op-identity-lungs-hook op-lungs-check; do
         [ -f "$SCRIPT_DIR/libexec-3tched/$helper" ] &&
             run install -Dm755 "$SCRIPT_DIR/libexec-3tched/$helper" \
                 "$GOLDEN_DIR/libexec/3tched/$helper"
@@ -688,8 +702,14 @@ build_golden() {
         "$GOLDEN_DIR/etc/dbus-1/system.d/org.dbusmcp.conf"
     run install -Dm644 "$HOST_RUNTIME_PACKAGES_SOURCE" \
         "$GOLDEN_DIR/etc/opdbus/host-runtime-packages.txt"
+    for declaration in enabled-services retired-services retired-binaries; do
+        run install -Dm644 "$SCRIPT_DIR/$declaration" \
+            "$GOLDEN_DIR/etc/opdbus/$declaration"
+    done
     run install -Dm644 "$TCHED_ROUTER_BOOTSTRAP_CONFIG" \
         "$GOLDEN_DIR/etc/op-dbus/zeroclaw-runtime.toml"
+    run install -Dm644 "$ELEVATION_PAM_SOURCE" \
+        "$GOLDEN_DIR/etc/pam.d/op-dbus-elevate"
     # model_registry's provider list: root-owned and not writable by others,
     # or the bridge refuses it.
     run install -Dm644 "$MODEL_PROVIDERS_SOURCE" \
@@ -698,6 +718,13 @@ build_golden() {
     [ ! -e "$golden_tched_router_skills" ] || run rm -r -- "$golden_tched_router_skills"
     run install -d -m 0755 "$golden_tched_router_skills"
     run cp -a "$TCHED_ROUTER_BOOTSTRAP_SKILLS/." "$golden_tched_router_skills/"
+
+    # Versioned defaults for the read-only identity OS seed. Seed maintenance
+    # installs these with 3tchedFS; /opt/agents contains explicit overrides.
+    golden_agent_bundle="$GOLDEN_DIR/usr/share/op-dbus/agents"
+    [ ! -e "$golden_agent_bundle" ] || run rm -r -- "$golden_agent_bundle"
+    run install -d -m 0755 "$golden_agent_bundle"
+    run cp -a "$AGENT_BUNDLE_SOURCE/." "$golden_agent_bundle/"
 
     # Network configuration shipped by this release. The paths are relative
     # to the golden release tree and are activated only after snapshot receipt.
@@ -753,6 +780,22 @@ build_golden() {
         } > "$GOLDEN_DIR/MANIFEST"
     fi
     ok "wrote golden/MANIFEST (commit $COMMIT)"
+    # Derive inventory from the finished prepared tree. The graph directory and
+    # MANIFEST digest are excluded by the collector to prevent self-reference.
+    # This is preparation only: importing into live Cozo is an authenticated
+    # plugin mutation after activation, never a direct database write here.
+    run install -d -m 0755 "$GOLDEN_DIR/usr/share/op-dbus/graphs"
+    run "$RELEASE_DIR/system_graph_inventory" \
+        --prepared "$GOLDEN_DIR" \
+        --output "$GOLDEN_DIR/usr/share/op-dbus/graphs/release.json" \
+        --namespace "release:$COMMIT-$STAMP" \
+        --generated-at "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    if [ "$DRY_RUN" != 1 ]; then
+        printf '\nsystem-graph-path: usr/share/op-dbus/graphs/release.json\nsystem-graph-sha256: %s\n' \
+            "$(sha256sum "$GOLDEN_DIR/usr/share/op-dbus/graphs/release.json" | cut -d' ' -f1)" \
+            >> "$GOLDEN_DIR/MANIFEST"
+    fi
+    ok "validated prepared-release system graph"
     log "golden is ready; the read-only snapshot and btrfs send happen at deploy time"
 }
 

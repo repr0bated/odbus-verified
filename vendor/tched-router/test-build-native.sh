@@ -65,6 +65,8 @@ for path in \
     crates/zeroclaw-gateway/src/ws_stateless.rs \
     crates/zeroclaw-gateway/src/ws_stateless_tests.rs \
     crates/zeroclaw-providers/src/opencode_session.rs \
+    crates/zeroclaw-providers/src/graph_turn_reminder.rs \
+    crates/zeroclaw-providers/src/graph_turn_reminder_tests.rs \
     crates/zeroclaw-providers/src/sled_identity.rs \
     crates/zeroclaw-providers/src/stateless.rs; do
     [ ! -e "$wrong_base/$path" ] || {

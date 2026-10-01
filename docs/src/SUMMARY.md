@@ -33,6 +33,8 @@
 
 - [Service Management](operations/service-management.md)
 - [Network Operations](operations/network.md)
+- [Shared Agent Files and Chatbot Alias](operations/agent-files.md)
+- [System Dependency Graph](operations/system-graph.md)
 - [Host Socket & Network Topology (Live)](operations/host-socket-topology-live.md)
 - [Incident Response](operations/incident-response.md)
 

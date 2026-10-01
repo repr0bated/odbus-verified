@@ -55,3 +55,8 @@ zeroclaw
 incus-ct-cozo
 # MongoDB MCP provider, retired 2026-09-28.
 mongodb-mcp-server
+
+# Legacy container managers. Physical identity roots and scoped lungs belong
+# to identity-roots; guest power transitions use the identity lifecycle owner.
+incus-ct-chatbot
+incus-ct-assistant

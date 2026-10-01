@@ -164,7 +164,9 @@ impl ForcedToolPipeline {
 
             // Build request with FORCED tool usage
             let request = ChatRequest {
-                messages: current_messages.clone(),
+                messages: op_llm::graph_turn_reminder::with_system_graph_reminder(
+                    current_messages.clone(),
+                ),
                 tools: tools.clone(),
                 tool_choice: ToolChoice::Required, // ◄── THE KEY: FORCE TOOL USE
                 max_tokens: None,

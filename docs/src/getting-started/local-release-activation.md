@@ -54,6 +54,15 @@ with its corresponding native token hash. A token from a temporary gateway
 is not valid for the production gateway. This native backend provisioning
 does not introduce OP-DBUS UI pairing.
 
+Task elevation uses the static PAM service file `deploy/pam/op-dbus-elevate`,
+staged into the release and activated as `/etc/pam.d/op-dbus-elevate`. For
+each exact task, the authenticated caller authorizes the request by entering
+the root account password; PAM checks that password and account validity.
+The existing verified caller-principal and capability-grant checks remain
+in force, and the resulting one-use authorization ticket is bound to that
+principal, session, plugin, method and arguments. The workflow has no
+per-principal Unix-user map prerequisite.
+
 Control Plane inherits its provider from the native `control_plane` agent.
 Set the public service variable `TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER`
 in the prepared service environment to an existing native `family.alias`
@@ -62,12 +71,50 @@ profile, for example `openai.control_plane`, `anthropic.control_plane`, or
 the model and credentials and must already be configured through the native
 configuration owner; the variable contains no credential. Startup rejects an
 unknown profile before changing the current role. Control Plane does not
-require OpenCode inventory or a fixed model list. The dashboard inherits this
-selection without showing its Personal model picker. Personal's provider and
-model are independent. Named chatbot roles retain the `chatbot_500` runtime
+require OpenCode inventory or a fixed model list. The UI reads the same
+provider-keyed Cozo catalog for every mode, including Control Plane. Its
+protected Control Plane selection changes the selected profile's actual
+model and the dedicated agent reference together; routing metadata is not
+a separate model eligibility list. Personal's provider and model remain
+independent. Named chatbot roles retain the `chatbot_500` runtime
 profile regardless of provider selection.
 
+The provider list uses `provider_id` as its stable Cozo key (legacy `id`
+input remains accepted). Do not rename stored providers to native router
+families. Registry model records carry a separate `native_provider_id`, an
+exact ordinary-selection `family.alias`; the picker keeps the Cozo key and
+sends the native binding only when applying that exact catalog model.
+`native_profile_overrides` maps a model's recorded alternative wire profile
+to an explicitly provisioned ordinary profile. An unmapped alternative has
+no native binding. Control Plane continues to use its separate
+`control_plane_profile` and protected mutation. Binding metadata does not
+prove that a profile exists in the running native configuration: reconcile
+its endpoint and key ownership before activation. The checked-in ordinary
+bindings currently cover the Go and Cheaper Inference bootstrap profiles;
+other provider bindings still require verified native provisioning.
+
+`inference_url_prefix` records the expected HTTPS origin and API path
+namespace in the same provider metadata. Go uses
+`https://opencode.ai/zen/go`; Zen's `https://opencode.ai/zen/v1` is a distinct
+pay-as-you-go platform and must not be substituted for the owner's Go
+subscription. The UI verifies the configured route URI against this
+namespace before applying or generating, with a path-segment boundary.
+
+The registry schema changes require a matching newly sealed backend release.
+Refreshing the npm UI alone cannot add these fields to the running catalog.
+The database remains owned by `model_registry`; 3tchedFS operations call that
+owner. Do not symlink its private Cozo directory to the identity's FUSE API
+mount or to another store: the private opener rejects symlink traversal.
+
 ## Transfer
+
+The container's 3tchedFS executable, agent defaults and vendor service template
+belong in its read-only identity seed. The owner maintains that filesystem
+directly during a deliberate maintenance window; no separate seed preparation
+script is retained.
+They must not be copied into the identity's writable overlay at startup, which
+would hide subsequent seed upgrades. See [agent files](../operations/agent-files.md)
+for preparation, persistent overrides and the separate seed activation boundary.
 
 Run these as deliberate operator steps after checking the capacity budget
 and the golden manifest. The release ID contains only letters, digits,
@@ -173,10 +220,12 @@ them into place.
 | `bin/<name>` | `/usr/local/bin/<name>` for the explicit release binary inventory and `nlm` |
 | `usr/bin/zeroclaw` | `/usr/bin/zeroclaw` |
 | `usr/share/op-dbus/{native,ui}-manifests/<file>` | Same absolute host path |
+| `usr/share/op-dbus/agents` | `/usr/share/op-dbus/agents` (initial shared agent bundle) |
 | `libexec/3tched/<helper>` | `/usr/local/libexec/3tched/<helper>` for activated service dependencies |
 | `sv/<service>/{run,check,finish,log/run}` | Corresponding files in `/etc/runit/sv/<service>` |
 | `etc/opdbus/{capability-grants,mcp-audience-policy,mcp-toolsets}.json` | Corresponding protected policy files in `/etc/opdbus` |
 | `etc/op-dbus/zeroclaw-runtime.toml` and skill bundle | Corresponding bootstrap files in `/etc/op-dbus` |
+| `etc/pam.d/op-dbus-elevate` | `/etc/pam.d/op-dbus-elevate` |
 | `etc/emqx/{emqx.conf,base.hocon,acl.conf}` | Corresponding files in `/etc/emqx` |
 | `usr/local/share/op-dbus/dashboard/{index.html,assets}` | Same host paths; preserve other dashboard mounts |
 | `opt/emqx` and pinned provider installations | Explicit matching host provider paths |
@@ -212,6 +261,18 @@ Check that running executable digests match the received release, live and
 persisted catalog manifests match, authenticated MCP works, and the UI
 receives its own EMQX wake before reading private committed knowledge.
 Report any remaining backend-data failure separately from deployment.
+
+For releases carrying `usr/share/op-dbus/graphs/release.json`, verify its file
+digest against `MANIFEST`. Golden preparation regenerates this inventory but
+does not import it into the running database. After activating the matching
+Cozo contract, use an explicitly authorized identity to call
+`cozo.replace_system_graph` with the received snapshot and expected revision
+zero for its new release namespace. Runtime observations are a separate
+`cozo.refresh_system_graph` mutation. Read, import and refresh have separate
+capabilities; an MCP reminder grants none of them. See
+[System Dependency Graph](../operations/system-graph.md) for provenance,
+coverage limits and query examples. Never use the offline loader against the
+live database.
 
 ### First migration socket cleanup
 
@@ -288,6 +349,16 @@ uses the existing `cognitive_mcp.memory.write` grant. Deploy this policy with
 the matching cognitive schema and binary.
 
 ## Roll back
+
+Physical identity leaves require the dedicated-mount lifecycle implementation.
+Before registering such a leaf in Cozo, activate and verify the release that
+checks its mounted filesystem and retains attachment when the guest stops.
+The older implementation used device removal on stop. Once a populated
+physical-seed leaf is registered, do not roll the bridge back to that older
+implementation. Retain a compatible fixed bridge for recovery; an older
+catalog or filesystem snapshot alone does not make the old lifecycle safe.
+Runtime identity data must not be restored from an old backup to bypass its
+revision or recovery journals.
 
 After the first credential refresh, the durable identity store may contain a
 `transport-refresh` revision. Any rollback binary must understand that revision

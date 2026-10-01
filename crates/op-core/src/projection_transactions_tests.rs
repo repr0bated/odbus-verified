@@ -54,6 +54,23 @@ fn write(directory: &tempfile::TempDir, bytes: &[u8]) -> ProjectionCommit {
 }
 
 #[test]
+fn bounded_snapshot_rejects_aggregate_size_without_partial_state() {
+    let directory = tempfile::tempdir().unwrap();
+    let bytes = br#"{"value":1}"#;
+    write(&directory, bytes);
+    update_projection_in(root(&directory), "second", |_| Ok(Some(bytes.to_vec()))).unwrap();
+    let ids = ["plugin".into(), "second".into()];
+    assert!(
+        read_projection_snapshot_bounded_in(root(&directory), &ids, bytes.len() as u64).is_err()
+    );
+    let all = read_projection_snapshot_bounded_in(root(&directory), &ids, (bytes.len() * 2) as u64)
+        .unwrap();
+    assert_eq!(all.states.len(), 2);
+    assert_eq!(all.generation, 2);
+    assert_eq!(snapshot(&directory).states["plugin"], bytes);
+}
+
+#[test]
 fn raw_json_commit_update_delete_and_noop_keep_exact_generations() {
     let directory = tempfile::tempdir().unwrap();
     let first = write(&directory, br#"{"child":{"false":false,"zero":0}}"#);

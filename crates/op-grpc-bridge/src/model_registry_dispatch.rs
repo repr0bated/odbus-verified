@@ -393,6 +393,8 @@ pub(crate) async fn list_providers(
             let row = rows.iter().find(|row| row.provider_id == provider.id);
             ProviderStatus {
                 provider_id: provider.id.clone(),
+                native_provider_id: provider.native_provider_id.clone(),
+                inference_url_prefix: provider.inference_url_prefix.clone(),
                 name: Some(provider.name.clone()),
                 configured: true,
                 enabled: provider.enabled,
@@ -416,6 +418,8 @@ pub(crate) async fn list_providers(
             .filter(|row| !file.providers.iter().any(|p| p.id == row.provider_id))
             .map(|row| ProviderStatus {
                 provider_id: row.provider_id.clone(),
+                native_provider_id: None,
+                inference_url_prefix: None,
                 name: None,
                 configured: false,
                 enabled: false,
@@ -447,6 +451,12 @@ fn model_record(
     ModelRecord {
         provider_id: row.provider_id,
         model_id: row.model.model_id,
+        native_provider_id: provider.and_then(|provider| {
+            provider
+                .native_provider_id_for_model(recorded)
+                .map(str::to_string)
+        }),
+        inference_url_prefix: provider.and_then(|provider| provider.inference_url_prefix.clone()),
         name: row.model.name,
         context_length: row.model.context_length,
         prompt_price: row.model.prompt_price,

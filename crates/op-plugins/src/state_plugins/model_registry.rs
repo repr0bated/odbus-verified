@@ -27,9 +27,9 @@
 //! the Control Plane model remains a protected `tched_router` task
 //! (elevation); this plugin never changes a route.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{PluginSchema, SideEffect};
@@ -40,7 +40,7 @@ use simd_json::OwnedValue as Value;
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 
 pub const PLUGIN_ID: &str = "model_registry";
-const PLUGIN_VERSION: &str = "1.0.0";
+const PLUGIN_VERSION: &str = "1.1.0";
 pub const READ_CAPABILITY: &str = "model_registry.read";
 pub const REFRESH_CAPABILITY: &str = "model_registry.refresh";
 pub const MAINTAIN_CAPABILITY: &str = "model_registry.maintain";
@@ -110,8 +110,23 @@ fn enabled_default() -> bool {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ProviderConfig {
-    /// Stable id: lowercase letters, digits and `_`, starting with a letter.
+    /// Stable Cozo key, distinct from the native router profile. `id` is
+    /// accepted only for compatibility with existing provider files.
+    #[serde(rename = "provider_id", alias = "id")]
     pub id: String,
+    /// Exact ordinary-selection profile (`family.alias`) on this provider.
+    /// This is binding metadata, not evidence that the live router has it.
+    #[serde(default)]
+    pub native_provider_id: Option<String>,
+    /// HTTPS API namespace identifying this provider/platform. Route checks
+    /// require the exact origin and this path or a descendant path segment.
+    /// Go's /zen/go namespace is distinct from Zen's /zen namespace.
+    #[serde(default)]
+    pub inference_url_prefix: Option<String>,
+    /// Explicit ordinary-selection counterparts for per-model profiles
+    /// recorded by `set_model_profile`. Never derive aliases from names.
+    #[serde(default)]
+    pub native_profile_overrides: BTreeMap<String, String>,
     pub name: String,
     /// HTTPS endpoint that lists the provider's models.
     pub models_url: String,
@@ -162,6 +177,26 @@ impl ControlPlaneRouting {
 }
 
 impl ProviderConfig {
+    /// Use the default binding only when no alternative wire profile was
+    /// recorded. An unmapped alternative must not silently use another API.
+    pub fn native_provider_id_for_model(&self, recorded: Option<&str>) -> Option<&str> {
+        match recorded {
+            None => self.native_provider_id.as_deref(),
+            Some(profile)
+                if self
+                    .control_plane
+                    .as_ref()
+                    .is_some_and(|routing| routing.profile == profile) =>
+            {
+                self.native_provider_id.as_deref()
+            }
+            Some(profile) => self
+                .native_profile_overrides
+                .get(profile)
+                .map(String::as_str),
+        }
+    }
+
     /// The Control Plane profile for one of this provider's models, given
     /// the profile the catalog recorded for it.
     pub fn control_plane_profile(&self, recorded: Option<&str>) -> Option<&str> {
@@ -313,6 +348,41 @@ pub fn validate_provider(provider: &ProviderConfig) -> Result<()> {
             );
         }
     }
+    if let Some(profile) = &provider.native_provider_id {
+        ensure!(
+            valid_profile(profile),
+            "provider {} native_provider_id must be family.alias",
+            provider.id
+        );
+    }
+    if let Some(prefix) = &provider.inference_url_prefix {
+        validate_models_url(prefix)?;
+        let url = reqwest::Url::parse(prefix)?;
+        ensure!(
+            url.query().is_none(),
+            "inference_url_prefix must not have a query"
+        );
+    }
+    ensure!(
+        provider.native_profile_overrides.len() <= MAX_ALTERNATIVES,
+        "provider {} has too many native profile overrides",
+        provider.id
+    );
+    for (recorded, native) in &provider.native_profile_overrides {
+        ensure!(
+            provider
+                .control_plane
+                .as_ref()
+                .is_some_and(|routing| routing.alternatives.contains(recorded)),
+            "provider {} native override must name one of its alternative recorded profiles",
+            provider.id
+        );
+        ensure!(
+            valid_profile(native),
+            "provider {} native override must be family.alias",
+            provider.id
+        );
+    }
     Ok(())
 }
 
@@ -348,6 +418,27 @@ pub fn parse_providers_toml(text: &str) -> Result<ProvidersFile> {
                 profiles.insert(profile),
                 "control_plane profile {profile} is used by two providers"
             );
+        }
+    }
+    // Ordinary Apply must never mutate a Control Plane profile, even if
+    // it belongs to a different provider. A native profile has one owner.
+    let mut native_owners = BTreeMap::new();
+    for provider in &file.providers {
+        for native in provider
+            .native_provider_id
+            .iter()
+            .chain(provider.native_profile_overrides.values())
+        {
+            ensure!(
+                !profiles.contains(native.as_str()),
+                "native selection profile {native} is also a control_plane profile"
+            );
+            if let Some(owner) = native_owners.insert(native.as_str(), provider.id.as_str()) {
+                ensure!(
+                    owner == provider.id,
+                    "native selection profile {native} is used by two providers"
+                );
+            }
         }
     }
     Ok(file)
@@ -464,6 +555,13 @@ pub struct ListProvidersInput {}
 #[serde(deny_unknown_fields)]
 pub struct ProviderStatus {
     pub provider_id: String,
+    /// Exact default native selection key, separate from the Cozo key.
+    /// Missing bindings do not remove providers or models from the catalog.
+    #[serde(default)]
+    pub native_provider_id: Option<String>,
+    /// Expected inference API namespace, not a credential or a model filter.
+    #[serde(default)]
+    pub inference_url_prefix: Option<String>,
     /// Absent for a provider that was removed from the list.
     #[serde(default)]
     pub name: Option<String>,
@@ -530,6 +628,13 @@ pub struct ListModelsInput {
 pub struct ModelRecord {
     pub provider_id: String,
     pub model_id: String,
+    /// Exact native selection key for this model, resolved from explicit
+    /// provider metadata and the catalog's recorded profile, never guessed.
+    #[serde(default)]
+    pub native_provider_id: Option<String>,
+    /// Expected API namespace for both ordinary and protected role routes.
+    #[serde(default)]
+    pub inference_url_prefix: Option<String>,
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default)]
@@ -875,11 +980,118 @@ enabled = false
     }
 
     #[test]
+    fn provider_id_is_the_canonical_key_and_legacy_id_does_not_rekey_it() {
+        let legacy = parse_providers_toml(PROVIDERS).unwrap();
+        let canonical =
+            parse_providers_toml(&PROVIDERS.replace("\nid =", "\nprovider_id =")).unwrap();
+        assert_eq!(legacy, canonical);
+        let serialized = serde_json::to_value(&canonical.providers[0]).unwrap();
+        assert_eq!(serialized["provider_id"], "opencode_go");
+        assert!(serialized.get("id").is_none());
+        assert!(
+            parse_providers_toml(&PROVIDERS.replacen(
+                "id = \"opencode_go\"",
+                "id = \"opencode_go\"\nprovider_id = \"opencode\"",
+                1
+            ))
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn native_binding_requires_explicit_ordinary_profiles() {
+        let entry = r#"
+[[providers]]
+provider_id = "catalog_key"
+name = "Provider"
+models_url = "https://example.test/v1/models"
+format = "openai"
+auth = "none"
+native_provider_id = "custom.dashboard"
+inference_url_prefix = "https://example.test/v1"
+control_plane = { profile = "custom.control_plane", alternatives = ["openai.cp_responses", "anthropic.cp_messages"] }
+native_profile_overrides = { "openai.cp_responses" = "openai.dashboard_responses" }
+"#;
+        let file = parse_providers_toml(entry).unwrap();
+        let provider = &file.providers[0];
+        assert_eq!(
+            provider.native_provider_id_for_model(None),
+            Some("custom.dashboard")
+        );
+        assert_eq!(
+            provider.native_provider_id_for_model(Some("custom.control_plane")),
+            Some("custom.dashboard")
+        );
+        assert_eq!(
+            provider.native_provider_id_for_model(Some("openai.cp_responses")),
+            Some("openai.dashboard_responses")
+        );
+        assert_eq!(
+            provider.native_provider_id_for_model(Some("anthropic.cp_messages")),
+            None
+        );
+        assert_eq!(
+            provider.native_provider_id_for_model(Some("openai.stale_profile")),
+            None
+        );
+
+        for invalid in [
+            entry.replace("custom.dashboard", "custom"),
+            entry.replace("https://example.test/v1\"", "http://example.test/v1\""),
+            entry.replace(
+                "https://example.test/v1\"",
+                "https://example.test/v1?key=wrong\"",
+            ),
+            entry.replace(
+                "https://example.test/v1\"",
+                "https://user:password@example.test/v1\"",
+            ),
+            entry.replace("custom.dashboard", "custom.control_plane"),
+            entry.replace("openai.dashboard_responses", "custom.control_plane"),
+            entry.replace("\"openai.cp_responses\" =", "\"openai.unowned\" ="),
+        ] {
+            assert!(
+                parse_providers_toml(&invalid).is_err(),
+                "accepted invalid binding: {invalid}"
+            );
+        }
+        let second = r#"
+[[providers]]
+provider_id = "another_key"
+name = "Another provider"
+models_url = "https://another.test/v1/models"
+format = "openai"
+auth = "none"
+native_provider_id = "custom.dashboard"
+"#;
+        assert!(parse_providers_toml(&format!("{entry}{second}")).is_err());
+        let cross_cp = second.replace(
+            "native_provider_id = \"custom.dashboard\"",
+            "control_plane = { profile = \"custom.dashboard\" }",
+        );
+        assert!(parse_providers_toml(&format!("{entry}{cross_cp}")).is_err());
+    }
+
+    #[test]
     fn deployed_provider_list_is_valid() {
         let text = include_str!("../../../../deploy/config/model-providers.toml");
         let file = parse_providers_toml(text).unwrap();
         assert!(file.providers.iter().any(|p| p.id == "opencode_go"));
         assert!(file.providers.iter().any(|p| p.id == "openrouter"));
+        let go = file
+            .providers
+            .iter()
+            .find(|provider| provider.id == "opencode_go")
+            .unwrap();
+        assert_eq!(
+            go.native_provider_id.as_deref(),
+            Some("opencode.go_dashboard")
+        );
+        assert_eq!(
+            go.inference_url_prefix.as_deref(),
+            Some("https://opencode.ai/zen/go")
+        );
+        assert_eq!(go.models_url, "https://opencode.ai/zen/go/v1/models");
     }
 
     #[test]
@@ -924,7 +1136,9 @@ enabled = false
             "{PROVIDERS}\n{}",
             &PROVIDERS[PROVIDERS.find("[[providers]]").unwrap()..]
         );
-        assert!(format!("{:#}", parse_providers_toml(&twice).unwrap_err()).contains("listed twice"));
+        assert!(
+            format!("{:#}", parse_providers_toml(&twice).unwrap_err()).contains("listed twice")
+        );
         let bad_id = PROVIDERS.replace("\"opencode_go\"", "\"OpenCode\"");
         assert!(parse_providers_toml(&bad_id).is_err());
     }
@@ -998,16 +1212,20 @@ enabled = false
     #[test]
     fn list_models_input_is_bounded() {
         assert!(validate_list_models(&ListModelsInput::default()).is_ok());
-        assert!(validate_list_models(&ListModelsInput {
-            limit: Some(MAX_PAGE + 1),
-            ..Default::default()
-        })
-        .is_err());
-        assert!(validate_list_models(&ListModelsInput {
-            query: Some(" padded".into()),
-            ..Default::default()
-        })
-        .is_err());
+        assert!(
+            validate_list_models(&ListModelsInput {
+                limit: Some(MAX_PAGE + 1),
+                ..Default::default()
+            })
+            .is_err()
+        );
+        assert!(
+            validate_list_models(&ListModelsInput {
+                query: Some(" padded".into()),
+                ..Default::default()
+            })
+            .is_err()
+        );
     }
 
     #[test]

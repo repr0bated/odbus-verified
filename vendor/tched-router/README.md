@@ -58,6 +58,22 @@ OpenCode's connected provider catalog and excludes the `openrouter` provider.
 The live catalog path preserves the configured alias options so the local
 transport marker reaches the factory without entering an upstream request.
 
+Patch 0002 also installs a token-light `System graph:` reminder on every
+in-process inference made through the canonical provider factory. The provider
+wrapper owns this trusted system line; the bridge leaves flattened native user
+prompts unchanged. All unary and streaming interfaces reconstruct it at each
+request, including autonomous tool iterations and after context compaction.
+Only the exact leading line in system-role content is deduplicated; arbitrary
+user/tool text cannot suppress or replace it. Configured `messages` overrides
+retain their content and settings while receiving the same reminder in their
+winning serialized messages. System-merge model presets remain respected.
+The reminder performs no graph read and grants no capabilities. It directs
+identity-bound 3tchedFS discovery and provenance/coverage checks. Opaque turns
+inside external CLI providers and IDE model inference are outside this native
+guarantee. Activation requires a new provenance-verified native build and the
+normal prepared-snapshot release; changing this source does not update the
+running executable.
+
 The HTTP contract was checked against OpenCode 1.18.31's generated OpenAPI:
 `GET /provider`, `POST /session`, `POST /session/:id/message`,
 `POST /session/:id/abort`, and `DELETE /session/:id`. The adapter does not read
@@ -91,6 +107,7 @@ cargo clippy --locked -p zeroclaw-api -p zeroclaw-providers -p zeroclaw-runtime 
 cargo test --locked -p zeroclaw-providers -p zeroclaw-gateway --lib stateless
 cargo test --locked -p zeroclaw-providers --lib opencode_session
 cargo test --locked -p zeroclaw-providers --lib sled_identity
+cargo test --locked -p zeroclaw-providers --lib graph_turn --target x86_64-unknown-linux-gnu
 cargo test --locked -p zeroclaw-gateway --lib ws_stateless
 cargo test --locked -p zeroclaw-runtime --lib model_catalog_with_config
 cargo test --locked -p zeroclaw-providers -p zeroclaw-gateway --lib eof_after_stop_reason_without_message_stop_surfaces_error_not_final

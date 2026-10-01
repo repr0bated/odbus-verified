@@ -1452,3 +1452,387 @@ fn absent_seed_provision_journal_fences_native_intent_and_unrelated_identity_cas
             .is_err()
     );
 }
+
+fn physical_fixture(store: &CozoGraphShuttle) -> IdentityPhysicalRootMigration {
+    let (mut record, genesis, _) = legacy_credential_fixture();
+    let sid = record.session_id.clone();
+    record.btrfs_device_json = serde_json::json!({"device_path":"/old/leaf", "mount_point":"/old/persist", "btrfs_uuid":"old-fsid", "cozo_id":"retained-owner", "attached":true}).to_string();
+    let absent = store.read_identity_revision(&sid).unwrap();
+    for (at, phase) in [
+        "prepared",
+        "leaf-intent",
+        "leaf-ready",
+        "persist-intent",
+        "persist-ready",
+        "pool-import-intent",
+        "pool-ready",
+        "instance-create-intent",
+        "instance-ready",
+        "verified",
+    ]
+    .iter()
+    .enumerate()
+    {
+        store
+            .append_seed_provision_phase(
+                &sid,
+                &"a".repeat(64),
+                "seed-fixture",
+                phase,
+                &absent,
+                at as i64 + 1,
+            )
+            .unwrap();
+    }
+    store
+        .apply_identity_intent(
+            &sid,
+            "seed-fixture-identity",
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: absent,
+                record: Some(record),
+                genesis: Some(genesis),
+            })),
+        )
+        .unwrap();
+    let expected = store.read_identity_revision(&sid).unwrap();
+    let seed = store
+        .append_seed_provision_phase(
+            &sid,
+            &"a".repeat(64),
+            "seed-fixture",
+            "identity-committed",
+            &expected,
+            11,
+        )
+        .unwrap();
+    let mut record = expected.record.clone().unwrap();
+    record.btrfs_device_json = serde_json::json!({"device_path":"/new/leaf", "mount_point":"/new/persist", "btrfs_uuid":"new-fsid", "cozo_id":"retained-owner", "attached":true}).to_string();
+    record.instance_json =
+        serde_json::json!({"name":sid, "status":"Stopped", "native_uuid":"new-native"}).to_string();
+    record.mutation_index += 1;
+    IdentityPhysicalRootMigration {
+        expected,
+        record,
+        expected_root_repair: None,
+        expected_seed_provision: Some(seed),
+        plan_sha256: "b".repeat(64),
+        provenance_json: "{\"receipt\":\"kernel-proof\"}".into(),
+    }
+}
+
+fn physical_submit(
+    store: &CozoGraphShuttle,
+    migration: IdentityPhysicalRootMigration,
+) -> std::result::Result<IdentityCommit, CozoError> {
+    let sid = migration.expected.session_id.clone();
+    let operation = format!("physical-migrate-{}", migration.plan_sha256);
+    store.apply_identity_intent(
+        &sid,
+        &operation,
+        IdentityIntent::MigratePhysicalRoot(Box::new(migration)),
+    )
+}
+
+#[test]
+fn physical_migration_preserves_authority_history_and_replays() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let migration = physical_fixture(&store);
+    let sid = migration.expected.session_id.clone();
+    let old = migration.expected.clone();
+    let committed = physical_submit(&store, migration).unwrap();
+    let receipt = store.read_physical_root_migration(&sid).unwrap().unwrap();
+    assert_eq!(receipt.committed_revision, old.revision + 1);
+    assert_eq!(committed.current.genesis, old.genesis);
+    let mut preserved = committed.current.record.clone().unwrap();
+    preserved
+        .btrfs_device_json
+        .clone_from(&old.record.as_ref().unwrap().btrfs_device_json);
+    preserved
+        .instance_json
+        .clone_from(&old.record.as_ref().unwrap().instance_json);
+    preserved.mutation_index -= 1;
+    assert_eq!(Some(preserved), old.record);
+    let old_seed = store.read_seed_provision_journal(&sid).unwrap();
+    let replay = IdentityPhysicalRootMigration {
+        expected: old.clone(),
+        record: committed.current.record.clone().unwrap(),
+        expected_root_repair: None,
+        expected_seed_provision: old_seed.clone(),
+        plan_sha256: receipt.plan_sha256.clone(),
+        provenance_json: receipt.provenance_json.clone(),
+    };
+    assert!(physical_submit(&store, replay).unwrap().replayed);
+    assert_eq!(store.read_seed_provision_journal(&sid).unwrap(), old_seed);
+    let history = cozo_run(&store.db, "?[old_btrfs_device_json,old_instance_json,old_journals_json] := *identity_physical_root_history{session_id,old_btrfs_device_json,old_instance_json,old_journals_json}", BTreeMap::new()).unwrap();
+    assert_eq!(history.rows.len(), 1);
+    assert_eq!(
+        string(&history.rows[0], 0).unwrap(),
+        old.record.as_ref().unwrap().btrfs_device_json
+    );
+    assert_eq!(
+        string(&history.rows[0], 1).unwrap(),
+        old.record.as_ref().unwrap().instance_json
+    );
+    assert!(
+        string(&history.rows[0], 2)
+            .unwrap()
+            .contains("identity-committed")
+    );
+    let inventory = store
+        .inspect_identity_inventory(crate::IdentityInventoryQuery {
+            after_session_id: None,
+            limit: 50,
+        })
+        .unwrap();
+    assert_eq!(
+        inventory.entries[0].physical_root_migration_revision,
+        Some(committed.current.revision)
+    );
+    let public = serde_json::to_string(&inventory).unwrap();
+    assert!(
+        !public.contains("kernel-proof")
+            && !public.contains("retained-owner")
+            && !public.contains("SID1")
+    );
+    for changed in ["device", "instance"] {
+        let mut row = committed.current.record.clone().unwrap();
+        if changed == "device" {
+            row.btrfs_device_json = "{}".into();
+        } else {
+            row.instance_json = "{}".into();
+        }
+        assert!(
+            store
+                .apply_identity_intent(
+                    &sid,
+                    "ordinary-overwrite",
+                    IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                        expected: committed.current.clone(),
+                        record: Some(row),
+                        genesis: committed.current.genesis.clone()
+                    }))
+                )
+                .is_err()
+        );
+    }
+}
+
+#[test]
+fn physical_migration_rejects_changed_authority_journal_and_overflow() {
+    for change in [
+        "key",
+        "sid1",
+        "principal",
+        "active",
+        "last-seen",
+        "cozo",
+        "journal",
+        "oversize",
+        "index",
+    ] {
+        let store = CozoGraphShuttle::new_in_memory().unwrap();
+        let mut migration = physical_fixture(&store);
+        let old = migration.expected.clone();
+        match change {
+            "key" => migration.record.wireguard_pubkey = "other".into(),
+            "sid1" => migration.record.sealed_id = "other".into(),
+            "principal" => migration.record.principal_kind = Some("service".into()),
+            "active" => migration.record.active = !migration.record.active,
+            "last-seen" => migration.record.last_seen_at += 1,
+            "cozo" => {
+                migration.record.btrfs_device_json = migration
+                    .record
+                    .btrfs_device_json
+                    .replace("retained-owner", "new-owner")
+            }
+            "journal" => {
+                migration
+                    .expected_seed_provision
+                    .as_mut()
+                    .unwrap()
+                    .plan_sha256 = "c".repeat(64)
+            }
+            "oversize" => migration.provenance_json = "x".repeat(65537),
+            "index" => migration.record.mutation_index = i64::MAX,
+            _ => unreachable!(),
+        }
+        assert!(physical_submit(&store, migration).is_err(), "{change}");
+        assert_eq!(store.read_identity_revision(&old.session_id).unwrap(), old);
+        assert!(
+            store
+                .read_physical_root_migration(&old.session_id)
+                .unwrap()
+                .is_none()
+        );
+    }
+}
+
+#[test]
+fn physical_migration_rolls_back_receipt_and_identity_together() {
+    for point in ["after_row", "before_revision", "before_commit"] {
+        let store = CozoGraphShuttle::new_in_memory().unwrap();
+        let migration = physical_fixture(&store);
+        let old = migration.expected.clone();
+        inject(point);
+        assert!(physical_submit(&store, migration).is_err());
+        assert_eq!(store.read_identity_revision(&old.session_id).unwrap(), old);
+        assert!(
+            store
+                .read_physical_root_migration(&old.session_id)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            cozo_run(
+                &store.db,
+                "?[session_id] := *identity_physical_root_history{session_id}",
+                BTreeMap::new()
+            )
+            .unwrap()
+            .rows
+            .is_empty()
+        );
+    }
+}
+
+#[test]
+fn physical_migration_refuses_conflict_incomplete_history_and_repeat() {
+    for failure in ["revision", "incomplete", "absent"] {
+        let store = CozoGraphShuttle::new_in_memory().unwrap();
+        let mut migration = physical_fixture(&store);
+        let sid = migration.expected.session_id.clone();
+        match failure {
+            "revision" => {
+                store
+                    .apply_identity_intent(
+                        &sid,
+                        "advance",
+                        IdentityIntent::AdvanceMutationIndex { event_id: 99 },
+                    )
+                    .unwrap();
+            }
+            "incomplete" => {
+                cozo_run(&store.db, "?[session_id,phase] <- [[$sid,'verified']] :update identity_seed_provisions {session_id => phase}", sid_params(&sid)).unwrap();
+                migration.expected_seed_provision.as_mut().unwrap().phase = "verified".into();
+            }
+            "absent" => {
+                migration.expected_seed_provision = None;
+            }
+            _ => unreachable!(),
+        }
+        let before = store.read_identity_revision(&sid).unwrap();
+        assert!(physical_submit(&store, migration).is_err(), "{failure}");
+        assert_eq!(store.read_identity_revision(&sid).unwrap(), before);
+        assert!(store.read_physical_root_migration(&sid).unwrap().is_none());
+    }
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let migration = physical_fixture(&store);
+    let old = migration.expected.clone();
+    let seed = migration.expected_seed_provision.clone();
+    let commit = physical_submit(&store, migration).unwrap();
+    let mut replay = IdentityPhysicalRootMigration {
+        expected: old,
+        record: commit.current.record.clone().unwrap(),
+        expected_root_repair: None,
+        expected_seed_provision: seed.clone(),
+        plan_sha256: "b".repeat(64),
+        provenance_json: "{\"receipt\":\"kernel-proof\"}".into(),
+    };
+    replay.expected.operation_id = "fabricated-old-op".into();
+    assert!(physical_submit(&store, replay).is_err());
+    let mut second = commit.current.record.clone().unwrap();
+    second.btrfs_device_json = second.btrfs_device_json.replace("new-fsid", "another-fsid");
+    second.mutation_index += 1;
+    assert!(
+        physical_submit(
+            &store,
+            IdentityPhysicalRootMigration {
+                expected: commit.current,
+                record: second,
+                expected_root_repair: None,
+                expected_seed_provision: seed,
+                plan_sha256: "c".repeat(64),
+                provenance_json: "{}".into()
+            }
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn physical_migration_survives_private_persistent_reopen_and_power_updates() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("private");
+    let (sid, receipt) = {
+        let store = CozoGraphShuttle::new_persistent_private(path.clone()).unwrap();
+        let migration = physical_fixture(&store);
+        let sid = migration.expected.session_id.clone();
+        let current = physical_submit(&store, migration).unwrap().current;
+        let mut record = current.record.clone().unwrap();
+        let mut instance: Value = serde_json::from_str(&record.instance_json).unwrap();
+        instance["status"] = Value::String("Running".into());
+        record.instance_json = instance.to_string();
+        store
+            .apply_identity_intent(
+                &sid,
+                "power-observation",
+                IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                    expected: current.clone(),
+                    record: Some(record),
+                    genesis: current.genesis,
+                })),
+            )
+            .unwrap();
+        let receipt = store.read_physical_root_migration(&sid).unwrap().unwrap();
+        (sid, receipt)
+    };
+    let store = reopen(&path);
+    assert_eq!(
+        store.read_physical_root_migration(&sid).unwrap(),
+        Some(receipt.clone())
+    );
+    let row = store.read_identity_revision(&sid).unwrap().record.unwrap();
+    assert!(physical_root_instance_binding_matches(
+        &receipt.instance_json,
+        &row.instance_json
+    ));
+    assert_eq!(
+        store
+            .read_seed_provision_journal(&sid)
+            .unwrap()
+            .unwrap()
+            .phase,
+        "identity-committed"
+    );
+}
+
+#[test]
+fn physical_migration_power_readback_cannot_relax_native_security() {
+    let pinned = serde_json::json!({"name":"identity", "status":"Stopped", "status_code":102,
+        "config":{"volatile.last_state.power":"STOPPED", "security.privileged":"false", "volatile.last_state.idmap":"pinned"},
+        "expanded_config":{"volatile.last_state.power":"STOPPED", "security.nesting":"false"}});
+    let mut running = pinned.clone();
+    running["status"] = Value::String("Running".into());
+    running["status_code"] = Value::from(103);
+    for field in ["config", "expanded_config"] {
+        running[field]["volatile.last_state.power"] = Value::String("RUNNING".into());
+    }
+    assert!(physical_root_instance_binding_matches(
+        &pinned.to_string(),
+        &running.to_string()
+    ));
+    for (field, key, replacement) in [
+        ("config", "volatile.last_state.power", "STOPPED"),
+        ("config", "volatile.last_state.idmap", "changed"),
+        ("config", "security.privileged", "true"),
+        ("expanded_config", "security.nesting", "true"),
+    ] {
+        let mut changed = running.clone();
+        changed[field][key] = Value::String(replacement.into());
+        assert!(
+            !physical_root_instance_binding_matches(&pinned.to_string(), &changed.to_string()),
+            "{key}"
+        );
+    }
+}

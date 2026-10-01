@@ -12,11 +12,11 @@ use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use op_cozo_store::{CozoGraphShuttle, DataValue, NamedRows, Num, ScriptMutability, Vector};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
 use super::{
@@ -1164,6 +1164,55 @@ fn dispatch_sync(
     args: &Value,
 ) -> Result<Value> {
     match method {
+        "list_system_graphs" => {
+            let input = serde_json::from_value(args.clone())?;
+            Ok(serde_json::to_value(store.list_system_graphs(&input)?)?)
+        }
+        "replace_system_graph" => {
+            let input: super::ReplaceSystemGraphInput = serde_json::from_value(args.clone())?;
+            ensure!(
+                !input.snapshot.namespace.starts_with("runtime:")
+                    && input.snapshot.provenance.kind
+                        != op_cozo_store::GraphProvenanceKind::ObservedRuntime,
+                "observed runtime snapshots are owned by refresh_system_graph"
+            );
+            ensure!(
+                input
+                    .snapshot
+                    .edges
+                    .iter()
+                    .all(|edge| edge.evidence.iter().all(|evidence| {
+                        evidence.assertion != op_cozo_store::GraphAssertion::Observed
+                    })),
+                "imported inventories may declare or infer relationships; observed evidence requires refresh_system_graph"
+            );
+            Ok(serde_json::to_value(store.replace_system_graph(
+                &input.snapshot,
+                input.expected_revision,
+            )?)?)
+        }
+        "system_graph_status" => {
+            let input: super::SystemGraphStatusInput = serde_json::from_value(args.clone())?;
+            Ok(serde_json::to_value(super::SystemGraphStatusOutput {
+                snapshot: store.system_graph_status(&input.namespace)?,
+            })?)
+        }
+        "query_system_graph_nodes" => {
+            let input = serde_json::from_value(args.clone())?;
+            Ok(serde_json::to_value(
+                store.query_system_graph_nodes(&input)?,
+            )?)
+        }
+        "query_system_graph_edges" => {
+            let input = serde_json::from_value(args.clone())?;
+            Ok(serde_json::to_value(
+                store.query_system_graph_edges(&input)?,
+            )?)
+        }
+        "traverse_system_graph" => {
+            let input = serde_json::from_value(args.clone())?;
+            Ok(serde_json::to_value(store.traverse_system_graph(&input)?)?)
+        }
         "run_query" => {
             let input: RunQueryInput = serde_json::from_value(args.clone())?;
             ensure!(

@@ -13,6 +13,8 @@ cozo = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+schemars = { workspace = true }
+sha2 = { workspace = true }
 op-identity = { path = "../op-identity" }
 
 [[bin]]

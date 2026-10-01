@@ -1,0 +1,17 @@
+[Unit]
+Description=Relay identity internet proxy traffic to its assigned Unix socket
+After=local-fs.target
+Requires=op-identity-egress.socket
+After=op-identity-egress.socket
+
+[Service]
+Type=notify
+EnvironmentFile=/etc/op-dbus/identity-egress.env
+ExecStartPre=/usr/bin/test -S ${OP_EGRESS_UNIX_SOCKET}
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --connections-max=128 --exit-idle-time=5min ${OP_EGRESS_UNIX_SOCKET}
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+Restart=on-failure
+RestartSec=2s

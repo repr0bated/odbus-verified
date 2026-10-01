@@ -1,0 +1,8 @@
+sample1 2026-09-30T17:30:57Z rss_kB=13242664 rss_MiB=12932.289 swap_kB=4730852 swap_MiB=4619.973 combined_MiB=17552.262 hostSwap_MiB=9215.141 hostAvailable_MiB=10032.410 pswpin= pswpout=
+sample2 2026-09-30T17:31:38Z rss_kB=13243660 rss_MiB=12933.262 swap_kB=4729856 swap_MiB=4619.000 combined_MiB=17552.262 hostSwap_MiB=9213.121 hostAvailable_MiB=9688.230 pswpin=278284 pswpout=841430
+sample3 2026-09-30T17:31:58Z rss_kB=13243660 rss_MiB=12933.262 swap_kB=4729856 swap_MiB=4619.000 combined_MiB=17552.262 hostSwap_MiB=9212.766 hostAvailable_MiB=9295.758 pswpin=278291 pswpout=841430
+sample4 2026-09-30T17:32:19Z rss_kB=13443008 rss_MiB=13127.938 swap_kB=4530612 swap_MiB=4424.426 combined_MiB=17552.363 hostSwap_MiB=9017.379 hostAvailable_MiB=7950.262 pswpin=278695 pswpout=841430
+delta1-2 rss_MiB=0.973 swap_MiB=-0.973 combined_MiB=0.000
+delta2-3 rss_MiB=0.000 swap_MiB=0.000 combined_MiB=0.000
+delta3-4 rss_MiB=194.676 swap_MiB=-194.574 combined_MiB=0.102
+overall rss_MiB=195.648 swap_MiB=-195.547 combined_MiB=0.102 hostSwap_MiB=-197.762 hostAvailable_MiB=-2082.148

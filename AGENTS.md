@@ -13,6 +13,92 @@ At the start of every session, before any analysis, planning, edits, or subagent
 
 Mandatory even when the task does not mention these domains. Every subagent and model handoff must repeat the preload for its own session — a parent's preload does not count for a child. For OP-DBUS PluginSchema, generated plugin services, reflection, and seal/freeze/hot work, `grpc-expert` takes precedence over the generic `grpc-protocol-expert`; use the generic skill for protocol, channel, TLS, streaming, and observability concerns.
 
+The container is the identity. 3tchedFS is its lungs: the local, typed
+filesystem interface projected from the sealed blobs and live SHM state.
+
+- Begin with the identity's mounted 3tchedFS namespace.
+- Use its declared state and operation files for supported actions.
+- Discover operation arguments, results, and errors through that namespace;
+  do not invent parallel API clients, endpoints, or schema definitions.
+- Preserve identity and capability enforcement through every operation.
+  Local filesystem access does not remove the underlying permission boundary.
+- Verify completion through the operation receipt and resulting authoritative
+  state, not merely a successful local write.
+- If a required surface is absent or denied, diagnose the projection,
+  capability, or backing implementation. Do not route around the identity.
+- Use underlying D-Bus/RPC interfaces only when explicitly working on or
+  diagnosing that infrastructure through its supported maintenance path.
+## Agent operating contract
+
+### Scope and execution
+- Identify the requested outcome, affected components, and evidence needed
+  to show completion before editing.
+- Maintain one shared task with clear file ownership when delegating.
+  Subagents inherit the same scope and permission limits.
+- Complete authorized work autonomously. Do not ask permission for routine
+  reads, isolated tests, reversible edits, or implementation choices.
+- Follow demonstrated dependencies. Do not expand a repair into unrelated
+  refactoring, new infrastructure, or speculative optimization.
+- When new evidence expands the scope, state why and update the task.
+
+### Identity, permissions, and grants
+- Use the identity and supported control-plane entry point assigned to
+  the task. Preserve caller identity through delegated work.
+- Existing authorization persists; do not ask for the same approval twice.
+- A denied operation is evidence of a permission boundary. Record the
+  operation, caller, exact missing capability or policy, and error.
+- Do not bypass a denial through another identity, direct database edits,
+  alternate transports, or privileged host commands.
+- Do not broaden grants, weaken autonomy/security policies, expose secrets,
+  or change unrelated identities to make a task pass.
+- If a permission change is necessary, first prepare the smallest concrete
+  change: affected principal, capability, resource scope, duration, expected
+  effect, verification, and rollback. Request approval only for the part
+  not already explicitly authorized.
+
+### Evidence and verification
+- Distinguish proposed, implemented, tested, and deployed work.
+- Verify the complete affected workflow, including failure and cancellation
+  paths where relevant. A successful component test is not end-to-end proof.
+- Use disposable fixtures and bounded workloads. Preserve authoritative
+  data and unrelated work.
+- Report failed or unavailable checks honestly. Do not convert missing
+  coverage into a pass or repeatedly run unchanged failing checks.
+- Prefer the smallest evidence-backed fix. Add technology only when a
+  measured problem justifies its complexity.
+
+### Shared memory and handoff
+- Sync decisions, conversations, and tool results to the shared repository
+  with agent identity, timestamps, task ID, and source references.
+- Use NotebookLM to recover context. Verify current code, permissions,
+  configuration, and deployment state against their authoritative sources.
+- Record the current commit, modified files, validation results, unresolved
+  blockers, and exact next action. Update stale conclusions explicitly.
+- Never describe planned work or another agent's claim as completed work.
+
+### Completion
+- Finish with the outcome, changes, verification, remaining limitations,
+  and deployment status.
+- Stop when the requested outcome is verified; do not continue into
+  speculative optimization or unrelated cleanup.
+
+
+```
+### Memory routing and authority
+- Maintain a map of each memory source: its purpose, scope, owner, and
+  how to retrieve and update it.
+- Retrieve relevant prior decisions before repeating an investigation
+  or proposing an architectural change.
+- Treat conversations and tool histories as evidence of prior work.
+  Verify present code, deployment, permissions, and runtime state at
+  their authoritative sources.
+- When sources conflict, identify the disagreement, compare dates and
+  provenance, and verify the affected claim. Do not silently pick one.
+- Write findings back to the appropriate context with source links,
+  verification status, and uncertainty. Mark superseded conclusions.
+- Store secrets only in the designated secret store, never in general
+  conversation memory.
+```
 ## Host-service policy (runit)
 
 This server runs **Artix Linux with glibc**, not Chimera or a musl-based host.
@@ -94,6 +180,14 @@ but are outside workspace membership; `op-ml` remains disabled for the ort API b
 **Rust-first: no new Python.** New automation, probes, and helpers go in Rust (`cargo run --bin <name> -p <crate> -- <args>`, a small binary in the relevant crate, or a `cargo-script`-style one-shot) or in shell + POSIX tools (`jq`, `curl`, `busctl`, `sv`). Do not add new `.py` files to the repo. Pre-existing scripts under `scripts/` (`export-llm-sessions-to-notebooklm-sources.py`, `or-fusion-archive.py`, `notebook-sources-cleanup.py`, etc.) are grandfathered — maintain them in place, don't propagate the pattern.
 
 All cargo commands run from repo root:
+
+Delegate Cargo execution to a subagent using the least-expensive available
+model that preserves accuracy, completeness and care, subject to the owner's
+current session preference. This includes metadata, formatting, checks,
+builds, tests, Clippy and scripts that invoke Cargo. Keep these repository
+instructions model-agnostic; record a temporary model choice in the session
+handoff. The primary agent stays available for
+source review, decisions and user communication.
 
 ```bash
 cargo build --workspace
@@ -186,7 +280,8 @@ in one agent's private memory is invisible to the others, so it does not count.
 
 ## Subagent and model selection
 
-**Owner preference (2026-09-13, model names withdrawn 2026-09-24): assess task
+**Owner preference (2026-09-13, model names withdrawn 2026-09-24,
+reaffirmed 2026-09-30): assess task
 difficulty and required reasoning before delegation, and use the cheapest
 available model that can complete it at the same quality.** A lower price must
 not thin the answer, skip evidence, or weaken a judgment. If the cheaper model

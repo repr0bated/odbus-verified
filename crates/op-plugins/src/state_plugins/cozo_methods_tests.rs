@@ -41,11 +41,13 @@ async fn all_seven_methods_execute_against_the_supplied_native_handle() {
     ).await.unwrap();
     assert_eq!(output["results"][0]["headers"], json!(["status"]));
     let listed = call(&store, root.path(), "list_relations", json!({}));
-    assert!(listed["relations"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .any(|relation| relation["name"] == "portable_items"));
+    assert!(
+        listed["relations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|relation| relation["name"] == "portable_items")
+    );
     let described = call(
         &store,
         root.path(),
@@ -292,16 +294,20 @@ fn archives_report_unrepresentable_metadata_and_reject_schema_drift() {
     let mut archive =
         archive_from_snapshot(snapshot(&store, &["portable_plain".into()], true).unwrap()).unwrap();
     archive.relations[0].metadata.indices[0].index_type = "hnsw".into();
-    assert!(decode_archive(&archive)
-        .unwrap_err()
-        .to_string()
-        .contains("portable"));
+    assert!(
+        decode_archive(&archive)
+            .unwrap_err()
+            .to_string()
+            .contains("portable")
+    );
     archive.relations[0].metadata.indices.clear();
     archive.relations[0].metadata.relation.description = "cannot restore this description".into();
-    assert!(decode_archive(&archive)
-        .unwrap_err()
-        .to_string()
-        .contains("description"));
+    assert!(
+        decode_archive(&archive)
+            .unwrap_err()
+            .to_string()
+            .contains("description")
+    );
 }
 
 #[test]
@@ -340,13 +346,15 @@ fn archives_are_unique_immutable_confined_and_digest_verified() {
     assert_ne!(first["archive"], second["archive"]);
     assert_eq!(first["sha256"], second["sha256"]);
     for path in ["../escape", "/tmp/escape", "nested/file"] {
-        assert!(dispatch_sync(
-            &store,
-            root.path(),
-            "backup",
-            &json!({"path":path,"relations":["portable_paths"]})
-        )
-        .is_err());
+        assert!(
+            dispatch_sync(
+                &store,
+                root.path(),
+                "backup",
+                &json!({"path":path,"relations":["portable_paths"]})
+            )
+            .is_err()
+        );
         assert!(dispatch_sync(&store, root.path(), "restore", &json!({"path":path})).is_err());
     }
     let first_name = first["archive"].as_str().unwrap();
@@ -354,10 +362,12 @@ fn archives_are_unique_immutable_confined_and_digest_verified() {
     fs::set_permissions(&first_path, fs::Permissions::from_mode(0o600)).unwrap();
     fs::write(&first_path, b"{}").unwrap();
     fs::set_permissions(&first_path, fs::Permissions::from_mode(0o400)).unwrap();
-    assert!(read_archive(root.path(), first_name)
-        .unwrap_err()
-        .to_string()
-        .contains("digest mismatch"));
+    assert!(
+        read_archive(root.path(), first_name)
+            .unwrap_err()
+            .to_string()
+            .contains("digest mismatch")
+    );
     let linked_name = format!("link.{}.cozo.json", second["sha256"].as_str().unwrap());
     std::os::unix::fs::symlink(
         root.path().join(second["archive"].as_str().unwrap()),
@@ -385,9 +395,11 @@ fn archive_type_parser_rejects_programs_and_validates_native_values() {
         DataValue::Num(Num::Int(2))
     ])));
     assert!(!pair.accepts(&DataValue::List(vec![DataValue::Num(Num::Int(1))])));
-    assert!(!TypeSpec::parse("Float")
-        .unwrap()
-        .accepts(&DataValue::Num(Num::Float(f64::INFINITY))));
+    assert!(
+        !TypeSpec::parse("Float")
+            .unwrap()
+            .accepts(&DataValue::Num(Num::Float(f64::INFINITY)))
+    );
     assert!(TypeSpec::parse("Int?").unwrap().accepts(&DataValue::Null));
     assert!(!TypeSpec::parse("Int").unwrap().accepts(&DataValue::Null));
 }
@@ -403,4 +415,150 @@ fn vector_codec_preserves_nested_bit_words_and_rejects_unsafe_native_tags() {
     assert!(decode_archive_cell(&json!({"Regex":".*"}), 0).is_err());
     assert!(decode_archive_cell(&json!({"Vec":[0,[1,2,3]]}), 0).is_err());
     assert!(decode_archive_cell(&json!({"VecF32Bits":[u64::MAX]}), 0).is_err());
+}
+
+#[test]
+fn system_graph_methods_validate_typed_round_trip_and_replace_stale_rows() {
+    let (store, root) = fixture();
+    let snapshot = json!({
+        "format_version": 1,
+        "namespace": "source:fixture",
+        "provenance": {
+            "kind": "source", "source_commit": "fixture", "release_id": null,
+            "generated_at": "2026-09-30T00:00:00Z", "inputs": {},
+            "coverage": ["fixture"], "limitations": []
+        },
+        "nodes": [
+            {"id":"service:bridge","kind":"service","label":"bridge","attributes":{}},
+            {"id":"file:config","kind":"config","label":"config","attributes":{}}
+        ],
+        "edges": [{"src":"service:bridge","relation":"uses_config","dst":"file:config",
+            "evidence":[{"source":"fixture","locator":"run:1","assertion":"declared"}],"attributes":{}}]
+    });
+    let receipt = call(
+        &store,
+        root.path(),
+        "replace_system_graph",
+        json!({
+            "snapshot": snapshot, "expected_revision":0
+        }),
+    );
+    assert_eq!(receipt["revision"], 1);
+    let mut forged_observation = snapshot.clone();
+    forged_observation["edges"][0]["evidence"][0]["assertion"] = json!("observed");
+    assert!(
+        dispatch_sync(
+            &store,
+            root.path(),
+            "replace_system_graph",
+            &json!({
+                "snapshot":forged_observation,"expected_revision":1
+            })
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("observed evidence")
+    );
+    let status = call(
+        &store,
+        root.path(),
+        "system_graph_status",
+        json!({"namespace":"source:fixture"}),
+    );
+    assert_eq!(status["snapshot"], receipt);
+    let nodes = call(
+        &store,
+        root.path(),
+        "query_system_graph_nodes",
+        json!({
+            "namespace":"source:fixture","revision":1,"after_id":null,"kind":null,"limit":1
+        }),
+    );
+    assert_eq!(nodes["nodes"].as_array().unwrap().len(), 1);
+    assert!(nodes["next_after_id"].is_string());
+    let edges = call(
+        &store,
+        root.path(),
+        "query_system_graph_edges",
+        json!({
+            "namespace":"source:fixture","revision":1,"after":null,"node_id":"file:config",
+            "direction":"incoming","relation":null,"limit":10
+        }),
+    );
+    assert_eq!(edges["edges"][0]["src"], "service:bridge");
+    let impact = call(
+        &store,
+        root.path(),
+        "traverse_system_graph",
+        json!({
+            "namespace":"source:fixture","revision":1,"start":"file:config","direction":"incoming",
+            "relations":["uses_config"],"max_depth":3,"max_nodes":10,"max_edges":10
+        }),
+    );
+    assert_eq!(impact["nodes"].as_array().unwrap().len(), 2);
+    let mut replacement = snapshot;
+    replacement["edges"] = json!([]);
+    replacement["nodes"].as_array_mut().unwrap().pop();
+    call(
+        &store,
+        root.path(),
+        "replace_system_graph",
+        json!({
+            "snapshot":replacement,"expected_revision":1
+        }),
+    );
+    assert!(dispatch_sync(&store, root.path(), "query_system_graph_nodes", &json!({
+        "namespace":"source:fixture","revision":1,"after_id":"file:config","kind":null,"limit":1
+    })).unwrap_err().to_string().contains("revision"));
+    let refreshed = call(
+        &store,
+        root.path(),
+        "system_graph_status",
+        json!({"namespace":"source:fixture"}),
+    );
+    assert_eq!(refreshed["snapshot"]["edge_count"], 0);
+    assert_eq!(refreshed["snapshot"]["node_count"], 1);
+    replacement["namespace"] = json!("runtime:public");
+    assert!(
+        dispatch_sync(
+            &store,
+            root.path(),
+            "replace_system_graph",
+            &json!({
+                "snapshot":replacement,"expected_revision":0
+            })
+        )
+        .unwrap_err()
+        .to_string()
+        .contains("runtime")
+    );
+}
+
+#[test]
+fn system_graph_read_contract_never_grants_arbitrary_query_or_refresh() {
+    let schema = super::super::cozo_schema();
+    for name in [
+        "list_system_graphs",
+        "system_graph_status",
+        "query_system_graph_nodes",
+        "query_system_graph_edges",
+        "traverse_system_graph",
+    ] {
+        let declaration = &schema.methods[name];
+        assert_eq!(declaration.side_effect, op_state_store::SideEffect::Read);
+        assert_eq!(
+            declaration.required_capability.as_deref(),
+            Some("cap.data.cozo.system-graph.read@v1")
+        );
+    }
+    for name in ["run_query", "replace_system_graph", "refresh_system_graph"] {
+        assert_eq!(
+            schema.methods[name].side_effect,
+            op_state_store::SideEffect::Mutation
+        );
+        assert_ne!(
+            schema.methods[name].required_capability.as_deref(),
+            Some("cap.data.cozo.system-graph.read@v1")
+        );
+    }
 }

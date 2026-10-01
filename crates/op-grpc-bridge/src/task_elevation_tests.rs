@@ -1,6 +1,6 @@
 //! Per-task sudo elevation through the canonical MutationEngine path: the
 //! choke point refuses a protected call without its ticket, a ticket needs
-//! the current sudo password, is bound to the exact call and is used once,
+//! the root password without a user map, is bound to the exact call and is used once,
 //! failures lock out, and the password never reaches the chain.
 
 use serde_json::json;
@@ -8,6 +8,15 @@ use serde_json::json;
 use crate::json_render_gallery_dispatch::tests::{
     SUDO_PASSWORD, authorize, call, call_unelevated, error_of, fixture, save,
 };
+
+#[test]
+fn pam_elevation_cannot_select_a_callers_unix_account() {
+    use crate::task_elevation::{PamSudoAuthority, SudoAuthority};
+
+    // Refused before PAM is invoked; no real password or host account check.
+    let error = PamSudoAuthority.verify("jeremy", "fixture").unwrap_err();
+    assert!(error.to_string().contains("only the root password"));
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_protected_call_needs_its_own_one_time_ticket() {
@@ -125,7 +134,7 @@ async fn wrong_passwords_are_refused_and_lock_out() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn only_mapped_granted_principals_elevate_and_only_protected_tasks() {
+async fn root_password_needs_no_user_map_but_still_requires_grants_and_a_protected_task() {
     let fixture = fixture().await;
     let args = json!({"entry_id": uuid::Uuid::now_v7().to_string(), "reason": ""});
     let ungranted = error_of(
@@ -211,5 +220,6 @@ async fn the_password_never_reaches_the_chain() {
         let text = serde_json::to_string(event).unwrap();
         assert!(!text.contains("SUDO-PASSWORD-SENTINEL"), "{text}");
         assert!(!text.contains("wrong"), "{text}");
+        assert!(!text.contains("request_hash"), "{text}");
     }
 }

@@ -27,7 +27,7 @@ use crate::{
 };
 
 const PRIVATE_PROMPT: &str = "PRIVATE-PROMPT-SENTINEL draw my network";
-/// The sudo password the fake authority accepts for every mapped account.
+/// A fixture root password, never a real host credential.
 pub(crate) const SUDO_PASSWORD: &str = "SUDO-PASSWORD-SENTINEL correct horse";
 
 /// Accepts `SUDO_PASSWORD` for the listed Unix accounts only.
@@ -122,16 +122,10 @@ pub(crate) async fn fixture() -> Fixture {
     let carol = identity(&engine, 0xC3, "gallery-carol").await;
     engine
         .task_elevation()
-        .set_authority_for_test(Arc::new(FakeSudo(vec!["alice", "bob"])));
-    std::fs::write(
-        &users_path,
-        serde_json::to_vec(&json!({
-            (alice.principal.clone()): {"unix_user": "alice"},
-            (bob.principal.clone()): {"unix_user": "bob"},
-        }))
-        .unwrap(),
-    )
-    .unwrap();
+        .set_authority_for_test(Arc::new(FakeSudo(vec!["root"])));
+    // The retired map path deliberately does not exist. Every elevation
+    // regression must succeed without a per-principal Unix account mapping.
+    assert!(!users_path.exists());
     std::fs::write(
         &grants_path,
         serde_json::to_vec(&json!({

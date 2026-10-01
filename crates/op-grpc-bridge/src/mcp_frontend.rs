@@ -37,8 +37,8 @@ use crate::mcp_policy::{
 use crate::mutation_engine::MutationEngine;
 use crate::oracle_assertion::AssertionValidator;
 use crate::sealed_schema_reader::{
-    blob_catalog_dir_from_env, manifest_plugins, read_manifest_pinned_plugin_schema,
-    valid_plugin_id,
+    blob_catalog_dir_from_env, manifest_plugins, read_manifest_pinned_catalog,
+    read_manifest_pinned_plugin_schema, valid_plugin_id,
 };
 #[cfg(test)]
 use crate::sealed_schema_reader::{read_oscal_subids_result, read_sealed_schema_result};
@@ -393,6 +393,8 @@ struct MutationEngineMcpBackend {
     blob_catalog_dir: PathBuf,
     policy: Arc<McpPolicyOwner>,
     close_check_active: Arc<AtomicBool>,
+    #[cfg(test)]
+    test_grants: Option<Arc<std::sync::RwLock<HashMap<String, HashSet<String>>>>>,
 }
 
 impl MutationEngineMcpBackend {
@@ -403,11 +405,30 @@ impl MutationEngineMcpBackend {
             blob_catalog_dir,
             policy,
             close_check_active: Arc::new(AtomicBool::new(false)),
+            #[cfg(test)]
+            test_grants: None,
         }
     }
 
-    fn authorize(caller: &AuthenticatedCaller, required_capability: &str) -> anyhow::Result<()> {
-        let grants = load_exact_capability_grants(&caller.principal_id);
+    fn current_grants(&self, principal_id: &str) -> HashSet<String> {
+        #[cfg(test)]
+        if let Some(grants) = &self.test_grants {
+            return grants
+                .read()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .get(principal_id)
+                .cloned()
+                .unwrap_or_default();
+        }
+        load_exact_capability_grants(principal_id)
+    }
+
+    fn authorize(
+        &self,
+        caller: &AuthenticatedCaller,
+        required_capability: &str,
+    ) -> anyhow::Result<()> {
+        let grants = self.current_grants(&caller.principal_id);
         authorize_with_grants(&grants, required_capability)
     }
 
@@ -419,7 +440,7 @@ impl MutationEngineMcpBackend {
         arguments: Value,
         required_capability: &str,
     ) -> anyhow::Result<Value> {
-        Self::authorize(caller, required_capability)?;
+        self.authorize(caller, required_capability)?;
         // Stable principal identity is the audit actor. Session identity stays
         // in the authenticated request context and never becomes authority.
         let actor = caller.principal_id.clone();
@@ -514,6 +535,72 @@ impl MutationEngineMcpBackend {
         Ok(tools)
     }
 
+    /// The singleton Control Plane uses the exact manifest-pinned typed
+    /// surface admitted by its current principal grants. Broker toolsets and
+    /// provider health remain projection policy for other identities only.
+    async fn authorized_singleton_tools(
+        &self,
+        caller: &AuthenticatedCaller,
+    ) -> anyhow::Result<Vec<Value>> {
+        let grants = self.current_grants(&caller.principal_id);
+        let policy = self.policy.snapshot();
+        let dir = self.blob_catalog_dir.clone();
+        let catalog = tokio::task::spawn_blocking(move || read_manifest_pinned_catalog(&dir))
+            .await
+            .map_err(|error| anyhow::anyhow!("sealed schema task failed: {error}"))??;
+        let mut by_name = BTreeMap::new();
+        for (plugin_id, document) in catalog.plugins {
+            for method_name in document.schema.methods.keys() {
+                let name = format!("plugin.{plugin_id}.{method_name}");
+                if policy.denies_singleton_chatbot_direct_tool(&caller.principal_id, &name) {
+                    continue;
+                }
+                let Ok(descriptor) = method_descriptor(&document.schema, method_name, &name) else {
+                    // A missing capability or schema-closure gap is not an
+                    // executable operation, even if a grant document names it.
+                    continue;
+                };
+                let Ok((capability, _)) = descriptor_authority(&descriptor, Some(&name)) else {
+                    continue;
+                };
+                if capability != "cognitive_mcp.invoke" && grants.contains(capability) {
+                    by_name.insert(name, descriptor);
+                }
+            }
+        }
+        Ok(by_name.into_values().collect())
+    }
+
+    async fn authorized_singleton_tool(
+        &self,
+        caller: &AuthenticatedCaller,
+        name: &str,
+    ) -> anyhow::Result<Value> {
+        let policy = self.policy.snapshot();
+        if policy.denies_singleton_chatbot_direct_tool(&caller.principal_id, name) {
+            anyhow::bail!(
+                "AccessDenied: singleton chatbot cannot call direct-execution tool '{name}'"
+            );
+        }
+        let denied = || {
+            anyhow::anyhow!(
+                "AccessDenied: tool '{name}' is not in the singleton principal's granted sealed projection"
+            )
+        };
+        let descriptor = self
+            .typed_tool_descriptor(name)
+            .await
+            .map_err(|_| denied())?;
+        let (capability, _) =
+            descriptor_authority(&descriptor, Some(name)).map_err(|_| denied())?;
+        if capability == "cognitive_mcp.invoke" {
+            return Err(denied());
+        }
+        authorize_with_grants(&self.current_grants(&caller.principal_id), capability)
+            .map_err(|_| denied())?;
+        Ok(descriptor)
+    }
+
     async fn authorized_toolset_tools(
         &self,
         set: &ToolsetDefinition,
@@ -556,7 +643,7 @@ impl MutationEngineMcpBackend {
         caller: &AuthenticatedCaller,
         selection: Option<&ToolsetSelection>,
     ) -> anyhow::Result<Vec<Value>> {
-        let grants = load_exact_capability_grants(&caller.principal_id);
+        let grants = self.current_grants(&caller.principal_id);
         let policy = self.policy.snapshot();
         let mut by_name = BTreeMap::new();
         let mut schemas = HashMap::new();
@@ -598,7 +685,7 @@ impl MutationEngineMcpBackend {
         &self,
         caller: &AuthenticatedCaller,
     ) -> anyhow::Result<Vec<Value>> {
-        let grants = load_exact_capability_grants(&caller.principal_id);
+        let grants = self.current_grants(&caller.principal_id);
         let policy = self.policy.snapshot();
         let mut by_name = BTreeMap::new();
         let mut schemas = HashMap::new();
@@ -624,7 +711,7 @@ impl MutationEngineMcpBackend {
         caller: &AuthenticatedCaller,
         arguments: &Value,
     ) -> anyhow::Result<Value> {
-        let grants = load_exact_capability_grants(&caller.principal_id);
+        let grants = self.current_grants(&caller.principal_id);
         let policy = self.policy.snapshot();
         let mut schemas = HashMap::new();
         let operation = arguments
@@ -716,7 +803,7 @@ impl MutationEngineMcpBackend {
         name: &str,
         arguments: Value,
     ) -> anyhow::Result<Value> {
-        let grants = load_exact_capability_grants(&caller.principal_id);
+        let grants = self.current_grants(&caller.principal_id);
         authorize_and_validate_tool_call(descriptor, name, &arguments, &grants)?;
         let required_capability = descriptor_authority(descriptor, Some(name))?.0;
         let (plugin_id, method_name) = if HOT_TOOL_NAMES.contains(&name) {
@@ -748,8 +835,20 @@ impl McpBackend for MutationEngineMcpBackend {
         caller: &AuthenticatedCaller,
         _selection: Option<&ToolsetSelection>,
     ) -> anyhow::Result<Vec<Value>> {
+        let singleton = self
+            .policy
+            .snapshot()
+            .is_singleton_chatbot(&caller.principal_id);
         self.cognitive_admission(caller, "list_tools", json!({}), "cognitive_mcp.read")
             .await?;
+        if singleton {
+            return Ok(self
+                .authorized_singleton_tools(caller)
+                .await?
+                .into_iter()
+                .map(normalize_tool_definition)
+                .collect());
+        }
         Ok(self
             .discoverable_toolset_tools(caller)
             .await?
@@ -770,6 +869,13 @@ impl McpBackend for MutationEngineMcpBackend {
             anyhow::bail!(
                 "AccessDenied: singleton chatbot cannot call direct-execution tool '{name}'"
             );
+        }
+        if policy.is_singleton_chatbot(&caller.principal_id) {
+            let descriptor = self.authorized_singleton_tool(caller, name).await?;
+            return self
+                .dispatch_projected_tool(caller, &descriptor, name, arguments)
+                .await
+                .map(normalize_tool_result);
         }
         // Reject calls outside the selected projection before resolving any
         // catalog entries or provider readiness. The later projection still
@@ -799,7 +905,7 @@ impl McpBackend for MutationEngineMcpBackend {
             }
             let descriptor = self.typed_tool_descriptor(name).await?;
             let (capability, _) = descriptor_authority(&descriptor, Some(name))?;
-            Self::authorize(caller, capability)?;
+            self.authorize(caller, capability)?;
             let available: Vec<_> = sets
                 .iter()
                 .filter(|set| Self::provider_ready(set))
@@ -829,7 +935,7 @@ impl McpBackend for MutationEngineMcpBackend {
     }
 
     async fn list_resources(&self, caller: &AuthenticatedCaller) -> anyhow::Result<Vec<Value>> {
-        Self::authorize(caller, "cognitive_mcp.read")?;
+        self.authorize(caller, "cognitive_mcp.read")?;
         let dir = self.blob_catalog_dir.clone();
         tokio::task::spawn_blocking(move || list_blob_resources(&dir))
             .await
@@ -841,7 +947,7 @@ impl McpBackend for MutationEngineMcpBackend {
         caller: &AuthenticatedCaller,
         uri: &str,
     ) -> anyhow::Result<Value> {
-        Self::authorize(caller, "cognitive_mcp.read")?;
+        self.authorize(caller, "cognitive_mcp.read")?;
         let dir = self.blob_catalog_dir.clone();
         let uri = uri.to_string();
         tokio::task::spawn_blocking(move || read_blob_resource(&dir, &uri))
@@ -2142,7 +2248,11 @@ fn parse_typed_tool_name(name: &str) -> anyhow::Result<(&str, &str)> {
             .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
         || !method_name
             .bytes()
-            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+            .next()
+            .is_some_and(|byte| byte.is_ascii_alphabetic())
+        || !method_name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
     {
         anyhow::bail!("AccessDenied: '{name}' is not canonical");
     }
@@ -3807,7 +3917,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn singleton_chatbot_cannot_call_outside_hot_or_selected_toolset() {
+    async fn non_singleton_identity_still_requires_hot_or_selected_toolset() {
         let mut backend = MutationEngineMcpBackend::new(
             crate::human_principal_dispatch::tests::test_engine(),
             McpPolicyOwner::for_fixture(deployed_mcp_policy()),
@@ -3816,9 +3926,9 @@ mod tests {
         backend.blob_catalog_dir = catalog_root.path().join("catalog-does-not-exist");
         let policy = backend.policy.snapshot();
         let caller = AuthenticatedCaller {
-            principal_id: policy.audience.singleton_chatbot_principal_id.clone(),
-            session_id: "chatbot-session".into(),
-            session_genesis: "chatbot-genesis".into(),
+            principal_id: "ordinary-principal".into(),
+            session_id: "ordinary-session".into(),
+            session_genesis: "ordinary-genesis".into(),
         };
         let unknown = "plugin.unlisted.operation";
         let error = backend
@@ -3859,6 +3969,142 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[tokio::test]
+    async fn singleton_projection_uses_exact_grants_and_sealed_typed_dispatch() {
+        let policy = deployed_mcp_policy();
+        let caller = AuthenticatedCaller {
+            principal_id: policy.audience.singleton_chatbot_principal_id.clone(),
+            session_id: "chatbot-session".into(),
+            session_genesis: "chatbot-genesis".into(),
+        };
+        let snowball_schema = op_state::StatePlugin::schema(
+            &op_plugins::state_plugins::snowball_plugin::SnowballPlugin::default(),
+        )
+        .expect("Snowball schema");
+        let mut gap_schema = snowball_schema.clone();
+        gap_schema.name = "snowball_gap".into();
+        gap_schema
+            .methods
+            .get_mut("query_events")
+            .unwrap()
+            .required_capability = Some("snowball_gap.unsealed".into());
+        let router_schema = op_plugins::state_plugins::tched_router::tched_router_plugin_schema();
+        let router_selection_capability = router_schema.methods["SetSelection"]
+            .required_capability
+            .clone()
+            .unwrap();
+        // This shared fixture redirects both the MCP frontend and MutationEngine
+        // away from live SHM. Keep it for the entire test lifetime.
+        let _shm = crate::human_principal_dispatch::tests::temp_shm_with_schemas(&[
+            op_plugins::cognitive_mcp_plugin_schema(),
+            snowball_schema,
+            router_schema.clone(),
+            gap_schema,
+        ]);
+        let mut backend = MutationEngineMcpBackend::new(
+            crate::human_principal_dispatch::tests::test_engine(),
+            McpPolicyOwner::for_fixture(policy),
+        );
+
+        let grants = Arc::new(std::sync::RwLock::new(HashMap::from([(
+            caller.principal_id.clone(),
+            HashSet::from([
+                "cognitive_mcp.read".to_string(),
+                "snowball.read".to_string(),
+                "snowball_gap.unsealed".to_string(),
+                router_selection_capability,
+            ]),
+        )])));
+        backend.test_grants = Some(Arc::clone(&grants));
+
+        let tools = backend.list_tools(&caller, None).await.unwrap();
+        let call_name = "plugin.snowball.verify_chain";
+        assert!(
+            !backend
+                .policy
+                .snapshot()
+                .toolsets
+                .sets
+                .iter()
+                .any(|set| set.tools.iter().any(|name| name == call_name)),
+            "fixture operation must be outside every broker toolset"
+        );
+        assert!(tools.iter().any(|tool| tool_name(tool) == call_name));
+        let selection_name = "plugin.tched_router.SetSelection";
+        assert!(tools.iter().any(|tool| tool_name(tool) == selection_name));
+        assert_eq!(
+            parse_typed_tool_name(selection_name).unwrap(),
+            ("tched_router", "SetSelection")
+        );
+        assert_eq!(
+            backend.typed_tool_descriptor(selection_name).await.unwrap()["authority_method"],
+            "SetSelection",
+            "case-preserving schema resolution must reach dispatch metadata"
+        );
+        assert!(
+            !tools
+                .iter()
+                .any(|tool| tool_name(tool) == "plugin.snowball_gap.query_events"),
+            "schema-closure gap is not discoverable"
+        );
+        assert!(
+            !tools.iter().any(|tool| descriptor_authority(tool, None)
+                .is_ok_and(|(capability, _)| capability == "cognitive_mcp.invoke")),
+            "generic invocation is never projected"
+        );
+        let called = backend
+            .call_tool(&caller, call_name, json!({}), None)
+            .await
+            .unwrap();
+        assert_ne!(called.get("isError"), Some(&Value::Bool(true)));
+
+        // Revoking after discovery is effective both at projection lookup and
+        // at the dispatch boundary, which reloads grants before admission.
+        let descriptors = backend.authorized_singleton_tools(&caller).await.unwrap();
+        let descriptor = descriptors
+            .iter()
+            .find(|tool| tool_name(tool) == call_name)
+            .unwrap();
+        grants.write().unwrap().clear();
+        let error = backend
+            .dispatch_projected_tool(&caller, descriptor, call_name, json!({}))
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("lacks required capability"));
+        let error = backend
+            .call_tool(&caller, call_name, json!({}), None)
+            .await
+            .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("not in the singleton principal's granted sealed projection")
+        );
+
+        // A wildcard is never an identity grant; only the caller's exact key
+        // produces a projection.
+        grants.write().unwrap().insert(
+            caller.principal_id.clone(),
+            HashSet::from(["cognitive_mcp.read".to_string()]),
+        );
+        grants
+            .write()
+            .unwrap()
+            .insert("*".into(), HashSet::from(["snowball.read".to_string()]));
+        let wildcard = backend.list_tools(&caller, None).await.unwrap();
+        assert!(!wildcard.iter().any(|tool| tool_name(tool) == call_name));
+        let error = backend
+            .call_tool(&caller, "plugin.snowball_gap.query_events", json!({}), None)
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("granted sealed projection"));
+        let error = backend
+            .call_tool(&caller, "plugin.unsealed.nope", json!({}), None)
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("granted sealed projection"));
     }
 
     #[tokio::test]

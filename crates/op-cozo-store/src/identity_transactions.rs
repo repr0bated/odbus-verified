@@ -2,8 +2,13 @@
 //! This is private persistence metadata, not plugin discovery/schema authority.
 //! Legacy writes are rejected after a session acquires a revision/tombstone.
 use super::*;
+mod physical_root;
 use cozo::{MultiTransaction, TransactionPayload};
 use nix::{fcntl::OFlag, sys::stat::Mode};
+pub use physical_root::{
+    IdentityPhysicalRootMigration, PhysicalRootMigrationReceipt,
+    physical_root_instance_binding_matches,
+};
 use std::{
     fs::File,
     os::{
@@ -30,6 +35,7 @@ pub struct IdentityCompareExchange {
 
 pub enum IdentityIntent {
     CompareExchange(Box<IdentityCompareExchange>),
+    MigratePhysicalRoot(Box<IdentityPhysicalRootMigration>),
     /// A narrowly bounded credential refresh authored by the identity owner.
     /// The journal kind remains `transport-refresh` for compatibility; it now
     /// also permits an anchored NextDNS profile/device assignment to change.
@@ -57,7 +63,8 @@ pub struct IdentityRecoverySnapshot {
 
 /// Private, durable repair fence in the existing Cozo identity database.
 /// This relation is separate from caller-authored session events.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RootRepairJournal {
     pub version: u8,
     pub plan_sha256: String,
@@ -83,7 +90,8 @@ struct RootRepairPhaseRequest<'a> {
 /// One immutable owner operation per derived session while an absent-record
 /// seeded provision is in flight. This is private Cozo authority, not a
 /// caller-authored session event or a boot configuration file.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SeedProvisionJournal {
     pub version: u8,
     pub plan_sha256: String,
@@ -1145,6 +1153,13 @@ impl CozoGraphShuttle {
         }
         let tx = self.db.multi_transaction(true);
         let (previous, metadata) = read_one(&tx, session_id)?;
+        let physical = physical_root::read_in_tx(&tx, session_id)?;
+        if matches!(&intent, IdentityIntent::CompareExchange(exchange)
+            if physical.is_some() && exchange.record.as_ref().is_some_and(|new|
+                previous.record.as_ref().is_some_and(|old| new.btrfs_device_json != old.btrfs_device_json || !physical_root_instance_binding_matches(&old.instance_json, &new.instance_json))))
+        {
+            return Err(err("completed physical migration binding is immutable"));
+        }
         if let Some(provision) = read_seed_provision_journal_in_tx(&tx, session_id)? {
             if provision.phase != "identity-committed" {
                 let is_final = provision.phase == "verified"
@@ -1195,6 +1210,30 @@ impl CozoGraphShuttle {
             }
         }
         let (record, genesis, kind, value, replayed) = match intent {
+            IdentityIntent::MigratePhysicalRoot(migration) => {
+                physical_root::validate_intent(
+                    &tx,
+                    session_id,
+                    operation_id,
+                    &previous,
+                    &metadata,
+                    &migration,
+                    physical.as_ref(),
+                )?;
+                let replayed = previous.operation_id == operation_id;
+                let value = i64::try_from(migration.expected.revision)
+                    .map_err(|_| err("identity revision exceeds Cozo Int"))?;
+                if !replayed {
+                    physical_root::append_in_tx(&tx, session_id, operation_id, &migration)?;
+                }
+                (
+                    Some(migration.record),
+                    migration.expected.genesis,
+                    "physical-migrate",
+                    value,
+                    replayed,
+                )
+            }
             IdentityIntent::CompareExchange(exchange) => {
                 let IdentityCompareExchange {
                     expected,
@@ -1468,7 +1507,10 @@ fn decode_revision(row: &[DataValue]) -> std::result::Result<RevisionMetadata, C
         || !op
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
-        || !matches!(kind.as_str(), "cas" | "advance" | "transport-refresh")
+        || !matches!(
+            kind.as_str(),
+            "cas" | "advance" | "transport-refresh" | "physical-migrate"
+        )
         || value < 0
         || !matches!(principal_kind.as_str(), "" | "human" | "service")
     {

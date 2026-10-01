@@ -1,0 +1,15 @@
+Standalone system provisioning branch evidence
+Date: 2026-09-30
+
+Changed source: `/srv/git/odbus-verified/deploy/scripts/provision-workspace-subscriber.sh`.
+Added source test: `/srv/git/odbus-verified/deploy/scripts/tests/test-provision-system-mode.sh`.
+
+Behavior: the new `--system` mode accepts either `NAME --system` or `--system NAME`; defaults to image alias `raccoon` (confirmed owner provenance: fingerprint `6ebb6cb794d49f5e9e7c8f32605e937051e85fabef89768b050edd18b4949112`, images.linuxcontainers.org Ubuntu Noble cloud image, 132.71 MiB) and pool `3tched-storage`; supports `--image`, `--storage`, and `--no-start`; validates names and refuses existing instances. Before creating, it reads Incus `/1.0/instances?recursion=1`, whose live read-only CLI output was verified as a raw JSON array. It initializes with no profiles and sets unprivileged, no nesting, and autostart false in the `incus init` request. It starts only the newly created instance unless `--no-start` was supplied. Incus errors propagate. This path runs before identity-key, identity-directory, shared socket, Cozo/memory, and fstorage logic; identity-only switches are rejected. It makes no network device/profile choice.
+
+Validation:
+- `sh -n deploy/scripts/provision-workspace-subscriber.sh deploy/scripts/tests/test-provision-system-mode.sh` passed.
+- `sh deploy/scripts/tests/test-provision-system-mode.sh` passed; log: `/var/tmp/identity-candidate-image-20260930/system-mode-tests.log`. Stubs cover both argument orders, default and overridden image/pool, no-start, existing-name refusal without mutation, identity-only option rejection, no calls to wg/busctl/btrfs/losetup/zcall, absence of identity-dir creation, malformed names, and Incus query/init/config/start failure propagation.
+- `git diff --check` passed for changed paths. `shellcheck` was unavailable.
+- `cargo fmt --all -- --check` failed on existing Rust formatting drift across unrelated files; full output: `/var/tmp/identity-candidate-image-20260930/system-mode-cargo-fmt.log` (261 formatting diff sections, including existing identity_sled Rust source; shell files are not checked by Cargo fmt). No workspace formatting was applied. Per instruction, clippy/tests were not run after the format gate failed. No `/verify` executable was available.
+
+The script already had unrelated working-tree edits before this task (profile/device inventory validation and needed jq/nicless checks). Those pre-existing changes were preserved; no identity code or live Incus state was changed. No container was created. Deployment status: source-only, not activated.

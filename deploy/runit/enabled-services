@@ -8,10 +8,7 @@ op-runit-systemctl
 emqx
 tched-router
 unified-execution
-opencode
 
-# Identity-centric containers (OD-86): bring each identity up from its own
-# device after incusd, and keep the transitional control-plane chatbot running
-# so the bridge always has a live identity session.
+# Identity-centric storage: restore completed physical roots and their scoped
+# lungs after incusd, then honor each explicit boot-completion start policy.
 identity-roots
-incus-ct-chatbot

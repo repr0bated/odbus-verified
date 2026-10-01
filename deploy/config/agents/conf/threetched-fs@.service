@@ -1,0 +1,31 @@
+[Unit]
+Description=3tchedFS for identity %i
+After=local-fs.target
+ConditionPathExists=/usr/local/bin/threetched-fs
+ConditionPathIsDirectory=/opt/run-mounts/3tched-inputs/plugin-blobs
+ConditionPathIsDirectory=/opt/run-mounts/3tched-inputs/state
+ConditionPathExists=/opt/run-mounts/3tched-inputs/lungs.sock
+
+# The inputs must be provisioned for this identity. The host's root-only
+# /run/opdbus/lungs.sock is not usable directly by an unprivileged container.
+# Keep this template disabled until the container-side identity transport and
+# scoped catalog/state inputs have been provided and verified.
+
+[Service]
+Type=simple
+User=root
+RuntimeDirectory=threetched-fs-%i
+RuntimeDirectoryMode=0700
+ExecCondition=/usr/bin/test -x /usr/local/bin/threetched-fs
+ExecCondition=/usr/bin/test -S /opt/run-mounts/3tched-inputs/lungs.sock
+ExecStartPre=/usr/bin/install -d -m 0755 /opt/run-mounts/3tched
+ExecStartPre=/usr/local/bin/threetched-fs --store /run/threetched-fs-%i capture --catalog /opt/run-mounts/3tched-inputs/plugin-blobs --state /opt/run-mounts/3tched-inputs/state
+ExecStart=/usr/local/bin/threetched-fs --store /run/threetched-fs-%i mount --state /opt/run-mounts/3tched-inputs/state --allow-other --auto-unmount --lungs-socket /opt/run-mounts/3tched-inputs/lungs.sock --lungs-session %i /opt/run-mounts/3tched
+ExecStop=/usr/bin/fusermount3 -u /opt/run-mounts/3tched
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

@@ -691,6 +691,210 @@ control_plane = { profile = "opencode.go_control_plane", alternatives = ["openco
 }
 
 #[tokio::test]
+async fn native_bindings_follow_stable_provider_keys_and_recorded_profiles() {
+    let providers = r#"
+[[providers]]
+provider_id = "alpha_key"
+name = "Alpha"
+models_url = "https://alpha.test/v1/models"
+format = "openai"
+auth = "none"
+native_provider_id = "custom.alpha_default"
+inference_url_prefix = "https://alpha.test/v1"
+native_profile_overrides = { "custom.alpha_alt_cp" = "custom.alpha_alt_native" }
+control_plane = { profile = "custom.alpha_cp", alternatives = ["custom.alpha_alt_cp", "custom.alpha_unmapped_cp"] }
+
+[[providers]]
+id = "beta_key"
+name = "Beta"
+models_url = "https://beta.test/v1/models"
+format = "openai"
+auth = "none"
+native_provider_id = "custom.beta_default"
+inference_url_prefix = "https://beta.test/v1"
+control_plane = { profile = "custom.beta_cp" }
+"#;
+    let fixture = fixture(providers);
+    let lister = FakeLister::new(&[
+        ("alpha_key", Ok(vec!["shared-model"])),
+        ("beta_key", Ok(vec!["shared-model"])),
+    ]);
+    refresh(
+        &fixture.env,
+        &lister,
+        fixture.store.clone(),
+        RefreshInput::default(),
+    )
+    .await
+    .unwrap();
+
+    let listed = list_providers(&fixture.env, fixture.store.clone())
+        .await
+        .unwrap();
+    assert_eq!(
+        listed
+            .providers
+            .iter()
+            .map(|provider| (
+                provider.provider_id.as_str(),
+                provider.native_provider_id.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        [
+            ("alpha_key", Some("custom.alpha_default")),
+            ("beta_key", Some("custom.beta_default")),
+        ]
+    );
+
+    let models = list_models(
+        &fixture.env,
+        fixture.store.clone(),
+        ListModelsInput::default(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(models.models.len(), 2);
+    assert_eq!(models.models[0].provider_id, "alpha_key");
+    assert_eq!(
+        models.models[0].inference_url_prefix.as_deref(),
+        Some("https://alpha.test/v1")
+    );
+    assert_eq!(
+        models.models[0].native_provider_id.as_deref(),
+        Some("custom.alpha_default")
+    );
+    assert_eq!(models.models[1].provider_id, "beta_key");
+    assert_eq!(
+        models.models[1].inference_url_prefix.as_deref(),
+        Some("https://beta.test/v1")
+    );
+    assert_eq!(
+        models.models[1].native_provider_id.as_deref(),
+        Some("custom.beta_default")
+    );
+
+    let selected = set_model_profile(
+        &fixture.env,
+        fixture.store.clone(),
+        SetModelProfileInput {
+            provider_id: "alpha_key".into(),
+            model_id: "shared-model".into(),
+            profile: Some("custom.alpha_alt_cp".into()),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(selected.model.provider_id, "alpha_key");
+    assert_eq!(
+        selected.model.native_provider_id.as_deref(),
+        Some("custom.alpha_alt_native")
+    );
+
+    let unmapped = set_model_profile(
+        &fixture.env,
+        fixture.store.clone(),
+        SetModelProfileInput {
+            provider_id: "alpha_key".into(),
+            model_id: "shared-model".into(),
+            profile: Some("custom.alpha_unmapped_cp".into()),
+        },
+    )
+    .await
+    .unwrap();
+    assert!(unmapped.model.native_provider_id.is_none());
+
+    let defaulted = set_model_profile(
+        &fixture.env,
+        fixture.store.clone(),
+        SetModelProfileInput {
+            provider_id: "alpha_key".into(),
+            model_id: "shared-model".into(),
+            profile: Some("custom.alpha_cp".into()),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        defaulted.model.native_provider_id.as_deref(),
+        Some("custom.alpha_default")
+    );
+
+    let cleared = set_model_profile(
+        &fixture.env,
+        fixture.store.clone(),
+        SetModelProfileInput {
+            provider_id: "alpha_key".into(),
+            model_id: "shared-model".into(),
+            profile: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert!(cleared.model.recorded_profile.is_none());
+    assert_eq!(
+        cleared.model.native_provider_id.as_deref(),
+        Some("custom.alpha_default")
+    );
+
+    // A stale profile from a former provider configuration must not pick the
+    // provider's default native route by accident.
+    fixture
+        .store
+        .set_model_registry_profile("alpha_key", "shared-model", Some("custom.alpha_stale_cp"))
+        .unwrap();
+    let stale = list_models(
+        &fixture.env,
+        fixture.store.clone(),
+        ListModelsInput {
+            provider_id: Some("alpha_key".into()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        stale.models[0].recorded_profile.as_deref(),
+        Some("custom.alpha_stale_cp")
+    );
+    assert!(stale.models[0].native_provider_id.is_none());
+
+    // Removing a provider keeps historical rows visible when requested but
+    // strips their native binding because no current config owns the key.
+    let remaining = providers
+        .split("[[providers]]\nid = \"beta_key\"")
+        .nth(1)
+        .unwrap();
+    write(
+        &fixture.env.providers_path,
+        &format!("[[providers]]\nid = \"beta_key\"{remaining}"),
+        0o644,
+    );
+    refresh(
+        &fixture.env,
+        &FakeLister::new(&[("beta_key", Ok(vec!["shared-model"]))]),
+        fixture.store.clone(),
+        RefreshInput::default(),
+    )
+    .await
+    .unwrap();
+    let retired = list_models(
+        &fixture.env,
+        fixture.store.clone(),
+        ListModelsInput {
+            provider_id: Some("alpha_key".into()),
+            include_unavailable: Some(true),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(retired.models.len(), 1);
+    assert!(!retired.models[0].available);
+    assert!(retired.models[0].native_provider_id.is_none());
+    assert!(retired.models[0].inference_url_prefix.is_none());
+}
+
+#[tokio::test]
 async fn refresh_bounds_provider_fetches_and_persists_every_provider() {
     use std::sync::atomic::{AtomicUsize, Ordering};
     struct BoundedLister {

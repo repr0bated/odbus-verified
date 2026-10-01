@@ -9,10 +9,18 @@ use tracing::{info, warn};
 
 type Params = BTreeMap<String, DataValue>;
 
+mod system_graph;
+pub use system_graph::*;
+
+mod identity_inventory;
 mod identity_transactions;
+pub use identity_inventory::{
+    IdentityInventoryCounts, IdentityInventoryEntry, IdentityInventoryPage, IdentityInventoryQuery,
+};
 pub use identity_transactions::{
-    IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityRecoverySnapshot,
-    IdentityRevision, RootRepairJournal, SeedProvisionJournal,
+    IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityPhysicalRootMigration,
+    IdentityRecoverySnapshot, IdentityRevision, PhysicalRootMigrationReceipt, RootRepairJournal,
+    SeedProvisionJournal, physical_root_instance_binding_matches,
 };
 mod runtime_document_transactions;
 pub use runtime_document_transactions::{
@@ -196,6 +204,7 @@ pub struct CozoGraphShuttle {
     identity_transaction: Arc<std::sync::Mutex<()>>,
     runtime_document_transaction: Arc<std::sync::Mutex<()>>,
     episode_transaction: Arc<std::sync::Mutex<()>>,
+    system_graph_transaction: Arc<std::sync::Mutex<()>>,
 }
 
 impl CozoGraphShuttle {
@@ -223,6 +232,7 @@ impl CozoGraphShuttle {
             identity_transaction: Arc::new(std::sync::Mutex::new(())),
             runtime_document_transaction: Arc::new(std::sync::Mutex::new(())),
             episode_transaction: Arc::new(std::sync::Mutex::new(())),
+            system_graph_transaction: Arc::new(std::sync::Mutex::new(())),
         };
         s.seed_schema().map_err(CozoError::from)?;
         Ok(s)
@@ -261,6 +271,7 @@ impl CozoGraphShuttle {
             identity_transaction: Arc::new(std::sync::Mutex::new(())),
             runtime_document_transaction: Arc::new(std::sync::Mutex::new(())),
             episode_transaction: Arc::new(std::sync::Mutex::new(())),
+            system_graph_transaction: Arc::new(std::sync::Mutex::new(())),
         };
         s.seed_schema().map_err(CozoError::from)?;
         Ok(s)
@@ -526,6 +537,17 @@ impl CozoGraphShuttle {
                 committed_revision: Int default 0, committed_genesis: String default "", updated_at: Int
             }"#,
             // append-only per-session "snowball" event ledger archive
+            r#":create identity_physical_root_migrations {
+                session_id: String => plan_sha256: String, operation_id: String,
+                expected_revision: Int, committed_revision: Int,
+                btrfs_device_json: String, instance_json: String, provenance_json: String
+            }"#,
+            r#":create identity_physical_root_history {
+                session_id: String, committed_revision: Int => plan_sha256: String,
+                operation_id: String, old_btrfs_device_json: String,
+                old_instance_json: String, old_journals_json: String,
+                old_revision_operation_id: String
+            }"#,
             // (the immutable event chain is the proof; this is the queryable copy)
             r#":create session_events {
                 session_id: String,
@@ -569,6 +591,8 @@ impl CozoGraphShuttle {
                 }
             }
         }
+
+        self.initialize_system_graph_schema()?;
 
         // One-way copy from the pre-v3 `identity_sleds` relation. This must not
         // `:put` over `identity_sessions` that already exist — every process
@@ -2281,6 +2305,7 @@ mod identity_sled_tests {
             identity_transaction: Arc::new(std::sync::Mutex::new(())),
             runtime_document_transaction: Arc::new(std::sync::Mutex::new(())),
             episode_transaction: Arc::new(std::sync::Mutex::new(())),
+            system_graph_transaction: Arc::new(std::sync::Mutex::new(())),
         }
     }
 

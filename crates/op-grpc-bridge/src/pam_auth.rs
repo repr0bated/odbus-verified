@@ -139,7 +139,13 @@ pub(crate) fn check_password(service: &str, user: &str, password: &str) -> Resul
     );
     let service = CString::new(service)?;
     let user = CString::new(user)?;
-    let password = CString::new(password).context("password contains a NUL byte")?;
+    // RAII covers every return, including libpam/symbol loading and pam_start
+    // errors. The buffer remains NUL terminated for the PAM conversation.
+    let password = zeroize::Zeroizing::new(
+        CString::new(password)
+            .context("password contains a NUL byte")?
+            .into_bytes_with_nul(),
+    );
     // SAFETY: loading the system libpam; its symbols are used with their
     // documented C signatures and the handle outlives every call below.
     unsafe {
@@ -162,8 +168,6 @@ pub(crate) fn check_password(service: &str, user: &str, password: &str) -> Resul
             status = account(handle, PAM_SILENT | PAM_DISALLOW_NULL_AUTHTOK);
         }
         end(handle, status);
-        let bytes = password.into_bytes_with_nul();
-        drop(zeroize::Zeroizing::new(bytes));
         match status {
             PAM_SUCCESS => Ok(true),
             PAM_AUTH_ERR | PAM_USER_UNKNOWN | PAM_MAXTRIES | PAM_NEW_AUTHTOK_REQD
@@ -171,22 +175,6 @@ pub(crate) fn check_password(service: &str, user: &str, password: &str) -> Resul
             other => bail!("PAM check failed (status {other})"),
         }
     }
-}
-
-/// Whether `user` may use sudo: a member, primary or supplementary, of
-/// `wheel` or `sudo`.
-pub(crate) fn is_sudoer(user: &str) -> Result<bool> {
-    let account = nix::unistd::User::from_name(user)
-        .context("account lookup failed")?
-        .context("Unix account does not exist")?;
-    for name in ["wheel", "sudo"] {
-        if let Some(group) = nix::unistd::Group::from_name(name).context("group lookup failed")?
-            && (group.gid == account.gid || group.mem.iter().any(|member| member == user))
-        {
-            return Ok(true);
-        }
-    }
-    Ok(false)
 }
 
 #[cfg(test)]
@@ -199,12 +187,5 @@ mod tests {
         assert!(check_password("op-dbus elevate", "jeremy", "x").is_err());
         assert!(check_password("op-dbus-elevate", "../root", "x").is_err());
         assert!(check_password("op-dbus-elevate", "jeremy", "a\0b").is_err());
-    }
-
-    #[test]
-    fn root_is_resolved_and_unknown_accounts_fail() {
-        assert!(is_sudoer("no-such-account-opdbus").is_err());
-        // root exists everywhere; whether it is in wheel/sudo is host policy.
-        assert!(is_sudoer("root").is_ok());
     }
 }

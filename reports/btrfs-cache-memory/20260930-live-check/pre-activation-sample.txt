@@ -1,0 +1,9 @@
+2026-09-30T21:03:21Z
+Name:	op-grpc-bridge
+Pid:	1123
+VmSize:	19270744 kB
+VmRSS:	12586180 kB
+VmData:	18730660 kB
+VmSwap:	 5626120 kB
+Threads:	52
+starttime_ticks 601

@@ -249,6 +249,14 @@
       }
     },
     {
+      "id": "bin:system_graph_inventory",
+      "label": "bin",
+      "props": {
+        "crate": "op-cozo-store",
+        "src": "crates/op-cozo-store/src/bin/system_graph_inventory.rs"
+      }
+    },
+    {
       "id": "bin:threetched-fs",
       "label": "bin",
       "props": {
@@ -337,7 +345,7 @@
         ],
         "has_lib": true,
         "rs_files": 31,
-        "loc": 21285,
+        "loc": 21287,
         "tests": 36,
         "unsafe_refs": 3,
         "todo": 6,
@@ -388,8 +396,8 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 19,
-        "loc": 4961,
-        "tests": 53,
+        "loc": 5004,
+        "tests": 54,
         "unsafe_refs": 5,
         "todo": 1,
         "unwrap_expect": 19
@@ -402,15 +410,16 @@
         "path": "crates/op-cozo-store",
         "description": "",
         "bins": [
-          "identity-sled-bind"
+          "identity-sled-bind",
+          "system_graph_inventory"
         ],
         "has_lib": true,
-        "rs_files": 12,
-        "loc": 11011,
-        "tests": 68,
+        "rs_files": 19,
+        "loc": 14940,
+        "tests": 101,
         "unsafe_refs": 3,
         "todo": 2,
-        "unwrap_expect": 220
+        "unwrap_expect": 235
       }
     },
     {
@@ -540,12 +549,12 @@
           "op-grpc-bridge"
         ],
         "has_lib": true,
-        "rs_files": 163,
-        "loc": 100272,
-        "tests": 766,
-        "unsafe_refs": 192,
+        "rs_files": 168,
+        "loc": 104056,
+        "tests": 792,
+        "unsafe_refs": 208,
         "todo": 172,
-        "unwrap_expect": 1773
+        "unwrap_expect": 1831
       }
     },
     {
@@ -639,9 +648,9 @@
         "description": "LLM provider integration with dynamic model discovery for HuggingFace",
         "bins": [],
         "has_lib": true,
-        "rs_files": 17,
-        "loc": 8419,
-        "tests": 26,
+        "rs_files": 19,
+        "loc": 8641,
+        "tests": 29,
         "unsafe_refs": 29,
         "todo": 11,
         "unwrap_expect": 79
@@ -692,12 +701,12 @@
           "op-rtnetlink-init"
         ],
         "has_lib": true,
-        "rs_files": 31,
-        "loc": 16454,
-        "tests": 74,
-        "unsafe_refs": 96,
+        "rs_files": 32,
+        "loc": 16930,
+        "tests": 75,
+        "unsafe_refs": 120,
         "todo": 14,
-        "unwrap_expect": 170
+        "unwrap_expect": 182
       }
     },
     {
@@ -731,11 +740,11 @@
         ],
         "has_lib": true,
         "rs_files": 151,
-        "loc": 119422,
-        "tests": 557,
+        "loc": 120139,
+        "tests": 563,
         "unsafe_refs": 15,
         "todo": 1,
-        "unwrap_expect": 1309
+        "unwrap_expect": 1323
       }
     },
     {
@@ -906,11 +915,11 @@
         ],
         "has_lib": false,
         "rs_files": 8,
-        "loc": 5961,
-        "tests": 28,
+        "loc": 6001,
+        "tests": 29,
         "unsafe_refs": 2,
         "todo": 0,
-        "unwrap_expect": 137
+        "unwrap_expect": 139
       }
     },
     {
@@ -1953,8 +1962,9 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-30T10:35:05Z",
-        "commit": "abefbe435f91e4c719fabcea4e07383c5c146cfc",
+        "generated_at": "2026-10-01T00:53:13Z",
+        "commit": "46c8a19050cd5eb1bee8db7d62e303db141671df",
+        "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -3858,7 +3868,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 299
+        "loc": 301
       }
     },
     {
@@ -4452,7 +4462,7 @@
       "props": {
         "crate": "op-core",
         "kind": "src",
-        "loc": 339
+        "loc": 340
       }
     },
     {
@@ -4461,7 +4471,7 @@
       "props": {
         "crate": "op-core",
         "kind": "src",
-        "loc": 726
+        "loc": 751
       }
     },
     {
@@ -4470,7 +4480,7 @@
       "props": {
         "crate": "op-core",
         "kind": "src",
-        "loc": 442
+        "loc": 459
       }
     },
     {
@@ -4542,7 +4552,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "example",
-        "loc": 86
+        "loc": 40
       }
     },
     {
@@ -4552,6 +4562,33 @@
         "crate": "op-cozo-store",
         "kind": "bin",
         "loc": 75
+      }
+    },
+    {
+      "id": "mod:crates/op-cozo-store/src/bin/inventory/mod.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "bin",
+        "loc": 1040
+      }
+    },
+    {
+      "id": "mod:crates/op-cozo-store/src/bin/inventory/tests.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "bin",
+        "loc": 377
+      }
+    },
+    {
+      "id": "mod:crates/op-cozo-store/src/bin/system_graph_inventory.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "bin",
+        "loc": 6
       }
     },
     {
@@ -4573,12 +4610,30 @@
       }
     },
     {
+      "id": "mod:crates/op-cozo-store/src/identity_inventory.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "src",
+        "loc": 491
+      }
+    },
+    {
       "id": "mod:crates/op-cozo-store/src/identity_transactions.rs",
       "label": "module",
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 1712
+        "loc": 1754
+      }
+    },
+    {
+      "id": "mod:crates/op-cozo-store/src/identity_transactions/physical_root.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "src",
+        "loc": 344
       }
     },
     {
@@ -4587,7 +4642,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 1454
+        "loc": 1838
       }
     },
     {
@@ -4596,7 +4651,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 2731
+        "loc": 2756
       }
     },
     {
@@ -4624,6 +4679,24 @@
         "crate": "op-cozo-store",
         "kind": "src",
         "loc": 444
+      }
+    },
+    {
+      "id": "mod:crates/op-cozo-store/src/system_graph.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "src",
+        "loc": 787
+      }
+    },
+    {
+      "id": "mod:crates/op-cozo-store/src/system_graph_tests.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "src",
+        "loc": 479
       }
     },
     {
@@ -5374,6 +5447,24 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/identity_physical_root.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 786
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/identity_physical_root/storage.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 390
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/identity_publication.rs",
       "label": "module",
       "props": {
@@ -5415,7 +5506,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 3331
+        "loc": 3733
       }
     },
     {
@@ -5460,7 +5551,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 514
+        "loc": 508
       }
     },
     {
@@ -5505,7 +5596,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 375
+        "loc": 377
       }
     },
     {
@@ -5550,7 +5641,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 4095
+        "loc": 4341
       }
     },
     {
@@ -5595,7 +5686,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 628
+        "loc": 638
       }
     },
     {
@@ -5604,7 +5695,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 752
+        "loc": 956
       }
     },
     {
@@ -5613,7 +5704,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 311
+        "loc": 316
       }
     },
     {
@@ -5622,7 +5713,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 6895
+        "loc": 6924
       }
     },
     {
@@ -5748,7 +5839,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 210
+        "loc": 191
       }
     },
     {
@@ -5932,12 +6023,39 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/system_graph_dispatch.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 160
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/system_graph_projection.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 1045
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/system_graph_projection_tests.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 532
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/task_elevation.rs",
       "label": "module",
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 274
+        "loc": 245
       }
     },
     {
@@ -5946,7 +6064,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 215
+        "loc": 225
       }
     },
     {
@@ -6027,7 +6145,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 3622
+        "loc": 3639
       }
     },
     {
@@ -6675,7 +6793,7 @@
       "props": {
         "crate": "op-llm",
         "kind": "src",
-        "loc": 761
+        "loc": 795
       }
     },
     {
@@ -6715,6 +6833,24 @@
       }
     },
     {
+      "id": "mod:crates/op-llm/src/graph_turn_manager_tests.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-llm",
+        "kind": "src",
+        "loc": 113
+      }
+    },
+    {
+      "id": "mod:crates/op-llm/src/graph_turn_reminder.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-llm",
+        "kind": "src",
+        "loc": 74
+      }
+    },
+    {
       "id": "mod:crates/op-llm/src/headless_oauth.rs",
       "label": "module",
       "props": {
@@ -6738,7 +6874,7 @@
       "props": {
         "crate": "op-llm",
         "kind": "src",
-        "loc": 89
+        "loc": 90
       }
     },
     {
@@ -7053,7 +7189,16 @@
       "props": {
         "crate": "op-network",
         "kind": "bin",
-        "loc": 31
+        "loc": 49
+      }
+    },
+    {
+      "id": "mod:crates/op-network/src/bin/op-identity-storage/lungs_attach.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-network",
+        "kind": "bin",
+        "loc": 458
       }
     },
     {
@@ -7755,7 +7900,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 449
+        "loc": 559
       }
     },
     {
@@ -7764,7 +7909,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1347
+        "loc": 1396
       }
     },
     {
@@ -7773,7 +7918,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 406
+        "loc": 564
       }
     },
     {
@@ -7863,7 +8008,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 528
+        "loc": 530
       }
     },
     {
@@ -8007,7 +8152,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 921
+        "loc": 1101
       }
     },
     {
@@ -8277,7 +8422,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1066
+        "loc": 1284
       }
     },
     {
@@ -10194,7 +10339,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 1282
+        "loc": 1322
       }
     },
     {
@@ -10318,7 +10463,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/cozo.rs",
-        "line": 448,
+        "line": 558,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/cozo"
       }
@@ -10368,7 +10513,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/elevation.rs",
-        "line": 360,
+        "line": 362,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/elevation"
       }
@@ -10488,7 +10633,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/identity_sled.rs",
-        "line": 920,
+        "line": 1100,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/identity_sled"
       }
@@ -10588,7 +10733,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/model_registry.rs",
-        "line": 841,
+        "line": 946,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/model_registry"
       }
@@ -11241,6 +11386,12 @@
       "src": "bin:svd",
       "rel": "bin_entry",
       "dst": "mod:crates/op-runit-systemctl/src/bin/svd.rs",
+      "props": {}
+    },
+    {
+      "src": "bin:system_graph_inventory",
+      "rel": "bin_entry",
+      "dst": "mod:crates/op-cozo-store/src/bin/system_graph_inventory.rs",
       "props": {}
     },
     {
@@ -12165,6 +12316,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12174,6 +12326,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -12183,6 +12336,7 @@
       "dst": "ext:axum",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -12192,6 +12346,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -12201,6 +12356,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -12210,6 +12366,7 @@
       "dst": "ext:jsonschema",
       "props": {
         "kind": "normal",
+        "req": "^0.29",
         "optional": false
       }
     },
@@ -12219,6 +12376,7 @@
       "dst": "ext:parking_lot",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -12228,6 +12386,7 @@
       "dst": "ext:regex",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12237,6 +12396,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -12246,6 +12406,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12255,6 +12416,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12264,6 +12426,7 @@
       "dst": "ext:serde_yaml",
       "props": {
         "kind": "normal",
+        "req": "^0.9",
         "optional": false
       }
     },
@@ -12273,6 +12436,7 @@
       "dst": "ext:shell-words",
       "props": {
         "kind": "normal",
+        "req": "^1.1",
         "optional": false
       }
     },
@@ -12282,6 +12446,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -12291,6 +12456,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "normal",
+        "req": "^3",
         "optional": false
       }
     },
@@ -12300,6 +12466,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12309,6 +12476,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12318,6 +12486,7 @@
       "dst": "ext:toml",
       "props": {
         "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },
@@ -12327,6 +12496,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -12336,6 +12506,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -12345,6 +12516,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -12354,6 +12526,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -12519,6 +12692,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12528,6 +12702,7 @@
       "dst": "ext:async-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -12537,6 +12712,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -12546,6 +12722,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -12555,6 +12732,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -12564,6 +12742,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -12573,6 +12752,7 @@
       "dst": "ext:prost",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -12582,6 +12762,7 @@
       "dst": "ext:prost-types",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -12591,6 +12772,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -12600,6 +12782,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12609,6 +12792,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12618,6 +12802,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -12627,6 +12812,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12636,6 +12822,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12645,6 +12832,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -12654,6 +12842,7 @@
       "dst": "ext:tokio-test",
       "props": {
         "kind": "dev",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -12663,6 +12852,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -12672,6 +12862,7 @@
       "dst": "ext:tonic-build",
       "props": {
         "kind": "build",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -12681,6 +12872,7 @@
       "dst": "ext:tonic-health",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -12690,6 +12882,7 @@
       "dst": "ext:tonic-reflection",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -12699,6 +12892,7 @@
       "dst": "ext:tonic-web",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -12708,6 +12902,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -12717,6 +12912,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -12726,6 +12922,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -12735,6 +12932,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -12842,6 +13040,7 @@
       "dst": "ext:blake3",
       "props": {
         "kind": "normal",
+        "req": "^1.5",
         "optional": false
       }
     },
@@ -12851,6 +13050,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -12860,6 +13060,7 @@
       "dst": "ext:jsonschema",
       "props": {
         "kind": "dev",
+        "req": "^0.29",
         "optional": false
       }
     },
@@ -12869,6 +13070,7 @@
       "dst": "ext:prost",
       "props": {
         "kind": "dev",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -12878,6 +13080,7 @@
       "dst": "ext:prost-reflect",
       "props": {
         "kind": "normal",
+        "req": "^0.14",
         "optional": false
       }
     },
@@ -12887,6 +13090,7 @@
       "dst": "ext:prost-types",
       "props": {
         "kind": "dev",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -12896,6 +13100,7 @@
       "dst": "ext:rand_core",
       "props": {
         "kind": "normal",
+        "req": "^0.6",
         "optional": false
       }
     },
@@ -12905,6 +13110,7 @@
       "dst": "ext:schemars",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12914,6 +13120,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12923,6 +13130,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -12932,6 +13140,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -12941,6 +13150,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -12950,6 +13160,7 @@
       "dst": "ext:x25519-dalek",
       "props": {
         "kind": "normal",
+        "req": "^2",
         "optional": false
       }
     },
@@ -13099,6 +13310,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -13108,6 +13320,7 @@
       "dst": "ext:bincode",
       "props": {
         "kind": "normal",
+        "req": "^1.3",
         "optional": false
       }
     },
@@ -13117,6 +13330,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -13126,6 +13340,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -13135,6 +13350,7 @@
       "dst": "ext:libc",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -13144,6 +13360,7 @@
       "dst": "ext:log",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -13153,6 +13370,7 @@
       "dst": "ext:num_cpus",
       "props": {
         "kind": "normal",
+        "req": "^1.16",
         "optional": false
       }
     },
@@ -13162,6 +13380,7 @@
       "dst": "ext:prost",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -13171,6 +13390,7 @@
       "dst": "ext:prost-types",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -13180,6 +13400,7 @@
       "dst": "ext:rusqlite",
       "props": {
         "kind": "normal",
+        "req": "^0.37",
         "optional": false
       }
     },
@@ -13189,6 +13410,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -13198,6 +13420,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -13207,6 +13430,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -13216,6 +13440,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -13225,6 +13450,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3.10",
         "optional": false
       }
     },
@@ -13234,6 +13460,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -13243,6 +13470,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -13252,6 +13480,7 @@
       "dst": "ext:tokio-test",
       "props": {
         "kind": "dev",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -13261,6 +13490,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -13270,6 +13500,7 @@
       "dst": "ext:tonic-build",
       "props": {
         "kind": "build",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -13279,6 +13510,7 @@
       "dst": "ext:tonic-health",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -13288,6 +13520,7 @@
       "dst": "ext:tonic-reflection",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -13297,6 +13530,7 @@
       "dst": "ext:tonic-web",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -13306,6 +13540,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -13315,6 +13550,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -13324,6 +13560,7 @@
       "dst": "ext:zstd",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -13573,6 +13810,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -13582,6 +13820,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -13591,6 +13830,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -13600,6 +13840,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -13609,6 +13850,7 @@
       "dst": "ext:libc",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -13618,6 +13860,7 @@
       "dst": "ext:prost",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -13627,6 +13870,7 @@
       "dst": "ext:prost-build",
       "props": {
         "kind": "build",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -13636,6 +13880,7 @@
       "dst": "ext:prost-types",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -13645,6 +13890,7 @@
       "dst": "ext:qdrant-client",
       "props": {
         "kind": "dev",
+        "req": "^1.7",
         "optional": false
       }
     },
@@ -13654,6 +13900,7 @@
       "dst": "ext:regex",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -13663,6 +13910,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -13672,6 +13920,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -13681,6 +13930,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -13690,6 +13940,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -13699,6 +13950,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -13708,6 +13960,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -13717,6 +13970,7 @@
       "dst": "ext:tokio-test",
       "props": {
         "kind": "dev",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -13726,6 +13980,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -13735,6 +13990,7 @@
       "dst": "ext:tonic-build",
       "props": {
         "kind": "build",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -13744,6 +14000,7 @@
       "dst": "ext:tonic-reflection",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -13753,6 +14010,7 @@
       "dst": "ext:tonic-web",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -13762,6 +14020,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -13771,6 +14030,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -13780,6 +14040,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -13789,6 +14050,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -14054,6 +14316,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14063,6 +14326,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -14072,6 +14336,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -14081,6 +14346,7 @@
       "dst": "ext:clap",
       "props": {
         "kind": "normal",
+        "req": "^4",
         "optional": false
       }
     },
@@ -14090,6 +14356,7 @@
       "dst": "ext:cozo",
       "props": {
         "kind": "normal",
+        "req": "^0.7.6",
         "optional": false
       }
     },
@@ -14099,6 +14366,7 @@
       "dst": "ext:dashmap",
       "props": {
         "kind": "normal",
+        "req": "^5.0",
         "optional": false
       }
     },
@@ -14108,6 +14376,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -14117,6 +14386,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -14126,6 +14396,7 @@
       "dst": "ext:memmap2",
       "props": {
         "kind": "normal",
+        "req": "^0.9",
         "optional": false
       }
     },
@@ -14135,6 +14406,7 @@
       "dst": "ext:parking_lot",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -14144,6 +14416,7 @@
       "dst": "ext:prost",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -14153,6 +14426,7 @@
       "dst": "ext:qdrant-client",
       "props": {
         "kind": "normal",
+        "req": "^1.17",
         "optional": false
       }
     },
@@ -14162,6 +14436,7 @@
       "dst": "ext:rand",
       "props": {
         "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },
@@ -14171,6 +14446,7 @@
       "dst": "ext:regex",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14180,6 +14456,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -14189,6 +14466,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -14198,6 +14476,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14207,6 +14486,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -14216,6 +14496,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -14225,6 +14506,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -14234,6 +14516,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -14243,6 +14526,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -14252,6 +14536,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -14261,6 +14546,7 @@
       "dst": "ext:tonic-build",
       "props": {
         "kind": "build",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -14270,6 +14556,7 @@
       "dst": "ext:tonic-health",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -14279,6 +14566,7 @@
       "dst": "ext:tonic-reflection",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -14288,6 +14576,7 @@
       "dst": "ext:tonic-web",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -14297,6 +14586,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -14306,6 +14596,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -14315,6 +14606,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -14324,6 +14616,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -14347,6 +14640,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14356,6 +14650,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14365,6 +14660,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14374,6 +14670,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14383,6 +14680,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -14506,6 +14804,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14515,6 +14814,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -14524,6 +14824,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -14533,6 +14834,7 @@
       "dst": "ext:ipnet",
       "props": {
         "kind": "normal",
+        "req": "^2",
         "optional": false
       }
     },
@@ -14542,6 +14844,7 @@
       "dst": "ext:nix",
       "props": {
         "kind": "normal",
+        "req": "^0.28",
         "optional": false
       }
     },
@@ -14551,6 +14854,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14560,6 +14864,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -14569,6 +14874,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -14578,6 +14884,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14587,6 +14894,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "dev",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14596,6 +14904,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14605,6 +14914,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -14614,6 +14924,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -14623,6 +14934,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -14647,6 +14959,24 @@
     {
       "src": "crate:op-cozo-store",
       "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/bin/inventory/mod.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/bin/inventory/tests.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/bin/system_graph_inventory.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
       "dst": "mod:crates/op-cozo-store/src/chat_response_conversations.rs",
       "props": {}
     },
@@ -14659,7 +14989,19 @@
     {
       "src": "crate:op-cozo-store",
       "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/identity_inventory.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
       "dst": "mod:crates/op-cozo-store/src/identity_transactions.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/identity_transactions/physical_root.rs",
       "props": {}
     },
     {
@@ -14695,6 +15037,18 @@
     {
       "src": "crate:op-cozo-store",
       "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/system_graph.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/system_graph_tests.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
       "dst": "mod:crates/op-cozo-store/src/ui_gallery.rs",
       "props": {}
     },
@@ -14714,10 +15068,17 @@
     },
     {
       "src": "crate:op-cozo-store",
+      "rel": "provides_bin",
+      "dst": "bin:system_graph_inventory",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
       "rel": "uses_ext",
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14727,6 +15088,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -14736,6 +15098,7 @@
       "dst": "ext:cozo",
       "props": {
         "kind": "normal",
+        "req": "^0.7.6",
         "optional": false
       }
     },
@@ -14745,6 +15108,17 @@
       "dst": "ext:nix",
       "props": {
         "kind": "normal",
+        "req": "^0.28",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "uses_ext",
+      "dst": "ext:schemars",
+      "props": {
+        "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14754,6 +15128,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14763,6 +15138,17 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "uses_ext",
+      "dst": "ext:sha2",
+      "props": {
+        "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -14772,6 +15158,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -14781,6 +15168,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14790,6 +15178,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -14951,6 +15340,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -14960,6 +15350,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -14969,6 +15360,7 @@
       "dst": "ext:axum",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -14978,6 +15370,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.21",
         "optional": false
       }
     },
@@ -14987,6 +15380,7 @@
       "dst": "ext:bytes",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -14996,6 +15390,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15005,6 +15400,7 @@
       "dst": "ext:dashmap",
       "props": {
         "kind": "normal",
+        "req": "^5.0",
         "optional": false
       }
     },
@@ -15014,6 +15410,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -15023,6 +15420,7 @@
       "dst": "ext:glob",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -15032,6 +15430,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15041,6 +15440,7 @@
       "dst": "ext:jsonschema",
       "props": {
         "kind": "normal",
+        "req": "^0.29",
         "optional": false
       }
     },
@@ -15050,6 +15450,7 @@
       "dst": "ext:libc",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -15059,6 +15460,7 @@
       "dst": "ext:mime_guess",
       "props": {
         "kind": "normal",
+        "req": "^2.0",
         "optional": false
       }
     },
@@ -15068,6 +15470,7 @@
       "dst": "ext:parking_lot",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -15077,6 +15480,7 @@
       "dst": "ext:pin-project-lite",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -15086,6 +15490,7 @@
       "dst": "ext:quick-xml",
       "props": {
         "kind": "normal",
+        "req": "^0.36",
         "optional": false
       }
     },
@@ -15095,6 +15500,7 @@
       "dst": "ext:regex",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15104,6 +15510,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -15113,6 +15520,7 @@
       "dst": "ext:rust-embed",
       "props": {
         "kind": "normal",
+        "req": "^8.0",
         "optional": false
       }
     },
@@ -15122,6 +15530,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15131,6 +15540,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15140,6 +15550,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -15149,6 +15560,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -15158,6 +15570,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -15167,6 +15580,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15176,6 +15590,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15185,6 +15600,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -15194,6 +15610,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -15203,6 +15620,7 @@
       "dst": "ext:tonic-reflection",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -15212,6 +15630,7 @@
       "dst": "ext:tonic-web",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -15221,6 +15640,7 @@
       "dst": "ext:tower",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15230,6 +15650,7 @@
       "dst": "ext:tower-http",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -15239,6 +15660,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -15248,6 +15670,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -15257,6 +15680,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -15266,6 +15690,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -15315,6 +15740,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15324,6 +15750,7 @@
       "dst": "ext:clap",
       "props": {
         "kind": "normal",
+        "req": "^4",
         "optional": false
       }
     },
@@ -15333,6 +15760,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15342,6 +15770,7 @@
       "dst": "ext:quick-xml",
       "props": {
         "kind": "normal",
+        "req": "^0.36",
         "optional": false
       }
     },
@@ -15351,6 +15780,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15360,6 +15790,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15369,6 +15800,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15378,6 +15810,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -15387,6 +15820,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -15396,6 +15830,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -15425,6 +15860,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -15434,6 +15870,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15443,6 +15880,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -15452,6 +15890,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15461,6 +15900,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -15470,6 +15910,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -15479,6 +15920,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -15488,6 +15930,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -15509,6 +15952,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15518,6 +15962,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15527,6 +15972,7 @@
       "dst": "ext:flate2",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15536,6 +15982,7 @@
       "dst": "ext:log",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15545,6 +15992,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -15554,6 +16002,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15563,6 +16012,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15572,6 +16022,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -15581,6 +16032,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -15590,6 +16042,7 @@
       "dst": "ext:tar",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15599,6 +16052,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -15608,6 +16062,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15617,6 +16072,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15626,6 +16082,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -15635,6 +16092,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -15690,6 +16148,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15699,6 +16158,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -15708,6 +16168,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15717,6 +16178,7 @@
       "dst": "ext:lru",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -15726,6 +16188,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15735,6 +16198,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -15744,6 +16208,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15753,6 +16218,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15762,6 +16228,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -15771,6 +16238,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -15816,6 +16284,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15825,6 +16294,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -15834,6 +16304,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15843,6 +16314,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15852,6 +16324,7 @@
       "dst": "ext:prometheus",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -15861,6 +16334,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15870,6 +16344,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -15879,6 +16354,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -15888,6 +16364,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15897,6 +16374,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -15906,6 +16384,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -15945,6 +16424,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -15954,6 +16434,7 @@
       "dst": "ext:argon2",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -15963,6 +16444,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.22",
         "optional": false
       }
     },
@@ -15972,6 +16454,7 @@
       "dst": "ext:blake2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -15981,6 +16464,7 @@
       "dst": "ext:chacha20poly1305",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -15990,6 +16474,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -15999,6 +16484,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -16008,6 +16494,7 @@
       "dst": "ext:ring",
       "props": {
         "kind": "normal",
+        "req": "^0.17",
         "optional": false
       }
     },
@@ -16017,6 +16504,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -16026,6 +16514,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -16035,6 +16524,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -16044,6 +16534,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -16053,6 +16544,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -16062,6 +16554,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -16071,6 +16564,7 @@
       "dst": "ext:x25519-dalek",
       "props": {
         "kind": "normal",
+        "req": "^2.0",
         "optional": false
       }
     },
@@ -16080,6 +16574,7 @@
       "dst": "ext:zeroize",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -16464,6 +16959,18 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/identity_physical_root.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/identity_physical_root/storage.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/identity_publication.rs",
       "props": {}
     },
@@ -16831,6 +17338,24 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/state_tree_fold.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/system_graph_dispatch.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/system_graph_projection.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/system_graph_projection_tests.rs",
       "props": {}
     },
     {
@@ -17293,6 +17818,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17302,6 +17828,7 @@
       "dst": "ext:async-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -17311,6 +17838,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -17320,6 +17848,7 @@
       "dst": "ext:axum",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -17329,6 +17858,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.21",
         "optional": false
       }
     },
@@ -17338,6 +17868,7 @@
       "dst": "ext:blake3",
       "props": {
         "kind": "normal",
+        "req": "^1.5",
         "optional": false
       }
     },
@@ -17347,6 +17878,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -17356,6 +17888,7 @@
       "dst": "ext:ed25519-dalek",
       "props": {
         "kind": "normal",
+        "req": "^2.2",
         "optional": false
       }
     },
@@ -17365,6 +17898,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -17374,6 +17908,7 @@
       "dst": "ext:google-cloud-auth",
       "props": {
         "kind": "dev",
+        "req": "^1.15",
         "optional": false
       }
     },
@@ -17383,6 +17918,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -17392,6 +17928,7 @@
       "dst": "ext:http",
       "props": {
         "kind": "dev",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17401,6 +17938,7 @@
       "dst": "ext:hyper",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -17410,6 +17948,7 @@
       "dst": "ext:hyper-util",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -17419,6 +17958,7 @@
       "dst": "ext:jsonschema",
       "props": {
         "kind": "normal",
+        "req": "^0.29",
         "optional": false
       }
     },
@@ -17428,6 +17968,7 @@
       "dst": "ext:libc",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -17437,6 +17978,7 @@
       "dst": "ext:libloading",
       "props": {
         "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },
@@ -17446,6 +17988,7 @@
       "dst": "ext:memmap2",
       "props": {
         "kind": "normal",
+        "req": "^0.9",
         "optional": false
       }
     },
@@ -17455,6 +17998,7 @@
       "dst": "ext:nix",
       "props": {
         "kind": "normal",
+        "req": "^0.28",
         "optional": false
       }
     },
@@ -17464,6 +18008,7 @@
       "dst": "ext:prost",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -17473,6 +18018,7 @@
       "dst": "ext:prost-reflect",
       "props": {
         "kind": "normal",
+        "req": "^0.14",
         "optional": false
       }
     },
@@ -17482,6 +18028,7 @@
       "dst": "ext:prost-types",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -17491,6 +18038,7 @@
       "dst": "ext:qdrant-client",
       "props": {
         "kind": "normal",
+        "req": "^1.17",
         "optional": false
       }
     },
@@ -17500,6 +18048,7 @@
       "dst": "ext:rcgen",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -17509,6 +18058,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -17518,6 +18068,7 @@
       "dst": "ext:rustls",
       "props": {
         "kind": "dev",
+        "req": "^0.23",
         "optional": false
       }
     },
@@ -17527,6 +18078,7 @@
       "dst": "ext:rustls",
       "props": {
         "kind": "normal",
+        "req": "^0.23",
         "optional": false
       }
     },
@@ -17536,6 +18088,7 @@
       "dst": "ext:rustls-pemfile",
       "props": {
         "kind": "normal",
+        "req": "^2",
         "optional": false
       }
     },
@@ -17545,6 +18098,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17554,6 +18108,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "build",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17563,6 +18118,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "dev",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17572,6 +18128,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17581,6 +18138,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -17590,6 +18148,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "build",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -17599,6 +18158,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -17608,6 +18168,7 @@
       "dst": "ext:socket2",
       "props": {
         "kind": "normal",
+        "req": "^0.6",
         "optional": false
       }
     },
@@ -17617,6 +18178,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -17626,6 +18188,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17635,6 +18198,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "build",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17644,6 +18208,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17653,6 +18218,7 @@
       "dst": "ext:tokio-rustls",
       "props": {
         "kind": "normal",
+        "req": "^0.26",
         "optional": false
       }
     },
@@ -17662,6 +18228,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -17671,6 +18238,7 @@
       "dst": "ext:tokio-test",
       "props": {
         "kind": "dev",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -17680,6 +18248,7 @@
       "dst": "ext:tokio-tungstenite",
       "props": {
         "kind": "normal",
+        "req": "=0.24.0",
         "optional": false
       }
     },
@@ -17689,6 +18258,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -17698,6 +18268,7 @@
       "dst": "ext:tonic-build",
       "props": {
         "kind": "build",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -17707,6 +18278,7 @@
       "dst": "ext:tonic-health",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -17716,6 +18288,7 @@
       "dst": "ext:tonic-reflection",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -17725,6 +18298,7 @@
       "dst": "ext:tonic-web",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -17734,6 +18308,7 @@
       "dst": "ext:tower",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -17743,6 +18318,7 @@
       "dst": "ext:tower-http",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -17752,6 +18328,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -17761,6 +18338,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -17770,6 +18348,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -17779,6 +18358,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -17788,6 +18368,7 @@
       "dst": "ext:zeroize",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17827,6 +18408,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17836,6 +18418,7 @@
       "dst": "ext:axum",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -17845,6 +18428,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -17854,6 +18438,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -17863,6 +18448,7 @@
       "dst": "ext:gethostname",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -17872,6 +18458,7 @@
       "dst": "ext:hyper",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -17881,6 +18468,7 @@
       "dst": "ext:hyper-util",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -17890,6 +18478,7 @@
       "dst": "ext:rustls",
       "props": {
         "kind": "normal",
+        "req": "^0.23",
         "optional": false
       }
     },
@@ -17899,6 +18488,7 @@
       "dst": "ext:rustls-pemfile",
       "props": {
         "kind": "normal",
+        "req": "^2",
         "optional": false
       }
     },
@@ -17908,6 +18498,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17917,6 +18508,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -17926,6 +18518,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -17935,6 +18528,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17944,6 +18538,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -17953,6 +18548,7 @@
       "dst": "ext:tokio-rustls",
       "props": {
         "kind": "normal",
+        "req": "^0.26",
         "optional": false
       }
     },
@@ -17962,6 +18558,7 @@
       "dst": "ext:tower",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -17971,6 +18568,7 @@
       "dst": "ext:tower-http",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -17980,6 +18578,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -18111,6 +18710,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18120,6 +18720,7 @@
       "dst": "ext:argon2",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -18129,6 +18730,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.21",
         "optional": false
       }
     },
@@ -18138,6 +18740,7 @@
       "dst": "ext:bip39",
       "props": {
         "kind": "normal",
+        "req": "^2",
         "optional": false
       }
     },
@@ -18147,6 +18750,7 @@
       "dst": "ext:blake3",
       "props": {
         "kind": "normal",
+        "req": "^1.5",
         "optional": false
       }
     },
@@ -18156,6 +18760,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -18165,6 +18770,7 @@
       "dst": "ext:dashmap",
       "props": {
         "kind": "normal",
+        "req": "^5.0",
         "optional": false
       }
     },
@@ -18174,6 +18780,7 @@
       "dst": "ext:dirs",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -18183,6 +18790,7 @@
       "dst": "ext:ed25519-dalek",
       "props": {
         "kind": "normal",
+        "req": "^2.2",
         "optional": false
       }
     },
@@ -18192,6 +18800,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -18201,6 +18810,7 @@
       "dst": "ext:hostname",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -18210,6 +18820,7 @@
       "dst": "ext:libc",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -18219,6 +18830,7 @@
       "dst": "ext:md5",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -18228,6 +18840,7 @@
       "dst": "ext:rand",
       "props": {
         "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },
@@ -18237,6 +18850,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18246,6 +18860,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18255,6 +18870,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -18264,6 +18880,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -18273,6 +18890,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -18282,6 +18900,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18291,6 +18910,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18300,6 +18920,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -18309,6 +18930,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -18318,6 +18940,7 @@
       "dst": "ext:x25519-dalek",
       "props": {
         "kind": "normal",
+        "req": "^2",
         "optional": false
       }
     },
@@ -18327,6 +18950,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -18368,6 +18992,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18377,6 +19002,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -18386,6 +19012,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.21",
         "optional": false
       }
     },
@@ -18395,6 +19022,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -18404,6 +19032,7 @@
       "dst": "ext:quick-xml",
       "props": {
         "kind": "normal",
+        "req": "^0.36",
         "optional": false
       }
     },
@@ -18413,6 +19042,7 @@
       "dst": "ext:regex",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18422,6 +19052,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18431,6 +19062,7 @@
       "dst": "ext:serde_yaml",
       "props": {
         "kind": "normal",
+        "req": "^0.9",
         "optional": false
       }
     },
@@ -18440,6 +19072,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -18449,6 +19082,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -18458,6 +19092,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18467,6 +19102,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18476,6 +19112,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -18485,6 +19122,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -18560,6 +19198,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18569,6 +19208,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -18578,6 +19218,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -18587,6 +19228,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -18596,6 +19238,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -18605,6 +19248,7 @@
       "dst": "ext:parking_lot",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -18614,6 +19258,7 @@
       "dst": "ext:quick-xml",
       "props": {
         "kind": "normal",
+        "req": "^0.36",
         "optional": false
       }
     },
@@ -18623,6 +19268,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18632,6 +19278,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18641,6 +19288,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -18650,6 +19298,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -18659,6 +19308,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -18668,6 +19318,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18677,6 +19328,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18686,6 +19338,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -18695,6 +19348,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -18704,6 +19358,7 @@
       "dst": "ext:zbus_xml",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -18737,6 +19392,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18746,6 +19402,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18755,6 +19412,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -18764,6 +19422,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18773,6 +19432,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18782,6 +19442,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -18791,6 +19452,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -18840,6 +19502,18 @@
       "src": "crate:op-llm",
       "rel": "contains",
       "dst": "mod:crates/op-llm/src/gemini_cli.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-llm",
+      "rel": "contains",
+      "dst": "mod:crates/op-llm/src/graph_turn_manager_tests.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-llm",
+      "rel": "contains",
+      "dst": "mod:crates/op-llm/src/graph_turn_reminder.rs",
       "props": {}
     },
     {
@@ -18926,6 +19600,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -18935,6 +19610,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -18944,6 +19620,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.21",
         "optional": false
       }
     },
@@ -18953,6 +19630,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -18962,6 +19640,7 @@
       "dst": "ext:dirs",
       "props": {
         "kind": "normal",
+        "req": "^5.0",
         "optional": false
       }
     },
@@ -18971,6 +19650,7 @@
       "dst": "ext:google-cloud-auth",
       "props": {
         "kind": "normal",
+        "req": "^1.15",
         "optional": false
       }
     },
@@ -18980,6 +19660,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -18989,6 +19670,7 @@
       "dst": "ext:jsonwebtoken",
       "props": {
         "kind": "normal",
+        "req": "^9",
         "optional": false
       }
     },
@@ -18998,6 +19680,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -19007,6 +19690,7 @@
       "dst": "ext:rsa",
       "props": {
         "kind": "normal",
+        "req": "^0.9.9",
         "optional": false
       }
     },
@@ -19016,6 +19700,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -19025,6 +19710,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -19034,6 +19720,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -19043,6 +19730,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -19052,6 +19740,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -19061,6 +19750,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -19070,6 +19760,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -19079,6 +19770,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -19234,6 +19926,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -19243,6 +19936,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -19252,6 +19946,7 @@
       "dst": "ext:axum",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -19261,6 +19956,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -19270,6 +19966,7 @@
       "dst": "ext:clap",
       "props": {
         "kind": "normal",
+        "req": "^4.0",
         "optional": false
       }
     },
@@ -19279,6 +19976,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -19288,6 +19986,7 @@
       "dst": "ext:hyper",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -19297,6 +19996,7 @@
       "dst": "ext:hyper-util",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -19306,6 +20006,7 @@
       "dst": "ext:libc",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -19315,6 +20016,7 @@
       "dst": "ext:prost",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": true
       }
     },
@@ -19324,6 +20026,7 @@
       "dst": "ext:prost-types",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -19333,6 +20036,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -19342,6 +20046,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -19351,6 +20056,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -19360,6 +20066,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -19369,6 +20076,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -19378,6 +20086,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -19387,6 +20096,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": true
       }
     },
@@ -19396,6 +20106,7 @@
       "dst": "ext:tonic-build",
       "props": {
         "kind": "build",
+        "req": "^0.12",
         "optional": true
       }
     },
@@ -19405,6 +20116,7 @@
       "dst": "ext:tonic-health",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": true
       }
     },
@@ -19414,6 +20126,7 @@
       "dst": "ext:tonic-reflection",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": true
       }
     },
@@ -19423,6 +20136,7 @@
       "dst": "ext:tonic-web",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": true
       }
     },
@@ -19432,6 +20146,7 @@
       "dst": "ext:tower",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -19441,6 +20156,7 @@
       "dst": "ext:tower-http",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -19450,6 +20166,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -19459,6 +20176,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -19468,6 +20186,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -19477,6 +20196,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -19550,6 +20270,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -19559,6 +20280,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -19568,6 +20290,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.21",
         "optional": false
       }
     },
@@ -19577,6 +20300,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -19586,6 +20310,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -19595,6 +20320,7 @@
       "dst": "ext:lru",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -19604,6 +20330,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -19613,6 +20340,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -19622,6 +20350,7 @@
       "dst": "ext:serde_yaml",
       "props": {
         "kind": "normal",
+        "req": "^0.9",
         "optional": false
       }
     },
@@ -19631,6 +20360,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -19640,6 +20370,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -19649,6 +20380,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -19658,6 +20390,7 @@
       "dst": "ext:tokio-test",
       "props": {
         "kind": "dev",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -19667,6 +20400,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -19676,6 +20410,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -19689,6 +20424,12 @@
       "src": "crate:op-network",
       "rel": "contains",
       "dst": "mod:crates/op-network/src/bin/op-identity-storage.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-network",
+      "rel": "contains",
+      "dst": "mod:crates/op-network/src/bin/op-identity-storage/lungs_attach.rs",
       "props": {}
     },
     {
@@ -19903,6 +20644,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -19912,6 +20654,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -19921,6 +20664,7 @@
       "dst": "ext:byteorder",
       "props": {
         "kind": "normal",
+        "req": "^1.5",
         "optional": false
       }
     },
@@ -19930,6 +20674,7 @@
       "dst": "ext:bytes",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -19939,6 +20684,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -19948,6 +20694,7 @@
       "dst": "ext:libc",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -19957,6 +20704,7 @@
       "dst": "ext:log",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -19966,6 +20714,7 @@
       "dst": "ext:netlink-packet-core",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -19975,6 +20724,7 @@
       "dst": "ext:netlink-packet-generic",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -19984,6 +20734,7 @@
       "dst": "ext:netlink-packet-route",
       "props": {
         "kind": "normal",
+        "req": "^0.19",
         "optional": false
       }
     },
@@ -19993,6 +20744,7 @@
       "dst": "ext:netlink-packet-utils",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -20002,6 +20754,7 @@
       "dst": "ext:netlink-sys",
       "props": {
         "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },
@@ -20011,6 +20764,7 @@
       "dst": "ext:rcgen",
       "props": {
         "kind": "dev",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -20020,6 +20774,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -20029,6 +20784,7 @@
       "dst": "ext:rovs-jsonrpc",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -20038,6 +20794,7 @@
       "dst": "ext:rovs-openflow",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -20047,6 +20804,7 @@
       "dst": "ext:rovs-ovsdb",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -20056,6 +20814,7 @@
       "dst": "ext:rovs-transport",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -20065,6 +20824,7 @@
       "dst": "ext:rovs-types",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -20074,6 +20834,7 @@
       "dst": "ext:rtnetlink",
       "props": {
         "kind": "normal",
+        "req": "^0.14",
         "optional": false
       }
     },
@@ -20083,6 +20844,7 @@
       "dst": "ext:rustls",
       "props": {
         "kind": "normal",
+        "req": "^0.23",
         "optional": false
       }
     },
@@ -20092,6 +20854,7 @@
       "dst": "ext:rustls-pemfile",
       "props": {
         "kind": "normal",
+        "req": "^2",
         "optional": false
       }
     },
@@ -20101,6 +20864,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -20110,6 +20874,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -20119,6 +20884,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -20128,6 +20894,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -20137,6 +20904,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -20146,6 +20914,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -20155,6 +20924,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -20164,6 +20934,7 @@
       "dst": "ext:tokio-rustls",
       "props": {
         "kind": "normal",
+        "req": "^0.26",
         "optional": false
       }
     },
@@ -20173,6 +20944,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -20182,6 +20954,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -20191,6 +20964,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -20200,6 +20974,7 @@
       "dst": "ext:wireguard-control",
       "props": {
         "kind": "normal",
+        "req": "=1.7.1",
         "optional": false
       }
     },
@@ -20209,6 +20984,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -20322,6 +21098,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -20331,6 +21108,7 @@
       "dst": "ext:clap",
       "props": {
         "kind": "normal",
+        "req": "^4",
         "optional": false
       }
     },
@@ -20340,6 +21118,7 @@
       "dst": "ext:regex",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -20349,6 +21128,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -20358,6 +21138,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -20367,6 +21148,7 @@
       "dst": "ext:serde_yaml",
       "props": {
         "kind": "normal",
+        "req": "^0.9",
         "optional": false
       }
     },
@@ -20376,6 +21158,7 @@
       "dst": "ext:syn",
       "props": {
         "kind": "normal",
+        "req": "^2",
         "optional": false
       }
     },
@@ -20385,6 +21168,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -20394,6 +21178,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": true
       }
     },
@@ -20403,6 +21188,7 @@
       "dst": "ext:toml",
       "props": {
         "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },
@@ -21816,6 +22602,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -21825,6 +22612,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -21834,6 +22622,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.21",
         "optional": false
       }
     },
@@ -21843,6 +22632,7 @@
       "dst": "ext:btrfs-uapi",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -21852,6 +22642,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -21861,6 +22652,7 @@
       "dst": "ext:dirs",
       "props": {
         "kind": "normal",
+        "req": "^5.0",
         "optional": false
       }
     },
@@ -21870,6 +22662,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -21879,6 +22672,7 @@
       "dst": "ext:google-cloud-auth",
       "props": {
         "kind": "normal",
+        "req": "^1.15",
         "optional": false
       }
     },
@@ -21888,6 +22682,7 @@
       "dst": "ext:inventory",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -21897,6 +22692,7 @@
       "dst": "ext:jsonschema",
       "props": {
         "kind": "normal",
+        "req": "^0.29",
         "optional": false
       }
     },
@@ -21906,6 +22702,7 @@
       "dst": "ext:log",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -21915,6 +22712,7 @@
       "dst": "ext:md5",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -21924,6 +22722,7 @@
       "dst": "ext:nix",
       "props": {
         "kind": "normal",
+        "req": "^0.28",
         "optional": false
       }
     },
@@ -21933,6 +22732,7 @@
       "dst": "ext:parking_lot",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -21942,6 +22742,7 @@
       "dst": "ext:regex",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -21951,6 +22752,17 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "=0.12.28",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "uses_ext",
+      "dst": "ext:reqwest",
+      "props": {
+        "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -21960,6 +22772,7 @@
       "dst": "ext:schemars",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -21969,6 +22782,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -21978,6 +22792,7 @@
       "dst": "ext:serde-pickle",
       "props": {
         "kind": "normal",
+        "req": "^1.2",
         "optional": false
       }
     },
@@ -21987,6 +22802,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -21996,6 +22812,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "build",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -22005,6 +22822,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -22014,6 +22832,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -22023,6 +22842,7 @@
       "dst": "ext:sysinfo",
       "props": {
         "kind": "normal",
+        "req": "^0.30",
         "optional": false
       }
     },
@@ -22032,6 +22852,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "normal",
+        "req": "^3",
         "optional": false
       }
     },
@@ -22041,6 +22862,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22050,6 +22872,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22059,6 +22882,7 @@
       "dst": "ext:tokio-tungstenite",
       "props": {
         "kind": "normal",
+        "req": "=0.24.0",
         "optional": false
       }
     },
@@ -22068,6 +22892,7 @@
       "dst": "ext:toml",
       "props": {
         "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },
@@ -22077,6 +22902,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -22086,6 +22912,7 @@
       "dst": "ext:udev",
       "props": {
         "kind": "normal",
+        "req": "^0.9.3",
         "optional": false
       }
     },
@@ -22095,6 +22922,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -22104,6 +22932,7 @@
       "dst": "ext:xattr",
       "props": {
         "kind": "normal",
+        "req": "^1.6.1",
         "optional": false
       }
     },
@@ -22113,6 +22942,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "dev",
+        "req": "^5",
         "optional": false
       }
     },
@@ -22122,6 +22952,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -22169,6 +23000,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22178,6 +23010,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22187,6 +23020,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22196,6 +23030,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -22205,6 +23040,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22214,6 +23050,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -22223,6 +23060,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -22232,6 +23070,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -22335,6 +23174,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22344,6 +23184,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -22353,6 +23194,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -22362,6 +23204,7 @@
       "dst": "ext:prost",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -22371,6 +23214,7 @@
       "dst": "ext:prost-types",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -22380,6 +23224,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22389,6 +23234,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22398,6 +23244,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -22407,6 +23254,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -22416,6 +23264,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22425,6 +23274,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22434,6 +23284,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -22443,6 +23294,7 @@
       "dst": "ext:toml",
       "props": {
         "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },
@@ -22452,6 +23304,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -22461,6 +23314,7 @@
       "dst": "ext:tonic-build",
       "props": {
         "kind": "build",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -22470,6 +23324,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -22479,6 +23334,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -22544,6 +23400,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22553,6 +23410,7 @@
       "dst": "ext:btrfs-uapi",
       "props": {
         "kind": "normal",
+        "req": "^0.13.0",
         "optional": false
       }
     },
@@ -22562,6 +23420,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -22571,6 +23430,7 @@
       "dst": "ext:gethostname",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -22580,6 +23440,7 @@
       "dst": "ext:nix",
       "props": {
         "kind": "normal",
+        "req": "^0.31",
         "optional": false
       }
     },
@@ -22589,6 +23450,7 @@
       "dst": "ext:qdrant-client",
       "props": {
         "kind": "normal",
+        "req": "^1.7",
         "optional": false
       }
     },
@@ -22598,6 +23460,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22607,6 +23470,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22616,6 +23480,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -22625,6 +23490,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -22634,6 +23500,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -22643,6 +23510,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22652,6 +23520,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22661,6 +23530,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -22670,6 +23540,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -22679,6 +23550,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -22758,6 +23630,7 @@
       "dst": "ext:aes-gcm",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -22767,6 +23640,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22776,6 +23650,7 @@
       "dst": "ext:argon2",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -22785,6 +23660,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -22794,6 +23670,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.21",
         "optional": false
       }
     },
@@ -22803,6 +23680,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -22812,6 +23690,7 @@
       "dst": "ext:log",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -22821,6 +23700,7 @@
       "dst": "ext:md5",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -22830,6 +23710,7 @@
       "dst": "ext:parking_lot",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -22839,6 +23720,7 @@
       "dst": "ext:pocketflow_rs",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -22848,6 +23730,7 @@
       "dst": "ext:quick-xml",
       "props": {
         "kind": "normal",
+        "req": "^0.36",
         "optional": false
       }
     },
@@ -22857,6 +23740,7 @@
       "dst": "ext:rand",
       "props": {
         "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },
@@ -22866,6 +23750,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22875,6 +23760,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22884,6 +23770,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -22893,6 +23780,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -22902,6 +23790,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22911,6 +23800,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -22920,6 +23810,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -22929,6 +23820,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -22938,6 +23830,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -23031,6 +23924,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23040,6 +23934,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -23049,6 +23944,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.21",
         "optional": false
       }
     },
@@ -23058,6 +23954,7 @@
       "dst": "ext:blake3",
       "props": {
         "kind": "normal",
+        "req": "^1.5",
         "optional": false
       }
     },
@@ -23067,6 +23964,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -23076,6 +23974,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -23085,6 +23984,7 @@
       "dst": "ext:jsonschema",
       "props": {
         "kind": "normal",
+        "req": "^0.29",
         "optional": false
       }
     },
@@ -23094,6 +23994,7 @@
       "dst": "ext:lazy_static",
       "props": {
         "kind": "normal",
+        "req": "^1.4",
         "optional": false
       }
     },
@@ -23103,6 +24004,7 @@
       "dst": "ext:md5",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -23112,6 +24014,7 @@
       "dst": "ext:opentelemetry",
       "props": {
         "kind": "normal",
+        "req": "^0.22",
         "optional": false
       }
     },
@@ -23121,6 +24024,7 @@
       "dst": "ext:prometheus",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -23130,6 +24034,7 @@
       "dst": "ext:regex",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23139,6 +24044,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -23148,6 +24054,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23157,6 +24064,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23166,6 +24074,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -23175,6 +24084,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23184,6 +24094,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23193,6 +24104,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -23202,6 +24114,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -23211,6 +24124,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -23442,6 +24356,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23451,6 +24366,7 @@
       "dst": "ext:async-recursion",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -23460,6 +24376,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -23469,6 +24386,7 @@
       "dst": "ext:axum",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -23478,6 +24396,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -23487,6 +24406,7 @@
       "dst": "ext:clap",
       "props": {
         "kind": "normal",
+        "req": "^4",
         "optional": false
       }
     },
@@ -23496,6 +24416,7 @@
       "dst": "ext:dirs",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -23505,6 +24426,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -23514,6 +24436,7 @@
       "dst": "ext:jsonschema",
       "props": {
         "kind": "normal",
+        "req": "^0.29",
         "optional": false
       }
     },
@@ -23523,6 +24446,7 @@
       "dst": "ext:lazy_static",
       "props": {
         "kind": "normal",
+        "req": "^1.4",
         "optional": false
       }
     },
@@ -23532,6 +24456,7 @@
       "dst": "ext:libc",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -23541,6 +24466,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -23550,6 +24476,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23559,6 +24486,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23568,6 +24496,7 @@
       "dst": "ext:shell-words",
       "props": {
         "kind": "normal",
+        "req": "^1.1",
         "optional": false
       }
     },
@@ -23577,6 +24506,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -23586,6 +24516,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -23595,6 +24526,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23604,6 +24536,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -23613,6 +24546,7 @@
       "dst": "ext:tokio-test",
       "props": {
         "kind": "dev",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -23622,6 +24556,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -23631,6 +24566,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -23640,6 +24576,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -24119,6 +25056,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24128,6 +25066,7 @@
       "dst": "ext:async-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -24137,6 +25076,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -24146,6 +25086,7 @@
       "dst": "ext:axum",
       "props": {
         "kind": "normal",
+        "req": "^0.7",
         "optional": false
       }
     },
@@ -24155,6 +25096,7 @@
       "dst": "ext:axum-embed",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -24164,6 +25106,7 @@
       "dst": "ext:base64",
       "props": {
         "kind": "normal",
+        "req": "^0.22",
         "optional": false
       }
     },
@@ -24173,6 +25116,7 @@
       "dst": "ext:blake3",
       "props": {
         "kind": "normal",
+        "req": "^1.5",
         "optional": false
       }
     },
@@ -24182,6 +25126,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -24191,6 +25136,7 @@
       "dst": "ext:futures",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -24200,6 +25146,7 @@
       "dst": "ext:gethostname",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -24209,6 +25156,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -24218,6 +25166,7 @@
       "dst": "ext:hyper",
       "props": {
         "kind": "normal",
+        "req": "^1.0",
         "optional": false
       }
     },
@@ -24227,6 +25176,7 @@
       "dst": "ext:image",
       "props": {
         "kind": "normal",
+        "req": "^0.25",
         "optional": false
       }
     },
@@ -24236,6 +25186,7 @@
       "dst": "ext:lazy_static",
       "props": {
         "kind": "normal",
+        "req": "^1.4",
         "optional": false
       }
     },
@@ -24245,6 +25196,7 @@
       "dst": "ext:lettre",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -24254,6 +25206,7 @@
       "dst": "ext:linemux",
       "props": {
         "kind": "normal",
+        "req": "^0.3.0",
         "optional": false
       }
     },
@@ -24263,6 +25216,7 @@
       "dst": "ext:mime_guess",
       "props": {
         "kind": "normal",
+        "req": "^2",
         "optional": false
       }
     },
@@ -24272,6 +25226,7 @@
       "dst": "ext:oauth2",
       "props": {
         "kind": "normal",
+        "req": "^4.4",
         "optional": false
       }
     },
@@ -24281,6 +25236,7 @@
       "dst": "ext:qrcode",
       "props": {
         "kind": "normal",
+        "req": "^0.14",
         "optional": false
       }
     },
@@ -24290,6 +25246,7 @@
       "dst": "ext:regex",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24299,6 +25256,7 @@
       "dst": "ext:reqwest",
       "props": {
         "kind": "normal",
+        "req": "^0.11",
         "optional": false
       }
     },
@@ -24308,6 +25266,7 @@
       "dst": "ext:ring",
       "props": {
         "kind": "normal",
+        "req": "^0.17",
         "optional": false
       }
     },
@@ -24317,6 +25276,7 @@
       "dst": "ext:rustls",
       "props": {
         "kind": "normal",
+        "req": "^0.23",
         "optional": false
       }
     },
@@ -24326,6 +25286,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24335,6 +25296,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24344,6 +25306,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -24353,6 +25316,7 @@
       "dst": "ext:sysinfo",
       "props": {
         "kind": "normal",
+        "req": "^0.30",
         "optional": false
       }
     },
@@ -24362,6 +25326,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -24371,6 +25336,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24380,6 +25346,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24389,6 +25356,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -24398,6 +25366,7 @@
       "dst": "ext:toml",
       "props": {
         "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },
@@ -24407,6 +25376,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -24416,6 +25386,7 @@
       "dst": "ext:tower",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -24425,6 +25396,7 @@
       "dst": "ext:tower-http",
       "props": {
         "kind": "normal",
+        "req": "^0.5",
         "optional": false
       }
     },
@@ -24434,6 +25406,7 @@
       "dst": "ext:tower_governor",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -24443,6 +25416,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -24452,6 +25426,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -24461,6 +25436,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -24470,6 +25446,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -24589,6 +25566,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24598,6 +25576,7 @@
       "dst": "ext:async-trait",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -24607,6 +25586,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -24616,6 +25596,7 @@
       "dst": "ext:hex",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -24625,6 +25606,7 @@
       "dst": "ext:log",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -24634,6 +25616,7 @@
       "dst": "ext:pocketflow_rs",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -24643,6 +25626,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24652,6 +25636,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24661,6 +25646,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -24670,6 +25656,7 @@
       "dst": "ext:simd-json",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -24679,6 +25666,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24688,6 +25676,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24697,6 +25686,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -24706,6 +25696,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1.6",
         "optional": false
       }
     },
@@ -24751,6 +25742,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24760,6 +25752,7 @@
       "dst": "ext:chrono",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -24769,6 +25762,7 @@
       "dst": "ext:hyper-util",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -24778,6 +25772,7 @@
       "dst": "ext:nix",
       "props": {
         "kind": "normal",
+        "req": "^0.28",
         "optional": false
       }
     },
@@ -24787,6 +25782,7 @@
       "dst": "ext:prost",
       "props": {
         "kind": "normal",
+        "req": "^0.13",
         "optional": false
       }
     },
@@ -24796,6 +25792,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24805,6 +25802,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24814,6 +25812,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24823,6 +25822,7 @@
       "dst": "ext:tokio-stream",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -24832,6 +25832,7 @@
       "dst": "ext:tokio-test",
       "props": {
         "kind": "dev",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -24841,6 +25842,7 @@
       "dst": "ext:tonic",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -24850,6 +25852,7 @@
       "dst": "ext:tonic-build",
       "props": {
         "kind": "build",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -24859,6 +25862,7 @@
       "dst": "ext:tower",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -24868,6 +25872,7 @@
       "dst": "ext:tracing",
       "props": {
         "kind": "normal",
+        "req": "^0.1",
         "optional": false
       }
     },
@@ -24877,6 +25882,7 @@
       "dst": "ext:tracing-subscriber",
       "props": {
         "kind": "normal",
+        "req": "^0.3",
         "optional": false
       }
     },
@@ -24886,6 +25892,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24895,6 +25902,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -24966,6 +25974,7 @@
       "dst": "ext:anyhow",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24975,6 +25984,7 @@
       "dst": "ext:blake3",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -24984,6 +25994,7 @@
       "dst": "ext:clap",
       "props": {
         "kind": "normal",
+        "req": "^4",
         "optional": false
       }
     },
@@ -24993,6 +26004,7 @@
       "dst": "ext:fs2",
       "props": {
         "kind": "normal",
+        "req": "^0.4",
         "optional": false
       }
     },
@@ -25002,6 +26014,7 @@
       "dst": "ext:fuser",
       "props": {
         "kind": "normal",
+        "req": "^0.16",
         "optional": false
       }
     },
@@ -25011,6 +26024,7 @@
       "dst": "ext:jsonschema",
       "props": {
         "kind": "normal",
+        "req": "^0.29",
         "optional": false
       }
     },
@@ -25020,6 +26034,7 @@
       "dst": "ext:libc",
       "props": {
         "kind": "normal",
+        "req": "^0.2",
         "optional": false
       }
     },
@@ -25029,6 +26044,7 @@
       "dst": "ext:parking_lot",
       "props": {
         "kind": "normal",
+        "req": "^0.12",
         "optional": false
       }
     },
@@ -25038,6 +26054,7 @@
       "dst": "ext:regex",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -25047,6 +26064,7 @@
       "dst": "ext:rmcp",
       "props": {
         "kind": "dev",
+        "req": "^3.5",
         "optional": false
       }
     },
@@ -25056,6 +26074,7 @@
       "dst": "ext:rmcp",
       "props": {
         "kind": "normal",
+        "req": "^3.5",
         "optional": false
       }
     },
@@ -25065,6 +26084,7 @@
       "dst": "ext:serde",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -25074,6 +26094,7 @@
       "dst": "ext:serde_json",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -25083,6 +26104,7 @@
       "dst": "ext:sha2",
       "props": {
         "kind": "normal",
+        "req": "^0.10",
         "optional": false
       }
     },
@@ -25092,6 +26114,7 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
         "optional": false
       }
     },
@@ -25101,6 +26124,7 @@
       "dst": "ext:thiserror",
       "props": {
         "kind": "normal",
+        "req": "^2",
         "optional": false
       }
     },
@@ -25110,6 +26134,7 @@
       "dst": "ext:tokio",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -25119,6 +26144,7 @@
       "dst": "ext:uuid",
       "props": {
         "kind": "normal",
+        "req": "^1",
         "optional": false
       }
     },
@@ -25128,6 +26154,7 @@
       "dst": "ext:zbus",
       "props": {
         "kind": "normal",
+        "req": "^5",
         "optional": false
       }
     },
@@ -25360,7 +26387,7 @@
       "rel": "imports",
       "dst": "crate:op-llm",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {
@@ -25392,7 +26419,7 @@
       "rel": "imports",
       "dst": "crate:op-llm",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {
@@ -26940,6 +27967,38 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/identity_physical_root.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_physical_root.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_physical_root.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/identity_physical_root/storage.rs",
+      "rel": "imports",
+      "dst": "crate:op-network",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/identity_publication.rs",
       "rel": "imports",
       "dst": "crate:op-core",
@@ -27112,7 +28171,7 @@
       "rel": "imports",
       "dst": "crate:op-cozo-store",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {
@@ -27128,7 +28187,7 @@
       "rel": "imports",
       "dst": "crate:op-network",
       "props": {
-        "refs": 3
+        "refs": 1
       }
     },
     {
@@ -27480,7 +28539,15 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 7
+        "refs": 10
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/mcp_frontend.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
       }
     },
     {
@@ -27680,7 +28747,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 130
+        "refs": 131
       }
     },
     {
@@ -28343,6 +29410,102 @@
       "src": "mod:crates/op-grpc-bridge/src/state_tree_fold.rs",
       "rel": "imports",
       "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-blob",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-core",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_projection.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_projection.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_projection_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-blob",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_projection_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-core",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_projection_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_projection_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_projection_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/system_graph_projection_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
       "props": {
         "refs": 1
       }
@@ -29916,6 +31079,14 @@
     {
       "src": "mod:crates/op-plugins/src/state_plugins/cozo.rs",
       "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/cozo.rs",
+      "rel": "imports",
       "dst": "crate:op-state",
       "props": {
         "refs": 1
@@ -29926,7 +31097,7 @@
       "rel": "imports",
       "dst": "crate:op-state-store",
       "props": {
-        "refs": 15
+        "refs": 16
       }
     },
     {
@@ -29934,7 +31105,15 @@
       "rel": "imports",
       "dst": "crate:op-cozo-store",
       "props": {
-        "refs": 1
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/cozo_methods_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 2
       }
     },
     {
@@ -30410,6 +31589,14 @@
     {
       "src": "mod:crates/op-plugins/src/state_plugins/identity_sled.rs",
       "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/identity_sled.rs",
+      "rel": "imports",
       "dst": "crate:op-state",
       "props": {
         "refs": 2
@@ -30420,7 +31607,7 @@
       "rel": "imports",
       "dst": "crate:op-state-store",
       "props": {
-        "refs": 6
+        "refs": 9
       }
     },
     {

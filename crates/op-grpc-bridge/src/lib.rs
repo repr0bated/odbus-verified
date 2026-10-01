@@ -109,6 +109,8 @@ pub mod shared_socket;
 pub mod specialist;
 mod state_stream;
 mod state_tree_fold;
+mod system_graph_dispatch;
+mod system_graph_projection;
 mod tched_config_dispatch;
 mod tched_config_engine;
 mod tched_config_secret_policy;

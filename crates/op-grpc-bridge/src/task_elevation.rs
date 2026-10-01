@@ -1,12 +1,13 @@
-//! Per-task sudo elevation, enforced at MutationEngine's dispatch choke point.
+//! Per-task root-password elevation at MutationEngine's dispatch choke point.
 //!
 //! A protected call (the `elevation` plugin's policy) needs, besides the
 //! caller's verified session and exact grant, a one-time ticket issued by
 //! `elevation.authorize_task` for that exact call: same principal, session,
 //! plugin, method and canonical arguments. Issuing a ticket checks the
-//! caller's current sudo password: the principal's mapped Unix account must
-//! be in `wheel` or `sudo` and PAM service `op-dbus-elevate` must accept the
-//! password. Tickets live in memory, are single-use and expire after
+//! root password through PAM service `op-dbus-elevate`. There is no
+//! principal-to-Unix-account map. The authenticated caller remains the
+//! principal; checking the password never switches it to root. Tickets live
+//! in memory, are single-use and expire after
 //! `TICKET_TTL_SECONDS`; a bridge restart drops them. Repeated failures lock
 //! the principal out for a while. The password is never stored or logged,
 //! and `authorize_task` arguments are redacted from the chain record.
@@ -16,7 +17,6 @@
 
 use std::{
     collections::HashMap,
-    path::PathBuf,
     sync::{Arc, Mutex, OnceLock},
 };
 
@@ -42,20 +42,17 @@ const MAX_FAILURES: u32 = 5;
 const LOCKOUT_MINUTES: i64 = 15;
 const MAX_TICKETS_PER_PRINCIPAL: usize = 16;
 
-/// Decides whether `password` is the current sudo password of Unix `user`.
+/// Checks a password against the fixed elevation account, not the caller.
 pub(crate) trait SudoAuthority: Send + Sync {
     fn verify(&self, user: &str, password: &str) -> Result<bool>;
 }
 
-/// Production authority: a sudoer (`wheel`/`sudo`) whose password PAM
-/// service `op-dbus-elevate` accepts.
+/// Production authority: PAM verifies the root password and account validity.
 pub(crate) struct PamSudoAuthority;
 
 impl SudoAuthority for PamSudoAuthority {
     fn verify(&self, user: &str, password: &str) -> Result<bool> {
-        if !crate::pam_auth::is_sudoer(user)? {
-            return Ok(false);
-        }
+        ensure!(user == "root", "elevation checks only the root password");
         crate::pam_auth::check_password(PAM_SERVICE, user, password)
     }
 }
@@ -89,31 +86,6 @@ fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 fn ticket_key(principal: &str, session: &str, plugin: &str, method: &str, args: &Value) -> String {
     let material = serde_json::json!([TICKET_DOMAIN, principal, session, plugin, method, args]);
     hex::encode(Sha256::digest(canonical_json(&material)))
-}
-
-/// The Unix account a principal elevates as, from the root-owned map
-/// `{"<principal_id>": {"unix_user": "<name>"}}`.
-fn unix_user(principal_id: &str) -> Result<String> {
-    let path = std::env::var_os("OP_ELEVATION_USERS_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/etc/op-dbus/elevation-users.json"));
-    let bytes = std::fs::read(&path).context("elevation user map is unavailable")?;
-    let document: Value =
-        serde_json::from_slice(&bytes).context("elevation user map is not JSON")?;
-    let user = document
-        .get(principal_id)
-        .and_then(|entry| entry.get("unix_user"))
-        .and_then(Value::as_str)
-        .context("this principal has no elevation account")?;
-    ensure!(
-        !user.is_empty()
-            && user.len() <= 32
-            && user
-                .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.')),
-        "invalid elevation account name"
-    );
-    Ok(user.to_string())
 }
 
 impl TaskElevation {
@@ -251,15 +223,14 @@ async fn authorize(
     let elevation = engine.task_elevation();
     let now = Utc::now();
     elevation.check_lockout(actor, now)?;
-    let user = unix_user(actor)?;
     let password = zeroize::Zeroizing::new(std::mem::take(&mut input.password));
     let authority = elevation.authority();
-    let accepted = tokio::task::spawn_blocking(move || authority.verify(&user, &password))
+    let accepted = tokio::task::spawn_blocking(move || authority.verify("root", &password))
         .await
-        .context("sudo check worker failed")??;
+        .context("root password check worker failed")??;
     if !accepted {
         elevation.record_failure(actor, now);
-        bail!("sudo password was not accepted");
+        bail!("root password was not accepted");
     }
     lock(&elevation.failures).remove(actor);
     let expires_at = elevation.issue(actor, &session, &input, now)?;

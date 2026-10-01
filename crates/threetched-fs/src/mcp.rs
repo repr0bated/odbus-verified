@@ -40,6 +40,20 @@ const PAGE_SIZE: usize = 200;
 /// IDE agents pass MCP tool names straight through, so names stay inside it.
 const MAX_TOOL_NAME: usize = 64;
 
+fn graph_notice(objects: &BTreeMap<String, TypedObjectBlob>) -> &'static str {
+    if objects.get("cozo").is_some_and(|object| {
+        object
+            .schema
+            .methods
+            .get("list_system_graphs")
+            .is_some_and(|method| method.side_effect == SideEffect::Read)
+    }) {
+        " System graph: discover cozo.list_system_graphs through identity-bound 3tchedFS; check provenance and coverage; grants apply."
+    } else {
+        ""
+    }
+}
+
 /// The two ways to present the surface: every method as its own tool, or four
 /// meta-tools that search and execute them (for small-context clients).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -753,6 +767,13 @@ impl IdentityMcp {
 
 impl ServerHandler for IdentityMcp {
     fn get_info(&self) -> ServerConfig {
+        let mut instructions = String::from(
+            "This server is one OP-DBUS identity. Every tool is a sealed plugin method and runs \
+             as this identity under its own grants; mutations change the live system. Resources \
+             hold each plugin's sealed schema and present state. The `plugin` prompt summarizes \
+             one plugin's methods.",
+        );
+        instructions.push_str(graph_notice(&self.catalog().objects));
         ServerConfig::new(
             ServerCapabilities::builder()
                 .enable_completions()
@@ -767,12 +788,7 @@ impl ServerHandler for IdentityMcp {
                 .with_title("3tchedFS identity")
                 .with_description("Every sealed OP-DBUS plugin, as this identity."),
         )
-        .with_instructions(
-            "This server is one OP-DBUS identity. Every tool is a sealed plugin method and runs \
-             as this identity under its own grants; mutations change the live system. Resources \
-             hold each plugin's sealed schema and present state. The `plugin` prompt summarizes \
-             one plugin's methods.",
-        )
+        .with_instructions(instructions)
     }
 
     async fn list_tools(
@@ -995,6 +1011,30 @@ impl ServerHandler for IdentityMcp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn graph_startup_notice_tracks_read_method_availability() {
+        let (_directory, server) = fixture();
+        let mut objects = server.catalog().objects.clone();
+        assert!(graph_notice(&objects).is_empty());
+        let mut cozo = objects["demo"].clone();
+        let mut method = cozo.schema.methods["get_status"].clone();
+        method.name = "list_system_graphs".into();
+        cozo.schema
+            .methods
+            .insert("list_system_graphs".into(), method);
+        objects.insert("cozo".into(), cozo);
+        assert!(graph_notice(&objects).contains("cozo.list_system_graphs"));
+        objects
+            .get_mut("cozo")
+            .unwrap()
+            .schema
+            .methods
+            .get_mut("list_system_graphs")
+            .unwrap()
+            .side_effect = SideEffect::Mutation;
+        assert!(graph_notice(&objects).is_empty());
+    }
 
     #[test]
     fn tool_names_fit_model_api_rules() {

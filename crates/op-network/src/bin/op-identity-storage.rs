@@ -1,5 +1,8 @@
 //! Root-only identity storage preparation and Incus boot prerequisite.
-use anyhow::{Result, ensure};
+use anyhow::{ensure, Result};
+
+#[path = "op-identity-storage/lungs_attach.rs"]
+mod lungs_attach;
 
 fn main() -> Result<()> {
     let args: Vec<_> = std::env::args_os().collect();
@@ -23,8 +26,23 @@ fn main() -> Result<()> {
             let receipt = op_network::seeded_prepare::prepare_leaf(session, digest)?;
             println!("{}", serde_json::to_string(&receipt)?);
         }
+        [_, command, name, pid, start, source] if command == "attach-existing-lungs" => {
+            lungs_attach::attach(
+                name.to_str()
+                    .ok_or_else(|| anyhow::anyhow!("name is not UTF-8"))?,
+                pid.to_str()
+                    .ok_or_else(|| anyhow::anyhow!("PID is not UTF-8"))?
+                    .parse()?,
+                start
+                    .to_str()
+                    .ok_or_else(|| anyhow::anyhow!("start time is not UTF-8"))?
+                    .parse()?,
+                std::path::Path::new(source),
+            )?;
+            println!("attached scoped host lungs to verified identity mount namespace; no identity activation performed");
+        }
         _ => {
-            anyhow::bail!("usage: op-identity-storage mount-all | prepare-leaf <SID> <plan_sha256>")
+            anyhow::bail!("usage: op-identity-storage mount-all | prepare-leaf <SID> <plan_sha256> | attach-existing-lungs <NAME> <PID> <STARTTIME> <HOST_FUSE_SOURCE>")
         }
     }
     Ok(())

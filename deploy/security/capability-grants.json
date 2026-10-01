@@ -5,6 +5,7 @@
       "cap.identity.dbus.bind@v1",
       "cap.identity.api.identity.self@v1",
       "identity_sled.read",
+      "identity_sled.inventory.read",
       "identity_sled.credential.refresh",
       "cap.service.lifecycle.init@v1",
       "cap.service.lifecycle.run@v1",
@@ -202,13 +203,18 @@
       "elevation.read",
       "model_registry.read",
       "model_registry.refresh",
-      "model_registry.maintain"
+      "model_registry.maintain",
+      "cap.data.cozo.relations.list@v1",
+      "cap.data.cozo.system-graph.read@v1",
+      "cap.data.cozo.system-graph.write@v1",
+      "cap.data.cozo.system-graph.refresh@v1"
     ]
   },
   "1262e982-14c1-44d4-0771-7ce74213211b": {
     "display_alias": "control-plane-chatbot",
     "capabilities": [
       "cognitive_mcp.read",
+      "cap.data.cozo.system-graph.read@v1",
       "cognitive_mcp.invoke",
       "cognitive_mcp.memory.write",
       "cognitive_mcp.code.write",

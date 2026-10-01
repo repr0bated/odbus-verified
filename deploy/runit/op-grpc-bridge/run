@@ -34,6 +34,16 @@ wait_dep op-runit-systemctl
 wait_dep op-session-bus
 wait_dep ovsdb-server
 wait_dep tched-router
+# Physical identity roots and their session-bound FUSE views must exist before
+# chatbot activation verifies its registered mount. Those views can mount
+# before the lungs socket opens; each operation connects only when called.
+# Only completed, authoritatively attached identities participate in boot.
+# A preparation receipt alone must never activate a partially provisioned guest.
+for identity_receipt in /var/lib/opdbus-runtime/seed-identities/*/boot-ready.json; do
+    [ -e "$identity_receipt" ] || [ -L "$identity_receipt" ] || continue
+    wait_dep identity-roots
+    break
+done
 # Qdrant is optional here. The bridge initializes its semantic shuttle
 # best-effort and must still open :8090 for D-Bus and gRPC when vector search
 # is unavailable.

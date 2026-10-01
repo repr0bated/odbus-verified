@@ -487,7 +487,12 @@ impl ChatManager {
             .get(&provider_type)
             .ok_or_else(|| anyhow!("Provider not available"))?;
 
-        provider.chat(&model, messages).await
+        provider
+            .chat(
+                &model,
+                crate::graph_turn_reminder::with_system_graph_reminder(messages),
+            )
+            .await
     }
 
     /// Send chat with specific provider and model
@@ -502,7 +507,12 @@ impl ChatManager {
             .get(provider_type)
             .ok_or_else(|| anyhow!("Provider {:?} not available", provider_type))?;
 
-        provider.chat(model, messages).await
+        provider
+            .chat(
+                model,
+                crate::graph_turn_reminder::with_system_graph_reminder(messages),
+            )
+            .await
     }
 
     /// Send chat stream with specific provider and model
@@ -517,7 +527,12 @@ impl ChatManager {
             .get(provider_type)
             .ok_or_else(|| anyhow!("Provider {:?} not available", provider_type))?;
 
-        provider.chat_stream(model, messages).await
+        provider
+            .chat_stream(
+                model,
+                crate::graph_turn_reminder::with_system_graph_reminder(messages),
+            )
+            .await
     }
 
     /// Find which provider supports the given model
@@ -705,16 +720,26 @@ impl LlmProvider for ChatManager {
             .get(&provider_type)
             .ok_or_else(|| anyhow!("Provider {:?} not available", provider_type))?;
 
-        provider.chat(model, messages).await
+        provider
+            .chat(
+                model,
+                crate::graph_turn_reminder::with_system_graph_reminder(messages),
+            )
+            .await
     }
 
-    async fn chat_with_request(&self, model: &str, request: ChatRequest) -> Result<ChatResponse> {
+    async fn chat_with_request(
+        &self,
+        model: &str,
+        mut request: ChatRequest,
+    ) -> Result<ChatResponse> {
         let provider_type = self.resolve_provider().await?;
         let provider = self
             .providers
             .get(&provider_type)
             .ok_or_else(|| anyhow!("Provider {:?} not available", provider_type))?;
 
+        request.messages = crate::graph_turn_reminder::with_system_graph_reminder(request.messages);
         provider.chat_with_request(model, request).await
     }
 
@@ -729,7 +754,12 @@ impl LlmProvider for ChatManager {
             .get(&provider_type)
             .ok_or_else(|| anyhow!("Provider {:?} not available", provider_type))?;
 
-        provider.chat_stream(model, messages).await
+        provider
+            .chat_stream(
+                model,
+                crate::graph_turn_reminder::with_system_graph_reminder(messages),
+            )
+            .await
     }
 }
 
@@ -759,3 +789,7 @@ mod detailed_status_tests {
         assert!(!failed);
     }
 }
+
+#[cfg(test)]
+#[path = "graph_turn_manager_tests.rs"]
+mod graph_turn_manager_tests;

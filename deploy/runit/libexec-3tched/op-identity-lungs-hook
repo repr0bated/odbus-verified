@@ -1,0 +1,25 @@
+#!/bin/sh
+# LXC start-host only: host root attaches an already prepared private FUSE
+# mount after root idmap and before init. Never query Incus from its own hook.
+set -eu
+umask 077
+[ "$(id -u)" = 0 ] || { echo "identity lungs hook requires host root" >&2; exit 1; }
+name=${LXC_NAME:?missing LXC name}
+pid=${LXC_PID:?missing LXC child PID}
+printf '%s' "$name" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$' || exit 1
+printf '%s' "$pid" | grep -Eq '^[0-9]+$' || exit 1
+case "${LXC_HOOK_TYPE:-start-host}" in start-host) ;; *) exit 1 ;; esac
+state=${OP_IDENTITY_SEED_STATE:-/var/lib/opdbus-runtime/seed-identities}
+receipt=$state/$name/state.json
+uuid=$(jq -er '.instance_uuid' "$receipt")
+printf '%s' "$uuid" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' || exit 1
+[ "${LXC_ROOTFS_PATH:?missing LXC root path}" = "$(jq -er '.root' "$receipt")" ] || exit 1
+start=$(sed 's/^.*) //' "/proc/$pid/stat" | awk '{print $20}')
+private=${OP_IDENTITY_SEED_LUNGS_DIR:-/dev/shm/opdbus-physical-lungs}/$uuid
+script=$(readlink -f -- "$0")
+release=$(realpath -e -- "$(dirname -- "$script")/../..")
+binary=${OP_IDENTITY_STORAGE_BIN:-$release/bin/op-identity-storage}
+# The Rust gate independently verifies root-only receipts, daemon/session
+# binding, held namespace/root FDs, sprout FSID and the fixed beneath-only
+# target. It clones before setns, then moves FD-to-FD; no guest path execution.
+exec "$binary" attach-existing-lungs "$name" "$pid" "$start" "$private/mount"
