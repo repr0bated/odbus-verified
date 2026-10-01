@@ -29,7 +29,7 @@ another agent's uncommitted work.
 ## Handoffs
 
 ### 2026-10-01 · Grok (Cursor cloud: KeePassXC for Cursor in the CRD Plasma session)
-- **Where:** branch `cursor/crd-cursor-keepass-5bbc`. Source only. Not copied onto the host. The running launcher is still `/usr/local/lib/chrome-remote-desktop/crd-launch`.
+- **Where:** branch `cursor/crd-cursor-keepass-5bbc`, pushed, draft PR #7. Not copied onto the host. The running launcher is still `/usr/local/lib/chrome-remote-desktop/crd-launch`.
 - **What:** `crd-launch` runs `cursor-use-keepass` before Plasma starts. Cursor's `~/.cursor/argv.json` gets `"password-store": "gnome-libsecret"`. `[KSecretD] Enabled=false` keeps kwalletd from owning `org.freedesktop.secrets`. KeePassXC `FdoSecrets/Enabled` is turned on, with a session autostart and a per-user D-Bus activation file. The kdbx is not opened and KWallet entries are not migrated.
 - **Still manual:** Database → Database Settings → Secret Service Integration → expose one group. Then quit Cursor and sign in once; the old login key is in KWallet.
 - **Do not** restart `chrome-remote-desktop-jeremy` from inside the remote session. Copy both scripts over SSH, then restart from SSH.
