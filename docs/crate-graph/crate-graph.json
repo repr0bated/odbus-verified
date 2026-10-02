@@ -289,6 +289,14 @@
       }
     },
     {
+      "id": "bin:validate-chatbot-state",
+      "label": "bin",
+      "props": {
+        "crate": "op-cozo-store",
+        "src": "crates/op-cozo-store/src/bin/validate-chatbot-state.rs"
+      }
+    },
+    {
       "id": "crate:op-agents",
       "label": "crate",
       "props": {
@@ -438,11 +446,12 @@
           "list-genesis",
           "migrate-chatbot-root",
           "system_graph_inventory",
-          "update-chatbot-fsid"
+          "update-chatbot-fsid",
+          "validate-chatbot-state"
         ],
         "has_lib": true,
-        "rs_files": 22,
-        "loc": 15327,
+        "rs_files": 23,
+        "loc": 15411,
         "tests": 104,
         "unsafe_refs": 3,
         "todo": 2,
@@ -1996,8 +2005,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-02T20:33:35Z",
-        "commit": "24039f26f685f02eff7b0a61859e01db07345914",
+        "generated_at": "2026-10-02T20:36:41Z",
+        "commit": "51914795793cb90d683e975523c60566ca06ec01",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -4650,6 +4659,15 @@
         "crate": "op-cozo-store",
         "kind": "bin",
         "loc": 76
+      }
+    },
+    {
+      "id": "mod:crates/op-cozo-store/src/bin/validate-chatbot-state.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "bin",
+        "loc": 84
       }
     },
     {
@@ -11489,6 +11507,12 @@
       "props": {}
     },
     {
+      "src": "bin:validate-chatbot-state",
+      "rel": "bin_entry",
+      "dst": "mod:crates/op-cozo-store/src/bin/validate-chatbot-state.rs",
+      "props": {}
+    },
+    {
       "src": "crate:op-agents",
       "rel": "contains",
       "dst": "mod:crates/op-agents/src/agent_catalog.rs",
@@ -15083,6 +15107,12 @@
     {
       "src": "crate:op-cozo-store",
       "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/bin/validate-chatbot-state.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
       "dst": "mod:crates/op-cozo-store/src/chat_response_conversations.rs",
       "props": {}
     },
@@ -15194,6 +15224,12 @@
       "src": "crate:op-cozo-store",
       "rel": "provides_bin",
       "dst": "bin:update-chatbot-fsid",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "provides_bin",
+      "dst": "bin:validate-chatbot-state",
       "props": {}
     },
     {

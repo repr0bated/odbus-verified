@@ -33,5 +33,9 @@ path = "src/bin/update-chatbot-fsid.rs"
 name = "migrate-chatbot-root"
 path = "src/bin/migrate-chatbot-root.rs"
 
+[[bin]]
+name = "validate-chatbot-state"
+path = "src/bin/validate-chatbot-state.rs"
+
 [dev-dependencies]
 tempfile = { workspace = true }
