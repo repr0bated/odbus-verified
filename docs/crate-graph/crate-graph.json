@@ -442,7 +442,7 @@
         ],
         "has_lib": true,
         "rs_files": 22,
-        "loc": 15333,
+        "loc": 15327,
         "tests": 104,
         "unsafe_refs": 3,
         "todo": 2,
@@ -1996,8 +1996,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-02T20:30:22Z",
-        "commit": "6aa243f7a7dabca21b4d71fdbaecc54ed10ae1fe",
+        "generated_at": "2026-10-02T20:33:35Z",
+        "commit": "24039f26f685f02eff7b0a61859e01db07345914",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -4631,7 +4631,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "bin",
-        "loc": 156
+        "loc": 150
       }
     },
     {

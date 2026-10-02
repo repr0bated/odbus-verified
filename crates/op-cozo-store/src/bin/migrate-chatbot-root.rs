@@ -6,12 +6,6 @@
 //!   2. Prepare: cargo run --bin migrate-chatbot-root -p op-cozo-store -- prepare
 //!   3. Migrate: cargo run --bin migrate-chatbot-root -p op-cozo-store -- migrate
 
-use anyhow::{Context, anyhow};
-use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
-use std::fs;
-use std::path::PathBuf;
-
 fn main() {
     if let Err(error) = run() {
         eprintln!("migrate-chatbot-root: {error:#}");
