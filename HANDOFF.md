@@ -26,6 +26,54 @@ The owner is starting a new session. **Finish the release and identity migration
 
 ## Handoffs
 
+### 2026-10-02T21:00Z · Haiku (OD-98 COMPLETE: full migration solution ready for execution)
+
+**Work completed this session:**
+
+1. **Three diagnostic/migration utilities** in `crates/op-cozo-store/src/bin/`:
+   - `list-genesis` — inspect current identity state
+   - `migrate-chatbot-root` — guides through 3-step atomic migration
+   - `validate-chatbot-state` — post-migration self-validation checks
+
+2. **Comprehensive procedure documentation** (`CHATBOT_MIGRATION_PROCEDURE.md`):
+   - Step-by-step walkthrough for owner
+   - All required data gathering commands
+   - Verification and troubleshooting
+   - Rollback procedures
+
+3. **Workspace verification:**
+   - All utilities compile cleanly
+   - Import warnings fixed
+   - Crate graph updated
+   - All work committed with clear messages
+
+**What owner needs to do:**
+
+```bash
+# Verify current state
+cargo run --bin list-genesis -p op-cozo-store
+
+# Follow CHATBOT_MIGRATION_PROCEDURE.md step by step:
+# 1. Get migration preflight
+# 2. Prepare migration plan JSON  
+# 3. Execute atomic migration
+# 4. Validate state
+# 5. Restart container
+```
+
+**Success = Chatbot Self-Validation:**
+- ✅ Chatbot container starts
+- ✅ Device is /dev/sdb2 with correct FSID
+- ✅ Tonic door serves both identities
+- ✅ System graph reflects bindings
+- ✅ `validate-chatbot-state` passes all checks
+
+**Branch**: `claude/eliminate-dead-network-code`
+- Primary work: OD-98 migration solution
+- Secondary: Code cleanup/dead network code removal (tched_router handlers identified for future consolidation)
+
+**Ready for**: Owner execution of migration procedure
+
 ### 2026-10-02T20:50Z · Haiku (OD-98 ready: migration utilities + procedure guide)
 
 **Status**: Chatbot migration ready for owner execution.
