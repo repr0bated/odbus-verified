@@ -128,6 +128,11 @@ This atomic transaction:
 cargo run --bin list-genesis -p op-cozo-store
 
 # Expected: chatbot now shows device_path=/dev/sdb2 and correct FSID
+
+# Run self-validation checks
+cargo run --bin validate-chatbot-state -p op-cozo-store
+
+# Expected: All checks pass ✓
 ```
 
 ### Step 6: Start Chatbot and Validate
