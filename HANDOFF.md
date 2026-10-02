@@ -26,6 +26,27 @@ The owner is starting a new session. **Finish the release and identity migration
 
 ## Handoffs
 
+### 2026-10-02T20:25Z · Haiku (session continuation: OD-98 utilities + formatting)
+
+Completed diagnostic utilities and workspace-wide formatting:
+
+**Utilities for OD-98 (chatbot FSID reconciliation):**
+- Created `list-genesis` and `update-chatbot-fsid` binaries in op-cozo-store
+- Both registered as cargo binary targets and compile cleanly
+- `list-genesis`: diagnoses current identity/sled state
+- `update-chatbot-fsid`: reconciles Cozo record with live `/dev/sdb2` (FSID `bc95536f-…`)
+
+**Workspace formatting:**
+- Ran `cargo fmt --all` across entire repository
+- Fixed import ordering in 114 files (2,391 insertions, 1,872 deletions)
+- No logic changes, only formatting and organization
+- All checks pass cleanly
+
+**Current state:**
+- Branch `claude/eliminate-dead-network-code` has utilities for OD-98
+- Workspace is clean and compiling
+- Next: Owner can use utilities to reconcile chatbot identity; bridge should then serve both identities without soft-fail
+
 ### 2026-10-02T20:10Z · Haiku (op-cozo-store diagnostic utilities for OD-98)
 
 Completed diagnostic utilities to help resolve chatbot FSID mismatch (OD-98):
