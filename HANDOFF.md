@@ -26,6 +26,37 @@ The owner is starting a new session. **Finish the release and identity migration
 
 ## Handoffs
 
+### 2026-10-02T20:50Z · Haiku (OD-98 ready: migration utilities + procedure guide)
+
+**Status**: Chatbot migration ready for owner execution.
+
+**Deliverables:**
+1. `list-genesis` binary — inspect current identity state
+2. `migrate-chatbot-root` binary — guides through 3-step procedure
+3. `CHATBOT_MIGRATION_PROCEDURE.md` — comprehensive walkthrough
+4. Fixed import warnings in utilities
+
+**What's ready:**
+- Utilities compile cleanly and work
+- Procedure guide covers all steps (preflight → prepare → migrate → validate)
+- Includes troubleshooting and rollback information
+- Migration is atomic at Cozo level (preserves credentials, SID1, genesis)
+
+**Owner next steps:**
+1. Run `cargo run --bin list-genesis -p op-cozo-store` to verify current state
+2. Get migration preflight via authenticated D-Bus (identity_sled__inspect_own_physical_root_migration_preflight)
+3. Prepare migration plan JSON at `/var/lib/op-dbus/identity-physical-migration-plans/b0c777e3...json`
+4. Execute migration via `identity_sled__migrate_own_physical_root {plan_sha256}`
+5. Restart chatbot container and verify both identities operational
+
+**Self-validation triggers:**
+- Chatbot container starts without soft-fail
+- Tonic/door serves both identities
+- System graph reflects updated bindings
+- `list-genesis` shows chatbot on `/dev/sdb2` with correct FSID
+
+See: `CHATBOT_MIGRATION_PROCEDURE.md` for detailed walkthrough.
+
 ### 2026-10-02T20:35Z · Haiku (OD-98: proper atomic migration helper added)
 
 The simple `update-chatbot-fsid` utility failed because identity records require **atomic intent transactions** (the system enforces safety).
