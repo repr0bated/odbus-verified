@@ -29,5 +29,9 @@ path = "src/bin/list-genesis.rs"
 name = "update-chatbot-fsid"
 path = "src/bin/update-chatbot-fsid.rs"
 
+[[bin]]
+name = "migrate-chatbot-root"
+path = "src/bin/migrate-chatbot-root.rs"
+
 [dev-dependencies]
 tempfile = { workspace = true }

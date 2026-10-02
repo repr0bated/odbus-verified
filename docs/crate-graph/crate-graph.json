@@ -65,6 +65,14 @@
       }
     },
     {
+      "id": "bin:migrate-chatbot-root",
+      "label": "bin",
+      "props": {
+        "crate": "op-cozo-store",
+        "src": "crates/op-cozo-store/src/bin/migrate-chatbot-root.rs"
+      }
+    },
+    {
       "id": "bin:op-agent-manager",
       "label": "bin",
       "props": {
@@ -428,12 +436,13 @@
         "bins": [
           "identity-sled-bind",
           "list-genesis",
+          "migrate-chatbot-root",
           "system_graph_inventory",
           "update-chatbot-fsid"
         ],
         "has_lib": true,
-        "rs_files": 21,
-        "loc": 15177,
+        "rs_files": 22,
+        "loc": 15333,
         "tests": 104,
         "unsafe_refs": 3,
         "todo": 2,
@@ -1987,8 +1996,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-02T20:21:47Z",
-        "commit": "fdb6354da98504565919a704ad80f333452c9798",
+        "generated_at": "2026-10-02T20:30:22Z",
+        "commit": "6aa243f7a7dabca21b4d71fdbaecc54ed10ae1fe",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -4614,6 +4623,15 @@
         "crate": "op-cozo-store",
         "kind": "bin",
         "loc": 43
+      }
+    },
+    {
+      "id": "mod:crates/op-cozo-store/src/bin/migrate-chatbot-root.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "bin",
+        "loc": 156
       }
     },
     {
@@ -11303,6 +11321,12 @@
       "props": {}
     },
     {
+      "src": "bin:migrate-chatbot-root",
+      "rel": "bin_entry",
+      "dst": "mod:crates/op-cozo-store/src/bin/migrate-chatbot-root.rs",
+      "props": {}
+    },
+    {
       "src": "bin:op-agent-manager",
       "rel": "bin_entry",
       "dst": "mod:crates/op-agents/src/bin/dbus-agent-manager.rs",
@@ -15041,6 +15065,12 @@
     {
       "src": "crate:op-cozo-store",
       "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/bin/migrate-chatbot-root.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
       "dst": "mod:crates/op-cozo-store/src/bin/system_graph_inventory.rs",
       "props": {}
     },
@@ -15146,6 +15176,12 @@
       "src": "crate:op-cozo-store",
       "rel": "provides_bin",
       "dst": "bin:list-genesis",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "provides_bin",
+      "dst": "bin:migrate-chatbot-root",
       "props": {}
     },
     {
