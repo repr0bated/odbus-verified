@@ -10,7 +10,7 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 
 /// `BTRFS_PATH_NAME_MAX` from `linux/btrfs.h`.
 const BTRFS_PATH_NAME_MAX: usize = 4087;

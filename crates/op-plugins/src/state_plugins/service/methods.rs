@@ -1,6 +1,6 @@
 //! Runit lifecycle through the existing root-guarded native D-Bus provider.
 use super::{InitInput, RunInput, ServiceName, ShutdownInput};
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Duration;
@@ -232,10 +232,12 @@ mod tests {
         }
         assert!(calls.lock().unwrap().is_empty());
         let (_server, client, _) = pair(true).await;
-        assert!(dispatch_on(&client, "run", &json!({"name":"fixture"}))
-            .await
-            .unwrap_err()
-            .to_string()
-            .contains("rejected"));
+        assert!(
+            dispatch_on(&client, "run", &json!({"name":"fixture"}))
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("rejected")
+        );
     }
 }

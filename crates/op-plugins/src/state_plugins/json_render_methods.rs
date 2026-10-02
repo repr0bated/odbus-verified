@@ -3,19 +3,19 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use op_state_store::{PluginSchema, SideEffect};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::runtime_contract;
 use super::{
     ActionsOutput, ComponentDecl, ComponentLookupInput, ComponentOutput, ComponentsOutput,
     ConfigOutput, CoreExportsOutput, EmptyJsonRenderInput, HealthOutput, JsonRenderConfig,
-    JsonRenderState, JsonSchemaMode, MethodSurface, PackageLookupInput, PackageOutput,
+    JsonRenderState, JsonSchemaMode, MethodSurface, PLUGIN_NAME, PackageLookupInput, PackageOutput,
     PackagesOutput, PromptMode, PromptSurfaceInput, PromptSurfaceOutput, RenderersOutput,
     SchemaExportInput, SchemaExportOutput, SetConfigOutput, SetJsonRenderConfigInput,
-    SpecValidationInput, ToolsOutput, ValidationResultOutput, PLUGIN_NAME,
+    SpecValidationInput, ToolsOutput, ValidationResultOutput,
 };
 use crate::state_plugins::runtime_documents::RuntimeDocuments;
 
@@ -672,17 +672,22 @@ mod tests {
         assert!(jsonschema::validate(&button["props_schema"], &json!({"label":42})).is_err());
         let actions = outputs["list_actions"]["actions"].as_array().unwrap();
         assert!(!actions.is_empty());
-        assert!(outputs["list_core_exports"]["exports"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|item| item["name"] == "defineCatalog" && item["package"] == "@json-render/core"));
-        assert!(outputs["list_renderers"]["renderers"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|renderer| renderer["id"] == "react"
-                && renderer["package_name"] == "@json-render/react"));
+        assert!(
+            outputs["list_core_exports"]["exports"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|item| item["name"] == "defineCatalog"
+                    && item["package"] == "@json-render/core")
+        );
+        assert!(
+            outputs["list_renderers"]["renderers"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|renderer| renderer["id"] == "react"
+                    && renderer["package_name"] == "@json-render/react")
+        );
         let health = &outputs["get_health"];
         assert_eq!(health["status"], "catalog_snapshot");
         assert_eq!(health["package_count"], packages.len());
@@ -735,12 +740,16 @@ mod tests {
         }})).await.unwrap();
         assert_eq!(output["valid"], false);
         let issues = output["issues"].as_array().unwrap();
-        assert!(issues
-            .iter()
-            .any(|issue| issue.as_str().unwrap().contains("props")));
-        assert!(issues
-            .iter()
-            .any(|issue| issue.as_str().unwrap().contains("missing child")));
+        assert!(
+            issues
+                .iter()
+                .any(|issue| issue.as_str().unwrap().contains("props"))
+        );
+        assert!(
+            issues
+                .iter()
+                .any(|issue| issue.as_str().unwrap().contains("missing child"))
+        );
     }
 
     #[tokio::test]
@@ -886,10 +895,12 @@ mod tests {
                 .await
                 .unwrap();
             assert_eq!(result["changed"], true);
-            assert!(service
-                .dispatch("list_components", &json!({}))
-                .await
-                .is_err());
+            assert!(
+                service
+                    .dispatch("list_components", &json!({}))
+                    .await
+                    .is_err()
+            );
             let tools = service.dispatch("list_tools", &json!({})).await.unwrap();
             assert_eq!(
                 tools["tools"]
@@ -920,37 +931,47 @@ mod tests {
         let service = service(reopened);
         let config = service.dispatch("get_config", &json!({})).await.unwrap();
         assert_eq!(config["config"]["expose_catalog"], false);
-        assert!(service
-            .dispatch("build_prompt_surface", &json!({}))
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch("build_prompt_surface", &json!({}))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
     async fn malformed_inputs_and_unsupported_renderer_fail_before_write() {
         let service = service(CozoGraphShuttle::new_in_memory().unwrap());
-        assert!(service
-            .dispatch("get_config", &json!({"extra":true}))
-            .await
-            .is_err());
-        assert!(service
-            .dispatch("get_component_schema", &json!({"name":"\n"}))
-            .await
-            .is_err());
-        assert!(service
-            .dispatch("build_prompt_surface", &json!({"mode":"invented"}))
-            .await
-            .is_err());
-        assert!(service
-            .dispatch(
-                "set_config",
-                &json!({"config":{
-                    "expose_catalog":true,"expose_prompt_surface":true,
-                    "schema_mode":"strict","default_renderer":"react-pdf","extra":true
-                }})
-            )
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch("get_config", &json!({"extra":true}))
+                .await
+                .is_err()
+        );
+        assert!(
+            service
+                .dispatch("get_component_schema", &json!({"name":"\n"}))
+                .await
+                .is_err()
+        );
+        assert!(
+            service
+                .dispatch("build_prompt_surface", &json!({"mode":"invented"}))
+                .await
+                .is_err()
+        );
+        assert!(
+            service
+                .dispatch(
+                    "set_config",
+                    &json!({"config":{
+                        "expose_catalog":true,"expose_prompt_surface":true,
+                        "schema_mode":"strict","default_renderer":"react-pdf","extra":true
+                    }})
+                )
+                .await
+                .is_err()
+        );
         assert_eq!(
             service.dispatch("get_config", &json!({})).await.unwrap()["revision"],
             0

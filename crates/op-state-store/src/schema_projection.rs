@@ -39,10 +39,7 @@ fn is_secret(schema: &Value) -> bool {
 
 /// OD-91: private content stays off shared chain vectors the same way secrets do.
 fn is_private(schema: &Value) -> bool {
-    schema
-        .get("x-opdbus-private")
-        .and_then(Value::as_bool)
-        == Some(true)
+    schema.get("x-opdbus-private").and_then(Value::as_bool) == Some(true)
 }
 
 fn is_redacted(schema: &Value) -> bool {
@@ -207,7 +204,10 @@ fn digest_walk(root: &Value, schema: &Value, value: &Value, depth: usize) -> Val
         return Value::Null;
     }
     if is_private(schema) {
-        return Value::String(format!("blake3:{}", blake3::hash(value.to_string().as_bytes())));
+        return Value::String(format!(
+            "blake3:{}",
+            blake3::hash(value.to_string().as_bytes())
+        ));
     }
     match value {
         Value::Object(map) => {
@@ -233,7 +233,10 @@ fn digest_walk(root: &Value, schema: &Value, value: &Value, depth: usize) -> Val
                     );
                     continue;
                 }
-                out.insert(key.clone(), digest_walk(root, child_schema, child, depth + 1));
+                out.insert(
+                    key.clone(),
+                    digest_walk(root, child_schema, child, depth + 1),
+                );
             }
             Value::Object(out)
         }

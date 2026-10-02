@@ -1,5 +1,5 @@
 //! Root-only identity storage preparation and Incus boot prerequisite.
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 
 #[path = "op-identity-storage/lungs_attach.rs"]
 mod lungs_attach;
@@ -39,10 +39,14 @@ fn main() -> Result<()> {
                     .parse()?,
                 std::path::Path::new(source),
             )?;
-            println!("attached scoped host lungs to verified identity mount namespace; no identity activation performed");
+            println!(
+                "attached scoped host lungs to verified identity mount namespace; no identity activation performed"
+            );
         }
         _ => {
-            anyhow::bail!("usage: op-identity-storage mount-all | prepare-leaf <SID> <plan_sha256> | attach-existing-lungs <NAME> <PID> <STARTTIME> <HOST_FUSE_SOURCE>")
+            anyhow::bail!(
+                "usage: op-identity-storage mount-all | prepare-leaf <SID> <plan_sha256> | attach-existing-lungs <NAME> <PID> <STARTTIME> <HOST_FUSE_SOURCE>"
+            )
         }
     }
     Ok(())

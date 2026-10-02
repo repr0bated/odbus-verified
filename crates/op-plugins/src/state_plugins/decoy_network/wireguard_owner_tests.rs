@@ -274,38 +274,42 @@ async fn aggregate_projection_preserves_siblings_and_reports_known_absence() {
 #[tokio::test]
 async fn ignored_kernel_updates_fail_exact_readback() {
     let owner = ignoring_owner();
-    assert!(owner
-        .dispatch(
-            "wireguard",
-            "set_device",
-            serde_json::json!({
-                "interface":"wg-decoy",
-                "private_key":key(1),
-                "listen_port":51820,
-                "fwmark":7
-            }),
-        )
-        .await
-        .unwrap_err()
-        .to_string()
-        .contains("readback mismatch"));
-    assert!(owner
-        .dispatch(
-            "wireguard",
-            "add_peer",
-            serde_json::json!({
-                "interface":"wg-decoy",
-                "public_key":key(3),
-                "preshared_key":key(2),
-                "endpoint":"192.0.2.9:51820",
-                "allowed_ips":["10.8.0.7/24"],
-                "persistent_keepalive":25
-            }),
-        )
-        .await
-        .unwrap_err()
-        .to_string()
-        .contains("peer readback mismatch"));
+    assert!(
+        owner
+            .dispatch(
+                "wireguard",
+                "set_device",
+                serde_json::json!({
+                    "interface":"wg-decoy",
+                    "private_key":key(1),
+                    "listen_port":51820,
+                    "fwmark":7
+                }),
+            )
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("readback mismatch")
+    );
+    assert!(
+        owner
+            .dispatch(
+                "wireguard",
+                "add_peer",
+                serde_json::json!({
+                    "interface":"wg-decoy",
+                    "public_key":key(3),
+                    "preshared_key":key(2),
+                    "endpoint":"192.0.2.9:51820",
+                    "allowed_ips":["10.8.0.7/24"],
+                    "persistent_keepalive":25
+                }),
+            )
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("peer readback mismatch")
+    );
 }
 
 #[test]

@@ -13,13 +13,13 @@ use op_state::{
 use op_state_store::PluginSchema;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use simd_json::{json, prelude::*, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json, prelude::*};
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 use tokio::net::UnixStream;
 use tokio_tungstenite::{
-    tungstenite::{protocol::WebSocketConfig, Message},
     WebSocketStream,
+    tungstenite::{Message, protocol::WebSocketConfig},
 };
 
 use super::incus_device::{Device, NamedDevice};
@@ -1288,16 +1288,20 @@ mod tests {
         )
         .expect("stop request");
         assert_eq!(stop_body, r#"{"action":"stop"}"#);
-        assert!(IncusPlugin::identity_session_power_request(
-            "../../host?project=default",
-            IdentitySessionPowerState::Running,
-        )
-        .is_err());
-        assert!(IncusPlugin::identity_session_power_request(
-            &session_id.to_uppercase(),
-            IdentitySessionPowerState::Running,
-        )
-        .is_err());
+        assert!(
+            IncusPlugin::identity_session_power_request(
+                "../../host?project=default",
+                IdentitySessionPowerState::Running,
+            )
+            .is_err()
+        );
+        assert!(
+            IncusPlugin::identity_session_power_request(
+                &session_id.to_uppercase(),
+                IdentitySessionPowerState::Running,
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -3174,17 +3178,21 @@ mod transport_tests {
     #[tokio::test]
     async fn rejects_truncated_chunked_response() {
         let response = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n";
-        assert!(request_with_response(response, Duration::from_secs(1))
-            .await
-            .is_err());
+        assert!(
+            request_with_response(response, Duration::from_secs(1))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
     async fn rejects_truncated_content_length_response() {
         let response = b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhi";
-        assert!(request_with_response(response, Duration::from_secs(1))
-            .await
-            .is_err());
+        assert!(
+            request_with_response(response, Duration::from_secs(1))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -3218,9 +3226,11 @@ mod transport_tests {
     #[tokio::test]
     async fn timeout_rejects_incomplete_response() {
         let response = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhe";
-        assert!(request_with_response(response, Duration::from_millis(30))
-            .await
-            .is_err());
+        assert!(
+            request_with_response(response, Duration::from_millis(30))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -3229,9 +3239,11 @@ mod transport_tests {
             super::dispatch_incus_method("start_instance", &serde_json::json!({"name": 42}))
                 .await
                 .expect_err("typed input must reject non-string names");
-        assert!(malformed
-            .to_string()
-            .contains("invalid start_instance arguments"));
+        assert!(
+            malformed
+                .to_string()
+                .contains("invalid start_instance arguments")
+        );
 
         let unknown = super::dispatch_incus_method("not_declared", &serde_json::json!({}))
             .await
@@ -3541,10 +3553,10 @@ mod transport_tests {
 
         let mut wrong_project = observed_instance("demo", "Running", 103);
         wrong_project["project"] = "other".into();
-        assert!(IncusPlugin::parse_instance_list(
-            serde_json::to_vec(&vec![wrong_project]).unwrap()
-        )
-        .is_err());
+        assert!(
+            IncusPlugin::parse_instance_list(serde_json::to_vec(&vec![wrong_project]).unwrap())
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -3976,9 +3988,11 @@ mod transport_tests {
             )
             .await
             .expect_err("unfinished or failed operation must not acknowledge completion");
-            assert!(result
-                .to_string()
-                .contains(if error.is_empty() { status } else { error }));
+            assert!(
+                result
+                    .to_string()
+                    .contains(if error.is_empty() { status } else { error })
+            );
         }
         let error = dispatch_fixture("delete_instance", serde_json::json!({"name": "demo"}), vec![
             instance_read(),
@@ -4057,11 +4071,13 @@ mod transport_tests {
             serde_json::json!({"name": "demo", "command": [""]}),
             serde_json::json!({"name": "demo", "command": ["tool", "\0"]}),
         ] {
-            assert!(super::dispatch_incus_with_api(&api, "exec_instance", &args)
-                .await
-                .unwrap_err()
-                .to_string()
-                .contains("Incus exec"));
+            assert!(
+                super::dispatch_incus_with_api(&api, "exec_instance", &args)
+                    .await
+                    .unwrap_err()
+                    .to_string()
+                    .contains("Incus exec")
+            );
         }
         let error = super::dispatch_incus_with_api(
             &api,

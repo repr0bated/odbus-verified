@@ -25,7 +25,7 @@ use hyper_util::{
     server::conn::auto::Builder,
 };
 use sha2::{Digest, Sha256};
-use tokio_rustls::{rustls, TlsAcceptor};
+use tokio_rustls::{TlsAcceptor, rustls};
 use tonic::transport::server::{TcpConnectInfo, TlsConnectInfo};
 use tonic::transport::{Certificate, Identity, ServerTlsConfig};
 use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
@@ -33,7 +33,7 @@ use tower::Service;
 use tower_http::cors::CorsLayer;
 use tracing::info;
 
-use crate::grpc_server::{build_operation_routes_with_validator, OperationGrpcServer};
+use crate::grpc_server::{OperationGrpcServer, build_operation_routes_with_validator};
 use crate::mutation_engine::MutationEngine;
 use crate::oracle_assertion::{AssertionValidator, DecoyTrustStore};
 use crate::schema_loader::{SchemaLoader, SchemaReloadEvent};
@@ -41,8 +41,8 @@ use crate::schema_router::SchemaRouter;
 use crate::tracing::{GhostbridgeTraceLayer, TraceContext};
 
 use crate::proto::tched_router::{
-    tched_router_service_server::{TchedRouterService, TchedRouterServiceServer},
     GetSchemaRequest, SchemaEvent, SchemaResponse, WatchSchemaRequest,
+    tched_router_service_server::{TchedRouterService, TchedRouterServiceServer},
 };
 
 /// Host-local native gRPC UDS (op-web, zbusctl, operators on the host).
@@ -1332,16 +1332,15 @@ mod tests {
     #[test]
     fn browser_tls_override_requires_the_complete_triplet() {
         let configured = "127.0.0.1:8090,10.0.0.2:8090,10.0.0.3:8090";
-        assert!(load_browser_tls_override(configured, None, None, None)
-            .unwrap()
-            .is_none());
-        assert!(load_browser_tls_override(
-            configured,
-            Some("10.0.0.2:8090"),
-            Some("/cert.pem"),
-            None,
-        )
-        .is_err());
+        assert!(
+            load_browser_tls_override(configured, None, None, None)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            load_browser_tls_override(configured, Some("10.0.0.2:8090"), Some("/cert.pem"), None,)
+                .is_err()
+        );
     }
 
     #[test]
@@ -1434,10 +1433,11 @@ mod tests {
         let Some(tonic_reflection::pb::v1::server_reflection_response::MessageResponse::ListServicesResponse(list)) = response.message_response else {
             panic!("reflection did not list services");
         };
-        assert!(list
-            .service
-            .iter()
-            .any(|service| service.name == "grpc.health.v1.Health"));
+        assert!(
+            list.service
+                .iter()
+                .any(|service| service.name == "grpc.health.v1.Health")
+        );
         server.abort();
     }
 

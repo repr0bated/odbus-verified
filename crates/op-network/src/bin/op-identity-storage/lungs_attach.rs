@@ -1,6 +1,6 @@
 //! Operator-only FD transfer: clone in host namespace, then attach after idmap.
 //! Receipts describe mounts, not keys, grants or identity lifecycle authority.
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
 use serde_json::Value;
 use std::ffi::CString;

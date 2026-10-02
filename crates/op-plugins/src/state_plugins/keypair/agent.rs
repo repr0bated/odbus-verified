@@ -2,10 +2,10 @@
 //! https://www.rfc-editor.org/rfc/rfc9987.html
 //! This adapter never requests signatures or private key material.
 use super::{KeypairInfo, ListKeypairsInput, ListKeypairsOutput};
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use base64::{
-    engine::general_purpose::{STANDARD, STANDARD_NO_PAD},
     Engine as _,
+    engine::general_purpose::{STANDARD, STANDARD_NO_PAD},
 };
 use sha2::{Digest, Sha256};
 use std::time::Duration;
@@ -163,11 +163,12 @@ mod tests {
         assert_eq!(key.name, "fixture public identity");
         assert_eq!(key.algorithm, "ssh-ed25519");
         assert!(key.fingerprint.starts_with("SHA256:"));
-        assert!(key
-            .public_key
-            .as_ref()
-            .unwrap()
-            .starts_with("ssh-ed25519 AAAA"));
+        assert!(
+            key.public_key
+                .as_ref()
+                .unwrap()
+                .starts_with("ssh-ed25519 AAAA")
+        );
         let schema = super::super::keypair_schema();
         let returns =
             serde_json::to_value(schema.methods["list_keypairs"].returns.as_ref().unwrap())

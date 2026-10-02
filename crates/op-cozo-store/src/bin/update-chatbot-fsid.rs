@@ -2,7 +2,7 @@
 //! Usage: IDENTITY_SLED_COZO_DB_PATH=/var/lib/op-dbus/identity-cozo cargo run --bin update-chatbot-fsid
 
 use op_cozo_store::CozoGraphShuttle;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::PathBuf;
 
 fn main() {

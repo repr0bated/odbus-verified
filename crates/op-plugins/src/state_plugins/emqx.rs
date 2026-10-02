@@ -1462,10 +1462,12 @@ mod tests {
     #[test]
     fn declared_endpoints_are_local_or_fabric_and_mcp_gateway_is_absent() {
         let state = EmqxState::declared();
-        assert!(state
-            .listeners
-            .iter()
-            .all(|listener| local_endpoint(&listener.bind)));
+        assert!(
+            state
+                .listeners
+                .iter()
+                .all(|listener| local_endpoint(&listener.bind))
+        );
         assert!(local_endpoint(&state.exhook.target));
         assert!(
             !local_endpoint("0.0.0.0:8083"),
@@ -1593,9 +1595,11 @@ mod tests {
             assert!(properties.get(field).is_some(), "missing {field}");
         }
         assert!(payload_json.get("required").is_some());
-        assert!(!serde_json::to_string(&payload_json)
-            .unwrap()
-            .contains("payload"));
+        assert!(
+            !serde_json::to_string(&payload_json)
+                .unwrap()
+                .contains("payload")
+        );
     }
 
     #[test]

@@ -17,7 +17,7 @@ use op_state_store::{Constraint, FieldSchema, FieldType};
 use serde::{Deserialize, Serialize};
 #[cfg(test)]
 use simd_json::json;
-use simd_json::{prelude::*, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, prelude::*};
 use std::collections::HashMap;
 
 // ============================================================================

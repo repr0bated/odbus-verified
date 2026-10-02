@@ -4,8 +4,8 @@ use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateD
 use op_state_store::{CapabilityDecl, PluginSchema};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use simd_json::prelude::*;
 use simd_json::OwnedValue as Value;
+use simd_json::prelude::*;
 
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 
@@ -554,9 +554,9 @@ mod tests {
     use super::*;
     use serde_json::json;
     use std::sync::{Arc, Mutex};
-    use tokio::time::{timeout, Duration};
+    use tokio::time::{Duration, timeout};
     use zbus::{
-        connection::Builder, object_server::SignalContext, zvariant::OwnedObjectPath, Guid,
+        Guid, connection::Builder, object_server::SignalContext, zvariant::OwnedObjectPath,
     };
 
     const TX_PATH: &str = "/org/freedesktop/PackageKit/transactions/software_test";
@@ -742,7 +742,7 @@ mod tests {
 
         #[zbus(signal)]
         async fn error_code(ctxt: &SignalContext<'_>, code: u32, details: &str)
-            -> zbus::Result<()>;
+        -> zbus::Result<()>;
 
         #[zbus(signal)]
         async fn finished(ctxt: &SignalContext<'_>, exit: u32, runtime: u32) -> zbus::Result<()>;

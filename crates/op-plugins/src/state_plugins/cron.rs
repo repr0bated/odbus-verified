@@ -5,7 +5,7 @@
 //! OP-DBUS verifies the current SID1 session and exact method capability before
 //! dispatch; those credentials are never forwarded to the gateway.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
@@ -545,10 +545,12 @@ mod tests {
             .collect::<Vec<_>>();
         actual.sort_unstable();
         assert_eq!(actual, expected);
-        assert!(schema
-            .methods
-            .values()
-            .all(|decl| decl.args != simd_json::json!(null)));
+        assert!(
+            schema
+                .methods
+                .values()
+                .all(|decl| decl.args != simd_json::json!(null))
+        );
         assert!(schema.methods.values().all(|decl| {
             decl.returns
                 .as_ref()
@@ -558,15 +560,19 @@ mod tests {
     }
     #[test]
     fn unknown_and_cross_variant_create_fields_fail() {
-        assert!(serde_json::from_value::<CreateJobInput>(serde_json::json!({
-            "job_type":"agent", "agent":"operator", "schedule":"*/5 * * * *",
-            "prompt":"digest", "command":"echo bypass"
-        }))
-        .is_err());
-        assert!(serde_json::from_value::<JobIdInput>(serde_json::json!({
-            "job_id":"id", "sealed_id":"caller-supplied"
-        }))
-        .is_err());
+        assert!(
+            serde_json::from_value::<CreateJobInput>(serde_json::json!({
+                "job_type":"agent", "agent":"operator", "schedule":"*/5 * * * *",
+                "prompt":"digest", "command":"echo bypass"
+            }))
+            .is_err()
+        );
+        assert!(
+            serde_json::from_value::<JobIdInput>(serde_json::json!({
+                "job_id":"id", "sealed_id":"caller-supplied"
+            }))
+            .is_err()
+        );
     }
     #[test]
     fn global_state_example_matches_contract() {

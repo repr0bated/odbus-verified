@@ -5,9 +5,9 @@
 //! the exact sealed PluginSchema.public_state policy (currently withheld).
 //! The full private identity tree, including SID1 and events, is unchanged.
 use super::ContainerIdentitySled;
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use simd_json::prelude::ValueAsContainer;
-use simd_json::{json, OwnedValue};
+use simd_json::{OwnedValue, json};
 
 /// Build the minimal local metadata document paired with the private tree.
 /// Explicit field construction prevents future record additions, arbitrary

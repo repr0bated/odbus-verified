@@ -672,21 +672,27 @@ mod tests {
         let migration_args =
             serde_json::to_value(&schema.methods["migrate_own_physical_root"].args).unwrap();
         let migration = jsonschema::Validator::new(&migration_args).unwrap();
-        assert!(migration
-            .validate(&serde_json::json!({"plan_sha256":"a".repeat(64)}))
-            .is_ok());
-        assert!(migration
-            .validate(&serde_json::json!({"plan_sha256":"a".repeat(64),"session_id":"foreign"}))
-            .is_err());
+        assert!(
+            migration
+                .validate(&serde_json::json!({"plan_sha256":"a".repeat(64)}))
+                .is_ok()
+        );
+        assert!(
+            migration
+                .validate(&serde_json::json!({"plan_sha256":"a".repeat(64),"session_id":"foreign"}))
+                .is_err()
+        );
         let preflight_args = serde_json::to_value(
             &schema.methods["inspect_own_physical_root_migration_preflight"].args,
         )
         .unwrap();
         let preflight = jsonschema::Validator::new(&preflight_args).unwrap();
         assert!(preflight.validate(&serde_json::json!({})).is_ok());
-        assert!(preflight
-            .validate(&serde_json::json!({"session_id":"foreign"}))
-            .is_err());
+        assert!(
+            preflight
+                .validate(&serde_json::json!({"session_id":"foreign"}))
+                .is_err()
+        );
         let encoded =
             serde_json::to_value(&schema.methods["inspect_own_physical_root_migration_preflight"])
                 .unwrap();
@@ -750,12 +756,14 @@ mod tests {
         );
         let args = serde_json::to_value(&provision.args).unwrap();
         let validator = jsonschema::Validator::new(&args).unwrap();
-        assert!(validator
-            .validate(&serde_json::json!({
-                "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-                "plan_sha256":"a".repeat(64)
-            }))
-            .is_ok());
+        assert!(
+            validator
+                .validate(&serde_json::json!({
+                    "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                    "plan_sha256":"a".repeat(64)
+                }))
+                .is_ok()
+        );
         for extra in ["instance", "btrfs_device", "sealed_id"] {
             let mut input = serde_json::json!({
                 "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
@@ -772,9 +780,11 @@ mod tests {
                 .unwrap();
         let preflight = jsonschema::Validator::new(&preflight).unwrap();
         assert!(preflight.validate(&serde_json::json!({})).is_ok());
-        assert!(preflight
-            .validate(&serde_json::json!({"session_id":"caller-selected"}))
-            .is_err());
+        assert!(
+            preflight
+                .validate(&serde_json::json!({"session_id":"caller-selected"}))
+                .is_err()
+        );
     }
 
     #[test]
@@ -790,9 +800,11 @@ mod tests {
         let args = serde_json::to_value(&declaration.args).unwrap();
         let validator = jsonschema::Validator::new(&args).unwrap();
         assert!(validator.validate(&serde_json::json!({})).is_ok());
-        assert!(validator
-            .validate(&serde_json::json!({"limit":100,"after_session_id":"a"}))
-            .is_ok());
+        assert!(
+            validator
+                .validate(&serde_json::json!({"limit":100,"after_session_id":"a"}))
+                .is_ok()
+        );
         for value in [
             serde_json::json!({"limit":0}),
             serde_json::json!({"limit":101}),
@@ -839,24 +851,30 @@ mod tests {
             "session_id":"00000000-0000-4000-8000-000000000001",
             "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         });
-        assert!(validate(
-            "touch_session",
-            "returns",
-            serde_json::json!({"identity":identity})
-        )
-        .is_ok());
-        assert!(validate(
-            "record_session_event",
-            "returns",
-            serde_json::json!({"session_id":"s","seq":7})
-        )
-        .is_ok());
-        assert!(validate(
-            "get_session_history",
-            "args",
-            serde_json::json!({"session_id":"s","limit":4097})
-        )
-        .is_err());
+        assert!(
+            validate(
+                "touch_session",
+                "returns",
+                serde_json::json!({"identity":identity})
+            )
+            .is_ok()
+        );
+        assert!(
+            validate(
+                "record_session_event",
+                "returns",
+                serde_json::json!({"session_id":"s","seq":7})
+            )
+            .is_ok()
+        );
+        assert!(
+            validate(
+                "get_session_history",
+                "args",
+                serde_json::json!({"session_id":"s","limit":4097})
+            )
+            .is_err()
+        );
         let mut preflight = serde_json::json!({
             "session_id":"00000000-0000-4000-8000-000000000001",
             "genesis":"g",
@@ -878,20 +896,24 @@ mod tests {
             "native_status":"Stopped",
             "root_subvolume":"missing"
         });
-        assert!(validate(
-            "inspect_own_root_repair_preflight",
-            "returns",
-            preflight.clone()
-        )
-        .is_ok());
+        assert!(
+            validate(
+                "inspect_own_root_repair_preflight",
+                "returns",
+                preflight.clone()
+            )
+            .is_ok()
+        );
         preflight["expected_first_start_idmap_sha256"] = "B".repeat(64).into();
         assert!(validate("inspect_own_root_repair_preflight", "returns", preflight).is_err());
-        assert!(validate(
-            "touch_session",
-            "args",
-            serde_json::json!({"session_id":"s","sealed_id":"caller"})
-        )
-        .is_err());
+        assert!(
+            validate(
+                "touch_session",
+                "args",
+                serde_json::json!({"session_id":"s","sealed_id":"caller"})
+            )
+            .is_err()
+        );
     }
 
     #[test]

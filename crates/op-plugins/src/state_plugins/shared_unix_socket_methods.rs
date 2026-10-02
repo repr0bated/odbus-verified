@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -299,13 +299,15 @@ mod tests {
 
     #[tokio::test]
     async fn invalid_inputs_do_not_commit() {
-        assert!(SharedUnixSocketMethods::new(
-            Arc::new(RuntimeDocuments::new(
-                CozoGraphShuttle::new_in_memory().unwrap(),
-            )),
-            "relative.sock",
-        )
-        .is_err());
+        assert!(
+            SharedUnixSocketMethods::new(
+                Arc::new(RuntimeDocuments::new(
+                    CozoGraphShuttle::new_in_memory().unwrap(),
+                )),
+                "relative.sock",
+            )
+            .is_err()
+        );
         let service = fixture("/fixture/bridge-owned.sock");
         for args in [
             json!({"name":"","ports":[1]}),
@@ -315,10 +317,12 @@ mod tests {
         ] {
             assert!(service.dispatch("create_unix_socket", &args).await.is_err());
         }
-        assert!(service
-            .dispatch("list_registrations", &json!({"unexpected":true}))
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch("list_registrations", &json!({"unexpected":true}))
+                .await
+                .is_err()
+        );
         let listed = service
             .dispatch("list_registrations", &json!({}))
             .await

@@ -10,15 +10,15 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use futures::StreamExt;
 use reqwest::{Client, Method, Url};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{EmbeddingModelPlugin, EmbeddingModelState, VOYAGE_PUBLIC_URL};
-use crate::state_plugins::runtime_documents::{runtime_documents, RuntimeDocuments};
+use crate::state_plugins::runtime_documents::{RuntimeDocuments, runtime_documents};
 
 const PLUGIN_ID: &str = "embedding_model";
 const MAX_RESPONSE_BYTES: usize = 32 * 1024 * 1024;
@@ -70,10 +70,9 @@ pub struct EmbeddingConfig {
 
 impl EmbeddingConfig {
     pub(super) fn from_environment() -> Result<Self> {
-        let provider: EmbeddingProvider = serde_json::from_value(json!(std::env::var(
-            "EMBEDDING_PROVIDER"
-        )
-        .unwrap_or_else(|_| "voyage".into())))
+        let provider: EmbeddingProvider = serde_json::from_value(json!(
+            std::env::var("EMBEDDING_PROVIDER").unwrap_or_else(|_| "voyage".into())
+        ))
         .context("unsupported EMBEDDING_PROVIDER")?;
         let provider_default = match provider {
             EmbeddingProvider::Voyage => EmbeddingModelPlugin::voyage_api_key()
@@ -1004,10 +1003,12 @@ mod tests {
         assert_eq!(requests[0].body["output_dtype"], "float");
         assert_eq!(requests[0].body["encoding_format"], Value::Null);
         assert_eq!(requests[0].body["input_type"], "query");
-        assert!(requests[0]
-            .headers
-            .to_lowercase()
-            .contains("authorization: bearer fixture-secret-key"));
+        assert!(
+            requests[0]
+                .headers
+                .to_lowercase()
+                .contains("authorization: bearer fixture-secret-key")
+        );
         let stored = service.store.read(PLUGIN_ID).await.unwrap().unwrap();
         assert_eq!(stored.revision, 2);
         assert!(!stored.document.to_string().contains("fixture-secret-key"));
@@ -1085,27 +1086,35 @@ mod tests {
         let (service, server) = fixture(EmbeddingProvider::Voyage, vec![]).await;
         let mut changed = service.bootstrap.clone();
         changed.endpoint = "https://different-origin.example/v1/embeddings".into();
-        assert!(service
-            .dispatch("update_config", &json!({"config":changed}))
-            .await
-            .is_err());
-        assert!(service
-            .dispatch("set_model", &json!({"model_id":"  "}))
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch("update_config", &json!({"config":changed}))
+                .await
+                .is_err()
+        );
+        assert!(
+            service
+                .dispatch("set_model", &json!({"model_id":"  "}))
+                .await
+                .is_err()
+        );
         let mut config = serde_json::to_value(&service.bootstrap).unwrap();
         config["api_key"] = json!("must-not-store");
-        assert!(service
-            .dispatch("update_config", &json!({"config":config}))
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch("update_config", &json!({"config":config}))
+                .await
+                .is_err()
+        );
         assert!(service.store.read(PLUGIN_ID).await.unwrap().is_none());
         assert!(server.await.unwrap().is_empty());
         let mut production_policy = service.http.clone();
         production_policy.allow_test_loopback_credentials = false;
-        assert!(production_policy
-            .validate_destination(&service.bootstrap)
-            .is_err());
+        assert!(
+            production_policy
+                .validate_destination(&service.bootstrap)
+                .is_err()
+        );
         for endpoint in [
             "https://user:password@example.com/v1/embeddings",
             "https://example.com/v1/embeddings?key=private",
@@ -1142,10 +1151,12 @@ mod tests {
         slow.delay_ms = 250;
         let (mut service, server) = fixture(EmbeddingProvider::Voyage, vec![slow]).await;
         service.bootstrap.timeout_ms = 100;
-        assert!(service
-            .dispatch("embed", &json!({"texts":["text"]}))
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch("embed", &json!({"texts":["text"]}))
+                .await
+                .is_err()
+        );
         server.await.unwrap();
         let (service, server) = fixture(
             EmbeddingProvider::Voyage,
@@ -1157,12 +1168,14 @@ mod tests {
             }],
         )
         .await;
-        assert!(service
-            .dispatch("embed", &json!({"texts":["text"]}))
-            .await
-            .unwrap_err()
-            .to_string()
-            .contains("invalid JSON"));
+        assert!(
+            service
+                .dispatch("embed", &json!({"texts":["text"]}))
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("invalid JSON")
+        );
         server.await.unwrap();
     }
 
@@ -1181,20 +1194,24 @@ mod tests {
                 "accepted {response}"
             );
         }
-        assert!(decode_vectors(
-            EmbeddingProvider::OpenaiCompatible,
-            &json!({"data":[{"index":0,"embedding":[1,2]},{"index":0,"embedding":[3,4]}]}),
-            2,
-            2
-        )
-        .is_err());
-        assert!(decode_vectors(
-            EmbeddingProvider::Ollama,
-            &json!({"embeddings":[[1,2],[3,4]]}),
-            1,
-            2
-        )
-        .is_err());
+        assert!(
+            decode_vectors(
+                EmbeddingProvider::OpenaiCompatible,
+                &json!({"data":[{"index":0,"embedding":[1,2]},{"index":0,"embedding":[3,4]}]}),
+                2,
+                2
+            )
+            .is_err()
+        );
+        assert!(
+            decode_vectors(
+                EmbeddingProvider::Ollama,
+                &json!({"embeddings":[[1,2],[3,4]]}),
+                1,
+                2
+            )
+            .is_err()
+        );
     }
 
     #[tokio::test]

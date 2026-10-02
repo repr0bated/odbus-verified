@@ -435,22 +435,28 @@ mod tests {
                 "additionalProperties":false
             })
         );
-        assert!(jsonschema::validate(
-            &button.props_schema,
-            &serde_json::json!({"label":"Save","variant":null,"disabled":null})
-        )
-        .is_ok());
-        assert!(jsonschema::validate(
-            &button.props_schema,
-            &serde_json::json!({"label":"Save","variant":null})
-        )
-        .is_err());
-        assert!(jsonschema::validate(
-            &button.props_schema,
-            &serde_json::json!({
-                "label":"Save","variant":null,"disabled":null,"invented":true
-            })
-        )
-        .is_err());
+        assert!(
+            jsonschema::validate(
+                &button.props_schema,
+                &serde_json::json!({"label":"Save","variant":null,"disabled":null})
+            )
+            .is_ok()
+        );
+        assert!(
+            jsonschema::validate(
+                &button.props_schema,
+                &serde_json::json!({"label":"Save","variant":null})
+            )
+            .is_err()
+        );
+        assert!(
+            jsonschema::validate(
+                &button.props_schema,
+                &serde_json::json!({
+                    "label":"Save","variant":null,"disabled":null,"invented":true
+                })
+            )
+            .is_err()
+        );
     }
 }

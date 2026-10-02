@@ -16,7 +16,7 @@
 //! protected-task policy; MutationEngine enforces it at its single dispatch
 //! choke point (op-grpc-bridge `task_elevation`).
 
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{PluginSchema, SideEffect};

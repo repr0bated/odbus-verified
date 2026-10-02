@@ -7,7 +7,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use op_state_store::PluginSchema;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -933,8 +933,8 @@ mod tests {
     use op_cozo_store::CozoGraphShuttle;
     use op_state_store::{MemoryStore, MethodDecl, SideEffect, SignalDecl};
     use serde_json::json;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Mutex;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     struct Pin(Mutex<String>);
 
@@ -1148,10 +1148,12 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(observations.entries.len(), 2);
-        assert!(observations
-            .entries
-            .iter()
-            .all(|entry| entry.category == "obs"));
+        assert!(
+            observations
+                .entries
+                .iter()
+                .all(|entry| entry.category == "obs")
+        );
     }
 
     #[tokio::test]
@@ -1175,20 +1177,22 @@ mod tests {
                 .unwrap();
             assert_eq!(receipt.annotation_revision, 1);
             assert!(service.register(input, &write, &snapshot).await.is_err());
-            assert!(service
-                .register(
-                    RegisterInput {
-                        subid: "obs.service.missing.lookup@v1".into(),
-                        expected_revision: 0,
-                        control_source: None,
-                        control_refs: vec![],
-                        statement_refs: vec![],
-                    },
-                    &write,
-                    &snapshot,
-                )
-                .await
-                .is_err());
+            assert!(
+                service
+                    .register(
+                        RegisterInput {
+                            subid: "obs.service.missing.lookup@v1".into(),
+                            expected_revision: 0,
+                            control_source: None,
+                            control_refs: vec![],
+                            statement_refs: vec![],
+                        },
+                        &write,
+                        &snapshot,
+                    )
+                    .await
+                    .is_err()
+            );
         }
         let (service, _) = service(path, &snapshot.catalog_hash);
         let output = service
@@ -1226,21 +1230,25 @@ mod tests {
             control_refs: vec![],
             statement_refs: vec![],
         };
-        assert!(service
-            .register(input, &context(WRITE_CAPABILITY), &snapshot)
-            .await
-            .is_err());
+        assert!(
+            service
+                .register(input, &context(WRITE_CAPABILITY), &snapshot)
+                .await
+                .is_err()
+        );
         assert!(service.documents.read(DOCUMENT_ID).await.unwrap().is_none());
-        assert!(service
-            .lookup(
-                LookupInput {
-                    subid: "obs.service.alpha.inspect@v1".into(),
-                },
-                &context(WRITE_CAPABILITY),
-                &snapshot,
-            )
-            .await
-            .is_err());
+        assert!(
+            service
+                .lookup(
+                    LookupInput {
+                        subid: "obs.service.alpha.inspect@v1".into(),
+                    },
+                    &context(WRITE_CAPABILITY),
+                    &snapshot,
+                )
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]
@@ -1292,14 +1300,16 @@ mod tests {
 
         let mut invalid = value;
         invalid["example"]["bad"] = json!({"x-oscal-subid":"not-valid"});
-        assert!(SealedCatalogSnapshot::from_documents(
-            "e".repeat(64),
-            vec![SealedSchemaDocument {
-                plugin_id: "nested".into(),
-                schema_hash: "f".repeat(64),
-                schema_json: invalid.to_string(),
-            }],
-        )
-        .is_err());
+        assert!(
+            SealedCatalogSnapshot::from_documents(
+                "e".repeat(64),
+                vec![SealedSchemaDocument {
+                    plugin_id: "nested".into(),
+                    schema_hash: "f".repeat(64),
+                    schema_json: invalid.to_string(),
+                }],
+            )
+            .is_err()
+        );
     }
 }

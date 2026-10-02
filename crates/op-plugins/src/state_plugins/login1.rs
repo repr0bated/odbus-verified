@@ -10,7 +10,7 @@ use op_state::{
 };
 use op_state_store::{FieldSchema, FieldType, PluginSchema};
 use serde::{Deserialize, Serialize};
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 use zbus::zvariant::OwnedObjectPath;
 use zbus::{Connection, Proxy};
 

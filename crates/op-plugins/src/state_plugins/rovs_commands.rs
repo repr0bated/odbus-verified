@@ -14,8 +14,8 @@
 use op_state_store::{FieldSchema, FieldType, MethodDecl, PluginSchema, SideEffect};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use simd_json::json;
 use simd_json::OwnedValue as Value;
+use simd_json::json;
 use std::collections::HashMap;
 
 // =============================================================================

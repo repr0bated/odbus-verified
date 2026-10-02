@@ -5,12 +5,12 @@ mod methods;
 use crate::service_def::ServiceName;
 use anyhow::Result;
 use async_trait::async_trait;
-pub use methods::{dispatch_service_method, ServiceInitOutput, ServiceOperationOutput};
+pub use methods::{ServiceInitOutput, ServiceOperationOutput, dispatch_service_method};
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use simd_json::{json, OwnedValue as Value};
+use simd_json::{OwnedValue as Value, json};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct ServiceLifecycle {

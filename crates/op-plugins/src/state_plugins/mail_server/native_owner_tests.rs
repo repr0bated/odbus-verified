@@ -204,9 +204,11 @@ async fn committed_state_renders_exact_postfix_and_dovecot_inputs_and_preserves_
         std::fs::read_to_string(&paths.domains).unwrap(),
         "example.com\tOK\nexample.net\tOK\n"
     );
-    assert!(std::fs::read_to_string(&paths.mailboxes)
-        .unwrap()
-        .contains("alice@example.net\texample.net/alice/Maildir/"));
+    assert!(
+        std::fs::read_to_string(&paths.mailboxes)
+            .unwrap()
+            .contains("alice@example.net\texample.net/alice/Maildir/")
+    );
     assert_eq!(
         std::fs::read_to_string(&paths.aliases).unwrap(),
         "info@example.net\talice@example.net\n"
@@ -230,9 +232,11 @@ async fn committed_state_renders_exact_postfix_and_dovecot_inputs_and_preserves_
         .unwrap();
     assert!(removed.maildir_preserved);
     assert!(maildir.is_dir());
-    assert!(!std::fs::read_to_string(&paths.dovecot_users)
-        .unwrap()
-        .contains("alice@example.net"));
+    assert!(
+        !std::fs::read_to_string(&paths.dovecot_users)
+            .unwrap()
+            .contains("alice@example.net")
+    );
 }
 
 #[test]
@@ -282,9 +286,11 @@ fn explicit_mail_owner_must_match_prepared_root_before_config_effects() {
     };
 
     let error = materialize(&paths, &MailDocument::default()).unwrap_err();
-    assert!(error
-        .to_string()
-        .contains("prepared virtual mail root owner"));
+    assert!(
+        error
+            .to_string()
+            .contains("prepared virtual mail root owner")
+    );
     assert!(!paths.domains.exists());
     assert!(!paths.mailboxes.exists());
     assert!(!paths.dovecot_users.exists());

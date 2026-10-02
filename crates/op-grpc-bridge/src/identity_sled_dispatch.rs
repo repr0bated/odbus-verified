@@ -1136,12 +1136,9 @@ async fn set_session_active_owned_with_verifier(
         .await;
         if let Err(error) = started {
             // The guest is not running. Leave the device out of the filesystem.
-            if let Err(remove_error) = apply_identity_btrfs(
-                &mut sled,
-                BtrfsDeviceEffect::Remove,
-                &btrfs_device_effector,
-            )
-            .await
+            if let Err(remove_error) =
+                apply_identity_btrfs(&mut sled, BtrfsDeviceEffect::Remove, &btrfs_device_effector)
+                    .await
             {
                 return Err(remove_error.context(format!("{error:#}")));
             }
@@ -1531,16 +1528,7 @@ pub(crate) async fn refresh_drifted_schema_content_hashes(
             "refresh-schema-hash-{}",
             blake3::hash(sled.session_id.as_bytes()).to_hex()
         );
-        match commit_sled_update(
-            engine,
-            &store,
-            operation_id,
-            expected,
-            sled.clone(),
-            (),
-        )
-        .await
-        {
+        match commit_sled_update(engine, &store, operation_id, expected, sled.clone(), ()).await {
             Ok(()) => {
                 refreshed += 1;
                 tracing::info!(
@@ -1782,8 +1770,7 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
                 !device.device_path.is_empty() && !device.mount_point.is_empty(),
                 "btrfs device path and mount are required"
             );
-            apply_identity_btrfs(&mut sled, BtrfsDeviceEffect::Add, &btrfs_device_effector)
-                .await?;
+            apply_identity_btrfs(&mut sled, BtrfsDeviceEffect::Add, &btrfs_device_effector).await?;
             sled.last_seen_at = now();
             sled.mutation_index = sled
                 .mutation_index

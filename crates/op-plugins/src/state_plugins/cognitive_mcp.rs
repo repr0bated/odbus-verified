@@ -1593,9 +1593,11 @@ mod tests {
     fn bridge_owned_plugin_is_available_without_a_service_definition() {
         let plugin = CognitiveMcpPlugin::new();
         assert!(plugin.is_available());
-        assert!(plugin
-            .unavailable_reason()
-            .contains("compiled into op-grpc-bridge"));
+        assert!(
+            plugin
+                .unavailable_reason()
+                .contains("compiled into op-grpc-bridge")
+        );
     }
 
     #[test]

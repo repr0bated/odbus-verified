@@ -3,7 +3,7 @@
 
 use crate::rag_pipeline::{CodeFilter, RagPipeline};
 use anyhow::Result;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 
 pub struct SemanticSearch {

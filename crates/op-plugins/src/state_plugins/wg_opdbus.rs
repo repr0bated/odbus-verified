@@ -255,9 +255,11 @@ mod tests {
     fn state_schema_is_an_exact_aggregate_while_method_outputs_remain_per_interface() {
         let schema = wg_opdbus_schema();
         let interfaces = serde_json::to_value(&schema.fields["interfaces"]).unwrap();
-        assert!(interfaces
-            .to_string()
-            .contains("x-opdbus-exact-json-schema"));
+        assert!(
+            interfaces
+                .to_string()
+                .contains("x-opdbus-exact-json-schema")
+        );
 
         let output = serde_json::to_value(&schema.methods["get_status"].returns).unwrap();
         assert!(output.to_string().contains("interface"));

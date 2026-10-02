@@ -1,6 +1,6 @@
 //! Authenticated compatibility facade for the native tched_router MCP section.
 
-use anyhow::{anyhow, ensure, Context, Result};
+use anyhow::{Context, Result, anyhow, ensure};
 use serde_json::Value;
 
 use crate::state_plugins::tched_router::{
@@ -147,11 +147,13 @@ mod tests {
     #[test]
     fn server_property_is_allowed_and_unknown_fields_are_rejected() {
         assert!(plan_method("configure_server", &patch("/mcp/servers/demo/url")).is_ok());
-        assert!(plan_method(
-            "configure_server",
-            &serde_json::json!({"operations": [], "extra": true})
-        )
-        .is_err());
+        assert!(
+            plan_method(
+                "configure_server",
+                &serde_json::json!({"operations": [], "extra": true})
+            )
+            .is_err()
+        );
         assert!(plan_method(
             "configure_server",
             &serde_json::json!({"operations": [{"op": "replace", "path": "/mcp/servers_evil/demo", "value": "x"}]})
@@ -167,10 +169,12 @@ mod tests {
         let operations = (0..65)
             .map(|_| serde_json::json!({"op": "remove", "path": "/mcp/servers/demo/url"}))
             .collect::<Vec<_>>();
-        assert!(plan_method(
-            "configure_server",
-            &serde_json::json!({"operations": operations})
-        )
-        .is_err());
+        assert!(
+            plan_method(
+                "configure_server",
+                &serde_json::json!({"operations": operations})
+            )
+            .is_err()
+        );
     }
 }

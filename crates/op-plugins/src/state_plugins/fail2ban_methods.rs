@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{collections::HashMap, str};
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use serde_json::Value as JsonValue;
 use serde_pickle::value::Value as PickleValue;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -830,10 +830,12 @@ mod tests {
             serde_pickle::SerOptions::new().proto_v2(),
         )
         .unwrap();
-        assert!(decode_ack(&rejected)
-            .unwrap_err()
-            .to_string()
-            .contains("Unknown Jail"));
+        assert!(
+            decode_ack(&rejected)
+                .unwrap_err()
+                .to_string()
+                .contains("Unknown Jail")
+        );
         assert!(decode_ack(&[0x80]).is_err());
         assert!(decode_ack(&ack(PickleValue::Dict(Default::default()))).is_err());
 
@@ -849,10 +851,12 @@ mod tests {
                 .unwrap();
         });
         let service = Fail2banMethods::new(path, Duration::from_secs(2)).unwrap();
-        assert!(service
-            .dispatch("get_jail_status", &serde_json::json!({"jail":"sshd"}))
-            .await
-            .is_err());
+        assert!(
+            service
+                .dispatch("get_jail_status", &serde_json::json!({"jail":"sshd"}))
+                .await
+                .is_err()
+        );
     }
 
     #[tokio::test]

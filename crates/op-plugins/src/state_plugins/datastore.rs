@@ -5,7 +5,7 @@
 //! method contract; it does not create a database, read private runtime
 //! documents, or aggregate independently owned audit/execution stores.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::PluginSchema;

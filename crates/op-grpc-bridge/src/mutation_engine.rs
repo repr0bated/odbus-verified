@@ -6980,7 +6980,12 @@ mod private_method_audit_tests {
             }
         });
         let input = r#"{"outcome":"ok","goal_text":"secret prompt"}"#;
-        let audit = audit_method_arguments("ctl_plane_chatbot", "classify_significance", input, Some(&schema));
+        let audit = audit_method_arguments(
+            "ctl_plane_chatbot",
+            "classify_significance",
+            input,
+            Some(&schema),
+        );
         assert!(audit.contains("\"outcome\":\"ok\""));
         assert!(audit.contains("blake3:"));
         assert!(!audit.contains("secret prompt"));
