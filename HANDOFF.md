@@ -26,6 +26,38 @@ The owner is starting a new session. **Finish the release and identity migration
 
 ## Handoffs
 
+### 2026-10-02T20:35Z · Haiku (OD-98: proper atomic migration helper added)
+
+The simple `update-chatbot-fsid` utility failed because identity records require **atomic intent transactions** (the system enforces safety).
+
+Created proper migration helper: **`migrate-chatbot-root`**
+
+This new utility guides through the official three-step atomic migration procedure from the receipt:
+
+1. **preflight**: Get current state via `inspect_own_physical_root_migration_preflight`
+   - Requires authenticated D-Bus access (lungs.sock or SID1)
+   - Returns safe metadata for plan construction
+
+2. **prepare**: Create migration plan JSON with all required fields
+   - Plan location: `/var/lib/op-dbus/identity-physical-migration-plans/b0c777e3-0955-cd8b-3d01-ca12998cae28.json`
+   - Compute SHA256 of plan file
+   - Includes seed FSID, leaf info, native root, Incus instance JSON
+
+3. **migrate**: Call `migrate_own_physical_root` with plan SHA256
+   - Atomic transaction preserves credentials, SID1, genesis, actor class
+   - Archives old bindings, records new physical provenance
+   - Advances revision atomically
+   - No ADD_DEV/RM_DEV, only verification
+
+Usage:
+```bash
+cargo run --bin migrate-chatbot-root -p op-cozo-store -- preflight
+cargo run --bin migrate-chatbot-root -p op-cozo-store -- prepare
+cargo run --bin migrate-chatbot-root -p op-cozo-store -- migrate
+```
+
+This is a root-owned operation following the procedure in `reports/identity-replacement/20260930/cozo-reconciliation/receipt.md`.
+
 ### 2026-10-02T20:25Z · Haiku (session continuation: OD-98 utilities + formatting)
 
 Completed diagnostic utilities and workspace-wide formatting:
