@@ -1,11 +1,12 @@
-//! Schema-described projection of a method's arguments (OD-64).
+//! Schema-described projection of a method's arguments (OD-64 / OD-91).
 //!
 //! The sealed plugin schema is the noise filter for retrieval: only the
 //! fields a method's `args` schema *describes* are worth embedding, rendered
-//! with the description the schema author wrote; fields marked `x-secret`
-//! are dropped with their whole subtree; anything the schema does not
-//! declare (hashes, transport metadata, stray keys) is left out. The chain
-//! block stays lossless — this is the retrieval view of it, not a replacement.
+//! with the description the schema author wrote; fields marked `x-secret` or
+//! `x-opdbus-private` are dropped with their whole subtree; anything the
+//! schema does not declare (hashes, transport metadata, stray keys) is left
+//! out. The chain block stays lossless — this is the retrieval view of it,
+//! not a replacement.
 
 use serde_json::Value;
 
@@ -34,6 +35,18 @@ pub fn described_fields(schema: &Value, value: &Value) -> Vec<DescribedField> {
 
 fn is_secret(schema: &Value) -> bool {
     schema.get("x-secret").and_then(Value::as_bool) == Some(true)
+}
+
+/// OD-91: private content stays off shared chain vectors the same way secrets do.
+fn is_private(schema: &Value) -> bool {
+    schema
+        .get("x-opdbus-private")
+        .and_then(Value::as_bool)
+        == Some(true)
+}
+
+fn is_redacted(schema: &Value) -> bool {
+    is_secret(schema) || is_private(schema)
 }
 
 fn resolve<'a>(root: &'a Value, schema: &'a Value) -> &'a Value {
@@ -65,17 +78,17 @@ fn property_schema<'a>(root: &'a Value, schema: &'a Value, key: &str) -> Option<
     None
 }
 
-/// Treat secrecy as a conservative annotation across every applicable schema
-/// branch. JSON Schema `allOf` combines constraints, so selecting only the
-/// first property declaration must not discard a later `x-secret: true`.
-/// Applying the same rule to alternatives avoids exposing a value when any
-/// accepted shape declares it secret.
-fn property_is_secret(root: &Value, schema: &Value, key: &str) -> bool {
+/// Treat secrecy / privacy as a conservative annotation across every
+/// applicable schema branch. JSON Schema `allOf` combines constraints, so
+/// selecting only the first property declaration must not discard a later
+/// `x-secret: true` or `x-opdbus-private: true`. Applying the same rule to
+/// alternatives avoids exposing a value when any accepted shape redacts it.
+fn property_is_redacted(root: &Value, schema: &Value, key: &str) -> bool {
     let schema = resolve(root, schema);
     if schema
         .get("properties")
         .and_then(|properties| properties.get(key))
-        .is_some_and(|property| is_secret(resolve(root, property)))
+        .is_some_and(|property| is_redacted(resolve(root, property)))
     {
         return true;
     }
@@ -87,7 +100,7 @@ fn property_is_secret(root: &Value, schema: &Value, key: &str) -> bool {
             .is_some_and(|branches| {
                 branches
                     .iter()
-                    .any(|branch| property_is_secret(root, branch, key))
+                    .any(|branch| property_is_redacted(root, branch, key))
             })
     })
 }
@@ -129,7 +142,7 @@ fn walk(
         return;
     }
     let schema = resolve(root, schema);
-    if is_secret(schema) {
+    if is_redacted(schema) {
         return;
     }
     match value {
@@ -139,7 +152,7 @@ fn walk(
                 let Some(child_schema) = property_schema(root, schema, key) else {
                     continue;
                 };
-                if property_is_secret(root, schema, key) {
+                if property_is_redacted(root, schema, key) {
                     continue;
                 }
                 let child_path = if path.is_empty() {
@@ -177,6 +190,111 @@ fn walk(
             }
         }
     }
+}
+
+/// OD-91: replace `x-opdbus-private` leaves with blake3 digests so the chain
+/// stays hash-verifiable without storing private text. Secrets stay omitted.
+pub fn commit_with_private_digests(schema: &Value, value: &Value) -> Value {
+    digest_walk(schema, schema, value, 0)
+}
+
+fn digest_walk(root: &Value, schema: &Value, value: &Value, depth: usize) -> Value {
+    if depth > MAX_DEPTH {
+        return Value::Null;
+    }
+    let schema = resolve(root, schema);
+    if is_secret(schema) {
+        return Value::Null;
+    }
+    if is_private(schema) {
+        return Value::String(format!("blake3:{}", blake3::hash(value.to_string().as_bytes())));
+    }
+    match value {
+        Value::Object(map) => {
+            let mut out = serde_json::Map::new();
+            for (key, child) in map {
+                let Some(child_schema) = property_schema(root, schema, key) else {
+                    // Preserve undeclared keys as-is for audit completeness of
+                    // non-schema noise; callers that want projection use
+                    // `described_fields` instead.
+                    out.insert(key.clone(), child.clone());
+                    continue;
+                };
+                if property_is_secret_only(root, schema, key) {
+                    continue;
+                }
+                if property_is_private_only(root, schema, key) {
+                    out.insert(
+                        key.clone(),
+                        Value::String(format!(
+                            "blake3:{}",
+                            blake3::hash(child.to_string().as_bytes())
+                        )),
+                    );
+                    continue;
+                }
+                out.insert(key.clone(), digest_walk(root, child_schema, child, depth + 1));
+            }
+            Value::Object(out)
+        }
+        Value::Array(items) => {
+            let Some(item_schema) = schema.get("items") else {
+                return value.clone();
+            };
+            Value::Array(
+                items
+                    .iter()
+                    .map(|item| digest_walk(root, item_schema, item, depth + 1))
+                    .collect(),
+            )
+        }
+        other => other.clone(),
+    }
+}
+
+fn property_is_secret_only(root: &Value, schema: &Value, key: &str) -> bool {
+    let schema = resolve(root, schema);
+    if schema
+        .get("properties")
+        .and_then(|properties| properties.get(key))
+        .is_some_and(|property| is_secret(resolve(root, property)))
+    {
+        return true;
+    }
+    ["allOf", "anyOf", "oneOf"].into_iter().any(|combinator| {
+        schema
+            .get(combinator)
+            .and_then(Value::as_array)
+            .is_some_and(|branches| {
+                branches
+                    .iter()
+                    .any(|branch| property_is_secret_only(root, branch, key))
+            })
+    })
+}
+
+fn property_is_private_only(root: &Value, schema: &Value, key: &str) -> bool {
+    let schema = resolve(root, schema);
+    if schema
+        .get("properties")
+        .and_then(|properties| properties.get(key))
+        .is_some_and(|property| {
+            let resolved = resolve(root, property);
+            is_private(resolved) && !is_secret(resolved)
+        })
+    {
+        return true;
+    }
+    ["allOf", "anyOf", "oneOf"].into_iter().any(|combinator| {
+        schema
+            .get(combinator)
+            .and_then(Value::as_array)
+            .is_some_and(|branches| {
+                branches
+                    .iter()
+                    .any(|branch| property_is_private_only(root, branch, key))
+            })
+    })
 }
 
 #[cfg(test)]
@@ -261,5 +379,79 @@ mod tests {
 
         let fields = described_fields(&schema, &json!({"token": "do-not-embed"}));
         assert!(fields.is_empty());
+    }
+
+    #[test]
+    fn opdbus_private_fields_are_dropped_like_secrets() {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "outcome": {"type": "string", "description": "Episode outcome"},
+                "goal_text": {
+                    "type": "string",
+                    "description": "Prompt [PII]",
+                    "x-opdbus-private": true
+                },
+                "nested": {
+                    "type": "object",
+                    "properties": {
+                        "decision_output": {
+                            "type": "string",
+                            "x-opdbus-private": true,
+                            "description": "Reply"
+                        },
+                        "actor_role": {"type": "string", "description": "Actor"}
+                    }
+                }
+            }
+        });
+        let value = json!({
+            "outcome": "config_set",
+            "goal_text": "secret prompt text",
+            "nested": {
+                "decision_output": "secret reply",
+                "actor_role": "human"
+            }
+        });
+        let fields = described_fields(&schema, &value);
+        let rendered: Vec<String> = fields
+            .iter()
+            .map(|f| format!("{}={}", f.path, f.value))
+            .collect();
+        assert_eq!(
+            rendered,
+            vec!["nested.actor_role=human", "outcome=config_set"]
+        );
+        let joined = rendered.join("\n");
+        assert!(!joined.contains("secret prompt"));
+        assert!(!joined.contains("secret reply"));
+    }
+
+    #[test]
+    fn private_fields_become_digests_for_chain_commit() {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "outcome": {"type": "string"},
+                "goal_text": {"type": "string", "x-opdbus-private": true},
+                "api_key": {"type": "string", "x-secret": true}
+            }
+        });
+        let value = json!({
+            "outcome": "config_set",
+            "goal_text": "do not store plaintext",
+            "api_key": "sk-live"
+        });
+        let committed = commit_with_private_digests(&schema, &value);
+        assert_eq!(committed["outcome"], json!("config_set"));
+        assert!(committed.get("api_key").is_none());
+        let digest = committed["goal_text"].as_str().unwrap();
+        assert!(digest.starts_with("blake3:"));
+        assert!(!digest.contains("plaintext"));
+        let expected = format!(
+            "blake3:{}",
+            blake3::hash(json!("do not store plaintext").to_string().as_bytes())
+        );
+        assert_eq!(digest, expected);
     }
 }

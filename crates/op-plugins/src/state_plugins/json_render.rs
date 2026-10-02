@@ -98,6 +98,17 @@ pub struct JsonRenderState {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "obs.software.plugin.json-render.directives@v2"))]
     pub directives: Vec<NamedCapability>,
+    /// Durable active-catalog revision from Cozo gallery (OD-93). Zero until
+    /// the bridge projects promoted entries into this state.
+    #[serde(default)]
+    #[schemars(extend("x-oscal-subid" = "obs.software.plugin.json-render.catalog-revision@v1"))]
+    pub catalog_revision: u64,
+    /// Names of promoted active-catalog entries for normal chat composition.
+    #[serde(default)]
+    #[schemars(
+        extend("x-oscal-subid" = "obs.software.plugin.json-render.active-catalog-names@v1")
+    )]
+    pub active_catalog_entry_names: Vec<String>,
 }
 
 /// Source provenance for this plugin's curated json-render model.
@@ -577,6 +588,8 @@ impl Default for JsonRenderState {
             actions: default_actions(),
             validation_checks: default_validation_checks(),
             directives: default_directives(),
+            catalog_revision: 0,
+            active_catalog_entry_names: Vec::new(),
         }
     }
 }

@@ -1,0 +1,81 @@
+{
+  "taxonomy_id": "base",
+  "revision": 1,
+  "status": "proposed-not-sealed",
+  "notes": "Data only. Loaded into the governance_taxonomy plugin's runtime document; compiled to principal-bound grants by the core layer. Concrete capability strings marked verified=false are proposals and must be reconciled with sealed MethodDecl.required_capability values.",
+
+  "org": {
+    "units": [
+      {"id": "root",       "parent": null,   "label": "Organization"},
+      {"id": "operations", "parent": "root", "label": "Operations"},
+      {"id": "agents",     "parent": "root", "label": "Agent identities"}
+    ],
+    "roles": [
+      {"id": "admin",    "inherits": ["operator"], "description": "Policy and identity authority"},
+      {"id": "operator", "inherits": ["user"],     "description": "May mutate state and run shell"},
+      {"id": "user",     "inherits": ["guest"],    "description": "Reads and writes own scope"},
+      {"id": "guest",    "inherits": [],           "description": "Authenticate and read public data only"}
+    ],
+    "edges_rel": {
+      "member_of": "subject -> org unit",
+      "has_role":  "subject -> role, optionally scoped to an org unit via props.unit",
+      "owns":      "subject -> resource (gives self scope)"
+    },
+    "subjects": [
+      {
+        "id": "chatbot",
+        "kind": "agent",
+        "principal": "$incus:0",
+        "principal_note": "Resolved at load to the principal_id of incus identity 0. Never a literal key here.",
+        "edges": [
+          {"rel": "member_of", "dst": "agents"},
+          {"rel": "has_role",  "dst": "operator", "props": {"unit": "agents"}}
+        ]
+      }
+    ]
+  },
+
+  "capabilities": [
+    {"id": "login",         "side_effect": "auth",     "grants": ["identity.session.anchor"],        "verified": false},
+    {"id": "read_data",     "side_effect": "read",     "grants": ["chatbot.read"],                   "verified": true},
+    {"id": "invoke_tool",   "side_effect": "mutation", "grants": ["chatbot.invoke"],                 "verified": true},
+    {"id": "execute_shell", "side_effect": "mutation", "grants": ["cap.shell.execute@v1"],           "verified": false, "risk": "high"},
+    {"id": "mutate_state",  "side_effect": "mutation", "grants": ["identity_sled.write"],            "verified": true},
+    {"id": "read_policy",   "side_effect": "read",     "grants": ["cap.governance.policy.read@v1"],  "verified": false},
+    {"id": "write_policy",  "side_effect": "mutation", "grants": ["cap.governance.policy.write@v1"], "verified": false, "risk": "high"},
+    {"id": "read_audit",    "side_effect": "read",     "grants": ["cap.governance.audit.read@v1"],   "verified": false}
+  ],
+
+  "data_scopes": {
+    "ordered": ["self", "chatbot", "unit", "org", "public"],
+    "meaning": {
+      "self":    "Rows whose owner is the calling principal",
+      "chatbot": "Rows owned by the chatbot identity (incus id 0)",
+      "unit":    "Rows owned by any subject in the caller's org unit subtree",
+      "org":     "Any row inside the organization",
+      "public":  "Unauthenticated-safe rows"
+    },
+    "row_tag": "x-opdbus-scope",
+    "default_row_scope": "self",
+    "rule": "A row is visible iff its scope is satisfied by the caller's relation to the row owner at or below the role's max_scope. Untagged rows resolve to default_row_scope (fail closed)."
+  },
+
+  "policies": [
+    {"role": "guest",    "allow": ["login"],                                         "max_scope": "public"},
+    {"role": "user",     "allow": ["read_data"],                                     "max_scope": "self"},
+    {"role": "operator", "allow": ["invoke_tool", "mutate_state", "execute_shell", "read_policy"], "max_scope": "unit"},
+    {"role": "admin",    "allow": ["write_policy", "read_audit"],                    "max_scope": "org"}
+  ],
+
+  "overrides": [
+    {"subject": "chatbot", "deny": ["write_policy"], "max_scope": "chatbot",
+     "reason": "Agent may run shell and mutate state but never edits its own governance and sees only chatbot-scoped rows"}
+  ],
+
+  "schema_tags": [
+    {"schema": "chatbot",        "method": "*",               "scope_from": "owner"},
+    {"schema": "identity_sled",  "method": "*",               "scope_from": "owner"},
+    {"schema": "chat_response",  "method": "*",               "scope_from": "principal"},
+    {"schema": "governance_taxonomy", "method": "write_*",    "requires": ["write_policy"]}
+  ]
+}

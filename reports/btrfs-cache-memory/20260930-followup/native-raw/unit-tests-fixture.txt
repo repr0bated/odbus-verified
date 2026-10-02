@@ -1,0 +1,2 @@
+tmpdir=/dev/shm/opdbus-cache-unit-tests.YqZJ4Q filesystem=tmpfs ordinary-filesystem-fallback-only
+empty_fixture_removed=true

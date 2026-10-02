@@ -248,6 +248,7 @@ tonic-reflection = { workspace = true }
 tonic-web = { workspace = true }
 rust-embed = { version = "8.0" }
 mime_guess = "2.0"
+nmrs = "3.5.5"
 
 [dev-dependencies]
 tempfile.workspace = true

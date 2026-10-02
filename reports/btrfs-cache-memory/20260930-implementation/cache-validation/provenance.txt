@@ -1,0 +1,18 @@
+Native rustc: rustc 1.97.1 (8bab26f4f 2026-07-14)
+Target: x86_64-unknown-linux-gnu
+Focused cache tests: 25 passed, 0 failed, 1 ignored; final-tests.log
+Fixtures: owned /dev/shm temporary directories; removed on exit
+Dependency list: reports/btrfs-cache-memory/20260930-followup/rustc-externs.txt
+Native archives: reports/btrfs-cache-memory/20260930-followup/selected-native-archives.txt
+Production source SHA-256 at final wrapper/profile compilation (pre-parent formatting):
+dabaffd791be9d4f0cc19112845a6424b7e45c569d5ff105c4cceb998baaa11c  crates/op-cache/src/btrfs_cache.rs
+bece0e04c8b5a666f3cb73274ce97a148d105f3aadb34b23b403d87905377a41  crates/op-cache/src/numa.rs
+b664a2229dadae0f9910df5d4f9d4d97e107e4ca8befdf6a67a03aefc2fcf055  crates/op-cache/src/snapshot_manager.rs
+cac7c543bf72b184b29b6f1f0b316292c02339f534aad5efb19a02c15d09a291  crates/op-cache/src/managed_process.rs
+Baseline source SHA-256:
+406dfaba16786a5a3733c7b15ac7021ebb865015a7d899be8258f604b4033239  reports/btrfs-cache-memory/20260930-followup/source/btrfs_cache.rs
+Allocations: initialized-cache deltas of requested live Rust allocation bytes; native allocator/arenas/kernel/RSS excluded.
+Baseline allocation logs: /var/tmp/opdbus-cache-memory-review/api-wrapper.bL9tH1/{index,keys,cleanup}.log
+Current allocation logs: final-{index,keys,cleanup}-allocation.log
+Paired baseline latency logs: latency-baseline-{1,2,3,4,5}.log
+Paired current latency logs: final-latency-current-{1,2,3,4,5}.log

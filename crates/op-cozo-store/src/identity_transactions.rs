@@ -1667,12 +1667,32 @@ fn validate_binding(
                 || old.trace_id != new.trace_id
                 || old.schema_version != new.schema_version
                 || old.expires_at != new.expires_at
-                || previous.genesis.as_ref() != genesis)
+                || !anchored_genesis_compatible(previous.genesis.as_ref(), genesis))
         {
             return Err(err("anchored SID1/genesis fields are immutable"));
         }
     }
     Ok(())
+}
+
+/// Anchored genesis may refresh `schema_content_hash` to the compiled
+/// `SCHEMA_CONTENT_HASH` after an identity_sled schema bump. Every other
+/// genesis field stays immutable.
+fn anchored_genesis_compatible(
+    previous: Option<&GenesisInputsRecord>,
+    next: Option<&GenesisInputsRecord>,
+) -> bool {
+    match (previous, next) {
+        (None, None) => true,
+        (Some(old), Some(new)) => {
+            old.session_id == new.session_id
+                && old.arrival_timestamp == new.arrival_timestamp
+                && old.chain_head_at_arrival == new.chain_head_at_arrival
+                && old.catalog_hash_at_arrival == new.catalog_hash_at_arrival
+                && old.head_timestamp_at_arrival == new.head_timestamp_at_arrival
+        }
+        _ => false,
+    }
 }
 fn put_pair(
     tx: &MultiTransaction,

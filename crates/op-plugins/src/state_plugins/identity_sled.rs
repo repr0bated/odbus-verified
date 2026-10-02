@@ -88,9 +88,11 @@ pub struct ContainerIdentitySled {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.actor-class@v1"))]
     pub principal_kind: Option<String>,
-    /// Dedicated per-identity btrfs on a loop-backed `fstorage.img`,
-    /// registered in Cozo and bind-mounted into the leaf. Not
-    /// `btrfs device add` onto the Incus pool.
+    /// Persistence device registered in Cozo. `/dev/sdb2` replaced the loop
+    /// images. It is not mounted on its own: login and container start
+    /// `btrfs device add` it onto the read-only seed, and container shutdown
+    /// `btrfs device remove`s it after the guest has stopped. That add makes
+    /// one filesystem. Leaving the device in across a stop corrupts it.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.btrfs-device@v1"))]
     pub btrfs_device: Option<SledBtrfsDevice>,
@@ -156,15 +158,16 @@ impl ContainerIdentitySled {
 }
 
 /// The btrfs device that IS the sled's persistence. The record of truth lives
-/// in Cozo; the image is a dedicated loop-backed filesystem, not an Incus-pool
-/// extra device.
+/// in Cozo. The path is the partition that replaced the loop images. It is
+/// added to the read-only seed for the life of the container and removed when
+/// the container stops.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 #[schemars(extend("x-oscal-subid" = "sch.service.identity-sled.btrfs-device.schema@v1"))]
 pub struct SledBtrfsDevice {
-    /// Path of the sealed image / block device (e.g. loop-backed image file).
+    /// Block device added to the seed. `/dev/sdb2` replaced the loop images.
     pub device_path: String,
-    /// Host mount of the dedicated identity btrfs (loop-backed image).
-    /// Bind-mounted into the leaf; never added as a device of the Incus pool.
+    /// Mount of the read-only seed filesystem that receives `btrfs device add`.
+    /// This is not a mount of `device_path` itself.
     #[serde(default)]
     pub mount_point: String,
     /// btrfs filesystem UUID of the sealed image.
@@ -175,7 +178,7 @@ pub struct SledBtrfsDevice {
     /// btrfs_device_json; repaired legacy records retain their prior value.
     #[serde(default)]
     pub cozo_id: String,
-    /// Whether the dedicated identity filesystem is mounted and bind-ready.
+    /// Whether `device_path` is currently a member of the seed filesystem.
     #[serde(default)]
     pub attached: bool,
 }
@@ -669,27 +672,21 @@ mod tests {
         let migration_args =
             serde_json::to_value(&schema.methods["migrate_own_physical_root"].args).unwrap();
         let migration = jsonschema::Validator::new(&migration_args).unwrap();
-        assert!(
-            migration
-                .validate(&serde_json::json!({"plan_sha256":"a".repeat(64)}))
-                .is_ok()
-        );
-        assert!(
-            migration
-                .validate(&serde_json::json!({"plan_sha256":"a".repeat(64),"session_id":"foreign"}))
-                .is_err()
-        );
+        assert!(migration
+            .validate(&serde_json::json!({"plan_sha256":"a".repeat(64)}))
+            .is_ok());
+        assert!(migration
+            .validate(&serde_json::json!({"plan_sha256":"a".repeat(64),"session_id":"foreign"}))
+            .is_err());
         let preflight_args = serde_json::to_value(
             &schema.methods["inspect_own_physical_root_migration_preflight"].args,
         )
         .unwrap();
         let preflight = jsonschema::Validator::new(&preflight_args).unwrap();
         assert!(preflight.validate(&serde_json::json!({})).is_ok());
-        assert!(
-            preflight
-                .validate(&serde_json::json!({"session_id":"foreign"}))
-                .is_err()
-        );
+        assert!(preflight
+            .validate(&serde_json::json!({"session_id":"foreign"}))
+            .is_err());
         let encoded =
             serde_json::to_value(&schema.methods["inspect_own_physical_root_migration_preflight"])
                 .unwrap();
@@ -753,14 +750,12 @@ mod tests {
         );
         let args = serde_json::to_value(&provision.args).unwrap();
         let validator = jsonschema::Validator::new(&args).unwrap();
-        assert!(
-            validator
-                .validate(&serde_json::json!({
-                    "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-                    "plan_sha256":"a".repeat(64)
-                }))
-                .is_ok()
-        );
+        assert!(validator
+            .validate(&serde_json::json!({
+                "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+                "plan_sha256":"a".repeat(64)
+            }))
+            .is_ok());
         for extra in ["instance", "btrfs_device", "sealed_id"] {
             let mut input = serde_json::json!({
                 "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
@@ -777,11 +772,9 @@ mod tests {
                 .unwrap();
         let preflight = jsonschema::Validator::new(&preflight).unwrap();
         assert!(preflight.validate(&serde_json::json!({})).is_ok());
-        assert!(
-            preflight
-                .validate(&serde_json::json!({"session_id":"caller-selected"}))
-                .is_err()
-        );
+        assert!(preflight
+            .validate(&serde_json::json!({"session_id":"caller-selected"}))
+            .is_err());
     }
 
     #[test]
@@ -797,11 +790,9 @@ mod tests {
         let args = serde_json::to_value(&declaration.args).unwrap();
         let validator = jsonschema::Validator::new(&args).unwrap();
         assert!(validator.validate(&serde_json::json!({})).is_ok());
-        assert!(
-            validator
-                .validate(&serde_json::json!({"limit":100,"after_session_id":"a"}))
-                .is_ok()
-        );
+        assert!(validator
+            .validate(&serde_json::json!({"limit":100,"after_session_id":"a"}))
+            .is_ok());
         for value in [
             serde_json::json!({"limit":0}),
             serde_json::json!({"limit":101}),
@@ -848,30 +839,24 @@ mod tests {
             "session_id":"00000000-0000-4000-8000-000000000001",
             "wireguard_pubkey":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
         });
-        assert!(
-            validate(
-                "touch_session",
-                "returns",
-                serde_json::json!({"identity":identity})
-            )
-            .is_ok()
-        );
-        assert!(
-            validate(
-                "record_session_event",
-                "returns",
-                serde_json::json!({"session_id":"s","seq":7})
-            )
-            .is_ok()
-        );
-        assert!(
-            validate(
-                "get_session_history",
-                "args",
-                serde_json::json!({"session_id":"s","limit":4097})
-            )
-            .is_err()
-        );
+        assert!(validate(
+            "touch_session",
+            "returns",
+            serde_json::json!({"identity":identity})
+        )
+        .is_ok());
+        assert!(validate(
+            "record_session_event",
+            "returns",
+            serde_json::json!({"session_id":"s","seq":7})
+        )
+        .is_ok());
+        assert!(validate(
+            "get_session_history",
+            "args",
+            serde_json::json!({"session_id":"s","limit":4097})
+        )
+        .is_err());
         let mut preflight = serde_json::json!({
             "session_id":"00000000-0000-4000-8000-000000000001",
             "genesis":"g",
@@ -893,24 +878,20 @@ mod tests {
             "native_status":"Stopped",
             "root_subvolume":"missing"
         });
-        assert!(
-            validate(
-                "inspect_own_root_repair_preflight",
-                "returns",
-                preflight.clone()
-            )
-            .is_ok()
-        );
+        assert!(validate(
+            "inspect_own_root_repair_preflight",
+            "returns",
+            preflight.clone()
+        )
+        .is_ok());
         preflight["expected_first_start_idmap_sha256"] = "B".repeat(64).into();
         assert!(validate("inspect_own_root_repair_preflight", "returns", preflight).is_err());
-        assert!(
-            validate(
-                "touch_session",
-                "args",
-                serde_json::json!({"session_id":"s","sealed_id":"caller"})
-            )
-            .is_err()
-        );
+        assert!(validate(
+            "touch_session",
+            "args",
+            serde_json::json!({"session_id":"s","sealed_id":"caller"})
+        )
+        .is_err());
     }
 
     #[test]

@@ -701,17 +701,33 @@ impl CozoGraphShuttle {
 
     /// Evaluate (plugin_id, operation) against all Deny rules in the compliance graph.
     pub fn evaluate_mutation(&self, plugin_id: &str, operation: &str) -> PolicyVerdict {
+        // Bind columns under aliases — `op` is awkward as a bare Datalog var.
         let query = r#"
-            deny_rule[reason] :=
-                *compliance_rule[plugin, op, action, reason, _, _],
-                action = 'Deny',
-                (plugin = $plugin || plugin = '*'),
-                (op = $op || op = '*')
-            ?[reason] := deny_rule[reason]
+            deny_rule[r] :=
+                *compliance_rule{plugin: p, op: o, action: a, reason: r},
+                a = 'Deny',
+                p = $plugin,
+                o = $operation
+            deny_rule[r] :=
+                *compliance_rule{plugin: p, op: o, action: a, reason: r},
+                a = 'Deny',
+                p = '*',
+                o = $operation
+            deny_rule[r] :=
+                *compliance_rule{plugin: p, op: o, action: a, reason: r},
+                a = 'Deny',
+                p = $plugin,
+                o = '*'
+            deny_rule[r] :=
+                *compliance_rule{plugin: p, op: o, action: a, reason: r},
+                a = 'Deny',
+                p = '*',
+                o = '*'
+            ?[r] := deny_rule[r]
         "#;
         let mut p: Params = BTreeMap::new();
         p.insert("plugin".into(), DataValue::Str(plugin_id.into()));
-        p.insert("op".into(), DataValue::Str(operation.into()));
+        p.insert("operation".into(), DataValue::Str(operation.into()));
 
         match cozo_run(&self.db, query, p) {
             Ok(rows) if rows.rows.is_empty() => PolicyVerdict {
@@ -729,9 +745,9 @@ impl CozoGraphShuttle {
                     reason,
                 }
             }
-            Err(_) => PolicyVerdict {
+            Err(error) => PolicyVerdict {
                 allow: true,
-                reason: "compliance graph not seeded".into(),
+                reason: format!("compliance query failed: {error}"),
             },
         }
     }
@@ -2607,6 +2623,37 @@ mod identity_sled_tests {
         let limited = store.list_session_events("s", 1).unwrap();
         assert_eq!(limited.len(), 1);
         assert_eq!(limited[0].seq, 1);
+    }
+}
+
+#[cfg(test)]
+mod compliance_mutation_tests {
+    use super::*;
+
+    #[test]
+    fn evaluate_mutation_allows_when_unseeded_or_empty() {
+        let store = CozoGraphShuttle::new_in_memory().unwrap();
+        let verdict = store.evaluate_mutation("openflow", "add_flow");
+        assert!(verdict.allow);
+    }
+
+    #[test]
+    fn evaluate_mutation_denies_matching_rule() {
+        let store = CozoGraphShuttle::new_in_memory().unwrap();
+        store
+            .store_compliance_rule(
+                "openflow",
+                "add_flow",
+                "Deny",
+                "tag routing incomplete",
+                "OD-06",
+            )
+            .expect("compliance_rule relation must accept Deny rows");
+        let denied = store.evaluate_mutation("openflow", "add_flow");
+        assert!(!denied.allow, "reason={}", denied.reason);
+        assert!(denied.reason.contains("tag routing"));
+        let other = store.evaluate_mutation("openflow", "dump_flows");
+        assert!(other.allow);
     }
 }
 

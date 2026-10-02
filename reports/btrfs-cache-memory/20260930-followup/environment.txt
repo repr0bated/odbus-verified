@@ -1,0 +1,52 @@
+Wed Sep 30 08:56:43 UTC 2026
+claude/amazing-carson-8bg4yr
+abefbe435f91e4c719fabcea4e07383c5c146cfc
+ M HANDOFF.md
+ M SIGNALS.md
+ M WISHLIST.md
+ M deploy/config/model-providers.toml
+?? crates/op-cache/MEMORY_INVESTIGATION.md
+?? crates/op-cache/examples/
+?? reports/
+?? scripts/probes/
+rustc 1.97.1 (8bab26f4f 2026-07-14)
+binary: rustc
+commit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452
+commit-date: 2026-07-14
+host: x86_64-unknown-linux-gnu
+release: 1.97.1
+LLVM version: 22.1.6
+cargo 1.97.1 (c980f4866 2026-06-30)
+Linux artix 7.2.3-x64v3-xanmod1 #0~20260902.g3b1e0e2 SMP PREEMPT_DYNAMIC Wed Sep  2 16:05:46 UTC x86_64 GNU/Linux
+NAME="Artix Linux"
+PRETTY_NAME="Artix Linux"
+ID=artix
+BUILD_ID=rolling
+ANSI_COLOR="38;2;23;147;209"
+HOME_URL="https://artixlinux.org/"
+DOCUMENTATION_URL="https://wiki.artixlinux.org/"
+SUPPORT_URL="https://forum.artixlinux.org/"
+BUG_REPORT_URL="https://bugs.artixlinux.org/"
+PRIVACY_POLICY_URL="https://terms.artixlinux.org/docs/privacy-policy/"
+LOGO=artixlinux-logo
+0::/
+Cpus_allowed_list:	0-15
+Mems_allowed_list:	0
+TARGET   SOURCE                      FSTYPE OPTIONS
+/srv/git /dev/sda4[/@home/admin/git] btrfs  rw,relatime,discard=async,space_cache=v2,user_subvol_rm_allowed,subvolid=257,subvol=/@home
+               total        used        free      shared  buff/cache   available
+Mem:           32086       17707         360         156       14629       14378
+Swap:          16383        3894       12489
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda4       1.1T  761G  269G  74% /srv/git
+/dev/sda4       1.1T  761G  269G  74% /
+tmpfs            16G   11M   16G   1% /dev/shm
+available: 1 nodes (0)
+node 0 cpus: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+node 0 size: 32086 MB
+node 0 free: 351 MB
+node distances:
+node     0 
+   0:   10 
+btrfs-progs v7.1
+-EXPERIMENTAL -INJECT -STATIC +LZO +ZSTD +UDEV +FSVERITY +ZONED CRYPTO=libgcrypt

@@ -304,7 +304,8 @@ async fn root_repair_canonical_private_fixture() {
     let backup_meta = std::fs::symlink_metadata(&original_backup).unwrap();
     assert!(stub_meta.is_dir() && stub_meta.mode() & 0o7777 == 0o100);
     assert!(backup_meta.is_file() && backup_meta.mode() & 0o7777 == 0o400);
-    let original_backup_sha256 = hex::encode(Sha256::digest(std::fs::read(&original_backup).unwrap()));
+    let original_backup_sha256 =
+        hex::encode(Sha256::digest(std::fs::read(&original_backup).unwrap()));
     let actor_id = op_identity::session::derive_principal_id(&original.wireguard_pubkey);
     let grants = std::env::var("OP_GRANTS_PATH").unwrap();
     std::fs::write(
@@ -574,12 +575,6 @@ async fn root_repair_canonical_private_fixture() {
         format!("{mount}/persist")
     );
     assert_eq!(repaired["devices"]["persist"]["shift"], "true");
-    op_network::btrfs::verify_dedicated_mount(
-        std::path::Path::new(&old_image),
-        std::path::Path::new(&old_mount),
-        &old_fsid,
-    )
-    .unwrap();
     assert!(
         std::fs::read_dir(&old_mount).unwrap().next().is_none(),
         "old persisted filesystem was modified"

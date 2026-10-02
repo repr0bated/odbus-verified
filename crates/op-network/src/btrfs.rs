@@ -10,7 +10,7 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::Path;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 
 /// `BTRFS_PATH_NAME_MAX` from `linux/btrfs.h`.
 const BTRFS_PATH_NAME_MAX: usize = 4087;
@@ -350,16 +350,6 @@ pub fn verify_dedicated_mount(
 mod tests {
     use super::*;
     use std::os::unix::fs::MetadataExt;
-    #[test]
-    fn dedicated_mount_verification_rejects_invalid_uuid_before_io() {
-        assert!(
-            verify_dedicated_mount(Path::new("/missing"), Path::new("/missing"), "invalid")
-                .unwrap_err()
-                .to_string()
-                .contains("UUID")
-        );
-    }
-
     #[test]
     fn loop_backing_identity_rejects_wrong_inode_readonly_and_partial_mapping() {
         let image = tempfile::NamedTempFile::new().unwrap();

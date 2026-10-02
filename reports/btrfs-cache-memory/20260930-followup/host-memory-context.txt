@@ -1,0 +1,125 @@
+Wed Sep 30 09:02:47 UTC 2026
+anon 16275922944
+file 13755252736
+kernel 874647552
+kernel_stack 4358144
+pagetables 48578560
+sec_pagetables 0
+percpu 1863576
+sock 4096
+vmalloc 1306624
+shmem 166207488
+zswap 707786934
+zswapped 2032570368
+zswap_incomp 244269056
+file_mapped 5313073152
+file_dirty 14917632
+file_writeback 0
+swapcached 1134465024
+anon_thp 4194304000
+file_thp 0
+shmem_thp 0
+inactive_anon 9599373312
+active_anon 7071592448
+inactive_file 12965068800
+active_file 624066560
+unevictable 4620288
+slab_reclaimable 99332992
+slab_unreclaimable 10637384
+slab 109970376
+workingset_refault_anon 282414
+workingset_refault_file 3112747
+workingset_activate_anon 80442
+workingset_activate_file 42995
+workingset_restore_anon 83075
+workingset_restore_file 107517
+workingset_nodereclaim 42372
+pgdemote_kswapd 0
+pgdemote_direct 0
+pgdemote_khugepaged 0
+pgdemote_proactive 0
+pgsteal_kswapd 12261905
+pgsteal_direct 108607
+pgsteal_khugepaged 1532
+pgsteal_proactive 0
+pgscan_kswapd 15100524
+pgscan_direct 348862
+pgscan_khugepaged 3252
+pgscan_proactive 0
+pgrefill 18739995
+pgpromote_success 0
+pgscan 15452638
+pgsteal 12372044
+pswpin 0
+pswpout 2521
+pgfault 31921326
+pgmajfault 573117
+pgactivate 2890167
+pgdeactivate 0
+pglazyfree 0
+pglazyfreed 0
+swpin_zero 98
+swpout_zero 2443
+zswpin 279795
+zswpout 1012285
+zswpwb 2521
+thp_fault_alloc 68310
+thp_collapse_alloc 2205
+thp_swpout 0
+thp_swpout_fallback 1234
+numa_pages_migrated 0
+numa_pte_updates 0
+numa_hint_faults 0
+anon N0=16275922944
+file N0=13755252736
+kernel_stack N0=4358144
+pagetables N0=48578560
+sec_pagetables N0=0
+vmalloc N0=1306624
+shmem N0=166207488
+file_mapped N0=5313073152
+file_dirty N0=14917632
+file_writeback N0=0
+swapcached N0=1134465024
+anon_thp N0=4194304000
+file_thp N0=0
+shmem_thp N0=0
+inactive_anon N0=9599373312
+active_anon N0=7071592448
+inactive_file N0=12965068800
+active_file N0=624066560
+unevictable N0=4620288
+slab_reclaimable N0=99332992
+slab_unreclaimable N0=10637384
+hugetlb N0=0
+workingset_refault_anon N0=282414
+workingset_refault_file N0=3112747
+workingset_activate_anon N0=80442
+workingset_activate_file N0=42995
+workingset_restore_anon N0=83075
+workingset_restore_file N0=107517
+workingset_nodereclaim N0=42372
+pgdemote_kswapd N0=0
+pgdemote_direct N0=0
+pgdemote_khugepaged N0=0
+pgdemote_proactive N0=0
+pgsteal_kswapd N0=12261905
+pgsteal_direct N0=108607
+pgsteal_khugepaged N0=1532
+pgsteal_proactive N0=0
+pgscan_kswapd N0=15100524
+pgscan_direct N0=348862
+pgscan_khugepaged N0=3252
+pgscan_proactive N0=0
+pgrefill N0=18739995
+pgpromote_success N0=0
+MemAvailable:   14537892 kB
+SwapCached:      1107876 kB
+SwapTotal:      16777212 kB
+SwapFree:       12795956 kB
+Dirty:             14448 kB
+Writeback:             0 kB
+Slab:            1334556 kB
+SReclaimable:    1036348 kB
+SUnreclaim:       298208 kB
+WritebackTmp:          0 kB

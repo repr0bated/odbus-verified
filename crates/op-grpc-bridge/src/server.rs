@@ -871,6 +871,16 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
     mutation_engine
         .bootstrap_control_plane_chatbot_identity()
         .await?;
+    let refreshed = crate::identity_sled_dispatch::refresh_drifted_schema_content_hashes(
+        mutation_engine.as_ref(),
+    )
+    .await?;
+    if refreshed > 0 {
+        tracing::info!(
+            refreshed,
+            "refreshed drifted identity schema_content_hash rows"
+        );
+    }
     let chatbot_containers =
         crate::identity_sled_dispatch::start_service_identity_containers(mutation_engine.as_ref())
             .await?;

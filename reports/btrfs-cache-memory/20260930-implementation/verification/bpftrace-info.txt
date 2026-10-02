@@ -1,0 +1,26 @@
+System
+  OS: Linux 7.2.3-x64v3-xanmod1 #0~20260902.g3b1e0e2 SMP PREEMPT_DYNAMIC Wed Sep  2 16:05:46 UTC
+  Arch: x86_64
+
+Build
+  version: v0.27.0-872e7a56a
+  LLVM: 22.1.8
+  bfd: yes
+  libdw (DWARF support): yes
+  libsystemd (systemd notify support): yes
+  blazesym (advanced symbolization): no
+  dwunwind (DWARF stack unwinding): yes
+
+Kernel helpers
+  dpath: no                        get_tai_ns: yes                    
+  get_func_ip: yes                 lookup_percpu_elem: yes            
+  loop: yes                        
+
+Kernel features                    
+  Instruction limit: 1000000       btf: yes                           
+  module btf: yes                  
+
+Probe types                        
+  kprobe_multi: yes                uprobe_multi: yes                  
+  kprobe_session: yes              iter: no                           
+

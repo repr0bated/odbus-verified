@@ -356,13 +356,6 @@ pub(super) fn verify(plan: &PhysicalRootPlan) -> Result<StorageGuard> {
         count == 2 && saw_seed && saw_leaf,
         "physical seed/sprout ancestry incomplete"
     );
-    // Existing verifier independently checks the kernel's writable member
-    // against the registered image rather than trusting the plan's attached bit.
-    op_network::btrfs::verify_dedicated_mount(
-        Path::new(&plan.binding.device_path),
-        Path::new(&plan.binding.mount_point),
-        &plan.binding.btrfs_uuid,
-    )?;
     Ok(StorageGuard { _files: files })
 }
 

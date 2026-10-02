@@ -115,7 +115,14 @@ pub struct FlowEntry {
     /// Flow priority (0-65535, higher = more specific)
     pub priority: u16,
 
-    /// Match criteria (OpenFlow match fields)
+    /// Match criteria (OpenFlow match fields).
+    ///
+    /// Reserved keys for future tag routing (OD-06); today's live path still
+    /// uses `EnsureFallbackNormal` / `FlowAction::Normal` until the controller
+    /// consumes them:
+    /// - `oscal_subid` — sealed capability / classification subid
+    /// - `identity_tag` — sealed identity or service tag
+    /// - `service_tag` — named service route (distinct from Xray name→socket)
     #[schemars(extend("x-opdbus-exact-json-schema" = true))]
     pub match_fields: HashMap<String, String>,
 
@@ -1869,4 +1876,41 @@ pub async fn dispatch_openflow_method(
 // (single source of the catalog; no central dispatch list).
 inventory::submit! {
     crate::default_registry::PluginReg::new("openflow", |_ctx| std::sync::Arc::new(OpenFlowPlugin::new()))
+}
+
+#[cfg(test)]
+mod od06_tag_match_prep_tests {
+    use super::*;
+
+    #[test]
+    fn reserved_tag_match_keys_round_trip_in_flow_entry() {
+        let flow = FlowEntry {
+            table: 10,
+            priority: 100,
+            match_fields: HashMap::from([
+                ("oscal_subid".into(), "obs.software.plugin.x@v1".into()),
+                ("identity_tag".into(), "chatbot".into()),
+                ("service_tag".into(), "tched_router".into()),
+            ]),
+            actions: vec![FlowAction::Normal],
+            cookie: None,
+            idle_timeout: 0,
+            hard_timeout: 0,
+        };
+        let json = serde_json::to_value(&flow).unwrap();
+        let back: FlowEntry = serde_json::from_value(json).unwrap();
+        assert_eq!(
+            back.match_fields.get("oscal_subid").map(String::as_str),
+            Some("obs.software.plugin.x@v1")
+        );
+        assert_eq!(
+            back.match_fields.get("identity_tag").map(String::as_str),
+            Some("chatbot")
+        );
+        assert_eq!(
+            back.match_fields.get("service_tag").map(String::as_str),
+            Some("tched_router")
+        );
+        assert!(matches!(back.actions.as_slice(), [FlowAction::Normal]));
+    }
 }

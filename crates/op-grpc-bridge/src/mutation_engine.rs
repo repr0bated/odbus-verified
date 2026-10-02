@@ -136,12 +136,30 @@ struct AdmittedMethodCall {
     change: StateChange,
 }
 
-fn audit_method_arguments(plugin_id: &str, method: &str, json_args: &str) -> String {
+fn audit_method_arguments(
+    plugin_id: &str,
+    method: &str,
+    json_args: &str,
+    args_schema: Option<&serde_json::Value>,
+) -> String {
     if plugin_id == "elevation" && method == "authorize_task" {
         // Even a digest of this request would let audit readers test password
         // guesses offline. Retain event attribution and the action result,
         // but neither the password nor any password-derived request hash.
         return serde_json::json!({ "arguments_redacted": true }).to_string();
+    }
+    // OD-91: when the sealed method args schema is available, drop `x-secret`
+    // and replace `x-opdbus-private` leaves with blake3 digests. Fall back to
+    // the plugin allowlist when the schema has no private markers (or is absent).
+    if let Some(schema) = args_schema
+        && let Ok(value) = serde_json::from_str::<serde_json::Value>(json_args)
+    {
+        let digested =
+            op_state_store::schema_projection::commit_with_private_digests(schema, &value);
+        let digested_str = digested.to_string();
+        if digested_str != value.to_string() {
+            return digested_str;
+        }
     }
     let private = matches!(
         plugin_id,
@@ -487,16 +505,46 @@ fn restored_runtime_projection(
     Ok(simd_json::serde::to_owned_value(projected)?)
 }
 
-fn json_render_methods_from_schema(
-    schema: op_state_store::PluginSchema,
-    documents: Arc<op_plugins::state_plugins::runtime_documents::RuntimeDocuments>,
-) -> anyhow::Result<op_plugins::state_plugins::json_render::methods::JsonRenderMethods> {
-    let defaults = op_plugins::projection_seed_state_from_schema(&schema);
-    let snapshot = serde_json::from_value(serde_json::to_value(defaults)?)
-        .context("invalid json_render state defaults in admitted plugin")?;
-    op_plugins::state_plugins::json_render::methods::JsonRenderMethods::new(
-        snapshot, schema, documents,
-    )
+impl MutationEngine {
+    /// OD-93: fold durable active-catalog names into the observable json_render
+    /// projection without depending on gallery dispatch internals.
+    async fn enrich_json_render_catalog(
+        &self,
+        mut state: op_plugins::state_plugins::json_render::JsonRenderState,
+    ) -> op_plugins::state_plugins::json_render::JsonRenderState {
+        let Ok(gallery) = self.ui_gallery_cozo().await else {
+            return state;
+        };
+        match gallery.list_ui_catalog(None, 64, false) {
+            Ok(page) => {
+                state.catalog_revision = page.revision;
+                state.active_catalog_entry_names =
+                    page.entries.into_iter().map(|entry| entry.name).collect();
+            }
+            Err(error) => {
+                tracing::debug!(
+                    error = %error,
+                    "json_render active catalog projection skipped"
+                );
+            }
+        }
+        state
+    }
+
+    async fn json_render_methods_enriched(
+        &self,
+        schema: op_state_store::PluginSchema,
+        documents: Arc<op_plugins::state_plugins::runtime_documents::RuntimeDocuments>,
+    ) -> anyhow::Result<op_plugins::state_plugins::json_render::methods::JsonRenderMethods> {
+        let defaults = op_plugins::projection_seed_state_from_schema(&schema);
+        let snapshot: op_plugins::state_plugins::json_render::JsonRenderState =
+            serde_json::from_value(serde_json::to_value(defaults)?)
+                .context("invalid json_render state defaults in admitted plugin")?;
+        let snapshot = self.enrich_json_render_catalog(snapshot).await;
+        op_plugins::state_plugins::json_render::methods::JsonRenderMethods::new(
+            snapshot, schema, documents,
+        )
+    }
 }
 
 pub(crate) fn public_plugin_value(
@@ -2228,11 +2276,12 @@ impl MutationEngine {
                 };
                 if let Some(row) = store.read(plugin_id).await? {
                     let state = if plugin_id == "json_render" {
-                        simd_json::serde::to_owned_value(
-                            json_render_methods_from_schema(schema.clone(), store.clone())?
-                                .projection_state()
-                                .await?,
-                        )?
+                        let projected = self
+                            .json_render_methods_enriched(schema.clone(), store.clone())
+                            .await?
+                            .projection_state()
+                            .await?;
+                        simd_json::serde::to_owned_value(projected)?
                     } else {
                         restored_runtime_projection(plugin_id, &row)?
                     };
@@ -3284,9 +3333,52 @@ impl MutationEngine {
                 anyhow::bail!("sealed_id is MutationEngine-authored and cannot be supplied");
             }
 
+            // Admit the sealed method before notarizing arguments so OD-91 can
+            // digest `x-opdbus-private` fields from the method's args schema.
+            let (declaration, admitted_schema) =
+                crate::method_contract_admission::admit_compiled_invocation(
+                    plugin_id,
+                    method,
+                    capability_id,
+                )?;
+            let mut canonical_args = serde_json::to_value(&parsed_value)?;
+            crate::method_contract_admission::validate_admitted_arguments(
+                &declaration,
+                &canonical_args,
+            )?;
+            self.task_elevation.consume(
+                actor_id,
+                session_id,
+                plugin_id,
+                method,
+                &canonical_args,
+            )?;
+            crate::schema_integer_arguments::normalize_declared_integers(
+                &serde_json::to_value(&declaration.args)?,
+                &mut canonical_args,
+            )?;
+            let json_args = serde_json::to_string(&canonical_args)?;
+            let parsed_value = simd_json::serde::to_owned_value(canonical_args.clone())?;
+            let args_schema: serde_json::Value = serde_json::to_value(&declaration.args)?;
+
+            // Compliance graph deny rules (no-op when the cognitive Cozo store
+            // is absent or has no Deny rows).
+            if let Ok(mcp) = self.cognitive_mcp().await {
+                let verdict = mcp.cozo_shuttle().evaluate_mutation(plugin_id, method);
+                if !verdict.allow {
+                    anyhow::bail!(
+                        "compliance policy denied {}.{}: {}",
+                        plugin_id,
+                        method,
+                        verdict.reason
+                    );
+                }
+            }
+
             // Tenant data must not leak through the global chain/change streams.
-            // Notarize a digest, while dispatch still receives the original input.
-            let audit_json = audit_method_arguments(plugin_id, method, json_args);
+            // Notarize digests / redaction, while dispatch still receives originals.
+            let audit_json =
+                audit_method_arguments(plugin_id, method, &json_args, Some(&args_schema));
             // Commitment to the authoring SID1 for the audit record: from the
             // anchored session when the caller named one, else from the actor's
             // own sled. Resolved before the chain lock is taken.
@@ -3351,33 +3443,6 @@ impl MutationEngine {
             };
             let _ = self.change_tx.send(change.clone());
 
-            // Dispatch to appropriate backend based on plugin_id
-            let (declaration, admitted_schema) =
-                crate::method_contract_admission::admit_compiled_invocation(
-                    plugin_id,
-                    method,
-                    capability_id,
-                )?;
-            let mut canonical_args = serde_json::to_value(&parsed_value)?;
-            crate::method_contract_admission::validate_admitted_arguments(
-                &declaration,
-                &canonical_args,
-            )?;
-            // A protected task also needs a one-time sudo elevation ticket
-            // for this exact call, whichever transport or facade made it.
-            self.task_elevation.consume(
-                actor_id,
-                session_id,
-                plugin_id,
-                method,
-                &canonical_args,
-            )?;
-            crate::schema_integer_arguments::normalize_declared_integers(
-                &serde_json::to_value(&declaration.args)?,
-                &mut canonical_args,
-            )?;
-            let json_args = serde_json::to_string(&canonical_args)?;
-            let parsed_value = simd_json::serde::to_owned_value(canonical_args)?;
             let operation = owned_method_task::OperationMetadata {
                 operation_id: change.change_id.clone(),
                 event_id: change.event_id,
@@ -3471,7 +3536,7 @@ impl MutationEngine {
                 .await?
             }
             "json_render" if crate::json_render_gallery_dispatch::is_gallery_method(method) => {
-                crate::json_render_gallery_dispatch::dispatch(
+                let result = crate::json_render_gallery_dispatch::dispatch(
                     self,
                     method,
                     &serde_json::to_value(&parsed_value)?,
@@ -3480,21 +3545,49 @@ impl MutationEngine {
                     session_genesis,
                     &admitted_schema,
                 )
-                .await?
+                .await?;
+                // Refresh active-catalog names into observable plugin state after
+                // gallery mutations so normal modes can subscribe (OD-93).
+                if let Ok(documents) =
+                    op_plugins::state_plugins::runtime_documents::runtime_documents().await
+                    && let Ok(service) = self
+                        .json_render_methods_enriched(admitted_schema.clone(), documents)
+                        .await
+                {
+                    let enriched = service.projection_state().await?;
+                    if let Err(error) = self
+                        .publish_plugin_projection_state(
+                            plugin_id,
+                            simd_json::serde::to_owned_value(enriched)?,
+                            ChangeType::PropertySet,
+                            true,
+                        )
+                        .await
+                    {
+                        tracing::warn!(
+                            error = %format!("{error:#}"),
+                            "json_render catalog projection refresh failed after gallery method"
+                        );
+                    }
+                }
+                result
             }
             "json_render" => {
                 static PROJECTION_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
                 let _guard = PROJECTION_LOCK.lock().await;
                 let store =
                     op_plugins::state_plugins::runtime_documents::runtime_documents().await?;
-                let service = json_render_methods_from_schema(admitted_schema, store)?;
+                let service = self
+                    .json_render_methods_enriched(admitted_schema, store)
+                    .await?;
                 let result = service
                     .dispatch(method, &serde_json::to_value(&parsed_value)?)
                     .await?;
                 if method == "set_config" {
+                    let enriched = service.projection_state().await?;
                     self.publish_plugin_projection_state(
                         plugin_id,
-                        simd_json::serde::to_owned_value(service.projection_state().await?)?,
+                        simd_json::serde::to_owned_value(enriched)?,
                         ChangeType::PropertySet,
                         true,
                     ).await.context("json_render policy committed but projection publication failed; retry to reconcile")?;
@@ -6816,10 +6909,10 @@ mod private_method_audit_tests {
     fn elevation_audit_contains_no_password_verifier() {
         let first = r#"{"plugin":"tched_router","method":"config_set","args":{"path":"agents.control_plane.model_provider","value":"custom.route"},"password":"first-password"}"#;
         let second = first.replace("first-password", "different-password");
-        let audit = audit_method_arguments("elevation", "authorize_task", first);
+        let audit = audit_method_arguments("elevation", "authorize_task", first, None);
         assert_eq!(
             audit,
-            audit_method_arguments("elevation", "authorize_task", &second)
+            audit_method_arguments("elevation", "authorize_task", &second, None)
         );
         assert_eq!(audit, r#"{"arguments_redacted":true}"#);
         assert!(!audit.contains("request_hash"));
@@ -6846,7 +6939,7 @@ mod private_method_audit_tests {
             ("persona", "execute", r#"{"query":"private code"}"#),
             ("tched_router", "Chat", r#"{"message":"private message"}"#),
         ] {
-            let audit = audit_method_arguments(plugin, method, input);
+            let audit = audit_method_arguments(plugin, method, input, None);
             assert!(audit.contains("arguments_redacted"));
             assert!(audit.contains("request_hash"));
             assert!(!audit.contains("private"));
@@ -6856,21 +6949,42 @@ mod private_method_audit_tests {
     #[test]
     fn chatbot_reasoning_arguments_are_digest_only() {
         let private = r#"{"episode":{"reasoning_summary":"never-in-audit","goal_text":"secret"}}"#;
-        let audit = audit_method_arguments("ctl_plane_chatbot", "classify_significance", private);
+        let audit =
+            audit_method_arguments("ctl_plane_chatbot", "classify_significance", private, None);
         assert!(audit.contains("arguments_redacted"));
         assert!(audit.contains("request_hash"));
         assert!(!audit.contains("never-in-audit"));
         assert!(!audit.contains("secret"));
         assert_eq!(
             audit,
-            audit_method_arguments("ctl_plane_chatbot", "set_config", private)
+            audit_method_arguments("ctl_plane_chatbot", "set_config", private, None)
         );
     }
 
     #[test]
     fn ordinary_public_arguments_remain_auditable() {
         let input = r#"{"selector":"public"}"#;
-        assert_eq!(audit_method_arguments("procfs", "get_memory", input), input);
+        assert_eq!(
+            audit_method_arguments("procfs", "get_memory", input, None),
+            input
+        );
+    }
+
+    #[test]
+    fn schema_private_fields_become_blake3_digests_in_audit() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "outcome": {"type": "string"},
+                "goal_text": {"type": "string", "x-opdbus-private": true}
+            }
+        });
+        let input = r#"{"outcome":"ok","goal_text":"secret prompt"}"#;
+        let audit = audit_method_arguments("ctl_plane_chatbot", "classify_significance", input, Some(&schema));
+        assert!(audit.contains("\"outcome\":\"ok\""));
+        assert!(audit.contains("blake3:"));
+        assert!(!audit.contains("secret prompt"));
+        assert!(!audit.contains("arguments_redacted"));
     }
 }
 

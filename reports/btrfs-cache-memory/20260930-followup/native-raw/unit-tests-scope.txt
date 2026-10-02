@@ -1,0 +1,11 @@
+Exact-source unit test coverage: numa.rs and snapshot_manager.rs only.
+Their native-source copies compare byte-for-byte equal to current production files.
+Final standalone harness: unit-tests-probe.rs, compiled with rustc --test, GNU target, debuginfo=0, codegen-units=1, GNU linker --no-keep-memory; pinned dependency/native archive flags from run-native.sh.
+No Cargo build or shared build artifact mutation.
+Result: 10 passed (7 NUMA, 3 snapshot manager), 0 failed, 3 ignored (multi-node affinity, Bind[0], Interleave[0,1]).
+No BtrfsCache unit tests were compiled or executed in the final standalone harness.
+/tmp fixture replacement: task-owned /dev/shm tmpfs TMPDIR, removed by rmdir only after tests left it empty.
+No native Btrfs skipped-success test is counted in the 10 passes.
+Final build: 120-second timeout, 512MiB sampled process-group RSS guard; peak280572KiB, exit0.
+Final test: 120-second timeout, exit0; process finished before meaningful RSS sampling (logged peak0 is not a zero-memory claim).
+Three previous full-harness builds were terminated by the RSS guard; logs retained as unit-tests-build-{initial,reduced-debug,single-codegen}.txt. No tests ran in those attempts.

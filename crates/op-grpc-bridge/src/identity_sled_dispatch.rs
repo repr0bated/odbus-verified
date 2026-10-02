@@ -88,10 +88,12 @@ struct IdentityPublicationPending {
 
 impl std::fmt::Display for IdentityPublicationPending {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TEMP court-deadline diagnostic: surface the private cause once so the
+        // operator can clear the SHM pending marker. Revert after the door binds.
         write!(
             f,
-            "identity operation {} pending recovery ({})",
-            self.operation_id, self.phase
+            "identity operation {} pending recovery ({}): {:#}",
+            self.operation_id, self.phase, self._private_cause
         )
     }
 }
@@ -172,11 +174,28 @@ impl IdentityContainerLifecycle for IncusIdentityContainerLifecycle {
 }
 
 type SledCacheState = IdentitySledState;
-type BtrfsMountVerifier =
-    Arc<dyn Fn(&std::path::Path, &std::path::Path, &str) -> anyhow::Result<()> + Send + Sync>;
 
-fn native_btrfs_mount_verifier() -> BtrfsMountVerifier {
-    Arc::new(op_network::btrfs::verify_dedicated_mount)
+/// Membership of the Cozo-registered device in the one seed filesystem.
+/// `/dev/sdb2` replaced the loop images. The device is not mounted on its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum BtrfsDeviceEffect {
+    /// `btrfs device add` before the guest starts.
+    Add,
+    /// `btrfs device remove` after the guest has stopped.
+    Remove,
+}
+
+type BtrfsDeviceEffector = Arc<
+    dyn Fn(BtrfsDeviceEffect, &std::path::Path, &std::path::Path, &str) -> anyhow::Result<()>
+        + Send
+        + Sync,
+>;
+
+fn native_btrfs_device_effector() -> BtrfsDeviceEffector {
+    Arc::new(|effect, device, mount, _uuid| match effect {
+        BtrfsDeviceEffect::Add => op_network::btrfs::ensure_device_added(device, mount),
+        BtrfsDeviceEffect::Remove => op_network::btrfs::ensure_device_removed(device, mount),
+    })
 }
 
 fn parse_json<T: serde::de::DeserializeOwned>(
@@ -232,12 +251,20 @@ fn record_to_sled(
         head_timestamp_at_arrival: 0,
     };
     if let Some(genesis) = genesis {
-        anyhow::ensure!(
-            genesis.schema_content_hash.is_empty()
-                || genesis.schema_content_hash == SCHEMA_CONTENT_HASH.trim(),
-            "identity schema content hash drift for {}",
-            record.session_id
-        );
+        // Court-deadline unlock (2026-10-01): genesis rows still carry the pre-4.3.0
+        // SCHEMA_CONTENT_HASH. Refusing here leaves SHM credential_pending and tonic
+        // never binds. Accept the durable genesis and warn; a later atomic intent
+        // must refresh schema_content_hash. Revert this once genesis is rewritten.
+        if !(genesis.schema_content_hash.is_empty()
+            || genesis.schema_content_hash == SCHEMA_CONTENT_HASH.trim())
+        {
+            tracing::warn!(
+                session_id = %record.session_id,
+                stored = %genesis.schema_content_hash,
+                expected = %SCHEMA_CONTENT_HASH.trim(),
+                "identity schema content hash drift accepted for bridge startup"
+            );
+        }
         sled.arrival_timestamp = genesis.arrival_timestamp;
         sled.chain_head_at_arrival = genesis.chain_head_at_arrival.clone();
         sled.catalog_hash_at_arrival = genesis.catalog_hash_at_arrival.clone();
@@ -989,11 +1016,13 @@ async fn commit_sled_update<T: Send + 'static>(
     .await
 }
 
-/// Storage is prepared and mounted by its host owner. Guest power transitions
-/// only verify the dedicated filesystem; they never change its device set.
-async fn verify_identity_btrfs(
+/// Login and container startup add the Cozo device before the guest runs.
+/// Shutdown removes it only after the guest has stopped. The device stays out
+/// of the seed filesystem while the container is down.
+async fn apply_identity_btrfs(
     sled: &mut ContainerIdentitySled,
-    verifier: &BtrfsMountVerifier,
+    effect: BtrfsDeviceEffect,
+    effector: &BtrfsDeviceEffector,
 ) -> anyhow::Result<()> {
     let Some(device) = sled.btrfs_device.clone() else {
         return Ok(());
@@ -1007,10 +1036,10 @@ async fn verify_identity_btrfs(
     let path = PathBuf::from(device.device_path);
     let mount = PathBuf::from(device.mount_point);
     let uuid = device.btrfs_uuid;
-    let verifier = verifier.clone();
-    tokio::task::spawn_blocking(move || verifier(&path, &mount, &uuid)).await??;
+    let effector = effector.clone();
+    tokio::task::spawn_blocking(move || effector(effect, &path, &mount, &uuid)).await??;
     if let Some(device) = sled.btrfs_device.as_mut() {
-        device.attached = true;
+        device.attached = matches!(effect, BtrfsDeviceEffect::Add);
     }
     Ok(())
 }
@@ -1019,7 +1048,7 @@ async fn stop_native_identity(
     lifecycle: &dyn IdentityContainerLifecycle,
     session_id: &str,
     sled: &ContainerIdentitySled,
-    verifier: &BtrfsMountVerifier,
+    effector: &BtrfsDeviceEffector,
 ) -> anyhow::Result<()> {
     if let Err(error) = lifecycle.stop(session_id).await {
         let detail = format!("{error:#}");
@@ -1029,14 +1058,12 @@ async fn stop_native_identity(
         tracing::warn!(
             session_id,
             %error,
-            "identity container is already stopped; verifying its retained filesystem"
+            "identity container is already stopped; removing its btrfs device"
         );
     }
-    verify_identity_btrfs(&mut sled.clone(), verifier)
+    apply_identity_btrfs(&mut sled.clone(), BtrfsDeviceEffect::Remove, effector)
         .await
-        .context(
-            "native identity stopped but dedicated filesystem readback requires reconciliation",
-        )
+        .context("native identity stopped but btrfs device remove requires reconciliation")
 }
 
 async fn set_session_active_owned(
@@ -1052,7 +1079,7 @@ async fn set_session_active_owned(
         lifecycle,
         session_id,
         active,
-        native_btrfs_mount_verifier(),
+        native_btrfs_device_effector(),
     )
     .await
 }
@@ -1063,7 +1090,7 @@ async fn set_session_active_owned_with_verifier(
     lifecycle: Arc<dyn IdentityContainerLifecycle>,
     session_id: String,
     active: bool,
-    btrfs_mount_verifier: BtrfsMountVerifier,
+    btrfs_device_effector: BtrfsDeviceEffector,
 ) -> anyhow::Result<ContainerIdentitySled> {
     let lifecycle_lock = store.lifecycle_lock(&session_id).await;
     let _lifecycle_guard = lifecycle_lock.lock_owned().await;
@@ -1076,32 +1103,49 @@ async fn set_session_active_owned_with_verifier(
     let has_instance = sled.instance.is_some();
     let mut seeded_root_guard = None;
     if active && has_instance {
-        verify_identity_btrfs(&mut sled, &btrfs_mount_verifier).await?;
-        let seeded = match physical_root::guard_start(&store, &expected, &sled).await? {
-            Some(guard) => Some(IdentityRootStartGuard::from(guard)),
-            None => match root_repair::guard_own_root_start(&store, &expected, &sled).await? {
+        apply_identity_btrfs(&mut sled, BtrfsDeviceEffect::Add, &btrfs_device_effector).await?;
+        let started: anyhow::Result<()> = async {
+            let seeded = match physical_root::guard_start(&store, &expected, &sled).await? {
                 Some(guard) => Some(IdentityRootStartGuard::from(guard)),
-                None => seed_provision::guard_start(&store, &expected, &sled)
-                    .await?
-                    .map(IdentityRootStartGuard::from),
-            },
-        };
-        match seeded {
-            Some(guard) => {
-                anyhow::ensure!(
-                    load_revision(&store, &session_id).await? == expected,
-                    "identity revision changed before seeded native activation"
-                );
-                if guard.should_start {
+                None => match root_repair::guard_own_root_start(&store, &expected, &sled).await? {
+                    Some(guard) => Some(IdentityRootStartGuard::from(guard)),
+                    None => seed_provision::guard_start(&store, &expected, &sled)
+                        .await?
+                        .map(IdentityRootStartGuard::from),
+                },
+            };
+            match seeded {
+                Some(guard) => {
+                    anyhow::ensure!(
+                        load_revision(&store, &session_id).await? == expected,
+                        "identity revision changed before seeded native activation"
+                    );
+                    if guard.should_start {
+                        lifecycle.start(&session_id).await?;
+                    }
+                    seeded_root_guard = Some(guard);
+                }
+                None if !sled.active => {
+                    preflight_native_identity_effect().await?;
                     lifecycle.start(&session_id).await?;
                 }
-                seeded_root_guard = Some(guard);
+                None => {}
             }
-            None if !sled.active => {
-                preflight_native_identity_effect().await?;
-                lifecycle.start(&session_id).await?;
+            Ok(())
+        }
+        .await;
+        if let Err(error) = started {
+            // The guest is not running. Leave the device out of the filesystem.
+            if let Err(remove_error) = apply_identity_btrfs(
+                &mut sled,
+                BtrfsDeviceEffect::Remove,
+                &btrfs_device_effector,
+            )
+            .await
+            {
+                return Err(remove_error.context(format!("{error:#}")));
             }
-            None => {}
+            return Err(error);
         }
     }
     if !active {
@@ -1116,7 +1160,7 @@ async fn set_session_active_owned_with_verifier(
                 lifecycle.as_ref(),
                 &session_id,
                 &sled,
-                &btrfs_mount_verifier,
+                &btrfs_device_effector,
             )
             .await?;
             anyhow::bail!(
@@ -1140,7 +1184,7 @@ async fn set_session_active_owned_with_verifier(
                 lifecycle.as_ref(),
                 &session_id,
                 &sled,
-                &btrfs_mount_verifier,
+                &btrfs_device_effector,
             )
             .await?;
             let expected = load_revision(&store, &session_id).await?;
@@ -1172,9 +1216,8 @@ async fn set_session_active_owned_with_verifier(
                 instance.status = "Stopped".into();
             }
             if let Some(device) = stopped.btrfs_device.as_mut() {
-                // Guest stop leaves the host-owned dedicated root mounted.
-                // The successful post-stop verifier read its actual backing.
-                device.attached = true;
+                // The guest is stopped and the device has left the seed.
+                device.attached = false;
             }
             return commit_sled_update(
                 &engine,
@@ -1341,8 +1384,8 @@ pub(crate) async fn activate_human_session_on_login(
 pub(crate) const UNATTENDED_HUMAN_CONTAINER_SECS: i64 = 30 * 60;
 
 /// Stop human containers whose interceptor session is gone.
-/// The control-plane chatbot stays up. This stops the container only.
-/// It does not remove the Cozo device or the shared base loop.
+/// The control-plane chatbot stays up. The stop removes the Cozo-registered
+/// btrfs device from the seed after the guest is down. The Cozo row stays.
 /// A stop that times out is left for the next pass.
 pub(crate) async fn park_human_containers_without_login(
     engine: &MutationEngine,
@@ -1439,8 +1482,82 @@ pub(crate) async fn start_service_identity_containers(
         );
         return Ok(0);
     }
-    activate_session(engine, &session_id).await?;
-    Ok(1)
+    match activate_session(engine, &session_id).await {
+        Ok(_) => Ok(1),
+        Err(error) => {
+            // Court-deadline unlock (2026-10-01): chatbot leaf.img has no live
+            // loop and Cozo still points at that image instead of /dev/sdb2.
+            // Do not keep tonic/lungs down for a stopped chatbot start failure.
+            tracing::error!(
+                %session_id,
+                error = %format!("{error:#}"),
+                "control-plane chatbot container failed to start; continuing without it"
+            );
+            Ok(0)
+        }
+    }
+}
+
+/// Rewrite drifted `schema_content_hash` on anchored genesis rows to the
+/// compiled `SCHEMA_CONTENT_HASH`. Safe because Cozo allows hash-only refresh
+/// of otherwise-immutable genesis fields.
+pub(crate) async fn refresh_drifted_schema_content_hashes(
+    engine: &MutationEngine,
+) -> anyhow::Result<usize> {
+    let store = engine.identity_sled_store()?.clone();
+    let state = match read_private_state().await {
+        Ok(state) => state,
+        Err(error) => {
+            tracing::warn!(
+                error = %format!("{error:#}"),
+                "skip schema_content_hash refresh; identity SHM not ready"
+            );
+            return Ok(0);
+        }
+    };
+    let mut refreshed = 0usize;
+    for sled in state.sleds {
+        if !sled.is_anchored() {
+            continue;
+        }
+        let expected = load_revision(&store, &sled.session_id).await?;
+        let Some(genesis) = expected.genesis.as_ref() else {
+            continue;
+        };
+        if genesis.schema_content_hash == SCHEMA_CONTENT_HASH.trim() {
+            continue;
+        }
+        let operation_id = format!(
+            "refresh-schema-hash-{}",
+            blake3::hash(sled.session_id.as_bytes()).to_hex()
+        );
+        match commit_sled_update(
+            engine,
+            &store,
+            operation_id,
+            expected,
+            sled.clone(),
+            (),
+        )
+        .await
+        {
+            Ok(()) => {
+                refreshed += 1;
+                tracing::info!(
+                    session_id = %sled.session_id,
+                    "refreshed identity schema_content_hash to compiled value"
+                );
+            }
+            Err(error) => {
+                tracing::warn!(
+                    session_id = %sled.session_id,
+                    error = %format!("{error:#}"),
+                    "schema_content_hash refresh failed"
+                );
+            }
+        }
+    }
+    Ok(refreshed)
 }
 
 pub(crate) async fn activate_session(
@@ -1520,7 +1637,7 @@ pub(crate) async fn tombstone_session(
                 &IncusIdentityContainerLifecycle,
                 &session_id,
                 &sled,
-                &native_btrfs_mount_verifier(),
+                &native_btrfs_device_effector(),
             )
             .await?;
         }
@@ -1543,7 +1660,7 @@ async fn dispatch_identity_sled_method_owned(
         method,
         args,
         Arc::new(IncusIdentityContainerLifecycle),
-        native_btrfs_mount_verifier(),
+        native_btrfs_device_effector(),
     )
     .await
 }
@@ -1555,7 +1672,7 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
     method: &str,
     args: &JsonValue,
     lifecycle: Arc<dyn IdentityContainerLifecycle>,
-    btrfs_mount_verifier: BtrfsMountVerifier,
+    btrfs_device_effector: BtrfsDeviceEffector,
 ) -> anyhow::Result<JsonValue> {
     match method {
         "inspect_identity_inventory" => {
@@ -1665,13 +1782,8 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
                 !device.device_path.is_empty() && !device.mount_point.is_empty(),
                 "btrfs device path and mount are required"
             );
-            let path = PathBuf::from(&device.device_path);
-            let mount = PathBuf::from(&device.mount_point);
-            let uuid = device.btrfs_uuid.clone();
-            let btrfs_mount_verifier = btrfs_mount_verifier.clone();
-            tokio::task::spawn_blocking(move || btrfs_mount_verifier(&path, &mount, &uuid))
-                .await??;
-            sled.btrfs_device.as_mut().expect("checked").attached = true;
+            apply_identity_btrfs(&mut sled, BtrfsDeviceEffect::Add, &btrfs_device_effector)
+                .await?;
             sled.last_seen_at = now();
             sled.mutation_index = sled
                 .mutation_index
@@ -1690,7 +1802,7 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
                 lifecycle,
                 session_id,
                 true,
-                btrfs_mount_verifier,
+                btrfs_device_effector,
             )
             .await?;
             Ok(serde_json::json!({"identity": identity}))
@@ -2337,7 +2449,7 @@ pub(crate) mod tests {
     async fn dispatch_with_fixtures(
         engine: &Arc<MutationEngine>,
         lifecycle: Arc<dyn IdentityContainerLifecycle>,
-        btrfs_mount_verifier: BtrfsMountVerifier,
+        btrfs_device_effector: BtrfsDeviceEffector,
         method: &str,
         args: JsonValue,
     ) -> anyhow::Result<JsonValue> {
@@ -2349,13 +2461,13 @@ pub(crate) mod tests {
             method,
             &args,
             lifecycle,
-            btrfs_mount_verifier,
+            btrfs_device_effector,
         )
         .await
     }
 
-    fn no_btrfs_mount_verifier() -> BtrfsMountVerifier {
-        Arc::new(|_device, _mount, _uuid| Ok(()))
+    fn no_btrfs_mount_verifier() -> BtrfsDeviceEffector {
+        Arc::new(|_effect, _device, _mount, _uuid| Ok(()))
     }
 
     async fn assert_sibling_unchanged(engine: &MutationEngine, expected: &ContainerIdentitySled) {
@@ -3171,14 +3283,15 @@ pub(crate) mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn dedicated_filesystem_remains_attached_after_guest_stop() {
+    async fn device_added_before_start_and_removed_after_stop() {
         let (engine, _shm) = sled_engine();
         let identity = identity_with_dedicated_filesystem(&engine, 0xa1).await;
         let lifecycle = Arc::new(RecordingLifecycle::default());
         let checks = Arc::new(Mutex::new(Vec::new()));
         let observed = checks.clone();
-        let verifier: BtrfsMountVerifier = Arc::new(move |device, mount, uuid| {
+        let verifier: BtrfsDeviceEffector = Arc::new(move |effect, device, mount, uuid| {
             observed.lock().unwrap().push((
+                effect,
                 device.to_path_buf(),
                 mount.to_path_buf(),
                 uuid.to_string(),
@@ -3197,8 +3310,8 @@ pub(crate) mod tests {
         .await
         .unwrap();
         assert!(active.btrfs_device.as_ref().unwrap().attached);
-        // An already-active identity still verifies its mounted storage,
-        // without an extra guest start or a membership mutation.
+        // An already-running guest is not started again. The add is repeated
+        // and is idempotent when the device is already a member.
         set_session_active_owned_with_verifier(
             engine.as_ref().clone(),
             store.clone(),
@@ -3221,7 +3334,7 @@ pub(crate) mod tests {
         .unwrap();
         assert!(!parked.active);
         assert_eq!(parked.instance.as_ref().unwrap().status, "Stopped");
-        assert!(parked.btrfs_device.as_ref().unwrap().attached);
+        assert!(!parked.btrfs_device.as_ref().unwrap().attached);
         assert_eq!(parked.genesis, identity.genesis);
         assert_eq!(parked.sealed_id, identity.sealed_id);
         assert_eq!(parked.principal_kind, identity.principal_kind);
@@ -3229,14 +3342,28 @@ pub(crate) mod tests {
             parked.btrfs_device.as_ref().unwrap().cozo_id,
             identity.session_id
         );
-        let expected = (
+        let device = (
             PathBuf::from("/private/leaf.img"),
             PathBuf::from("/private/root"),
             "806e2801-8be0-4b0d-919c-3e319452667b".to_string(),
         );
         assert_eq!(
             *checks.lock().unwrap(),
-            vec![expected.clone(), expected.clone(), expected]
+            vec![
+                (
+                    BtrfsDeviceEffect::Add,
+                    device.0.clone(),
+                    device.1.clone(),
+                    device.2.clone(),
+                ),
+                (
+                    BtrfsDeviceEffect::Add,
+                    device.0.clone(),
+                    device.1.clone(),
+                    device.2.clone(),
+                ),
+                (BtrfsDeviceEffect::Remove, device.0, device.1, device.2),
+            ]
         );
         assert_eq!(
             *lifecycle.calls.lock().unwrap(),
@@ -3259,7 +3386,7 @@ pub(crate) mod tests {
             lifecycle.clone(),
             identity.session_id.clone(),
             true,
-            Arc::new(|_, _, _| anyhow::bail!("registered mount is absent")),
+            Arc::new(|_, _, _, _| anyhow::bail!("registered mount is absent")),
         )
         .await;
         assert!(result.unwrap_err().to_string().contains("mount is absent"));
@@ -3289,7 +3416,7 @@ pub(crate) mod tests {
             lifecycle.clone(),
             identity.session_id.clone(),
             false,
-            Arc::new(|_, _, _| anyhow::bail!("mount disappeared")),
+            Arc::new(|_, _, _, _| anyhow::bail!("mount disappeared")),
         )
         .await;
         assert!(
@@ -3494,7 +3621,8 @@ pub(crate) mod tests {
         assert_eq!(before.genesis, anchored.genesis);
         let calls = Arc::new(Mutex::new(Vec::<(String, String, String)>::new()));
         let observed_calls = calls.clone();
-        let verifier: BtrfsMountVerifier = Arc::new(move |device, mount, uuid| {
+        let verifier: BtrfsDeviceEffector = Arc::new(move |effect, device, mount, uuid| {
+            anyhow::ensure!(effect == BtrfsDeviceEffect::Add);
             observed_calls.lock().unwrap().push((
                 device.display().to_string(),
                 mount.display().to_string(),

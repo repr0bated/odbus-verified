@@ -1,0 +1,423 @@
+{
+  "plugin_id": "ovsdb_bridge",
+  "source_schema_hash": "e008851ea4ba6f454994b47274b62336d33b7d145c485aee0ac68458a7cae599",
+  "schema": {
+    "name": "ovsdb_bridge",
+    "version": "3.0.0",
+    "tags": [],
+    "category": "uncategorized",
+    "methods": {
+      "get_schema": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "db_name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "db_name"
+          ],
+          "title": "GetSchemaInput",
+          "type": "object"
+        },
+        "returns": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "schema": true
+          },
+          "required": [
+            "schema"
+          ],
+          "title": "GetSchemaOutput",
+          "type": "object"
+        },
+        "required_capability": "ovsdb.read",
+        "side_effect": "read",
+        "subid": "obs.network.ovsdb.schema.get@v1"
+      },
+      "list_dbs": {
+        "args": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "title": "ListDbsInput",
+          "type": "object"
+        },
+        "returns": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "databases": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "databases"
+          ],
+          "title": "ListDbsOutput",
+          "type": "object"
+        },
+        "required_capability": "ovsdb.read",
+        "side_effect": "read",
+        "subid": "obs.network.ovsdb.dbs.list@v1"
+      },
+      "monitor": {
+        "args": {
+          "$defs": {
+            "OvsdbMonitorRequest": {
+              "additionalProperties": false,
+              "description": "One RFC 7047 monitor request. `where` is accepted only by monitor_cond.\nThe native owner additionally restricts tables and columns to the selected\nnon-secret topology surface declared by this plugin.",
+              "properties": {
+                "columns": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "select": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/OvsdbMonitorSelect"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "where": {
+                  "items": true,
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "columns"
+              ],
+              "type": "object"
+            },
+            "OvsdbMonitorSelect": {
+              "additionalProperties": false,
+              "properties": {
+                "delete": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "initial": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "insert": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "modify": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "db_name": {
+              "type": "string"
+            },
+            "monitor_id": {
+              "type": "string"
+            },
+            "monitor_requests": {
+              "additionalProperties": {
+                "items": {
+                  "$ref": "#/$defs/OvsdbMonitorRequest"
+                },
+                "type": "array"
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "db_name",
+            "monitor_id",
+            "monitor_requests"
+          ],
+          "title": "MonitorInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "OvsdbMonitorColumn": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": true
+              },
+              "required": [
+                "name",
+                "value"
+              ],
+              "type": "object"
+            },
+            "OvsdbMonitorRow": {
+              "properties": {
+                "columns": {
+                  "items": {
+                    "$ref": "#/$defs/OvsdbMonitorColumn"
+                  },
+                  "type": "array"
+                },
+                "uuid": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uuid",
+                "columns"
+              ],
+              "type": "object"
+            },
+            "OvsdbMonitorTable": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "rows": {
+                  "items": {
+                    "$ref": "#/$defs/OvsdbMonitorRow"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "name",
+                "rows"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "method": {
+              "type": "string"
+            },
+            "monitor_id": {
+              "type": "string"
+            },
+            "sequence": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "tables": {
+              "items": {
+                "$ref": "#/$defs/OvsdbMonitorTable"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "monitor_id",
+            "method",
+            "sequence",
+            "tables"
+          ],
+          "title": "MonitorOutput",
+          "type": "object"
+        },
+        "required_capability": "ovsdb.read",
+        "side_effect": "read",
+        "subid": "obs.network.ovsdb.monitor@v1"
+      },
+      "monitor_cond": {
+        "args": {
+          "$defs": {
+            "OvsdbMonitorRequest": {
+              "additionalProperties": false,
+              "description": "One RFC 7047 monitor request. `where` is accepted only by monitor_cond.\nThe native owner additionally restricts tables and columns to the selected\nnon-secret topology surface declared by this plugin.",
+              "properties": {
+                "columns": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "select": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/OvsdbMonitorSelect"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "where": {
+                  "items": true,
+                  "type": [
+                    "array",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "columns"
+              ],
+              "type": "object"
+            },
+            "OvsdbMonitorSelect": {
+              "additionalProperties": false,
+              "properties": {
+                "delete": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "initial": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "insert": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "modify": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "db_name": {
+              "type": "string"
+            },
+            "monitor_cond_requests": {
+              "additionalProperties": {
+                "items": {
+                  "$ref": "#/$defs/OvsdbMonitorRequest"
+                },
+                "type": "array"
+              },
+              "type": "object"
+            },
+            "monitor_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "db_name",
+            "monitor_id",
+            "monitor_cond_requests"
+          ],
+          "title": "MonitorCondInput",
+          "type": "object"
+        },
+        "returns": {
+          "$defs": {
+            "OvsdbMonitorColumn": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": true
+              },
+              "required": [
+                "name",
+                "value"
+              ],
+              "type": "object"
+            },
+            "OvsdbMonitorRow": {
+              "properties": {
+                "columns": {
+                  "items": {
+                    "$ref": "#/$defs/OvsdbMonitorColumn"
+                  },
+                  "type": "array"
+                },
+                "uuid": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uuid",
+                "columns"
+              ],
+              "type": "object"
+            },
+            "OvsdbMonitorTable": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "rows": {
+                  "items": {
+                    "$ref": "#/$defs/OvsdbMonitorRow"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "name",
+                "rows"
+              ],
+              "type": "object"
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "properties": {
+            "method": {
+              "type": "string"
+            },
+            "monitor_id": {
+              "type": "string"
+            },
+            "sequence": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "tables": {
+              "items": {
+                "$ref": "#/$defs/OvsdbMonitorTable"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "monitor_id",
+            "method",
+            "sequence",
+            "tables"
+          ],
+          "title": "MonitorOutput",
+          "type": "object"
+        },
+        "required_capability": "ovsdb.read",
+        "side_effect": "read",
+        "subid": "obs.network.ovsdb.monitor-cond@v1"
+      }
+    }
+  }
+}

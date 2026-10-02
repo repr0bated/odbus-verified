@@ -5,8 +5,8 @@ exec 2>&1
 ip link show gre-decoy >/dev/null 2>&1 || ip link add gre-decoy type gre remote 129.80.64.127 local 188.68.58.237 ttl 64
 ip addr show dev gre-decoy | grep -q '192.168.255.1/30' || ip addr add 192.168.255.1/30 dev gre-decoy
 ip addr show dev gre-decoy | grep -q '10.0.0.2/32' || ip addr add 10.0.0.2/32 dev gre-decoy noprefixroute
-# 10.0.0.4 is op-web's :8080 page address, routed from the decoy over GRE.
-ip addr show dev gre-decoy | grep -q '10.0.0.4/32' || ip addr add 10.0.0.4/32 dev gre-decoy noprefixroute
+ip addr del 10.0.0.4/32 dev gre-decoy 2>/dev/null || true
+ip addr del 10.69.0.254/32 dev gre-decoy 2>/dev/null || true
 ip link set gre-decoy mtu 1400 up
 # 10.0.0.1 is the decoy. The bridge /24 would otherwise treat it as on-link.
 ip route replace 10.0.0.1/32 via 192.168.255.2 dev gre-decoy

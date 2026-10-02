@@ -8,9 +8,12 @@ The owner is starting a new session. **Finish the release and identity migration
 
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
-| Grok (Cursor) | Push the pending tree, then full golden preparation and activation | branch `claude/amazing-carson-8bg4yr` | 2026-10-01T00:50Z | No partial binary staging. Do not restart OVS, uplink, DHCP, Xray, or identity containers as part of this activation |
+| Grok (Cursor) — ACTIVE overnight | Keep working while owner away: OD-91/93 + genesis refresh done live; chatbot leaf.img still blocked on seed FSID drift; continuing compliance/OpenFlow backlog | identity + json_render + mutation_engine; receipt overnight/ | 2026-10-01T22:04Z | Do not rewrite `/dev/sdb2`. Do not restart OVS/uplink/DHCP/Xray. No second Cargo. Preserve keys/SID1 |
+| Grok (Cursor) — court door done | Activated golden; tonic/lungs up via hotfix overlay | receipt `reports/identity-replacement/20261001/activation/` | 2026-10-01T16:30Z | Overlay rollback documented; do not delete previous release |
+| Composer 2.5 — finished | Golden prepared at `/opt/op-dbus/golden`, build `20261001T112324Z`. Activation claimed by Grok above | log `/var/tmp/composer25-golden-20261001.log` | 2026-10-01T10:20Z | Do not start a competing Cargo |
+| Grok (Cursor) | Identity Btrfs membership: add the Cozo device on login and container start, remove it only after container stop. `/dev/sdb2` replaced loops | `identity_sled_dispatch.rs`, `identity_sled.rs` | 2026-10-01T10:01Z | Do not ioctl the live seed. Do not rewrite `/dev/sdb2`. Do not start a second Cargo |
 | Codex root — handed off | Complete golden release, then human identity migration, boot enablement and manual obsolete-container cleanup | Current state and exact next steps below | 2026-09-30T22:38Z | No partial candidate activation. Preserve keys/SID1/grants, original journals/tombstones, xray/mail/qdrant; never roll back to the old RM_DEV lifecycle |
-| Luna memory_live_sampling — current compiler only | One focused bridge test is running; no automatic next command or release build | Unified exec session4116, Cargo PID30813, rustc31580; log below | 2026-09-30T22:32Z | Let current compiler finish; no competing Cargo. New session resumes the remaining queue explicitly |
+| Luna memory_live_sampling — finished | Focused bridge test passed 5/5. Release build is the Grok row | log `/var/tmp/identity-sled-lifecycle-20260930/physical-root-bridge-final2.log` | 2026-09-30T22:32Z | Do not start a competing Cargo |
 | Codex graph_release_inventory — source frozen | Physical migration schema/dispatch/kernel proof, identity inventory, subscriber/system provisioning | identity_sled.rs, identity_sled_dispatch.rs, identity_physical_root.rs/storage.rs, provision-workspace-subscriber.sh | 2026-09-30 | No edits except actual test/compiler failures. No live changes by child |
 | Codex graph_storage_design — source frozen | Migration transaction/history, helper syntax, public Incus graph aggregates | op-cozo-store identity transactions, op-identity-root, system_graph_projection.rs/tests.rs | 2026-09-30 | All original journals preserved; no public identity names/devices. No additional investigations |
 | Earlier Codex tasks — frozen, preserved | Provider/native keys, UI picker, root-password elevation, compact tools, graph/reminders, memory evidence | Exact file claims in archived handoff; UI sibling `/srv/git/3tched.com` | 2026-09-30 | Do not overwrite these changes or reopen unrelated work; deployment status below supersedes old rows |
@@ -21,6 +24,161 @@ The owner is starting a new session. **Finish the release and identity migration
 | Claude (cloud) | OD-94 built and pushed at `d57c497`. Owner asked Grok to finish the uncommitted `set_model_profile` edits in place | branch `claude/amazing-carson-8bg4yr` | 2026-09-29 | Gallery files still Claude's: `json_render_gallery.rs`, `json_render_chat_canvas*.rs` |
 
 ## Handoffs
+
+### 2026-10-02T00:43Z · Grok (OpenFlow OD-06 prep)
+
+Reserved tag match keys round-trip test passed (`od06_tag_match_prep_tests`). Door still up (`cb64bd7c…`). Chatbot migration prep notes at `overnight/chatbot-migration-prep.md`. Disk 153G free. Continuing.
+
+### 2026-10-02T00:36Z · Grok (overnight still going)
+
+Door up on overlay `cb64bd7c…` (`evaluate_mutation` + OD-93 catalog enrich). Boots clean of genesis drift. Chatbot soft-fail on `leaf.img` unchanged. Disk 154G free. Will keep advancing unfinished surfaces.
+
+### 2026-10-02T00:10Z · Grok (overnight still going)
+
+Door up on overlay `a1f7fa0d…` (catalog enrich). Boot clean: no genesis drift warns; chatbot soft-fails on `leaf.img` only. Disk 155G free. Receipt updated. Continuing backlog while owner away.
+
+### 2026-10-01T23:55Z · Grok (OD-93 catalog projection wiring)
+
+MutationEngine now enriches `JsonRenderState` from Cozo `list_ui_catalog` on seed, gallery methods, and `set_config` / prompt paths (`json_render_methods_enriched`). `cargo check -p op-grpc-bridge` clean after dropping unused helper. Door still up (overlay not yet rebuilt with this); disk 155G free. Chatbot still soft-fail / leaf.img.
+
+### 2026-10-01T23:40Z · Grok (OD-93 state hooks)
+
+Added `catalog_revision` + `active_catalog_entry_names` to `JsonRenderState`; `build_prompt` surfaces them when non-zero. `op-plugins` json_render tests 31 passed + public_state_contracts 1. Bridge still needs to project Cozo catalog into those fields (gallery dispatch frozen). Door still up. Disk 159G free.
+
+### 2026-10-01T23:32Z · Grok (genesis clean on second boot)
+
+Second restart: **no** `schema content hash drift` warns. Chatbot still soft-fails on `leaf.img`. Door + lungs up. Disk 163G free. Continuing source work on unfinished surfaces (json-render catalog / compliance hook next).
+
+### 2026-10-01T23:31Z · Grok (overnight — genesis hashes refreshed live)
+
+Door up. Boot path refreshed `schema_content_hash` for human and chatbot (log 23:30:48Z). Overlay sha `c516d164…`. Chatbot still soft-fails on `identity-leaves/i0/leaf.img`. OD-91 digests + vector filter in source; audit tests 5/5. Disk 163G free. Receipt `reports/identity-replacement/20261001/overnight/20261001T220847Z-continue.md`.
+
+Next without owner: continue OD-91 reseal prep / catalog prompt injection / evaluate_mutation wiring. Chatbot start needs seed FSID reconciliation then physical-root migration — do not ioctl `/dev/sdb2`.
+
+### 2026-10-01T23:05Z · Grok (overnight continue)
+
+Kept working. Door up after overlay rebuild `03f50a12…` then next rebuild for genesis auto-refresh.
+
+Done since prior overnight note:
+- OD-91 digests wired in MutationEngine (admit-before-audit); 5/5 private_method_audit_tests
+- `refresh_drifted_schema_content_hashes` added; called at bridge boot before chatbot start
+- Chatbot still soft-fails: Cozo path is `identity-leaves/i0/leaf.img` (no loop); live `/dev/sdb2` UUID `bc95536f-…` ≠ documented seed
+- Disk ~163G free after debug rebuild (was 182G)
+
+### 2026-10-01T22:20Z · Grok (overnight — kept working)
+
+Owner expected continuous work on unfinished surfaces while away; prior stop was wrong.
+
+Door still up (`10.0.0.2:8090`, lungs). Disk 182G free.
+
+Source advanced:
+- **OD-91:** `schema_projection` drops `x-opdbus-private`; `commit_with_private_digests` for chain commits; ctl_plane `goal_text`/`reasoning_summary`/`decision_output` marked private. Tests green (`op-state-store` schema_projection 4/4).
+- **Genesis:** CAS may refresh `schema_content_hash` only on anchored rows. Test `anchored_genesis_may_refresh_schema_content_hash_only` passed.
+- **OpenFlow:** reserved match keys documented for OD-06 tag routing; NORMAL unchanged.
+- **json_render:** `build_prompt` notes active catalog vs reference (catalog injection still OD-93).
+
+Blocked (no live ioctl): `/dev/sdb2` live UUID `bc95536f-…` ≠ documented seed `2dcac52c-…`. Chatbot Cozo still `fstorage.img`. Soft-fail keeps door without chatbot. Receipt `reports/identity-replacement/20261001/overnight/20261001T220847Z-continue.md`. SIGNALS updated.
+
+Still owed: wire MutationEngine to digests + `evaluate_mutation`; chatbot physical migration after seed reconciliation; fold overlay into golden; reseal for private markers.
+
+### 2026-10-01T18:40Z · Grok (door UP — court)
+
+
+**Tonic is up.** `10.0.0.2:8090` listening TLS; `/run/opdbus/lungs.sock`, `grpc.sock`, `container.sock` present. Bridge PID stable. Disk 182G free.
+
+Path taken (documented under `reports/identity-replacement/20261001/activation/`):
+1. Activated golden `20261001T112324Z-ae33304` (previous release retained).
+2. Cleared 4.2/4.3 mismatch.
+3. Confirmed then soft-accepted genesis `SCHEMA_CONTENT_HASH` drift (`6949bf…` → expected `70a19e…`).
+4. Soft-failed chatbot container start (Cozo still has `leaf.img`; no loop; owner device is `/dev/sdb2`).
+5. Temporary overlay: `/usr/local/bin/op-grpc-bridge` → `target/release/op-grpc-bridge` sha `5df9f312…`. Rollback: `sudo ln -sfn /opt/op-dbus/current/bin/op-grpc-bridge /usr/local/bin/op-grpc-bridge && sudo sv restart op-grpc-bridge`.
+
+Still owed: rewrite genesis hashes via atomic intent; point Cozo `btrfs_device` at `/dev/sdb2`; start chatbot properly; fold hotfixes into a real golden activation (overlay is temporary). Chatbot container remains stopped. Do not restart OVS/uplink/DHCP/Xray.
+
+### 2026-10-01T18:04Z · Grok (court activation in progress)
+
+Court deadline work. Disk ~182G free throughout.
+
+Done:
+1. Activated golden `20261001T112324Z-ae33304` via btrfs send/receive. Previous `20260930T212601Z-identity-46c8a19` retained. Receipts under `reports/identity-replacement/20261001/activation/` and `/opt/op-dbus/recovery/activation-20261001T112324Z-ae33304/ROLLBACK.txt`.
+2. Version mismatch (4.2 vs 4.3) cleared by activation.
+3. Confirmed tonic blocker: `identity schema content hash drift for 414fbc56-…` (stored `6949bf…`, expected `70a19e…`). Drift accept hotfix in source.
+4. Pending SHM marker cleared (generation 11). Emergency overlay: `/usr/local/bin/op-grpc-bridge` → `target/release/op-grpc-bridge` (rollback in emergency-overlay.txt).
+5. Next crash: chatbot start tries leaf.img loop add; Cozo still has leaf.img, owner device is `/dev/sdb2`. Soft-failing `start_service_identity_containers` so door binds without chatbot container. Rebuild in progress (`cargo` pid in log `/var/tmp/composer25-bridge-diag-20261001.log`).
+
+Still owed after door: rewrite genesis schema_content_hash via atomic intent; point Cozo btrfs_device at `/dev/sdb2`; start chatbot properly; reseal/activate hotfix into a real release (overlay is temporary). Do not restart OVS/uplink/DHCP/Xray. Do not delete previous release.
+
+### 2026-10-01T16:26Z · Grok (bridge has no tonic listen)
+
+Owner is right that lungs belong in the bridge, and that tonic is not up. Live `/opt/op-dbus/current` is still `20260930T212601Z-identity-46c8a19`. The process crash-loops every ~3s on `compiled/sealed state version mismatch for identity_sled: compiled 4.2.0, sealed 4.3.0` after today's seal into SHM. It logs intended `bind_addr=10.0.0.2:8090` / tonic TLS, then exits before bind. Absent: `:8090`, `/run/opdbus/lungs.sock`, `/run/opdbus/grpc.sock`. Golden binary at `/opt/op-dbus/golden/bin/op-grpc-bridge` is newer and not activated. Do not hand-stage that binary; activation is still the golden snapshot/send path.
+
+### 2026-10-01T16:12Z · Grok (calls go through the 3tchedFS mount)
+
+Owner: host calls are writes on the mounted 3tchedFS, not raw `ip`/`ovs-vsctl`. The live mount `/run/mount/3tchedFS` is the sealed catalog only. `plugins/net/operations/apply_interface` and `plugins/ovsdb_bridge/operations/add_port` are schemas. There is no `call` file. A lungs mount needs `--lungs-socket /run/opdbus/lungs.sock` and `--lungs-session`. That socket is still absent because the running bridge exits before it serves lungs. The 15:24Z port restore did not go through the mount.
+
+### 2026-10-01T15:24Z · Grok (3tched and svc0 restored)
+
+Owner could reach `10.0.0.1` and not `10.0.0.2`, and said that path used to connect. `gre-decoy` was already UP (`192.168.255.1/30`, peer `192.168.255.2` answers, routes for `10.0.0.1` and `10.0.0.5–7`). OVS had lost internal ports `3tched` and `svc0`. Restored them without restarting OVS: `3tched` `10.0.0.2/24` and `10.200.0.2/24`, `svc0` `10.0.0.3/24`. `10.0.0.2/32` stays on `gre-decoy`. No service restart.
+
+### 2026-10-01T11:24Z · Grok (golden prepared, not activated)
+
+[Composer 2.5](f95cdc6c-c96c-427c-a563-60f3d4844130) finished the release build, mail bundle, and seal. `build-golden.sh` then stopped because the pinned UI archive was missing. Built that archive (`128` tests passed, `1` skipped) and re-ran golden. Exit 0. Manifest: commit label `ae33304`, build `20261001T112324Z`, 32 binaries, 68 plugins generation 272, subvolume `/opt/op-dbus/golden`. The release binaries include the uncommitted identity device add/remove edits; the manifest commit is HEAD only. `/opt/op-dbus/current` is still `20260930T212601Z-identity-46c8a19`. No snapshot, send, or service restart. 3tchedFS remains mounted at `/run/mount/3tchedFS`.
+
+### 2026-10-01T10:22Z · Grok (3tchedFS view mounted)
+
+Captured the sealed catalog at `/dev/shm/opdbus/plugin-blobs` into view `2a4a11f0d793e640a54a0516aac22564d1e8e3461e701a51f970aa03b13a8897` and mounted it read-only at `/run/mount/3tchedFS` (`allow_other`). Live state directory `/dev/shm/opdbus/state` is absent, so values are schema templates. `/run/opdbus/lungs.sock` is absent because the bridge still exits before it serves lungs, so this is not a lungs mount and `call` files are not on it. Golden preparation is still Composer 2.5's job. Do not unmount this for the golden script.
+
+### 2026-10-01T10:20Z · Grok (Composer 2.5 golden build)
+
+Owner asked for the golden build on Composer 2.5. The earlier release log `/var/tmp/oct1-full-release-20261001.log` stopped at 04:40Z while compiling `op-mcp`. No cargo or rustc process remains. Composer 2.5 resumes one release build, then the mail artifact, seal, and `deploy/runit/build-golden.sh`. Golden preparation does not activate `/opt/op-dbus/current` and does not restart services.
+
+### 2026-10-01T10:07Z · Grok (demo cutoff; device add/remove is in source)
+
+Owner is in a self-represented trial today and will check back. Today is the cutoff from development to demoing. Source now adds the Cozo-registered Btrfs device before container start and on login, and removes it only after the container has stopped. A failed start removes the device again. The single-device mount check is out of the start, repair, and physical-root paths. `/dev/sdb2` replaced the loops. New rootfs subvolumes are noted and were not re-verified. The running bridge is still the old binary and still exits on `verify_dedicated_mount` before `10.0.0.2:8090` binds. This source is not in that binary. Do not ioctl the live seed. Do not start a second Cargo. Do not restart OVS, uplink, DHCP, Xray, or identity containers.
+
+### 2026-10-01T09:58Z · Grok (persistence is the partition, not a mounted loop)
+
+Owner: `/dev/sdb2` replaced the loop devices. Container persistence is the Btrfs device stored in Cozo. It is not mounted on its own. `btrfs device add` joins it to the read-only seed and that is one filesystem. The old shape was loop images (`chatbot/fstorage.img` on `/dev/loop0` at `.../chatbot/persist`, and the jeremy image on `/dev/loop1`, plus per-identity loop views and `leaf.img`). Those mounts are leftovers. Seed partition `/dev/sdb2`, FSID `2dcac52c-fb0b-418a-95a4-cb6eacc80209`. Do not rewrite it while leaves depend on it. The running bridge still exits in `verify_dedicated_mount` because that check requires a mounted filesystem with `num_devices == 1`. That is the loop-image gate. It is not a dependency of `10.0.0.2:8090`.
+
+### 2026-10-01T09:47Z · Grok (op-web disabled for reboot)
+
+Owner will reboot. `op-web` is down: `/etc/runit/sv/op-web/down` is in place and `sv down op-web` was issued. The enable symlink stays so runsv still supervises it, but the run script will not start. Bridge, OVS, uplink, DHCP, and Xray were not restarted. `10.0.0.2:8090` was still closed at disable time because `op-grpc-bridge` exits on the chatbot Btrfs mount check before it binds.
+
+### 2026-10-01T09:42Z · Grok (op-web retirement salvage)
+
+Owner: retire `op-web`; it has not been the live page for weeks. gRPC-Web is already `op-grpc-bridge/src/grpc_web.rs` on `:8090` (`tonic_web`), so `door_proxy.rs` is not part of the salvage. The remaining HTTP adapters are `crates/op-web/src/handlers/tched_router.rs` (`/v1/models`, `/v1/chat/completions`, stream, schema). Agent orchestration stays in `op-chat/src/orchestration`. Do not delete the crate until that router HTTP file has a home. Orchestrator, `/ws`, `/api/chat`, `/api/agents`, privacy, vpn, mail, and groups-admin go with the retirement.
+
+### 2026-10-01T09:40Z · Grok (restore 3tched, 8090 still down)
+
+At 09:34 another session deleted OVS internal port `3tched` and moved `10.0.0.2/24` and `10.200.0.2/24` onto a new internal port `gre-ID`. Restored those addresses on `3tched` and deleted `gre-ID`. Deleted kernel fallbacks `gre0`, `gretap0`, `erspan0`. `gre-decoy`, `wgcf`, `ovsbr0`, `svc0`, `pub0` unchanged. `10.0.0.1` answers over `gre-decoy`. `10.0.0.2:8090` is still closed: `op-grpc-bridge` restarts every few seconds on `mount is not the registered single-writable-device btrfs filesystem`.
+
+### 2026-10-01T09:10Z · Grok (control sockets down)
+
+`10.0.0.2:8080` is closed because `op-web` is still inside `wait_dep op-grpc-bridge` and never execs. The bridge restarts every few seconds and exits with `mount is not the registered single-writable-device btrfs filesystem` after sealing the chatbot sled. Absent: `:8090`, `:8080`, `/run/opdbus/grpc.sock`, `/run/opdbus/container.sock`. Present: session bus, system bus, ghostbridge forwarders, router `127.0.0.1:8084`, Qdrant `10.200.0.2:6334`. The Cozo system graph does not probe sockets.
+
+### 2026-10-01T09:05Z · Grok (GRE check)
+
+Owner could ping `.1` and not `.2` and guessed GRE was down. On this host `gre-decoy` is UP: outer `188.68.58.237` peer `129.80.64.127`, inner `192.168.255.1/30`. Peer `192.168.255.2` answers. `10.0.0.2` is local on this host. OCI CLI: instance `decoy` RUNNING in `us-ashburn-1`, VNIC public `129.80.64.127`, private `10.0.1.17`, security list allows GRE (protocol 47) from `188.68.58.237/32`. No tunnel change.
+
+### 2026-10-01T09:02Z · Grok (identity is router handshake metadata)
+
+Owner: WireGuard handshake is on the router. This server has no identity WireGuard. The host `wgcf` interface is WARP transport, not that handshake. Identity arrives as request metadata, exactly one of SID1 `x-opdbus-sealed-id-bin` or OIA1 `x-oracle-identity-assertion-bin`. `provision_container` creates one stopped container. Two identities share that model: chatbot container 0 (`3tchedCtlBot`); owner identity 1 is the metadata principal, not a second container on this host.
+
+### 2026-10-01T09:00Z · Grok (stop container deletes)
+
+Owner redirected off the container cleanup. Snowball Btrfs is the memory-leak work; `AGENTS.md` and the Cozo system graph (`docs/src/operations/system-graph.md`, `docs/crate-graph/crate-graph.cozo`) are the guide. No further Incus deletes. Already removed, with no backup: human `414fbc56-…`, `414fbc56-archived-20260926`, chatbot archive `…-20260930`, and `i1`. Still present: chatbot `b0c777e3-…` display `3tchedCtlBot` (stopped), archive `…-20260928` (snapshot blocked delete), plus running `mail-3tched`, `qdrant`, `xray`. Seed `/mnt` (`/dev/sdb2`) was not rewritten. `identity-roots` has one volume, the chatbot.
+
+### 2026-10-01T08:56Z · Grok (owner numbering)
+
+Owner: two identities, one Incus container. Chatbot display is `3tchedCtlBot`. That container is number 0. The owner's identity is 1. Every container after that is numbered sequentially (2, 3, …). Live inventory does not match yet: no container `0`/`i0`; stopped `i1` is still the human candidate (display `1`, session `414fbc56-…`); canonical chatbot remains UUID `b0c777e3-…` with display `3tchedCtlBot`, stopped. No rename or delete in this turn.
+
+### 2026-10-01T08:55Z · Grok (chatbot display label)
+
+Owner named the chatbot `3tchedCtlBot`. Set Incus `user.display_name` on canonical `b0c777e3-0955-cd8b-3d01-ca12998cae28` from `3tched-ctl` to `3tchedCtlBot`. Session id, role `chatbot`, and stopped state are unchanged. Archived `…-20260928` still shows `3tched-ctl`. No container start.
+
+### 2026-10-01T03:38Z · Grok (full release build started)
+
+Live `/opt/op-dbus/current` is still the rejected partial release `20260930T212601Z-identity-46c8a19`. Source branch matches origin; only untracked cache-report files are dirty. The holding bridge test passed 5/5 and its compiler was gone. Started the required full GNU release: `CXXFLAGS="-include cstdint" CARGO_INCREMENTAL=0 /usr/bin/cargo build --workspace --release -j1`, log `/var/tmp/oct1-full-release-20261001.log`. It is compiling. No seal, no `build-golden.sh`, no activation yet. Do not start another Cargo.
 
 ### 2026-10-01T00:50Z · Grok (push, then golden activation)
 

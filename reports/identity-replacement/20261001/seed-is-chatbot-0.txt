@@ -1,0 +1,5 @@
+we are going to make this the chatbot. so the alias for the name (wear doing consecutive numberingb satarting a 0 which is tghe chatbot.. so codes (thuisi s the 2nd time =m las ttrime  it was 34 hourw)spoent 12 hours and deloverd nothing but confusion; nex i want you to make this ro by mount -o ro not anyt attributes... (save this paragraph we for git sojething first)
+
+Subject: the seed at /mnt (/dev/sdb2 subvol /@), not a personal or chatbot copy.
+Alias: consecutive numbering starting at 0, and 0 is the chatbot.
+Read-only: mount -o ro only. Do not set a btrfs ro property or other attributes.

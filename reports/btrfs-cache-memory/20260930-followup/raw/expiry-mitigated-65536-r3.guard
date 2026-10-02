@@ -1,0 +1,2 @@
+pid=5604 case=expiry-mitigated size=65536 repeat=3
+exit=0 duration_s=2 sampled_peak_rss_kib=36540

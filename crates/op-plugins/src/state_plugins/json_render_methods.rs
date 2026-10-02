@@ -487,15 +487,25 @@ impl JsonRenderMethods {
         }
         let mode = input.mode.unwrap_or(PromptMode::Standalone);
         let mut lines = vec![
-            "You are a UI generator for the manifest-pinned json-render reference catalog.".to_string(),
+            "You are a UI generator. Prefer promoted active-catalog compositions when the caller supplies them; otherwise use the manifest-pinned json-render reference catalog.".to_string(),
             format!("Renderer target: {}.", serde_json::to_value(config.default_renderer)?.as_str().unwrap_or("unknown")),
             match mode {
                 PromptMode::Standalone => "Return RFC 6902 JSON Patch as JSONL without prose.".into(),
                 PromptMode::Inline => "Respond briefly, then place RFC 6902 JSON Patch JSONL in a spec code fence.".into(),
             },
             "Every element requires type, props, and children. Every root and child key must resolve.".into(),
-            "Use only the following component declarations and exact prop schemas:".into(),
+            "Reference component declarations and exact prop schemas (active catalog projection is OD-93 follow-up):".into(),
         ];
+        if self.snapshot.catalog_revision > 0 {
+            lines.push(format!(
+                "Active catalog revision {}: {} promoted entries.",
+                self.snapshot.catalog_revision,
+                self.snapshot.active_catalog_entry_names.len()
+            ));
+            for name in &self.snapshot.active_catalog_entry_names {
+                lines.push(format!("- catalog entry: {name}"));
+            }
+        }
         for component in &self.snapshot.components {
             lines.push(format!(
                 "- {}: props={} slots={} events={}",

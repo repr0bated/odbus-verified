@@ -1,0 +1,1 @@
+Error: socket parent must be service-owned and not writable by other users

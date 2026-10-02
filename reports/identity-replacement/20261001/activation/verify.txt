@@ -1,0 +1,7 @@
+verify_utc=2026-10-01T18:39:41Z
+bridge=run: op-grpc-bridge: (pid 24333) 17s; run: log: (pid 1116) 31673s
+listen8090=10.0.0.2:8090
+lungs=srw------- 1 root root 0 Oct  1 18:39 /run/opdbus/lungs.sock
+grpc_sock=srw------- 1 root root 0 Oct  1 18:39 /run/opdbus/grpc.sock
+hotfix_sha=5df9f312241656c6510e7e8d24e434cb2ec804b0ad3b73349230d913c7fe6b09
+disk=182G

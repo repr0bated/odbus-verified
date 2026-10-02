@@ -1,0 +1,72 @@
+#!/bin/sh
+# Rescue helper inside the OP-DBUS initramfs.
+# up    — DHCP the first NIC
+# ovs   — throwaway Open vSwitch on /run (dies at switch_root)
+# tools — list what this image added
+
+set -eu
+
+banner() {
+    cat <<'EOF'
+opnet — initramfs toolbox
+  up     DHCP the first NIC (ip, ss, bridge, wg, nft)
+  ovs    start ovsdb-server + ovs-vswitchd and add br-opnet
+  tools  this message
+
+Also on PATH: tcpdump, curl, jq, socat, dhcpcd, ping, btrfs.
+Kernel command line "opnet" runs "up" before the root mount.
+EOF
+}
+
+first_nic() {
+    for n in /sys/class/net/*; do
+        name=${n##*/}
+        [ "$name" = lo ] && continue
+        printf '%s\n' "$name"
+        return 0
+    done
+    return 1
+}
+
+cmd=${1:-tools}
+case "$cmd" in
+    tools)
+        banner
+        ;;
+    up)
+        nic=$(first_nic) || {
+            echo "opnet: no NIC"
+            exit 1
+        }
+        ip link set "$nic" up
+        dhcpcd -b -q "$nic"
+        ip -br addr
+        ;;
+    ovs)
+        mkdir -p /run/openvswitch
+        if [ ! -s /run/openvswitch/conf.db ]; then
+            ovsdb-tool create /run/openvswitch/conf.db \
+                /usr/share/openvswitch/vswitch.ovsschema
+        fi
+        if [ ! -S /run/openvswitch/db.sock ]; then
+            ovsdb-server \
+                --remote=punix:/run/openvswitch/db.sock \
+                --pidfile=/run/openvswitch/ovsdb-server.pid \
+                --detach \
+                /run/openvswitch/conf.db
+        fi
+        if [ ! -f /run/openvswitch/ovs-vswitchd.pid ]; then
+            ovs-vswitchd \
+                --pidfile=/run/openvswitch/ovs-vswitchd.pid \
+                --detach
+        fi
+        if ! ovs-vsctl br-exists br-opnet; then
+            ovs-vsctl add-br br-opnet
+        fi
+        ovs-vsctl show
+        ;;
+    *)
+        banner
+        exit 1
+        ;;
+esac

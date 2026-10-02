@@ -3791,6 +3791,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "nmrs"
+version = "3.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d85b4f3e82a7d5d97bd6db2e37e650f8334f2996bd9c81c7a4b350d4a35be671"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "bitflags 2.13.1",
+ "futures",
+ "futures-timer",
+ "log",
+ "serde",
+ "thiserror 2.0.19",
+ "tokio",
+ "uuid",
+ "zbus",
+ "zvariant",
+]
+
+[[package]]
 name = "no-std-compat"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4279,6 +4299,7 @@ dependencies = [
  "jsonschema",
  "libc",
  "mime_guess",
+ "nmrs",
  "op-cache",
  "op-cognitive-mcp",
  "op-core",

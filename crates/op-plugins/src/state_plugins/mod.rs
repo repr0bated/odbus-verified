@@ -42,6 +42,7 @@ pub mod full_system;
 pub mod gcloud_adc;
 pub mod gemma_brain;
 pub mod ghostbridge;
+pub mod governance_taxonomy;
 pub mod hardware;
 pub mod human_principal;
 pub mod identity_sled;

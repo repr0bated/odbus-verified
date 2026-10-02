@@ -10,7 +10,8 @@
 //! The noise filter is the **sealed plugin schema that created the data**
 //! ([`SchemaProjectionPolicy`]): the embedding text is the method's (or
 //! signal's) schema-described arguments with the descriptions the schema
-//! author wrote, `x-secret` fields dropped, undeclared keys ignored. Hashes,
+//! author wrote, `x-secret` and `x-opdbus-private` fields dropped, undeclared
+//! keys ignored. Hashes,
 //! event ids, raw timestamps and identity metadata stay out of the text and
 //! go to the Qdrant payload as allow-listed filters.
 //!
