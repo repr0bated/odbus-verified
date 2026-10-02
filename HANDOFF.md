@@ -8,6 +8,7 @@ The owner is starting a new session. **Finish the release and identity migration
 
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
+| Composer (Cursor) — ACTIVE | Router `wgdecoy` now uses laptop.conf identity (`4V4Wob4v…`); decoy peer `.9` swapped; handshake+SSH OK | OpenWrt via decoy key auth (no password) | 2026-10-02T15:05Z | Do not restart OVS/uplink/DHCP/Xray. Do not overwrite Grok overnight rows |
 | Grok (Cursor) — ACTIVE overnight | Keep working while owner away: OD-91/93 + genesis refresh done live; chatbot leaf.img still blocked on seed FSID drift; continuing compliance/OpenFlow backlog | identity + json_render + mutation_engine; receipt overnight/ | 2026-10-01T22:04Z | Do not rewrite `/dev/sdb2`. Do not restart OVS/uplink/DHCP/Xray. No second Cargo. Preserve keys/SID1 |
 | Grok (Cursor) — court door done | Activated golden; tonic/lungs up via hotfix overlay | receipt `reports/identity-replacement/20261001/activation/` | 2026-10-01T16:30Z | Overlay rollback documented; do not delete previous release |
 | Composer 2.5 — finished | Golden prepared at `/opt/op-dbus/golden`, build `20261001T112324Z`. Activation claimed by Grok above | log `/var/tmp/composer25-golden-20261001.log` | 2026-10-01T10:20Z | Do not start a competing Cargo |
@@ -24,6 +25,88 @@ The owner is starting a new session. **Finish the release and identity migration
 | Claude (cloud) | OD-94 built and pushed at `d57c497`. Owner asked Grok to finish the uncommitted `set_model_profile` edits in place | branch `claude/amazing-carson-8bg4yr` | 2026-09-29 | Gallery files still Claude's: `json_render_gallery.rs`, `json_render_chat_canvas*.rs` |
 
 ## Handoffs
+
+### 2026-10-02T20:10Z · Haiku (op-cozo-store diagnostic utilities for OD-98)
+
+Completed diagnostic utilities to help resolve chatbot FSID mismatch (OD-98):
+
+- **`list-genesis` binary**: lists identity genesis records and identity_sled sessions to inspect current state
+  - Shows session_id, chain head, catalog hash, and schema content hash for genesis records
+  - Displays Btrfs device JSON for each persisted identity sled
+  - Helps diagnose the FSID drift between documented seed and live device
+
+- **`update-chatbot-fsid` binary**: updates chatbot identity_sled record with correct FSID
+  - Reconciles Cozo btrfs_device_json to match live `/dev/sdb2` (FSID `bc95536f-1d38-46ad-b87e-2637c5c548ec`)
+  - Updates device_path from old loop to `/dev/sdb2`
+  - Marks record inactive to trigger reattach on next container mount
+  - Verifies update succeeded before exiting
+
+- Registered both as binary targets in `crates/op-cozo-store/Cargo.toml`
+- Both compile and test successfully
+
+**Next step**: Owner can run `list-genesis` to inspect current state, then use `update-chatbot-fsid` to reconcile the database with live device. Chatbot container should then start properly and tonic/door should handle both identities. Do not ioctl `/dev/sdb2` directly while container is running.
+
+### 2026-10-02T15:05Z · Composer (router wgdecoy ← laptop.conf)
+
+Owner: apply on the router (key auth, no password), not only host copies.
+
+- Replaced truncated/bad `/etc/wireguard/laptop.conf` on OpenWrt with the good host client conf.
+- UCI `network.wgdecoy` private key now yields pubkey `4V4Wob4v…`; peer still decoy `3wRZU4Be…` @ `129.80.64.127:51821`, `10.0.0.9/32`, AllowedIPs `10.0.0.0/24`.
+- Decoy `wg-opdbus` peer for `.9` swapped from old `sV7uqbIW…` → laptop `4V4Wob4v…`.
+- Verified: handshake, ping `10.0.0.9`, SSH `root@10.0.0.9` from decoy.
+
+
+### 2026-10-02T14:39Z · Composer (SSH 10.0.0.1:2222 — router wgdecoy)
+
+Owner confirmed: SSH `10.0.0.1:2222` reaches this Artix host again.
+
+Root cause was on the **router**, not decoy/GRE/reverse-ssh. Laptop sent traffic to gateway `192.168.1.1`; gateway interface `wgdecoy` (`10.0.0.9`) was deleted every 10 minutes by root cron `/usr/share/wginstaller/wg.sh cleanup_wginterfaces`, which removed any iface matching `wg*` with no IPv6 neighbors (IPv4-only `wgdecoy` always matched). Link-down at :00/:10/:20/:30.
+
+Fix on router: cleanup now only removes dynamic `wg_<port>` interfaces. Backup `/usr/share/wginstaller/wg.sh.bak-pre-wgdecoy`. After patch, `wgdecoy` survives cleanup and SSH works.
+
+Decoy `wg-opdbus` server, reverse `-R 127.0.0.1:2222:127.0.0.1:22`, and GRE were already healthy.
+
+
+### 2026-10-02T07:17Z · Composer (GRE up via OCI boot-volume rescue)
+
+Yes — OCI CLI boot-volume rescue worked (agent/serial did not).
+
+- Launched `gre-rescue`, STOP decoy, detached boot volume, attached as `/dev/sdb` on rescue.
+- On guest FS: masked `strongswan-starter`, disabled `gre-tunnel.conf`, refreshed `gre-host-up`, added iptables ACCEPT GRE from `188.68.58.237`.
+- Reattached boot volume, START decoy, terminated rescue.
+- Verified: `ping 192.168.255.2` 5/5 ~104ms; tcpdump shows GRE request/reply both ways. Host `gre-decoy` remote `129.80.64.127`. Decy SSH open again.
+
+Note: `ping 10.0.0.1` still ~0.07ms via host nft DNAT to local `10.0.0.2` (false healthy); real tunnel proof is `192.168.255.2`.
+
+
+### 2026-10-02T07:08Z · Composer (GRE only)
+
+Owner: focus on plain GRE, ignore IPsec.
+
+Done:
+- Host `gre-decoy` remote restored to `129.80.64.127`; `/32` routes for `10.0.0.1/5–7` restored; `10.0.0.2/32` on gre-decoy.
+- OCI: `skip-source-dest-check=true`; GRE proto 47 ingress from `188.68.58.237/32` present; IGW+route table OK; instance RUNNING after RESET/STOP/START.
+- Host nft already accepts GRE from decoy before reject.
+
+Still broken:
+- GRE TX from host, almost no RX; `192.168.255.2` dead. Decoy `gre-host` not answering (guest). Serial console needs ubuntu password; GRUB catch not completed. Agent run-command stuck ACCEPTED.
+
+Next: serial/GRUB or boot-volume rescue on decoy to ensure `gre-host` = remote `188.68.58.237` local `10.0.1.17` addr `192.168.255.2/30`. Do not restart OVS/uplink/DHCP/Xray.
+
+
+### 2026-10-02T06:38Z · Composer (IPsec/GRE diagnose)
+
+Owner asked to troubleshoot IPsec/GRE. No live fix applied.
+
+Root cause (host):
+1. Live `gre-decoy` remote is **10.0.1.17** (OCI VNIC private). Run script and design expect **129.80.64.127**. tcpdump: GRE egress to 10.0.1.17 only; RX=0; peer 192.168.255.2 dead.
+2. `/etc/ipsec.d/gre-tunnel.conf` (born today 05:43Z, edited 06:33Z) sets `right=10.0.1.17`, PSK auth, `auto=start`. SAs stuck CONNECTING; **no XFRM state/policy**. Design is plain GRE (proto 47); IPsec is not required and is mis-aimed at the private IP.
+3. Host routes `10.0.0.1/5–7 via gre-decoy` are missing; traffic stays on `3tched` /24. nft DNAT `10.0.0.1 → 10.0.0.2` makes ping to `.1` look healthy (false positive).
+
+Decoy path: SSH/TCP/ICMP to `129.80.64.127` all timeout from this host right now. Earlier IKE SA #5 had a responder SPI from that IP then stuck at IKE_AUTH — decoy reachability itself may also be broken.
+
+Next (needs owner OK): restore GRE remote to 129.80.64.127 + reinstate /32 routes from run script; stop or correct strongswan gre-tunnel (prefer stop — owner topology is unencrypted GRE); then re-check peer ping and decoy SSH. Do not restart OVS/uplink/DHCP/Xray.
+
 
 ### 2026-10-02T00:43Z · Grok (OpenFlow OD-06 prep)
 
