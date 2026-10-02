@@ -21,5 +21,13 @@ op-identity = { path = "../op-identity" }
 name = "identity-sled-bind"
 path = "src/bin/identity_sled_bind.rs"
 
+[[bin]]
+name = "list-genesis"
+path = "src/bin/list-genesis.rs"
+
+[[bin]]
+name = "update-chatbot-fsid"
+path = "src/bin/update-chatbot-fsid.rs"
+
 [dev-dependencies]
 tempfile = { workspace = true }

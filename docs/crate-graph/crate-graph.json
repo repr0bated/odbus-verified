@@ -49,6 +49,14 @@
       }
     },
     {
+      "id": "bin:list-genesis",
+      "label": "bin",
+      "props": {
+        "crate": "op-cozo-store",
+        "src": "crates/op-cozo-store/src/bin/list-genesis.rs"
+      }
+    },
+    {
       "id": "bin:list_tools_client",
       "label": "bin",
       "props": {
@@ -265,6 +273,14 @@
       }
     },
     {
+      "id": "bin:update-chatbot-fsid",
+      "label": "bin",
+      "props": {
+        "crate": "op-cozo-store",
+        "src": "crates/op-cozo-store/src/bin/update-chatbot-fsid.rs"
+      }
+    },
+    {
       "id": "crate:op-agents",
       "label": "crate",
       "props": {
@@ -411,11 +427,13 @@
         "description": "",
         "bins": [
           "identity-sled-bind",
-          "system_graph_inventory"
+          "list-genesis",
+          "system_graph_inventory",
+          "update-chatbot-fsid"
         ],
         "has_lib": true,
-        "rs_files": 19,
-        "loc": 14978,
+        "rs_files": 21,
+        "loc": 15097,
         "tests": 104,
         "unsafe_refs": 3,
         "todo": 2,
@@ -1969,8 +1987,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-02T03:22:42Z",
-        "commit": "47dc269bca915f10f302ba625db584964a6d2c16",
+        "generated_at": "2026-10-02T20:20:30Z",
+        "commit": "d5f48548e3a55ada1276dc93e17f74358341c687",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -4590,12 +4608,30 @@
       }
     },
     {
+      "id": "mod:crates/op-cozo-store/src/bin/list-genesis.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "bin",
+        "loc": 43
+      }
+    },
+    {
       "id": "mod:crates/op-cozo-store/src/bin/system_graph_inventory.rs",
       "label": "module",
       "props": {
         "crate": "op-cozo-store",
         "kind": "bin",
         "loc": 6
+      }
+    },
+    {
+      "id": "mod:crates/op-cozo-store/src/bin/update-chatbot-fsid.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "bin",
+        "loc": 76
       }
     },
     {
@@ -11255,6 +11291,12 @@
       "props": {}
     },
     {
+      "src": "bin:list-genesis",
+      "rel": "bin_entry",
+      "dst": "mod:crates/op-cozo-store/src/bin/list-genesis.rs",
+      "props": {}
+    },
+    {
       "src": "bin:list_tools_client",
       "rel": "bin_entry",
       "dst": "mod:crates/op-chat/src/bin/list_tools_client.rs",
@@ -11414,6 +11456,12 @@
       "src": "bin:threetched-fs",
       "rel": "bin_entry",
       "dst": "mod:crates/threetched-fs/src/main.rs",
+      "props": {}
+    },
+    {
+      "src": "bin:update-chatbot-fsid",
+      "rel": "bin_entry",
+      "dst": "mod:crates/op-cozo-store/src/bin/update-chatbot-fsid.rs",
       "props": {}
     },
     {
@@ -14987,7 +15035,19 @@
     {
       "src": "crate:op-cozo-store",
       "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/bin/list-genesis.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
       "dst": "mod:crates/op-cozo-store/src/bin/system_graph_inventory.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/bin/update-chatbot-fsid.rs",
       "props": {}
     },
     {
@@ -15085,7 +15145,19 @@
     {
       "src": "crate:op-cozo-store",
       "rel": "provides_bin",
+      "dst": "bin:list-genesis",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "provides_bin",
       "dst": "bin:system_graph_inventory",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "provides_bin",
+      "dst": "bin:update-chatbot-fsid",
       "props": {}
     },
     {
