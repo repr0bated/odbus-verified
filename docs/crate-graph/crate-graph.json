@@ -1969,8 +1969,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-02T03:19:57Z",
-        "commit": "ae33304aa829e46b3695f0ca9d211f8d0bd8484a",
+        "generated_at": "2026-10-02T03:22:42Z",
+        "commit": "47dc269bca915f10f302ba625db584964a6d2c16",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [

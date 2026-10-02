@@ -157,7 +157,7 @@ impl GovernanceTaxonomy {
                 id: "state.read".to_string(),
                 name: "State Read".to_string(),
                 description: "Read identity state and Cozo sled".to_string(),
-                operations: ["lungs.call_read", "cozo.query".to_string()]
+                operations: ["lungs.call_read".to_string(), "cozo.query".to_string()]
                     .iter()
                     .cloned()
                     .collect(),
@@ -173,7 +173,7 @@ impl GovernanceTaxonomy {
                 id: "state.write".to_string(),
                 name: "State Write".to_string(),
                 description: "Mutate identity state and Cozo sled".to_string(),
-                operations: ["lungs.call_write", "cozo.mutate".to_string()]
+                operations: ["lungs.call_write".to_string(), "cozo.mutate".to_string()]
                     .iter()
                     .cloned()
                     .collect(),
