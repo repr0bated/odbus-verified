@@ -19,6 +19,24 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let config = ServerConfig::from_env();
+
+    // Validate model-providers.toml at startup to catch config errors early
+    if let Ok(env_str) = std::env::var("MODEL_PROVIDERS_PATH") {
+        if let Ok(toml_str) = std::fs::read_to_string(&env_str) {
+            if let Ok(providers) = toml::from_str::<
+                op_plugins::state_plugins::model_registry::ProvidersFile,
+            >(&toml_str)
+            {
+                if let Err(e) =
+                    model_providers_validation::validate_providers_config(&providers.providers)
+                {
+                    tracing::error!(error = %e, "Model providers configuration validation failed");
+                    return Err(e);
+                }
+            }
+        }
+    }
+
     tracing::info!(
         plugin_id = %config.plugin_id,
         schema_path = %config.schema_path.display(),
