@@ -143,17 +143,17 @@ pub enum ResponseContent {
 pub struct ChatTurn {
     #[schemars(
         description = "Human principal whose private scope holds this turn [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub principal_id: String,
     #[schemars(
         description = "Verified human session that asked (provenance only; the scope is the principal) [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub session_id: String,
     #[schemars(
         description = "Genesis of the asking session (provenance only) [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub session_genesis: String,
     #[schemars(
@@ -235,7 +235,7 @@ pub struct ChatTurn {
 pub struct ConversationSummary {
     #[schemars(
         description = "Human principal that owns the conversation [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub principal_id: String,
     #[schemars(
@@ -256,12 +256,12 @@ pub struct ConversationSummary {
     pub started_at: String,
     #[schemars(
         description = "Verified session that started the conversation (provenance only) [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub session_id: String,
     #[schemars(
         description = "Genesis of the starting session (provenance only) [PII]",
-        extend("readOnly" = true)
+        extend("readOnly" = true, "x-opdbus-private" = true)
     )]
     pub session_genesis: String,
     #[schemars(

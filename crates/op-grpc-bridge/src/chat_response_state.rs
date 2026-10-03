@@ -16,13 +16,13 @@ use op_plugins::state_plugins::{
     chat_response_methods::{validate_conversation, validate_turn},
 };
 use op_state_store::PluginSchema;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use tokio::sync::{Mutex, broadcast};
+use tokio::sync::{broadcast, Mutex};
 
 use crate::{
     method_contract_admission,
-    sealed_schema_reader::{ManifestPinnedSchemaDocument, read_manifest_pinned_schema_document},
+    sealed_schema_reader::{read_manifest_pinned_schema_document, ManifestPinnedSchemaDocument},
 };
 
 pub(crate) const PLUGIN: &str = op_plugins::state_plugins::chat_response::PLUGIN_ID;
@@ -73,7 +73,7 @@ pub(crate) fn emqx_doorbell() -> Doorbell {
 pub(crate) struct ChatResponsePublisher {
     root: PrivateProjectionDirectory,
     catalog: PathBuf,
-    operation: Arc<Mutex<()>>,
+    operation: Arc<Mutex<BTreeMap<String, Arc<Mutex<()>>>>>,
     wakes: broadcast::Sender<String>,
     doorbell: std::sync::OnceLock<Doorbell>,
 }
@@ -243,7 +243,7 @@ impl ChatResponsePublisher {
         Self {
             root,
             catalog,
-            operation: Arc::new(Mutex::new(())),
+            operation: Arc::new(Mutex::new(BTreeMap::new())),
             wakes,
             doorbell: std::sync::OnceLock::new(),
         }
@@ -299,7 +299,18 @@ impl ChatResponsePublisher {
         store: Arc<CozoGraphShuttle>,
         principal_id: &str,
     ) -> Result<ChatEffect> {
-        let operation = self.operation.clone().lock_owned().await;
+        let owner_key = owner_key(principal_id);
+        let owner_lock = {
+            let mut locks = self
+                .operation
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner());
+            locks
+                .entry(owner_key.clone())
+                .or_insert_with(|| Arc::new(Mutex::new(())))
+                .clone()
+        };
+        let operation = owner_lock.lock_owned().await;
         let publisher = self.clone();
         let principal = principal_id.to_string();
         let asker = Arc::new(std::sync::Mutex::new(None));

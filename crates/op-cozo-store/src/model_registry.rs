@@ -415,7 +415,9 @@ impl CozoGraphShuttle {
         let tx = self.db.multi_transaction(true);
         let value = body(&tx)?;
         commit_checked(&tx)?;
-        self.sync_runtime_document_store()?;
+        if let Err(e) = self.sync_runtime_document_store() {
+            tracing::warn!("model registry sync after commit failed: {}", e);
+        }
         Ok(value)
     }
 
@@ -448,6 +450,11 @@ impl CozoGraphShuttle {
                 .find(|row| row.provider_id == provider_id);
             let counts = match listed {
                 Ok(models) => {
+                    if models.is_empty() && !existing.is_empty() {
+                        return Err(error(
+                            "provider returned empty model list but previously had models"
+                        ));
+                    }
                     let known: BTreeMap<&str, &RegistryModelRecord> = existing
                         .iter()
                         .map(|row| (row.model.model_id.as_str(), row))

@@ -199,21 +199,26 @@ impl ProviderConfig {
 
     /// Use the default binding only when no alternative wire profile was
     /// recorded. An unmapped alternative must not silently use another API.
-    pub fn native_provider_id_for_model(&self, recorded: Option<&str>) -> Option<&str> {
+    pub fn native_provider_id_for_model(&self, recorded: Option<&str>) -> Option<String> {
         match recorded {
-            None => self.native_provider_id.as_deref(),
+            None => self
+                .native_provider_id
+                .clone()
+                .or_else(|| Self::derived_native_provider_id(&self.id)),
             Some(profile)
                 if self
                     .control_plane
                     .as_ref()
                     .is_some_and(|routing| routing.profile == profile) =>
             {
-                self.native_provider_id.as_deref()
+                self.native_provider_id
+                    .clone()
+                    .or_else(|| Self::derived_native_provider_id(&self.id))
             }
             Some(profile) => self
                 .native_profile_overrides
                 .get(profile)
-                .map(String::as_str),
+                .map(String::clone),
         }
     }
 

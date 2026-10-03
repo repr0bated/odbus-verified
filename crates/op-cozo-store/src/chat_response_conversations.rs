@@ -789,6 +789,30 @@ impl CozoGraphShuttle {
         })
     }
 
+    pub fn count_principal_conversations(
+        &self,
+        principal_id: &str,
+    ) -> std::result::Result<usize, CozoError> {
+        validate_principal(principal_id)?;
+        let _guard = self
+            .episode_transaction
+            .lock()
+            .map_err(|_| error("chat_response owner is poisoned"))?;
+        let tx = self.db.multi_transaction(false);
+        let rows = tx
+            .query(
+                "?[count(c)] := chat_conversation{principal_id, c}",
+                vec![(":principal_id".to_string(), principal_id.into())],
+            )
+            .map_err(|e| error(&format!("count conversations query failed: {}", e)))?;
+        if let Some(row) = rows.rows.first() {
+            if let Some(cozo::Value::Int(count)) = row.first() {
+                return Ok(*count as usize);
+            }
+        }
+        Ok(0)
+    }
+
     /// The newest `limit` turns of one conversation, ascending, byte bounded.
     pub fn list_chat_turns(
         &self,
@@ -929,44 +953,38 @@ mod tests {
             assert_eq!((first.turn_index, first.revision), (0, 2));
             assert_eq!(first.prev_turn_hash, hash('0'));
             // The same turn cannot be answered twice, even at the new head.
-            assert!(
-                store
-                    .insert_chat_turn_and_snapshot(
-                        "alice",
-                        "c1",
-                        "t1",
-                        1,
-                        &draft("alice", "t1", hash('2')),
-                        8,
-                        8,
-                    )
-                    .is_err()
-            );
+            assert!(store
+                .insert_chat_turn_and_snapshot(
+                    "alice",
+                    "c1",
+                    "t1",
+                    1,
+                    &draft("alice", "t1", hash('2')),
+                    8,
+                    8,
+                )
+                .is_err());
             // A stale index (not the head) is refused.
-            assert!(
-                store
-                    .insert_chat_turn_and_snapshot(
-                        "alice",
-                        "c1",
-                        "t2",
-                        0,
-                        &draft("alice", "t2", hash('2')),
-                        8,
-                        8,
-                    )
-                    .is_err()
-            );
+            assert!(store
+                .insert_chat_turn_and_snapshot(
+                    "alice",
+                    "c1",
+                    "t2",
+                    0,
+                    &draft("alice", "t2", hash('2')),
+                    8,
+                    8,
+                )
+                .is_err());
             // A draft that disagrees with the head it was given is refused.
             let wrong_prev = |head: &ChatConversationRecord, revision| {
                 let mut draft = draft("alice", "t2", hash('2'))(head, revision)?;
                 draft.turn["prev_turn_hash"] = serde_json::json!(hash('9'));
                 Ok(draft)
             };
-            assert!(
-                store
-                    .insert_chat_turn_and_snapshot("alice", "c1", "t2", 1, &wrong_prev, 8, 8)
-                    .is_err()
-            );
+            assert!(store
+                .insert_chat_turn_and_snapshot("alice", "c1", "t2", 1, &wrong_prev, 8, 8)
+                .is_err());
             let (second, snapshot) = store
                 .insert_chat_turn_and_snapshot(
                     "alice",
@@ -1003,12 +1021,10 @@ mod tests {
             .unwrap();
         assert_eq!((head.turn_count, window.turns.len()), (2, 2));
         assert_eq!(window.turns[1].turn_hash, head.head_turn_hash);
-        assert!(
-            store
-                .get_chat_conversation_with_turns("bob", "c1", 10)
-                .unwrap()
-                .is_none()
-        );
+        assert!(store
+            .get_chat_conversation_with_turns("bob", "c1", 10)
+            .unwrap()
+            .is_none());
         let listed = store.list_chat_conversations("alice", 10).unwrap();
         assert_eq!(listed.conversation_count, 1);
         assert_eq!(listed.conversations[0].turn_count, 2);
@@ -1034,46 +1050,40 @@ mod tests {
             .unwrap();
         assert!(store.get_chat_conversation("bob", "c1").unwrap().is_none());
         assert!(store.get_chat_turn("bob", "t1").unwrap().is_none());
-        assert!(
-            store
-                .list_chat_turns("bob", "c1", 10)
-                .unwrap()
-                .turns
-                .is_empty()
-        );
+        assert!(store
+            .list_chat_turns("bob", "c1", 10)
+            .unwrap()
+            .turns
+            .is_empty());
         let bob = store.snapshot_chat_responses("bob", 8, 8).unwrap();
         assert_eq!(
             (bob.conversation_count, bob.turn_count, bob.revision),
             (0, 0, 0)
         );
         // Bob cannot append into Alice's conversation through his own scope.
-        assert!(
-            store
-                .insert_chat_turn_and_snapshot(
-                    "bob",
-                    "c1",
-                    "t9",
-                    1,
-                    &draft("bob", "t9", hash('9')),
-                    8,
-                    8,
-                )
-                .is_err()
-        );
+        assert!(store
+            .insert_chat_turn_and_snapshot(
+                "bob",
+                "c1",
+                "t9",
+                1,
+                &draft("bob", "t9", hash('9')),
+                8,
+                8,
+            )
+            .is_err());
         // A draft naming another principal is refused by the key check.
-        assert!(
-            store
-                .insert_chat_turn_and_snapshot(
-                    "alice",
-                    "c1",
-                    "t9",
-                    1,
-                    &draft("bob", "t9", hash('9')),
-                    8,
-                    8,
-                )
-                .is_err()
-        );
+        assert!(store
+            .insert_chat_turn_and_snapshot(
+                "alice",
+                "c1",
+                "t9",
+                1,
+                &draft("bob", "t9", hash('9')),
+                8,
+                8,
+            )
+            .is_err());
     }
 
     #[test]

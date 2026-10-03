@@ -8,7 +8,7 @@
 use super::chat_response::{
     ChatTurn, ConversationSummary, MessageType, RefusalCategory, ResponseContent,
 };
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -684,13 +684,12 @@ pub fn verify_turn_chain(
         );
         expected_prev = Some(turn.turn_hash.as_str());
     }
-    if first_index + turns.len() as u64 == conversation.turn_count {
-        ensure!(
-            expected_prev == Some(conversation.head_turn_hash.as_str())
-                || (turns.is_empty() && first_index != 0),
-            "turn chain does not end at the conversation head"
-        );
-    }
+    ensure!(
+        first_index + turns.len() as u64 == conversation.turn_count
+            && (expected_prev == Some(conversation.head_turn_hash.as_str())
+                || (turns.is_empty() && first_index != 0)),
+        "turn window does not end at the conversation head"
+    );
     Ok(())
 }
 

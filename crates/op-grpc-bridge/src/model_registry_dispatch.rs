@@ -329,7 +329,7 @@ pub(crate) async fn refresh(
         let listed = result.map_err(|error| bounded_error(&format!("{error:#}")));
         let failure = listed.as_ref().err().cloned();
         let (store, id, when) = (store.clone(), provider.id.clone(), at.clone());
-        let (counts, next) = blocking(move || {
+        let record_result = blocking(move || {
             store
                 .record_model_registry_refresh(
                     &id,
@@ -338,7 +338,15 @@ pub(crate) async fn refresh(
                 )
                 .map_err(cozo)
         })
-        .await?;
+        .await;
+        let (counts, next) = match record_result {
+            Ok((counts, revision)) => (counts, revision),
+            Err(error) => {
+                tracing::error!(%error, provider_id = %provider.id, "model registry refresh store error");
+                failure.get_or_insert_with(|| format!("store error: {error}"));
+                (op_cozo_store::RefreshCounts::default(), revision)
+            }
+        };
         revision = next;
         providers.push(ProviderRefresh {
             provider_id: provider.id.clone(),
@@ -457,13 +465,8 @@ fn model_record(
     ModelRecord {
         provider_id: row.provider_id,
         model_id: row.model.model_id,
-        native_provider_id: provider.and_then(|provider| {
-            provider.effective_native_provider_id().or_else(|| {
-                provider
-                    .native_provider_id_for_model(recorded)
-                    .map(str::to_string)
-            })
-        }),
+        native_provider_id: provider
+            .and_then(|provider| provider.native_provider_id_for_model(recorded)),
         inference_url_prefix: provider.and_then(|provider| provider.inference_url_prefix.clone()),
         name: row.model.name,
         context_length: row.model.context_length,
@@ -487,14 +490,11 @@ pub(crate) async fn list_models(
     let file = load_providers(env)?;
     let limit = page_limit(input.limit)?;
     let provider = input.provider_id.clone();
-    let store_for_profiles = Arc::clone(&store);
     let (rows, profiles, revision) = blocking(move || {
         let (rows, revision) = store
             .list_model_registry_models(provider.as_deref())
             .map_err(cozo)?;
-        let profiles = store_for_profiles
-            .list_model_registry_profiles()
-            .map_err(cozo)?;
+        let profiles = store.list_model_registry_profiles().map_err(cozo)?;
         Ok((rows, profiles, revision))
     })
     .await?;
@@ -504,8 +504,15 @@ pub(crate) async fn list_models(
         .collect();
     let query = input.query.as_deref().map(str::to_lowercase);
     let include_unavailable = input.include_unavailable.unwrap_or(false);
+    let configured_providers: std::collections::HashSet<&str> = file
+        .providers
+        .iter()
+        .filter(|p| p.enabled.unwrap_or(true))
+        .map(|p| p.id.as_str())
+        .collect();
     let mut models: Vec<ModelRecord> = rows
         .into_iter()
+        .filter(|row| configured_providers.contains(row.provider_id.as_str()))
         .filter(|row| include_unavailable || row.available)
         .filter(|row| match &input.after {
             Some(after) => {

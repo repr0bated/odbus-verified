@@ -32,15 +32,18 @@ echo "STEP 2: Gathering System Data"
 echo "---"
 
 echo "Getting seed generation..."
-seed_generation=$(sudo btrfs filesystem show /dev/sdb2 2>/dev/null | grep -i generation | head -1 | awk '{print $NF}' || echo "UNKNOWN")
+seed_generation=$(sudo btrfs filesystem show /dev/sdb2 2>/dev/null | grep -i generation | head -1 | awk '{print $NF}' | head -1)
+[[ -z $seed_generation ]] && seed_generation="0"
 echo "Seed generation: $seed_generation"
 
 echo "Getting pool source..."
-pool_source=$(sudo incus profile show default 2>/dev/null | jq -r '.devices.root.source // "UNKNOWN"' || echo "UNKNOWN")
+pool_source=$(sudo incus profile show default 2>/dev/null | jq -r '.devices.root.source // ""' 2>/dev/null)
+[[ -z $pool_source ]] && pool_source="unknown"
 echo "Pool source: $pool_source"
 
 echo "Getting guest subvolume ID..."
-guest_subvolume_id=$(sudo btrfs subvolume list /var/lib/opdbus-runtime/identity-leaves/ 2>/dev/null | grep "leaf.img" | awk '{print $2}' || echo "UNKNOWN")
+guest_subvolume_id=$(sudo btrfs subvolume list /var/lib/opdbus-runtime/identity-leaves/ 2>/dev/null | grep "leaf.img" | awk '{print $2}' | head -1)
+[[ -z $guest_subvolume_id ]] && guest_subvolume_id="0"
 echo "Guest subvolume ID: $guest_subvolume_id"
 
 echo "Getting Incus instance JSON..."
@@ -81,6 +84,10 @@ sudo tee "$PLAN_FILE" > /dev/null << EOF
   "instance": $instance_json
 }
 EOF
+
+if ! jq . "$PLAN_FILE" > /dev/null 2>&1; then
+  die "Generated migration plan is not valid JSON; check system data gathering above"
+fi
 
 echo "Migration plan created at: $PLAN_FILE"
 

@@ -12,16 +12,16 @@ use anyhow::{Context, Result};
 use op_cozo_store::{ChatConversationRecord, ChatTurnDraft, CozoError, EpisodeScope};
 use op_plugins::state_plugins::{
     chat_response::{
-        ChatTurn, ConversationSummary, RESPOND_CAPABILITY, RESPONSE_COMMITTED_SIGNAL,
-        ResponseCommittedSignal, ResponseContent,
+        ChatTurn, ConversationSummary, ResponseCommittedSignal, ResponseContent,
+        RESPOND_CAPABILITY, RESPONSE_COMMITTED_SIGNAL,
     },
     chat_response_methods::{
-        CannotPerformInput, GetConversationInput, GetConversationOutput, GetTurnResponseInput,
-        GetTurnResponseOutput, ListConversationsInput, ListConversationsOutput, NewConversation,
-        NewTurn, RequestClarificationInput, RespondToUserInput, RespondToUserOutput,
-        ResponseCommitOutput, StartConversationInput, StartConversationOutput, build_conversation,
-        build_turn, validate_conversation, validate_title, validate_turn, validate_uuid,
-        verify_turn_chain,
+        build_conversation, build_turn, validate_conversation, validate_title, validate_turn,
+        validate_uuid, verify_turn_chain, CannotPerformInput, GetConversationInput,
+        GetConversationOutput, GetTurnResponseInput, GetTurnResponseOutput, ListConversationsInput,
+        ListConversationsOutput, NewConversation, NewTurn, RequestClarificationInput,
+        RespondToUserInput, RespondToUserOutput, ResponseCommitOutput, StartConversationInput,
+        StartConversationOutput,
     },
     json_render::canvas_profile::PinnedCanvasValidator,
 };
@@ -29,7 +29,7 @@ use op_state_store::PluginSchema;
 
 use crate::{
     chat_response_state::{
-        CONVERSATION_SNAPSHOT_LIMIT, DoorbellWake, PLUGIN, TURN_SNAPSHOT_LIMIT, owner_key,
+        owner_key, DoorbellWake, CONVERSATION_SNAPSHOT_LIMIT, PLUGIN, TURN_SNAPSHOT_LIMIT,
     },
     chat_response_turns::{TurnClaim, TurnOwner},
     interceptor::load_capability_grants,
@@ -47,6 +47,8 @@ mod tests;
 const LIST_LIMIT: usize = 100;
 /// Turns returned by `get_conversation` (newest window, ascending).
 const TURN_PAGE_LIMIT: usize = 100;
+/// Maximum durable conversations per principal to prevent quota abuse.
+const MAX_CONVERSATIONS_PER_PRINCIPAL: usize = 10000;
 const RENDERER: &str = "json_render";
 
 /// The admitted method call's own global chain event, recorded before
@@ -432,6 +434,23 @@ async fn start_conversation(
     input: StartConversationInput,
 ) -> Result<StartConversationOutput> {
     validate_title(input.title.as_deref())?;
+    let store = engine.chat_response_cozo().await?;
+    let principal = caller.principal_id.clone();
+    let count = tokio::task::spawn_blocking({
+        let store = store.clone();
+        let principal = principal.clone();
+        move || {
+            store
+                .count_principal_conversations(&principal)
+                .map_err(Into::into)
+        }
+    })
+    .await??;
+    anyhow::ensure!(
+        count < MAX_CONVERSATIONS_PER_PRINCIPAL,
+        "conversation quota ({}) exceeded for principal",
+        MAX_CONVERSATIONS_PER_PRINCIPAL
+    );
     // The bridge mints the id; UUIDv7 orders conversations by start time.
     let conversation_id = uuid::Uuid::now_v7().to_string();
     let started_at = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
@@ -451,12 +470,11 @@ async fn start_conversation(
         revision: 0,
         conversation: serde_json::to_value(&summary)?,
     };
-    let store = engine.chat_response_cozo().await?;
     let publisher = engine.chat_response_publisher()?.clone();
     let effect = publisher.admit(store.clone(), &caller.principal_id).await?;
     revalidate_boundary(engine, method, caller, admitted, pin).await?;
-    publisher
-        .commit(effect, move || {
+    let ((_, snapshot), published) = publisher
+        .commit_reporting(effect, move || {
             store
                 .insert_chat_conversation_and_snapshot(
                     &record,
@@ -466,6 +484,12 @@ async fn start_conversation(
                 .map_err(Into::into)
         })
         .await?;
+    if !published {
+        tracing::debug!(
+            conversation_id = %conversation_id,
+            "conversation created durably but private state pending recovery"
+        );
+    }
     Ok(StartConversationOutput {
         conversation_id,
         started_at,
@@ -579,6 +603,11 @@ pub(crate) async fn commit_human_turn(
 ) -> Result<ChatTurn> {
     let content = ResponseContent::HumanMessage { message };
     op_plugins::state_plugins::chat_response_methods::validate_content(&content)?;
+    anyhow::ensure!(
+        crate::interceptor::load_capability_grants(&owner.principal_id)
+            .contains(op_plugins::state_plugins::chat_response::READ_CAPABILITY),
+        "human must hold chat_response.read to append a message"
+    );
     let store = engine.chat_response_cozo().await?;
     let head_store = store.clone();
     let principal = owner.principal_id.clone();
@@ -774,12 +803,12 @@ async fn commit_turn(
         },
     )
     .await;
-    anyhow::ensure!(
-        published,
-        "chat_response turn {} committed durably and announced, but its private state \
-         is pending recovery; recovery republishes it and rings the asking session",
-        turn.turn_id
-    );
+    if !published {
+        tracing::debug!(
+            turn_id = %turn.turn_id,
+            "chat_response turn committed durably and announced, but private state pending recovery"
+        );
+    }
     Ok((turn, snapshot.revision))
 }
 

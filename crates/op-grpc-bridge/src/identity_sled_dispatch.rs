@@ -249,20 +249,13 @@ fn record_to_sled(
         head_timestamp_at_arrival: 0,
     };
     if let Some(genesis) = genesis {
-        // Court-deadline unlock (2026-10-01): genesis rows still carry the pre-4.3.0
-        // SCHEMA_CONTENT_HASH. Refusing here leaves SHM credential_pending and tonic
-        // never binds. Accept the durable genesis and warn; a later atomic intent
-        // must refresh schema_content_hash. Revert this once genesis is rewritten.
-        if !(genesis.schema_content_hash.is_empty()
-            || genesis.schema_content_hash == SCHEMA_CONTENT_HASH.trim())
-        {
-            tracing::warn!(
-                session_id = %record.session_id,
-                stored = %genesis.schema_content_hash,
-                expected = %SCHEMA_CONTENT_HASH.trim(),
-                "identity schema content hash drift accepted for bridge startup"
-            );
-        }
+        anyhow::ensure!(
+            genesis.schema_content_hash.is_empty()
+                || genesis.schema_content_hash == SCHEMA_CONTENT_HASH.trim(),
+            "identity genesis row schema_content_hash mismatch: stored={} expected={}",
+            genesis.schema_content_hash,
+            SCHEMA_CONTENT_HASH.trim()
+        );
         sled.arrival_timestamp = genesis.arrival_timestamp;
         sled.chain_head_at_arrival = genesis.chain_head_at_arrival.clone();
         sled.catalog_hash_at_arrival = genesis.catalog_hash_at_arrival.clone();
@@ -1480,15 +1473,10 @@ pub(crate) async fn start_service_identity_containers(
     match activate_session(engine, &session_id).await {
         Ok(_) => Ok(1),
         Err(error) => {
-            // Court-deadline unlock (2026-10-01): chatbot leaf.img has no live
-            // loop and Cozo still points at that image instead of /dev/sdb2.
-            // Do not keep tonic/lungs down for a stopped chatbot start failure.
-            tracing::error!(
-                %session_id,
-                error = %format!("{error:#}"),
-                "control-plane chatbot container failed to start; continuing without it"
-            );
-            Ok(0)
+            anyhow::bail!(
+                "control-plane chatbot container failed to start: {:#}",
+                error
+            )
         }
     }
 }

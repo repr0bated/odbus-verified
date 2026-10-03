@@ -20,11 +20,11 @@ use crate::{
     chat_response_state::DoorbellWake,
     chat_response_turns::TurnOwner,
     human_principal_dispatch::tests::{
-        TempCozo, TempShm, pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
+        pk, register, temp_cozo, temp_shm_with_schemas, test_engine, TempCozo, TempShm,
     },
     identity_sled_dispatch::{
-        IdentitySledStore,
         tests::{write_identity, write_second_session},
+        IdentitySledStore,
     },
 };
 
@@ -275,11 +275,9 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
     // Only a verified human's own conversation, answered by a holder of the
     // respond grant other than that human, can have a turn, and a refused
     // turn records nothing.
-    assert!(
-        ask(&f, &f.human, &conversation, PRIVATE_QUESTION, &f.human)
-            .await
-            .is_err()
-    );
+    assert!(ask(&f, &f.human, &conversation, PRIVATE_QUESTION, &f.human)
+        .await
+        .is_err());
     assert!(
         ask(&f, &f.other, &conversation, PRIVATE_QUESTION, &f.agent)
             .await
@@ -335,12 +333,11 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
     let refused = error_of(call(&f, &f.agent, "respond_to_user", invalid).await);
     assert!(refused.contains("canvas rejected"), "{refused}");
     assert!(f.engine.chat_turns().is_open(&turn.turn_id));
-    assert!(
-        f.store
-            .get_chat_turn(&f.human.principal, &turn.turn_id)
-            .unwrap()
-            .is_none()
-    );
+    assert!(f
+        .store
+        .get_chat_turn(&f.human.principal, &turn.turn_id)
+        .unwrap()
+        .is_none());
 
     let committed = call(&f, &f.agent, "respond_to_user", respond(PRIVATE_MESSAGE))
         .await
