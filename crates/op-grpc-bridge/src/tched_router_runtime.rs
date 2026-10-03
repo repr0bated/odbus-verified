@@ -1237,7 +1237,7 @@ impl TchedRouterRuntimeClient {
             });
             for (model, live) in observed_models {
                 routes.push(ModelRoute {
-                    hint: "runtime".to_string(),
+                    hint: RUNTIME_HINT.to_string(),
                     provider: family.clone(),
                     upstream_provider: family.clone(),
                     transport: "tched-router-loopback".to_string(),
@@ -1288,17 +1288,30 @@ impl TchedRouterRuntimeClient {
     /// Observe configuration, selection, and catalogs as one coherent input
     /// to a single MutationEngine commit. The second full-config read detects
     /// concurrent upstream edits; there is deliberately no retry loop.
+    ///
+    /// `frozen_routes` are the hint routes sealed into the plugin blob. They
+    /// and the native `[[model_routes]]` table are activated here against the
+    /// models the router actually loaded, so every loaded model that a hint
+    /// names becomes resolvable by that hint.
     pub(crate) async fn observe_config_and_state(
         &self,
         secrets: &dyn ConfigSecretPolicy,
+        frozen_routes: &[ModelRoute],
     ) -> anyhow::Result<NativeConfigObservation> {
         let before = self.read_masked_config(secrets).await?;
-        let observed = self.project_state(TchedRouterState::default()).await?;
+        let mut observed = self.project_state(TchedRouterState::default()).await?;
         let after = self.read_masked_config(secrets).await?;
         anyhow::ensure!(
             before == after,
             "tched_router configuration changed during native observation"
         );
+        let learned = learn_hint_routes(
+            &observed.catalog.providers,
+            &observed.catalog.model_routes,
+            &after,
+            frozen_routes,
+        );
+        observed.catalog.model_routes.extend(learned);
         anyhow::ensure!(
             !observed.status.is_empty()
                 && !observed.selected_provider.is_empty()
@@ -1325,12 +1338,18 @@ impl TchedRouterRuntimeClient {
                 }),
             "tched_router observed selection/catalog bindings are inconsistent"
         );
+        // A loaded model carries its `runtime` route plus one route per hint
+        // learned for it, so a binding repeats only under distinct hints.
         let mut model_bindings = std::collections::BTreeSet::new();
         anyhow::ensure!(
             observed.catalog.model_routes.iter().all(|route| {
-                model_bindings.insert((route.provider.as_str(), route.model.as_str()))
+                model_bindings.insert((
+                    route.hint.as_str(),
+                    route.provider.as_str(),
+                    route.model.as_str(),
+                ))
             }),
-            "native tched_router catalog contains duplicate provider/model bindings"
+            "native tched_router catalog contains duplicate hint/provider/model bindings"
         );
         Ok(NativeConfigObservation {
             native_config: after,
@@ -2047,6 +2066,113 @@ fn redact_secret_leaves(value: &mut Value) {
     }
 }
 
+const RUNTIME_HINT: &str = "runtime";
+const LEARNED_ROUTE_TRANSPORT: &str = "tched-router-loopback";
+
+/// Activate hint routes against the models the native router has loaded.
+///
+/// Two sources name hints. The native `[[model_routes]]` table binds a hint to
+/// a provider reference and model, and wins for its hint. The routes frozen
+/// into the sealed blob come second: each is activated when its model is
+/// loaded, preferring the provider family it declares, and is skipped when the
+/// model is absent or loaded by several other families. A hint resolves to at
+/// most one route, and only loaded models are ever routed.
+fn learn_hint_routes(
+    providers: &[Provider],
+    runtime_routes: &[ModelRoute],
+    native_config: &Value,
+    frozen_routes: &[ModelRoute],
+) -> Vec<ModelRoute> {
+    let family_of = |reference: &str| {
+        providers
+            .iter()
+            .find(|provider| {
+                provider.aliases.iter().any(|alias| alias == reference) || provider.id == reference
+            })
+            .map(|provider| provider.id.clone())
+    };
+    let loaded = |family: &str, model: &str| {
+        runtime_routes.iter().find(|route| {
+            route.hint == RUNTIME_HINT && route.provider == family && route.model == model
+        })
+    };
+    let mut learned: Vec<ModelRoute> = Vec::new();
+    let mut claimed = std::collections::BTreeSet::<String>::new();
+    let mut activate = |hint: &str, runtime: &ModelRoute, reason: String, source: &str| {
+        if hint.is_empty() || hint == RUNTIME_HINT || !claimed.insert(hint.to_string()) {
+            return;
+        }
+        learned.push(ModelRoute {
+            hint: hint.to_string(),
+            provider: runtime.provider.clone(),
+            upstream_provider: runtime.upstream_provider.clone(),
+            transport: LEARNED_ROUTE_TRANSPORT.to_string(),
+            model: runtime.model.clone(),
+            kind: "chat".to_string(),
+            status: runtime.status.clone(),
+            available: runtime.available,
+            status_reason: reason,
+            api_key: Some(Value::Null),
+            source: source.to_string(),
+        });
+    };
+
+    for entry in native_config
+        .get("model_routes")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let field = |name: &str| {
+            entry
+                .get(name)
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .unwrap_or("")
+        };
+        let (hint, reference, model) = (field("hint"), field("model_provider"), field("model"));
+        let Some(family) = family_of(reference) else {
+            continue;
+        };
+        if let Some(runtime) = loaded(&family, model) {
+            activate(
+                hint,
+                runtime,
+                format!(
+                    "Learned from native [[model_routes]]: hint '{hint}' routes to {reference}."
+                ),
+                "tched_router:model_routes",
+            );
+        }
+    }
+
+    for frozen in frozen_routes {
+        let hint = frozen.hint.trim();
+        let candidates = runtime_routes
+            .iter()
+            .filter(|route| route.hint == RUNTIME_HINT && route.model == frozen.model)
+            .collect::<Vec<_>>();
+        let declared = candidates.iter().find(|route| {
+            route.provider == frozen.provider || route.provider == frozen.upstream_provider
+        });
+        let runtime = match (declared, candidates.as_slice()) {
+            (Some(route), _) => *route,
+            (None, [only]) => *only,
+            _ => continue,
+        };
+        activate(
+            hint,
+            runtime,
+            format!(
+                "Activated sealed '{hint}' route: {} is loaded by {}.",
+                runtime.model, runtime.provider
+            ),
+            "tched_router:sealed",
+        );
+    }
+    learned
+}
+
 fn parse_configured_providers(
     entries: Vec<ConfigListEntry>,
 ) -> anyhow::Result<Vec<ConfiguredProvider>> {
@@ -2350,6 +2476,122 @@ mod tests {
             }
             server.abort();
         }
+    }
+
+    fn loaded(provider: &str, model: &str, live: bool) -> ModelRoute {
+        ModelRoute {
+            hint: RUNTIME_HINT.into(),
+            provider: provider.into(),
+            upstream_provider: provider.into(),
+            model: model.into(),
+            status: if live { "available" } else { "catalogued" }.into(),
+            available: live,
+            ..Default::default()
+        }
+    }
+
+    fn declared(hint: &str, provider: &str, model: &str) -> ModelRoute {
+        ModelRoute {
+            hint: hint.into(),
+            provider: provider.into(),
+            upstream_provider: provider.into(),
+            model: model.into(),
+            status: "declared".into(),
+            ..Default::default()
+        }
+    }
+
+    fn family(id: &str, references: &[&str]) -> Provider {
+        Provider {
+            id: id.into(),
+            aliases: references
+                .iter()
+                .map(|reference| reference.to_string())
+                .collect(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn sealed_and_native_hint_routes_activate_only_for_loaded_models() {
+        let providers = vec![
+            family("custom", &["custom.salad", "custom.opencode_control_plane"]),
+            family("openrouter", &["openrouter.default"]),
+        ];
+        let runtime = vec![
+            loaded("custom", "qwen3.6-27b", true),
+            loaded("custom", "qwen3.5-9b", false),
+            loaded("openrouter", "anthropic/claude-sonnet-4.6", true),
+        ];
+        let native = json!({"model_routes": [
+            {"hint": "fast", "model_provider": "custom.salad", "model": "qwen3.5-9b"},
+            {"hint": "summarize", "model_provider": "custom.absent", "model": "qwen3.6-27b"},
+            {"hint": "vision", "model_provider": "openrouter.default", "model": "not-loaded"}
+        ]});
+        let frozen = vec![
+            declared("code", "openrouter", "anthropic/claude-sonnet-4.6"),
+            declared("fast", "gemini", "gemini-2.5-flash"),
+            declared("reasoning", "antigravity", "gemini-3-pro-preview"),
+            declared("balanced", "salad", "qwen3.6-27b"),
+            declared("compliance", "oscal", "NIST_SP_800-53_Rev5"),
+            declared("runtime", "custom", "qwen3.6-27b"),
+        ];
+
+        let learned = learn_hint_routes(&providers, &runtime, &native, &frozen);
+        let summary = learned
+            .iter()
+            .map(|route| {
+                (
+                    route.hint.as_str(),
+                    route.provider.as_str(),
+                    route.model.as_str(),
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            summary,
+            vec![
+                ("fast", "custom", "qwen3.5-9b"),
+                ("code", "openrouter", "anthropic/claude-sonnet-4.6"),
+                ("balanced", "custom", "qwen3.6-27b"),
+            ]
+        );
+        assert!(
+            !learned[0].available,
+            "learned route keeps the catalog liveness"
+        );
+        assert_eq!(learned[0].source, "tched_router:model_routes");
+        assert!(learned[1].available);
+        assert_eq!(learned[2].source, "tched_router:sealed");
+        assert!(learned.iter().all(|route| route.kind == "chat"));
+    }
+
+    #[test]
+    fn sealed_route_prefers_its_declared_family_and_skips_ambiguous_models() {
+        let providers = vec![
+            family("custom", &["custom.a"]),
+            family("salad", &["salad.main"]),
+        ];
+        let runtime = vec![
+            loaded("custom", "shared", true),
+            loaded("salad", "shared", true),
+        ];
+        let preferred = learn_hint_routes(
+            &providers,
+            &runtime,
+            &Value::Null,
+            &[declared("fast", "salad", "shared")],
+        );
+        assert_eq!(preferred.len(), 1);
+        assert_eq!(preferred[0].provider, "salad");
+
+        let ambiguous = learn_hint_routes(
+            &providers,
+            &runtime,
+            &Value::Null,
+            &[declared("fast", "gemini", "shared")],
+        );
+        assert!(ambiguous.is_empty());
     }
 
     struct AllowGenerationAdmission;

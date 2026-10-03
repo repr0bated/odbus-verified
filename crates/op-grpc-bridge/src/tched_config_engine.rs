@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use op_plugins::state_plugins::common::llm_projection::ModelRoute;
 use serde_json::{Value, json};
 
 use crate::{
@@ -23,6 +24,10 @@ struct PinnedConfigContract {
     schema_json: String,
     config_schema: Value,
     secrets: PinnedConfigSecretPolicy,
+    /// Hint routes frozen into the sealed blob as the `model_routes` state
+    /// default. Observation activates them against the models the native
+    /// router has loaded; they are never served without that activation.
+    frozen_routes: Vec<ModelRoute>,
 }
 
 fn load_contract(pinned: &ManifestPinnedSchemaDocument) -> anyhow::Result<PinnedConfigContract> {
@@ -40,12 +45,29 @@ fn load_contract(pinned: &ManifestPinnedSchemaDocument) -> anyhow::Result<Pinned
     };
     let config_schema = serde_json::to_value(config_schema.as_ref())?;
     let secrets = PinnedConfigSecretPolicy::new(Arc::new(config_schema.clone()))?;
+    let frozen_routes = frozen_model_routes(&pinned.schema)?;
     Ok(PinnedConfigContract {
         schema_hash: pinned.schema_hash.clone(),
         schema_json: pinned.blob.schema_json.clone(),
         config_schema,
         secrets,
+        frozen_routes,
     })
+}
+
+/// Read the declared hint routes the sealer froze into `model_routes`. A blob
+/// sealed without that default simply has nothing to activate; a default that
+/// does not decode as routes is a sealing defect and fails closed.
+fn frozen_model_routes(schema: &op_state_store::PluginSchema) -> anyhow::Result<Vec<ModelRoute>> {
+    let Some(default) = schema
+        .fields
+        .get("model_routes")
+        .and_then(|field| field.default.as_ref())
+    else {
+        return Ok(Vec::new());
+    };
+    serde_json::from_value(serde_json::to_value(default)?)
+        .context("sealed tched_router model_routes default is not a route list")
 }
 
 async fn ensure_current_pin(expected: &str, expected_json: &str) -> anyhow::Result<()> {
@@ -141,7 +163,9 @@ pub(crate) async fn dispatch(
             return Ok(Some(output));
         }
         ConfigReadDispatch::NativeConfig { section } => {
-            let observation = runtime.observe_config_and_state(&contract.secrets).await?;
+            let observation = runtime
+                .observe_config_and_state(&contract.secrets, &contract.frozen_routes)
+                .await?;
             validate_native_config(&contract, &observation.native_config)?;
             let native_config = observation.native_config.clone();
             let (_, represented) = observation.into_state_and_fields()?;
@@ -183,7 +207,7 @@ pub(crate) async fn dispatch(
     // This stable full observation supplies one paired config + selection
     // image for one protected SHM generation; no global native CAS is implied.
     let observation = runtime
-        .observe_config_and_state(&contract.secrets)
+        .observe_config_and_state(&contract.secrets, &contract.frozen_routes)
         .await
         .context(
             "native config mutation completed but coherent observation failed; outcome requires reconciliation",
@@ -222,7 +246,7 @@ pub(crate) async fn coherent_observation(
     let contract = load_contract(pinned)?;
     let observation = TchedRouterRuntimeClient::from_env()
         .with_sealed_identity(Some(sealed_identity))
-        .observe_config_and_state(&contract.secrets)
+        .observe_config_and_state(&contract.secrets, &contract.frozen_routes)
         .await?;
     validate_native_config(&contract, &observation.native_config)?;
     let paired = observation.into_state_and_fields()?;

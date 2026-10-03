@@ -28,6 +28,11 @@ another agent's uncommitted work.
 
 ## Handoffs
 
+### 2026-10-03 · Claude (cloud session, model routes on load)
+- **Branch:** `claude/project-thread-ppvyg8`, pushed, draft PR. Not released.
+- **Change:** tched_router observation now activates hint routes for loaded models. The sealed blob's frozen `model_routes` defaults and the native `[[model_routes]]` table are matched against the live model catalog; each matched hint becomes a route beside the model's `runtime` route. `ResolveRoute` matches a hint before a model id.
+- **After release:** reseal is not needed for this change (the frozen defaults are already in the blob). Check `tched_router.ResolveRoute {"hint":"fast"}` after restart.
+
 ### 2026-09-28 · Grok (Cursor: golden and activate, picker binary)
 - **Live:** `current` → `releases/20260928T145511Z-2bdeb27`. Same commit as the previous release, with the rebuilt `op-web-server` (`197d3115…`). Grants, bridge, EMQX, and op-web pass `sv check`. Catalog unchanged (66 plugins, generation 264).
 - **Rollback:** `releases/20260928T125401Z-2bdeb27`.

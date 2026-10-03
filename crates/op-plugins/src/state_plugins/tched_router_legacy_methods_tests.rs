@@ -211,3 +211,26 @@ async fn duplicate_hint_is_rejected_instead_of_first_match_wins() {
         .unwrap_err();
     assert!(error.to_string().contains("ambiguous"));
 }
+
+#[tokio::test]
+async fn learned_hint_routes_keep_hint_and_model_resolution_exact() {
+    let methods = methods();
+    let mut learned = observed();
+    learned.model_routes = vec![
+        route("runtime", "p1", "m1"),
+        route("fast", "p1", "m1"),
+        route("runtime", "p2", "m2"),
+    ];
+    let by_hint = methods
+        .observe("ResolveRoute", &json!({"hint":"fast"}), &learned)
+        .await
+        .unwrap();
+    assert_eq!(by_hint.output["route"]["hint"], "fast");
+    assert_eq!(by_hint.output["route"]["model"], "m1");
+    let by_model = methods
+        .observe("ResolveRoute", &json!({"hint":"m1"}), &learned)
+        .await
+        .unwrap();
+    assert_eq!(by_model.output["route"]["provider"], "p1");
+    assert_eq!(by_model.output["route"]["hint"], "runtime");
+}

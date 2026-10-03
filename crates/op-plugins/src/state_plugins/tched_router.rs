@@ -2347,11 +2347,11 @@ fn resolve_route(
 ) -> std::result::Result<JsonValue, TchedRouterError> {
     let args = parse_args("ResolveRoute", json_args)?;
     let hint = require_str(&args, "hint", "ResolveRoute")?;
-    state
-        .catalog
-        .model_routes
+    let routes = &state.catalog.model_routes;
+    routes
         .iter()
-        .find(|route| route.hint == hint || route.model == hint)
+        .find(|route| route.hint == hint)
+        .or_else(|| routes.iter().find(|route| route.model == hint))
         .map(|route| serde_json::json!({ "route": to_json(route) }))
         .ok_or(TchedRouterError::RouteNotDeclared { hint })
 }

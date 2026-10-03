@@ -134,11 +134,24 @@ impl TchedRouterLegacyMethods {
                 let input: ResolveRouteInput =
                     serde_json::from_value(args.clone()).context("invalid ResolveRoute input")?;
                 let hint = bounded_nonempty("hint", &input.hint, MAX_HINT_BYTES)?;
-                let matches = observed
+                // A hint names exactly one route. A model id names its loaded
+                // binding, which may also carry learned hint routes.
+                let mut matches = observed
                     .model_routes
                     .iter()
-                    .filter(|route| route.hint == hint || route.model == hint)
+                    .filter(|route| route.hint == hint)
                     .collect::<Vec<_>>();
+                if matches.is_empty() {
+                    let mut bindings = BTreeSet::new();
+                    matches = observed
+                        .model_routes
+                        .iter()
+                        .filter(|route| {
+                            route.model == hint
+                                && bindings.insert((route.provider.as_str(), route.model.as_str()))
+                        })
+                        .collect();
+                }
                 anyhow::ensure!(
                     !matches.is_empty(),
                     "route hint is not declared by the native runtime"
