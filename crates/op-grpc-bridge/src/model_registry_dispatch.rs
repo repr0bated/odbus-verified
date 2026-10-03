@@ -214,7 +214,10 @@ pub(crate) fn load_providers(env: &Environment) -> Result<ProvidersFile> {
     )
     .context("provider list is unavailable")?;
     let text = String::from_utf8(bytes).context("provider list is not UTF-8")?;
-    parse_providers_toml(&text)
+    let file = parse_providers_toml(&text)?;
+    crate::model_providers_validation::validate_providers_config(&file.providers)
+        .context("provider configuration validation failed")?;
+    Ok(file)
 }
 
 /// Read a provider key file validated at refresh time.
