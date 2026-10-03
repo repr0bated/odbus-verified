@@ -10,7 +10,7 @@
 
 use super::identity_transactions::commit_checked;
 use super::*;
-use cozo::MultiTransaction;
+use cozo::{MultiTransaction, Num};
 
 const MAX_LIST_LIMIT: usize = 200;
 const MAX_PRINCIPAL_BYTES: usize = 512;
@@ -806,7 +806,7 @@ impl CozoGraphShuttle {
             )
             .map_err(|e| error(&format!("count conversations query failed: {}", e)))?;
         if let Some(row) = rows.rows.first() {
-            if let Some(DataValue::Int(count)) = row.first() {
+            if let Some(DataValue::Num(Num::Int(count))) = row.first() {
                 return Ok(*count as usize);
             }
         }
