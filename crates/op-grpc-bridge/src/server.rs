@@ -826,6 +826,15 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         ui_workspace_root.prepare_child("chatbot-episodes")?,
         crate::sealed_schema_reader::blob_catalog_dir_from_env(),
     )?;
+    // Principal-scoped chat_response conversations: a sibling private
+    // namespace, and the content-free EMQX doorbell for committed turns.
+    mutation_engine.configure_chat_response_projection(
+        ui_workspace_root.prepare_child("chat-responses")?,
+        crate::sealed_schema_reader::blob_catalog_dir_from_env(),
+    )?;
+    mutation_engine
+        .chat_response_publisher()?
+        .set_doorbell(crate::chat_response_state::emqx_doorbell())?;
     mutation_engine.configure_ui_workspace(
         ui_workspace_root,
         op_plugins::state_plugins::runtime_documents::runtime_documents().await?,

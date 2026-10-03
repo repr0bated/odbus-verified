@@ -405,12 +405,12 @@
           "identity-sled-bind"
         ],
         "has_lib": true,
-        "rs_files": 9,
-        "loc": 8014,
-        "tests": 55,
+        "rs_files": 10,
+        "loc": 9111,
+        "tests": 58,
         "unsafe_refs": 3,
         "todo": 2,
-        "unwrap_expect": 144
+        "unwrap_expect": 169
       }
     },
     {
@@ -540,12 +540,12 @@
           "op-grpc-bridge"
         ],
         "has_lib": true,
-        "rs_files": 153,
-        "loc": 94270,
-        "tests": 736,
-        "unsafe_refs": 178,
-        "todo": 166,
-        "unwrap_expect": 1748
+        "rs_files": 157,
+        "loc": 96958,
+        "tests": 742,
+        "unsafe_refs": 181,
+        "todo": 169,
+        "unwrap_expect": 1759
       }
     },
     {
@@ -730,12 +730,12 @@
           "opblob"
         ],
         "has_lib": true,
-        "rs_files": 145,
-        "loc": 115635,
-        "tests": 522,
+        "rs_files": 147,
+        "loc": 117322,
+        "tests": 531,
         "unsafe_refs": 15,
         "todo": 1,
-        "unwrap_expect": 1242
+        "unwrap_expect": 1283
       }
     },
     {
@@ -1932,8 +1932,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-09-28T20:48:13Z",
-        "commit": "8943f9ce129230dde492aa146ea93218251b34c3",
+        "generated_at": "2026-09-28T23:16:43Z",
+        "commit": "2d2679eb749b3c5e71da07934cfa66054a7a603c",
         "generator": "scripts/crate-graph.sh",
         "relations": [
           "graph_node",
@@ -4516,6 +4516,15 @@
       }
     },
     {
+      "id": "mod:crates/op-cozo-store/src/chat_response_conversations.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cozo-store",
+        "kind": "src",
+        "loc": 1092
+      }
+    },
+    {
       "id": "mod:crates/op-cozo-store/src/ctl_plane_chatbot_episodes.rs",
       "label": "module",
       "props": {
@@ -4548,7 +4557,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 2717
+        "loc": 2722
       }
     },
     {
@@ -4966,6 +4975,42 @@
       }
     },
     {
+      "id": "mod:crates/op-grpc-bridge/src/chat_response_dispatch.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 820
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/chat_response_state.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 548
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/chat_response_tests.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 706
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/chat_response_turns.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 379
+      }
+    },
+    {
       "id": "mod:crates/op-grpc-bridge/src/chat_service.rs",
       "label": "module",
       "props": {
@@ -4980,7 +5025,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 828
+        "loc": 831
       }
     },
     {
@@ -5313,7 +5358,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 3302
+        "loc": 3331
       }
     },
     {
@@ -5385,7 +5430,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 368
+        "loc": 371
       }
     },
     {
@@ -5493,7 +5538,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 6571
+        "loc": 6762
       }
     },
     {
@@ -5745,7 +5790,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1510
+        "loc": 1519
       }
     },
     {
@@ -7513,6 +7558,24 @@
       }
     },
     {
+      "id": "mod:crates/op-plugins/src/state_plugins/chat_response.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-plugins",
+        "kind": "src",
+        "loc": 808
+      }
+    },
+    {
+      "id": "mod:crates/op-plugins/src/state_plugins/chat_response_methods.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-plugins",
+        "kind": "src",
+        "loc": 876
+      }
+    },
+    {
       "id": "mod:crates/op-plugins/src/state_plugins/cognitive_agents.rs",
       "label": "module",
       "props": {
@@ -8058,7 +8121,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 159
+        "loc": 162
       }
     },
     {
@@ -10071,6 +10134,16 @@
         "line": 1592,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/btrfs"
+      }
+    },
+    {
+      "id": "plugin:chat_response",
+      "label": "plugin",
+      "props": {
+        "file": "crates/op-plugins/src/state_plugins/chat_response.rs",
+        "line": 807,
+        "declared": true,
+        "dbus_path": "/org/opdbus/v1/plugins/chat_response"
       }
     },
     {
@@ -14405,6 +14478,12 @@
     {
       "src": "crate:op-cozo-store",
       "rel": "contains",
+      "dst": "mod:crates/op-cozo-store/src/chat_response_conversations.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cozo-store",
+      "rel": "contains",
       "dst": "mod:crates/op-cozo-store/src/ctl_plane_chatbot_episodes.rs",
       "props": {}
     },
@@ -15971,6 +16050,30 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/chat_mode_routing.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/chat_response_dispatch.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/chat_response_state.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/chat_response_tests.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/chat_response_turns.rs",
       "props": {}
     },
     {
@@ -20206,6 +20309,18 @@
     {
       "src": "crate:op-plugins",
       "rel": "contains",
+      "dst": "mod:crates/op-plugins/src/state_plugins/chat_response.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "contains",
+      "dst": "mod:crates/op-plugins/src/state_plugins/chat_response_methods.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/cognitive_agents.rs",
       "props": {}
     },
@@ -21047,6 +21162,12 @@
       "src": "crate:op-plugins",
       "rel": "registers_plugin",
       "dst": "plugin:btrfs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "registers_plugin",
+      "dst": "plugin:chat_response",
       "props": {}
     },
     {
@@ -25599,6 +25720,118 @@
       }
     },
     {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 4
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_dispatch.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_state.rs",
+      "rel": "imports",
+      "dst": "crate:op-core",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_state.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_state.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_state.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-core",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 4
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_tests.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/chat_response_turns.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
       "src": "mod:crates/op-grpc-bridge/src/chat_service.rs",
       "rel": "imports",
       "dst": "crate:op-core",
@@ -27059,7 +27292,7 @@
       "rel": "imports",
       "dst": "crate:op-core",
       "props": {
-        "refs": 24
+        "refs": 25
       }
     },
     {
@@ -27067,7 +27300,7 @@
       "rel": "imports",
       "dst": "crate:op-cozo-store",
       "props": {
-        "refs": 14
+        "refs": 18
       }
     },
     {
@@ -27107,7 +27340,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 126
+        "refs": 129
       }
     },
     {
@@ -29218,6 +29451,28 @@
       "dst": "crate:op-state-store",
       "props": {
         "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/chat_response.rs",
+      "rel": "defines_plugin",
+      "dst": "plugin:chat_response",
+      "props": {}
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/chat_response.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/chat_response.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
+      "props": {
+        "refs": 9
       }
     },
     {

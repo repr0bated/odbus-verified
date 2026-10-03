@@ -303,6 +303,7 @@ fn audit_method_arguments(plugin_id: &str, method: &str, json_args: &str) -> Str
             | "cron"
             | "web_ui"
             | "ctl_plane_chatbot"
+            | "chat_response"
             | "mail_server"
             | "wireguard"
             | "wg_opdbus"
@@ -402,6 +403,11 @@ pub struct MutationEngine {
     /// state cache or broadcast path.
     ui_workspace: Arc<OnceCell<Arc<crate::ui_workspace_dispatch::UiWorkspacePublisher>>>,
     chatbot_episodes: Arc<OnceCell<Arc<crate::chatbot_episode_state::EpisodePublisher>>>,
+    /// Private principal-scoped chat_response conversations: their dedicated
+    /// Cozo owner, private SHM publisher, and the bridge's turn registry.
+    chat_response_cozo: Arc<OnceCell<Arc<op_cozo_store::CozoGraphShuttle>>>,
+    chat_responses: Arc<OnceCell<Arc<crate::chat_response_state::ChatResponsePublisher>>>,
+    chat_turns: Arc<crate::chat_response_turns::TurnRegistry>,
     generation_jobs: Arc<OnceCell<Arc<crate::generation_jobs_dispatch::GenerationPublisher>>>,
     /// Supplied by the serving bridge at startup; metadata registrations never
     /// choose or bind their own listener path.
@@ -1175,6 +1181,9 @@ impl MutationEngine {
             snowball_methods: Arc::new(OnceCell::new()),
             ui_workspace: Arc::new(OnceCell::new()),
             chatbot_episodes: Arc::new(OnceCell::new()),
+            chat_response_cozo: Arc::new(OnceCell::new()),
+            chat_responses: Arc::new(OnceCell::new()),
+            chat_turns: Arc::new(crate::chat_response_turns::TurnRegistry::default()),
             generation_jobs: Arc::new(OnceCell::new()),
             shared_socket_path: Arc::new(OnceCell::new()),
             shared_listener: Arc::new(OnceCell::new()),
@@ -1293,6 +1302,169 @@ impl MutationEngine {
         self.chatbot_episode_cozo
             .set(store)
             .map_err(|_| anyhow::anyhow!("chatbot episode Cozo owner is already configured"))
+    }
+
+    pub fn configure_chat_response_projection(
+        &self,
+        root: op_core::projection_shm::PrivateProjectionDirectory,
+        catalog: std::path::PathBuf,
+    ) -> anyhow::Result<()> {
+        self.chat_responses
+            .set(Arc::new(
+                crate::chat_response_state::ChatResponsePublisher::new(root, catalog),
+            ))
+            .map_err(|_| anyhow::anyhow!("chat_response projection is already configured"))
+    }
+
+    pub(crate) fn chat_response_publisher(
+        &self,
+    ) -> anyhow::Result<&Arc<crate::chat_response_state::ChatResponsePublisher>> {
+        self.chat_responses
+            .get()
+            .context("chat_response projection is not configured")
+    }
+
+    /// The private chat_response Cozo owner. Its database must be distinct
+    /// from the generic cognitive database and from the chatbot's own
+    /// episode database: conversations belong to the humans who asked.
+    pub(crate) async fn chat_response_cozo(
+        &self,
+    ) -> anyhow::Result<Arc<op_cozo_store::CozoGraphShuttle>> {
+        self.chat_response_cozo
+            .get_or_try_init(|| async {
+                let path = std::env::var("CHAT_RESPONSE_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/chat-responses.db".to_string());
+                anyhow::ensure!(
+                    !path.is_empty() && path != ":memory:" && path != "memory",
+                    "chat_response store requires a durable path"
+                );
+                let episodes = std::env::var("CTL_PLANE_CHATBOT_EPISODE_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/chatbot-episodes.db".to_string());
+                let general = self.cognitive_mcp.get().map(|server| server.cozo_shuttle());
+                let episode_store = self.chatbot_episode_cozo.get().cloned();
+                tokio::task::spawn_blocking(move || {
+                    crate::chatbot_episode_state::require_distinct_database_paths(&path)?;
+                    crate::chatbot_episode_state::distinct_databases(
+                        std::path::Path::new(&path),
+                        std::path::Path::new(&episodes),
+                    )?;
+                    let store = op_cozo_store::CozoGraphShuttle::new_persistent_private(
+                        std::path::PathBuf::from(path),
+                    )?;
+                    if let Some(general) = general {
+                        store.ensure_distinct_from(&general)?;
+                    }
+                    if let Some(episodes) = episode_store {
+                        store.ensure_distinct_from(&episodes)?;
+                    }
+                    store.initialize_chat_response_store()?;
+                    Ok::<_, anyhow::Error>(Arc::new(store))
+                })
+                .await
+                .context("chat_response store initialization worker failed")?
+            })
+            .await
+            .cloned()
+    }
+
+    pub fn configure_chat_response_store(
+        &self,
+        store: Arc<op_cozo_store::CozoGraphShuttle>,
+    ) -> anyhow::Result<()> {
+        if let Some(general) = self.cognitive_mcp.get() {
+            store.ensure_distinct_from(&general.cozo_shuttle())?;
+        }
+        if let Some(episodes) = self.chatbot_episode_cozo.get() {
+            store.ensure_distinct_from(episodes)?;
+        }
+        store.initialize_chat_response_store()?;
+        self.chat_response_cozo
+            .set(store)
+            .map_err(|_| anyhow::anyhow!("chat_response Cozo owner is already configured"))
+    }
+
+    pub(crate) fn chat_turns(&self) -> &Arc<crate::chat_response_turns::TurnRegistry> {
+        &self.chat_turns
+    }
+
+    /// Record a verified human's message as the next turn of one of their
+    /// conversations, then open the following turn for the agent principal
+    /// that may answer it. Both sides land in the same conversation chain:
+    /// the response's `prev_turn_hash` is the human turn's hash. Internal
+    /// bridge API: the door's chat operation calls it (OD-90 stage 2), with
+    /// its own admitted chat request as `request`; no transport or model can
+    /// mint a turn.
+    #[allow(dead_code)] // stage 2 (door chat operation) is the production caller
+    pub(crate) async fn open_chat_turn(
+        &self,
+        owner: crate::chat_response_turns::TurnOwner,
+        conversation_id: &str,
+        message: String,
+        request: crate::chat_response_dispatch::RequestEvent,
+        responder_principal_id: &str,
+    ) -> anyhow::Result<(
+        op_plugins::state_plugins::chat_response::ChatTurn,
+        crate::chat_response_turns::PendingTurn,
+    )> {
+        crate::project_dispatch::verified_session(
+            self,
+            &owner.principal_id,
+            Some(&owner.session_id),
+            Some(&owner.session_genesis),
+        )
+        .await
+        .context("a chat turn requires the asking human's verified session")?;
+        op_plugins::state_plugins::chat_response_methods::validate_uuid(
+            "conversation_id",
+            conversation_id,
+        )?;
+        anyhow::ensure!(
+            crate::interceptor::load_capability_grants(responder_principal_id)
+                .contains(op_plugins::state_plugins::chat_response::RESPOND_CAPABILITY),
+            "the designated responder must hold chat_response.respond"
+        );
+        let store = self.chat_response_cozo().await?;
+        let principal = owner.principal_id.clone();
+        let conversation = conversation_id.to_string();
+        let head = tokio::task::spawn_blocking(move || {
+            store.get_chat_conversation(&principal, &conversation)
+        })
+        .await
+        .context("chat_response conversation lookup worker failed")??
+        .context("conversation does not exist in the asking principal's scope")?;
+        // Reserve the answer's turn first: the registry allows one open turn
+        // per conversation, so this also serializes the human message below,
+        // and a refused reservation records nothing.
+        let pending = self.chat_turns.open(
+            owner.clone(),
+            conversation_id,
+            head.turn_count + 1,
+            responder_principal_id,
+        )?;
+        let human = match crate::chat_response_dispatch::commit_human_turn(
+            self,
+            &owner,
+            conversation_id,
+            message,
+            request,
+        )
+        .await
+        {
+            Ok(human) if human.turn_index + 1 == pending.turn_index => human,
+            Ok(human) => {
+                self.chat_turns.cancel(&pending.turn_id);
+                anyhow::bail!(
+                    "human message landed at turn {} but the answer was reserved at {}",
+                    human.turn_index,
+                    pending.turn_index
+                );
+            }
+            Err(error) => {
+                self.chat_turns.cancel(&pending.turn_id);
+                return Err(error);
+            }
+        };
+        Ok((human, pending))
     }
 
     /// Admit and commit an episode in one step. The chat path admits before
@@ -1516,6 +1688,9 @@ impl MutationEngine {
                     })?;
                 if let Some(episodes) = self.chatbot_episode_cozo.get() {
                     episodes.ensure_distinct_from(&server.cozo_shuttle())?;
+                }
+                if let Some(conversations) = self.chat_response_cozo.get() {
+                    conversations.ensure_distinct_from(&server.cozo_shuttle())?;
                 }
                 // The control-plane chatbot is the consumer of the context
                 // engine's knowledge pushes: drain them into the per-session
@@ -3356,6 +3531,22 @@ impl MutationEngine {
                     session_id,
                     session_genesis,
                     &admitted_schema,
+                )
+                .await?
+            }
+            "chat_response" => {
+                crate::chat_response_dispatch::dispatch(
+                    self,
+                    method,
+                    &serde_json::to_value(&parsed_value)?,
+                    actor_id,
+                    session_id,
+                    session_genesis,
+                    &admitted_schema,
+                    crate::chat_response_dispatch::RequestEvent {
+                        event_id: change.event_id,
+                        event_hash: change.event_hash.clone(),
+                    },
                 )
                 .await?
             }

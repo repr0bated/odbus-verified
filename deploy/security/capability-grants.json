@@ -46,6 +46,7 @@
       "cognitive_mcp.typescript_pro",
       "cognitive_mcp.read",
       "chatbot.read",
+      "chat_response.read",
       "cognitive_mcp.memory.write",
       "cognitive_mcp.code.write",
       "workflows.read",
@@ -207,7 +208,8 @@
       "workflows.write",
       "notebooklm.read",
       "notebooklm.invoke",
-      "mongodb_mcp.read"
+      "mongodb_mcp.read",
+      "chat_response.respond"
     ]
   }
 }
