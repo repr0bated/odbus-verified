@@ -800,13 +800,13 @@ impl CozoGraphShuttle {
             .map_err(|_| error("chat_response owner is poisoned"))?;
         let tx = self.db.multi_transaction(false);
         let rows = tx
-            .query(
-                "?[count(c)] := chat_conversation{principal_id, c}",
-                vec![(":principal_id".to_string(), principal_id.into())],
+            .run_script(
+                "?[cnt] := chat_conversation{principal_id: $principal_id, _}, cnt :=count",
+                principal_params(principal_id),
             )
             .map_err(|e| error(&format!("count conversations query failed: {}", e)))?;
         if let Some(row) = rows.rows.first() {
-            if let Some(cozo::Value::Int(count)) = row.first() {
+            if let Some(DataValue::Int(count)) = row.first() {
                 return Ok(*count as usize);
             }
         }
