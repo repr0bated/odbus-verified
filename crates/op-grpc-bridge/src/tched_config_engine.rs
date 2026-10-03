@@ -3,13 +3,13 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 use crate::{
     mutation_engine::MutationEngine,
     sealed_schema_reader::{
-        ManifestPinnedSchemaDocument, blob_catalog_dir_from_env,
-        read_manifest_pinned_schema_document,
+        blob_catalog_dir_from_env, read_manifest_pinned_schema_document,
+        ManifestPinnedSchemaDocument,
     },
     tched_config_dispatch::{self, ConfigReadDispatch},
     tched_config_secret_policy::PinnedConfigSecretPolicy,
@@ -120,6 +120,12 @@ pub(crate) async fn observe_catalog_binding(
     validate_native_config(&contract, &observation.native_config)?;
     ensure_current_pin(&contract.schema_hash, &contract.schema_json).await?;
     Ok(observation)
+}
+
+pub(crate) fn pinned_config_secrets(
+    pinned: &ManifestPinnedSchemaDocument,
+) -> anyhow::Result<PinnedConfigSecretPolicy> {
+    Ok(load_contract(pinned)?.secrets)
 }
 
 /// Returns None only when the method is outside the v3 config facade.

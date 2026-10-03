@@ -1002,6 +1002,68 @@ impl TchedRouterRuntimeClient {
         Ok(NativeConfigMutation { result, readback })
     }
 
+    /// Create `providers.models.<family>.<alias>` through the native map-key API
+    /// when the pinned contract admits the profile path.
+    pub(crate) async fn init_provider_model_reference(
+        &self,
+        reference: &str,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            crate::tched_catalog_binding::valid_reference(reference),
+            "native provider reference is invalid"
+        );
+        let (family, alias) = reference
+            .split_once('.')
+            .context("native provider reference must be family.alias")?;
+        anyhow::ensure!(
+            valid_config_segment(family) && valid_config_segment(alias),
+            "native provider reference segments are invalid"
+        );
+        let model_path = format!("providers.models.{reference}.model");
+        match secrets.is_secret(&model_path) {
+            Ok(false) => {}
+            Ok(true) => anyhow::bail!("native provider model path must be public in the pinned contract"),
+            Err(_) => anyhow::bail!(
+                "native provider reference {reference} is absent from the pinned config contract"
+            ),
+        }
+        self.health().await?;
+        let map_path = format!("providers.models.{family}");
+        let receipt: NativeMapKeyResponse = self
+            .send_gateway_json(GatewayJsonRequest {
+                method: GatewayMethod::Post,
+                relative_path: "/api/config/map-key",
+                query: &[("path", map_path.as_str()), ("key", alias)],
+                body: None,
+                operation: "initialize native provider profile",
+                profile: GatewayProfile::Config,
+                mutation: true,
+            })
+            .await
+            .map_err(config_gateway_error)?;
+        anyhow::ensure!(
+            receipt.path == map_path && receipt.key == alias,
+            "native provider profile creation receipt is invalid"
+        );
+        anyhow::ensure!(
+            receipt.warnings.as_ref().is_none_or(Vec::is_empty),
+            "native provider profile creation returned warnings"
+        );
+        let readback = self
+            .read_masked_config(secrets)
+            .await
+            .context("native provider profile creation succeeded but readback failed")?;
+        let configured = readback
+            .pointer(&format!("/providers/models/{family}/{alias}/model"))
+            .is_some();
+        anyhow::ensure!(
+            configured || receipt.created,
+            "native provider profile did not appear in configuration readback"
+        );
+        Ok(())
+    }
+
     pub(crate) async fn migrate_config(
         &self,
         _: &ConfigMigrateInput,
@@ -1126,7 +1188,13 @@ impl TchedRouterRuntimeClient {
                 .context("catalog binding profile is absent from native observation")?;
             anyhow::ensure!(
                 native_profile.get("model").and_then(Value::as_str)
-                    == Some(profile.selected_model.as_str()),
+                    == Some(profile.selected_model.as_str())
+                    || target
+                        .ordinary_reference
+                        .as_ref()
+                        .is_some_and(|reference| reference == &profile.reference)
+                        && native_profile.get("model").and_then(Value::as_str)
+                            == Some(target.model_id.as_str()),
                 "catalog binding native profile changed during observation"
             );
             let uri = native_profile
@@ -1142,11 +1210,32 @@ impl TchedRouterRuntimeClient {
                 catalog.models.len() <= MAX_PROFILE_MODELS,
                 "catalog binding native model catalog exceeds bound"
             );
+            let mut models = catalog.models;
+            let mut live = catalog.live;
+            // When the catalog names an exact ordinary profile, a configured model match
+            // may bind even if the upstream live inventory is empty or offline.
+            if target
+                .ordinary_reference
+                .as_ref()
+                .is_some_and(|reference| reference == &profile.reference)
+            {
+                let configured_model = native_profile
+                    .get("model")
+                    .and_then(Value::as_str);
+                if configured_model == Some(target.model_id.as_str()) {
+                    if !models.iter().any(|model| model == &target.model_id) {
+                        models.push(target.model_id.clone());
+                    }
+                    if !live {
+                        live = true;
+                    }
+                }
+            }
             candidates.push(ProfileCandidate {
                 reference: profile.reference,
                 uri,
-                models: catalog.models,
-                live: catalog.live,
+                models,
+                live,
             });
         }
         let after = self

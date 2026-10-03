@@ -115,6 +115,7 @@ mod state_tree_fold;
 mod system_graph_dispatch;
 mod system_graph_projection;
 mod tched_catalog_binding;
+mod catalog_ordinary_profile;
 mod tched_config_dispatch;
 mod tched_config_engine;
 mod tched_config_secret_policy;

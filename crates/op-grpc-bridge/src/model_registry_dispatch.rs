@@ -18,17 +18,18 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{bail, ensure, Context, Result};
 use async_trait::async_trait;
 use futures::StreamExt;
 use op_cozo_store::{CozoError, CozoGraphShuttle, RegistryModel, RegistryModelRecord};
 use op_plugins::state_plugins::model_registry::{
-    DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput, ListProvidersInput,
-    ListProvidersOutput, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES,
-    ModelListFormat, ModelRecord, ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh,
-    ProviderStatus, ProvidersFile, RefreshInput, RefreshOutput, SECRETS_DIR, SetModelProfileInput,
-    SetModelProfileOutput, bounded_error, page_limit, parse_models_response, parse_providers_toml,
-    valid_model_id, valid_provider_id, validate_list_models, validate_set_model_profile,
+    bounded_error, page_limit, parse_models_response, parse_providers_toml, valid_model_id,
+    valid_provider_id, validate_list_models, validate_set_model_profile, ListModelsInput,
+    ListModelsOutput, ListProvidersInput, ListProvidersOutput, ModelListFormat, ModelRecord,
+    ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh, ProviderStatus, ProvidersFile,
+    RefreshInput, RefreshOutput, SetModelProfileInput, SetModelProfileOutput,
+    DEFAULT_PROVIDERS_PATH, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES,
+    SECRETS_DIR,
 };
 use op_state_store::PluginSchema;
 use serde_json::Value;
@@ -59,7 +60,7 @@ pub(crate) struct Environment {
 }
 
 impl Environment {
-    fn from_env() -> Self {
+    pub(crate) fn from_env() -> Self {
         Self {
             providers_path: std::env::var_os("OP_MODEL_PROVIDERS_PATH")
                 .map(PathBuf::from)
@@ -214,6 +215,11 @@ pub(crate) fn load_providers(env: &Environment) -> Result<ProvidersFile> {
     .context("provider list is unavailable")?;
     let text = String::from_utf8(bytes).context("provider list is not UTF-8")?;
     parse_providers_toml(&text)
+}
+
+/// Read a provider key file validated at refresh time.
+pub(crate) fn read_provider_key(env: &Environment, key_file: &str) -> Result<String> {
+    read_key(env, key_file)
 }
 
 /// A provider's key: the file's single line, printable ASCII, no spaces.
@@ -452,9 +458,11 @@ fn model_record(
         provider_id: row.provider_id,
         model_id: row.model.model_id,
         native_provider_id: provider.and_then(|provider| {
-            provider
-                .native_provider_id_for_model(recorded)
-                .map(str::to_string)
+            provider.effective_native_provider_id().or_else(|| {
+                provider
+                    .native_provider_id_for_model(recorded)
+                    .map(str::to_string)
+            })
         }),
         inference_url_prefix: provider.and_then(|provider| provider.inference_url_prefix.clone()),
         name: row.model.name,
@@ -648,7 +656,15 @@ async fn binding_target_from(
     .await?;
     // A recorded alternative specifies a wire contract. Discovery must not
     // substitute the default endpoint for an unmapped or retired alternative.
-    let ordinary = provider.native_provider_id_for_model(recorded.as_deref());
+    let ordinary = provider
+        .native_provider_id_for_model(recorded.as_deref())
+        .map(str::to_string)
+        .or_else(|| {
+            recorded
+                .is_none()
+                .then(|| op_plugins::state_plugins::model_registry::ProviderConfig::derived_native_provider_id(provider_id))
+                .flatten()
+        });
     if let Some(recorded) = recorded.as_deref() {
         let default = provider
             .control_plane
@@ -675,7 +691,7 @@ async fn binding_target_from(
         model_id: model_id.to_string(),
         inference_url_prefix: prefix,
         catalog_revision: revision,
-        ordinary_reference: ordinary.map(str::to_string),
+        ordinary_reference: ordinary,
         excluded_references,
     })
 }

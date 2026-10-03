@@ -29,7 +29,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{bail, ensure, Context, Result};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{PluginSchema, SideEffect};
@@ -177,6 +177,26 @@ impl ControlPlaneRouting {
 }
 
 impl ProviderConfig {
+    /// Stable ordinary-selection profile when `native_provider_id` is omitted.
+    /// Known router families use `{provider_id}.personal`; others use `custom.{provider_id}`.
+    pub fn derived_native_provider_id(provider_id: &str) -> Option<String> {
+        if !valid_provider_id(provider_id) {
+            return None;
+        }
+        if ROUTER_FAMILIES.contains(&provider_id) {
+            Some(format!("{provider_id}.personal"))
+        } else {
+            Some(format!("custom.{provider_id}"))
+        }
+    }
+
+    /// Explicit `native_provider_id`, else [`Self::derived_native_provider_id`].
+    pub fn effective_native_provider_id(&self) -> Option<String> {
+        self.native_provider_id
+            .clone()
+            .or_else(|| Self::derived_native_provider_id(&self.id))
+    }
+
     /// Use the default binding only when no alternative wire profile was
     /// recorded. An unmapped alternative must not silently use another API.
     pub fn native_provider_id_for_model(&self, recorded: Option<&str>) -> Option<&str> {
@@ -422,18 +442,19 @@ pub fn parse_providers_toml(text: &str) -> Result<ProvidersFile> {
     }
     // Ordinary Apply must never mutate a Control Plane profile, even if
     // it belongs to a different provider. A native profile has one owner.
-    let mut native_owners = BTreeMap::new();
+    let mut native_owners: BTreeMap<String, String> = BTreeMap::new();
     for provider in &file.providers {
-        for native in provider
-            .native_provider_id
-            .iter()
-            .chain(provider.native_profile_overrides.values())
-        {
+        let natives: Vec<String> = provider
+            .effective_native_provider_id()
+            .into_iter()
+            .chain(provider.native_profile_overrides.values().cloned())
+            .collect();
+        for native in natives {
             ensure!(
                 !profiles.contains(native.as_str()),
                 "native selection profile {native} is also a control_plane profile"
             );
-            if let Some(owner) = native_owners.insert(native.as_str(), provider.id.as_str()) {
+            if let Some(owner) = native_owners.insert(native.clone(), provider.id.clone()) {
                 ensure!(
                     owner == provider.id,
                     "native selection profile {native} is used by two providers"
@@ -988,14 +1009,12 @@ enabled = false
         let serialized = serde_json::to_value(&canonical.providers[0]).unwrap();
         assert_eq!(serialized["provider_id"], "opencode_go");
         assert!(serialized.get("id").is_none());
-        assert!(
-            parse_providers_toml(&PROVIDERS.replacen(
-                "id = \"opencode_go\"",
-                "id = \"opencode_go\"\nprovider_id = \"opencode\"",
-                1
-            ))
-            .is_err()
-        );
+        assert!(parse_providers_toml(&PROVIDERS.replacen(
+            "id = \"opencode_go\"",
+            "id = \"opencode_go\"\nprovider_id = \"opencode\"",
+            1
+        ))
+        .is_err());
     }
 
     #[test]
@@ -1136,9 +1155,7 @@ native_provider_id = "custom.dashboard"
             "{PROVIDERS}\n{}",
             &PROVIDERS[PROVIDERS.find("[[providers]]").unwrap()..]
         );
-        assert!(
-            format!("{:#}", parse_providers_toml(&twice).unwrap_err()).contains("listed twice")
-        );
+        assert!(format!("{:#}", parse_providers_toml(&twice).unwrap_err()).contains("listed twice"));
         let bad_id = PROVIDERS.replace("\"opencode_go\"", "\"OpenCode\"");
         assert!(parse_providers_toml(&bad_id).is_err());
     }
@@ -1212,20 +1229,16 @@ native_provider_id = "custom.dashboard"
     #[test]
     fn list_models_input_is_bounded() {
         assert!(validate_list_models(&ListModelsInput::default()).is_ok());
-        assert!(
-            validate_list_models(&ListModelsInput {
-                limit: Some(MAX_PAGE + 1),
-                ..Default::default()
-            })
-            .is_err()
-        );
-        assert!(
-            validate_list_models(&ListModelsInput {
-                query: Some(" padded".into()),
-                ..Default::default()
-            })
-            .is_err()
-        );
+        assert!(validate_list_models(&ListModelsInput {
+            limit: Some(MAX_PAGE + 1),
+            ..Default::default()
+        })
+        .is_err());
+        assert!(validate_list_models(&ListModelsInput {
+            query: Some(" padded".into()),
+            ..Default::default()
+        })
+        .is_err());
     }
 
     #[test]

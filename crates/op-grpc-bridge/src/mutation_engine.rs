@@ -5015,6 +5015,31 @@ impl MutationEngine {
                 )
                 .await?;
             }
+            if let Some(reference) = &target.ordinary_reference {
+                let env = crate::model_registry_dispatch::Environment::from_env();
+                let file = crate::model_registry_dispatch::load_providers(&env)?;
+                if let Some(provider) = file
+                    .providers
+                    .iter()
+                    .find(|provider| provider.id == input.provider_id)
+                {
+                    let secrets = crate::tched_config_engine::pinned_config_secrets(pinned)?;
+                    let runtime =
+                        crate::tched_router_runtime::TchedRouterRuntimeClient::for_agent_alias(
+                            "dashboard",
+                        )
+                        .with_sealed_identity(Some(&sealed_identity));
+                    crate::catalog_ordinary_profile::ensure_ordinary_profile(
+                        &env,
+                        &runtime,
+                        provider,
+                        reference,
+                        &input.model_id,
+                        &secrets,
+                    )
+                    .await?;
+                }
+            }
             let mut observation = crate::tched_config_engine::observe_catalog_binding(
                 pinned,
                 &sealed_identity,
@@ -5342,11 +5367,7 @@ impl MutationEngine {
                     facade_origin.clone(),
                 )?;
                 crate::control_plane_routing::complete(args, before_prompt, false).await?
-            } else if matches!(
-                route.mode,
-                op_plugins::state_plugins::project::ChatMode::UiRender
-                    | op_plugins::state_plugins::project::ChatMode::Accountability
-            ) {
+            } else {
                 let before_prompt = crate::specialist::generation_admission_with_origin(
                     self,
                     &admitted_schema,
@@ -5363,8 +5384,6 @@ impl MutationEngine {
                     .client
                     .complete_under_guard(args, before_prompt)
                     .await?
-            } else {
-                route.client.chat_under_guard(args).await?
             };
             if let Some(episode_effect) = episode_effect {
                 let mut provenance = provenance;

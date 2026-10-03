@@ -4,7 +4,7 @@ use std::{
     sync::Mutex,
 };
 
-use op_plugins::state_plugins::model_registry::{ModelRef, bounded_error};
+use op_plugins::state_plugins::model_registry::{bounded_error, ModelRef};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use super::*;
@@ -192,31 +192,27 @@ async fn catalog_binding_target_preserves_recorded_wire_profile_boundaries() {
             .store
             .set_model_registry_profile("openai", "shared-model", Some(recorded))
             .unwrap();
-        assert!(
-            binding_target_from(
-                &fixture.env,
-                fixture.store.clone(),
-                "openai",
-                "shared-model"
-            )
-            .await
-            .is_err()
-        );
-    }
-    fixture
-        .store
-        .set_model_registry_profile("openai", "shared-model", Some("openai.control_plane"))
-        .unwrap();
-    assert!(
-        binding_target_from(
+        assert!(binding_target_from(
             &fixture.env,
             fixture.store.clone(),
             "openai",
             "shared-model"
         )
         .await
-        .is_ok()
-    );
+        .is_err());
+    }
+    fixture
+        .store
+        .set_model_registry_profile("openai", "shared-model", Some("openai.control_plane"))
+        .unwrap();
+    assert!(binding_target_from(
+        &fixture.env,
+        fixture.store.clone(),
+        "openai",
+        "shared-model"
+    )
+    .await
+    .is_ok());
 }
 
 #[tokio::test]
@@ -232,26 +228,22 @@ async fn catalog_binding_target_requires_independent_endpoint_authority() {
     )
     .await
     .unwrap();
-    assert!(
-        binding_target_from(
-            &fixture.env,
-            fixture.store.clone(),
-            "openai",
-            "shared-model"
-        )
-        .await
-        .is_err()
-    );
-    assert!(
-        binding_target_from(
-            &fixture.env,
-            fixture.store.clone(),
-            "unknown",
-            "shared-model"
-        )
-        .await
-        .is_err()
-    );
+    assert!(binding_target_from(
+        &fixture.env,
+        fixture.store.clone(),
+        "openai",
+        "shared-model"
+    )
+    .await
+    .is_err());
+    assert!(binding_target_from(
+        &fixture.env,
+        fixture.store.clone(),
+        "unknown",
+        "shared-model"
+    )
+    .await
+    .is_err());
 }
 
 fn write(path: &Path, text: &str, mode: u32) {
@@ -317,23 +309,19 @@ async fn refresh_folds_every_enabled_provider_into_the_catalog() {
     // Cheaper Inference has no key file here: an error, never a guess.
     let cheaper = by_id(&output, "cheaper_inference");
     assert_eq!(cheaper.status, "error");
-    assert!(
-        cheaper
-            .error
-            .as_deref()
-            .unwrap()
-            .contains("key file is unavailable")
-    );
+    assert!(cheaper
+        .error
+        .as_deref()
+        .unwrap()
+        .contains("key file is unavailable"));
     assert!(output.revision >= 3);
 
     let keys = lister.keys.lock().unwrap().clone();
     assert!(keys.contains(&("openrouter".into(), None)));
     assert!(keys.contains(&("opencode_go".into(), Some("go-key-123".into()))));
-    assert!(
-        !keys
-            .iter()
-            .any(|(id, _)| id == "cheaper_inference" || id == "parked")
-    );
+    assert!(!keys
+        .iter()
+        .any(|(id, _)| id == "cheaper_inference" || id == "parked"));
 
     let providers = list_providers(&fixture.env, fixture.store.clone())
         .await
@@ -543,12 +531,11 @@ async fn provider_list_and_keys_must_be_protected() {
     .unwrap();
     let go = by_id(&output, "opencode_go");
     assert_eq!(go.status, "error");
-    assert!(
-        go.error
-            .as_deref()
-            .unwrap()
-            .contains("key file is unavailable")
-    );
+    assert!(go
+        .error
+        .as_deref()
+        .unwrap()
+        .contains("key file is unavailable"));
     assert!(
         lister.keys.lock().unwrap().is_empty(),
         "no call without a key"
@@ -609,18 +596,16 @@ async fn list_models_pages_filters_and_searches() {
     assert_eq!(search.models[0].model_id, "Gamma-Pro");
     let by_name = page(None, Some("ALPHA-2 MODEL")).await.unwrap();
     assert_eq!(by_name.models.len(), 1);
-    assert!(
-        list_models(
-            &fixture.env,
-            fixture.store.clone(),
-            ListModelsInput {
-                limit: Some(0),
-                ..Default::default()
-            }
-        )
-        .await
-        .is_err()
-    );
+    assert!(list_models(
+        &fixture.env,
+        fixture.store.clone(),
+        ListModelsInput {
+            limit: Some(0),
+            ..Default::default()
+        }
+    )
+    .await
+    .is_err());
 }
 
 /// Serve one HTTP response on loopback; resolves to the raw request.
@@ -688,13 +673,11 @@ async fn fetch_sends_the_key_only_as_declared_and_bounds_the_answer() {
     fetch_models(&url, ModelListFormat::Openai, ProviderAuth::None, None)
         .await
         .unwrap();
-    assert!(
-        !request
-            .await
-            .unwrap()
-            .to_lowercase()
-            .contains("authorization")
-    );
+    assert!(!request
+        .await
+        .unwrap()
+        .to_lowercase()
+        .contains("authorization"));
 
     let (url, _) = serve_once(http("401 Unauthorized", r#"{"error":"no"}"#, "")).await;
     let error = fetch_models(
