@@ -75,6 +75,7 @@ pub mod mcp_policy;
 mod memory_binding;
 pub(crate) mod method_contract_admission;
 mod model_registry_dispatch;
+pub(crate) mod model_providers_validation;
 mod mqtt_doorbell_relay;
 pub mod mutation_engine;
 pub(crate) mod native_sled_identity;

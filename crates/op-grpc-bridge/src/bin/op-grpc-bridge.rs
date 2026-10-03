@@ -4,7 +4,8 @@
 //! service. It exposes the complete Operation route set plus the 3tched Router
 //! schema API on TCP port 8090 and the plugin Unix socket.
 
-use op_grpc_bridge::server::{ServerConfig, run_tched_router_server};
+use op_grpc_bridge::model_providers_validation;
+use op_grpc_bridge::server::{run_tched_router_server, ServerConfig};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
