@@ -28,27 +28,50 @@ fn run() -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("Chatbot record not found"))?;
 
     eprintln!("\n✓ Chatbot record exists\n");
+    eprintln!("Current mutation_index: {}", record.mutation_index);
+    eprintln!("Current device binding:");
+    eprintln!("  {}\n", record.btrfs_device_json);
 
-    // Check device binding
+    // Check device binding: writable leaf block device, no loops / leaf.img.
     eprintln!("Checking device binding:");
-    if record.btrfs_device_json.contains("/dev/sdb2") {
-        eprintln!("  ✓ Using shared seed device (/dev/sdb2)");
-    } else if record.btrfs_device_json.contains("leaf.img") {
-        eprintln!("  ✗ Still using loop image - migration incomplete");
+    if record.btrfs_device_json.contains("leaf.img")
+        || record.btrfs_device_json.contains("/dev/loop")
+    {
+        eprintln!("  ✗ Still using loop/leaf.img — migration incomplete");
         return Err(anyhow::anyhow!("Chatbot still on loop image"));
+    }
+    if record.btrfs_device_json.contains("/dev/sdb2") {
+        eprintln!("  ✓ Using leaf block device (/dev/sdb2)");
     } else {
-        eprintln!("  ? Unknown device binding");
+        eprintln!("  ✗ Missing /dev/sdb2 leaf binding");
         eprintln!("  Device JSON: {}", record.btrfs_device_json);
+        return Err(anyhow::anyhow!("Chatbot not bound to leaf /dev/sdb2"));
+    }
+    if record
+        .btrfs_device_json
+        .contains("seed-identities/b0c777e3-0955-cd8b-3d01-ca12998cae28/volume")
+    {
+        eprintln!("  ✓ Mount point is identity sled subvolume on leaf");
+    } else {
+        eprintln!("  ✗ Mount point is not the leaf identity subvolume");
+        return Err(anyhow::anyhow!("Chatbot mount_point is not leaf subvolume"));
     }
 
-    // Check FSID
+    // Check FSID (leaf-root, not a btrfs seed)
     eprintln!("\nChecking FSID:");
     let correct_fsid = "bc95536f-1d38-46ad-b87e-2637c5c548ec";
     if record.btrfs_device_json.contains(correct_fsid) {
-        eprintln!("  ✓ Correct seed FSID ({})", correct_fsid);
+        eprintln!("  ✓ Correct leaf FSID ({})", correct_fsid);
     } else {
         eprintln!("  ✗ Wrong FSID in binding");
         return Err(anyhow::anyhow!("Incorrect FSID"));
+    }
+    if record.btrfs_device_json.contains("\"attached\":true")
+        || record.btrfs_device_json.contains("\"attached\": true")
+    {
+        eprintln!("  ✓ Leaf attached");
+    } else {
+        eprintln!("  ⚠ attached flag not true in JSON text check");
     }
 
     // Check active state

@@ -62,11 +62,32 @@ pub fn ensure_device_added(device: &Path, mount_point: &Path) -> Result<()> {
 
 /// Remove the registered backing from `mount_point` when it is still a member.
 /// A device that is already absent is left alone.
+///
+/// Sole-member block devices are leaves that host identity subvolumes: never
+/// `BTRFS_IOC_RM_DEV` them. Extra members added via `btrfs device add` are
+/// removed as usual. Seeding is not used.
 pub fn ensure_device_removed(device: &Path, mount_point: &Path) -> Result<()> {
     let Some(kernel_path) = member_kernel_path(device, mount_point)? else {
         return Ok(());
     };
+    if filesystem_member_count(mount_point)? <= 1 {
+        let meta = std::fs::metadata(device)
+            .with_context(|| format!("inspect identity leaf {}", device.display()))?;
+        if meta.file_type().is_block_device() {
+            return Ok(());
+        }
+    }
     device_remove(Path::new(&kernel_path), mount_point)
+}
+
+fn filesystem_member_count(mount_point: &Path) -> Result<u64> {
+    let dir = File::open(mount_point).context("open btrfs mount for member count")?;
+    // SAFETY: FsInfo is an integer-only kernel ABI struct.
+    let mut fs: FsInfo = unsafe { std::mem::zeroed() };
+    if unsafe { libc::ioctl(dir.as_raw_fd(), 0x8400_941f as libc::c_ulong, &mut fs) } != 0 {
+        return Err(std::io::Error::last_os_error()).context("query btrfs member count");
+    }
+    Ok(fs.num_devices)
 }
 
 fn vol_args_ioctl(

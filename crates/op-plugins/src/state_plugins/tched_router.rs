@@ -25,7 +25,7 @@ use simd_json::OwnedValue as Value;
 // =============================================================================
 
 const PLUGIN_NAME: &str = "tched_router";
-const PLUGIN_VERSION: &str = "4.1.0";
+const PLUGIN_VERSION: &str = "4.3.0";
 const PLUGIN_CATEGORY: &str = "llm";
 const PLUGIN_DESCRIPTION: &str = "3tched Router — schema/RPC-native model router for Antigravity UI, CLI providers, and structured JSON output";
 const PLUGIN_DISPLAY_NAME: &str = "GB.3tchedRouter";
@@ -322,6 +322,10 @@ pub struct ConfigurableOptions {
 #[schemars(extend("x-oscal-subid" = "sch.software.plugin.3tched-router.schema@v1"))]
 #[schemars(extend("x-oscal-category" = "llm"))]
 pub struct TchedRouterState {
+    /// Narrow reflected model binding, published by authoritative native observation.
+    /// Read-only and excluded from the public state projection.
+    #[serde(default)]
+    pub catalog_model_binding: Option<ResolveCatalogModelBindingOutput>,
     /// Owner-private generation document revision; excluded from public_state.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(extend("x-oscal-subid" = "obs.software.tched-router.generation-revision@v1"))]
@@ -390,6 +394,43 @@ pub struct TchedRouterState {
 /// Empty input for read-only 3tched Router methods.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct EmptyTchedInput {}
+
+/// Read the dedicated route selected by the verified caller's persisted mode.
+/// No agent, identity, profile or configuration path can be supplied.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetOwnAgentRouteInput {}
+
+/// Credential-free native route observation for the caller's own selected role.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct GetOwnAgentRouteOutput {
+    pub mode: super::project::ChatMode,
+    pub reference: String,
+    pub model: String,
+    /// Explicit HTTPS inference endpoint without credentials, query or fragment.
+    pub uri: String,
+}
+
+/// Resolve a catalog model against allowed native ordinary-selection profiles.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ResolveCatalogModelBindingInput {
+    pub provider_id: String,
+    pub model_id: String,
+}
+
+/// A verified credential-free native profile for one current catalog model.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ResolveCatalogModelBindingOutput {
+    pub provider_id: String,
+    pub model_id: String,
+    pub reference: String,
+    pub model: String,
+    pub uri: String,
+    pub catalog_revision: u64,
+}
 
 /// Input for resolving a model route by hint or model identifier.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -864,6 +905,7 @@ impl TchedRouterPlugin {
             selected_provider: selected_provider.clone(),
             selected_model,
             native_config: None,
+            catalog_model_binding: None,
             model_assignments: ModelAssignments {
                 ovs_routing: Self::DEFAULT_CHAT_MODEL.to_string(),
                 obfuscation: Self::DEFAULT_CHAT_MODEL.to_string(),
@@ -1761,6 +1803,18 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
     )
     .expect("plugin-owned tched_router config contract is a valid exact field schema");
     schema.category = PLUGIN_CATEGORY.to_string();
+    let binding_field = schema
+        .fields
+        .get_mut("catalog_model_binding")
+        .expect("catalog binding field is present");
+    binding_field.read_only = true;
+    binding_field.field_type = op_state_store::FieldType::exact_json_schema(
+        serde_json::to_value(schemars::schema_for!(
+            Option<ResolveCatalogModelBindingOutput>
+        ))
+        .expect("catalog binding field schema serializes"),
+    )
+    .expect("catalog binding field has a valid exact nullable typed schema");
     schema.display_name = Some(PLUGIN_DISPLAY_NAME.to_string());
 
     if let Ok(state) = simd_json::serde::to_owned_value(state) {
@@ -2028,6 +2082,42 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
 }
 
 fn register_cli_config_methods(schema: &mut PluginSchema) {
+    schema.methods.insert(
+        "apply_catalog_model_binding".to_string(),
+        method_decl_from_schemars_with_output::<
+            ResolveCatalogModelBindingInput,
+            ResolveCatalogModelBindingOutput,
+        >(
+            "apply_catalog_model_binding",
+            SideEffect::Mutation,
+            false,
+            "cap.software.tched-router.catalog.selection.set@v1",
+            "mut.software.tched-router.catalog-model-binding@v1",
+        ),
+    );
+    schema.methods.insert(
+        "resolve_catalog_model_binding".to_string(),
+        method_decl_from_schemars_with_output::<
+            ResolveCatalogModelBindingInput,
+            ResolveCatalogModelBindingOutput,
+        >(
+            "resolve_catalog_model_binding",
+            SideEffect::Read,
+            true,
+            "cap.software.tched-router.model.binding.read@v1",
+            "obs.software.tched-router.catalog-model-binding@v1",
+        ),
+    );
+    schema.methods.insert(
+        "get_own_agent_route".to_string(),
+        method_decl_from_schemars_with_output::<GetOwnAgentRouteInput, GetOwnAgentRouteOutput>(
+            "get_own_agent_route",
+            SideEffect::Read,
+            true,
+            "cap.software.tched-router.agent.route.self.read@v1",
+            "obs.software.tched-router.agent-route-self@v1",
+        ),
+    );
     let read_capability = "cap.software.tched-router.router.read@v1";
     let write_capability = "cap.software.tched-router.router.write@v1";
     schema.methods.insert(
@@ -2166,6 +2256,18 @@ const CARRIED_CAPABILITIES: &[(&str, &str)] = &[
         "Read tched_router configuration via config_list/get.",
     ),
     (
+        "cap.software.tched-router.agent.route.self.read@v1",
+        "Read only the dedicated native route selected by the caller's persisted chat mode.",
+    ),
+    (
+        "cap.software.tched-router.model.binding.read@v1",
+        "Resolve one available catalog model to a verified ordinary native profile and safe endpoint.",
+    ),
+    (
+        "cap.software.tched-router.catalog.selection.set@v1",
+        "Apply one verified available catalog model only to an allowed ordinary native profile.",
+    ),
+    (
         "cap.software.tched-router.selection.set@v1",
         "Select the active provider and model together.",
     ),
@@ -2274,6 +2376,9 @@ pub fn dispatch_tched_router_method(
                 || matches!(
                     other,
                     "Chat"
+                        | "get_own_agent_route"
+                        | "resolve_catalog_model_binding"
+                        | "apply_catalog_model_binding"
                         | "config_list"
                         | "config_get"
                         | "config_set"
@@ -2485,6 +2590,103 @@ fn set_role_model_handler(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn catalog_binding_schema_is_narrow_and_state_is_readonly() {
+        let schema = super::tched_router_plugin_schema();
+        let method = &schema.methods["resolve_catalog_model_binding"];
+        let apply = &schema.methods["apply_catalog_model_binding"];
+        assert_eq!(
+            apply.required_capability.as_deref(),
+            Some("cap.software.tched-router.catalog.selection.set@v1")
+        );
+        assert_ne!(method.required_capability, apply.required_capability);
+        assert_eq!(method.side_effect, op_state_store::SideEffect::Read);
+        assert_eq!(apply.side_effect, op_state_store::SideEffect::Mutation);
+        assert!(method.idempotent);
+        assert!(!apply.idempotent);
+        assert_eq!(method.args, apply.args);
+        assert_eq!(method.returns, apply.returns);
+        assert_eq!(
+            method.required_capability.as_deref(),
+            Some("cap.software.tched-router.model.binding.read@v1")
+        );
+        assert!(schema.fields["catalog_model_binding"].read_only);
+        let op_state_store::FieldType::JsonSchema(field_schema) =
+            &schema.fields["catalog_model_binding"].field_type
+        else {
+            panic!("catalog binding requires its exact nullable typed schema");
+        };
+        let field_schema = serde_json::to_value(field_schema.as_ref()).unwrap();
+        let field_validator = jsonschema::Validator::new(&field_schema).unwrap();
+        assert!(field_validator.is_valid(&serde_json::Value::Null));
+        assert!(
+            !schema
+                .public_state
+                .paths
+                .iter()
+                .any(|p| p.starts_with("/catalog_model_binding"))
+        );
+        for extra in ["reference", "path", "agent", "uri", "session_id"] {
+            let mut args = serde_json::json!({"provider_id":"openai", "model_id":"test-model"});
+            args[extra] = serde_json::json!("untrusted");
+            assert!(
+                serde_json::from_value::<super::ResolveCatalogModelBindingInput>(args).is_err()
+            );
+        }
+        let returns = serde_json::to_value(method.returns.as_ref().unwrap()).unwrap();
+        let validator = jsonschema::Validator::new(&returns).unwrap();
+        let mut output = serde_json::json!({"provider_id":"openai", "model_id":"test-model", "reference":"openai.dashboard", "model":"test-model", "uri":"https://inference.example/v1", "catalog_revision":7});
+        assert!(validator.is_valid(&output));
+        assert!(field_validator.is_valid(&output));
+        output["api_key"] = serde_json::json!("secret");
+        assert!(!validator.is_valid(&output));
+        assert!(!field_validator.is_valid(&output));
+        let mut state = super::TchedRouterPlugin::current_state();
+        state.catalog_model_binding = Some(super::ResolveCatalogModelBindingOutput {
+            provider_id: "PRIVATE_PROVIDER".into(),
+            model_id: "PRIVATE_MODEL".into(),
+            reference: "openai.private".into(),
+            model: "PRIVATE_MODEL".into(),
+            uri: "https://private.example/v1".into(),
+            catalog_revision: 7,
+        });
+        let observed = super::dispatch_tched_router_method("GetState", "{}", &state).unwrap();
+        assert!(!observed.result.to_string().contains("PRIVATE_"));
+    }
+
+    #[test]
+    fn own_agent_route_has_narrow_typed_admission() {
+        let schema = super::tched_router_plugin_schema();
+        let method = &schema.methods["get_own_agent_route"];
+        assert_eq!(
+            method.required_capability.as_deref(),
+            Some("cap.software.tched-router.agent.route.self.read@v1")
+        );
+        let input =
+            serde_json::to_value(schemars::schema_for!(super::GetOwnAgentRouteInput)).unwrap();
+        assert_eq!(input["additionalProperties"], false);
+        for args in [
+            serde_json::json!({"agent":"accountability"}),
+            serde_json::json!({"path":"providers"}),
+            serde_json::json!({"session_id":"other"}),
+        ] {
+            assert!(serde_json::from_value::<super::GetOwnAgentRouteInput>(args).is_err());
+        }
+        let output =
+            serde_json::to_value(schemars::schema_for!(super::GetOwnAgentRouteOutput)).unwrap();
+        let fields = output["properties"].as_object().unwrap();
+        assert_eq!(fields.len(), 4);
+        for field in ["mode", "reference", "model", "uri"] {
+            assert!(fields.contains_key(field));
+        }
+        let returns = serde_json::to_value(method.returns.as_ref().unwrap()).unwrap();
+        let validator = jsonschema::Validator::new(&returns).unwrap();
+        let mut observed = serde_json::json!({"mode":"control_plane", "reference":"custom.test", "model":"test-model", "uri":"https://inference.example/v1"});
+        assert!(validator.is_valid(&observed));
+        observed["api_key"] = serde_json::json!("must-not-be-an-output-field");
+        assert!(!validator.is_valid(&observed));
+    }
+
     use super::*;
     use crate::state_plugins::common::oscal::validate_subid;
     use serde_json::Value as JVal;
@@ -2647,6 +2849,9 @@ mod tests {
                 || matches!(
                     method.as_str(),
                     "config_list"
+                        | "get_own_agent_route"
+                        | "resolve_catalog_model_binding"
+                        | "apply_catalog_model_binding"
                         | "config_get"
                         | "config_set"
                         | "config_patch"
@@ -2873,6 +3078,6 @@ mod config_v3_contract_tests {
 
     #[test]
     fn config_contract_break_bumps_plugin_version() {
-        assert_eq!(tched_router_plugin_schema().version, "4.1.0");
+        assert_eq!(tched_router_plugin_schema().version, "4.3.0");
     }
 }

@@ -133,7 +133,28 @@ struct AdmittedMethodCall {
     admitted_schema: op_state_store::PluginSchema,
     generation_origin: Option<crate::generation_admission::GenerationOrigin>,
     facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+    bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
     change: StateChange,
+}
+
+fn ensure_own_route_context_unchanged(
+    before: &op_plugins::state_plugins::project::ResolvedChatContext,
+    after: &op_plugins::state_plugins::project::ResolvedChatContext,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        serde_json::to_value(before)? == serde_json::to_value(after)?,
+        "own route caller context changed during observation"
+    );
+    Ok(())
+}
+
+fn require_bound_oracle_grant(actor: &str, capability: Option<&str>) -> anyhow::Result<()> {
+    let capability = capability.context("bound oracle method requires its declared capability")?;
+    anyhow::ensure!(
+        crate::interceptor::load_capability_grants(actor).contains(capability),
+        "bound oracle method capability is no longer granted"
+    );
+    Ok(())
 }
 
 fn audit_method_arguments(
@@ -3265,6 +3286,7 @@ impl MutationEngine {
             session_genesis,
             generation_origin,
             None,
+            None,
         )
     }
 
@@ -3290,6 +3312,35 @@ impl MutationEngine {
             session_genesis,
             None,
             Some(origin),
+            None,
+        )
+    }
+
+    /// Only the receiver can supply this typed proof; plugin arguments never
+    /// select an actor or manufacture transport attribution.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn dispatch_method_call_with_bound_oracle<'a>(
+        &'a self,
+        plugin_id: &'a str,
+        method: &'a str,
+        json_args: &'a str,
+        capability_id: Option<&'a str>,
+        actor_id: &'a str,
+        session_id: Option<&'a str>,
+        session_genesis: Option<&'a str>,
+        proof: Option<crate::oracle_assertion::BoundOracleProof>,
+    ) -> futures::future::BoxFuture<'a, anyhow::Result<serde_json::Value>> {
+        self.dispatch_method_call_with_origins(
+            plugin_id,
+            method,
+            json_args,
+            capability_id,
+            actor_id,
+            session_id,
+            session_genesis,
+            None,
+            None,
+            proof,
         )
     }
 
@@ -3305,10 +3356,23 @@ impl MutationEngine {
         session_genesis: Option<&'a str>,
         generation_origin: Option<crate::generation_admission::GenerationOrigin>,
         facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+        bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
     ) -> futures::future::BoxFuture<'a, anyhow::Result<serde_json::Value>> {
         // Explicit Send erasure breaks recursive facade/property dispatch's
         // future-type cycle while preserving all pre-task admission below.
         Box::pin(async move {
+            if let Some(proof) = &bound_oracle {
+                crate::interceptor::revalidate_bound_oracle(
+                    self,
+                    proof,
+                    actor_id,
+                    session_id,
+                    session_genesis,
+                    true,
+                )
+                .await?;
+                require_bound_oracle_grant(actor_id, capability_id)?;
+            }
             if let Some(origin) = &facade_origin {
                 origin.validate_target(plugin_id, method)?;
             }
@@ -3401,7 +3465,7 @@ impl MutationEngine {
             // it is persisted before this method returns Ok (NFR-003).
             let event_summary = {
                 let mut chain = self.event_chain.write().await;
-                let event = chain.record_method_call_with_identity(
+                let event = chain.record_method_call_with_transport(
                     actor_id.to_string(),
                     session_id.map(str::to_string),
                     session_genesis.map(str::to_string),
@@ -3410,6 +3474,9 @@ impl MutationEngine {
                     method.to_string(),
                     capability_id.map(|s| s.to_string()),
                     &audit_json,
+                    bound_oracle
+                        .as_ref()
+                        .map(crate::oracle_assertion::BoundOracleProof::audit_value),
                 );
                 (
                     event.event_id,
@@ -3461,6 +3528,7 @@ impl MutationEngine {
                 admitted_schema,
                 generation_origin,
                 facade_origin,
+                bound_oracle,
                 change,
             };
             let engine = self.clone();
@@ -3491,6 +3559,7 @@ impl MutationEngine {
             admitted_schema,
             generation_origin,
             facade_origin,
+            bound_oracle,
             change,
         } = call;
         let plugin_id = plugin_id.as_str();
@@ -3500,6 +3569,18 @@ impl MutationEngine {
         let actor_id = actor_id.as_str();
         let session_id = session_id.as_deref();
         let session_genesis = session_genesis.as_deref();
+        if let Some(proof) = &bound_oracle {
+            crate::interceptor::revalidate_bound_oracle(
+                self,
+                proof,
+                actor_id,
+                session_id,
+                session_genesis,
+                true,
+            )
+            .await?;
+            require_bound_oracle_grant(actor_id, capability_id)?;
+        }
         let mut method_result: serde_json::Value = match plugin_id {
             "mcp" => {
                 crate::mcp_config_dispatch::dispatch(
@@ -4567,6 +4648,7 @@ impl MutationEngine {
                     session: session_id.map(str::to_owned),
                     genesis: session_genesis.map(str::to_owned),
                 };
+                let owned_bound_oracle = bound_oracle.clone();
                 tokio::spawn(async move {
                     engine
                         .dispatch_tched_router_owned(
@@ -4577,6 +4659,7 @@ impl MutationEngine {
                             change,
                             caller,
                             facade_origin,
+                            owned_bound_oracle,
                         )
                         .await
                 })
@@ -4743,6 +4826,21 @@ impl MutationEngine {
             }
             redact_identity_method_credentials(method, own_session.as_deref(), &mut method_result);
         }
+        if let Some(proof) = &bound_oracle {
+            crate::interceptor::revalidate_bound_oracle(
+                self,
+                proof,
+                actor_id,
+                session_id,
+                session_genesis,
+                false,
+            )
+            .await?;
+            require_bound_oracle_grant(actor_id, capability_id)?;
+            // The browser transport does not export the target's authored SID1,
+            // even if a future explicit grant permits an administrative read.
+            redact_identity_credentials_json(&mut method_result);
+        }
 
         // Return a JSON result carrying the event accountability proof and the
         // method's domain result. This is the value the bridge serializes and
@@ -4768,10 +4866,22 @@ impl MutationEngine {
         change: StateChange,
         caller: crate::tched_router_admission::RouterCaller,
         facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+        bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
     ) -> anyhow::Result<serde_json::Value> {
         let guarded =
             crate::tched_router_admission::admit_guarded(self, &admitted_schema, method, &caller)
                 .await?;
+        if let Some(proof) = &bound_oracle {
+            crate::interceptor::revalidate_bound_oracle(
+                self,
+                proof,
+                &caller.actor,
+                caller.session.as_deref(),
+                caller.genesis.as_deref(),
+                true,
+            )
+            .await?;
+        }
         if let Some(origin) = &facade_origin {
             // The native operation guard is retained while rechecking the
             // original facade seal and current caller grant after any queue wait.
@@ -4789,6 +4899,278 @@ impl MutationEngine {
                 .as_deref()
                 .context("verified genesis is required")?,
         )?;
+        if method == "get_own_agent_route" {
+            let _: op_plugins::state_plugins::tched_router::GetOwnAgentRouteInput =
+                serde_json::from_value(parsed_value)?;
+            let session = caller
+                .session
+                .as_deref()
+                .context("verified session is required")?;
+            let grants = crate::interceptor::load_capability_grants(&caller.actor)
+                .into_iter()
+                .collect();
+            let before =
+                crate::project_dispatch::current_chat_context(self, session, &grants).await?;
+            anyhow::ensure!(
+                crate::chat_mode_routing::dedicated_alias(before.mode).is_some(),
+                "current chat mode has no dedicated native route"
+            );
+            let (_, represented) =
+                crate::tched_config_engine::coherent_observation(pinned, &sealed_identity).await?;
+            self.persist_tched_router_config_observation(method, &represented, &pinned.schema_hash)
+                .await?;
+            let committed = self
+                .read_tched_router_config_field("native_config", &pinned.schema_hash)
+                .await?;
+            let output = serde_json::to_value(crate::tched_own_agent_route::project(
+                before.mode,
+                &committed,
+            )?)?;
+            crate::tched_router_admission::readmit_call(
+                self,
+                &admitted_schema,
+                "tched_router",
+                method,
+                &caller,
+            )
+            .await?;
+            let grants = crate::interceptor::load_capability_grants(&caller.actor)
+                .into_iter()
+                .collect();
+            let after =
+                crate::project_dispatch::current_chat_context(self, session, &grants).await?;
+            ensure_own_route_context_unchanged(&before, &after)?;
+            if let Some(proof) = &bound_oracle {
+                crate::interceptor::revalidate_bound_oracle(
+                    self,
+                    proof,
+                    &caller.actor,
+                    caller.session.as_deref(),
+                    caller.genesis.as_deref(),
+                    false,
+                )
+                .await?;
+            }
+            crate::method_contract_admission::validate_admitted_output(
+                admitted_schema
+                    .methods
+                    .get(method)
+                    .context("admitted own route method absent")?,
+                &output,
+            )?;
+            return Ok(output);
+        }
+        if matches!(
+            method,
+            "resolve_catalog_model_binding" | "apply_catalog_model_binding"
+        ) {
+            let applying = method == "apply_catalog_model_binding";
+            let input: op_plugins::state_plugins::tched_router::ResolveCatalogModelBindingInput =
+                serde_json::from_value(parsed_value)?;
+            let context = if applying {
+                let grants = crate::interceptor::load_capability_grants(&caller.actor)
+                    .into_iter()
+                    .collect();
+                let context = crate::project_dispatch::current_chat_context(
+                    self,
+                    caller
+                        .session
+                        .as_deref()
+                        .context("verified session is required")?,
+                    &grants,
+                )
+                .await?;
+                anyhow::ensure!(
+                    crate::chat_mode_routing::dedicated_alias(context.mode).is_none(),
+                    "dedicated agent model changes require their protected operation"
+                );
+                Some(context)
+            } else {
+                None
+            };
+            let target = crate::model_registry_dispatch::catalog_binding_target(
+                self,
+                &input.provider_id,
+                &input.model_id,
+            )
+            .await?;
+            // The catalog lookup may have waited for Cozo. Readmit this exact
+            // reflected read before inspecting the native router configuration.
+            crate::tched_router_admission::readmit_call(
+                self,
+                &admitted_schema,
+                "tched_router",
+                method,
+                &caller,
+            )
+            .await?;
+            if let Some(proof) = &bound_oracle {
+                crate::interceptor::revalidate_bound_oracle(
+                    self,
+                    proof,
+                    &caller.actor,
+                    caller.session.as_deref(),
+                    caller.genesis.as_deref(),
+                    true,
+                )
+                .await?;
+            }
+            let mut observation = crate::tched_config_engine::observe_catalog_binding(
+                pinned,
+                &sealed_identity,
+                &target,
+            )
+            .await?;
+            let after = crate::model_registry_dispatch::catalog_binding_target(
+                self,
+                &input.provider_id,
+                &input.model_id,
+            )
+            .await?;
+            anyhow::ensure!(
+                target == after,
+                "catalog authority changed during native binding reflection"
+            );
+            let mut represented = serde_json::json!({});
+            if applying {
+                // This method owns only a catalog-verified ordinary selection.
+                // It never forwards to the broad SetSelection/config facade.
+                crate::tched_router_admission::readmit_call(
+                    self,
+                    &admitted_schema,
+                    "tched_router",
+                    method,
+                    &caller,
+                )
+                .await?;
+                let grants = crate::interceptor::load_capability_grants(&caller.actor)
+                    .into_iter()
+                    .collect();
+                let current = crate::project_dispatch::current_chat_context(
+                    self,
+                    caller
+                        .session
+                        .as_deref()
+                        .context("verified session is required")?,
+                    &grants,
+                )
+                .await?;
+                ensure_own_route_context_unchanged(
+                    context.as_ref().context("selection context absent")?,
+                    &current,
+                )?;
+                if let Some(proof) = &bound_oracle {
+                    crate::interceptor::revalidate_bound_oracle(
+                        self,
+                        proof,
+                        &caller.actor,
+                        caller.session.as_deref(),
+                        caller.genesis.as_deref(),
+                        true,
+                    )
+                    .await?;
+                }
+                let expected = observation.binding.clone();
+                let runtime =
+                    crate::tched_router_runtime::TchedRouterRuntimeClient::for_agent_alias(
+                        "dashboard",
+                    )
+                    .with_sealed_identity(Some(&sealed_identity));
+                runtime
+                    .set_selection(&expected.reference, &expected.model)
+                    .await?;
+                let fields = crate::tched_config_engine::coherent_catalog_selection_observation(pinned, &sealed_identity)
+                    .await.context("native catalog selection may have completed but coherent readback failed; reconcile before retry")?;
+                observation = crate::tched_config_engine::observe_catalog_binding(pinned, &sealed_identity, &target)
+                    .await.context("native catalog selection may have completed but binding readback failed; reconcile before retry")?;
+                anyhow::ensure!(
+                    observation.binding == expected
+                        && fields["native_config"] == observation.native_config,
+                    "native catalog selection may have completed but route readback changed; reconcile before retry"
+                );
+                let (family, alias) = expected
+                    .reference
+                    .split_once('.')
+                    .context("resolved native reference is invalid")?;
+                anyhow::ensure!(
+                    fields["native_config"]["agents"]["dashboard"]["model_provider"].as_str()
+                        == Some(expected.reference.as_str())
+                        && fields["native_config"]["providers"]["models"][family][alias]["model"]
+                            .as_str()
+                            == Some(expected.model.as_str()),
+                    "native catalog selection may have completed but exact selection readback differs; reconcile before retry"
+                );
+                represented = fields;
+            }
+            let binding = serde_json::to_value(observation.binding)?;
+            represented["native_config"] = observation.native_config;
+            represented["catalog_model_binding"] = binding.clone();
+            self.persist_tched_router_config_observation(method, &represented, &pinned.schema_hash)
+                .await?;
+            let committed_config = self
+                .read_tched_router_config_field("native_config", &pinned.schema_hash)
+                .await?;
+            let committed = self
+                .read_tched_router_config_field("catalog_model_binding", &pinned.schema_hash)
+                .await?;
+            anyhow::ensure!(
+                committed_config == represented["native_config"] && committed == binding,
+                "native binding observation changed after publication"
+            );
+            let after = crate::model_registry_dispatch::catalog_binding_target(
+                self,
+                &input.provider_id,
+                &input.model_id,
+            )
+            .await?;
+            anyhow::ensure!(
+                target == after,
+                "catalog authority changed after binding publication"
+            );
+            crate::tched_router_admission::readmit_call(
+                self,
+                &admitted_schema,
+                "tched_router",
+                method,
+                &caller,
+            )
+            .await?;
+            if let Some(before) = context {
+                let grants = crate::interceptor::load_capability_grants(&caller.actor)
+                    .into_iter()
+                    .collect();
+                let after = crate::project_dispatch::current_chat_context(
+                    self,
+                    caller
+                        .session
+                        .as_deref()
+                        .context("verified session is required")?,
+                    &grants,
+                )
+                .await?;
+                ensure_own_route_context_unchanged(&before, &after)
+                    .context("native catalog selection may have completed but caller context changed; reconcile before retry")?;
+            }
+            if let Some(proof) = &bound_oracle {
+                crate::interceptor::revalidate_bound_oracle(
+                    self,
+                    proof,
+                    &caller.actor,
+                    caller.session.as_deref(),
+                    caller.genesis.as_deref(),
+                    false,
+                )
+                .await?;
+            }
+            crate::method_contract_admission::validate_admitted_output(
+                admitted_schema
+                    .methods
+                    .get(method)
+                    .context("admitted binding reflection method absent")?,
+                &committed,
+            )?;
+            return Ok(committed);
+        }
         if let Some(result) = crate::tched_config_engine::dispatch(
             self,
             pinned,
@@ -5430,6 +5812,7 @@ impl MutationEngine {
             matches!(
                 field,
                 "native_config"
+                    | "catalog_model_binding"
                     | "model_assignments"
                     | "memory_namespaces"
                     | "registration_service"
@@ -7039,5 +7422,48 @@ mod identity_redaction_tests {
         assert!(encoded.contains("session_id"));
         assert!(encoded.contains("keep"));
         assert_eq!(public_plugin_value("another_plugin", &state), state);
+    }
+}
+
+#[cfg(test)]
+mod own_route_context_tests {
+    use super::ensure_own_route_context_unchanged;
+    use op_plugins::state_plugins::project::{ChatMode, ResolvedChatContext};
+
+    fn context() -> ResolvedChatContext {
+        ResolvedChatContext {
+            mode: ChatMode::ControlPlane,
+            session_id: "own-session".into(),
+            project_id: None,
+            memory_namespace: "session/own-session/control_plane".into(),
+            read_only: false,
+            effective_capabilities: ["chat.control_plane".to_owned()].into_iter().collect(),
+            allowed_agents: Default::default(),
+            selected_agent: None,
+        }
+    }
+
+    #[test]
+    fn own_route_context_rechecks_session_mode_and_revoked_context_grants() {
+        let before = context();
+        assert!(ensure_own_route_context_unchanged(&before, &context()).is_ok());
+        let mut after = context();
+        after.mode = ChatMode::Personal;
+        assert!(ensure_own_route_context_unchanged(&before, &after).is_err());
+        let mut after = context();
+        after.session_id = "foreign-session".into();
+        assert!(ensure_own_route_context_unchanged(&before, &after).is_err());
+        let mut after = context();
+        after.effective_capabilities.clear();
+        assert!(ensure_own_route_context_unchanged(&before, &after).is_err());
+    }
+
+    #[test]
+    fn bound_oracle_result_redaction_withholds_authored_credentials_recursively() {
+        let mut result = serde_json::json!({"identity":{"sealed_id":"sid1:private", "session_id":"own"},
+            "nested":[{"sealed_id":"sid1:other"}]});
+        super::redact_identity_credentials_json(&mut result);
+        assert!(!result.to_string().contains("sid1:"));
+        assert_eq!(result["identity"]["session_id"], "own");
     }
 }

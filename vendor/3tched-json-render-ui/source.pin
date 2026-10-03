@@ -1,11 +1,11 @@
 format=opdbus.3tched-json-render-ui-source.v1
 source_repository=/srv/git/3tched.com
 source_head=999651e6d1b9f653d8cf892c390ad1fe22ecfa39
-source_worktree=clean
-content_manifest_sha256=26cf8bee6da581d34e11d38fbaa7781f6693292b0ed21dc7195bcf9643edddec
-source_archive_sha256=b28a1549522b790cf16c4766324c4cb7f2a4a3d0d037c63d53cca5dd7e6d3cda
+source_worktree=modified
+content_manifest_sha256=1ea7abcf2677c0518ecc806a3adc27cfd26455a265c05a70b75a66da55509528
+source_archive_sha256=0fdaf805e53b091b9b3b277c2511efb9a3d7097cb53bec68c1afda982120defb
 archive_root=3tched-json-render-ui
 node_engine=>=22.22.2
 asset_base=/
-door_default=https://dashboard.ghostbridge.tech:8090
+door_default=https://10.0.0.2:8090
 issuer_default=http://10.0.0.1:51888

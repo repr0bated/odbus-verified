@@ -189,6 +189,13 @@ instructions model-agnostic; record a temporary model choice in the session
 handoff. The primary agent stays available for
 source review, decisions and user communication.
 
+The ordinary `cargo` command uses the owner's conditional worker routing in
+`scripts/cargo-dispatch.md`. Set `CARGO_CALLER_FAMILY` to `gpt`, `grok`, or
+`claude` for your current model family before invoking it. The assigned worker
+executes the single requested native command with `CARGO_DISPATCHED=1`; do not
+recursively delegate from that execution-worker role. Keep model IDs and
+session-specific selections in the routing configuration and shared handoff.
+
 ```bash
 cargo build --workspace
 cargo check -p <crate>
@@ -214,7 +221,9 @@ cd /srv/git/3tched.com && URL_PREFIX=/ VITE_OPDBUS_DOOR=https://10.0.0.2:8090 np
 cd /srv/git/3tched.com && npm run dev
 ```
 
-`LANDING` is the mount name under the static root (`live`, `prod`, `3tched`). `URL_PREFIX=/` is the dashboard root, and there the script replaces only `assets/` and `index.html`. A named mount is a separate directory under that root. op-web does **not** embed the UI via RustEmbed — it serves the deployed static files. The browser's credential comes from `GET /api/identity/self` (op-web, `OP_WEB_HUMAN_PEERS`), from an injecting host page, or from the connect gate; there is no pairing.
+`LANDING` is the mount name under the static root (`live`, `prod`, `3tched`). `URL_PREFIX=/` is the dashboard root, and there the script replaces only `assets/` and `index.html`. A named mount is a separate directory under that root. op-web does **not** embed the UI via RustEmbed — it serves the deployed static files. There is no pairing. The current op-web identity endpoint refuses to infer a browser identity from a TCP source address; remote pickup uses the decoy issuer or an authenticated injecting host page.
+
+On the configured HTTP pages at `10.0.0.2:8080` and `10.0.0.4:8080`, the UI uses op-web's existing same-origin Axum gRPC-Web connector, which forwards the unchanged identity metadata to the TLS door at `10.0.0.2:8090`. Other origins keep the direct HTTPS door. The generic `PluginService/CallMethod`, sealed capabilities, and interceptor identity checks remain the admission path; the connector does not mint or select an identity.
 
 Fresh source exports also include the pinned UI source archive and verifier at
 `vendor/3tched-json-render-ui/build-assets.sh`. That helper builds and checks the

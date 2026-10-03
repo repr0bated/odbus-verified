@@ -18,7 +18,7 @@ until [ -d "/sys/class/net/$BRIDGE" ]; do
     sleep 1
 done
 
-for p in $PHYS ${PUBLIC_PORT:-pub0} ${INTERNAL_PORTS:-3tched svc0}; do
+for p in $PHYS ${PUBLIC_PORT:-pub0} ${INTERNAL_PORTS:-3tched}; do
     i=0
     until [ -d "/sys/class/net/$p" ]; do
         i=$((i+1))
@@ -27,4 +27,4 @@ for p in $PHYS ${PUBLIC_PORT:-pub0} ${INTERNAL_PORTS:-3tched svc0}; do
     done
 done
 
-echo "ovsbr0-uplink: $BRIDGE seeded with $PHYS ${PUBLIC_PORT:-pub0} ${INTERNAL_PORTS:-3tched svc0}"
+echo "ovsbr0-uplink: $BRIDGE seeded with $PHYS ${PUBLIC_PORT:-pub0} ${INTERNAL_PORTS:-3tched}"

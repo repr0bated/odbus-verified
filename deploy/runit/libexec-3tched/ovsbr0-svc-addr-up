@@ -1,10 +1,10 @@
 #!/bin/sh
 # Internal L3: the service and fabric addresses on the bridge's internal ports.
 #
-#   3tched  10.0.0.2/24 + 10.200.0.2/24  incoming identities
-#   svc0    10.0.0.3/24                  Tonic service (:8090)
+#   3tched  10.0.0.2/24 + 10.200.0.2/24 + 10.0.0.4/32  door/service/page
+#   ovsbr0  10.200.0.1/24 + 10.0.0.3/32                 OpenFlow/MQTT
 #   *       BRIDGE_SVC_ADDRS             authoritative "addr@port" pairs
-#   ovsbr0  BRIDGE_ADDR       fabric / OpenFlow controller address
+#   ovsbr0  BRIDGE_ADDR                  internal OpenFlow address
 #
 # op-grpc-bridge waits on this service, so every address it needs exists before
 # it starts and its bind list needs no conditionals.
@@ -39,15 +39,10 @@ apply_addr() {
     echo "ovsbr0-svc-addr: $_addr on $_dev"
 }
 
+# Materialize the bridge's OpenFlow address before its service aliases.
+apply_addr "$BRIDGE" "${BRIDGE_ADDR:-}"
+
 # "10.0.0.2/24@3tched ..." — address and device joined by @.
 for pair in ${BRIDGE_SVC_ADDRS:-}; do
     apply_addr "${pair#*@}" "${pair%@*}"
 done
-
-apply_addr "$BRIDGE" "${BRIDGE_ADDR:-}"
-
-# OpenFlow stays the bridge address (10.200.0.1). MQTT stays bound to
-# 10.0.0.3 on svc0; alias that address here so the bridge owns it too.
-ip addr show dev "$BRIDGE" | grep -q '10.0.0.3/32' \
-    || ip addr add 10.0.0.3/32 dev "$BRIDGE" noprefixroute
-echo "ovsbr0-svc-addr: 10.0.0.3/32 on $BRIDGE"

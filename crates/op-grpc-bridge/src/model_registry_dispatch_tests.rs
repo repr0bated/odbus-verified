@@ -94,6 +94,166 @@ auth = "none"
 enabled = false
 "#;
 
+const BINDING_PROVIDERS: &str = r#"
+[[providers]]
+provider_id = "openai"
+name = "OpenAI"
+models_url = "https://api.openai.com/v1/models"
+format = "openai"
+auth = "none"
+inference_url_prefix = "https://api.openai.com/v1"
+control_plane = { profile = "openai.control_plane", alternatives = ["openai.responses_cp"] }
+
+[[providers]]
+provider_id = "other"
+name = "Other"
+models_url = "https://other.example/v1/models"
+format = "openai"
+auth = "none"
+inference_url_prefix = "https://other.example/v1"
+control_plane = { profile = "custom.other_control" }
+"#;
+
+#[tokio::test]
+async fn catalog_binding_target_allows_discovery_without_static_alias() {
+    let fixture = fixture(BINDING_PROVIDERS);
+    refresh(
+        &fixture.env,
+        &FakeLister::new(&[
+            ("openai", Ok(vec!["shared-model"])),
+            ("other", Ok(vec!["shared-model"])),
+        ]),
+        fixture.store.clone(),
+        RefreshInput::default(),
+    )
+    .await
+    .unwrap();
+    let target = binding_target_from(
+        &fixture.env,
+        fixture.store.clone(),
+        "openai",
+        "shared-model",
+    )
+    .await
+    .unwrap();
+    assert_eq!(target.provider_id, "openai");
+    assert_eq!(target.model_id, "shared-model");
+    assert_eq!(target.inference_url_prefix, "https://api.openai.com/v1");
+    assert!(target.ordinary_reference.is_none());
+    assert!(target.excluded_references.contains("openai.control_plane"));
+    assert!(target.excluded_references.contains("openai.responses_cp"));
+    assert!(target.excluded_references.contains("custom.other_control"));
+    assert!(target.catalog_revision > 0);
+}
+
+#[tokio::test]
+async fn catalog_binding_target_rejects_unavailable_or_unlisted_models() {
+    let fixture = fixture(BINDING_PROVIDERS);
+    refresh(
+        &fixture.env,
+        &FakeLister::new(&[("openai", Ok(vec!["retired-model"])), ("other", Ok(vec![]))]),
+        fixture.store.clone(),
+        RefreshInput::default(),
+    )
+    .await
+    .unwrap();
+    refresh(
+        &fixture.env,
+        &FakeLister::new(&[("openai", Ok(vec!["current-model"]))]),
+        fixture.store.clone(),
+        RefreshInput {
+            provider_id: Some("openai".into()),
+        },
+    )
+    .await
+    .unwrap();
+    for model in ["retired-model", "not-listed"] {
+        assert!(
+            binding_target_from(&fixture.env, fixture.store.clone(), "openai", model)
+                .await
+                .is_err()
+        );
+    }
+}
+
+#[tokio::test]
+async fn catalog_binding_target_preserves_recorded_wire_profile_boundaries() {
+    let fixture = fixture(BINDING_PROVIDERS);
+    refresh(
+        &fixture.env,
+        &FakeLister::new(&[("openai", Ok(vec!["shared-model"])), ("other", Ok(vec![]))]),
+        fixture.store.clone(),
+        RefreshInput::default(),
+    )
+    .await
+    .unwrap();
+    for recorded in ["openai.responses_cp", "openai.retired_cp"] {
+        fixture
+            .store
+            .set_model_registry_profile("openai", "shared-model", Some(recorded))
+            .unwrap();
+        assert!(
+            binding_target_from(
+                &fixture.env,
+                fixture.store.clone(),
+                "openai",
+                "shared-model"
+            )
+            .await
+            .is_err()
+        );
+    }
+    fixture
+        .store
+        .set_model_registry_profile("openai", "shared-model", Some("openai.control_plane"))
+        .unwrap();
+    assert!(
+        binding_target_from(
+            &fixture.env,
+            fixture.store.clone(),
+            "openai",
+            "shared-model"
+        )
+        .await
+        .is_ok()
+    );
+}
+
+#[tokio::test]
+async fn catalog_binding_target_requires_independent_endpoint_authority() {
+    let fixture = fixture(
+        &BINDING_PROVIDERS.replace("inference_url_prefix = \"https://api.openai.com/v1\"", ""),
+    );
+    refresh(
+        &fixture.env,
+        &FakeLister::new(&[("openai", Ok(vec!["shared-model"])), ("other", Ok(vec![]))]),
+        fixture.store.clone(),
+        RefreshInput::default(),
+    )
+    .await
+    .unwrap();
+    assert!(
+        binding_target_from(
+            &fixture.env,
+            fixture.store.clone(),
+            "openai",
+            "shared-model"
+        )
+        .await
+        .is_err()
+    );
+    assert!(
+        binding_target_from(
+            &fixture.env,
+            fixture.store.clone(),
+            "unknown",
+            "shared-model"
+        )
+        .await
+        .is_err()
+    );
+}
+
 fn write(path: &Path, text: &str, mode: u32) {
     std::fs::write(path, text).unwrap();
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).unwrap();

@@ -226,6 +226,23 @@ impl Namespace {
     pub fn children(&self, parent: u64) -> Option<&BTreeMap<OsString, u64>> {
         self.children.get(&parent)
     }
+
+    /// Public mount declaration, never a credential or inferred identity.
+    /// The caller supplies only the socket mount's declared session selector.
+    pub(crate) fn declare_socket_session(&mut self, session: &str) -> Result<()> {
+        let node = self
+            .lookup(ROOT_INO, std::ffi::OsStr::new(".3tchedfs.json"))
+            .context("mount metadata missing")?;
+        let NodeKind::File(bytes) = &node.kind else {
+            bail!("mount metadata is not a file")
+        };
+        let mut value: Value = serde_json::from_slice(&bytes.read())?;
+        value["session_id"] = Value::String(session.to_owned());
+        let mut rendered = serde_json::to_vec_pretty(&value)?;
+        rendered.push(b'\n');
+        *bytes.write() = rendered;
+        Ok(())
+    }
 }
 
 struct NamespaceBuilder {

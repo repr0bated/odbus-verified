@@ -104,6 +104,24 @@ fn select_native_config(config: &Value, section: Option<&str>) -> anyhow::Result
     Ok(json!({ "config": selected }))
 }
 
+/// Observe a separately admitted, bounded public binding through the same
+/// pinned native contract and secret policy used by the config facade.
+pub(crate) async fn observe_catalog_binding(
+    pinned: &ManifestPinnedSchemaDocument,
+    sealed_identity: &str,
+    target: &crate::tched_catalog_binding::BindingTarget,
+) -> anyhow::Result<crate::tched_router_runtime::CatalogBindingObservation> {
+    let contract = load_contract(pinned)?;
+    let runtime = TchedRouterRuntimeClient::for_agent_alias("dashboard")
+        .with_sealed_identity(Some(sealed_identity));
+    let observation = runtime
+        .observe_catalog_binding(target, &contract.secrets)
+        .await?;
+    validate_native_config(&contract, &observation.native_config)?;
+    ensure_current_pin(&contract.schema_hash, &contract.schema_json).await?;
+    Ok(observation)
+}
+
 /// Returns None only when the method is outside the v3 config facade.
 pub(crate) async fn dispatch(
     engine: &MutationEngine,
@@ -228,4 +246,21 @@ pub(crate) async fn coherent_observation(
     let paired = observation.into_state_and_fields()?;
     ensure_current_pin(&contract.schema_hash, &contract.schema_json).await?;
     Ok(paired)
+}
+
+/// Ordinary catalog selection always observes dashboard, independently of the
+/// bridge's configurable default agent. Dedicated agents retain their facade.
+pub(crate) async fn coherent_catalog_selection_observation(
+    pinned: &ManifestPinnedSchemaDocument,
+    sealed_identity: &str,
+) -> anyhow::Result<Value> {
+    let contract = load_contract(pinned)?;
+    let observation = TchedRouterRuntimeClient::for_agent_alias("dashboard")
+        .with_sealed_identity(Some(sealed_identity))
+        .observe_config_and_state(&contract.secrets)
+        .await?;
+    validate_native_config(&contract, &observation.native_config)?;
+    let (_, fields) = observation.into_state_and_fields()?;
+    ensure_current_pin(&contract.schema_hash, &contract.schema_json).await?;
+    Ok(fields)
 }

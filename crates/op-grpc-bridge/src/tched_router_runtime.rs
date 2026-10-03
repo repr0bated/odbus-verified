@@ -125,6 +125,12 @@ pub(crate) struct NativeConfigObservation {
     pub(crate) state: TchedRouterState,
 }
 
+#[derive(Debug)]
+pub(crate) struct CatalogBindingObservation {
+    pub(crate) native_config: Value,
+    pub(crate) binding: op_plugins::state_plugins::tched_router::ResolveCatalogModelBindingOutput,
+}
+
 impl NativeConfigObservation {
     pub(crate) fn into_state_and_fields(self) -> anyhow::Result<(TchedRouterState, Value)> {
         let mut fields = self
@@ -1068,7 +1074,94 @@ impl TchedRouterRuntimeClient {
                 "list configured providers",
             )
             .await?;
+        anyhow::ensure!(
+            response.entries.len() <= MAX_CONFIG_LIST_ENTRIES,
+            "native provider inventory exceeds bound"
+        );
         parse_configured_providers(response.entries)
+    }
+
+    /// Observe only eligible ordinary profile/model bindings, with independent
+    /// catalog endpoint trust and a stable masked native configuration image.
+    /// The caller retains the final-admitted operation guard and publishes the
+    /// resulting pair before returning a committed field to the caller.
+    pub(crate) async fn observe_catalog_binding(
+        &self,
+        target: &crate::tched_catalog_binding::BindingTarget,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<CatalogBindingObservation> {
+        anyhow::ensure!(
+            self.sealed_identity
+                .as_deref()
+                .is_some_and(|value| !value.is_empty()),
+            "catalog binding requires verified caller identity metadata"
+        );
+        use crate::tched_catalog_binding::{
+            MAX_BINDING_PROFILES, MAX_PROFILE_MODELS, ProfileCandidate,
+        };
+        let before = self
+            .read_masked_config(secrets)
+            .await
+            .map_err(|_| anyhow!("catalog binding native configuration is unavailable"))?;
+        let configured = self
+            .configured_providers()
+            .await
+            .map_err(|_| anyhow!("catalog binding native provider inventory is unavailable"))?;
+        let eligible = binding_profiles(&before, configured, target, self.opencode_only())?;
+        anyhow::ensure!(
+            eligible.len() <= MAX_BINDING_PROFILES,
+            "catalog binding profile inventory exceeds bound"
+        );
+        let mut candidates = Vec::with_capacity(eligible.len());
+        for profile in eligible {
+            let (family, alias) = profile
+                .reference
+                .split_once('.')
+                .context("catalog binding profile reference is invalid")?;
+            let native_profile = before
+                .get("providers")
+                .and_then(|p| p.get("models"))
+                .and_then(|m| m.get(family))
+                .and_then(|f| f.get(alias))
+                .context("catalog binding profile is absent from native observation")?;
+            anyhow::ensure!(
+                native_profile.get("model").and_then(Value::as_str)
+                    == Some(profile.selected_model.as_str()),
+                "catalog binding native profile changed during observation"
+            );
+            let uri = native_profile
+                .get("uri")
+                .and_then(Value::as_str)
+                .context("catalog binding native endpoint is absent")?
+                .to_string();
+            let catalog = self
+                .model_catalog(&profile.reference)
+                .await
+                .map_err(|_| anyhow!("catalog binding native model catalog is unavailable"))?;
+            anyhow::ensure!(
+                catalog.models.len() <= MAX_PROFILE_MODELS,
+                "catalog binding native model catalog exceeds bound"
+            );
+            candidates.push(ProfileCandidate {
+                reference: profile.reference,
+                uri,
+                models: catalog.models,
+                live: catalog.live,
+            });
+        }
+        let after = self
+            .read_masked_config(secrets)
+            .await
+            .map_err(|_| anyhow!("catalog binding native configuration readback is unavailable"))?;
+        anyhow::ensure!(
+            before == after,
+            "catalog binding native configuration changed during observation"
+        );
+        let binding = crate::tched_catalog_binding::select(target, &candidates)?;
+        Ok(CatalogBindingObservation {
+            native_config: after,
+            binding,
+        })
     }
 
     fn opencode_only(&self) -> bool {
@@ -2094,6 +2187,43 @@ fn is_door_selectable_route(provider: &ConfiguredProvider) -> bool {
     is_door_selectable_reference(&provider.reference)
 }
 
+fn binding_profiles(
+    config: &Value,
+    configured: Vec<ConfiguredProvider>,
+    target: &crate::tched_catalog_binding::BindingTarget,
+    opencode_only: bool,
+) -> anyhow::Result<Vec<ConfiguredProvider>> {
+    let mut private = target.excluded_references.clone();
+    let agents = config
+        .get("agents")
+        .and_then(Value::as_object)
+        .context("catalog binding native agent inventory is absent")?;
+    for (alias, agent) in agents {
+        if alias != DEFAULT_AGENT_ALIAS
+            && let Some(reference) = agent.get("model_provider").and_then(Value::as_str)
+        {
+            private.insert(reference.to_string());
+        }
+    }
+    let mut eligible = Vec::new();
+    for provider in configured {
+        anyhow::ensure!(
+            crate::tched_catalog_binding::valid_reference(&provider.reference),
+            "catalog binding native profile reference is invalid"
+        );
+        if !private.contains(&provider.reference)
+            && (!opencode_only || is_door_selectable_route(&provider))
+            && target
+                .ordinary_reference
+                .as_ref()
+                .is_none_or(|reference| reference == &provider.reference)
+        {
+            eligible.push(provider);
+        }
+    }
+    Ok(eligible)
+}
+
 /// Upstream provider profiles a door caller may select: OpenCode (the Go
 /// plan's `opencode.go_*` chat/Responses profiles and `anthropic.go_*`
 /// Messages-API profiles, and the older `custom.opencode_*` session
@@ -2297,6 +2427,128 @@ fn truncate_error(detail: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn binding_target() -> crate::tched_catalog_binding::BindingTarget {
+        crate::tched_catalog_binding::BindingTarget {
+            provider_id: "openai".into(),
+            model_id: "test-model".into(),
+            inference_url_prefix: "https://inference.example/v1".into(),
+            catalog_revision: 7,
+            ordinary_reference: None,
+            excluded_references: Default::default(),
+        }
+    }
+
+    #[test]
+    fn catalog_binding_policy_respects_flag_and_never_overrides_private_exclusion() {
+        let config = json!({"agents":{"dashboard":{"model_provider":"openai.dashboard"}, "control_plane":{"model_provider":"custom.private"}}});
+        let configured = || {
+            vec![
+                ConfiguredProvider {
+                    family: "openai".into(),
+                    reference: "openai.dashboard".into(),
+                    selected_model: "test-model".into(),
+                },
+                ConfiguredProvider {
+                    family: "custom".into(),
+                    reference: "custom.private".into(),
+                    selected_model: "test-model".into(),
+                },
+                ConfiguredProvider {
+                    family: "opencode".into(),
+                    reference: "opencode.go_dashboard".into(),
+                    selected_model: "test-model".into(),
+                },
+            ]
+        };
+        assert_eq!(
+            binding_profiles(&config, configured(), &binding_target(), false)
+                .unwrap()
+                .len(),
+            2
+        );
+        assert_eq!(
+            binding_profiles(&config, configured(), &binding_target(), true)
+                .unwrap()
+                .len(),
+            1
+        );
+        let mut target = binding_target();
+        target.ordinary_reference = Some("custom.private".into());
+        assert!(
+            binding_profiles(&config, configured(), &target, false)
+                .unwrap()
+                .is_empty()
+        );
+        target.ordinary_reference = Some("openai.dashboard".into());
+        assert!(
+            binding_profiles(&config, configured(), &target, true)
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[tokio::test]
+    async fn catalog_binding_observation_rejects_changed_config_and_masks_secrets() {
+        use axum::{Json, extract::State, routing::get};
+        use std::sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        };
+        #[derive(Clone)]
+        struct StateData {
+            reads: Arc<AtomicUsize>,
+            drift: bool,
+        }
+        async fn config(State(state): State<StateData>) -> Json<Value> {
+            let read = state.reads.fetch_add(1, Ordering::SeqCst);
+            Json(
+                json!({"agents":{"dashboard":{"model_provider":"openai.dashboard"}}, "providers":{"models":{"openai":{"dashboard":{"model":"test-model", "uri":"https://inference.example/v1", "api_key":"SECRET"}}}}, "generation":if state.drift && read > 0 { 2 } else { 1 }}),
+            )
+        }
+        for drift in [false, true] {
+            let reads = Arc::new(AtomicUsize::new(0));
+            let app = axum::Router::new()
+                .route("/health", get(|| async { Json(json!({"status":"ok"})) }))
+                .route("/api/config", get(config))
+                .route("/api/config/list", get(|| async { Json(json!({"entries":[{"path":"providers.models.openai.dashboard.model", "value":"test-model"}]})) }))
+                .route("/api/config/catalog/models", get(|| async { Json(json!({"models":["test-model"], "live":true})) }))
+                .layer(axum::middleware::from_fn(|request: axum::extract::Request, next: axum::middleware::Next| async move {
+                    assert_eq!(request.headers().get("x-opdbus-sealed-id-bin").unwrap(), "fixture-caller-sid1");
+                    next.run(request).await
+                }))
+                .with_state(StateData {reads:reads.clone(), drift});
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let endpoint = format!("http://{}", listener.local_addr().unwrap());
+            let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+            // A private test profile that current policy accepts independently
+            // of ambient routing restrictions; no env variables are changed.
+            let client = TchedRouterRuntimeClient::new(
+                endpoint,
+                "control_plane".into(),
+                Some("test-token".into()),
+            )
+            .with_sealed_identity(Some("fixture-caller-sid1"));
+            let output = client
+                .observe_catalog_binding(&binding_target(), &StaticSecretPolicy)
+                .await;
+            assert_eq!(reads.load(Ordering::SeqCst), 2);
+            if drift {
+                assert!(
+                    output
+                        .unwrap_err()
+                        .to_string()
+                        .contains("changed during observation")
+                );
+            } else {
+                let output = output.unwrap();
+                assert_eq!(output.binding.reference, "openai.dashboard");
+                assert_eq!(output.binding.catalog_revision, 7);
+                assert!(!output.native_config.to_string().contains("SECRET"));
+            }
+            server.abort();
+        }
+    }
     use futures::{SinkExt, StreamExt};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio_tungstenite::{

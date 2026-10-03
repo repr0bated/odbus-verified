@@ -1,0 +1,32 @@
+{
+  "task_id": "chatbot-self-validation-20261003",
+  "status": "owner-approved-runtime-applied-context-and-native-attribution-verified",
+  "verified_receipts": {"context_before": 204070, "select_context": 204071, "context_readback": 204072, "native_chat": 204073},
+  "verified_native_routing": {"native_alias": "control_plane", "provider": "custom", "model": "glm-5.3-flash", "source": "native_agent"},
+  "remaining_limitation": "Native agent reports no filesystem operation tool; independent self-read and guest boot remain unverified",
+  "principal_id": "1262e982-14c1-44d4-0771-7ce74213211b",
+  "session_id": "b0c777e3-0955-cd8b-3d01-ca12998cae28",
+  "add_capabilities": ["chat.context", "chat.control_plane"],
+  "duration": "Persistent for the singleton always-running chatbot, until explicitly removed",
+  "resource_scope": {
+    "chat.context": "Existing project context methods, confined to the caller's verified session; project membership and other independent capability checks remain enforced",
+    "chat.control_plane": "Permits selecting ControlPlane for this verified session; it grants no native config write, arbitrary system-bus access, Incus execution, device update, or access to another identity"
+  },
+  "operation": {"plugin": "project", "method": "select_context", "args": {"mode": "control_plane"}},
+  "evidence": {
+    "get_context_denial": "call refused: org.freedesktop.DBus.Error.AccessDenied: capability 'chat.context' is not granted to the authenticated caller of method 'get_context'",
+    "native_chat_receipt": 204068,
+    "observed_provider": "opencode",
+    "observed_model": "space-bunny-free",
+    "observed_dedicated_control_plane_attribution": false
+  },
+  "expected_effect": "Next Chat resolves this session's persisted ControlPlane mode and uses native alias control_plane with that agent's authoritative configured provider/model; no model or credential is changed",
+  "verification": [
+    "Atomic grant delta changes only these two entries for this principal; durable and SHM policies match and materializer is ready",
+    "Read get_context through the same bound namespace before selection and retain enough declared state to reconstruct rollback; refuse the mutation if rollback cannot be reconstructed",
+    "Select control_plane through the same identity and check its receipt plus a separate get_context readback for the same session and session/b0c777e3-0955-cd8b-3d01-ca12998cae28/control_plane namespace",
+    "Bounded Chat receipt proves routing.native_alias=control_plane, routing.source=native_agent and the configured provider/model",
+    "Report autonomous native filesystem self-read and guest boot as unverified unless independently demonstrated"
+  ],
+  "rollback": "Through the same bound namespace restore and verify the captured prior mode/project/personal namespace while the two grants remain, then atomically remove only these two new capabilities and verify materializer equality/readiness. Preserve existing approved grants and all other principals."
+}

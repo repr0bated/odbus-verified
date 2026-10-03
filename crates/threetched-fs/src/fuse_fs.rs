@@ -47,10 +47,14 @@ impl StateKey {
     }
 }
 
+type OperationCompletion = Option<Result<Vec<u8>, (i32, Vec<u8>)>>;
+
 struct OpenFile {
     ino: u64,
     bytes: Vec<u8>,
     dirty: bool,
+    /// Terminal receipt/error for this handle, isolated from other callers.
+    completed: OperationCompletion,
 }
 
 /// Where a lungs mount sends its calls, and whose credential it presents.
@@ -110,7 +114,10 @@ impl TypedFuse {
         state_dir: PathBuf,
         lungs: Lungs,
     ) -> anyhow::Result<Self> {
-        let namespace = Namespace::build_lungs(&store, target, &state_dir)?;
+        let mut namespace = Namespace::build_lungs(&store, target, &state_dir)?;
+        if let Lungs::Socket { session, .. } = &lungs {
+            namespace.declare_socket_session(session)?;
+        }
         Ok(Self::from_parts(store, namespace, Some(lungs)))
     }
 
@@ -148,7 +155,12 @@ impl TypedFuse {
 
     /// Run one lungs call and record its receipt or diagnostic. The errno
     /// tells the writer which stage failed; the `error` file says why.
-    fn lungs_call(&mut self, plugin_id: &str, method: &str, bytes: &[u8]) -> Result<(), i32> {
+    fn lungs_call(
+        &mut self,
+        plugin_id: &str,
+        method: &str,
+        bytes: &[u8],
+    ) -> Result<Vec<u8>, (i32, Vec<u8>)> {
         let outcome = self.run_lungs_call(plugin_id, method, bytes);
         let entry = self
             .outcomes
@@ -158,16 +170,17 @@ impl TypedFuse {
             Ok(receipt) => {
                 entry.result = pretty(&receipt);
                 entry.error.clear();
-                Ok(())
+                Ok(entry.result.clone())
             }
             Err(error) => {
+                entry.result.clear();
                 entry.error = pretty(&serde_json::json!({
                     "plugin": plugin_id,
                     "method": method,
                     "stage": error.stage(),
                     "error": error.to_string(),
                 }));
-                Err(error.errno())
+                Err((error.errno(), entry.error.clone()))
             }
         }
     }
@@ -259,8 +272,10 @@ impl TypedFuse {
                 (FileType::RegularFile, size, 0o444, 1)
             }
             NodeKind::Symlink(target) => (FileType::Symlink, target.len() as u64, 0o777, 1),
-            // Write-only: the call is the write, and nothing is stored in it.
-            NodeKind::CallFile { .. } => (FileType::RegularFile, 0, 0o222, 1),
+            // Receipts are readable only through the handle that ran the call.
+            NodeKind::CallFile { .. } => {
+                (FileType::RegularFile, size_override.unwrap_or(0), 0o666, 1)
+            }
             NodeKind::Outcome {
                 plugin_id,
                 method,
@@ -332,6 +347,9 @@ impl TypedFuse {
             state_dir.as_deref(),
             self.namespace.lungs,
         )?;
+        if let Some(Lungs::Socket { session, .. }) = &self.lungs {
+            self.namespace.declare_socket_session(session)?;
+        }
         Ok(())
     }
 
@@ -339,6 +357,9 @@ impl TypedFuse {
         let Some(handle) = self.open_files.get_mut(&fh) else {
             return Err(ENOENT);
         };
+        if let Some(completed) = &handle.completed {
+            return completed.as_ref().map(|_| ()).map_err(|(errno, _)| *errno);
+        }
         if !handle.dirty {
             return Ok(());
         }
@@ -347,9 +368,15 @@ impl TypedFuse {
             // Clear dirty first: release flushes again, and a call must run
             // once per complete write even when it fails.
             handle.dirty = false;
+            if handle.bytes.is_empty() {
+                return Ok(());
+            }
             let bytes = std::mem::take(&mut handle.bytes);
             let (plugin_id, method) = (plugin_id.clone(), method.clone());
-            return self.lungs_call(&plugin_id, &method, &bytes);
+            let completed = self.lungs_call(&plugin_id, &method, &bytes);
+            let result = completed.as_ref().map(|_| ()).map_err(|(errno, _)| *errno);
+            self.open_files.get_mut(&fh).ok_or(ENOENT)?.completed = Some(completed);
+            return result;
         }
         let target = node.write_target.clone().ok_or(EROFS)?;
         let value: Value = serde_json::from_slice(&handle.bytes).map_err(|_| EINVAL)?;
@@ -370,6 +397,16 @@ impl TypedFuse {
         if let Some(handle) = self.open_files.get(&fh)
             && handle.ino == ino
         {
+            if matches!(
+                self.namespace.node(ino).ok_or(ENOENT)?.kind,
+                NodeKind::CallFile { .. }
+            ) {
+                return Ok(match &handle.completed {
+                    Some(Ok(receipt)) => receipt.clone(),
+                    Some(Err((_, diagnostic))) => diagnostic.clone(),
+                    None => Vec::new(),
+                });
+            }
             return Ok(handle.bytes.clone());
         }
         match &self.namespace.node(ino).ok_or(ENOENT)?.kind {
@@ -380,7 +417,7 @@ impl TypedFuse {
             }
             NodeKind::Directory => Err(EISDIR),
             NodeKind::Symlink(_) => Err(EINVAL),
-            NodeKind::CallFile { .. } => Err(EACCES),
+            NodeKind::CallFile { .. } => Ok(Vec::new()),
             NodeKind::Outcome {
                 plugin_id,
                 method,
@@ -428,7 +465,10 @@ impl Filesystem for TypedFuse {
                 let size = fh
                     .and_then(|fh| self.open_files.get(&fh))
                     .filter(|handle| handle.ino == ino)
-                    .map(|handle| handle.bytes.len() as u64);
+                    .map(|handle| match &handle.completed {
+                        Some(Ok(bytes)) | Some(Err((_, bytes))) => bytes.len() as u64,
+                        None => handle.bytes.len() as u64,
+                    });
                 reply.attr(&self.ttl, &self.attr(node, size));
             }
             None => reply.error(ENOENT),
@@ -478,6 +518,10 @@ impl Filesystem for TypedFuse {
             reply.error(ENOENT);
             return;
         };
+        if handle.ino != ino || handle.completed.is_some() {
+            reply.error(EINVAL);
+            return;
+        }
         handle.bytes.resize(size as usize, 0);
         handle.dirty = true;
         reply.attr(&self.ttl, &self.attr(node, Some(size)));
@@ -533,13 +577,7 @@ impl Filesystem for TypedFuse {
                 reply.error(EINVAL);
                 return;
             }
-            NodeKind::CallFile { .. } => {
-                if !write_requested || access == libc::O_RDWR {
-                    reply.error(EACCES);
-                    return;
-                }
-                Vec::new()
-            }
+            NodeKind::CallFile { .. } => Vec::new(),
             NodeKind::Outcome {
                 plugin_id,
                 method,
@@ -566,6 +604,7 @@ impl Filesystem for TypedFuse {
                 ino,
                 bytes: content,
                 dirty,
+                completed: None,
             },
         );
         reply.opened(fh, fuser::consts::FOPEN_DIRECT_IO);
@@ -629,11 +668,15 @@ impl Filesystem for TypedFuse {
             reply.error(ENOENT);
             return;
         };
-        if handle.ino != ino {
+        if handle.ino != ino || handle.completed.is_some() {
             reply.error(EINVAL);
             return;
         }
         let start = offset as usize;
+        if data.is_empty() {
+            reply.written(0);
+            return;
+        }
         let end = match start.checked_add(data.len()) {
             Some(end) => end,
             None => {
@@ -645,7 +688,7 @@ impl Filesystem for TypedFuse {
             handle.bytes.resize(end, 0);
         }
         handle.bytes[start..end].copy_from_slice(data);
-        handle.dirty = true;
+        handle.dirty = !handle.bytes.is_empty();
         reply.written(data.len() as u32);
     }
 
@@ -917,6 +960,7 @@ mod tests {
                 ino,
                 bytes: bytes.to_vec(),
                 dirty: true,
+                completed: None,
             },
         );
         let result = fs.flush_handle(7);
@@ -932,11 +976,75 @@ mod tests {
     }
 
     #[test]
+    fn socket_mount_session_survives_refresh_without_credentials() {
+        let (_directory, mut fs) = lungs_fixture_with(Lungs::Socket {
+            path: "/nonexistent/lungs.sock".into(),
+            session: "declared-session".into(),
+        });
+        for _ in 0..2 {
+            let node = fs
+                .namespace
+                .lookup(ROOT_INO, OsStr::new(".3tchedfs.json"))
+                .unwrap();
+            let metadata: Value =
+                serde_json::from_slice(&fs.read_bytes(node.ino, 0).unwrap()).unwrap();
+            assert_eq!(metadata["session_id"], "declared-session");
+            assert!(metadata.get("credential").is_none());
+            fs.refresh_namespace().unwrap();
+        }
+        let (_directory, fs) = lungs_fixture("/nonexistent/sid1".into());
+        let node = fs
+            .namespace
+            .lookup(ROOT_INO, OsStr::new(".3tchedfs.json"))
+            .unwrap();
+        let metadata: Value = serde_json::from_slice(&fs.read_bytes(node.ino, 0).unwrap()).unwrap();
+        assert!(metadata.get("session_id").is_none());
+    }
+
+    #[test]
+    fn call_handles_keep_terminal_errors_isolated_and_empty_handles_do_not_dispatch() {
+        let (_directory, mut fs) = lungs_fixture("/nonexistent/sid1".into());
+        let ino = method_node(&fs, "call").ino;
+        for (fh, bytes) in [
+            (1, b"not json".as_slice()),
+            (2, br#"{"event":7}"#.as_slice()),
+            (3, b"".as_slice()),
+        ] {
+            fs.open_files.insert(
+                fh,
+                OpenFile {
+                    ino,
+                    bytes: bytes.to_vec(),
+                    dirty: !bytes.is_empty(),
+                    completed: None,
+                },
+            );
+        }
+        assert!(fs.read_bytes(ino, 1).unwrap().is_empty());
+        assert_eq!(fs.flush_handle(1), Err(EINVAL));
+        let first = fs.read_bytes(ino, 1).unwrap();
+        assert_eq!(fs.flush_handle(2), Err(EINVAL));
+        assert_eq!(fs.read_bytes(ino, 1).unwrap(), first);
+        assert_eq!(
+            serde_json::from_slice::<Value>(&first).unwrap()["stage"],
+            "parse"
+        );
+        assert_eq!(
+            serde_json::from_slice::<Value>(&fs.read_bytes(ino, 2).unwrap()).unwrap()["stage"],
+            "validate"
+        );
+        assert_eq!(fs.flush_handle(1), Err(EINVAL));
+        assert_eq!(fs.flush_handle(3), Ok(()));
+        assert!(fs.open_files[&3].completed.is_none());
+        assert!(fs.read_bytes(ino, 0).unwrap().is_empty());
+    }
+
+    #[test]
     fn lungs_exposes_call_result_and_error_per_method() {
         let (_directory, fs) = lungs_fixture(PathBuf::from("/nonexistent/sid1"));
         let call = method_node(&fs, "call");
         assert!(matches!(call.kind, NodeKind::CallFile { .. }));
-        assert_eq!(fs.attr(call, None).perm, 0o222);
+        assert_eq!(fs.attr(call, None).perm, 0o666);
         assert_eq!(fs.attr(method_node(&fs, "result"), None).perm, 0o444);
         assert_eq!(fs.attr(method_node(&fs, "error"), None).perm, 0o444);
         assert!(node_writable(call));
@@ -1058,7 +1166,22 @@ mod tests {
             path: socket,
             session: "b0c777e3".into(),
         });
-        assert_eq!(write_call(&mut fs, br#"{"event": "arrival"}"#), Ok(()));
+        let ino = method_node(&fs, "call").ino;
+        fs.open_files.insert(
+            7,
+            OpenFile {
+                ino,
+                bytes: br#"{"event": "arrival"}"#.to_vec(),
+                dirty: true,
+                completed: None,
+            },
+        );
+        assert_eq!(fs.flush_handle(7), Ok(()));
+        let handle_receipt = fs.read_bytes(ino, 7).unwrap();
+        // fsync, flush and release all use the same terminal state.
+        assert_eq!(fs.flush_handle(7), Ok(()));
+        assert_eq!(fs.flush_handle(7), Ok(()));
+        assert_eq!(fs.read_bytes(ino, 7).unwrap(), handle_receipt);
         let result = method_node(&fs, "result");
         let receipt: Value =
             serde_json::from_slice(&fs.read_bytes(result.ino, 0).unwrap()).unwrap();
@@ -1070,6 +1193,20 @@ mod tests {
                 .is_empty()
         );
         assert_eq!(bound.lock().unwrap().as_deref(), Some("b0c777e3"));
+        // A later failed handle must never return this successful receipt.
+        let result_ino = result.ino;
+        fs.open_files.insert(
+            8,
+            OpenFile {
+                ino,
+                bytes: b"not json".to_vec(),
+                dirty: true,
+                completed: None,
+            },
+        );
+        assert_eq!(fs.flush_handle(8), Err(EINVAL));
+        assert_eq!(fs.read_bytes(ino, 7).unwrap(), handle_receipt);
+        assert!(fs.read_bytes(result_ino, 0).unwrap().is_empty());
         server.join().unwrap();
     }
 

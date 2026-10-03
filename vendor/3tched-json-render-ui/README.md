@@ -3,9 +3,9 @@
 This directory closes the source and release boundary for the active standalone
 Vite UI. `source.tar.gz` is a deterministic archive of the explicitly
 allowlisted files from the tested production checkout at `/srv/git/3tched.com`;
-it records the source checkout HEAD and its worktree state. The current capture
-is the clean committed identity workspace scaffold at `999651e`. The content
-manifest covers the exact archived bytes.
+it records the source checkout HEAD and its worktree state. The content
+manifest covers the exact archived bytes, including the recorded modified
+worktree when release inputs include reviewed local changes.
 
 The archive contains `AGENTS.md`, licensing and guidance, `package.json`, the
 lockfile, Vite/TypeScript/ESLint configuration, `index.html`, and `src/` (plus
@@ -22,7 +22,11 @@ vendor/3tched-json-render-ui/build-assets.sh \
 
 The helper verifies every source file, runs the repository-required `npm ci`,
 type check, lint, tests and Vite build at the dashboard root (`/`) with the
-production door default `https://dashboard.ghostbridge.tech:8090`, then emits `assets.tar.gz` and `manifest.json`. Golden preparation validates those artifacts and stages only
+production direct-door default `https://10.0.0.2:8090`. On the configured
+HTTP pages at `10.0.0.2:8080` and `10.0.0.4:8080`, the UI uses the page's
+same-origin Axum connector; Axum forwards the unchanged gRPC-Web request and
+credential to the TLS door. The helper then emits `assets.tar.gz` and
+`manifest.json`. Golden preparation validates those artifacts and stages only
 the UI's `assets/` and `index.html` under
 `/usr/local/share/op-dbus/dashboard/`, preserving sibling mounts and files. It
 never deploys or uses the external checkout as a build input.

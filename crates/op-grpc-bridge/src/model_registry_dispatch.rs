@@ -28,7 +28,7 @@ use op_plugins::state_plugins::model_registry::{
     ModelListFormat, ModelRecord, ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh,
     ProviderStatus, ProvidersFile, RefreshInput, RefreshOutput, SECRETS_DIR, SetModelProfileInput,
     SetModelProfileOutput, bounded_error, page_limit, parse_models_response, parse_providers_toml,
-    valid_provider_id, validate_list_models, validate_set_model_profile,
+    valid_model_id, valid_provider_id, validate_list_models, validate_set_model_profile,
 };
 use op_state_store::PluginSchema;
 use serde_json::Value;
@@ -589,6 +589,95 @@ fn required_capability<'a>(schema: &'a PluginSchema, method: &str) -> Result<&'a
         .required_capability
         .as_deref()
         .context("admitted model_registry method has no exact capability")
+}
+
+/// Catalog authority for the separately admitted native binding reflection.
+/// This helper reads no native configuration and grants no native authority.
+pub(crate) async fn catalog_binding_target(
+    engine: &MutationEngine,
+    provider_id: &str,
+    model_id: &str,
+) -> Result<crate::tched_catalog_binding::BindingTarget> {
+    binding_target_from(
+        &Environment::from_env(),
+        engine.model_registry_cozo().await?,
+        provider_id,
+        model_id,
+    )
+    .await
+}
+
+async fn binding_target_from(
+    env: &Environment,
+    store: Arc<CozoGraphShuttle>,
+    provider_id: &str,
+    model_id: &str,
+) -> Result<crate::tched_catalog_binding::BindingTarget> {
+    ensure!(valid_provider_id(provider_id), "invalid catalog provider");
+    ensure!(valid_model_id(model_id), "invalid catalog model");
+    let file = load_providers(env)?;
+    let provider = file
+        .providers
+        .iter()
+        .find(|provider| provider.id == provider_id)
+        .context("catalog provider is not configured")?;
+    ensure!(provider.enabled, "catalog provider is disabled");
+    let prefix = provider
+        .inference_url_prefix
+        .clone()
+        .context("catalog provider has no inference endpoint authority")?;
+    let id = provider_id.to_string();
+    let model = model_id.to_string();
+    let (revision, recorded) = blocking(move || {
+        let (rows, revision) = store.list_model_registry_models(Some(&id)).map_err(cozo)?;
+        let row = rows
+            .into_iter()
+            .find(|row| row.model.model_id == model)
+            .context("model is not in the catalog")?;
+        ensure!(row.available, "catalog model is unavailable");
+        let recorded = store
+            .list_model_registry_profiles()
+            .map_err(cozo)?
+            .into_iter()
+            .find(|(provider, candidate, _)| provider == &id && candidate == &model)
+            .map(|(_, _, profile)| profile);
+        let (_, after) = store.list_model_registry_providers().map_err(cozo)?;
+        ensure!(revision == after, "catalog changed during binding lookup");
+        Ok((revision, recorded))
+    })
+    .await?;
+    // A recorded alternative specifies a wire contract. Discovery must not
+    // substitute the default endpoint for an unmapped or retired alternative.
+    let ordinary = provider.native_provider_id_for_model(recorded.as_deref());
+    if let Some(recorded) = recorded.as_deref() {
+        let default = provider
+            .control_plane
+            .as_ref()
+            .map(|routing| routing.profile.as_str());
+        ensure!(
+            Some(recorded) == default || ordinary.is_some(),
+            "recorded model profile has no ordinary routing counterpart"
+        );
+    }
+    let excluded_references = file
+        .providers
+        .iter()
+        .flat_map(|provider| provider.control_plane.as_ref())
+        .flat_map(|routing| routing.profiles())
+        .map(str::to_string)
+        .collect();
+    ensure!(
+        load_providers(env)? == file,
+        "provider authority changed during binding lookup"
+    );
+    Ok(crate::tched_catalog_binding::BindingTarget {
+        provider_id: provider_id.to_string(),
+        model_id: model_id.to_string(),
+        inference_url_prefix: prefix,
+        catalog_revision: revision,
+        ordinary_reference: ordinary.map(str::to_string),
+        excluded_references,
+    })
 }
 
 fn args<T: serde::de::DeserializeOwned>(args: &Value) -> Result<T> {

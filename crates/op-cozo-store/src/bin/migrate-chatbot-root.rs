@@ -21,15 +21,15 @@ fn run() -> anyhow::Result<()> {
         "preflight" => preflight(),
         "prepare" => prepare(),
         "migrate" => migrate(),
-        "help" | _ => {
+        _ => {
             eprintln!("Usage:");
             eprintln!("  cargo run --bin migrate-chatbot-root -p op-cozo-store -- preflight");
             eprintln!("  cargo run --bin migrate-chatbot-root -p op-cozo-store -- prepare");
             eprintln!("  cargo run --bin migrate-chatbot-root -p op-cozo-store -- migrate");
-            eprintln!("");
+            eprintln!();
             eprintln!("This utility helps migrate the chatbot identity from loop images");
             eprintln!("to the shared physical seed device (/dev/sdb2).");
-            eprintln!("");
+            eprintln!();
             eprintln!("Step 1: Get preflight info (shows current state)");
             eprintln!("Step 2: Prepare migration plan (creates plan JSON and SHA256)");
             eprintln!("Step 3: Execute migration (calls the atomic D-Bus migration method)");
@@ -51,17 +51,17 @@ fn preflight() -> anyhow::Result<()> {
     eprintln!("  - previous_binding");
     eprintln!("  - previous_root_repair_sha256");
     eprintln!("  - previous_seed_provision_sha256");
-    eprintln!("");
+    eprintln!();
     eprintln!("The preflight must be obtained through:");
     eprintln!("  1. Authenticated access to /run/opdbus/lungs.sock");
     eprintln!("  2. Or via gRPC door with SID1 credential");
-    eprintln!("");
+    eprintln!();
     eprintln!("This is a root-owned operation; see the migration receipt:");
     eprintln!("  reports/identity-replacement/20260930/cozo-reconciliation/receipt.md");
 
     eprintln!("\nFor now, use the authorized operator helper:");
     eprintln!("  /var/tmp/owner-identity-call-20260930.sh");
-    eprintln!("");
+    eprintln!();
 
     Ok(())
 }
@@ -69,7 +69,7 @@ fn preflight() -> anyhow::Result<()> {
 fn prepare() -> anyhow::Result<()> {
     eprintln!("\n=== Prepare Migration Plan ===\n");
     eprintln!("This step requires preflight data from the previous step.");
-    eprintln!("");
+    eprintln!();
 
     eprintln!("To create the migration plan, you need:");
     eprintln!("  1. Preflight data (from inspect_own_physical_root_migration_preflight)");
@@ -77,13 +77,13 @@ fn prepare() -> anyhow::Result<()> {
     eprintln!("  3. Stopped Incus instance JSON");
     eprintln!("  4. Seed device info (/dev/sdb2 FSID, generation)");
     eprintln!("  5. Chatbot leaf info (inode, size)");
-    eprintln!("");
+    eprintln!();
 
     eprintln!("The plan is a JSON file at:");
     eprintln!(
         "  /var/lib/op-dbus/identity-physical-migration-plans/b0c777e3-0955-cd8b-3d01-ca12998cae28.json"
     );
-    eprintln!("");
+    eprintln!();
 
     eprintln!("Plan structure (see receipt for complete fields):");
     eprintln!(
@@ -127,14 +127,14 @@ fn migrate() -> anyhow::Result<()> {
 
     eprintln!("Once the plan file is prepared, call:");
     eprintln!("  identity_sled__migrate_own_physical_root {{\"plan_sha256\": \"<SHA256>\"}}");
-    eprintln!("");
+    eprintln!();
     eprintln!("This is a root-owned operation that:");
     eprintln!("  1. Verifies the plan SHA256");
     eprintln!("  2. Checks current revision and journals");
     eprintln!("  3. Archives old bindings and provenance");
     eprintln!("  4. Records new physical provenance");
     eprintln!("  5. Advances revision/index atomically");
-    eprintln!("");
+    eprintln!();
     eprintln!("After successful migration:");
     eprintln!("  1. Verify with inventory and get_identity");
     eprintln!("  2. Stop and restart the chatbot container");

@@ -88,12 +88,10 @@ struct IdentityPublicationPending {
 
 impl std::fmt::Display for IdentityPublicationPending {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TEMP court-deadline diagnostic: surface the private cause once so the
-        // operator can clear the SHM pending marker. Revert after the door binds.
         write!(
             f,
-            "identity operation {} pending recovery ({}): {:#}",
-            self.operation_id, self.phase, self._private_cause
+            "identity operation {} pending recovery ({})",
+            self.operation_id, self.phase
         )
     }
 }
@@ -175,13 +173,13 @@ impl IdentityContainerLifecycle for IncusIdentityContainerLifecycle {
 
 type SledCacheState = IdentitySledState;
 
-/// Membership of the Cozo-registered device in the one seed filesystem.
-/// `/dev/sdb2` replaced the loop images. The device is not mounted on its own.
+/// Membership of the Cozo-registered leaf in its mounted filesystem.
+/// `/dev/sdb2` is the writable leaf (no seeding); the sled is a subvolume.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum BtrfsDeviceEffect {
-    /// `btrfs device add` before the guest starts.
+    /// `btrfs device add` before the guest starts (extra members only).
     Add,
-    /// `btrfs device remove` after the guest has stopped.
+    /// `btrfs device remove` after the guest has stopped (never sole leaf).
     Remove,
 }
 
@@ -1495,6 +1493,26 @@ pub(crate) async fn start_service_identity_containers(
     }
 }
 
+fn schema_hash_refresh_operation_id(
+    expected: &IdentityRevision,
+    target: &str,
+) -> anyhow::Result<String> {
+    // A durable revision and its operation token uniquely identify the exact
+    // CAS predecessor. Include the target so later releases never reuse the
+    // old session-only token for a different intent. Hash framed values rather
+    // than concatenating strings or exposing private identity fields.
+    let intent = serde_json::to_vec(&(
+        &expected.session_id,
+        expected.revision,
+        &expected.operation_id,
+        target,
+    ))?;
+    Ok(format!(
+        "refresh-schema-hash-v2-{}",
+        blake3::hash(&intent).to_hex()
+    ))
+}
+
 /// Rewrite drifted `schema_content_hash` on anchored genesis rows to the
 /// compiled `SCHEMA_CONTENT_HASH`. Safe because Cozo allows hash-only refresh
 /// of otherwise-immutable genesis fields.
@@ -1517,6 +1535,8 @@ pub(crate) async fn refresh_drifted_schema_content_hashes(
         if !sled.is_anchored() {
             continue;
         }
+        let lifecycle_lock = store.lifecycle_lock(&sled.session_id).await;
+        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
         let expected = load_revision(&store, &sled.session_id).await?;
         let Some(genesis) = expected.genesis.as_ref() else {
             continue;
@@ -1524,11 +1544,24 @@ pub(crate) async fn refresh_drifted_schema_content_hashes(
         if genesis.schema_content_hash == SCHEMA_CONTENT_HASH.trim() {
             continue;
         }
-        let operation_id = format!(
-            "refresh-schema-hash-{}",
-            blake3::hash(sled.session_id.as_bytes()).to_hex()
-        );
-        match commit_sled_update(engine, &store, operation_id, expected, sled.clone(), ()).await {
+        let operation_id = schema_hash_refresh_operation_id(&expected, SCHEMA_CONTENT_HASH.trim())?;
+        // Refresh only the hash on the exact durable pair. SHM enumerates the
+        // sessions but must never supply a stale replacement record here.
+        let record = expected.record.clone();
+        let mut genesis = genesis.clone();
+        genesis.schema_content_hash = SCHEMA_CONTENT_HASH.trim().to_string();
+        match commit_cas(
+            engine,
+            &store,
+            operation_id,
+            sled.session_id.clone(),
+            expected,
+            record,
+            Some(genesis),
+            (),
+        )
+        .await
+        {
             Ok(()) => {
                 refreshed += 1;
                 tracing::info!(
@@ -1665,6 +1698,9 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
     match method {
         "inspect_identity_inventory" => {
             anyhow::bail!("identity inventory requires the verified maintenance route")
+        }
+        "get_own_identity" => {
+            anyhow::bail!("own identity read requires the verified own-session identity route")
         }
         "repair_own_root" => {
             anyhow::bail!("root repair requires the verified own-session identity route")
@@ -2048,6 +2084,55 @@ fn require_identity_inventory_capability(
     Ok(())
 }
 
+const OWN_IDENTITY_READ_CAPABILITY: &str = "cap.identity.sled.self.read@v1";
+
+fn redact_own_identity(identity: ContainerIdentitySled) -> anyhow::Result<JsonValue> {
+    // Arbitrary Incus config, descriptions and device payloads may contain
+    // credentials. Keep only the typed instance lifecycle/storage metadata.
+    let instance = identity.instance.map(|instance| IncusInstance {
+        name: instance.name,
+        status: instance.status,
+        instance_type: instance.instance_type,
+        status_code: instance.status_code,
+        storage_pool: instance.storage_pool,
+        ..IncusInstance::default()
+    });
+    // An explicit allowlist also withholds future credential-bearing record
+    // fields. This remains a projection of the existing typed identity output.
+    Ok(serde_json::json!({"identity": {
+        "session_id": identity.session_id,
+        "wireguard_pubkey": identity.wireguard_pubkey,
+        "principal_kind": identity.principal_kind,
+        "mutation_index": identity.mutation_index,
+        "genesis": identity.genesis,
+        "trace_id": identity.trace_id,
+        "schema_version": identity.schema_version,
+        "btrfs_device": identity.btrfs_device,
+        "instance": instance,
+        "session_started_at": identity.session_started_at,
+        "last_seen_at": identity.last_seen_at,
+        "active": identity.active,
+        "expires_at": identity.expires_at,
+        "arrival_timestamp": identity.arrival_timestamp,
+        "chain_head_at_arrival": identity.chain_head_at_arrival,
+        "catalog_hash_at_arrival": identity.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": identity.head_timestamp_at_arrival
+    }}))
+}
+
+fn admit_own_identity_read(actor_id: &str) -> anyhow::Result<()> {
+    crate::method_contract_admission::admit_compiled_method(
+        "identity_sled",
+        "get_own_identity",
+        Some(OWN_IDENTITY_READ_CAPABILITY),
+    )?;
+    anyhow::ensure!(
+        crate::interceptor::load_capability_grants(actor_id).contains(OWN_IDENTITY_READ_CAPABILITY),
+        "own identity read requires a current exact-principal self-read grant"
+    );
+    Ok(())
+}
+
 pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
     engine: &MutationEngine,
     method: &str,
@@ -2056,6 +2141,36 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
     session_id: Option<&str>,
     session_genesis: Option<&str>,
 ) -> anyhow::Result<JsonValue> {
+    if method == "get_own_identity" {
+        anyhow::ensure!(
+            args.as_object().is_some_and(|object| object.is_empty()),
+            "get_own_identity accepts no arguments"
+        );
+        let own_session = crate::project_dispatch::verified_session(
+            engine,
+            actor_id,
+            session_id,
+            session_genesis,
+        )
+        .await?;
+        admit_own_identity_read(actor_id)?;
+        let identity = stored_session(engine, &own_session)
+            .await?
+            .context("verified own identity is unavailable")?;
+        anyhow::ensure!(
+            identity.is_anchored()
+                && identity.genesis.as_deref() == session_genesis
+                && op_identity::session::derive_principal_id(&identity.wireguard_pubkey)
+                    == actor_id,
+            "verified own identity binding changed"
+        );
+        // Revalidate after the asynchronous private-state read, including
+        // session expiry, principal revocation and exact current capability.
+        crate::project_dispatch::verified_session(engine, actor_id, session_id, session_genesis)
+            .await?;
+        admit_own_identity_read(actor_id)?;
+        return redact_own_identity(identity);
+    }
     if matches!(
         method,
         "migrate_own_physical_root" | "inspect_own_physical_root_migration_preflight"
@@ -2338,6 +2453,183 @@ pub(crate) mod tests {
                 assert!(!rendered.contains("private document"));
             }
         }
+    }
+
+    #[test]
+    fn schema_hash_refresh_token_binds_exact_predecessor_and_target() {
+        let mut expected = IdentityRevision {
+            session_id: "own-session".into(),
+            revision: 7,
+            operation_id: "previous-operation".into(),
+            record: None,
+            genesis: None,
+        };
+        let token = schema_hash_refresh_operation_id(&expected, "target-a").unwrap();
+        assert_eq!(
+            token,
+            schema_hash_refresh_operation_id(&expected, "target-a").unwrap()
+        );
+        assert_ne!(
+            token,
+            schema_hash_refresh_operation_id(&expected, "target-b").unwrap()
+        );
+        expected.revision += 1;
+        assert_ne!(
+            token,
+            schema_hash_refresh_operation_id(&expected, "target-a").unwrap()
+        );
+        expected.revision -= 1;
+        expected.operation_id = "other-operation".into();
+        assert_ne!(
+            token,
+            schema_hash_refresh_operation_id(&expected, "target-a").unwrap()
+        );
+        expected.operation_id = "previous-operation".into();
+        expected.session_id = "other-session".into();
+        assert_ne!(
+            token,
+            schema_hash_refresh_operation_id(&expected, "target-a").unwrap()
+        );
+        assert!(token.len() <= 128);
+        assert!(
+            token
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn schema_hash_refresh_recovers_legacy_collision_and_preserves_durable_record() {
+        let _refresh_lock = refresh_test_lock().lock().await;
+        let (engine, _shm, identity, _grants_dir, previous, _registry) =
+            refresh_test_fixture(0xb3).await;
+        let store = engine.identity_sled_store().unwrap().clone();
+        let expected = load_revision(&store, &identity.session_id).await.unwrap();
+        let mut old_genesis = expected.genesis.clone().unwrap();
+        old_genesis.schema_content_hash = "previous-release-schema".into();
+        let legacy_token = format!(
+            "refresh-schema-hash-{}",
+            blake3::hash(identity.session_id.as_bytes()).to_hex()
+        );
+        commit_cas(
+            &engine,
+            &store,
+            legacy_token.clone(),
+            identity.session_id.clone(),
+            expected.clone(),
+            expected.record.clone(),
+            Some(old_genesis),
+            (),
+        )
+        .await
+        .unwrap();
+
+        // Reproduce the historical restart: reuse the session-only token for
+        // a changed target. The durable replay guard must still reject it.
+        let before_collision = load_revision(&store, &identity.session_id).await.unwrap();
+        let failure = commit_sled_update(
+            &engine,
+            &store,
+            legacy_token.clone(),
+            before_collision.clone(),
+            identity.clone(),
+            (),
+        )
+        .await
+        .unwrap_err();
+        assert!(failure.is::<IdentityPublicationPending>());
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            before_collision
+        );
+        let state_dir = op_core::projection_shm::shm_state_dir();
+        assert_eq!(
+            op_core::projection_shm::pending_identity_publication_in(&state_dir)
+                .unwrap()
+                .unwrap()
+                .operation_id,
+            legacy_token,
+        );
+        assert!(strict_private_state().is_err());
+        recover_identity_startup_with_store(&engine, &store)
+            .await
+            .unwrap();
+        assert!(
+            op_core::projection_shm::pending_identity_publication_in(&state_dir)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            before_collision
+        );
+
+        // Disposable fixture: advance Cozo without publishing SHM, as a
+        // recoverable durable/publication gap. Refresh must preserve this
+        // authoritative record, including its original credential bytes.
+        let mut record = before_collision.record.clone().unwrap();
+        record.last_seen_at += 17;
+        let durable = store
+            .cozo
+            .apply_identity_intent(
+                &identity.session_id,
+                "schema-refresh-newer-durable-fixture",
+                IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                    expected: before_collision.clone(),
+                    record: Some(record.clone()),
+                    genesis: before_collision.genesis.clone(),
+                })),
+            )
+            .unwrap()
+            .current;
+        assert_ne!(
+            stored_session(&engine, &identity.session_id)
+                .await
+                .unwrap()
+                .unwrap()
+                .last_seen_at,
+            record.last_seen_at,
+        );
+        assert_eq!(
+            refresh_drifted_schema_content_hashes(&engine)
+                .await
+                .unwrap(),
+            1
+        );
+        let current = load_revision(&store, &identity.session_id).await.unwrap();
+        assert_eq!(current.record, Some(record));
+        let mut target_genesis = durable.genesis.clone().unwrap();
+        target_genesis.schema_content_hash = SCHEMA_CONTENT_HASH.trim().into();
+        assert_eq!(current.genesis, Some(target_genesis));
+        assert_eq!(current.revision, durable.revision + 1);
+        assert_eq!(
+            current.operation_id,
+            schema_hash_refresh_operation_id(&durable, SCHEMA_CONTENT_HASH.trim()).unwrap()
+        );
+        assert_eq!(
+            refresh_drifted_schema_content_hashes(&engine)
+                .await
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            current
+        );
+        assert!(
+            op_core::projection_shm::pending_identity_publication_in(&state_dir)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(
+            stored_session(&engine, &identity.session_id)
+                .await
+                .unwrap()
+                .unwrap()
+                .sealed_id,
+            identity.sealed_id
+        );
+        restore_grants_path(previous);
     }
 
     #[derive(Default)]
@@ -2775,6 +3067,178 @@ pub(crate) mod tests {
     fn refresh_test_lock() -> &'static tokio::sync::Mutex<()> {
         static LOCK: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
         LOCK.get_or_init(|| tokio::sync::Mutex::new(()))
+    }
+
+    #[test]
+    fn get_own_identity_redacts_credentials_and_arbitrary_instance_payloads() {
+        let mut identity = record_to_sled(&test_record("own-session"), None).unwrap();
+        identity.sealed_id = Some("SID1_PRIVATE_SENTINEL".into());
+        identity.btrfs_device = Some(
+            serde_json::from_value(serde_json::json!({
+                "device_path": "/dev/sdb2",
+                "mount_point": "/identity/own",
+                "btrfs_uuid": "own-filesystem",
+                "attached": true,
+                "cozo_id": "own-leaf"
+            }))
+            .unwrap(),
+        );
+        identity.instance = Some(
+            serde_json::from_value(serde_json::json!({
+                "name": "own-session", "status": "Running", "type": "container",
+                "status_code": 103, "storage_pool": "identity-pool",
+                "description": "DESCRIPTION_PRIVATE_SENTINEL",
+                "config": {"user.credential": "CONFIG_PRIVATE_SENTINEL"},
+                "expanded_config": {"user.credential": "EXPANDED_PRIVATE_SENTINEL"},
+                "devices": [{"name": "DEVICE_PRIVATE_SENTINEL", "device": {"type": "none"}}],
+                "expanded_devices": [{"name": "EXPANDED_DEVICE_PRIVATE_SENTINEL", "device": {"type": "none"}}]
+            }))
+            .unwrap(),
+        );
+        let result = redact_own_identity(identity).unwrap();
+        assert!(!result.to_string().contains("PRIVATE_SENTINEL"));
+        assert!(result["identity"].get("sealed_id").is_none());
+        assert_eq!(result["identity"]["session_id"], "own-session");
+        assert_eq!(
+            result["identity"]["btrfs_device"]["device_path"],
+            "/dev/sdb2"
+        );
+        assert_eq!(result["identity"]["btrfs_device"]["attached"], true);
+        assert_eq!(result["identity"]["instance"]["status"], "Running");
+        assert_eq!(
+            result["identity"]["instance"]["storage_pool"],
+            "identity-pool"
+        );
+        for private in [
+            "config",
+            "expanded_config",
+            "devices",
+            "expanded_devices",
+            "description",
+        ] {
+            assert!(result["identity"]["instance"].get(private).is_none());
+        }
+        // The redacted result still conforms to the existing typed output.
+        let schema = op_plugins::state_plugins::identity_sled::IdentitySledPlugin::new();
+        let schema = op_state::StatePlugin::schema(&schema).unwrap();
+        let returns =
+            serde_json::to_value(schema.methods["get_own_identity"].returns.as_ref().unwrap())
+                .unwrap();
+        jsonschema::Validator::new(&returns)
+            .unwrap()
+            .validate(&result)
+            .unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn get_own_identity_requires_verified_session_and_prevents_cross_identity_selection() {
+        let _refresh_lock = refresh_test_lock().lock().await;
+        let (engine, _shm, identity, grants_dir, previous, _registry) =
+            refresh_test_fixture(0xa7).await;
+        let actor = op_identity::session::derive_principal_id(&identity.wireguard_pubkey);
+        let grants_path = grants_dir.path().join("capability-grants.json");
+        std::fs::write(
+            &grants_path,
+            serde_json::to_vec(&serde_json::json!({
+                actor.clone(): {"capabilities": [OWN_IDENTITY_READ_CAPABILITY]}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let second = write_second_session(
+            &engine,
+            &identity.wireguard_pubkey,
+            "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        )
+        .await
+        .unwrap();
+        let result = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "get_own_identity",
+            &serde_json::json!({}),
+            &actor,
+            Some(&identity.session_id),
+            identity.genesis.as_deref(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(result["identity"]["session_id"], identity.session_id);
+        assert!(result["identity"].get("sealed_id").is_none());
+        assert!(
+            !result
+                .to_string()
+                .contains(identity.sealed_id.as_deref().unwrap())
+        );
+        for session in [None, Some("")] {
+            let error = dispatch_identity_sled_method_for_verified_session(
+                &engine,
+                "get_own_identity",
+                &serde_json::json!({}),
+                &actor,
+                session,
+                identity.genesis.as_deref(),
+            )
+            .await
+            .unwrap_err();
+            assert!(error.to_string().contains("verified session is required"));
+        }
+        for selector in ["session_id", "trace_id", "host"] {
+            let error = dispatch_identity_sled_method_for_verified_session(
+                &engine,
+                "get_own_identity",
+                &serde_json::json!({selector: second.session_id}),
+                &actor,
+                Some(&identity.session_id),
+                identity.genesis.as_deref(),
+            )
+            .await
+            .unwrap_err();
+            assert!(error.to_string().contains("accepts no arguments"));
+        }
+        for (caller, session, genesis) in [
+            (actor.as_str(), identity.session_id.as_str(), None),
+            (
+                actor.as_str(),
+                second.session_id.as_str(),
+                identity.genesis.as_deref(),
+            ),
+            (
+                "foreign-principal",
+                identity.session_id.as_str(),
+                identity.genesis.as_deref(),
+            ),
+        ] {
+            assert!(
+                dispatch_identity_sled_method_for_verified_session(
+                    &engine,
+                    "get_own_identity",
+                    &serde_json::json!({}),
+                    caller,
+                    Some(session),
+                    genesis,
+                )
+                .await
+                .is_err()
+            );
+        }
+        let error =
+            dispatch_identity_sled_method(&engine, "get_own_identity", &serde_json::json!({}))
+                .await
+                .unwrap_err();
+        assert!(error.to_string().contains("verified own-session"));
+        std::fs::write(&grants_path, b"{}").unwrap();
+        let error = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "get_own_identity",
+            &serde_json::json!({}),
+            &actor,
+            Some(&identity.session_id),
+            identity.genesis.as_deref(),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.to_string().contains("self-read grant"));
+        restore_grants_path(previous);
     }
 
     #[tokio::test(flavor = "multi_thread")]

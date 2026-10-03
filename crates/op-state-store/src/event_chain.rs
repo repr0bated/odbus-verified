@@ -694,9 +694,42 @@ impl EventChain {
         capability_id: Option<String>,
         json_args: &str,
     ) -> &ChainEvent {
+        self.record_method_call_with_transport(
+            actor_id,
+            session_id,
+            session_genesis,
+            sealed_id_digest,
+            plugin_id,
+            method_name,
+            capability_id,
+            json_args,
+            None,
+        )
+    }
+
+    /// Receiver-verified transport attribution is hashed outside plugin args.
+    /// `None` retains the exact legacy payload and hash format.
+    #[allow(clippy::too_many_arguments)]
+    pub fn record_method_call_with_transport(
+        &mut self,
+        actor_id: String,
+        session_id: Option<String>,
+        session_genesis: Option<String>,
+        sealed_id_digest: Option<String>,
+        plugin_id: String,
+        method_name: String,
+        capability_id: Option<String>,
+        json_args: &str,
+        verified_transport: Option<serde_json::Value>,
+    ) -> &ChainEvent {
         let target = format!("/org/opdbus/v1/plugins/{}", plugin_id);
         let method_args = sanitize_method_args(json_args);
-        let input_patch = simd_json::json!({ "method": method_name, "args": method_args });
+        let input_patch = match verified_transport {
+            Some(proof) => simd_json::json!({ "method": method_name, "args": method_args,
+                "_verified_transport": simd_json::serde::to_owned_value(proof)
+                    .expect("JSON transport proof is representable") }),
+            None => simd_json::json!({ "method": method_name, "args": method_args }),
+        };
         let mut event = ChainEvent::new(
             self.next_event_id(),
             self.last_hash().to_string(),
@@ -1402,6 +1435,53 @@ mod tests {
         let mut tampered = event;
         tampered.session_genesis = Some("different-genesis".into());
         assert!(!tampered.verify(), "session metadata must be hash-bound");
+    }
+
+    #[test]
+    fn bound_oracle_transport_is_hash_bound_outside_plugin_arguments() {
+        let mut chain = EventChain::new(ChainConfig::default());
+        let proof = serde_json::json!({"kind":"bound-oracle", "assertion_digest":"proof-commitment",
+            "peer_key":"public-peer", "binding_digest":"binding-commitment"});
+        let event = chain
+            .record_method_call_with_transport(
+                "selected-principal".into(),
+                Some("selected-session".into()),
+                Some("genesis".into()),
+                None,
+                "project".into(),
+                "get_context".into(),
+                Some("chat.context".into()),
+                r#"{"_verified_transport":"caller-spoof"}"#,
+                Some(proof),
+            )
+            .clone();
+        let payload = event.input_payload.as_ref().unwrap();
+        assert_eq!(payload["_verified_transport"]["kind"], "bound-oracle");
+        assert_eq!(payload["args"]["_verified_transport"], "caller-spoof");
+        assert!(event.verify());
+        let mut altered = event.clone();
+        altered.input_payload = Some(simd_json::json!({"method":"get_context", "args":{},
+            "_verified_transport":{"kind":"bound-oracle", "assertion_digest":"tampered"}}));
+        assert!(!altered.verify());
+        let legacy = chain.record_method_call_with_identity(
+            "old".into(),
+            None,
+            None,
+            None,
+            "project".into(),
+            "get_context".into(),
+            None,
+            "{}",
+        );
+        assert!(
+            legacy
+                .input_payload
+                .as_ref()
+                .unwrap()
+                .get("_verified_transport")
+                .is_none()
+        );
+        assert!(legacy.verify());
     }
 
     #[test]

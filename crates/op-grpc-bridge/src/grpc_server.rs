@@ -832,6 +832,137 @@ impl OperationGrpcServer {
         self.active_reflection.clone()
     }
 
+    async fn call_plugin_method_dynamic(
+        &self,
+        plugin_id: &str,
+        method_name: &str,
+        request_dynamic: DynamicMessage,
+        response_descriptor: &prost_reflect::MessageDescriptor,
+        sealed_schema: &JsonValue,
+        identity: Option<&GhostbridgeIdentity>,
+        human_identity: Option<&crate::oracle_assertion::HumanPrincipalIdentity>,
+        declared_capability: Option<&str>,
+        bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
+    ) -> Result<DynamicMessage, Status> {
+        if let Err(error) = enforce_bridge_capability_with_schema(
+            Some(sealed_schema),
+            plugin_id,
+            method_name,
+            declared_capability,
+            identity,
+        ) {
+            return Err(Status::permission_denied(error.message));
+        }
+
+        let mut json_args = Vec::new();
+        request_dynamic
+            .serialize_with_options(
+                &mut serde_json::Serializer::new(&mut json_args),
+                &SerializeOptions::new()
+                    .use_proto_field_name(true)
+                    .stringify_64_bit_integers(false)
+                    .skip_default_fields(false),
+            )
+            .map_err(|error| {
+                Status::internal(format!(
+                    "failed to serialize request for {plugin_id}.{method_name}: {error}"
+                ))
+            })?;
+        let mut json_args = String::from_utf8(json_args).map_err(|error| {
+            Status::internal(format!(
+                "request JSON was not UTF-8 for {plugin_id}.{method_name}: {error}"
+            ))
+        })?;
+        let mut args_value: JsonValue = serde_json::from_str(&json_args).map_err(|error| {
+            Status::internal(format!(
+                "failed to inspect request for {plugin_id}.{method_name}: {error}"
+            ))
+        })?;
+
+        validate_generated_arguments(sealed_schema, method_name, &mut args_value)?;
+        json_args = serde_json::to_string(&args_value)
+            .map_err(|error| Status::internal(error.to_string()))?;
+        enforce_human_principal_self_service(plugin_id, method_name, &args_value, human_identity)
+            .map_err(|error| Status::permission_denied(error.message))?;
+
+        let authenticated_actor_id = identity
+            .as_ref()
+            .map(|identity| identity.principal_id.as_str())
+            .ok_or_else(|| Status::unauthenticated("authenticated principal is required"))?;
+        let result = self
+            .mutation_engine
+            .dispatch_method_call_with_bound_oracle(
+                plugin_id,
+                method_name,
+                &json_args,
+                declared_capability,
+                authenticated_actor_id,
+                identity
+                    .as_ref()
+                    .map(|identity| identity.session_id.as_str()),
+                identity
+                    .as_ref()
+                    .map(|identity| identity.session_genesis.as_str()),
+                bound_oracle.clone(),
+            )
+            .await
+            .map_err(|error| {
+                Status::internal(format!(
+                    "plugin method {}.{} failed: {}",
+                    plugin_id, method_name, error
+                ))
+            })?;
+
+        let method_result = result.get("result").unwrap_or(&result);
+        let result_json = serde_json::to_string(method_result).map_err(|error| {
+            Status::internal(format!(
+                "failed to serialize method result for {plugin_id}.{method_name}: {error}"
+            ))
+        })?;
+
+        let mut deserializer = serde_json::de::Deserializer::from_str(&result_json);
+        let response_dynamic = response_descriptor
+            .clone()
+            .deserialize(&mut deserializer)
+            .map_err(|error| {
+                Status::internal(format!(
+                    "failed to deserialize response for {plugin_id}.{method_name}: {error}"
+                ))
+            })?;
+        deserializer.end().map_err(|error| {
+            Status::internal(format!(
+                "failed to finish response decode for {plugin_id}.{method_name}: {error}"
+            ))
+        })?;
+
+        if let Some(proof) = &bound_oracle {
+            interceptor::revalidate_bound_oracle(
+                &self.mutation_engine,
+                proof,
+                authenticated_actor_id,
+                identity
+                    .as_ref()
+                    .map(|identity| identity.session_id.as_str()),
+                identity
+                    .as_ref()
+                    .map(|identity| identity.session_genesis.as_str()),
+                false,
+            )
+            .await
+            .map_err(|_| Status::unauthenticated("Assigned browser identity changed"))?;
+            enforce_bridge_capability_with_schema(
+                Some(sealed_schema),
+                plugin_id,
+                method_name,
+                declared_capability,
+                identity,
+            )
+            .map_err(|error| Status::permission_denied(error.message))?;
+        }
+
+        Ok(response_dynamic)
+    }
+
     pub(crate) async fn call_generated_plugin_method_typed<Req, Res>(
         &self,
         plugin_id: &'static str,
@@ -850,20 +981,10 @@ impl OperationGrpcServer {
             .cloned();
         let identity = interceptor::bridge_capability_identity(request.extensions());
 
-        // The caller declares which capability it is exercising, and the bridge
-        // verifies that declaration against the method's `required_capability`.
-        //
-        // Passing `None` here (as this previously did) made `capability_matches` in
-        // `enforce_bridge_capability` compare `None == Some(required)`, which is
-        // always false — and since the decision is `capability_matches &&
-        // principal_grants`, every capability-gated method was permanently denied
-        // over gRPC/gRPC-Web. Every cognitive_mcp method is gated, so none were
-        // reachable despite the services being mounted.
-        //
-        // Declaration is deliberate rather than derived from the schema: it keeps the
-        // check two-factor (the caller must state its intent AND hold an identity)
-        // and makes the exercised capability visible in traces. An absent or
-        // malformed header still denies.
+        let bound_oracle = request
+            .extensions()
+            .get::<crate::oracle_assertion::BoundOracleProof>()
+            .cloned();
         let declared_capability = request
             .metadata()
             .get(DECLARED_CAPABILITY_HEADER)
@@ -873,15 +994,9 @@ impl OperationGrpcServer {
             .map(str::to_string);
 
         let sealed_schema = read_plugin_schema_json(plugin_id);
-        if let Err(error) = enforce_bridge_capability_with_schema(
-            sealed_schema.as_ref(),
-            plugin_id,
-            method_name,
-            declared_capability.as_deref(),
-            identity.as_ref(),
-        ) {
-            return Err(Status::permission_denied(error.message));
-        }
+        let sealed_schema = sealed_schema
+            .as_ref()
+            .ok_or_else(|| Status::failed_precondition("sealed method schema is unavailable"))?;
 
         let request_bytes = request.into_inner().encode_to_vec();
         let request_desc = plugin_descriptor_pool()
@@ -897,77 +1012,7 @@ impl OperationGrpcServer {
                     "failed to decode typed request for {plugin_id}.{method_name}: {error}"
                 ))
             })?;
-        let mut json_args = Vec::new();
-        request_dynamic
-            .serialize_with_options(
-                &mut serde_json::Serializer::new(&mut json_args),
-                &SerializeOptions::new()
-                    .use_proto_field_name(true)
-                    .stringify_64_bit_integers(false)
-                    .skip_default_fields(false),
-            )
-            .map_err(|error| {
-                Status::internal(format!(
-                    "failed to serialize typed request for {plugin_id}.{method_name}: {error}"
-                ))
-            })?;
-        let mut json_args = String::from_utf8(json_args).map_err(|error| {
-            Status::internal(format!(
-                "typed request JSON was not UTF-8 for {plugin_id}.{method_name}: {error}"
-            ))
-        })?;
-        let mut args_value: JsonValue = serde_json::from_str(&json_args).map_err(|error| {
-            Status::internal(format!(
-                "failed to inspect typed request for {plugin_id}.{method_name}: {error}"
-            ))
-        })?;
-        let sealed_schema = sealed_schema
-            .as_ref()
-            .ok_or_else(|| Status::failed_precondition("sealed method schema is unavailable"))?;
-        validate_generated_arguments(sealed_schema, method_name, &mut args_value)?;
-        json_args = serde_json::to_string(&args_value)
-            .map_err(|error| Status::internal(error.to_string()))?;
-        enforce_human_principal_self_service(
-            plugin_id,
-            method_name,
-            &args_value,
-            human_identity.as_ref(),
-        )
-        .map_err(|error| Status::permission_denied(error.message))?;
 
-        let authenticated_actor_id = identity
-            .as_ref()
-            .map(|identity| identity.principal_id.as_str())
-            .ok_or_else(|| Status::unauthenticated("authenticated principal is required"))?;
-        let result = self
-            .mutation_engine
-            .dispatch_method_call_with_identity(
-                plugin_id,
-                method_name,
-                &json_args,
-                declared_capability.as_deref(),
-                authenticated_actor_id,
-                identity
-                    .as_ref()
-                    .map(|identity| identity.session_id.as_str()),
-                identity
-                    .as_ref()
-                    .map(|identity| identity.session_genesis.as_str()),
-            )
-            .await
-            .map_err(|error| {
-                Status::internal(format!(
-                    "plugin method {}.{} failed: {}",
-                    plugin_id, method_name, error
-                ))
-            })?;
-
-        let method_result = result.get("result").unwrap_or(&result);
-        let result_json = serde_json::to_string(method_result).map_err(|error| {
-            Status::internal(format!(
-                "failed to serialize method result for {plugin_id}.{method_name}: {error}"
-            ))
-        })?;
         let response_desc = plugin_descriptor_pool()
             .get_message_by_name(response_message_name)
             .ok_or_else(|| {
@@ -975,19 +1020,20 @@ impl OperationGrpcServer {
                     "missing response descriptor for {plugin_id}.{method_name}"
                 ))
             })?;
-        let mut deserializer = serde_json::de::Deserializer::from_str(&result_json);
-        let response_dynamic = response_desc
-            .deserialize(&mut deserializer)
-            .map_err(|error| {
-                Status::internal(format!(
-                    "failed to deserialize typed response for {plugin_id}.{method_name}: {error}"
-                ))
-            })?;
-        deserializer.end().map_err(|error| {
-            Status::internal(format!(
-                "failed to finish typed response decode for {plugin_id}.{method_name}: {error}"
-            ))
-        })?;
+
+        let response_dynamic = self
+            .call_plugin_method_dynamic(
+                plugin_id,
+                method_name,
+                request_dynamic,
+                &response_desc,
+                sealed_schema,
+                identity.as_ref(),
+                human_identity.as_ref(),
+                declared_capability.as_deref(),
+                bound_oracle.clone(),
+            )
+            .await?;
 
         let mut bytes = Vec::new();
         response_dynamic.encode(&mut bytes).map_err(|error| {
@@ -1000,7 +1046,10 @@ impl OperationGrpcServer {
                 "failed to decode typed response for {plugin_id}.{method_name}: {error}"
             ))
         })?;
-        Ok(Response::new(response))
+
+        let mut response = Response::new(response);
+        interceptor::mark_bound_oracle_response(&mut response, bound_oracle.as_ref())?;
+        Ok(response)
     }
 }
 
@@ -1013,6 +1062,55 @@ fn plugin_descriptor_pool() -> &'static DescriptorPool {
 }
 
 include!(concat!(env!("OUT_DIR"), "/plugin_method_routes.rs"));
+
+pub(crate) fn is_canonical_method_path(path: &str) -> bool {
+    if path == "/operation.v1.PluginService/CallMethod" {
+        return true;
+    }
+    let Some((service, method)) = path.strip_prefix('/').and_then(|path| path.split_once('/'))
+    else {
+        return false;
+    };
+    !method.is_empty()
+        && !method.contains('/')
+        && generated_plugin_method_routes::LEGACY_PLUGIN_METHOD_SERVICES
+            .iter()
+            .any(|(_, declared)| *declared == service)
+        && plugin_descriptor_pool()
+            .get_service_by_name(service)
+            .is_some_and(|descriptor| {
+                descriptor
+                    .methods()
+                    .any(|declared| declared.name() == method)
+            })
+}
+
+#[cfg(test)]
+mod browser_method_paths {
+    #[test]
+    fn browser_binding_only_accepts_registered_method_paths() {
+        assert!(super::is_canonical_method_path(
+            "/operation.v1.PluginService/CallMethod"
+        ));
+        assert!(!super::is_canonical_method_path(
+            "/operation.v1.StateSync/Mutate"
+        ));
+        let (_, service) = super::generated_plugin_method_routes::LEGACY_PLUGIN_METHOD_SERVICES
+            .first()
+            .expect("generated plugin services");
+        let descriptor = super::plugin_descriptor_pool()
+            .get_service_by_name(service)
+            .expect("registered service descriptor");
+        let method = descriptor.methods().next().expect("declared method");
+        assert!(super::is_canonical_method_path(&format!(
+            "/{service}/{}",
+            method.name()
+        )));
+        assert!(!super::is_canonical_method_path(&format!(
+            "/{service}/UndeclaredMethod"
+        )));
+    }
+}
 
 /// Mount the COMPLETE Operation gRPC service surface onto a `tonic::service::Routes`.
 ///
@@ -1222,6 +1320,8 @@ pub async fn run_grpc_server(
             "grpc-status".parse().unwrap(),
             "grpc-message".parse().unwrap(),
             "grpc-status-details-bin".parse().unwrap(),
+            interceptor::IDENTITY_MODE_HEADER.parse().unwrap(),
+            interceptor::IDENTITY_SESSION_HEADER.parse().unwrap(),
         ]);
 
     let mut builder = tonic::transport::Server::builder()
@@ -1641,6 +1741,10 @@ impl PluginService for OperationGrpcServer {
         &self,
         request: Request<CallMethodRequest>,
     ) -> Result<Response<CallMethodResponse>, Status> {
+        let bound_oracle = request
+            .extensions()
+            .get::<crate::oracle_assertion::BoundOracleProof>()
+            .cloned();
         let human_identity = request
             .extensions()
             .get::<crate::oracle_assertion::HumanPrincipalIdentity>()
@@ -1705,7 +1809,7 @@ impl PluginService for OperationGrpcServer {
         // envelope; gRPC is a transport adapter, not a second implementation.
         let result = self
             .mutation_engine
-            .dispatch_method_call_with_identity(
+            .dispatch_method_call_with_bound_oracle(
                 &req.plugin_id,
                 &req.method_name,
                 &json_args,
@@ -1717,27 +1821,55 @@ impl PluginService for OperationGrpcServer {
                 identity
                     .as_ref()
                     .map(|identity| identity.session_genesis.as_str()),
+                bound_oracle.clone(),
             )
             .await;
 
         match result {
-            Ok(envelope) => Ok(Response::new(CallMethodResponse {
-                success: true,
-                result: Some(simd_to_prost_value(
-                    &simd_json::serde::to_owned_value(&envelope)
-                        .map_err(|error| Status::internal(error.to_string()))?,
-                )),
-                event_id: envelope
-                    .get("event_id")
-                    .and_then(serde_json::Value::as_u64)
-                    .unwrap_or_default(),
-                event_hash: envelope
-                    .get("event_hash")
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or_default()
-                    .to_string(),
-                error: None,
-            })),
+            Ok(envelope) => {
+                if let Some(proof) = &bound_oracle {
+                    interceptor::revalidate_bound_oracle(
+                        &self.mutation_engine,
+                        proof,
+                        &authenticated_actor_id,
+                        identity
+                            .as_ref()
+                            .map(|identity| identity.session_id.as_str()),
+                        identity
+                            .as_ref()
+                            .map(|identity| identity.session_genesis.as_str()),
+                        false,
+                    )
+                    .await
+                    .map_err(|_| Status::unauthenticated("Assigned browser identity changed"))?;
+                    enforce_bridge_capability(
+                        &req.plugin_id,
+                        &req.method_name,
+                        capability_id.as_deref(),
+                        identity.as_ref(),
+                    )
+                    .map_err(|error| Status::permission_denied(error.message))?;
+                }
+                let mut response = Response::new(CallMethodResponse {
+                    success: true,
+                    result: Some(simd_to_prost_value(
+                        &simd_json::serde::to_owned_value(&envelope)
+                            .map_err(|error| Status::internal(error.to_string()))?,
+                    )),
+                    event_id: envelope
+                        .get("event_id")
+                        .and_then(serde_json::Value::as_u64)
+                        .unwrap_or_default(),
+                    event_hash: envelope
+                        .get("event_hash")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or_default()
+                        .to_string(),
+                    error: None,
+                });
+                interceptor::mark_bound_oracle_response(&mut response, bound_oracle.as_ref())?;
+                Ok(response)
+            }
             Err(e) => Ok(Response::new(CallMethodResponse {
                 success: false,
                 result: None,

@@ -21,6 +21,122 @@ use crate::oracle_assertion::{AssertionRejection, AssertionValidator, HumanPrinc
 pub const ASSERTION_METADATA_KEY: &str = "x-oracle-identity-assertion-bin";
 /// gRPC metadata key for MutationEngine-authored SID1 (local identity).
 pub const SEALED_ID_METADATA_KEY: &str = op_identity::sealed_id::HTTP_HEADER_NAME;
+pub const IDENTITY_MODE_HEADER: &str = "x-opdbus-identity-mode";
+pub const IDENTITY_SESSION_HEADER: &str = "x-opdbus-identity-session";
+
+/// Captured from the actual HTTP request URI before tonic removes it. This
+/// extension is never reconstructed from client metadata or plugin arguments.
+#[derive(Clone, Debug)]
+pub(crate) struct ReceiverRpcPath(String);
+
+impl ReceiverRpcPath {
+    pub(crate) fn from_http_path(path: &str) -> Self {
+        Self(path.to_owned())
+    }
+    pub(crate) fn is_canonical_method(&self) -> bool {
+        crate::grpc_server::is_canonical_method_path(&self.0)
+    }
+}
+
+/// Validate the assigned target through the same canonical SID1 receiver used
+/// by ordinary clients. The authored credential remains inside the receiver.
+pub(crate) async fn validate_bound_oracle(
+    engine: &MutationEngine,
+    proof: &crate::oracle_assertion::BoundOracleProof,
+    require_unexpired_assertion: bool,
+) -> anyhow::Result<(HumanPrincipalIdentity, String)> {
+    if require_unexpired_assertion {
+        anyhow::ensure!(
+            proof.is_current(chrono::Utc::now().timestamp()),
+            "bound oracle expired"
+        );
+    }
+    let source = crate::human_principal_dispatch::resolve_key_for_assertion(proof.peer_key())
+        .await
+        .map_err(|_| anyhow::anyhow!("bound oracle peer registry unavailable"))?;
+    anyhow::ensure!(
+        source.is_none_or(|record| record.revoked_at == 0),
+        "bound oracle peer revoked"
+    );
+    let binding = proof.binding();
+    let record = crate::identity_sled_dispatch::stored_session(engine, &binding.session_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("assigned identity unavailable"))?;
+    let inline = record
+        .sealed_id
+        .as_deref()
+        .ok_or_else(|| anyhow::anyhow!("assigned authored identity unavailable"))?;
+    let encoded = inline
+        .strip_prefix(op_identity::sealed_id::INLINE_PREFIX)
+        .ok_or_else(|| anyhow::anyhow!("assigned authored identity invalid"))?;
+    let wire = base64::Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, encoded)
+        .map_err(|_| anyhow::anyhow!("assigned authored identity invalid"))?;
+    let claims = crate::identity_sled_dispatch::authenticate_sid1_wire(engine, &wire, "grpc")
+        .await
+        .map_err(|_| anyhow::anyhow!("assigned authored identity rejected"))?;
+    let target =
+        crate::human_principal_dispatch::resolve_key_for_assertion(&claims.wireguard_pubkey)
+            .await
+            .map_err(|_| anyhow::anyhow!("assigned principal registry unavailable"))?
+            .ok_or_else(|| anyhow::anyhow!("assigned principal unavailable"))?;
+    anyhow::ensure!(
+        target.revoked_at == 0
+            && target.principal_id == binding.principal_id
+            && claims.principal_id == binding.principal_id
+            && claims.session_id == binding.session_id,
+        "assigned principal binding rejected"
+    );
+    let digest = crate::mutation_engine::sealed_id_digest(Some(inline))
+        .ok_or_else(|| anyhow::anyhow!("assigned identity commitment unavailable"))?;
+    Ok((
+        HumanPrincipalIdentity {
+            principal_id: claims.principal_id,
+            human_pubkey: claims.wireguard_pubkey,
+            session_id: claims.session_id,
+            expires_at: claims.expires_at,
+            session_genesis: claims.session_genesis,
+        },
+        digest,
+    ))
+}
+
+pub(crate) async fn revalidate_bound_oracle(
+    engine: &MutationEngine,
+    proof: &crate::oracle_assertion::BoundOracleProof,
+    actor: &str,
+    session: Option<&str>,
+    genesis: Option<&str>,
+    require_unexpired_assertion: bool,
+) -> anyhow::Result<()> {
+    let (identity, digest) =
+        validate_bound_oracle(engine, proof, require_unexpired_assertion).await?;
+    anyhow::ensure!(
+        identity.principal_id == actor
+            && session == Some(identity.session_id.as_str())
+            && genesis == Some(identity.session_genesis.as_str())
+            && proof.credential_matches(&digest),
+        "assigned identity changed after admission"
+    );
+    Ok(())
+}
+
+pub(crate) fn mark_bound_oracle_response<T>(
+    response: &mut tonic::Response<T>,
+    proof: Option<&crate::oracle_assertion::BoundOracleProof>,
+) -> Result<(), Status> {
+    if let Some(proof) = proof {
+        response.metadata_mut().insert(
+            IDENTITY_MODE_HEADER,
+            tonic::metadata::MetadataValue::from_static("bound-oracle"),
+        );
+        response.metadata_mut().insert(
+            IDENTITY_SESSION_HEADER,
+            tonic::metadata::MetadataValue::try_from(proof.binding().session_id.as_str())
+                .map_err(|_| Status::internal("assigned identity marker invalid"))?,
+        );
+    }
+    Ok(())
+}
 
 /// Identity extracted by the Ghostbridge interceptor and attached to each
 /// accepted request for bridge-layer authorization.
@@ -345,6 +461,18 @@ fn ghostbridge_interceptor_with_validator(
     validator: &AssertionValidator,
     mut req: Request<()>,
 ) -> Result<Request<()>, Status> {
+    if [
+        IDENTITY_MODE_HEADER,
+        IDENTITY_SESSION_HEADER,
+        "x-opdbus-verified-transport",
+    ]
+    .iter()
+    .any(|header| req.metadata().contains_key(*header))
+    {
+        return Err(Status::unauthenticated(
+            "receiver identity metadata cannot be supplied",
+        ));
+    }
     let assertion = read_assertion_wire(&req)?;
     let sealed = read_sealed_id_wire(&req)?;
     match (assertion.as_deref(), sealed.as_deref()) {
@@ -381,6 +509,40 @@ fn ghostbridge_interceptor_with_validator(
         .map_err(Status::from)?;
     let engine =
         engine_handle().ok_or_else(|| Status::internal("MutationEngine Memory Unreachable"))?;
+    if let Some(mut proof) = pending.bound_oracle().cloned() {
+        let path = req.extensions().get::<ReceiverRpcPath>().ok_or_else(|| {
+            Status::unauthenticated("Assigned browser identity requires a canonical method RPC")
+        })?;
+        if !path.is_canonical_method() {
+            return Err(Status::unauthenticated(
+                "Assigned browser identity requires a canonical method RPC",
+            ));
+        }
+        let (identity, digest) = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(validate_bound_oracle(
+                engine.as_ref(),
+                &proof,
+                true,
+            ))
+        })
+        .map_err(|_| Status::unauthenticated("Assigned browser identity unavailable"))?;
+        proof.bind_credential(digest.clone());
+        let consumed = validator.consume_pending(pending).map_err(Status::from)?;
+        debug_assert_eq!(consumed.human_pubkey, proof.peer_key());
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(engine.register_session_context(
+                crate::mutation_engine::SessionContext {
+                    genesis_hex: identity.session_genesis.clone(),
+                    session_id: identity.session_id.clone(),
+                    wireguard_pubkey: identity.human_pubkey.clone(),
+                    sealed_id_digest: Some(digest),
+                },
+            ))
+        });
+        req.extensions_mut().insert(identity);
+        req.extensions_mut().insert(proof);
+        return Ok(req);
+    }
     let session = tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(anchor_verified_human_session(
             engine.as_ref(),
@@ -681,6 +843,195 @@ pub(crate) mod tests {
             .expect("write assertion session identity");
         set_engine(engine);
         shm
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn browser_binding_selects_authored_target_without_anchor_or_credential_export() {
+        let _cozo = temp_cozo();
+        let (engine, _shm) = sled_engine();
+        let peer = pk(111);
+        let target_key = pk(112);
+        let target_session = op_identity::session::derive_session_id(&target_key);
+        let target_principal = op_identity::session::derive_principal_id(&target_key);
+        let issuer = test_issuer();
+        let validator = AssertionValidator::new(trust_store_for_issuer(&issuer))
+            .with_browser_binding(&peer, &target_principal, &target_session);
+        let signed = fresh_signed(&issuer, &peer, [111; 16]);
+        let pending = validator
+            .validate_pending_with_bootstrap(
+                &signed.to_wire(),
+                Some(source_at(test_ip())),
+                chrono::Utc::now().timestamp(),
+                false,
+            )
+            .unwrap();
+        assert!(
+            validate_bound_oracle(&engine, pending.bound_oracle().unwrap(), true)
+                .await
+                .is_err(),
+            "an assignment cannot synthesize a missing target"
+        );
+        register(&target_key, "assigned-target").await.unwrap();
+        write_identity(&engine, &target_key).await.unwrap();
+        let before = crate::identity_sled_dispatch::stored_session(&engine, &target_session)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(before.principal_kind.as_deref(), Some("human"));
+        set_engine(engine.clone());
+        let mut req = request_with_connect_info(test_ip());
+        req.extensions_mut().insert(ReceiverRpcPath::from_http_path(
+            "/operation.v1.PluginService/CallMethod",
+        ));
+        insert_assertion_metadata(&mut req, &signed.to_wire());
+        let accepted = ghostbridge_interceptor_with_validator(&validator, req).unwrap();
+        let identity = bridge_capability_identity(accepted.extensions()).unwrap();
+        assert_eq!(identity.principal_id, target_principal);
+        assert_eq!(identity.session_id, target_session);
+        assert!(read_sealed_id_wire(&accepted).unwrap().is_none());
+        let proof = accepted
+            .extensions()
+            .get::<crate::oracle_assertion::BoundOracleProof>()
+            .unwrap();
+        let mut response = tonic::Response::new(());
+        mark_bound_oracle_response(&mut response, Some(proof)).unwrap();
+        assert_eq!(
+            response.metadata().get(IDENTITY_MODE_HEADER).unwrap(),
+            "bound-oracle"
+        );
+        assert_eq!(
+            response
+                .metadata()
+                .get(IDENTITY_SESSION_HEADER)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            target_session
+        );
+        assert!(!format!("{:?}", response.metadata()).contains("sid1:"));
+        let after = crate::identity_sled_dispatch::stored_session(&engine, &target_session)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(before).unwrap(),
+            serde_json::to_value(after).unwrap()
+        );
+        let mut expired = proof.clone();
+        expired.expire_for_test();
+        assert!(
+            revalidate_bound_oracle(
+                &engine,
+                &expired,
+                &identity.principal_id,
+                Some(&identity.session_id),
+                Some(&identity.session_genesis),
+                true
+            )
+            .await
+            .is_err()
+        );
+        assert!(
+            revalidate_bound_oracle(
+                &engine,
+                &expired,
+                &identity.principal_id,
+                Some(&identity.session_id),
+                Some(&identity.session_genesis),
+                false
+            )
+            .await
+            .is_ok(),
+            "accepted bounded inference may finish after the admission proof term"
+        );
+        assert!(
+            revalidate_bound_oracle(
+                &engine,
+                proof,
+                &identity.principal_id,
+                Some("different-session"),
+                Some(&identity.session_genesis),
+                false
+            )
+            .await
+            .is_err()
+        );
+        register(&peer, "assigned-source").await.unwrap();
+        crate::human_principal_dispatch::tests::revoke(&peer)
+            .await
+            .unwrap();
+        assert!(
+            revalidate_bound_oracle(
+                &engine,
+                proof,
+                &identity.principal_id,
+                Some(&identity.session_id),
+                Some(&identity.session_genesis),
+                false
+            )
+            .await
+            .is_err(),
+            "source revocation still denies an accepted operation's response"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn browser_binding_rejects_spoofed_marker_nonmethod_and_revoked_target() {
+        let _cozo = temp_cozo();
+        let (engine, _shm) = sled_engine();
+        let issuer = test_issuer();
+        let peer = pk(113);
+        let key = pk(114);
+        let session = op_identity::session::derive_session_id(&key);
+        let principal = op_identity::session::derive_principal_id(&key);
+        let validator = AssertionValidator::new(trust_store_for_issuer(&issuer))
+            .with_browser_binding(&peer, &principal, &session);
+        for header in [
+            IDENTITY_MODE_HEADER,
+            IDENTITY_SESSION_HEADER,
+            "x-opdbus-verified-transport",
+        ] {
+            let mut req = Request::new(());
+            req.metadata_mut()
+                .insert(header, MetadataValue::from_static("spoof"));
+            assert!(
+                ghostbridge_interceptor_with_validator(&validator, req)
+                    .unwrap_err()
+                    .message()
+                    .contains("cannot be supplied")
+            );
+        }
+        set_engine(engine.clone());
+        let signed = fresh_signed(&issuer, &peer, [113; 16]);
+        let mut req = request_with_connect_info(test_ip());
+        req.extensions_mut().insert(ReceiverRpcPath::from_http_path(
+            "/operation.v1.StateSync/Mutate",
+        ));
+        insert_assertion_metadata(&mut req, &signed.to_wire());
+        assert!(
+            ghostbridge_interceptor_with_validator(&validator, req)
+                .unwrap_err()
+                .message()
+                .contains("canonical method RPC")
+        );
+        register(&key, "revoked-target").await.unwrap();
+        write_identity(&engine, &key).await.unwrap();
+        crate::human_principal_dispatch::tests::revoke(&key)
+            .await
+            .unwrap();
+        let pending = validator
+            .validate_pending_with_bootstrap(
+                &signed.to_wire(),
+                Some(source_at(test_ip())),
+                chrono::Utc::now().timestamp(),
+                false,
+            )
+            .unwrap();
+        assert!(
+            validate_bound_oracle(&engine, pending.bound_oracle().unwrap(), true)
+                .await
+                .is_err()
+        );
     }
 
     #[test]

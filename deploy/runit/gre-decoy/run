@@ -1,18 +1,23 @@
 #!/bin/sh
 # GRE to the decoy public address. OCI only permits protocol 47; it does not
 # create this interface. Outer: 188.68.58.237 -> 129.80.64.127.
+# Transport only, outside OVS: retain identity transport and Xray egress.
+# Service addresses belong to 3tched/ovsbr0, not this tunnel.
 exec 2>&1
 ip link show gre-decoy >/dev/null 2>&1 || ip link add gre-decoy type gre remote 129.80.64.127 local 188.68.58.237 ttl 64
 ip addr show dev gre-decoy | grep -q '192.168.255.1/30' || ip addr add 192.168.255.1/30 dev gre-decoy
-ip addr show dev gre-decoy | grep -q '10.0.0.2/32' || ip addr add 10.0.0.2/32 dev gre-decoy noprefixroute
-ip addr del 10.0.0.4/32 dev gre-decoy 2>/dev/null || true
 ip addr del 10.69.0.254/32 dev gre-decoy 2>/dev/null || true
 ip link set gre-decoy mtu 1400 up
 # 10.0.0.1 is the decoy. The bridge /24 would otherwise treat it as on-link.
 ip route replace 10.0.0.1/32 via 192.168.255.2 dev gre-decoy
 # WireGuard clients must stay visible to the door. GRE must not hide them.
+# Cover every decoy peer, including newly assigned addresses. These two /25
+# routes take precedence over the OVS connected /24 without changing local
+# service routes, policy-selected Xray egress, or the public default route.
+ip route replace 10.0.0.0/25 via 192.168.255.2 dev gre-decoy
+ip route replace 10.0.0.128/25 via 192.168.255.2 dev gre-decoy
 ip route replace 10.0.0.5/32 via 192.168.255.2 dev gre-decoy
 ip route replace 10.0.0.6/32 via 192.168.255.2 dev gre-decoy
 ip route replace 10.0.0.7/32 via 192.168.255.2 dev gre-decoy
-echo "gre-decoy up 192.168.255.1/30 10.0.0.1 via decoy"
+echo "gre-decoy transport up 192.168.255.1/30; 10.0.0.0/24 via decoy"
 exec sleep 2147483647

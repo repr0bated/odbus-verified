@@ -291,14 +291,28 @@ impl AppState {
     pub fn start_event_bridge(self: Arc<Self>) {
         let state = self.clone();
 
+        // Lungs owns live subscribe. Keep this bridge off unless an operator
+        // explicitly re-enables the legacy HTTP SSE fan-out.
+        let bridge_enabled = matches!(
+            std::env::var("OP_WEB_SSE_BRIDGE").as_deref(),
+            Ok("1") | Ok("true") | Ok("TRUE") | Ok("yes") | Ok("YES")
+        );
+        if !bridge_enabled {
+            info!(
+                "gRPC -> SSE bridge disabled (lungs owns live state; set OP_WEB_SSE_BRIDGE=1 to re-enable)"
+            );
+            return;
+        }
+
         // 1. State updates bridge
         let state_clone = state.clone();
         tokio::spawn(async move {
             info!("Starting gRPC -> SSE state updates bridge...");
             loop {
+                let plugins = crate::sse::sse_plugin_allowlist();
                 match state_clone
                     .grpc_client
-                    .subscribe(vec![], vec![], vec![])
+                    .subscribe(plugins, vec![], vec![])
                     .await
                 {
                     Ok(mut stream) => {

@@ -22,6 +22,125 @@ pub const DEFAULT_AUTH_REPLAY_DB_PATH: &str = "/var/lib/op-dbus/auth-replay.db";
 pub const AUTH_REPLAY_DB_PATH_ENV: &str = "OP_AUTH_REPLAY_DB_PATH";
 pub const SOURCE_BINDING_ENV: &str = "OP_ORACLE_ASSERTION_SOURCE_BINDING";
 pub const CLOCK_LEEWAY_SECS: i64 = 30;
+/// Public operator assignment. A single canonical WG key, never a client target.
+pub const BROWSER_PEER_KEY_ENV: &str = "OP_BROWSER_CONTROL_PLANE_PEER_KEY";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct BrowserIdentityBinding {
+    peer_key: String,
+    pub(crate) principal_id: String,
+    pub(crate) session_id: String,
+}
+
+#[derive(Debug, Clone, Default)]
+enum BrowserBindingPolicy {
+    #[default]
+    Disabled,
+    Assigned(BrowserIdentityBinding),
+    Invalid,
+}
+
+impl BrowserBindingPolicy {
+    fn parse(peer: Option<&str>, principal: Option<&str>, session: Option<&str>) -> Self {
+        let Some(peer) = peer else {
+            return Self::Disabled;
+        };
+        let valid_key = base64::engine::general_purpose::STANDARD
+            .decode(peer)
+            .is_ok_and(|bytes| {
+                bytes.len() == 32 && base64::engine::general_purpose::STANDARD.encode(bytes) == peer
+            });
+        let canonical_uuid = |value: Option<&str>| {
+            value.is_some_and(|value| {
+                uuid::Uuid::parse_str(value).is_ok_and(|id| !id.is_nil() && id.to_string() == value)
+            })
+        };
+        if !valid_key || !canonical_uuid(principal) || !canonical_uuid(session) {
+            return Self::Invalid;
+        }
+        Self::Assigned(BrowserIdentityBinding {
+            peer_key: peer.to_owned(),
+            principal_id: principal.expect("validated principal").to_owned(),
+            session_id: session.expect("validated session").to_owned(),
+        })
+    }
+
+    fn from_env() -> Self {
+        let peer = match std::env::var(BROWSER_PEER_KEY_ENV) {
+            Ok(value) => value,
+            Err(std::env::VarError::NotPresent) => return Self::Disabled,
+            Err(_) => return Self::Invalid,
+        };
+        for name in [
+            BROWSER_PEER_KEY_ENV,
+            "OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID",
+            "OP_CONTROL_PLANE_CHATBOT_SESSION_ID",
+        ] {
+            if std::env::vars_os().filter(|(key, _)| key == name).count() > 1 {
+                return Self::Invalid;
+            }
+        }
+        Self::parse(
+            Some(&peer),
+            std::env::var("OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID")
+                .ok()
+                .as_deref(),
+            std::env::var("OP_CONTROL_PLANE_CHATBOT_SESSION_ID")
+                .ok()
+                .as_deref(),
+        )
+    }
+}
+
+/// Receiver-created transport evidence. Fields are private so request values
+/// cannot construct admission evidence. No credential bytes enter the audit.
+#[derive(Debug, Clone)]
+pub(crate) struct BoundOracleProof {
+    binding: BrowserIdentityBinding,
+    assertion_digest: String,
+    issuer_key_id: String,
+    signed_inner_ip: String,
+    expires_at: i64,
+    target_credential_digest: Option<String>,
+}
+
+impl BoundOracleProof {
+    #[cfg(test)]
+    pub(crate) fn expire_for_test(&mut self) {
+        self.expires_at = 1;
+    }
+    pub(crate) fn binding(&self) -> &BrowserIdentityBinding {
+        &self.binding
+    }
+
+    pub(crate) fn bind_credential(&mut self, digest: String) {
+        self.target_credential_digest = Some(digest);
+    }
+
+    pub(crate) fn credential_matches(&self, digest: &str) -> bool {
+        self.target_credential_digest.as_deref() == Some(digest)
+    }
+
+    pub(crate) fn is_current(&self, now: i64) -> bool {
+        now < self.expires_at
+    }
+
+    pub(crate) fn peer_key(&self) -> &str {
+        &self.binding.peer_key
+    }
+
+    pub(crate) fn audit_value(&self) -> serde_json::Value {
+        let binding = serde_json::json!({"peer_key": self.binding.peer_key,
+            "principal_id": self.binding.principal_id, "session_id": self.binding.session_id});
+        serde_json::json!({"kind": "bound-oracle", "peer_key": self.binding.peer_key,
+            "peer_principal_id": derive_principal_id(&self.binding.peer_key),
+            "issuer_key_id": self.issuer_key_id, "signed_inner_ip": self.signed_inner_ip,
+            "expires_at": self.expires_at, "assertion_digest": self.assertion_digest,
+            "binding_digest": blake3::hash(binding.to_string().as_bytes()).to_hex().to_string(),
+            "selected_principal_id": self.binding.principal_id,
+            "selected_session_id": self.binding.session_id})
+    }
+}
 
 /// How a decoy-signed assertion is bound to its transport.
 ///
@@ -102,6 +221,8 @@ pub enum AssertionRejection {
     RegistryUnavailable,
     #[error("ReplayStoreUnavailable")]
     ReplayStoreUnavailable,
+    #[error("InvalidBrowserIdentityBinding")]
+    InvalidBrowserIdentityBinding,
 }
 
 impl AssertionRejection {
@@ -506,6 +627,7 @@ pub(crate) struct PendingAssertion {
     nonce: [u8; 16],
     expires_at: i64,
     now: i64,
+    bound_oracle: Option<BoundOracleProof>,
 }
 
 impl PendingAssertion {
@@ -515,6 +637,10 @@ impl PendingAssertion {
 
     pub(crate) fn identity_mut(&mut self) -> &mut HumanPrincipalIdentity {
         &mut self.identity
+    }
+
+    pub(crate) fn bound_oracle(&self) -> Option<&BoundOracleProof> {
+        self.bound_oracle.as_ref()
     }
 }
 
@@ -526,9 +652,21 @@ pub struct AssertionValidator {
     leeway_secs: i64,
     max_lifetime_secs: i64,
     source_binding: AssertionSourceBinding,
+    browser_binding: BrowserBindingPolicy,
 }
 
 impl AssertionValidator {
+    #[cfg(test)]
+    pub(crate) fn with_browser_binding(
+        mut self,
+        peer: &str,
+        principal: &str,
+        session: &str,
+    ) -> Self {
+        self.browser_binding =
+            BrowserBindingPolicy::parse(Some(peer), Some(principal), Some(session));
+        self
+    }
     /// Test and explicit-construction helper. Source binding is
     /// `ExactPeerIp` so IP-equality unit tests do not all have to opt in.
     /// Production always uses [`Self::from_env`], which defaults to
@@ -540,6 +678,7 @@ impl AssertionValidator {
             leeway_secs: CLOCK_LEEWAY_SECS,
             max_lifetime_secs: MAX_LIFETIME_SECS as i64,
             source_binding: AssertionSourceBinding::ExactPeerIp,
+            browser_binding: BrowserBindingPolicy::Disabled,
         }
     }
 
@@ -558,9 +697,11 @@ impl AssertionValidator {
                 AssertionReplayCache::unavailable(error.to_string(), CLOCK_LEEWAY_SECS)
             }
         };
-        Self::new(trust_store)
+        let mut validator = Self::new(trust_store)
             .with_replay_cache(replay_cache)
-            .with_source_binding(AssertionSourceBinding::from_env())
+            .with_source_binding(AssertionSourceBinding::from_env());
+        validator.browser_binding = BrowserBindingPolicy::from_env();
+        validator
     }
 
     pub fn with_source_binding(mut self, source_binding: AssertionSourceBinding) -> Self {
@@ -665,17 +806,37 @@ impl AssertionValidator {
             }
         }
 
+        let assigned = match &self.browser_binding {
+            BrowserBindingPolicy::Invalid => {
+                return Err(AssertionRejection::InvalidBrowserIdentityBinding);
+            }
+            BrowserBindingPolicy::Assigned(binding)
+                if binding.peer_key == assertion.human_pubkey =>
+            {
+                Some(binding)
+            }
+            _ => None,
+        };
         let identity = self.resolve_principal(
             &assertion.human_pubkey,
             assertion.expires_at,
-            registration_bootstrap,
+            registration_bootstrap || assigned.is_some(),
         )?;
+        let bound_oracle = assigned.map(|binding| BoundOracleProof {
+            binding: binding.clone(),
+            assertion_digest: blake3::hash(wire).to_hex().to_string(),
+            issuer_key_id: assertion.decoy_key_id.clone(),
+            signed_inner_ip: assertion.tunnel_inner_ip.to_string(),
+            expires_at: assertion.expires_at,
+            target_credential_digest: None,
+        });
         Ok(PendingAssertion {
             identity,
             issuer_key_id: assertion.decoy_key_id.clone(),
             nonce: assertion.nonce,
             expires_at: assertion.expires_at,
             now,
+            bound_oracle,
         })
     }
 
@@ -821,6 +982,187 @@ pub mod tests {
     const TEST_KEY_BYTES: [u8; 32] = [7u8; 32];
     const SAMPLE_PUBKEY_LOCAL: &str = "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=";
 
+    #[test]
+    fn browser_binding_config_is_single_canonical_assignment_or_fail_closed() {
+        let principal = "1262e982-14c1-44d4-0771-7ce74213211b";
+        let session = "b0c777e3-0955-cd8b-3d01-ca12998cae28";
+        assert!(matches!(
+            BrowserBindingPolicy::parse(None, None, None),
+            BrowserBindingPolicy::Disabled
+        ));
+        assert!(matches!(
+            BrowserBindingPolicy::parse(Some(SAMPLE_PUBKEY_LOCAL), Some(principal), Some(session)),
+            BrowserBindingPolicy::Assigned(_)
+        ));
+        for peer in [
+            "".to_owned(),
+            "bad".to_owned(),
+            format!(" {SAMPLE_PUBKEY_LOCAL}"),
+            format!("{SAMPLE_PUBKEY_LOCAL},{SAMPLE_PUBKEY_LOCAL}"),
+        ] {
+            assert!(matches!(
+                BrowserBindingPolicy::parse(Some(&peer), Some(principal), Some(session)),
+                BrowserBindingPolicy::Invalid
+            ));
+        }
+        for (principal, session) in [
+            (None, Some(session)),
+            (Some(principal), None),
+            (Some("00000000-0000-0000-0000-000000000000"), Some(session)),
+            (Some(principal), Some("not-a-session")),
+        ] {
+            assert!(matches!(
+                BrowserBindingPolicy::parse(Some(SAMPLE_PUBKEY_LOCAL), principal, session),
+                BrowserBindingPolicy::Invalid
+            ));
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn browser_binding_verifies_transport_before_exact_peer_selection_and_replay() {
+        let _cozo = temp_cozo();
+        let issuer = test_issuer();
+        let peer = pk(101);
+        let target_key = pk(102);
+        let validator = AssertionValidator::new(trust_store_for_issuer(&issuer))
+            .with_browser_binding(
+                &peer,
+                &derive_principal_id(&target_key),
+                &derive_session_id(&target_key),
+            );
+        let now = 1_700_000_100;
+        let signed = signed_with_fields(
+            &issuer,
+            &peer,
+            test_ip(),
+            now - 5,
+            now + 300,
+            [101; 16],
+            None,
+        );
+        let pending = validator
+            .validate_pending_with_bootstrap(
+                &signed.to_wire(),
+                Some(source_at(test_ip())),
+                now,
+                false,
+            )
+            .unwrap();
+        let proof = pending.bound_oracle().unwrap();
+        assert_eq!(proof.peer_key(), peer);
+        assert_eq!(proof.binding().session_id, derive_session_id(&target_key));
+        assert!(!proof.audit_value().to_string().contains("SID1"));
+        validator.consume_pending(pending).unwrap();
+        assert_eq!(
+            validator.validate(&signed.to_wire(), Some(source_at(test_ip())), now),
+            Err(AssertionRejection::Replay)
+        );
+        let foreign = signed_with_fields(
+            &issuer,
+            &pk(103),
+            test_ip(),
+            now - 5,
+            now + 300,
+            [103; 16],
+            None,
+        );
+        assert_eq!(
+            validator.validate(&foreign.to_wire(), Some(source_at(test_ip())), now),
+            Err(AssertionRejection::UnknownPrincipal)
+        );
+        let mut forged = signed.clone();
+        forged.signature[0] ^= 1;
+        assert_eq!(
+            validator.validate(&forged.to_wire(), Some(source_at(test_ip())), now),
+            Err(AssertionRejection::BadSignature)
+        );
+        let expired = signed_with_fields(
+            &issuer,
+            &peer,
+            test_ip(),
+            now - 300,
+            now - 100,
+            [104; 16],
+            None,
+        );
+        assert_eq!(
+            validator.validate(&expired.to_wire(), Some(source_at(test_ip())), now),
+            Err(AssertionRejection::Expired)
+        );
+        let fresh = signed_with_fields(
+            &issuer,
+            &peer,
+            test_ip(),
+            now - 5,
+            now + 300,
+            [105; 16],
+            None,
+        );
+        assert!(matches!(
+            validator.validate(
+                &fresh.to_wire(),
+                Some(source_at("127.0.0.2".parse().unwrap())),
+                now
+            ),
+            Err(AssertionRejection::SourceIpMismatch { .. })
+        ));
+        register(&peer, "assigned-peer").await.unwrap();
+        revoke(&peer).await.unwrap();
+        assert_eq!(
+            validator.validate(&fresh.to_wire(), Some(source_at(test_ip())), now),
+            Err(AssertionRejection::RevokedPrincipal)
+        );
+        register(&pk(103), "ordinary-unbound-peer").await.unwrap();
+        let ordinary = validator
+            .validate_pending_with_bootstrap(
+                &foreign.to_wire(),
+                Some(source_at(test_ip())),
+                now,
+                false,
+            )
+            .unwrap();
+        assert!(ordinary.bound_oracle().is_none());
+        assert_eq!(
+            ordinary.identity().principal_id,
+            derive_principal_id(&pk(103))
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn browser_binding_cannot_turn_registry_failure_into_unregistered_admission() {
+        let _cozo = temp_cozo();
+        let blocker = tempfile::NamedTempFile::new().unwrap();
+        unsafe {
+            std::env::set_var(
+                "OP_HUMAN_PRINCIPAL_COZO_DB_PATH",
+                blocker.path().join("cozo"),
+            )
+        };
+        let issuer = test_issuer();
+        let peer = pk(106);
+        let target = pk(107);
+        let validator = AssertionValidator::new(trust_store_for_issuer(&issuer))
+            .with_browser_binding(
+                &peer,
+                &derive_principal_id(&target),
+                &derive_session_id(&target),
+            );
+        let now = 1_700_000_100;
+        let signed = signed_with_fields(
+            &issuer,
+            &peer,
+            test_ip(),
+            now - 5,
+            now + 300,
+            [106; 16],
+            None,
+        );
+        assert_eq!(
+            validator.validate(&signed.to_wire(), Some(source_at(test_ip())), now),
+            Err(AssertionRejection::RegistryUnavailable)
+        );
+    }
+
     pub(crate) fn test_signing_key() -> SigningKey {
         SigningKey::from_bytes(&TEST_KEY_BYTES)
     }
@@ -929,6 +1271,7 @@ pub mod tests {
     /// VAL-BRIDGE-001
     #[tokio::test(flavor = "multi_thread")]
     async fn trust_store_loads_valid_json() {
+        let _cozo = temp_cozo();
         let issuer = test_issuer();
         let dir = tempfile::tempdir().expect("tempdir");
         let path = write_trust_store(&dir, &issuer);

@@ -43,10 +43,10 @@ pub fn physical_root_instance_binding_matches(pinned: &str, current: &str) -> bo
                 let Some(config) = config.as_object_mut() else {
                     return false;
                 };
-                if let Some(observed) = config.remove("volatile.last_state.power") {
-                    if observed.as_str() != Some(power) {
-                        return false;
-                    }
+                if let Some(observed) = config.remove("volatile.last_state.power")
+                    && observed.as_str() != Some(power)
+                {
+                    return false;
                 }
             }
         }

@@ -88,11 +88,10 @@ pub struct ContainerIdentitySled {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.actor-class@v1"))]
     pub principal_kind: Option<String>,
-    /// Persistence device registered in Cozo. `/dev/sdb2` replaced the loop
-    /// images. It is not mounted on its own: login and container start
-    /// `btrfs device add` it onto the read-only seed, and container shutdown
-    /// `btrfs device remove`s it after the guest has stopped. That add makes
-    /// one filesystem. Leaving the device in across a stop corrupts it.
+    /// Persistence leaf registered in Cozo. `/dev/sdb2` is the writable leaf
+    /// (not a btrfs seed): the identity sled lives on a subvolume of that leaf.
+    /// Login/start may `btrfs device add` extra members; shutdown removes only
+    /// those extras — never the sole leaf block device. No loop images.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.btrfs-device@v1"))]
     pub btrfs_device: Option<SledBtrfsDevice>,
@@ -157,20 +156,18 @@ impl ContainerIdentitySled {
     }
 }
 
-/// The btrfs device that IS the sled's persistence. The record of truth lives
-/// in Cozo. The path is the partition that replaced the loop images. It is
-/// added to the read-only seed for the life of the container and removed when
-/// the container stops.
+/// The btrfs leaf that hosts the sled's persistence subvolume. Truth is in
+/// Cozo. `device_path` is the leaf block device (`/dev/sdb2`); `mount_point`
+/// is the mounted identity subvolume on that leaf. Seeding is not used.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 #[schemars(extend("x-oscal-subid" = "sch.service.identity-sled.btrfs-device.schema@v1"))]
 pub struct SledBtrfsDevice {
-    /// Block device added to the seed. `/dev/sdb2` replaced the loop images.
+    /// Writable leaf block device. `/dev/sdb2` replaced loop images.
     pub device_path: String,
-    /// Mount of the read-only seed filesystem that receives `btrfs device add`.
-    /// This is not a mount of `device_path` itself.
+    /// Mount of the identity sled subvolume on the leaf (not a seed mount).
     #[serde(default)]
     pub mount_point: String,
-    /// btrfs filesystem UUID of the sealed image.
+    /// btrfs filesystem UUID of the leaf.
     #[serde(default)]
     pub btrfs_uuid: String,
     /// Cozo owner key for the selected device binding. Newly provisioned
@@ -178,7 +175,7 @@ pub struct SledBtrfsDevice {
     /// btrfs_device_json; repaired legacy records retain their prior value.
     #[serde(default)]
     pub cozo_id: String,
-    /// Whether `device_path` is currently a member of the seed filesystem.
+    /// Whether `device_path` is currently a member of the mounted leaf FS.
     #[serde(default)]
     pub attached: bool,
 }
@@ -238,11 +235,12 @@ impl StatePlugin for IdentitySledPlugin {
         "identity_sled"
     }
 
-    // Plugin contract v4.3 adds owner-only physical-root provenance migration.
+    // Plugin contract v4.4 adds a separately granted, credential-free own read.
+    // v4.3 added owner-only physical-root provenance migration.
     // The native Device discriminants remain unchanged.
     // SID1, RECORD_FORMAT and durable identity record/revision formats do not change.
     fn version(&self) -> &str {
-        "4.3.0"
+        "4.4.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -294,7 +292,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "identity_sled",
-        "4.3.0",
+        "4.4.0",
         "Container identity sleds: the container is the sled is the identity; host is container zero; each record is seeded by its sealed blob",
         &root,
     );
@@ -311,6 +309,11 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     pub struct GetIdentityOutput {
         pub identity: ContainerIdentitySled,
     }
+    /// Read only the verified caller's metadata, without credentials or a
+    /// caller-selectable identity. The administrative reader stays separate.
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    #[serde(deny_unknown_fields)]
+    pub struct GetOwnIdentityInput {}
     /// Read-only, own-session inputs needed to prepare a trusted root repair
     /// plan. This never returns SID1 bytes or accepts a caller-chosen target.
     #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -474,6 +477,16 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         ),
     );
     schema.methods.insert(
+        "get_own_identity".to_string(),
+        method_decl_from_schemars_with_output::<GetOwnIdentityInput, GetIdentityOutput>(
+            "get_own_identity",
+            SideEffect::Read,
+            true,
+            "cap.identity.sled.self.read@v1",
+            "obs.service.identity-sled.identity.self.get@v1",
+        ),
+    );
+    schema.methods.insert(
         "inspect_own_root_repair_preflight".to_string(),
         method_decl_from_schemars_with_output::<
             InspectOwnRootRepairPreflightInput,
@@ -616,6 +629,13 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         },
     );
     schema.capabilities.insert(
+        "cap.identity.sled.self.read@v1".to_string(),
+        op_state_store::CapabilityDecl {
+            id: "cap.identity.sled.self.read@v1".to_string(),
+            description: "Reads only the verified caller's own storage and lifecycle metadata; credentials and instance configuration are withheld.".to_string(),
+        },
+    );
+    schema.capabilities.insert(
         "identity_sled.inventory.read".to_string(),
         op_state_store::CapabilityDecl {
             id: "identity_sled.inventory.read".to_string(),
@@ -657,6 +677,37 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn get_own_identity_is_empty_input_separately_granted_and_reuses_typed_output() {
+        let schema = identity_sled_schema();
+        let own = &schema.methods["get_own_identity"];
+        assert_eq!(
+            own.required_capability.as_deref(),
+            Some("cap.identity.sled.self.read@v1")
+        );
+        assert_eq!(own.subid, "obs.service.identity-sled.identity.self.get@v1");
+        assert!(own.idempotent);
+        assert_eq!(own.side_effect, op_state_store::SideEffect::Read);
+        assert_eq!(own.returns, schema.methods["get_identity"].returns);
+        assert_eq!(
+            schema.methods["get_identity"]
+                .required_capability
+                .as_deref(),
+            Some("identity_sled.read")
+        );
+        let args = serde_json::to_value(&own.args).unwrap();
+        let validator = jsonschema::Validator::new(&args).unwrap();
+        assert!(validator.validate(&serde_json::json!({})).is_ok());
+        for selector in ["session_id", "trace_id", "identity", "host"] {
+            assert!(
+                validator
+                    .validate(&serde_json::json!({selector: "foreign"}))
+                    .is_err(),
+                "caller selector {selector} admitted"
+            );
+        }
+        assert!(validator.validate(&serde_json::json!(null)).is_err());
+    }
     #[test]
     fn physical_migration_methods_are_typed_and_separately_owner_granted() {
         let schema = identity_sled_schema();
@@ -733,9 +784,10 @@ mod tests {
     #[test]
     fn schema_has_method_surface() {
         let schema = identity_sled_schema();
-        assert_eq!(schema.version, "4.3.0");
+        assert_eq!(schema.version, "4.4.0");
         for method in [
             "get_identity",
+            "get_own_identity",
             "inspect_identity_inventory",
             "inspect_own_root_repair_preflight",
             "write_identity",

@@ -59,6 +59,11 @@ const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &[
 const LATEST_OFFICIAL_PROTOCOL_VERSION: &str = "2025-06-18";
 pub const MCP_VERSION_HEADER: &str = "mcp-protocol-version";
 pub const MCP_SESSION_HEADER: &str = "mcp-session-id";
+// Receiver-authored, nonsecret claims for the existing opaque SID1 verifier.
+// These are response metadata, never client authority or MCP conversation IDs.
+pub const VERIFIED_PRINCIPAL_HEADER: &str = "x-opdbus-verified-principal";
+pub const VERIFIED_SESSION_HEADER: &str = "x-opdbus-verified-session";
+pub const VERIFIED_GENESIS_HEADER: &str = "x-opdbus-verified-genesis";
 pub const MCP_METHOD_HEADER: &str = "mcp-method";
 pub const MCP_NAME_HEADER: &str = "mcp-name";
 const COMPACT_MODE_QUERY: &str = "opdbus_mode=compact";
@@ -1075,6 +1080,21 @@ struct JsonRpcRequest {
 async fn handle_mcp(State(state): State<McpFrontendState>, request: Request<Body>) -> Response {
     let peer = peer_addr(request.extensions());
     let headers = request.headers().clone();
+    if [
+        VERIFIED_PRINCIPAL_HEADER,
+        VERIFIED_SESSION_HEADER,
+        VERIFIED_GENESIS_HEADER,
+    ]
+    .iter()
+    .any(|name| headers.contains_key(*name))
+    {
+        return jsonrpc_error(
+            StatusCode::BAD_REQUEST,
+            None,
+            -32600,
+            "verified identity metadata is receiver-authored and not accepted in requests",
+        );
+    }
     let query = match parse_query(request.uri().query()) {
         Ok(query) => query,
         Err(message) => return jsonrpc_error(StatusCode::BAD_REQUEST, None, -32600, message),
@@ -1400,6 +1420,31 @@ async fn process_rpc(
                         axum::Json(json!({"jsonrpc": "2.0", "id": id.clone(), "result": result})),
                     )
                         .into_response();
+                    // Native verification uses an ordinary authenticated SID1 ping.
+                    // Never echo headers, emit claims for notifications/errors, or
+                    // confuse the separate MCP conversation session with identity.
+                    if rpc.method == "ping"
+                        && matches!(
+                            one_optional_header(headers, HTTP_SEALED_ID_HEADER),
+                            Ok(Some(_))
+                        )
+                    {
+                        for (name, value) in [
+                            (VERIFIED_PRINCIPAL_HEADER, &caller.principal_id),
+                            (VERIFIED_SESSION_HEADER, &caller.session_id),
+                            (VERIFIED_GENESIS_HEADER, &caller.session_genesis),
+                        ] {
+                            let Ok(value) = value.parse() else {
+                                return jsonrpc_error(
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    Some(id),
+                                    -32603,
+                                    "verified identity metadata unavailable",
+                                );
+                            };
+                            response.headers_mut().insert(name, value);
+                        }
+                    }
                     if rpc.method == "initialize" && session.is_none() {
                         let session_id = uuid::Uuid::new_v4().to_string();
                         let created = Arc::new(McpSession::new(caller, view));
@@ -2784,6 +2829,91 @@ mod tests {
 
     fn test_router() -> Router {
         test_router_with_backend(TestBackend::default())
+    }
+
+    fn verified_ping_request(auth: Option<&str>) -> Request<Body> {
+        let mut builder = Request::builder()
+            .method("POST")
+            .uri(MCP_PATH)
+            .header(CONTENT_TYPE, "application/json")
+            .header("accept", "application/json")
+            .header(HTTP_SEALED_ID_HEADER, "opaque-test-credential");
+        if let Some(auth) = auth {
+            builder = builder.header("x-test-auth", auth);
+        }
+        builder
+            .body(Body::from(
+                r#"{"jsonrpc":"2.0","id":"sled-auth","method":"ping","params":{}}"#,
+            ))
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn verified_ping_metadata_is_receiver_authored_and_request_scoped() {
+        let router = test_router();
+        let (own, other) = tokio::join!(
+            router.clone().oneshot(verified_ping_request(Some("ok"))),
+            router.clone().oneshot(verified_ping_request(Some("other"))),
+        );
+        for (response, auth) in [(own.unwrap(), "ok"), (other.unwrap(), "other")] {
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                response.headers()[VERIFIED_PRINCIPAL_HEADER],
+                format!("test-principal-{auth}")
+            );
+            assert_eq!(
+                response.headers()[VERIFIED_SESSION_HEADER],
+                format!("test-session-{auth}")
+            );
+            assert_eq!(response.headers()[VERIFIED_GENESIS_HEADER], "test-genesis");
+            assert!(!response.headers().contains_key(MCP_SESSION_HEADER));
+        }
+    }
+
+    #[tokio::test]
+    async fn verified_ping_metadata_rejects_spoofed_requests_and_is_absent_on_errors() {
+        let router = test_router();
+        for name in [
+            VERIFIED_PRINCIPAL_HEADER,
+            VERIFIED_SESSION_HEADER,
+            VERIFIED_GENESIS_HEADER,
+        ] {
+            let mut request = verified_ping_request(Some("ok"));
+            request
+                .headers_mut()
+                .append(name, "foreign".parse().unwrap());
+            request
+                .headers_mut()
+                .append(name, "ambiguous".parse().unwrap());
+            let response = router.clone().oneshot(request).await.unwrap();
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+            for reserved in [
+                VERIFIED_PRINCIPAL_HEADER,
+                VERIFIED_SESSION_HEADER,
+                VERIFIED_GENESIS_HEADER,
+            ] {
+                assert!(!response.headers().contains_key(reserved));
+            }
+        }
+        let response = router
+            .clone()
+            .oneshot(verified_ping_request(None))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert!(!response.headers().contains_key(VERIFIED_SESSION_HEADER));
+        let mut request = verified_ping_request(Some("ok"));
+        request
+            .headers_mut()
+            .insert(MCP_SESSION_HEADER, "nonexistent".parse().unwrap());
+        let response = router.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        assert!(!response.headers().contains_key(VERIFIED_SESSION_HEADER));
+        let mut request = verified_ping_request(Some("ok"));
+        request.headers_mut().remove(HTTP_SEALED_ID_HEADER);
+        let response = router.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(!response.headers().contains_key(VERIFIED_SESSION_HEADER));
     }
 
     fn test_router_with_backend(backend: TestBackend) -> Router {

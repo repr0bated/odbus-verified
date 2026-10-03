@@ -87,7 +87,7 @@ add_port "$BRIDGE" "internal" "br"
 # Public port: carries the uplink MAC and, later, the public address.
 add_port "$PUB" "internal" "pub" ",\"other_config\":[\"map\",[[\"hwaddr\",\"$MAC\"]]]"
 n=0
-for p in ${INTERNAL_PORTS:-3tched svc0}; do
+for p in ${INTERNAL_PORTS:-3tched}; do
     n=$((n + 1))
     [ "$p" = "$PUB" ] && continue
     add_port "$p" "internal" "int$n"

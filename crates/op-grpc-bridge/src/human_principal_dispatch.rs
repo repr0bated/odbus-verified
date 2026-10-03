@@ -473,10 +473,14 @@ pub(crate) mod tests {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         let dir = tempfile::tempdir().expect("tempdir");
-        let environment = ["OP_SHM_STATE_DIR", "OP_BLOB_CATALOG_DIR"]
-            .into_iter()
-            .map(|key| (key, std::env::var_os(key)))
-            .collect();
+        let environment = [
+            "OP_SHM_STATE_DIR",
+            "OP_BLOB_CATALOG_DIR",
+            "OP_IDENTITY_PROJECTION_GROUP",
+        ]
+        .into_iter()
+        .map(|key| (key, std::env::var_os(key)))
+        .collect();
         let catalog = dir.path().join("blobs");
         let mut sealer = op_blob::BlobStore::open(&catalog).unwrap();
         for schema in schemas {
@@ -491,6 +495,15 @@ pub(crate) mod tests {
         unsafe { std::env::set_var("OP_SHM_STATE_DIR", dir.path()) };
         // FIXME: Audit that the environment access only happens in single-threaded code.
         unsafe { std::env::set_var("OP_BLOB_CATALOG_DIR", catalog) };
+        // A host secrets group may exist but be unmapped inside the test
+        // worker's user namespace. Private fixture roots use the current gid
+        // through the existing missing-group fallback; production is unchanged.
+        unsafe {
+            std::env::set_var(
+                "OP_IDENTITY_PROJECTION_GROUP",
+                format!("opdbus-fixture-{}", uuid::Uuid::new_v4().simple()),
+            )
+        };
         TempShm {
             _guard: guard,
             _dir: dir,

@@ -7,9 +7,10 @@ ConditionPathIsDirectory=/opt/run-mounts/3tched-inputs/state
 ConditionPathExists=/opt/run-mounts/3tched-inputs/lungs.sock
 
 # The inputs must be provisioned for this identity. The host's root-only
-# /run/opdbus/lungs.sock is not usable directly by an unprivileged container.
-# Keep this template disabled until the container-side identity transport and
-# scoped catalog/state inputs have been provided and verified.
+# /run/opdbus/lungs.sock is not usable directly by an unprivileged container;
+# bind a scoped lungs socket (and catalog/state) under 3tched-inputs.
+# Conditions below keep the unit idle until those inputs exist; enable the
+# instance as threetched-fs@<session>.service in the identity guest.
 
 [Service]
 Type=simple

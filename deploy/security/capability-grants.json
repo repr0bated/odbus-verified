@@ -227,7 +227,12 @@
       "model_registry.maintain",
       "cron.read",
       "cron.invoke",
-      "chat_response.respond"
+      "chat_response.respond",
+      "cap.identity.sled.self.read@v1",
+      "cap.software.3tched-router.chat@v1",
+      "freedesktop.read",
+      "chat.context",
+      "chat.control_plane"
     ]
   }
 }

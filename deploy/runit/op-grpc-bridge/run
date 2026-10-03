@@ -129,9 +129,10 @@ wait_for_ipv4() {
     done
 }
 
-# svc0 is a required canonical ingress. Do not silently degrade to loopback if
-# the network-critical owner has not materialized the address yet.
-wait_for_ipv4 svc0 10.0.0.3 "${OP_GRPC_SVC0_WAIT_SECS:-90}"
+# Require the door and MQTT addresses on their canonical OVS carriers before
+# binding. Certificate filenames below retain their existing svc0 names.
+wait_for_ipv4 3tched 10.0.0.2 "${OP_GRPC_3TCHED_WAIT_SECS:-90}"
+wait_for_ipv4 ovsbr0 10.0.0.3 "${OP_GRPC_MQTT_WAIT_SECS:-90}"
 
 # `:8090` is tonic on 10.0.0.2, with the internal certificate.
 # The unix socket serves the same fabric.
@@ -182,6 +183,13 @@ fi
 export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="${OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY:-Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=}"
 export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-b0c777e3-0955-cd8b-3d01-ca12998cae28}"
 export OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-1262e982-14c1-44d4-0771-7ce74213211b}"
+# Read the public provider bindings from the selected received release. The
+# final file remains a root-owned regular file for the registry's admission.
+export OP_MODEL_PROVIDERS_PATH="${OP_MODEL_PROVIDERS_PATH:-/opt/op-dbus/current/etc/op-dbus/model-providers.toml}"
+# Owner-selected browser transport peer. The receiver requires a fresh signed
+# Oracle proof from this exact public key before selecting the existing
+# chatbot identity; this is not the chatbot's key or a browser credential.
+export OP_BROWSER_CONTROL_PLANE_PEER_KEY="${OP_BROWSER_CONTROL_PLANE_PEER_KEY:-4V4Wob4v8YxCcQ4nz95Jt3b/aQcAInLq+ABIvvS7/Qg=}"
 # Local interactive clients, including Codex, authenticate as the existing
 # human WireGuard principal. The MutationEngine mints SID1 into this same sled;
 # there is deliberately no Codex-specific service identity.

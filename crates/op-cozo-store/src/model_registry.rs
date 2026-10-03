@@ -632,7 +632,7 @@ impl CozoGraphShuttle {
     pub fn list_model_registry_profiles(
         &self,
     ) -> std::result::Result<Vec<(String, String, String)>, CozoError> {
-        self.model_registry_read(|tx| profiles(tx))
+        self.model_registry_read(profiles)
     }
 
     /// Record which Control Plane profile `model_id` needs, or clear it when
@@ -647,10 +647,10 @@ impl CozoGraphShuttle {
         if !bounded(provider_id, MAX_ID_BYTES) || !bounded(model_id, MAX_ID_BYTES) {
             return Err(error("invalid model registry profile key"));
         }
-        if let Some(profile) = profile {
-            if !bounded(profile, MAX_ID_BYTES) {
-                return Err(error("invalid model registry profile"));
-            }
+        if let Some(profile) = profile
+            && !bounded(profile, MAX_ID_BYTES)
+        {
+            return Err(error("invalid model registry profile"));
         }
         let provider_id = provider_id.to_string();
         let model_id = model_id.to_string();

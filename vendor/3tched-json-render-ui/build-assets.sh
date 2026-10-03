@@ -90,7 +90,7 @@ issuer_default=$(pin issuer_default)
     printf 'production UI asset base must be the dashboard root: %s\n' "$asset_base" >&2
     exit 1
 }
-[ "$door_default" = "https://dashboard.ghostbridge.tech:8090" ] || {
+[ "$door_default" = "https://10.0.0.2:8090" ] || {
     printf 'production UI door default is not the pinned :8090 door: %s\n' "$door_default" >&2
     exit 1
 }
@@ -134,7 +134,13 @@ export NPM_CONFIG_USERCONFIG=/dev/null
     npm ci
     npm run type-check
     npm run lint
-    npm test
+    # Use jsdom's browser storage. Newer Node versions expose a host
+    # localStorage getter without a backing file, which shadows jsdom's one.
+    if node --help | grep -F -- '--no-experimental-webstorage' >/dev/null; then
+        NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--no-experimental-webstorage" npm test
+    else
+        npm test
+    fi
     VITE_OPDBUS_DOOR="$door_default" VITE_OPDBUS_ISSUER="$issuer_default" npm run build -- --base "$asset_base"
 )
 [ -f "$source_root/dist/index.html" ] || { printf 'Vite omitted dist/index.html\n' >&2; exit 1; }
