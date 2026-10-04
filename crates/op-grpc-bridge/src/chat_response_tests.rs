@@ -20,11 +20,11 @@ use crate::{
     chat_response_state::DoorbellWake,
     chat_response_turns::TurnOwner,
     human_principal_dispatch::tests::{
-        pk, register, temp_cozo, temp_shm_with_schemas, test_engine, TempCozo, TempShm,
+        TempCozo, TempShm, pk, register, temp_cozo, temp_shm_with_schemas, test_engine,
     },
     identity_sled_dispatch::{
-        tests::{write_identity, write_second_session},
         IdentitySledStore,
+        tests::{write_identity, write_second_session},
     },
 };
 
@@ -275,9 +275,11 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
     // Only a verified human's own conversation, answered by a holder of the
     // respond grant other than that human, can have a turn, and a refused
     // turn records nothing.
-    assert!(ask(&f, &f.human, &conversation, PRIVATE_QUESTION, &f.human)
-        .await
-        .is_err());
+    assert!(
+        ask(&f, &f.human, &conversation, PRIVATE_QUESTION, &f.human)
+            .await
+            .is_err()
+    );
     assert!(
         ask(&f, &f.other, &conversation, PRIVATE_QUESTION, &f.agent)
             .await
@@ -300,16 +302,17 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
     assert_eq!(asked.responder_principal_id, f.human.principal);
     assert_eq!(asked.principal_id, f.human.principal);
     assert!(asked.content.is_human_message());
-    assert_eq!(turn.turn_index, 1);
+    assert_eq!(turn.turn_index(), 1);
     assert_eq!(
-        uuid::Uuid::parse_str(&turn.turn_id)
+        uuid::Uuid::parse_str(turn.turn_id())
             .unwrap()
             .get_version_num(),
         7
     );
+    let turn_id = turn.turn_id().to_string();
     let respond = |text: &str| {
         serde_json::json!({
-            "turn_id": turn.turn_id, "message": text, "message_type": "success",
+            "turn_id": turn_id, "message": text, "message_type": "success",
             "related_actions": ["workflows.query_workflows"],
             "canvas": canvas(PRIVATE_CANVAS),
         })
@@ -332,12 +335,13 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
     invalid["canvas"]["elements"]["root"]["type"] = serde_json::json!("Card");
     let refused = error_of(call(&f, &f.agent, "respond_to_user", invalid).await);
     assert!(refused.contains("canvas rejected"), "{refused}");
-    assert!(f.engine.chat_turns().is_open(&turn.turn_id));
-    assert!(f
-        .store
-        .get_chat_turn(&f.human.principal, &turn.turn_id)
-        .unwrap()
-        .is_none());
+    assert!(f.engine.chat_turns().is_open(turn.turn_id()));
+    assert!(
+        f.store
+            .get_chat_turn(&f.human.principal, turn.turn_id())
+            .unwrap()
+            .is_none()
+    );
 
     let committed = call(&f, &f.agent, "respond_to_user", respond(PRIVATE_MESSAGE))
         .await
@@ -376,7 +380,7 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
         &f,
         &f.human,
         "get_turn_response",
-        serde_json::json!({"turn_id": turn.turn_id}),
+        serde_json::json!({"turn_id": turn_id}),
     )
     .await
     .unwrap();
@@ -417,7 +421,7 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
         &f,
         &f.other,
         "get_turn_response",
-        serde_json::json!({"turn_id": turn.turn_id}),
+        serde_json::json!({"turn_id": turn_id}),
     )
     .await
     .unwrap();
@@ -440,7 +444,7 @@ async fn responses_bind_to_the_designated_responder_once_into_the_human_scope() 
     // The committed private document holds the content, in the human's view.
     let state = publisher.read(&f.human.principal).await.unwrap();
     assert_eq!(
-        state["turns"][&turn.turn_id]["content"]["message"],
+        state["turns"][&turn_id]["content"]["message"],
         PRIVATE_MESSAGE
     );
     assert_eq!(
@@ -535,7 +539,7 @@ async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
         &f,
         &f.agent,
         "respond_to_user",
-        serde_json::json!({"turn_id": first.turn_id, "message": "first", "message_type": "info"}),
+        serde_json::json!({"turn_id": first.turn_id(), "message": "first", "message_type": "info"}),
     )
     .await
     .unwrap();
@@ -553,13 +557,13 @@ async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
     let (_, second) = ask(&f, &later, &conversation, "second question", &f.agent)
         .await
         .unwrap();
-    assert_eq!(second.turn_index, 3);
+    assert_eq!(second.turn_index(), 3);
     let clarified = call(
         &f,
         &f.agent,
         "request_clarification",
         serde_json::json!({
-            "turn_id": second.turn_id, "question": "which bridge?",
+            "turn_id": second.turn_id(), "question": "which bridge?",
             "context": "two candidates", "options": ["br0", "br1"],
         }),
     )
@@ -572,13 +576,13 @@ async fn turns_chain_across_turns_and_a_later_session_of_the_same_principal() {
     let (_, third) = ask(&f, &f.human, &conversation, "br1", &f.agent)
         .await
         .unwrap();
-    assert_eq!(third.turn_index, 5);
+    assert_eq!(third.turn_index(), 5);
     let refused = call(
         &f,
         &f.agent,
         "cannot_perform",
         serde_json::json!({
-            "turn_id": third.turn_id, "reason": "not permitted",
+            "turn_id": third.turn_id(), "reason": "not permitted",
             "category": "not_allowed", "alternatives": ["ask an operator"],
         }),
     )
@@ -684,7 +688,7 @@ async fn expired_turns_are_refused_without_a_commit() {
             &f.agent,
             "cannot_perform",
             serde_json::json!({
-                "turn_id": expired.turn_id, "reason": "late", "category": "not_supported"
+                "turn_id": expired.turn_id(), "reason": "late", "category": "not_supported"
             }),
         )
         .await,
@@ -699,5 +703,83 @@ async fn expired_turns_are_refused_without_a_commit() {
     let (asked, fresh) = ask(&f, &f.human, &conversation, "again", &f.agent)
         .await
         .unwrap();
-    assert_eq!((asked.turn_index, fresh.turn_index), (0, 1));
+    assert_eq!((asked.turn_index, fresh.turn_index()), (0, 1));
+}
+
+#[tokio::test]
+async fn list_pending_turns_returns_turns_for_responder() {
+    let f = fixture().await;
+    let conversation = start(&f, &f.human).await;
+
+    // No pending turns initially.
+    let listed = call(&f, &f.agent, "list_pending_turns", serde_json::json!({}))
+        .await
+        .unwrap();
+    assert_eq!(listed["pending_count"], 0);
+    assert!(listed["pending_turns"].as_array().unwrap().is_empty());
+
+    // Human asks a question — opens a pending turn for the agent.
+    let (_asked, pending) = ask(&f, &f.human, &conversation, "What is the status?", &f.agent)
+        .await
+        .unwrap();
+
+    // Now the agent should see one pending turn.
+    let listed = call(&f, &f.agent, "list_pending_turns", serde_json::json!({}))
+        .await
+        .unwrap();
+    assert_eq!(listed["pending_count"], 1);
+    let turns = listed["pending_turns"].as_array().unwrap();
+    assert_eq!(turns.len(), 1);
+    assert_eq!(turns[0]["turn_id"], pending.turn_id());
+    assert_eq!(turns[0]["conversation_id"], conversation);
+    assert_eq!(turns[0]["turn_index"], pending.turn_index());
+    assert_eq!(turns[0]["owner_principal_id"], f.human.principal);
+
+    // Agent responds — pending turn is settled.
+    let turn_id = pending.turn_id().to_string();
+    call(
+        &f,
+        &f.agent,
+        "respond_to_user",
+        serde_json::json!({
+            "turn_id": turn_id,
+            "message": "All systems operational",
+            "message_type": "success",
+            "canvas": canvas("status"),
+        }),
+    )
+    .await
+    .unwrap();
+
+    // No more pending turns.
+    let listed = call(&f, &f.agent, "list_pending_turns", serde_json::json!({}))
+        .await
+        .unwrap();
+    assert_eq!(listed["pending_count"], 0);
+}
+
+#[tokio::test]
+async fn list_pending_turns_respects_responder_scope() {
+    let f = fixture().await;
+    let conversation = start(&f, &f.human).await;
+
+    // Human asks a question for the agent.
+    let (_asked, _pending) = ask(&f, &f.human, &conversation, "Question for agent", &f.agent)
+        .await
+        .unwrap();
+
+    // The "other" identity (not the designated responder) should see no pending turns.
+    // Note: This requires the other identity to have RESPOND_CAPABILITY, which
+    // they may not in the fixture. The test validates scope filtering.
+    let pending_for_agent = f
+        .engine
+        .chat_turns()
+        .list_pending_for_responder(&f.agent.principal);
+    let pending_for_other = f
+        .engine
+        .chat_turns()
+        .list_pending_for_responder(&f.other.principal);
+
+    assert_eq!(pending_for_agent.len(), 1);
+    assert_eq!(pending_for_other.len(), 0);
 }

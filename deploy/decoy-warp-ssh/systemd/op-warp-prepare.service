@@ -1,0 +1,22 @@
+[Unit]
+Description=Prepare WARP policy and SSH TUN without changing private routes
+Requires=op-warp-guard.service wg-quick@wgcf-ingress.service wg-quick@wg-opdbus.service wg-quick@wg0.service
+After=network-online.target netfilter-persistent.service decoy-fabric-egress.service op-warp-guard.service wg-quick@wgcf-ingress.service wg-quick@wg-opdbus.service wg-quick@wg0.service
+Wants=network-online.target
+Before=warp-svc.service
+RequiresMountsFor=/opt/op-dbus/releases
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/libexec/op-warp-ssh/endpoint.sh up
+ExecStart=/usr/local/libexec/op-warp-ssh/namespace.sh prepare
+ExecStart=/usr/local/libexec/op-warp-ssh/admission.sh install
+ExecStart=/usr/local/libexec/op-warp-ssh/guard.sh install
+ExecStart=/usr/local/libexec/op-warp-ssh/decoy-egress.sh prepare
+ExecStart=/usr/local/libexec/op-warp-ssh/remainder.sh prepare
+ExecStart=/usr/bin/resolvectl dns warp-data 1.1.1.1 1.0.0.1
+ExecStart=/usr/bin/resolvectl domain warp-data ~.
+
+[Install]
+WantedBy=multi-user.target

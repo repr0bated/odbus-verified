@@ -3,13 +3,13 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::{
     mutation_engine::MutationEngine,
     sealed_schema_reader::{
-        blob_catalog_dir_from_env, read_manifest_pinned_schema_document,
-        ManifestPinnedSchemaDocument,
+        ManifestPinnedSchemaDocument, blob_catalog_dir_from_env,
+        read_manifest_pinned_schema_document,
     },
     tched_config_dispatch::{self, ConfigReadDispatch},
     tched_config_secret_policy::PinnedConfigSecretPolicy,

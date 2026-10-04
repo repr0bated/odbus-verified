@@ -60,3 +60,6 @@ mongodb-mcp-server
 # to identity-roots; guest power transitions use the identity lifecycle owner.
 incus-ct-chatbot
 incus-ct-assistant
+ovsbr0-addr
+# Replaced by the decoy-originated SSH TUN carried inside MASQUE (OD-104).
+gre-decoy

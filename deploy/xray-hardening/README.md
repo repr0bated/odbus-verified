@@ -1,0 +1,40 @@
+These are **offline Xray 26.3.27 candidate transforms**, not a deployment or control-plane API. They neither install configuration nor reload a service. Live configuration remains `/etc/xray/xray_config.json` inside its container; activation requires the separately authorized operator path. Keep input, parameter and candidate files private: candidates contain existing credentials and supplied private material.
+
+Run from a private preparation directory, with four arguments:
+
+```sh
+/path/to/prepare.sh host-reality host-before.json private-params.json host-reality.candidate.json
+/path/to/prepare.sh decoy-reality decoy-egress-before.json private-params.json decoy-egress.candidate.json
+/path/to/prepare.sh host-xhttp host-reality.candidate.json private-params.json host-final.candidate.json
+/path/to/prepare.sh decoy-xhttp decoy-web-before.json private-params.json decoy-web.candidate.json
+```
+
+Every output must be new. Protected system paths are rejected, except new candidates in the designated private preparation directory `/etc/xray/.od106-prepared-20261004/`. Parameters are read from a file; do not pass secrets in command arguments. Use one flat JSON object containing these keys as needed by the selected profile:
+
+| Key | Value and provenance |
+| --- | --- |
+| `client_id` | Existing decoy `egress-reality` VLESS UUID |
+| `reality_password` | Public X25519 value derived from the existing decoy REALITY private key |
+| `reality_short_id` | Existing nonempty decoy short ID, unchanged |
+| `mldsa65_seed` | New private seed from native `xray mldsa65` |
+| `mldsa65_verify` | Matching public verification value from that same pair |
+| `http_uds_path` | New unique `/run/.../*.sock` or `/opt/run-mounts/ghostbridge/xray-egress/http.sock` reachable by the intended HTTP proxy consumer |
+| `xhttp_path` | Same independently generated random path on both sides: `/` plus 24–128 URL safe characters |
+| `xhttp_decryption` | Full private MLKEM pair server string from host native `xray vlessenc` |
+| `xhttp_encryption` | Matching public client string, same mode, with `1rtt` |
+
+Generate the XHTTP private pair on the host and give only its public encryption string to the decoy. Pair correspondence and canonical Base64 encoding are native verification responsibilities; length checks here are only rejection checks. No production values or sample keys are stored in this directory. Profiles reject unexpected target shape, missing or duplicate tags, repeat application, multiple JSON documents, invalid IDs, and output collisions. All source inbounds/outbounds must have unique nonempty tags. Inspect a private structural diff before acceptance.
+
+`host-reality` adds HTTP inbound `od106-http-egress` on the supplied UDS, without a TCP port, and appends outbound `od106-reality-egress`. A first routing rule selects that outbound only for the new inbound; the old first/default outbound and all existing rules remain. REALITY dials `127.0.0.1:19443`, which requires an operator-provided fixed relay to the decoy's 9443 carrier. This transform does not create the relay or change `reality-in`, `decoy-bridge`, web/mail listeners, or the existing host Apple cover list. Restrict socket directory permissions to the intended consumer; the HTTP listener supplies no separate authentication.
+
+The two prepared `runit/` definitions provide that fixed carrier using the existing `op-uds-relay` executable. `op-xray-egress-carrier` connects only to `129.80.64.127:9443` and publishes the HTTP proxy only at host loopback `127.0.0.1:13128`; `op-xray-egress-loopback` publishes its carrier only at container loopback `127.0.0.1:19443`. OD-107 briefly moved the carrier to the private tunnel, then restored this public destination after the owner reported lost client connectivity; see `../decoy-private-access/DEPLOYED.md`. The latter relay also supplies the existing XHTTP routes' previously missing loopback backends: 18080 to `fwd-web.sock` and 18081 to `mail/web.sock`. These are byte relays; the mail origin still expects TLS. The shared directory is restricted to root and the existing container mapping group. No NIC, host default route, WARP rule, identity or application consumer is changed by preparing them.
+
+`decoy-reality` changes only the existing `egress-reality` REALITY settings: cover name `assistant.ghostbridge.tech`, `minClientVer:26.3.27`, `maxTimeDiff:60000`, supplied MLDSA seed, and debug `show:false`. It retains the local TLS target, private key, short ID, UUID, Vision flow and all outbounds/marks. The new host client pins the matching MLDSA verifier. The minimum version is a claimed version filter, not binary attestation; freshness needs synchronized clocks and does not constitute a replay cache. Server seed alone does not require every client to verify its signature. Keep the existing short ID; an empty short ID would still require authentication, but is deliberately not accepted here. The operator's captured target chain length and hybrid handshake are evidence to recheck with paired tests, not guarantees inferred from this source. [Official REALITY documentation](https://xtls.github.io/en/config/transports/reality.html), [MLDSA implementation discussion](https://github.com/XTLS/Xray-core/discussions/4930).
+
+The XHTTP profiles are a separate bridge direction: decoy `tunnel` outbound to host `xhttp-in`. They preserve client UUIDs, authenticated mail/web routing and the ordinary upload address `10.0.0.2:8444`. Encryption requires deleting host `settings.fallbacks`, including an empty array. This intentionally removes unauthenticated fallback behavior; if anonymous fallback is required, use only the REALITY profiles until that requirement is resolved. Both sides receive matching path and `packet-up` settings, padding `100-1000`. Client XMUX uses concurrency 1, no connection-count limit or reuse cap, request lifetime 600–900 and reuse lifetime 1800–3000 seconds, matching this pinned version's conservative defaults. Ordinary mux is disabled. Download settings explicitly reach `192.168.255.1:8444` with XHTTP/security-none and the same path; both addresses must reach the **same inbound instance** and are aliases on the same SSH TUN, so this is not an independent network path. [Pinned VLESS parser](https://github.com/XTLS/Xray-core/blob/v26.3.27/infra/conf/vless.go), [pinned XHTTP parser and defaults](https://github.com/XTLS/Xray-core/blob/v26.3.27/infra/conf/transport_internet.go).
+
+Vision with XHTTP is supported when VLESS Encryption supplies the required connection wrapper in this version. Plain XHTTP plus REALITY does not provide the same compatibility. These transforms leave existing XHTTP flow fields unchanged; the separate REALITY egress uses TCP plus Vision. [Pinned Vision handling](https://github.com/XTLS/Xray-core/blob/v26.3.27/proxy/vless/outbound/outbound.go).
+
+Optional fragmentation remains disabled. If actual SNI blocking is demonstrated, a separate client dialer Freedom profile may use `fragment:{packets:"tlshello",length:"100-200",interval:"10-20"}`, with an explicit `sockopt.dialerProxy` reference and verified carrier routing. Do not apply it to the decoy's final Internet outbound or add ordinary mux. Fragmentation is a conditional transport workaround; it adds neither PQ authentication nor guaranteed censorship resistance. This directory does not produce that unmeasured change. [Official Freedom fragmentation fields](https://xtls.github.io/en/config/outbounds/freedom.html).
+
+Required acceptance evidence: native `xray run -test` for both complete candidates, successful MLDSA-pinned paired handshake and rejection with a wrong verifier, existing marked first-path selection unchanged, HTTP UDS CONNECT through the fixed carrier, authenticated web/mail through encrypted XHTTP with download enabled, and preserved unrelated listeners/default routing. A passing JSON transform is not end-to-end or deployment proof. Preserve private originals for coordinated rollback; no native configuration or network changes are made by these helpers.

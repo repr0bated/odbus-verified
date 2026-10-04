@@ -120,6 +120,7 @@ pub(crate) async fn revalidate_bound_oracle(
     Ok(())
 }
 
+#[allow(clippy::result_large_err)]
 pub(crate) fn mark_bound_oracle_response<T>(
     response: &mut tonic::Response<T>,
     proof: Option<&crate::oracle_assertion::BoundOracleProof>,

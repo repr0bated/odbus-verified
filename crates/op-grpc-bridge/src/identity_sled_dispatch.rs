@@ -249,13 +249,21 @@ fn record_to_sled(
         head_timestamp_at_arrival: 0,
     };
     if let Some(genesis) = genesis {
-        anyhow::ensure!(
-            genesis.schema_content_hash.is_empty()
-                || genesis.schema_content_hash == SCHEMA_CONTENT_HASH.trim(),
-            "identity genesis row schema_content_hash mismatch: stored={} expected={}",
-            genesis.schema_content_hash,
-            SCHEMA_CONTENT_HASH.trim()
-        );
+        // A release bump changes the compiled hash before
+        // `refresh_drifted_schema_content_hashes` can rewrite the durable row.
+        // Failing the projection here aborts startup, so the refresh never runs
+        // and the door never binds. Project the existing arrival claims and let
+        // that refresh commit the compiled hash.
+        if !genesis.schema_content_hash.is_empty()
+            && genesis.schema_content_hash != SCHEMA_CONTENT_HASH.trim()
+        {
+            tracing::warn!(
+                session_id = %record.session_id,
+                stored = %genesis.schema_content_hash,
+                expected = %SCHEMA_CONTENT_HASH.trim(),
+                "identity genesis schema_content_hash drifted; projecting the row so startup refresh can commit"
+            );
+        }
         sled.arrival_timestamp = genesis.arrival_timestamp;
         sled.chain_head_at_arrival = genesis.chain_head_at_arrival.clone();
         sled.catalog_hash_at_arrival = genesis.catalog_hash_at_arrival.clone();
@@ -1501,6 +1509,45 @@ fn schema_hash_refresh_operation_id(
     ))
 }
 
+async fn recover_schema_refresh_publication(
+    engine: &MutationEngine,
+    store: &IdentitySledStore,
+    operation_id: String,
+    session_id: &str,
+) {
+    let cozo = store.cozo.clone();
+    let recovered = engine
+        .recover_identity_projection(operation_id, move || {
+            let snapshot = cozo.read_identity_recovery_state(MAX_EVENTS_IN_STATE)?;
+            Ok((
+                Some(state_value(&snapshot)?),
+                DurableResult {
+                    value: (),
+                    replayed: true,
+                },
+            ))
+        })
+        .await;
+    match recovered {
+        Ok(publication) => {
+            if let Err(error) = publication_value(publication) {
+                tracing::warn!(
+                    session_id,
+                    error = %format!("{error:#}"),
+                    "schema_content_hash refresh left its publication pending"
+                );
+            }
+        }
+        Err(error) => {
+            tracing::warn!(
+                session_id,
+                error = %format!("{error:#}"),
+                "schema_content_hash refresh recovery failed"
+            );
+        }
+    }
+}
+
 /// Rewrite drifted `schema_content_hash` on anchored genesis rows to the
 /// compiled `SCHEMA_CONTENT_HASH`. Safe because Cozo allows hash-only refresh
 /// of otherwise-immutable genesis fields.
@@ -1538,6 +1585,7 @@ pub(crate) async fn refresh_drifted_schema_content_hashes(
         let record = expected.record.clone();
         let mut genesis = genesis.clone();
         genesis.schema_content_hash = SCHEMA_CONTENT_HASH.trim().to_string();
+        let pending_operation = operation_id.clone();
         match commit_cas(
             engine,
             &store,
@@ -1558,11 +1606,29 @@ pub(crate) async fn refresh_drifted_schema_content_hashes(
                 );
             }
             Err(error) => {
+                // The wrapper hides the callback error. The root cause is a
+                // short store rejection, not the credential bytes.
+                let cause = error
+                    .downcast_ref::<IdentityPublicationPending>()
+                    .map(|pending| pending._private_cause.root_cause().to_string());
                 tracing::warn!(
                     session_id = %sled.session_id,
                     error = %format!("{error:#}"),
+                    cause = cause.as_deref().unwrap_or(""),
                     "schema_content_hash refresh failed"
                 );
+                // A failed refresh still owns the publication marker. Leaving
+                // it set aborts every later startup step, including the door.
+                // Reread the durable rows and publish that exact operation.
+                if cause.is_some() {
+                    recover_schema_refresh_publication(
+                        engine,
+                        &store,
+                        pending_operation,
+                        &sled.session_id,
+                    )
+                    .await;
+                }
             }
         }
     }

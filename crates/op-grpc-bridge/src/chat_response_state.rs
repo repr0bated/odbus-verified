@@ -16,13 +16,13 @@ use op_plugins::state_plugins::{
     chat_response_methods::{validate_conversation, validate_turn},
 };
 use op_state_store::PluginSchema;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{Mutex, broadcast};
 
 use crate::{
     method_contract_admission,
-    sealed_schema_reader::{read_manifest_pinned_schema_document, ManifestPinnedSchemaDocument},
+    sealed_schema_reader::{ManifestPinnedSchemaDocument, read_manifest_pinned_schema_document},
 };
 
 pub(crate) const PLUGIN: &str = op_plugins::state_plugins::chat_response::PLUGIN_ID;
@@ -299,14 +299,11 @@ impl ChatResponsePublisher {
         store: Arc<CozoGraphShuttle>,
         principal_id: &str,
     ) -> Result<ChatEffect> {
-        let owner_key = owner_key(principal_id);
+        let owner_key_value = owner_key(principal_id);
         let owner_lock = {
-            let mut locks = self
-                .operation
-                .lock()
-                .unwrap_or_else(|poison| poison.into_inner());
+            let mut locks = self.operation.lock().await;
             locks
-                .entry(owner_key.clone())
+                .entry(owner_key_value.clone())
                 .or_insert_with(|| Arc::new(Mutex::new(())))
                 .clone()
         };
@@ -378,6 +375,7 @@ impl ChatResponsePublisher {
     /// principal's private document and wake its subscribers. Fails when the
     /// private document is left pending recovery; use `commit_reporting` when
     /// the caller must act on a durable write either way.
+    #[allow(dead_code)]
     pub(crate) async fn commit<T: Send + 'static>(
         self: &Arc<Self>,
         effect: ChatEffect,

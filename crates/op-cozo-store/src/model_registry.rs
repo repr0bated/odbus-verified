@@ -452,7 +452,7 @@ impl CozoGraphShuttle {
                 Ok(models) => {
                     if models.is_empty() && !existing.is_empty() {
                         return Err(error(
-                            "provider returned empty model list but previously had models"
+                            "provider returned empty model list but previously had models",
                         ));
                     }
                     let known: BTreeMap<&str, &RegistryModelRecord> = existing

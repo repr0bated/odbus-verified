@@ -178,7 +178,8 @@ fn audit_method_arguments(
         let digested =
             op_state_store::schema_projection::commit_with_private_digests(schema, &value);
         let digested_str = digested.to_string();
-        if digested_str != value.to_string() {
+        let value_str = value.to_string();
+        if digested_str != value_str {
             return digested_str;
         }
     }
@@ -1538,6 +1539,17 @@ impl MutationEngine {
             head.turn_count + 1,
             responder_principal_id,
         )?;
+
+        // Notify the responder that a turn awaits their response (best-effort,
+        // off the commit path). The responder can also poll list_pending_for_responder.
+        {
+            let wake = crate::responder_wake::chat_turn_wake(&pending, Some(&message));
+            let responder = responder_principal_id.to_string();
+            tokio::spawn(async move {
+                crate::responder_wake::publish_responder_wake(wake, &responder).await;
+            });
+        }
+
         let human = match crate::chat_response_dispatch::commit_human_turn(
             self,
             &owner,
@@ -1547,17 +1559,17 @@ impl MutationEngine {
         )
         .await
         {
-            Ok(human) if human.turn_index + 1 == pending.turn_index => human,
+            Ok(human) if human.turn_index + 1 == pending.turn_index() => human,
             Ok(human) => {
-                self.chat_turns.cancel(&pending.turn_id);
+                self.chat_turns.cancel(pending.turn_id());
                 anyhow::bail!(
                     "human message landed at turn {} but the answer was reserved at {}",
                     human.turn_index,
-                    pending.turn_index
+                    pending.turn_index()
                 );
             }
             Err(error) => {
-                self.chat_turns.cancel(&pending.turn_id);
+                self.chat_turns.cancel(pending.turn_id());
                 return Err(error);
             }
         };

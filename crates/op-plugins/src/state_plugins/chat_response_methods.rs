@@ -8,7 +8,7 @@
 use super::chat_response::{
     ChatTurn, ConversationSummary, MessageType, RefusalCategory, ResponseContent,
 };
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -196,6 +196,38 @@ pub struct GetConversationOutput {
     /// True when older turns are omitted; `first_turn_index` is the oldest returned.
     pub turns_truncated: bool,
     pub first_turn_index: u64,
+}
+
+/// A pending turn awaiting the responder's answer.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PendingTurnInfo {
+    /// Bridge-minted turn ID the responder should use in respond_to_user.
+    pub turn_id: String,
+    /// Conversation this turn belongs to.
+    pub conversation_id: String,
+    /// Turn index within the conversation (the human message was turn_index - 1).
+    pub turn_index: u64,
+    /// Owner key (sha256 of principal) for routing the response.
+    pub owner_key: String,
+    /// Principal ID of the human who asked.
+    pub owner_principal_id: String,
+    /// When the turn was opened.
+    pub opened_at: String,
+}
+
+/// Input for list_pending_turns: empty, returns all turns pending for the caller.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ListPendingTurnsInput {}
+
+/// Output for list_pending_turns: the turns this responder should answer.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ListPendingTurnsOutput {
+    /// Pending turns assigned to this responder, oldest first.
+    pub pending_turns: Vec<PendingTurnInfo>,
+    pub pending_count: u64,
 }
 
 // ── Canonical hashing ────────────────────────────────────────────────────────

@@ -1,0 +1,130 @@
+{
+  "role": "decoy",
+  "tun_id": 5,
+  "remote_tun_id": 5,
+  "mtu": 1280,
+  "local_address": "192.168.254.2",
+  "peer_address": "192.168.254.1",
+  "ssh_user": "warp-link",
+  "ssh_host": "188.68.58.237",
+  "ssh_port": 2223,
+  "warp_interface": "warp-data",
+  "key_file": "/var/lib/op-warp-ssh/client_ed25519",
+  "known_hosts_file": "/etc/op-dbus/warp-ssh/known_hosts",
+  "policy_table": 28051,
+  "rule_priority": 10,
+  "remainder_table": 28053,
+  "remainder_priority": 200,
+  "aliases": [
+    "192.168.255.2"
+  ],
+  "routes": [
+    "10.0.0.2/32",
+    "10.0.0.3/32",
+    "10.0.0.4/32",
+    "192.168.255.1/32"
+  ],
+  "egress": {
+    "physical_interface": "enp0s6",
+    "physical_address": "10.0.1.17",
+    "gateway": "10.0.1.1",
+    "underlay_table": 28050,
+    "rule_priority": 40,
+    "wan_reply_mark": 1073741824,
+    "wgcf_table": 51820,
+    "wgcf_interface": "wgcf-ingress",
+    "wireguard_listen_ports": [
+      51820,
+      51821
+    ],
+    "gre_host": "188.68.58.237",
+    "gre_enabled": false,
+    "metadata_address": "169.254.169.254",
+    "physical_services": [
+      {
+        "address": "169.254.169.254",
+        "protocol": "udp",
+        "port": 123
+      },
+      {
+        "address": "162.159.198.2",
+        "protocol": "udp",
+        "port": 443
+      },
+      {
+        "address": "162.159.198.2",
+        "protocol": "udp",
+        "port": 500
+      },
+      {
+        "address": "162.159.198.2",
+        "protocol": "udp",
+        "port": 1701
+      },
+      {
+        "address": "162.159.198.2",
+        "protocol": "udp",
+        "port": 4443
+      },
+      {
+        "address": "162.159.198.2",
+        "protocol": "udp",
+        "port": 4500
+      },
+      {
+        "address": "162.159.198.2",
+        "protocol": "udp",
+        "port": 8095
+      },
+      {
+        "address": "162.159.198.2",
+        "protocol": "udp",
+        "port": 8443
+      },
+      {
+        "address": "162.159.198.2",
+        "protocol": "tcp",
+        "port": 443
+      }
+    ],
+    "local_routes": [
+      {
+        "prefix": "10.0.0.0/24",
+        "dev": "wg-opdbus"
+      },
+      {
+        "prefix": "10.10.0.0/24",
+        "dev": "wg0"
+      },
+      {
+        "prefix": "10.0.1.0/24",
+        "dev": "enp0s6"
+      },
+      {
+        "prefix": "169.254.0.0/16",
+        "dev": "enp0s6"
+      },
+      {
+        "prefix": "192.168.254.0/30",
+        "dev": "tun5"
+      },
+      {
+        "prefix": "162.159.198.2/32",
+        "dev": "enp0s6",
+        "gateway": "10.0.1.1"
+      },
+      {
+        "prefix": "192.168.252.0/30",
+        "dev": "warp-data"
+      },
+      {
+        "prefix": "192.168.253.0/30",
+        "dev": "warp-uplink"
+      }
+    ]
+  },
+  "warp_gateway4": "192.168.252.2",
+  "warp_source4": "192.168.252.1",
+  "warp_gateway6": "fd42:7761:7270:1::2",
+  "warp_source6": "fd42:7761:7270:1::1"
+}

@@ -289,6 +289,7 @@ impl Projection {
             let mut statuses = BTreeMap::<&str, usize>::new();
             let mut types = BTreeMap::<&str, usize>::new();
             for instance in instances {
+                #[allow(clippy::manual_unwrap_or)]
                 let status = match text(instance, "status") {
                     Some(
                         value @ ("Running" | "Stopped" | "Frozen" | "Error" | "Starting"
@@ -296,6 +297,7 @@ impl Projection {
                     ) => value,
                     _ => "other_or_missing",
                 };
+                #[allow(clippy::manual_unwrap_or)]
                 let kind = match text(instance, "type") {
                     Some(value @ ("container" | "virtual-machine")) => value,
                     _ => "other_or_missing",
@@ -485,10 +487,10 @@ impl Projection {
             let mut records = BTreeMap::new();
             let mut duplicate = BTreeSet::new();
             for subvolume in subvolumes {
-                if let Some(number) = subvolume.get("id").and_then(Value::as_u64) {
-                    if records.insert(number, subvolume).is_some() {
-                        duplicate.insert(number);
-                    }
+                if let Some(number) = subvolume.get("id").and_then(Value::as_u64)
+                    && records.insert(number, subvolume).is_some()
+                {
+                    duplicate.insert(number);
                 }
             }
             for number in duplicate {
@@ -660,12 +662,11 @@ impl Projection {
         if let Some(list) = state
             .pointer("/administration/domains")
             .and_then(Value::as_array)
+            && list.len() <= MAX_DOMAIN_RECORDS
         {
-            if list.len() <= MAX_DOMAIN_RECORDS {
-                for domain in list {
-                    if let Some(domain) = domain.as_str().filter(|domain| safe_domain(domain)) {
-                        domains.insert(domain.to_string());
-                    }
+            for domain in list {
+                if let Some(domain) = domain.as_str().filter(|domain| safe_domain(domain)) {
+                    domains.insert(domain.to_string());
                 }
             }
         }

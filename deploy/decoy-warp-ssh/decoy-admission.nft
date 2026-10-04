@@ -1,0 +1,7 @@
+insert rule ip filter INPUT iifname "tun5" ip saddr { 10.0.0.2, 10.0.0.3, 10.0.0.4, 192.168.254.1, 192.168.255.1 } counter accept comment "op-warp-ssh/private-input"
+insert rule ip filter FORWARD iifname "tun5" oifname "wg-opdbus" ip daddr 10.0.0.0/24 counter accept comment "op-warp-ssh/private-forward"
+insert rule ip filter FORWARD iifname "warp-uplink" oifname "enp0s6" ip saddr 192.168.253.2 counter accept comment "op-warp-ssh/masque-carrier"
+insert rule ip filter FORWARD iifname "enp0s6" oifname "warp-uplink" ip daddr 192.168.253.2 ct state established,related counter accept comment "op-warp-ssh/masque-return"
+insert rule ip filter FORWARD iifname "wg-opdbus" oifname "warp-data" ip saddr 10.0.0.0/24 counter accept comment "op-warp-ssh/data-wg-opdbus"
+insert rule ip filter FORWARD iifname "wg0" oifname "warp-data" ip saddr 10.10.0.0/24 counter accept comment "op-warp-ssh/data-wg0"
+insert rule ip filter FORWARD iifname "warp-data" oifname { "wg-opdbus", "wg0" } ct state established,related counter accept comment "op-warp-ssh/data-return"

@@ -399,6 +399,7 @@ struct MutationEngineMcpBackend {
     policy: Arc<McpPolicyOwner>,
     close_check_active: Arc<AtomicBool>,
     #[cfg(test)]
+    #[allow(clippy::type_complexity)]
     test_grants: Option<Arc<std::sync::RwLock<HashMap<String, HashSet<String>>>>>,
 }
 

@@ -1,12 +1,12 @@
 //! Materialize missing ordinary native profiles from `model-providers.toml` metadata
 //! before catalog binding reflection runs.
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::model_registry::{ModelListFormat, ProviderConfig};
 use op_plugins::state_plugins::tched_router::{ConfigPatchInput, ConfigPatchOperation};
 use serde_json::json;
 
-use crate::model_registry_dispatch::{read_provider_key, Environment};
+use crate::model_registry_dispatch::{Environment, read_provider_key};
 use crate::tched_router_runtime::{ConfigSecretPolicy, TchedRouterRuntimeClient};
 
 fn profile_section(reference: &str) -> String {

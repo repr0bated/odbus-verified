@@ -832,6 +832,7 @@ impl OperationGrpcServer {
         self.active_reflection.clone()
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn call_plugin_method_dynamic(
         &self,
         plugin_id: &str,

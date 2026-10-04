@@ -1154,9 +1154,20 @@ impl CozoGraphShuttle {
         let tx = self.db.multi_transaction(true);
         let (previous, metadata) = read_one(&tx, session_id)?;
         let physical = physical_root::read_in_tx(&tx, session_id)?;
+        // A completed migration pins storage and instance identity. An
+        // unchanged instance string is not an edit: the power-observation
+        // matcher rejects empty or non-object JSON, and treating that as a
+        // mutation blocks every later CAS, including a schema-hash refresh.
         if matches!(&intent, IdentityIntent::CompareExchange(exchange)
             if physical.is_some() && exchange.record.as_ref().is_some_and(|new|
-                previous.record.as_ref().is_some_and(|old| new.btrfs_device_json != old.btrfs_device_json || !physical_root_instance_binding_matches(&old.instance_json, &new.instance_json))))
+                previous.record.as_ref().is_some_and(|old| {
+                    new.btrfs_device_json != old.btrfs_device_json
+                        || (new.instance_json != old.instance_json
+                            && !physical_root_instance_binding_matches(
+                                &old.instance_json,
+                                &new.instance_json,
+                            ))
+                })))
         {
             return Err(err("completed physical migration binding is immutable"));
         }

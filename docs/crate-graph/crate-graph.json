@@ -520,7 +520,7 @@
         ],
         "has_lib": false,
         "rs_files": 3,
-        "loc": 1455,
+        "loc": 1467,
         "tests": 2,
         "unsafe_refs": 0,
         "todo": 0,
@@ -2054,8 +2054,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-04T08:04:42Z",
-        "commit": "c1e0fe69687bf2baa1aefd1f57e85a391c2a8d02",
+        "generated_at": "2026-10-04T11:43:08Z",
+        "commit": "c7936fda979d6373b4d212b61128344946194f3d",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -4878,7 +4878,7 @@
       "props": {
         "crate": "op-dbus-cli",
         "kind": "src",
-        "loc": 670
+        "loc": 682
       }
     },
     {

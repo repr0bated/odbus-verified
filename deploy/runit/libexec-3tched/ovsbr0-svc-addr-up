@@ -1,13 +1,13 @@
 #!/bin/sh
 # Internal L3: the service and fabric addresses on the bridge's internal ports.
 #
-#   3tched  10.0.0.2/24 + 10.200.0.2/24 + 10.0.0.4/32  door/service/page
-#   ovsbr0  10.200.0.1/24 + 10.0.0.3/32                 OpenFlow/MQTT
+#   3tched  10.200.0.2/24                 internal service
+#   ovsbr0  10.200.0.1/24 + 10.0.0.3/32  OpenFlow/MQTT
 #   *       BRIDGE_SVC_ADDRS             authoritative "addr@port" pairs
 #   ovsbr0  BRIDGE_ADDR                  internal OpenFlow address
 #
-# op-grpc-bridge waits on this service, so every address it needs exists before
-# it starts and its bind list needs no conditionals.
+# SSH-TUN release inputs own the door/page aliases after cutover. The bridge
+# separately waits for its operator-configured door carrier and MQTT address.
 #
 # Plain `ip` for the same reason as ovsbr0-addr-up: the plugin tree is not up
 # yet, by design.
@@ -42,7 +42,7 @@ apply_addr() {
 # Materialize the bridge's OpenFlow address before its service aliases.
 apply_addr "$BRIDGE" "${BRIDGE_ADDR:-}"
 
-# "10.0.0.2/24@3tched ..." — address and device joined by @.
+# "10.200.0.2/24@3tched ..." — address and device joined by @.
 for pair in ${BRIDGE_SVC_ADDRS:-}; do
     apply_addr "${pair#*@}" "${pair%@*}"
 done

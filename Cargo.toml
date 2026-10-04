@@ -38,6 +38,7 @@ members = [
     "crates/op-runit-systemctl",
     "crates/op-xray-daemon",
     "crates/op-dbus-cli",
+    "crates/op-chat-responder",
     "crates/threetched-fs",
 ]
 

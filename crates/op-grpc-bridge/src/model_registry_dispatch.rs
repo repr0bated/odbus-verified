@@ -18,18 +18,17 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use async_trait::async_trait;
 use futures::StreamExt;
 use op_cozo_store::{CozoError, CozoGraphShuttle, RegistryModel, RegistryModelRecord};
 use op_plugins::state_plugins::model_registry::{
-    bounded_error, page_limit, parse_models_response, parse_providers_toml, valid_model_id,
-    valid_provider_id, validate_list_models, validate_set_model_profile, ListModelsInput,
-    ListModelsOutput, ListProvidersInput, ListProvidersOutput, ModelListFormat, ModelRecord,
-    ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh, ProviderStatus, ProvidersFile,
-    RefreshInput, RefreshOutput, SetModelProfileInput, SetModelProfileOutput,
-    DEFAULT_PROVIDERS_PATH, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES,
-    SECRETS_DIR,
+    DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput, ListProvidersInput,
+    ListProvidersOutput, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES,
+    ModelListFormat, ModelRecord, ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh,
+    ProviderStatus, ProvidersFile, RefreshInput, RefreshOutput, SECRETS_DIR, SetModelProfileInput,
+    SetModelProfileOutput, bounded_error, page_limit, parse_models_response, parse_providers_toml,
+    valid_model_id, valid_provider_id, validate_list_models, validate_set_model_profile,
 };
 use op_state_store::PluginSchema;
 use serde_json::Value;
@@ -330,7 +329,7 @@ pub(crate) async fn refresh(
     let mut revision = 0;
     while let Some((provider, result)) = observed.next().await {
         let listed = result.map_err(|error| bounded_error(&format!("{error:#}")));
-        let failure = listed.as_ref().err().cloned();
+        let mut failure = listed.as_ref().err().cloned();
         let (store, id, when) = (store.clone(), provider.id.clone(), at.clone());
         let record_result = blocking(move || {
             store
@@ -347,7 +346,7 @@ pub(crate) async fn refresh(
             Err(error) => {
                 tracing::error!(%error, provider_id = %provider.id, "model registry refresh store error");
                 failure.get_or_insert_with(|| format!("store error: {error}"));
-                (op_cozo_store::RefreshCounts::default(), revision)
+                (op_cozo_store::RegistryRefreshCounts::default(), revision)
             }
         };
         revision = next;
@@ -510,7 +509,7 @@ pub(crate) async fn list_models(
     let configured_providers: std::collections::HashSet<&str> = file
         .providers
         .iter()
-        .filter(|p| p.enabled.unwrap_or(true))
+        .filter(|p| p.enabled)
         .map(|p| p.id.as_str())
         .collect();
     let mut models: Vec<ModelRecord> = rows
@@ -668,7 +667,6 @@ async fn binding_target_from(
     // substitute the default endpoint for an unmapped or retired alternative.
     let ordinary = provider
         .native_provider_id_for_model(recorded.as_deref())
-        .map(str::to_string)
         .or_else(|| {
             recorded
                 .is_none()

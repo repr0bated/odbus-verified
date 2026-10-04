@@ -906,7 +906,7 @@
  }
 --- a/crates/zeroclaw-gateway/src/ws_stateless.rs
 +++ b/crates/zeroclaw-gateway/src/ws_stateless.rs
-@@ -0,0 +1,183 @@
+@@ -0,0 +1,178 @@
 +//! Bounded transport for one explicitly admitted provider-only turn. This
 +//! module never constructs an Agent or accesses session/history/workspace data.
 +use axum::extract::ws::{Message, WebSocket};
@@ -996,11 +996,7 @@
 +                json!({"kind":kind})
 +            };
 +        }
-+        let _ = tokio::time::timeout(
-+            Duration::from_secs(1),
-+            send(&mut socket, frame),
-+        )
-+        .await;
++        let _ = tokio::time::timeout(Duration::from_secs(1), send(&mut socket, frame)).await;
 +    }
 +    let _ = tokio::time::timeout(Duration::from_secs(1), socket.close()).await;
 +}
@@ -1084,7 +1080,6 @@
 +                Some(Err(GenerationError::Protocol | GenerationError::InvalidRequest)) => return Err(StatelessError::new("PROTOCOL")),
 +                Some(Err(GenerationError::Provider(kind))) => return Err(StatelessError::provider(kind)),
 +                Some(Err(GenerationError::Unavailable)) => return Err(StatelessError::provider(ProviderErrorKind::Configuration)),
-+                Some(Err(_)) => return Err(StatelessError::provider(ProviderErrorKind::Unknown)),
 +                None => return Err(StatelessError::new("PROTOCOL")),
 +            }
 +        }
@@ -1092,7 +1087,7 @@
 +}
 --- a/crates/zeroclaw-gateway/src/ws_stateless_tests.rs
 +++ b/crates/zeroclaw-gateway/src/ws_stateless_tests.rs
-@@ -0,0 +1,952 @@
+@@ -0,0 +1,946 @@
 +//! Transport-boundary fixtures for the deliberately narrow stateless WS path.
 +//!
 +//! These tests use a real Axum upgrade plus a loopback OpenAI-compatible HTTP
@@ -1131,8 +1126,8 @@
 +    matchers::{method, path},
 +};
 +use zeroclaw_config::schema::{
-+    AliasedAgentConfig, CustomModelProviderConfig, ModelProviderConfig,
-+    OpenAIModelProviderConfig, WireApi,
++    AliasedAgentConfig, CustomModelProviderConfig, ModelProviderConfig, OpenAIModelProviderConfig,
++    WireApi,
 +};
 +use zeroclaw_providers::stateless::MAX_PROMPT_BYTES;
 +
@@ -1630,10 +1625,7 @@
 +    )
 +    .await;
 +    let error = receive_json(&mut socket).await;
-+    assert_eq!(
-+        error,
-+        json!({"type": "chunk", "content": "provider reply"})
-+    );
++    assert_eq!(error, json!({"type": "chunk", "content": "provider reply"}));
 +    let done = receive_json(&mut socket).await;
 +    assert_eq!(done["type"], "done");
 +    assert_eq!(done["full_response"], "provider reply");
@@ -1957,11 +1949,8 @@
 +#[tokio::test]
 +async fn ws_stateless_provider_http_diagnostics_are_typed_and_do_not_leak_content() {
 +    for status in [401, 429, 503] {
-+        let provider = provider_failure_fixture(
-+            status,
-+            "provider-body-sentinel api-key-sentinel",
-+        )
-+        .await;
++        let provider =
++            provider_failure_fixture(status, "provider-body-sentinel api-key-sentinel").await;
 +        assert_provider_failure(
 +            format!("{}/v1", provider.uri()),
 +            json!({
@@ -3991,7 +3980,7 @@
 +}
 --- a/crates/zeroclaw-providers/src/stateless.rs
 +++ b/crates/zeroclaw-providers/src/stateless.rs
-@@ -0,0 +1,441 @@
+@@ -0,0 +1,439 @@
 +//! One provider-only generation turn. Config owns provider/model selection;
 +//! this consumed view pins that selection for one request. There is no Agent,
 +//! memory, history, workspace, tool registry, provider fallback or persistence.
@@ -4151,11 +4140,33 @@
 +        {
 +            return Err(GenerationError::InvalidRequest);
 +        }
-+        let events: BoxStream<'static, Result<StreamEvent, GenerationError>> =
-+            if self.provider.supports_streaming() {
++        let events: BoxStream<'static, Result<StreamEvent, GenerationError>> = if self
++            .provider
++            .supports_streaming()
++        {
++            let messages = [ChatMessage::user(prompt)];
++            ProviderDispatch::from_ref(self.provider.as_ref())
++                .stream_chat(
++                    ChatRequest {
++                        messages: &messages,
++                        tools: None,
++                        thinking: None,
++                    },
++                    &self.model,
++                    None,
++                    StreamOptions::new(true),
++                )
++                .map(|event| {
++                    event.map_err(|error| GenerationError::Provider(classify_stream_error(&error)))
++                })
++                .boxed()
++        } else {
++            // The native provider still owns the HTTP request. A unary-only
++            // implementation produces one final delta, without fabricated usage.
++            stream::once(async move {
 +                let messages = [ChatMessage::user(prompt)];
-+                ProviderDispatch::from_ref(self.provider.as_ref())
-+                    .stream_chat(
++                let response = ProviderDispatch::from_ref(self.provider.as_ref())
++                    .chat(
 +                        ChatRequest {
 +                            messages: &messages,
 +                            tools: None,
@@ -4163,51 +4174,27 @@
 +                        },
 +                        &self.model,
 +                        None,
-+                        StreamOptions::new(true),
 +                    )
-+                    .map(|event| {
-+                        event.map_err(|error| {
-+                            GenerationError::Provider(classify_stream_error(&error))
-+                        })
-+                    })
-+                    .boxed()
-+            } else {
-+                // The native provider still owns the HTTP request. A unary-only
-+                // implementation produces one final delta, without fabricated usage.
-+                stream::once(async move {
-+                    let messages = [ChatMessage::user(prompt)];
-+                    let response = ProviderDispatch::from_ref(self.provider.as_ref())
-+                        .chat(
-+                            ChatRequest {
-+                                messages: &messages,
-+                                tools: None,
-+                                thinking: None,
-+                            },
-+                            &self.model,
-+                            None,
-+                        )
-+                        .await
-+                        .map_err(|error| {
-+                            GenerationError::Provider(classify_unary_error(&error))
-+                        })?;
-+                    if !response.tool_calls.is_empty() {
-+                        return Err(GenerationError::Protocol);
-+                    }
-+                    let mut events = Vec::new();
-+                    if let Some(text) = response.text {
-+                        events.push(Ok(StreamEvent::TextDelta(
-+                            zeroclaw_api::model_provider::StreamChunk::delta(text),
-+                        )));
-+                    }
-+                    if let Some(usage) = response.usage {
-+                        events.push(Ok(StreamEvent::Usage(usage)));
-+                    }
-+                    events.push(Ok(StreamEvent::Final));
-+                    Ok(stream::iter(events))
-+                })
-+                .try_flatten()
-+                .boxed()
-+            };
++                    .await
++                    .map_err(|error| GenerationError::Provider(classify_unary_error(&error)))?;
++                if !response.tool_calls.is_empty() {
++                    return Err(GenerationError::Protocol);
++                }
++                let mut events = Vec::new();
++                if let Some(text) = response.text {
++                    events.push(Ok(StreamEvent::TextDelta(
++                        zeroclaw_api::model_provider::StreamChunk::delta(text),
++                    )));
++                }
++                if let Some(usage) = response.usage {
++                    events.push(Ok(StreamEvent::Usage(usage)));
++                }
++                events.push(Ok(StreamEvent::Final));
++                Ok(stream::iter(events))
++            })
++            .try_flatten()
++            .boxed()
++        };
 +        Ok(bound_stream(events))
 +    }
 +}

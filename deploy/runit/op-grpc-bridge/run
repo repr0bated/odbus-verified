@@ -51,6 +51,7 @@ done
 set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
 [ -r /etc/op-dbus/decoy-network-client.env ] && . /etc/op-dbus/decoy-network-client.env
+[ -r /etc/op-dbus/warp-ssh.env ] && . /etc/op-dbus/warp-ssh.env
 set +a
 
 # The native router's provider-only generation protocol requires a real paired
@@ -129,9 +130,10 @@ wait_for_ipv4() {
     done
 }
 
-# Require the door and MQTT addresses on their canonical OVS carriers before
-# binding. Certificate filenames below retain their existing svc0 names.
-wait_for_ipv4 3tched 10.0.0.2 "${OP_GRPC_3TCHED_WAIT_SECS:-90}"
+# The operator selects the door's address carrier at SSH-TUN cutover (tun5).
+# Keep the current OVS default until that runtime environment is selected.
+# MQTT stays on ovsbr0; certificate filenames retain their svc0 names.
+wait_for_ipv4 "${OP_GRPC_DOOR_INTERFACE:-3tched}" 10.0.0.2 "${OP_GRPC_3TCHED_WAIT_SECS:-90}"
 wait_for_ipv4 ovsbr0 10.0.0.3 "${OP_GRPC_MQTT_WAIT_SECS:-90}"
 
 # `:8090` is tonic on 10.0.0.2, with the internal certificate.

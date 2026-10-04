@@ -470,6 +470,42 @@ pub struct KickClientOutput {
     pub was_connected: bool,
 }
 
+/// MQTT topic prefix for responder wakes (chatbot/agent turn notifications).
+pub const RESPONDER_WAKE_TOPIC_PREFIX: &str = "opdbus/responder-wake/";
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct PublishResponderWakeInput {
+    /// Responder principal ID (the topic is derived from sha256 of this).
+    pub responder_principal_id: String,
+    /// The request/turn ID the responder should claim.
+    pub request_id: String,
+    /// Owner key of the requester (sha256 of their principal).
+    pub owner_key: String,
+    /// Principal ID of the requester (for response routing).
+    pub owner_principal_id: String,
+    /// Conversation ID (for chat turns).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conversation_id: Option<String>,
+    /// Brief preview of the request content.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preview: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PublishResponderWakeOutput {
+    pub topic: String,
+    pub published: bool,
+    pub message_id: Option<String>,
+}
+
+/// `opdbus/responder-wake/<sha256(responder_principal_id)>` for a responder.
+pub fn responder_wake_topic(responder_principal_id: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let key = format!("{:x}", Sha256::digest(responder_principal_id.as_bytes()));
+    format!("{RESPONDER_WAKE_TOPIC_PREFIX}{key}")
+}
+
 #[derive(Debug, Clone, Default, Deserialize)]
 struct RunitStatus {
     active_state: String,
@@ -724,6 +760,38 @@ async fn publish_wake(
     .await
     .context("EMQX wake publish failed")?;
     Ok(PublishWakeOutput {
+        topic,
+        published: true,
+        message_id: string_field(&response, &["id"]),
+    })
+}
+
+async fn publish_responder_wake(
+    transport: &EmqxNativeTransport,
+    input: PublishResponderWakeInput,
+) -> Result<PublishResponderWakeOutput> {
+    let topic = responder_wake_topic(&input.responder_principal_id);
+    let payload = serde_json::json!({
+        "request_id": input.request_id,
+        "owner_key": input.owner_key,
+        "owner_principal_id": input.owner_principal_id,
+        "conversation_id": input.conversation_id,
+        "preview": input.preview,
+    });
+    let response = emqx_api(
+        transport,
+        Method::POST,
+        "/publish",
+        Some(serde_json::json!({
+            "topic": topic,
+            "payload": payload.to_string(),
+            "qos": 1,
+            "retain": false,
+        })),
+    )
+    .await
+    .context("EMQX responder wake publish failed")?;
+    Ok(PublishResponderWakeOutput {
         topic,
         published: true,
         message_id: string_field(&response, &["id"]),
@@ -1184,6 +1252,10 @@ async fn dispatch_emqx_method_on(
         "publish_wake" => {
             let input: PublishWakeInput = typed_input(args)?;
             serde_json::to_value(publish_wake(transport, input).await?)?
+        }
+        "publish_responder_wake" => {
+            let input: PublishResponderWakeInput = typed_input(args)?;
+            serde_json::to_value(publish_responder_wake(transport, input).await?)?
         }
         "kick_client" => {
             let input: KickClientInput = typed_input(args)?;

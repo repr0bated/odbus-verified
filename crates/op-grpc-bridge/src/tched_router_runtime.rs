@@ -1023,7 +1023,9 @@ impl TchedRouterRuntimeClient {
         let model_path = format!("providers.models.{reference}.model");
         match secrets.is_secret(&model_path) {
             Ok(false) => {}
-            Ok(true) => anyhow::bail!("native provider model path must be public in the pinned contract"),
+            Ok(true) => {
+                anyhow::bail!("native provider model path must be public in the pinned contract")
+            }
             Err(_) => anyhow::bail!(
                 "native provider reference {reference} is absent from the pinned config contract"
             ),
@@ -1219,9 +1221,7 @@ impl TchedRouterRuntimeClient {
                 .as_ref()
                 .is_some_and(|reference| reference == &profile.reference)
             {
-                let configured_model = native_profile
-                    .get("model")
-                    .and_then(Value::as_str);
+                let configured_model = native_profile.get("model").and_then(Value::as_str);
                 if configured_model == Some(target.model_id.as_str()) {
                     if !models.iter().any(|model| model == &target.model_id) {
                         models.push(target.model_id.clone());

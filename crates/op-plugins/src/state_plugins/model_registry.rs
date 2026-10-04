@@ -29,7 +29,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use anyhow::{bail, ensure, Context, Result};
+use anyhow::{Context, Result, bail, ensure};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{PluginSchema, SideEffect};
@@ -215,10 +215,7 @@ impl ProviderConfig {
                     .clone()
                     .or_else(|| Self::derived_native_provider_id(&self.id))
             }
-            Some(profile) => self
-                .native_profile_overrides
-                .get(profile)
-                .map(String::clone),
+            Some(profile) => self.native_profile_overrides.get(profile).cloned(),
         }
     }
 
@@ -1014,12 +1011,14 @@ enabled = false
         let serialized = serde_json::to_value(&canonical.providers[0]).unwrap();
         assert_eq!(serialized["provider_id"], "opencode_go");
         assert!(serialized.get("id").is_none());
-        assert!(parse_providers_toml(&PROVIDERS.replacen(
-            "id = \"opencode_go\"",
-            "id = \"opencode_go\"\nprovider_id = \"opencode\"",
-            1
-        ))
-        .is_err());
+        assert!(
+            parse_providers_toml(&PROVIDERS.replacen(
+                "id = \"opencode_go\"",
+                "id = \"opencode_go\"\nprovider_id = \"opencode\"",
+                1
+            ))
+            .is_err()
+        );
     }
 
     #[test]
@@ -1040,15 +1039,15 @@ native_profile_overrides = { "openai.cp_responses" = "openai.dashboard_responses
         let provider = &file.providers[0];
         assert_eq!(
             provider.native_provider_id_for_model(None),
-            Some("custom.dashboard")
+            Some("custom.dashboard".to_string())
         );
         assert_eq!(
             provider.native_provider_id_for_model(Some("custom.control_plane")),
-            Some("custom.dashboard")
+            Some("custom.dashboard".to_string())
         );
         assert_eq!(
             provider.native_provider_id_for_model(Some("openai.cp_responses")),
-            Some("openai.dashboard_responses")
+            Some("openai.dashboard_responses".to_string())
         );
         assert_eq!(
             provider.native_provider_id_for_model(Some("anthropic.cp_messages")),
@@ -1160,7 +1159,9 @@ native_provider_id = "custom.dashboard"
             "{PROVIDERS}\n{}",
             &PROVIDERS[PROVIDERS.find("[[providers]]").unwrap()..]
         );
-        assert!(format!("{:#}", parse_providers_toml(&twice).unwrap_err()).contains("listed twice"));
+        assert!(
+            format!("{:#}", parse_providers_toml(&twice).unwrap_err()).contains("listed twice")
+        );
         let bad_id = PROVIDERS.replace("\"opencode_go\"", "\"OpenCode\"");
         assert!(parse_providers_toml(&bad_id).is_err());
     }
@@ -1234,16 +1235,20 @@ native_provider_id = "custom.dashboard"
     #[test]
     fn list_models_input_is_bounded() {
         assert!(validate_list_models(&ListModelsInput::default()).is_ok());
-        assert!(validate_list_models(&ListModelsInput {
-            limit: Some(MAX_PAGE + 1),
-            ..Default::default()
-        })
-        .is_err());
-        assert!(validate_list_models(&ListModelsInput {
-            query: Some(" padded".into()),
-            ..Default::default()
-        })
-        .is_err());
+        assert!(
+            validate_list_models(&ListModelsInput {
+                limit: Some(MAX_PAGE + 1),
+                ..Default::default()
+            })
+            .is_err()
+        );
+        assert!(
+            validate_list_models(&ListModelsInput {
+                query: Some(" padded".into()),
+                ..Default::default()
+            })
+            .is_err()
+        );
     }
 
     #[test]

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Prepared operator input, not enabled by preparation.
+# No NIC or default route is added to the Xray container.
+# The existing XHTTP routes also require these web/mail loopback backends.
+set -eu
+exec 2>&1
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:/usr/lib/incus:${PATH:-}"
+
+while ! incus exec xray -- test -S \
+    /opt/run-mounts/ghostbridge/xray-egress/carrier.sock >/dev/null 2>&1; do
+    sleep 1
+done
+
+exec incus exec xray -- /usr/local/bin/op-uds-relay \
+    --tcp-to-unix '127.0.0.1:19443=/opt/run-mounts/ghostbridge/xray-egress/carrier.sock' \
+    --tcp-to-unix '127.0.0.1:18080=/opt/run-mounts/ghostbridge/fwd-web.sock' \
+    --tcp-to-unix '127.0.0.1:18081=/opt/run-mounts/ghostbridge/mail/web.sock'
