@@ -612,12 +612,12 @@
           "op-grpc-bridge"
         ],
         "has_lib": true,
-        "rs_files": 179,
-        "loc": 109691,
-        "tests": 844,
+        "rs_files": 180,
+        "loc": 110087,
+        "tests": 846,
         "unsafe_refs": 210,
         "todo": 177,
-        "unwrap_expect": 1966
+        "unwrap_expect": 1968
       }
     },
     {
@@ -2045,8 +2045,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-04T18:12:22Z",
-        "commit": "905772aa9368532b796ec8a7cee7af6cf2621475",
+        "generated_at": "2026-10-04T18:47:31Z",
+        "commit": "f6e07631e765df8b8cfcb50a0a6dd8f72bad7890",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -5877,7 +5877,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1067
+        "loc": 1078
       }
     },
     {
@@ -6282,7 +6282,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 263
+        "loc": 284
       }
     },
     {
@@ -6372,7 +6372,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 4046
+        "loc": 4052
       }
     },
     {
@@ -6445,6 +6445,15 @@
         "crate": "op-grpc-bridge",
         "kind": "src",
         "loc": 138
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/workstack_runner.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 381
       }
     },
     {
@@ -17997,6 +18006,12 @@
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/web_ui_dispatch.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/workstack_runner.rs",
       "props": {}
     },
     {
@@ -30391,6 +30406,22 @@
       "dst": "crate:op-state-store",
       "props": {
         "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/workstack_runner.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/workstack_runner.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 5
       }
     },
     {

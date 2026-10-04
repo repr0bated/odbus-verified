@@ -831,13 +831,24 @@ async fn binding_target_from(
         load_providers(env)? == file,
         "provider authority changed during binding lookup"
     );
+    let ordinary_reference = ordinary.clone();
+    let family = ordinary_reference
+        .as_deref()
+        .and_then(crate::tched_catalog_binding::reference_family)
+        .map(str::to_string)
+        .with_context(|| {
+            format!(
+                "provider {provider_id} has no native serve family (declare native_provider_id or control_plane)"
+            )
+        })?;
     Ok(crate::tched_catalog_binding::BindingTarget {
         provider_id: provider_id.to_string(),
         model_id: model_id.to_string(),
         inference_url_prefix: prefix,
         catalog_revision: revision,
-        ordinary_reference: ordinary,
+        ordinary_reference,
         excluded_references,
+        family,
     })
 }
 

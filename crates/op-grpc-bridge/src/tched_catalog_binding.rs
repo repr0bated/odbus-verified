@@ -16,6 +16,11 @@ pub(crate) struct BindingTarget {
     pub catalog_revision: u64,
     pub ordinary_reference: Option<String>,
     pub excluded_references: BTreeSet<String>,
+    /// The provider's native serve family (`custom`, `openai`, `anthropic`,
+    /// …): the concrete "provider type" every binding candidate must share,
+    /// so one live model listed by two unrelated familes can never produce
+    /// an ambiguous binding.
+    pub family: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -43,6 +48,11 @@ pub(crate) fn valid_reference(reference: &str) -> bool {
     reference
         .split_once('.')
         .is_some_and(|(family, alias)| segment(family) && segment(alias))
+}
+
+/// The serve family of a valid `family.alias` reference.
+pub(crate) fn reference_family(reference: &str) -> Option<&str> {
+    reference.split_once('.').map(|(family, _)| family)
 }
 
 fn endpoint(value: &str) -> Result<reqwest::Url> {
@@ -122,6 +132,17 @@ pub(crate) fn select(
         {
             continue;
         }
+        let match_family = target
+            .family
+            .as_str();
+        ensure!(
+            candidate
+                .reference
+                .split_once('.')
+                .is_some_and(|(family, _)| family == match_family),
+            "catalog binding candidate {} is outside the provider family {match_family}",
+            candidate.reference
+        );
         if candidate.live
             && models.contains(&target.model_id)
             // Subscription-native (OAuth) profiles carry no HTTP endpoint of

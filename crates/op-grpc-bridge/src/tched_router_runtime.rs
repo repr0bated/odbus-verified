@@ -2366,8 +2366,14 @@ fn binding_profiles(
             crate::tched_catalog_binding::valid_reference(&provider.reference),
             "catalog binding native profile reference is invalid"
         );
+        // The provider's serve family bounds eligibility: a profile outside
+        // the target family is never a binding candidate, so one live model
+        // name listed by an unrelated family cannot create an ambiguous
+        // "unique" match.
         if !private.contains(&provider.reference)
             && (!opencode_only || is_door_selectable_route(&provider))
+            && crate::tched_catalog_binding::reference_family(&provider.reference)
+                == Some(target.family.as_str())
             && target
                 .ordinary_reference
                 .as_ref()
