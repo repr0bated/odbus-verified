@@ -613,7 +613,7 @@
         ],
         "has_lib": true,
         "rs_files": 179,
-        "loc": 109619,
+        "loc": 109691,
         "tests": 844,
         "unsafe_refs": 210,
         "todo": 177,
@@ -802,7 +802,7 @@
         ],
         "has_lib": true,
         "rs_files": 150,
-        "loc": 118008,
+        "loc": 118038,
         "tests": 569,
         "unsafe_refs": 17,
         "todo": 1,
@@ -2045,8 +2045,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-04T16:58:43Z",
-        "commit": "e29c07ec6459ea5eb593c9a42cc0454a7b4db065",
+        "generated_at": "2026-10-04T18:12:22Z",
+        "commit": "905772aa9368532b796ec8a7cee7af6cf2621475",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -5868,7 +5868,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 142
+        "loc": 144
       }
     },
     {
@@ -5877,7 +5877,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 999
+        "loc": 1067
       }
     },
     {
@@ -6507,7 +6507,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 87
+        "loc": 89
       }
     },
     {
@@ -8658,7 +8658,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1398
+        "loc": 1428
       }
     },
     {
@@ -10960,7 +10960,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/model_registry.rs",
-        "line": 1060,
+        "line": 1090,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/model_registry"
       }
@@ -18782,6 +18782,16 @@
       "props": {
         "kind": "normal",
         "req": "=0.24.0",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "uses_ext",
+      "dst": "ext:toml",
+      "props": {
+        "kind": "normal",
+        "req": "^0.8",
         "optional": false
       }
     },

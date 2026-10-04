@@ -99,6 +99,8 @@ mod tests {
             auth: ProviderAuth::Bearer,
             key_file: Some("/etc/op-dbus/secrets/openai-api-key".to_string()),
             key_env: None,
+            credential: None,
+            credential_slot: None,
             control_plane: None,
             enabled: true,
         }

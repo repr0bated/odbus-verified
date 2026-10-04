@@ -39,6 +39,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 simd-json = { workspace = true }
 jsonschema = { workspace = true }
+# model_registry maintains the root-owned provider list (one TOML authority
+# for the whole provider set, including its credential-gate columns).
+toml = { workspace = true }
 # HTTP client used by the tched_router runtime integration. Cognitive-tool dispatch
 # itself is in-process behind MutationEngine and does not use this dependency.
 reqwest = { workspace = true }

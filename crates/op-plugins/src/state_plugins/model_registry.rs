@@ -137,9 +137,22 @@ pub struct ProviderConfig {
     #[serde(default)]
     pub key_file: Option<String>,
     /// The variable in the owner's secrets file (`~/.bash_secrets`) the key
-    /// is installed from by `scripts/install-provider-keys.sh`.
+    /// is installed from by `scripts/install-provider-keys.sh`. For keyed
+    /// providers this is the credential gate's slot.
     #[serde(default)]
     pub key_env: Option<String>,
+    /// Credential gate class for the `[[providers]]` entry itself: `key`
+    /// (bash_secrets-backed key file), `oauth` (native auth profile), or
+    /// `off` (explicitly deactivated, reference retained). When absent the
+    /// plain `enabled` flag governs — the migration-safe default.
+    #[serde(default)]
+    pub credential: Option<String>,
+    /// The oauth gate slot: the native auth profile id (`family:profile`,
+    /// e.g. `openai-codex:default`). Required exactly when
+    /// `credential = "oauth"`; keyed providers take their slot from
+    /// `key_env`, and `off` entries retain theirs for re-enable.
+    #[serde(default)]
+    pub credential_slot: Option<String>,
     /// The router profiles the Control Plane uses for this provider's models.
     #[serde(default)]
     pub control_plane: Option<ControlPlaneRouting>,
@@ -612,17 +625,22 @@ pub struct NativeListProvidersOutput {
     pub providers: Vec<NativeProviderProfile>,
 }
 
-/// One credential-gate operation for the `~/.bash_models` flag file: add (or
-/// replace) a `provider:kind=slot` line, subtract a provider's line, or mark
-/// it off. `slot` must be a *reference* — the bash_secrets variable a key
-/// installs from, or the native auth-profile id — never a credential value.
+/// One credential-gate operation on a provider's `[[providers]]` entry in
+/// `model-providers.toml`: assign its `credential` class (`key` or `oauth`,
+/// with `credential_slot` for oauth), deactivate it explicitly (`off`),
+/// or `remove` the gate columns so the plain `enabled` flag governs again.
+/// `slot` is the credential reference and is never a credential value: for
+/// `key` it collapses to the provider's `key_env` variable, for `oauth` it
+/// is the native auth-profile id (`family:profile`), and `off` retains the
+/// provider's existing reference for later re-enable.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CredentialGateOp {
     pub provider_id: String,
-    /// `key`, `oauth`, `off`, or `remove` (delete the provider's line).
+    /// `key`, `oauth`, `off`, or `remove` (drop the credential columns).
     pub kind: String,
-    /// Required for `key` and `oauth`; forbidden for `off` and `remove`.
+    /// Required for `oauth` (native auth-profile reference); forbidden for
+    /// `key`, `off`, and `remove` — keyed providers keep `key_env`.
     #[serde(default)]
     pub slot: Option<String>,
 }
@@ -630,6 +648,8 @@ pub struct CredentialGateOp {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct MaintainCredentialsInput {
+    /// At most 32 gate operations per call; each names an existing
+    /// `[[providers]]` entry in the root-owned provider TOML.
     pub operations: Vec<CredentialGateOp>,
 }
 
@@ -656,6 +676,16 @@ pub struct ProviderStatus {
     /// In the current provider list.
     pub configured: bool,
     pub enabled: bool,
+    /// The provider's credential-gate class from its TOML entry:
+    /// `key`, `oauth`, or `off` (deactivated, reference retained). Absent
+    /// for an ungated entry — the plain `enabled` flag decides there.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential: Option<String>,
+    /// The oauth gate slot (native auth-profile reference). A provider's
+    /// keyed slot is its `key_env` and an off entry retains it, so only the
+    /// oauth slot is restated here.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_slot: Option<String>,
     #[serde(default)]
     pub models_url: Option<String>,
     /// `never`, `ok`, `error` or `removed`.
@@ -970,7 +1000,7 @@ pub fn model_registry_schema() -> PluginSchema {
         op_state_store::CapabilityDecl {
             id: MAINTAIN_CAPABILITY.to_string(),
             description:
-                "Grants: set_model_profile, maintain_credentials (record which of its provider's profiles a model needs, and add or subtract provider credential-gate lines)."
+                "Grants: set_model_profile, maintain_credentials (assign a model its provider profile, and set or remove a provider's credential-gate class in model-providers.toml)."
                     .to_string(),
         },
     );

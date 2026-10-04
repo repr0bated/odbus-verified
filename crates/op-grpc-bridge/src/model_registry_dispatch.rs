@@ -18,7 +18,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, anyhow, bail, ensure};
 use async_trait::async_trait;
 use futures::StreamExt;
 use op_cozo_store::{CozoError, CozoGraphShuttle, RegistryModel, RegistryModelRecord};
@@ -286,20 +286,16 @@ fn now() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
-/// Operator credential gate read from `OP_BASH_MODELS_PATH`
-/// (default `/home/jeremy/.bash_models`). Line grammar:
-/// `provider_id:kind=slot` with kind ∈ {key, oauth, off}; off entries may
-/// omit the slot (`xai:off`). Slots are *references* (the bash_secrets
-/// variable a key installs from, or the native auth-profile id), never
-/// credential values. An absent file disables the gate → TOML `enabled`
-/// governs (migration-safe). A present file is fail-closed: every provider
-/// without a line is off, and a duplicate line, unknown kind, malformed
-/// grammar or oversized slot fails the whole gate.
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct BashModelsGate {
-    kinds: std::collections::BTreeMap<String, CredentialKind>,
-}
-
+/// Credential gate read from the provider TOML itself. Each `[[providers]]`
+/// entry may declare `credential = "key" | "oauth" | "off"` (plain TOML —
+/// no invented syntax). Slots are *references*, never credential values:
+/// keyed providers take theirs from `key_env` (the `~/.bash_secrets`
+/// variable), oauth entries carry `credential_slot` (the native
+/// auth-profile id), and `off` retains the provider's `key_env` for
+/// re-enable. An entry without gate columns is ungated — the plain
+/// `enabled` flag governs (migration-safe). Unknown class text, a declared
+/// slot outside oauth, or a keyed entry without `key_env` fails the whole
+/// parse, so a malformed file can never half-apply.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CredentialKind {
     Key,
@@ -307,65 +303,62 @@ enum CredentialKind {
     Off,
 }
 
-impl BashModelsGate {
-    fn off(&self, provider_id: &str) -> bool {
-        // With the gate file in place an unlisted provider is off by design.
-        self.kinds
-            .get(provider_id)
-            .is_none_or(|kind| *kind == CredentialKind::Off)
-    }
-}
-
-fn load_bash_models_gate() -> Result<Option<BashModelsGate>> {
-    let path = std::env::var("OP_BASH_MODELS_PATH")
-        .unwrap_or_else(|_| "/home/jeremy/.bash_models".to_string());
-    let raw = match std::fs::read_to_string(&path) {
-        Ok(raw) => raw,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => {
-            return Err(anyhow::Error::from(error)
-                .context(format!("bash_models gate file {path} is unreadable")));
-        }
-    };
-    let mut kinds = std::collections::BTreeMap::new();
-    for (index, raw) in raw.lines().enumerate() {
-        let line = raw.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let context = format!("bash_models line {}", index + 1);
-        let (provider_id, rest) = line
-            .split_once(':')
-            .with_context(|| format!("{context}: expected provider:kind=slot grammar"))?;
-        ensure!(
-            valid_provider_id(provider_id),
-            "{context}: invalid provider id"
-        );
-        let (kind_text, slot) = rest
-            .split_once('=')
-            .with_context(|| format!("{context}: expected kind=slot after the provider"))?;
-        let kind = match kind_text.trim() {
-            "key" => CredentialKind::Key,
-            "oauth" => CredentialKind::Oauth,
-            "off" => CredentialKind::Off,
-            other => anyhow::bail!("{context}: unknown kind {other:?}"),
-        };
-        if kind != CredentialKind::Off {
-            let slot = slot.trim();
+/// Validate one provider's optional gate columns. `Some(kind)` marks the
+/// entry gated with that class; `None` marks it ungated.
+fn validate_credential_gate(provider: &ProviderConfig) -> Result<Option<CredentialKind>> {
+    let kind = match provider.credential.as_deref() {
+        None => {
             ensure!(
-                !slot.is_empty()
+                provider.credential_slot.is_none(),
+                "provider {} declares credential_slot without credential",
+                provider.id
+            );
+            None
+        }
+        Some("key") => {
+            ensure!(
+                provider.key_env.as_ref().is_some_and(|slot| !slot.trim().is_empty())
+                    || provider.key_file.as_ref().is_some_and(|slot| !slot.trim().is_empty()),
+                "provider {} credential=key requires its key_env or key_file slot",
+                provider.id
+            );
+            ensure!(
+                provider.credential_slot.is_none(),
+                "provider {} credential_slot is oauth-only; the keyed slot is key_env",
+                provider.id
+            );
+            Some(CredentialKind::Key)
+        }
+        Some("oauth") => {
+            let slot = provider
+                .credential_slot
+                .as_deref()
+                .with_context(|| {
+                    format!("provider {} credential=oauth requires credential_slot", provider.id)
+                })?;
+            ensure!(
+                !slot.trim().is_empty()
                     && slot.len() <= 128
                     && !slot.chars().any(|c| c.is_whitespace() || c.is_control())
                     && !slot.contains('#'),
-                "{context}: slot must be a compact non-empty reference"
+                "provider {} oauth slot must be a compact non-empty reference",
+                provider.id
             );
+            Some(CredentialKind::Oauth)
         }
-        ensure!(
-            kinds.insert(provider_id.to_string(), kind).is_none(),
-            "{context}: duplicate provider {provider_id}"
-        );
-    }
-    Ok(Some(BashModelsGate { kinds }))
+        Some("off") => {
+            ensure!(
+                provider.credential_slot.is_none(),
+                "provider {} credential_slot is oauth-only; an off entry retains key_env",
+                provider.id
+            );
+            Some(CredentialKind::Off)
+        }
+        Some(other) => {
+            anyhow::bail!("provider {} has unknown credential class {other:?}", provider.id)
+        }
+    };
+    Ok(kind)
 }
 
 pub(crate) async fn refresh(
@@ -376,12 +369,26 @@ pub(crate) async fn refresh(
 ) -> Result<RefreshOutput> {
     let _guard = REFRESH_LOCK.lock().await;
     let file = load_providers(env)?;
-    let gate = load_bash_models_gate()?;
-    if let (Some(gate), Some(explicit)) = (gate.as_ref(), &input.provider_id) {
-        ensure!(
-            !gate.off(explicit),
-            "provider {explicit} is off in the bash_models gate"
-        );
+    let mut gate = std::collections::BTreeMap::new();
+    for provider in &file.providers {
+        if let Some(kind) = validate_credential_gate(provider)
+            .with_context(|| format!("credential gate for provider {}", provider.id))?
+        {
+            gate.insert(provider.id.clone(), kind);
+        }
+    }
+    let gated = &gate;
+    if let Some(explicit) = &input.provider_id {
+        let refused = match gated.get(explicit) {
+            Some(CredentialKind::Off) => Some(format!("provider {explicit} is off in the credential gate")),
+            Some(CredentialKind::Oauth) => Some(format!(
+                "provider {explicit} is an oauth credential; keyed discovery is not run for it"
+            )),
+            _ => None,
+        };
+        if let Some(reason) = refused {
+            anyhow::bail!(reason);
+        }
     }
     let targets: Vec<&ProviderConfig> = match &input.provider_id {
         Some(id) => {
@@ -398,7 +405,7 @@ pub(crate) async fn refresh(
             .providers
             .iter()
             .filter(|provider| provider.enabled)
-            .filter(|provider| gate.as_ref().is_none_or(|gate| !gate.off(&provider.id)))
+            .filter(|provider| !matches!(gated.get(&provider.id), Some(CredentialKind::Off | CredentialKind::Oauth)))
             .collect(),
     };
     let at = now();
@@ -493,11 +500,29 @@ pub(crate) async fn list_providers(
     let file = load_providers(env)?;
     let (rows, revision) =
         blocking(move || store.list_model_registry_providers().map_err(cozo)).await?;
+    // Validate every provider's gate columns up front so the enumeration
+    // itself is infallible below.
+    let gate: std::collections::BTreeMap<String, Option<CredentialKind>> = file
+        .providers
+        .iter()
+        .map(|provider| {
+            validate_credential_gate(provider)
+                .map(|kind| (provider.id.clone(), kind))
+                .with_context(|| format!("credential gate for provider {}", provider.id))
+        })
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .collect();
     let mut providers: Vec<ProviderStatus> = file
         .providers
         .iter()
         .map(|provider| {
             let row = rows.iter().find(|row| row.provider_id == provider.id);
+            let credential = gate.get(&provider.id).cloned().flatten().map(|kind| match kind {
+                CredentialKind::Key => "key".to_string(),
+                CredentialKind::Oauth => "oauth".to_string(),
+                CredentialKind::Off => "off".to_string(),
+            });
             ProviderStatus {
                 provider_id: provider.id.clone(),
                 native_provider_id: provider.native_provider_id.clone(),
@@ -505,6 +530,8 @@ pub(crate) async fn list_providers(
                 name: Some(provider.name.clone()),
                 configured: true,
                 enabled: provider.enabled,
+                credential,
+                credential_slot: provider.credential_slot.clone(),
                 models_url: Some(provider.models_url.clone()),
                 status: row.map_or_else(|| "never".to_string(), |row| row.status.clone()),
                 error: row.and_then(|row| row.error.clone()),
@@ -530,6 +557,8 @@ pub(crate) async fn list_providers(
                 name: None,
                 configured: false,
                 enabled: false,
+                credential: None,
+                credential_slot: None,
                 models_url: None,
                 status: row.status.clone(),
                 error: row.error.clone(),
@@ -603,16 +632,22 @@ pub(crate) async fn list_models(
         .filter(|p| p.enabled)
         .map(|p| p.id.as_str())
         .collect();
-    // Credential gate second: with a bash_models file in place, rows of a
-    // gate-off provider disappear from the menu entirely (fail-closed hide,
-    // no error noise). With no gate file the TOML `enabled` flag governs.
-    let gate = load_bash_models_gate()?;
-    let rows = if let Some(gate) = gate.as_ref() {
+    // Credential gate second: entries declaring `credential = "off"` hide
+    // their rows from the menu entirely (no error noise, no refresh noise).
+    // An ungated entry keeps the plain `enabled` behavior.
+    let mut gated: std::collections::BTreeMap<&str, CredentialKind> =
+        std::collections::BTreeMap::new();
+    for provider in &file.providers {
+        if let Some(kind) = validate_credential_gate(provider)
+            .with_context(|| format!("credential gate for provider {}", provider.id))?
+        {
+            gated.insert(provider.id.as_str(), kind);
+        }
+    }
+    let rows = {
         rows.into_iter()
-            .filter(|row| !gate.off(&row.provider_id))
+            .filter(|row| !matches!(gated.get(row.provider_id.as_str()), Some(CredentialKind::Off)))
             .collect::<Vec<_>>()
-    } else {
-        rows
     };
     let mut models: Vec<ModelRecord> = rows
         .into_iter()
@@ -810,129 +845,162 @@ fn args<T: serde::de::DeserializeOwned>(args: &Value) -> Result<T> {
     serde_json::from_value(args.clone()).context("invalid model_registry arguments")
 }
 
-/// Apply add/subtract/off operations to the `~/.bash_models` flag file. The
-/// file is a value-free credential-gate list (`provider:kind=slot`); slots
-/// are references (bash_secrets variable names or native auth-profile ids),
-/// never credentials. Writes are atomic (temp file + rename), preserve mode
-/// 0600, and each applied operation is re-read back before admission.
+/// Apply gate-class operations to the provider TOML itself (the one
+/// governed provider file; no invented line format). Each operation names
+/// an existing `[[providers]]` entry and maintains its plain TOML gate
+/// columns: `key` collapses the slot to the entry's `key_env`, `oauth`
+/// requires `credential_slot` (a native auth-profile reference), `off`
+/// retains the entry's keyed reference for later re-enable, and `remove`
+/// drops the credential columns so the plain `enabled` flag governs again.
+/// The file stays value-free (no credential value passes through), the
+/// write is atomic (temp file + rename, mode preserved), and every applied
+/// operation is verified by re-parsing the complete file before admission.
 async fn maintain_credentials(
     env: &Environment,
     input: MaintainCredentialsInput,
 ) -> Result<MaintainCredentialsOutput> {
-    let _ = env;
+    use std::os::unix::fs::PermissionsExt;
     anyhow::ensure!(
         !input.operations.is_empty() && input.operations.len() <= 32,
         "maintain_credentials accepts 1..=32 operations"
     );
-    let path = std::env::var("OP_BASH_MODELS_PATH")
-        .unwrap_or_else(|_| "/home/jeremy/.bash_models".to_string());
-    let existing = match std::fs::read_to_string(&path) {
-        Ok(raw) => raw,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
-        Err(error) => {
-            return Err(anyhow::Error::from(error)
-                .context(format!("bash_models gate file {path} is unreadable")));
-        }
-    };
-    // Parse the existing lines with the same strict grammar the gate uses.
-    let mut lines: Vec<(String, String)> = existing
-        .lines()
-        .filter(|line| {
-            let line = line.trim();
-            !line.is_empty() && !line.starts_with('#')
-        })
-        .map(|line| {
-            let (provider_id, rest) = line.split_once(':').with_context(|| {
-                format!("bash_models entry {line:?}: expected provider:kind=slot")
-            })?;
-            Ok((provider_id.to_string(), rest.to_string()))
-        })
-        .collect::<Result<Vec<(String, String)>>>()?;
+    let path = env.providers_path.clone();
+    use std::os::unix::fs::MetadataExt;
+    let current_mode = std::fs::metadata(&path)
+        .with_context(|| format!("stat provider TOML {path:?}"))?
+        .mode();
+    let raw = tokio::fs::read_to_string(&path)
+        .await
+        .with_context(|| format!("provider TOML {path:?} is unreadable"))?;
+    let mut file: ProvidersFile =
+        parse_providers_toml(&raw).map_err(|error| anyhow!("provider TOML parse failed: {error}"))?;
     for operation in &input.operations {
-        let kind = operation.kind.as_str();
-        match kind {
-            "key" | "oauth" => {
-                let slot = operation.slot.as_deref().map(str::trim).with_context(|| {
-                    format!(
-                        "credential op {}: kind {kind} needs a slot",
-                        operation.provider_id
-                    )
-                })?;
-                anyhow::ensure!(
+        let provider = file
+            .providers
+            .iter_mut()
+            .find(|provider| provider.id == operation.provider_id)
+            .with_context(|| format!("credential op {}: not in the provider list", operation.provider_id))?;
+        match operation.kind.as_str() {
+            "key" => {
+                if let Some(slot) = operation.slot.as_deref().map(str::trim).filter(|slot| !slot.is_empty()) {
+                    ensure!(
+                        provider.key_env.as_deref() == Some(slot),
+                        "credential op {}: keyed slot is the entry's key_env ({}), not a free argument",
+                        operation.provider_id,
+                        provider.key_env.as_deref().unwrap_or_default()
+                    );
+                }
+                ensure!(
+                    provider.key_env.as_ref().is_some_and(|slot| !slot.trim().is_empty()),
+                    "credential op {}: provider has no key_env slot to gate on",
+                    operation.provider_id
+                );
+                provider.credential = Some("key".to_string());
+                provider.credential_slot = None;
+            }
+            "oauth" => {
+                let slot = operation
+                    .slot
+                    .as_deref()
+                    .map(str::trim)
+                    .with_context(|| {
+                        format!("credential op {}: oauth needs credential_slot", operation.provider_id)
+                    })?;
+                ensure!(
                     !slot.is_empty()
                         && slot.len() <= 128
                         && !slot.chars().any(|c| c.is_whitespace() || c.is_control())
                         && !slot.contains('#'),
-                    "credential op {}: slot must be a compact non-empty reference",
+                    "credential op {}: oauth slot must be a compact non-empty reference",
                     operation.provider_id
                 );
-                lines.retain(|(provider_id, _)| provider_id != &operation.provider_id);
-                lines.push((operation.provider_id.clone(), format!("{kind}={slot}")));
+                provider.credential = Some("oauth".to_string());
+                provider.credential_slot = Some(slot.to_string());
             }
             "off" => {
-                anyhow::ensure!(
+                ensure!(
                     operation.slot.is_none(),
-                    "credential op {}: off entries carry no slot",
+                    "credential op {}: off retains the provider's reference and carries no slot",
                     operation.provider_id
                 );
-                lines.retain(|(provider_id, _)| provider_id != &operation.provider_id);
-                lines.push((operation.provider_id.clone(), "off".to_string()));
+                provider.credential = Some("off".to_string());
+                provider.credential_slot = None;
             }
             "remove" => {
-                anyhow::ensure!(
+                ensure!(
                     operation.slot.is_none(),
-                    "credential op {}: remove entries carry no slot",
+                    "credential op {}: remove carries no slot",
                     operation.provider_id
                 );
-                lines.retain(|(provider_id, _)| provider_id != &operation.provider_id);
+                provider.credential = None;
+                provider.credential_slot = None;
             }
-            other => anyhow::bail!(
-                "credential op {}: unknown kind {other:?}",
-                operation.provider_id
-            ),
+            other => {
+                anyhow::bail!("credential op {}: unknown kind {other:?}", operation.provider_id)
+            }
         }
-        anyhow::ensure!(
-            valid_provider_id(&operation.provider_id),
-            "credential op: invalid provider id {}",
-            operation.provider_id
-        );
     }
-    let mut body = String::from(
-        "# Credential gate: provider:kind=slot (slots are references, never values)\n",
-    );
-    for (provider_id, rest) in &lines {
-        body.push_str(&format!("{provider_id}:{rest}\n"));
-    }
-    // Atomic replace preserving 0600; the gate parser re-validates on the
-    // next read, so a malformed write cannot take effect silently.
-    let parent = std::path::Path::new(&path)
+    crate::model_providers_validation::validate_providers_config(&file.providers)
+        .context("credential op produced an invalid provider list")?;
+    let recomposed =
+        toml::to_string_pretty(&file).context("provider TOML serialization failed")?;
+    // Atomic replace inside the same directory; concurrent readers re-parse
+    // the same canonical path, so a failed rename never half-applies.
+    let parent = path
         .parent()
-        .with_context(|| format!("bash_models gate path {path} has no parent"))?;
+        .with_context(|| format!("provider TOML {path:?} has no parent"))?
+        .to_path_buf();
     let temp = parent.join(format!(
-        ".bash_models.tmp-{}",
+        ".model-providers.tmp-{}",
         uuid::Uuid::new_v4().simple()
     ));
-    tokio::fs::write(&temp, body.as_bytes())
+    tokio::fs::write(&temp, recomposed.as_bytes())
         .await
-        .with_context(|| format!("bash_models gate temp write {temp:?} failed"))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o600))
-            .with_context(|| format!("bash_models gate temp chmod {temp:?} failed"))?;
-    }
+        .with_context(|| format!("provider TOML temp write {temp:?} failed"))?;
+    std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(current_mode & 0o777))
+        .with_context(|| format!("provider TOML temp chmod {temp:?} failed"))?;
     tokio::fs::rename(&temp, &path)
         .await
-        .with_context(|| format!("bash_models gate atomic replace {path} failed"))?;
-    // Authoritative readback: the file must parse exactly as intended.
-    let verify = load_bash_models_gate()?.with_context(|| "bash_models gate readback missing")?;
+        .with_context(|| format!("provider TOML atomic replace {path:?} failed"))?;
+    // Authoritative readback: the complete file must re-parse, re-validate,
+    // and every operation's resulting gate state must match exactly.
+    let verify_raw = tokio::fs::read_to_string(&path)
+        .await
+        .with_context(|| format!("provider TOML readback {path:?} failed"))?;
+    let verify: ProvidersFile = parse_providers_toml(&verify_raw)
+        .map_err(|error| anyhow!("provider TOML readback parse failed: {error}"))?;
+    crate::model_providers_validation::validate_providers_config(&verify.providers)
+        .context("provider TOML readback failed validation")?;
     for operation in &input.operations {
-        let off = matches!(operation.kind.as_str(), "off" | "remove");
-        anyhow::ensure!(
-            off == verify.off(&operation.provider_id),
-            "credential op {} readback diverged (expected off={off})",
-            operation.provider_id
-        );
+        let declared = verify
+            .providers
+            .iter()
+            .find(|provider| provider.id == operation.provider_id)
+            .with_context(|| format!("credential op {}: readback lost the provider", operation.provider_id))?;
+        match operation.kind.as_str() {
+            "key" => ensure!(
+                declared.credential.as_deref() == Some("key") && declared.credential_slot.is_none(),
+                "credential op {} readback diverged (expected credential=key)",
+                operation.provider_id
+            ),
+            "oauth" => ensure!(
+                declared.credential.as_deref() == Some("oauth")
+                    && declared.credential_slot.as_deref() == operation.slot.as_deref(),
+                "credential op {} readback diverged (expected credential=oauth with its slot)",
+                operation.provider_id
+            ),
+            "off" => ensure!(
+                declared.credential.as_deref() == Some("off") && declared.credential_slot.is_none(),
+                "credential op {} readback diverged (expected credential=off)",
+                operation.provider_id
+            ),
+            "remove" => ensure!(
+                declared.credential.is_none() && declared.credential_slot.is_none(),
+                "credential op {} readback diverged (expected credential columns gone)",
+                operation.provider_id
+            ),
+            other => bail!("credential op {}: unknown kind {other:?}", operation.provider_id),
+        }
     }
     Ok(MaintainCredentialsOutput {
         applied: input.operations,

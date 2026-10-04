@@ -13,23 +13,30 @@
 # unavailable. OpenCode and OpenRouter change their lists often, which is why
 # this is refreshed rather than written down.
 #
-# Fields: provider_id (stable Cozo key: lowercase, digits, _), name, models_url (https), format
+# Fields: id (lowercase, digits, _), name, models_url (https), format
 # ("openai" or "anthropic" response shape), auth ("none", "bearer" or
 # "x_api_key"), key_file (root-owned 0400/0600 file directly under
 # /etc/op-dbus/secrets/, required unless auth = "none"), key_env (the
 # ~/.bash_secrets variable it is installed from), enabled (default true), and
 # control_plane: the tched-router profile (family.alias) that serves this
 # provider's models for the Control Plane, plus any alternative profiles the
-# provider offers (another wire format on the same provider).
-# native_provider_id is the exact ordinary-selection family.alias, separate
-# from provider_id. native_profile_overrides maps a recorded alternative
-# control_plane profile to its explicitly provisioned ordinary counterpart.
-# inference_url_prefix pins the provider/platform API namespace. Route checks
-# compare the full HTTPS origin and path boundary; Go must never match Zen.
-# Unmapped alternatives have no native selection binding; no alias is guessed.
-# Profiles must be provisioned and verified against the intended provider
-# endpoint before use. This file alone does not provision the native router.
-# A key is only ever sent to its own provider.
+# provider offers (another wire format on the same provider). Every
+# control-plane profile is provisioned by deploy/runit/tched-router/run from
+# the same key file; a test keeps the two in step. A key is only ever sent to
+# its own provider.
+#
+# Credential gate (moved out of the retired ~/.bash_models flag file; TOML
+# syntax, one file). Each entry may declare `credential = "key" | "oauth" |
+# "off"` and, for oauth only, `credential_slot`. Slots are references, never
+# credential values: a keyed entry's slot is its key_env (or its key_file
+# when the key is installed directly, like opencode_go); an oauth entry's
+# slot is the native auth profile id (`family:profile`); an `off` entry
+# retains its key_env for the later re-enable. When `credential` is absent
+# the plain `enabled` flag governs (migration-safe). An `off` entry is hidden
+# and never refreshed; an `oauth` entry runs no keyed discovery (its rows
+# come from the native profile inventory, not the API key). Unknown class
+# text or a broken slot pairing fails the whole parse. The LLM maintains
+# these columns through model_registry.maintain_credentials.
 #
 # This file lists providers only. Models change constantly and are never
 # written here: the catalog holds them, and the control-plane LLM records per
@@ -38,122 +45,126 @@
 
 # OpenCode Go. Its key is not in ~/.bash_secrets; it is installed directly as
 # /etc/op-dbus/secrets/opencode-api-key (the router already requires it).
+# Slot = key_file.
 [[providers]]
-provider_id = "opencode_go"
-native_provider_id = "opencode.go_dashboard"
-inference_url_prefix = "https://opencode.ai/zen/go"
+id = "opencode_go"
 name = "OpenCode Go"
 models_url = "https://opencode.ai/zen/go/v1/models"
 format = "openai"
 auth = "bearer"
 key_file = "/etc/op-dbus/secrets/opencode-api-key"
+credential = "key"
 control_plane = { profile = "opencode.go_control_plane", alternatives = [
   "anthropic.go_control_plane_messages",
   "opencode.go_control_plane_responses",
 ] }
 
 [[providers]]
-provider_id = "openrouter"
-inference_url_prefix = "https://openrouter.ai/api/v1"
+id = "openrouter"
 name = "OpenRouter"
 models_url = "https://openrouter.ai/api/v1/models"
 format = "openai"
 auth = "bearer"
 key_file = "/etc/op-dbus/secrets/openrouter-api-key"
 key_env = "OPENROUTER_API_KEY"
+credential = "key"
 control_plane = { profile = "openrouter.control_plane" }
 
 [[providers]]
-provider_id = "cheaper_inference"
-native_provider_id = "custom.cheaper_inference"
-inference_url_prefix = "https://api.cheaperinference.com/v1"
+id = "cheaper_inference"
 name = "Cheaper Inference"
 models_url = "https://api.cheaperinference.com/v1/models"
 format = "openai"
 auth = "bearer"
 key_file = "/etc/op-dbus/secrets/cheaper-inference-api-key"
-key_env = "CHEAPERINFERENE_API_KEY"
+key_env = "CHEAPER_INFERENCE_API_KEY"
+credential = "key"
 control_plane = { profile = "custom.cheaper_inference_control_plane" }
 
+# OpenAI is served by the OpenAI Codex subscription OAuth profile (the keyed
+# stopgap from 2026-10-04 is retired with the gate; the api-key reference is
+# retained unused).
 [[providers]]
-provider_id = "openai"
-inference_url_prefix = "https://api.openai.com/v1"
+id = "openai"
 name = "OpenAI"
 models_url = "https://api.openai.com/v1/models"
 format = "openai"
 auth = "bearer"
 key_file = "/etc/op-dbus/secrets/openai-api-key"
 key_env = "OPENAI_API_KEY"
+credential = "oauth"
+credential_slot = "openai-codex:default"
 control_plane = { profile = "openai.control_plane" }
 
 # SpaceXAI (the xAI API). On 2026-09-29 the key was accepted but the team had
 # no credits left (HTTP 403); the provider shows as failing until billing is
-# restored.
+# restored. Gate: explicitly off, reference retained.
 [[providers]]
-provider_id = "xai"
-inference_url_prefix = "https://api.x.ai/v1"
+id = "xai"
 name = "SpaceXAI"
 models_url = "https://api.x.ai/v1/models"
 format = "openai"
 auth = "bearer"
 key_file = "/etc/op-dbus/secrets/xai-api-key"
 key_env = "XAI_API_KEY"
+credential = "off"
 control_plane = { profile = "xai.control_plane" }
 
 # Anthropic's own model list. The menu reads whatever the hourly refresh
-# writes for this provider; no model ids live here.
+# writes for this provider; no model ids live here. Gate: explicitly off per
+# the owner's bash_models state, reference retained.
 [[providers]]
-provider_id = "anthropic"
-inference_url_prefix = "https://api.anthropic.com"
+id = "anthropic"
 name = "Anthropic"
 models_url = "https://api.anthropic.com/v1/models"
 format = "anthropic"
 auth = "x_api_key"
 key_file = "/etc/op-dbus/secrets/anthropic-api-key"
 key_env = "ANTHROPIC_API_KEY"
+credential = "off"
 
 # Salad AI. OpenAI-compatible list at the same host the router already uses.
 [[providers]]
-provider_id = "salad"
-inference_url_prefix = "https://ai.salad.cloud/v1"
+id = "salad"
 name = "Salad AI"
 models_url = "https://ai.salad.cloud/v1/models"
 format = "openai"
 auth = "bearer"
 key_file = "/etc/op-dbus/secrets/salad-api-key"
 key_env = "SALAD_API_KEY"
+credential = "key"
 
 # Hugging Face Inference Providers (OpenAI-compatible router).
 [[providers]]
-provider_id = "huggingface"
-inference_url_prefix = "https://router.huggingface.co/v1"
+id = "huggingface"
 name = "Hugging Face"
 models_url = "https://router.huggingface.co/v1/models"
 format = "openai"
 auth = "bearer"
 key_file = "/etc/op-dbus/secrets/huggingface-api-key"
 key_env = "HF_TOKEN"
+credential = "key"
 control_plane = { profile = "custom.huggingface_control_plane" }
 
 # Ollama Cloud (OpenAI-compatible API at ollama.com).
 [[providers]]
-provider_id = "ollama"
-inference_url_prefix = "https://ollama.com/v1"
+id = "ollama"
 name = "Ollama Cloud"
 models_url = "https://ollama.com/v1/models"
 format = "openai"
 auth = "bearer"
 key_file = "/etc/op-dbus/secrets/ollama-api-key"
 key_env = "OLLAMA_API_KEY"
+credential = "key"
 control_plane = { profile = "custom.ollama_control_plane" }
 
 # Voyage AI. Embedding and rerank models. The key file is already installed.
 [[providers]]
-provider_id = "voyageai"
-inference_url_prefix = "https://api.voyageai.com/v1"
+id = "voyageai"
 name = "Voyage AI"
 models_url = "https://api.voyageai.com/v1/models"
 format = "openai"
 auth = "bearer"
 key_file = "/etc/op-dbus/secrets/voyage-api-key"
 key_env = "VOYAGE_API_KEY"
+credential = "key"

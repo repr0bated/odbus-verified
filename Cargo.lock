@@ -4552,6 +4552,7 @@ dependencies = [
  "tokio-stream",
  "tokio-test",
  "tokio-tungstenite",
+ "toml",
  "tonic",
  "tonic-build 0.12.3",
  "tonic-health",
