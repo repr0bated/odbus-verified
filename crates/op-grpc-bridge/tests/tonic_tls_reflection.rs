@@ -252,9 +252,7 @@ async fn advertised_plugin_route_is_mounted_over_tls() {
     let channel = tls_channel(addr, &ca_pem).await;
     let mut client = op_grpc_bridge::proto::plugin_methods::tched_router_plugin_methods_client::TchedRouterPluginMethodsClient::new(channel);
     let status = client
-        .get_agents_config(
-            op_grpc_bridge::proto::plugin_methods::TchedRouterGetAgentsConfigRequest::default(),
-        )
+        .get_config(op_grpc_bridge::proto::plugin_methods::TchedRouterGetConfigRequest::default())
         .await
         .expect_err("missing identity must fail at the mounted route's auth gate");
     assert_eq!(status.code(), tonic::Code::Unauthenticated);

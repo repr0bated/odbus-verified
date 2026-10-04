@@ -1286,11 +1286,9 @@ impl TchedRouterRuntimeClient {
         let mut profiles = Vec::new();
         for provider in configured {
             let reference = provider.reference.clone();
-            let (family, alias) = reference
-                .split_once('.')
-                .with_context(|| {
-                    format!("native provider inventory reference {reference} is invalid")
-                })?;
+            let (family, alias) = reference.split_once('.').with_context(|| {
+                format!("native provider inventory reference {reference} is invalid")
+            })?;
             let (family, alias) = (family.to_string(), alias.to_string());
             let native_profile = config
                 .get("providers")
@@ -1308,13 +1306,15 @@ impl TchedRouterRuntimeClient {
                     .and_then(|agent| agent.get("model_provider"))
                     .and_then(Value::as_str)
                     .is_none();
-            profiles.push(op_plugins::state_plugins::model_registry::NativeProviderProfile {
-                reference: provider.reference,
-                family,
-                model: provider.selected_model,
-                oauth,
-                selectable,
-            });
+            profiles.push(
+                op_plugins::state_plugins::model_registry::NativeProviderProfile {
+                    reference: provider.reference,
+                    family,
+                    model: provider.selected_model,
+                    oauth,
+                    selectable,
+                },
+            );
         }
         Ok(profiles)
     }

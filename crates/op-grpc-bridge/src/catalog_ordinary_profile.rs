@@ -4,7 +4,7 @@
 use anyhow::{Context, Result, ensure};
 use op_plugins::state_plugins::model_registry::{ModelListFormat, ProviderConfig};
 use op_plugins::state_plugins::tched_router::{ConfigPatchInput, ConfigPatchOperation};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::model_registry_dispatch::{Environment, read_provider_key};
 use crate::tched_router_runtime::{ConfigSecretPolicy, TchedRouterRuntimeClient};
@@ -138,7 +138,10 @@ pub(crate) async fn ensure_ordinary_profile(
             .with_context(|| format!("provision subscription-native profile {reference}"))?;
         return Ok(());
     }
-    let api_key = read_provider_key(env, key_file.expect("keyed provisioning requires a key_file"))?;
+    let api_key = read_provider_key(
+        env,
+        key_file.expect("keyed provisioning requires a key_file"),
+    )?;
     let patch = ConfigPatchInput {
         operations: vec![
             ConfigPatchOperation::Add {

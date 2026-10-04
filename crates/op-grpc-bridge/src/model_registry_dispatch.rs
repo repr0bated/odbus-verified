@@ -24,12 +24,12 @@ use futures::StreamExt;
 use op_cozo_store::{CozoError, CozoGraphShuttle, RegistryModel, RegistryModelRecord};
 use op_plugins::state_plugins::model_registry::{
     DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput, ListProvidersInput,
-    ListProvidersOutput, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES,
-    MAX_PROVIDERS_FILE_BYTES, MaintainCredentialsInput, MaintainCredentialsOutput,
-    ModelListFormat, ModelRecord, ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh,
-    ProviderStatus, ProvidersFile, RefreshInput, RefreshOutput, SECRETS_DIR, SetModelProfileInput,
-    SetModelProfileOutput, bounded_error, page_limit, parse_models_response, parse_providers_toml,
-    valid_model_id, valid_provider_id, validate_list_models, validate_set_model_profile,
+    ListProvidersOutput, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES,
+    MaintainCredentialsInput, MaintainCredentialsOutput, ModelListFormat, ModelRecord,
+    ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh, ProviderStatus, ProvidersFile,
+    RefreshInput, RefreshOutput, SECRETS_DIR, SetModelProfileInput, SetModelProfileOutput,
+    bounded_error, page_limit, parse_models_response, parse_providers_toml, valid_model_id,
+    valid_provider_id, validate_list_models, validate_set_model_profile,
 };
 use op_state_store::PluginSchema;
 use serde_json::Value;
@@ -324,7 +324,7 @@ fn load_bash_models_gate() -> Result<Option<BashModelsGate>> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => {
             return Err(anyhow::Error::from(error)
-                .context(format!("bash_models gate file {path} is unreadable")))
+                .context(format!("bash_models gate file {path} is unreadable")));
         }
     };
     let mut kinds = std::collections::BTreeMap::new();
@@ -377,13 +377,11 @@ pub(crate) async fn refresh(
     let _guard = REFRESH_LOCK.lock().await;
     let file = load_providers(env)?;
     let gate = load_bash_models_gate()?;
-    if let Some(gate) = gate.as_ref() {
-        if let Some(explicit) = &input.provider_id {
-            ensure!(
-                !gate.off(explicit),
-                "provider {explicit} is off in the bash_models gate"
-            );
-        }
+    if let (Some(gate), Some(explicit)) = (gate.as_ref(), &input.provider_id) {
+        ensure!(
+            !gate.off(explicit),
+            "provider {explicit} is off in the bash_models gate"
+        );
     }
     let targets: Vec<&ProviderConfig> = match &input.provider_id {
         Some(id) => {
@@ -400,9 +398,7 @@ pub(crate) async fn refresh(
             .providers
             .iter()
             .filter(|provider| provider.enabled)
-            .filter(|provider| {
-                gate.as_ref().is_none_or(|gate| !gate.off(&provider.id))
-            })
+            .filter(|provider| gate.as_ref().is_none_or(|gate| !gate.off(&provider.id)))
             .collect(),
     };
     let at = now();
@@ -835,7 +831,7 @@ async fn maintain_credentials(
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
         Err(error) => {
             return Err(anyhow::Error::from(error)
-                .context(format!("bash_models gate file {path} is unreadable")))
+                .context(format!("bash_models gate file {path} is unreadable")));
         }
     };
     // Parse the existing lines with the same strict grammar the gate uses.
@@ -845,12 +841,10 @@ async fn maintain_credentials(
             let line = line.trim();
             !line.is_empty() && !line.starts_with('#')
         })
-        .map(|line| line.to_string())
-        .into_iter()
         .map(|line| {
-            let (provider_id, rest) = line
-                .split_once(':')
-                .with_context(|| format!("bash_models entry {line:?}: expected provider:kind=slot"))?;
+            let (provider_id, rest) = line.split_once(':').with_context(|| {
+                format!("bash_models entry {line:?}: expected provider:kind=slot")
+            })?;
             Ok((provider_id.to_string(), rest.to_string()))
         })
         .collect::<Result<Vec<(String, String)>>>()?;
@@ -858,11 +852,12 @@ async fn maintain_credentials(
         let kind = operation.kind.as_str();
         match kind {
             "key" | "oauth" => {
-                let slot = operation
-                    .slot
-                    .as_deref()
-                    .map(str::trim)
-                    .with_context(|| format!("credential op {}: kind {kind} needs a slot", operation.provider_id))?;
+                let slot = operation.slot.as_deref().map(str::trim).with_context(|| {
+                    format!(
+                        "credential op {}: kind {kind} needs a slot",
+                        operation.provider_id
+                    )
+                })?;
                 anyhow::ensure!(
                     !slot.is_empty()
                         && slot.len() <= 128
@@ -891,7 +886,10 @@ async fn maintain_credentials(
                 );
                 lines.retain(|(provider_id, _)| provider_id != &operation.provider_id);
             }
-            other => anyhow::bail!("credential op {}: unknown kind {other:?}", operation.provider_id),
+            other => anyhow::bail!(
+                "credential op {}: unknown kind {other:?}",
+                operation.provider_id
+            ),
         }
         anyhow::ensure!(
             valid_provider_id(&operation.provider_id),
@@ -899,7 +897,9 @@ async fn maintain_credentials(
             operation.provider_id
         );
     }
-    let mut body = String::from("# Credential gate: provider:kind=slot (slots are references, never values)\n");
+    let mut body = String::from(
+        "# Credential gate: provider:kind=slot (slots are references, never values)\n",
+    );
     for (provider_id, rest) in &lines {
         body.push_str(&format!("{provider_id}:{rest}\n"));
     }
@@ -974,9 +974,9 @@ pub(crate) async fn dispatch(
             )?;
             let secrets = crate::tched_config_engine::pinned_config_secrets(&pinned)?;
             let providers = runtime.native_providers_inventory(&secrets).await?;
-            serde_json::to_value(op_plugins::state_plugins::model_registry::NativeListProvidersOutput {
-                providers,
-            })?
+            serde_json::to_value(
+                op_plugins::state_plugins::model_registry::NativeListProvidersOutput { providers },
+            )?
         }
         "maintain_credentials" => {
             serde_json::to_value(maintain_credentials(&env, args(arguments)?).await?)?

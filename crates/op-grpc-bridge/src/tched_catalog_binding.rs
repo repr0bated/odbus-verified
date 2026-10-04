@@ -18,6 +18,7 @@ pub(crate) struct BindingTarget {
     pub excluded_references: BTreeSet<String>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ProfileCandidate {
     pub reference: String,
     pub uri: String,
@@ -220,7 +221,7 @@ mod tests {
         );
         // Without the oauth declaration the same empty endpoint still fails
         // closed (an unexplained endpoint is never trusted).
-        let mut keyed = oauth;
+        let mut keyed = oauth.clone();
         keyed.oauth = false;
         assert!(select(&target(), &[keyed]).is_err());
         // OAuth does not relax liveness or exact-model requirements.

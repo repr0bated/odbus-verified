@@ -119,7 +119,7 @@ mod state_tree_fold;
 mod system_graph_dispatch;
 mod system_graph_projection;
 mod tched_catalog_binding;
-mod tched_config_dispatch;
+pub mod tched_config_dispatch;
 mod tched_config_engine;
 mod tched_config_secret_policy;
 mod tched_own_agent_route;

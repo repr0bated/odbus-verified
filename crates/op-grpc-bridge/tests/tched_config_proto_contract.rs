@@ -191,20 +191,15 @@ fn assert_message_preserved(descriptor: &MessageDescriptor, expected: &Value, ac
 #[test]
 fn native_config_outputs_survive_generated_and_sealed_descriptors() {
     let contracts = contracts();
-    for method in std::iter::once("GetConfig").chain(
-        op_plugins::state_plugins::tched_router_config_surface::SECTIONS
-            .iter()
-            .map(|(method, _, _)| *method),
-    ) {
+    // The generated per-section getters retired; the authored typed config
+    // methods remain, and their descriptors must still compile sealed.
+    for method in ["GetConfig", "PatchConfig"] {
         let output = contracts.output_schema(method);
         assert_local_refs_resolve(&output, &output);
         jsonschema::Validator::new(&output).expect("sealed method output compiles");
     }
 
     let gateway = json!({"port":0,"allow_public_bind":false,"path_prefix":null,"tls":null});
-    let agents = json!({"fixture-agent":{"enabled":false,"cron_jobs":["fixture-job"],
-        "identity":{"format":"aieos","aieos_inline":null,"aieos_path":null}}});
-    let routes = json!([{"hint":"semantic","model_provider":"openai.fixture", "model":"fixture-model", "dimensions":0,"api_key":null}]);
     for (method, native_name, value) in [
         (
             "GetConfig",
@@ -214,22 +209,7 @@ fn native_config_outputs_survive_generated_and_sealed_descriptors() {
         (
             "GetConfig",
             "TchedRouterGetConfigResponse",
-            json!({"config":{"gateway":gateway.clone(),"agents":agents.clone(),"embedding_routes":routes.clone()}}),
-        ),
-        (
-            "GetGatewayConfig",
-            "TchedRouterGetGatewayConfigResponse",
-            json!({"config":gateway}),
-        ),
-        (
-            "GetAgentsConfig",
-            "TchedRouterGetAgentsConfigResponse",
-            json!({"config":agents}),
-        ),
-        (
-            "GetEmbeddingRoutesConfig",
-            "TchedRouterGetEmbeddingRoutesConfigResponse",
-            json!({"config":routes}),
+            json!({"config":{"gateway":gateway.clone()}}),
         ),
     ] {
         let contract = contracts.output_schema(method);
@@ -242,12 +222,21 @@ fn native_config_outputs_survive_generated_and_sealed_descriptors() {
         }
     }
 
-    // Shape-preserving protobuf transport cannot replace the declared native
-    // uint16 constraint. Validate against the same resolved wrapper afterward.
-    let output = contracts.output_schema("GetGatewayConfig");
-    let invalid = json!({"config":{"port":65536}});
-    for descriptor in contracts.outputs("GetGatewayConfig", "TchedRouterGetGatewayConfigResponse") {
-        assert!(jsonschema::validate(&output, &roundtrip(&descriptor, &invalid)).is_err());
+    // The typed GetConfig receipt carries `config` as an untyped Value; the
+    // uint16 constraint rides the sealed `native_config` field's exact
+    // imported contract, so the invalid port is rejected by that field
+    // schema, not by the receipt.
+    let output = contracts.output_schema("GetConfig");
+    let invalid = json!({"config":{"gateway":{"port":65536}}});
+    let native_field_schema =
+        serde_json::to_value(contracts.schema.fields["native_config"].field_type.clone()).unwrap()
+            ["json_schema"]
+            .clone();
+    for descriptor in contracts.outputs("GetConfig", "TchedRouterGetConfigResponse") {
+        let actual = roundtrip(&descriptor, &invalid);
+        jsonschema::validate(&output, &actual).expect("receipt shape survives transport");
+        jsonschema::validate(&native_field_schema, &actual["config"])
+            .expect_err("the sealed native_config field schema still rejects an out-of-range port");
     }
 }
 

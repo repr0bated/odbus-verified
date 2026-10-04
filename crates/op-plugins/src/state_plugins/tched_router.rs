@@ -685,6 +685,25 @@ pub struct ConfigPatchInput {
     pub operations: Vec<ConfigPatchOperation>,
 }
 
+/// Output for `GetMcpConfig` — the current `mcp` configuration, observed
+/// live from the pinned runtime. Secrets masked by dispatch; the schema
+/// rides the sealed `native_config` field, not this receipt.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetMcpConfigOutput {
+    /// Current `mcp` configuration.
+    pub config: JsonValue,
+}
+
+/// Output for `GetConfig` — the full configuration, observed live from the
+/// pinned runtime and committed under the exact seal. Secrets are masked by
+/// dispatch; the config's schema rides the sealed `native_config` field, not
+/// this receipt.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetConfigOutput {
+    /// Full configuration.
+    pub config: JsonValue,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigPatchOutput {
@@ -2045,13 +2064,66 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
         );
     }
 
-    // Complete config surface — generated from the upstream `zeroclaw` crate's
-    // real types, the single source of truth for configuration.
-    super::tched_router_config_surface::register_config_methods(&mut schema);
+    // Complete typed config surface, authored like every other plugin.
+    // The former 87 generated per-section getters (and their import bin)
+    // are retired; the two load-bearing operations remain, addressed by
+    // the same capability ids the grant table carries.
+    schema.methods.insert(
+        "GetConfig".to_string(),
+        method_decl_from_schemars_with_output::<EmptyTchedInput, GetConfigOutput>(
+            "GetConfig",
+            SideEffect::Read,
+            true,
+            "cap.software.3tched-router.config.read@v1",
+            "obs.service.3tched-router.config.get@v1",
+        ),
+    );
+    schema.capabilities.insert(
+        "cap.software.3tched-router.config.read@v1".to_string(),
+        CapabilityDecl {
+            id: "cap.software.3tched-router.config.read@v1".to_string(),
+            description: "Read the full 3tched Router configuration (secrets masked).".to_string(),
+        },
+    );
+    schema.methods.insert(
+        "PatchConfig".to_string(),
+        method_decl_from_schemars_with_output::<ConfigPatchInput, ConfigPatchOutput>(
+            "PatchConfig",
+            SideEffect::Mutation,
+            false,
+            "cap.software.3tched-router.config.write@v1",
+            "mut.service.3tched-router.config.patch@v2",
+        ),
+    );
+    schema.capabilities.insert(
+        "cap.software.3tched-router.config.write@v1".to_string(),
+        CapabilityDecl {
+            id: "cap.software.3tched-router.config.write@v1".to_string(),
+            description: "Apply bounded typed 3tched Router configuration property operations."
+                .to_string(),
+        },
+    );
 
     register_cli_config_methods(&mut schema);
     generation::declare_methods(&mut schema);
 
+    schema.methods.insert(
+        "GetMcpConfig".to_string(),
+        method_decl_from_schemars_with_output::<EmptyTchedInput, GetMcpConfigOutput>(
+            "GetMcpConfig",
+            SideEffect::Read,
+            true,
+            "cap.software.3tched-router.mcp-config.read@v1",
+            "obs.service.3tched-router.mcp-config.get@v1",
+        ),
+    );
+    schema.capabilities.insert(
+        "cap.software.3tched-router.mcp-config.read@v1".to_string(),
+        CapabilityDecl {
+            id: "cap.software.3tched-router.mcp-config.read@v1".to_string(),
+            description: "Read the 3tched Router `mcp` configuration (secrets masked).".to_string(),
+        },
+    );
     // Generic property writes are aliases for these real native operations.
     // Their existing method capabilities still apply to the original caller.
     for (property, method, argument) in [
@@ -2080,6 +2152,10 @@ fn tched_router_schema_from_state(state: TchedRouterState) -> PluginSchema {
 
     schema
 }
+
+/// Typed config methods authored by this plugin (the generated per-section
+/// getters retired); the bridge routes these by the same names.
+pub(crate) const NATIVE_CONFIG_METHODS: &[&str] = &["GetConfig", "PatchConfig"];
 
 fn register_cli_config_methods(schema: &mut PluginSchema) {
     schema.methods.insert(
@@ -2370,8 +2446,7 @@ pub fn dispatch_tched_router_method(
         "SetQdrantRetrievalModel" => set_role_model_handler(json_args, state, "qdrant_retrieval"),
         "SetCozoRetrievalModel" => set_role_model_handler(json_args, state, "cozo_retrieval"),
         other => {
-            let native_method = super::tched_router_config_surface::config_method_backing(other)
-                .is_some()
+            let native_method = NATIVE_CONFIG_METHODS.contains(&other)
                 || generation::is_method(other)
                 || matches!(
                     other,
@@ -2845,7 +2920,7 @@ mod tests {
                 // which owns provider credentials and the event chain.
                 continue;
             }
-            if super::super::tched_router_config_surface::CONFIG_METHODS.contains(&method.as_str())
+            if super::NATIVE_CONFIG_METHODS.contains(&method.as_str())
                 || matches!(
                     method.as_str(),
                     "config_list"
@@ -2943,7 +3018,6 @@ mod official_schema_tests {
     //! Guard against truncated upstream imports and missing generated method fields.
 
     use super::tched_router_binary_version;
-    use crate::state_plugins::tched_router_config_surface::GetGatewayConfigOutput;
 
     #[test]
     fn imported_contract_is_not_a_stub() {
@@ -2989,21 +3063,6 @@ mod official_schema_tests {
                 .and_then(|t| t.as_str()),
             Some("boolean")
         );
-    }
-
-    #[test]
-    fn sealed_method_schema_carries_real_section_fields() {
-        // With a stubbed source this passed while the payload was `{}`.
-        let schema = schemars::schema_for!(GetGatewayConfigOutput);
-        let text = serde_json::to_value(&schema)
-            .expect("schema serializes")
-            .to_string();
-        for field in ["port", "host", "require_pairing", "session_ttl_hours"] {
-            assert!(
-                text.contains(field),
-                "GetGatewayConfigOutput payload is missing `{field}` — generated from a stub?"
-            );
-        }
     }
 
     #[test]

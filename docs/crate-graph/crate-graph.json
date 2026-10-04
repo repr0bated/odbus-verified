@@ -33,14 +33,6 @@
       }
     },
     {
-      "id": "bin:gen_tched_router_config_surface",
-      "label": "bin",
-      "props": {
-        "crate": "op-plugins",
-        "src": "crates/op-plugins/src/bin/gen_tched_router_config_surface.rs"
-      }
-    },
-    {
       "id": "bin:get-migration-preflight",
       "label": "bin",
       "props": {
@@ -621,7 +613,7 @@
         ],
         "has_lib": true,
         "rs_files": 179,
-        "loc": 109637,
+        "loc": 109619,
         "tests": 844,
         "unsafe_refs": 210,
         "todo": 177,
@@ -805,17 +797,16 @@
         "path": "crates/op-plugins",
         "description": "Plugin system with state management, domain plugins, and snowball footprints",
         "bins": [
-          "gen_tched_router_config_surface",
           "op-mail-admin",
           "opblob"
         ],
         "has_lib": true,
-        "rs_files": 152,
-        "loc": 121509,
-        "tests": 572,
+        "rs_files": 150,
+        "loc": 118008,
+        "tests": 569,
         "unsafe_refs": 17,
         "todo": 1,
-        "unwrap_expect": 1346
+        "unwrap_expect": 1331
       }
     },
     {
@@ -2054,8 +2045,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-04T13:01:42Z",
-        "commit": "67f241e192851e1df11c4a9fbc07d2a19f0e7fca",
+        "generated_at": "2026-10-04T16:58:43Z",
+        "commit": "e29c07ec6459ea5eb593c9a42cc0454a7b4db065",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -5238,7 +5229,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 171
+        "loc": 174
       }
     },
     {
@@ -6291,7 +6282,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 262
+        "loc": 263
       }
     },
     {
@@ -6300,7 +6291,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 104
+        "loc": 119
       }
     },
     {
@@ -6309,7 +6300,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 455
+        "loc": 443
       }
     },
     {
@@ -6642,7 +6633,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 321
+        "loc": 310
       }
     },
     {
@@ -6651,7 +6642,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 1621
+        "loc": 1609
       }
     },
     {
@@ -6669,7 +6660,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "test",
-        "loc": 437
+        "loc": 435
       }
     },
     {
@@ -7888,15 +7879,6 @@
       }
     },
     {
-      "id": "mod:crates/op-plugins/src/bin/gen_tched_router_config_surface.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-plugins",
-        "kind": "bin",
-        "loc": 378
-      }
-    },
-    {
       "id": "mod:crates/op-plugins/src/bin/op-mail-admin.rs",
       "label": "module",
       "props": {
@@ -8667,7 +8649,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 163
+        "loc": 162
       }
     },
     {
@@ -9018,16 +9000,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 3083
-      }
-    },
-    {
-      "id": "mod:crates/op-plugins/src/state_plugins/tched_router_config_surface.rs",
-      "label": "module",
-      "props": {
-        "crate": "op-plugins",
-        "kind": "src",
-        "loc": 3181
+        "loc": 3142
       }
     },
     {
@@ -11227,7 +11200,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/tched_router.rs",
-        "line": 2933,
+        "line": 3008,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/tched_router"
       }
@@ -11496,12 +11469,6 @@
       "src": "bin:gen-agent-defs",
       "rel": "bin_entry",
       "dst": "mod:crates/op-agents/src/bin/gen-agent-defs.rs",
-      "props": {}
-    },
-    {
-      "src": "bin:gen_tched_router_config_surface",
-      "rel": "bin_entry",
-      "dst": "mod:crates/op-plugins/src/bin/gen_tched_router_config_surface.rs",
       "props": {}
     },
     {
@@ -21791,12 +21758,6 @@
     {
       "src": "crate:op-plugins",
       "rel": "contains",
-      "dst": "mod:crates/op-plugins/src/bin/gen_tched_router_config_surface.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "contains",
       "dst": "mod:crates/op-plugins/src/bin/op-mail-admin.rs",
       "props": {}
     },
@@ -22547,12 +22508,6 @@
     {
       "src": "crate:op-plugins",
       "rel": "contains",
-      "dst": "mod:crates/op-plugins/src/state_plugins/tched_router_config_surface.rs",
-      "props": {}
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/tched_router_contract.rs",
       "props": {}
     },
@@ -22741,12 +22696,6 @@
       "props": {
         "optional": false
       }
-    },
-    {
-      "src": "crate:op-plugins",
-      "rel": "provides_bin",
-      "dst": "bin:gen_tched_router_config_surface",
-      "props": {}
     },
     {
       "src": "crate:op-plugins",
@@ -30135,7 +30084,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 2
+        "refs": 1
       }
     },
     {
@@ -30879,7 +30828,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 2
+        "refs": 1
       }
     },
     {
@@ -30935,7 +30884,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 16
+        "refs": 14
       }
     },
     {
@@ -31360,14 +31309,6 @@
       "dst": "crate:op-state-store",
       "props": {
         "refs": 4
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/bin/gen_tched_router_config_surface.rs",
-      "rel": "imports",
-      "dst": "crate:op-state-store",
-      "props": {
-        "refs": 2
       }
     },
     {
@@ -33264,14 +33205,6 @@
       "dst": "crate:op-state-store",
       "props": {
         "refs": 31
-      }
-    },
-    {
-      "src": "mod:crates/op-plugins/src/state_plugins/tched_router_config_surface.rs",
-      "rel": "imports",
-      "dst": "crate:op-state-store",
-      "props": {
-        "refs": 2
       }
     },
     {

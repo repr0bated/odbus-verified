@@ -145,7 +145,7 @@ fn model_token_slot(value: &str) -> Option<u64> {
 
 fn path_family(path: &str) -> Option<String> {
     let segments: Vec<&str> = path
-        .split(|c| c == '.' || c == '/')
+        .split(['.', '/'])
         .filter(|segment| !segment.is_empty())
         .collect();
     for position in 0..segments.len() {
@@ -220,9 +220,7 @@ async fn resolve_model_tokens(engine: &MutationEngine, args: &Value) -> anyhow::
         let (rows, _) = tched_blocking(move || {
             store
                 .list_model_registry_models(Some(&token_family))
-                .map_err(|error| {
-                    anyhow::anyhow!("model registry catalog read failed: {error}")
-                })
+                .map_err(|error| anyhow::anyhow!("model registry catalog read failed: {error}"))
         })
         .await?;
         anyhow::ensure!(
@@ -272,20 +270,22 @@ fn rewrite_model_tokens(
 ) -> anyhow::Result<Value> {
     match value {
         Value::Object(mut object) => {
-            if let Some(path) = object.get("path").and_then(Value::as_str).map(String::from) {
-                if let Some(family) = path_family(&path) {
-                    if let Some(Value::String(token)) = object.get("value") {
-                        if let Some(slot) = model_token_slot(token) {
-                            let concrete = resolved
-                                .get(&(family.clone(), slot))
-                                .with_context(|| {
-                                    format!("$MODEL.{slot} unresolved for provider {family}")
-                                })?;
-                            object.insert("value".into(), Value::String(concrete.clone()));
-                            return Ok(Value::Object(object));
-                        }
-                    }
-                }
+            if let Some((family, slot)) = object
+                .get("path")
+                .and_then(Value::as_str)
+                .and_then(path_family)
+                .zip(
+                    object
+                        .get("value")
+                        .and_then(Value::as_str)
+                        .and_then(model_token_slot),
+                )
+            {
+                let concrete = resolved
+                    .get(&(family.clone(), slot))
+                    .with_context(|| format!("$MODEL.{slot} unresolved for provider {family}"))?;
+                object.insert("value".into(), Value::String(concrete.clone()));
+                return Ok(Value::Object(object));
             }
             let rewritten: anyhow::Result<Vec<(String, Value)>> = object
                 .into_iter()
@@ -315,27 +315,15 @@ pub(crate) async fn dispatch(
     let admitted = &pinned.schema;
     let contract = load_contract(pinned)?;
 
-    if method == "GetConfigSchema" {
-        let output = json!({ "config_schema": contract.config_schema.clone() });
-        ensure_current_pin(&contract.schema_hash, &contract.schema_json).await?;
-        validate_output(admitted, method, &output)?;
-        return Ok(Some(output));
-    }
+    // `GetConfigSchema` retired with the generated layer: the config's
+    // schema authority is the sealed `native_config` field itself, served
+    // by the 3tchedFS mirror — not a receipt.
 
     let runtime = TchedRouterRuntimeClient::from_env().with_sealed_identity(Some(sealed_identity));
     match tched_config_dispatch::dispatch_config_read(&runtime, method, args, &contract.secrets)
         .await?
     {
         ConfigReadDispatch::Handled(output) => {
-            ensure_current_pin(&contract.schema_hash, &contract.schema_json).await?;
-            validate_output(admitted, method, &output)?;
-            return Ok(Some(output));
-        }
-        ConfigReadDispatch::CommittedField(field) => {
-            let output = engine
-                .read_tched_router_config_field(field, &contract.schema_hash)
-                .await?;
-            let output = json!({ "config": output });
             ensure_current_pin(&contract.schema_hash, &contract.schema_json).await?;
             validate_output(admitted, method, &output)?;
             return Ok(Some(output));

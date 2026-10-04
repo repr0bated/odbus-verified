@@ -1345,7 +1345,7 @@ native_provider_id = "custom.dashboard"
     #[test]
     fn schema_declares_its_methods_with_valid_subids() {
         let schema = model_registry_schema();
-        assert_eq!(schema.methods.len(), 4);
+        assert_eq!(schema.methods.len(), 6);
         for method in schema.methods.values() {
             validate_subid(&method.subid).unwrap();
         }

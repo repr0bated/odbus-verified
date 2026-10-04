@@ -91,7 +91,6 @@ pub mod snowball_methods;
 pub mod snowball_plugin;
 pub mod software;
 pub mod tched_router;
-pub mod tched_router_config_surface;
 pub mod tched_router_contract;
 pub mod tched_router_legacy_methods;
 pub mod unix_socket;
