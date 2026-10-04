@@ -1199,11 +1199,26 @@ impl TchedRouterRuntimeClient {
                             == Some(target.model_id.as_str()),
                 "catalog binding native profile changed during observation"
             );
-            let uri = native_profile
-                .get("uri")
-                .and_then(Value::as_str)
-                .context("catalog binding native endpoint is absent")?
-                .to_string();
+            let oauth = native_profile
+                .get("requires_openai_auth")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let uri = if oauth {
+                // Subscription profiles are observed (and located by the
+                // binding) without an HTTP endpoint; the codex auth store
+                // owns the origin.
+                native_profile
+                    .get("uri")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string()
+            } else {
+                native_profile
+                    .get("uri")
+                    .and_then(Value::as_str)
+                    .context("catalog binding native endpoint is absent")?
+                    .to_string()
+            };
             let catalog = self
                 .model_catalog(&profile.reference)
                 .await
@@ -1236,6 +1251,7 @@ impl TchedRouterRuntimeClient {
                 uri,
                 models,
                 live,
+                oauth,
             });
         }
         let after = self
@@ -1251,6 +1267,56 @@ impl TchedRouterRuntimeClient {
             native_config: after,
             binding,
         })
+    }
+
+    /// Native provider inventory for the dashboard lookup: every configured
+    /// `family.alias` profile with its served model, subscription (OAuth)
+    /// class, and door selectability. Values are observed live from the
+    /// runtime; credential values never appear.
+    pub(crate) async fn native_providers_inventory(
+        &self,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<Vec<op_plugins::state_plugins::model_registry::NativeProviderProfile>> {
+        let config = self.read_masked_config(secrets).await?;
+        let configured = self.configured_providers().await?;
+        let agents = config
+            .get("agents")
+            .and_then(Value::as_object)
+            .context("native provider inventory agent section is absent")?;
+        let mut profiles = Vec::new();
+        for provider in configured {
+            let reference = provider.reference.clone();
+            let (family, alias) = reference
+                .split_once('.')
+                .with_context(|| {
+                    format!("native provider inventory reference {reference} is invalid")
+                })?;
+            let (family, alias) = (family.to_string(), alias.to_string());
+            let native_profile = config
+                .get("providers")
+                .and_then(|p| p.get("models"))
+                .and_then(|m| m.get(family.as_str()))
+                .and_then(|f| f.get(alias.as_str()))
+                .context("native provider inventory profile is absent")?;
+            let oauth = native_profile
+                .get("requires_openai_auth")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let selectable = alias == DEFAULT_AGENT_ALIAS
+                || agents
+                    .get(alias.as_str())
+                    .and_then(|agent| agent.get("model_provider"))
+                    .and_then(Value::as_str)
+                    .is_none();
+            profiles.push(op_plugins::state_plugins::model_registry::NativeProviderProfile {
+                reference: provider.reference,
+                family,
+                model: provider.selected_model,
+                oauth,
+                selectable,
+            });
+        }
+        Ok(profiles)
     }
 
     fn opencode_only(&self) -> bool {

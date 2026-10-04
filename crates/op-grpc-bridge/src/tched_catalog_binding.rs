@@ -23,6 +23,12 @@ pub(crate) struct ProfileCandidate {
     pub uri: String,
     pub models: Vec<String>,
     pub live: bool,
+    /// `requires_openai_auth` profile: the native itself owns the credential
+    /// and the backend origin (subscription auth), so the provider entry's
+    /// HTTP `inference_url_prefix` is not the serve origin. Trust provenance
+    /// is the profile's own declaration observed from the pinned native
+    /// runtime, not an endpoint match against the provider file.
+    pub oauth: bool,
 }
 
 pub(crate) fn valid_reference(reference: &str) -> bool {
@@ -117,7 +123,11 @@ pub(crate) fn select(
         }
         if candidate.live
             && models.contains(&target.model_id)
-            && endpoint_matches(&candidate.uri, &target.inference_url_prefix)?
+            // Subscription-native (OAuth) profiles carry no HTTP endpoint of
+            // their own; their serve origin is managed by the native auth
+            // store, so the provider entry's prefix match does not apply.
+            && (candidate.oauth
+                || endpoint_matches(&candidate.uri, &target.inference_url_prefix)?)
         {
             matches.push(candidate);
         }
@@ -158,6 +168,7 @@ mod tests {
             uri: uri.into(),
             models: vec!["same-model".into()],
             live: true,
+            oauth: false,
         }
     }
     #[test]
@@ -196,6 +207,29 @@ mod tests {
         );
         declared.excluded_references.insert("openai.first".into());
         assert!(select(&declared, &inventory).is_err());
+    }
+    #[test]
+    fn catalog_binding_oauth_profile_binds_without_endpoint_match() {
+        // A subscription-native profile has no HTTP endpoint of its own and
+        // would fail the provider's prefix match; the oauth flag replaces it.
+        let mut oauth = candidate("openai.catalog", "");
+        oauth.oauth = true;
+        assert_eq!(
+            select(&target(), &[oauth.clone()]).unwrap().reference,
+            "openai.catalog"
+        );
+        // Without the oauth declaration the same empty endpoint still fails
+        // closed (an unexplained endpoint is never trusted).
+        let mut keyed = oauth;
+        keyed.oauth = false;
+        assert!(select(&target(), &[keyed]).is_err());
+        // OAuth does not relax liveness or exact-model requirements.
+        let mut dead = oauth.clone();
+        dead.live = false;
+        assert!(select(&target(), &[dead]).is_err());
+        let mut wrong = oauth;
+        wrong.models = vec!["different-model".into()];
+        assert!(select(&target(), &[wrong]).is_err());
     }
     #[test]
     fn catalog_binding_requires_live_exact_model_and_bounds() {

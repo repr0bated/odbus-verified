@@ -179,6 +179,15 @@ impl ControlPlaneRouting {
 impl ProviderConfig {
     /// Stable ordinary-selection profile when `native_provider_id` is omitted.
     /// Known router families use `{provider_id}.personal`; others use `custom.{provider_id}`.
+    ///
+    /// Stage 4 (`catalog-only model authority`): the family list is no longer
+    /// a hand-maintained constant — known families live in
+    /// [`ROUTER_FAMILIES`] until the native lookup lands, and any provider id
+    /// outside the list falls back to the composite `custom.{id}` family,
+    /// which the native accepts for keyed providers. This keeps the
+    /// derivation valid when the native gains a family the plugin does not
+    /// know yet: nothing breaks, it simply derives the generic profile until
+    /// the operator records the specific one.
     pub fn derived_native_provider_id(provider_id: &str) -> Option<String> {
         if !valid_provider_id(provider_id) {
             return None;
@@ -574,6 +583,62 @@ pub fn bounded_error(message: &str) -> String {
 #[serde(deny_unknown_fields)]
 pub struct ListProvidersInput {}
 
+/// One natively configured provider profile, observed live from the
+/// tched_router runtime. `oauth` distinguishes subscription-native
+/// (`requires_openai_auth`) profiles from keyed HTTP profiles; credential
+/// values themselves are never part of this surface.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct NativeProviderProfile {
+    pub reference: String,
+    /// `family` from `family.alias` — the native provider namespace.
+    pub family: String,
+    /// Model the profile currently serves.
+    pub model: String,
+    /// `true` for `requires_openai_auth` (subscription/OAuth) profiles.
+    pub oauth: bool,
+    /// Whether the profile is exposed to door selections (private routes
+    /// bound to dedicated agents are excluded).
+    pub selectable: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct NativeListProvidersInput {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct NativeListProvidersOutput {
+    pub providers: Vec<NativeProviderProfile>,
+}
+
+/// One credential-gate operation for the `~/.bash_models` flag file: add (or
+/// replace) a `provider:kind=slot` line, subtract a provider's line, or mark
+/// it off. `slot` must be a *reference* — the bash_secrets variable a key
+/// installs from, or the native auth-profile id — never a credential value.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CredentialGateOp {
+    pub provider_id: String,
+    /// `key`, `oauth`, `off`, or `remove` (delete the provider's line).
+    pub kind: String,
+    /// Required for `key` and `oauth`; forbidden for `off` and `remove`.
+    #[serde(default)]
+    pub slot: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MaintainCredentialsInput {
+    pub operations: Vec<CredentialGateOp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct MaintainCredentialsOutput {
+    pub applied: Vec<CredentialGateOp>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ProviderStatus {
@@ -840,6 +905,32 @@ pub fn model_registry_schema() -> PluginSchema {
         ),
     );
     schema.methods.insert(
+        "native_list_providers".to_string(),
+        method_decl_from_schemars_with_output::<
+            NativeListProvidersInput,
+            NativeListProvidersOutput,
+        >(
+            "native_list_providers",
+            SideEffect::Read,
+            true,
+            READ_CAPABILITY,
+            "obs.service.model-registry.native-providers.list@v1",
+        ),
+    );
+    schema.methods.insert(
+        "maintain_credentials".to_string(),
+        method_decl_from_schemars_with_output::<
+            MaintainCredentialsInput,
+            MaintainCredentialsOutput,
+        >(
+            "maintain_credentials",
+            SideEffect::Mutation,
+            false,
+            MAINTAIN_CAPABILITY,
+            "mut.service.model-registry.credentials.maintain@v1",
+        ),
+    );
+    schema.methods.insert(
         "refresh".to_string(),
         method_decl_from_schemars_with_output::<RefreshInput, RefreshOutput>(
             "refresh",
@@ -879,7 +970,7 @@ pub fn model_registry_schema() -> PluginSchema {
         op_state_store::CapabilityDecl {
             id: MAINTAIN_CAPABILITY.to_string(),
             description:
-                "Grants: set_model_profile (record which of its provider's profiles a model needs)."
+                "Grants: set_model_profile, maintain_credentials (record which of its provider's profiles a model needs, and add or subtract provider credential-gate lines)."
                     .to_string(),
         },
     );

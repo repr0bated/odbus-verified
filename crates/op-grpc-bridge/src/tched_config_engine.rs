@@ -1,5 +1,6 @@
 //! Exact sealed-contract adapter for the native tched_router configuration surface.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -128,6 +129,181 @@ pub(crate) fn pinned_config_secrets(
     Ok(load_contract(pinned)?.secrets)
 }
 
+/// `$MODEL.<n>` slot tokens: the only model values an operator's flag files
+/// and dashboards may express besides a concrete catalog id. A token carries
+/// no provider path; resolution is scoped by the mutated path itself
+/// (`providers[./.]models[./.]<family>[./.]…model`), so a model listed under
+/// one provider path can never resolve for another. Families that are not
+/// catalog provider ids (the composite `custom` family) fail closed until an
+/// explicit mapping lands.
+fn model_token_slot(value: &str) -> Option<u64> {
+    value
+        .strip_prefix("$MODEL.")
+        .and_then(|slot| slot.parse::<u64>().ok())
+        .filter(|slot| (1..=99).contains(slot))
+}
+
+fn path_family(path: &str) -> Option<String> {
+    let segments: Vec<&str> = path
+        .split(|c| c == '.' || c == '/')
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    for position in 0..segments.len() {
+        if segments[position] != "providers" {
+            continue;
+        }
+        let rest = &segments[position + 1..];
+        if rest.first().is_some_and(|segment| *segment == "models") {
+            return rest.get(1).map(ToString::to_string);
+        }
+    }
+    None
+}
+
+fn collect_model_tokens(
+    value: &Value,
+    requested: &mut Vec<(String, u64)>,
+    invalid: &mut Vec<(String, u64)>,
+) {
+    match value {
+        Value::Object(object) => {
+            if let Some(path) = object.get("path").and_then(Value::as_str) {
+                let mut candidates: Vec<&str> = Vec::new();
+                if let Some(Value::String(candidate)) = object.get("value") {
+                    candidates.push(candidate.as_str());
+                }
+                if let Some(values) = object.get("values").and_then(Value::as_array) {
+                    candidates.extend(values.iter().filter_map(Value::as_str));
+                }
+                let family = path_family(path);
+                for candidate in candidates {
+                    if let Some(slot) = model_token_slot(candidate) {
+                        match &family {
+                            Some(family) => requested.push((family.clone(), slot)),
+                            None => invalid.push((path.to_string(), slot)),
+                        }
+                    }
+                }
+            }
+            for child in object.values() {
+                collect_model_tokens(child, requested, invalid);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                collect_model_tokens(item, requested, invalid);
+            }
+        }
+        _ => {}
+    }
+}
+
+async fn resolve_model_tokens(engine: &MutationEngine, args: &Value) -> anyhow::Result<Value> {
+    let mut requested: Vec<(String, u64)> = Vec::new();
+    let mut invalid: Vec<(String, u64)> = Vec::new();
+    collect_model_tokens(args, &mut requested, &mut invalid);
+    anyhow::ensure!(
+        invalid.is_empty(),
+        "model slot tokens are reserved for provider model paths: {invalid:?}"
+    );
+    if requested.is_empty() {
+        return Ok(args.clone());
+    }
+    requested.sort();
+    requested.dedup();
+    let store = engine.model_registry_cozo().await?;
+    let mut resolved: BTreeMap<(String, u64), String> = BTreeMap::new();
+    let families: BTreeSet<String> = requested.iter().map(|(family, _)| family.clone()).collect();
+    for family in families {
+        let store = store.clone();
+        let token_family = family.clone();
+        let (rows, _) = tched_blocking(move || {
+            store
+                .list_model_registry_models(Some(&token_family))
+                .map_err(|error| {
+                    anyhow::anyhow!("model registry catalog read failed: {error}")
+                })
+        })
+        .await?;
+        anyhow::ensure!(
+            !rows.is_empty(),
+            "$MODEL token cannot resolve: provider {family} has no catalog rows"
+        );
+        // Deterministic order: available first, then model id ascending.
+        let mut order: Vec<&_> = rows.iter().collect();
+        order.sort_by(|left, right| {
+            right
+                .available
+                .cmp(&left.available)
+                .then_with(|| left.model.model_id.cmp(&right.model.model_id))
+        });
+        let slots_for_family: Vec<u64> = requested
+            .iter()
+            .filter(|(token_family, _)| *token_family == family)
+            .map(|(_, slot)| *slot)
+            .collect();
+        for (position, row) in order.iter().enumerate() {
+            let slot = (position + 1) as u64;
+            if slot <= 99 && slots_for_family.contains(&slot) {
+                resolved.insert((family.clone(), slot), row.model.model_id.clone());
+            }
+        }
+    }
+    for (family, slot) in &requested {
+        anyhow::ensure!(
+            resolved.contains_key(&(family.clone(), *slot)),
+            "$MODEL.{slot} has no row for provider {family}"
+        );
+    }
+    rewrite_model_tokens(args.clone(), &resolved)
+}
+
+async fn tched_blocking<T: Send + 'static>(
+    work: impl FnOnce() -> anyhow::Result<T> + Send + 'static,
+) -> anyhow::Result<T> {
+    tokio::task::spawn_blocking(work)
+        .await
+        .context("tched config engine blocking worker failed")?
+}
+
+fn rewrite_model_tokens(
+    value: Value,
+    resolved: &BTreeMap<(String, u64), String>,
+) -> anyhow::Result<Value> {
+    match value {
+        Value::Object(mut object) => {
+            if let Some(path) = object.get("path").and_then(Value::as_str).map(String::from) {
+                if let Some(family) = path_family(&path) {
+                    if let Some(Value::String(token)) = object.get("value") {
+                        if let Some(slot) = model_token_slot(token) {
+                            let concrete = resolved
+                                .get(&(family.clone(), slot))
+                                .with_context(|| {
+                                    format!("$MODEL.{slot} unresolved for provider {family}")
+                                })?;
+                            object.insert("value".into(), Value::String(concrete.clone()));
+                            return Ok(Value::Object(object));
+                        }
+                    }
+                }
+            }
+            let rewritten: anyhow::Result<Vec<(String, Value)>> = object
+                .into_iter()
+                .map(|(key, child)| Ok((key, rewrite_model_tokens(child, resolved)?)))
+                .collect();
+            Ok(Value::Object(rewritten?.into_iter().collect()))
+        }
+        Value::Array(items) => {
+            let rewritten: anyhow::Result<Vec<Value>> = items
+                .into_iter()
+                .map(|item| rewrite_model_tokens(item, resolved))
+                .collect();
+            Ok(Value::Array(rewritten?))
+        }
+        leaf => Ok(leaf),
+    }
+}
+
 /// Returns None only when the method is outside the v3 config facade.
 pub(crate) async fn dispatch(
     engine: &MutationEngine,
@@ -191,11 +367,18 @@ pub(crate) async fn dispatch(
         ConfigReadDispatch::NotAConfigRead => {}
     }
 
-    let Some(mutation) =
-        tched_config_dispatch::dispatch_config_mutation(&runtime, method, args, &contract.secrets)
-            .await?
-    else {
-        return Ok(None);
+    let maybe_mutation = async {
+        let args = resolve_model_tokens(engine, args)
+            .await
+            .context("model slot token resolution failed before the native config mutation")?;
+        tched_config_dispatch::dispatch_config_mutation(&runtime, method, &args, &contract.secrets)
+            .await
+    }
+    .await;
+    let mutation = match maybe_mutation {
+        Err(error) => return Err(error),
+        Ok(None) => return Ok(None),
+        Ok(Some(mutation)) => mutation,
     };
     anyhow::ensure!(
         !mutation.readback.is_null(),

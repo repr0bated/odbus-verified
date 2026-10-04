@@ -621,11 +621,11 @@
         ],
         "has_lib": true,
         "rs_files": 179,
-        "loc": 109052,
-        "tests": 843,
+        "loc": 109637,
+        "tests": 844,
         "unsafe_refs": 210,
         "todo": 177,
-        "unwrap_expect": 1964
+        "unwrap_expect": 1966
       }
     },
     {
@@ -811,7 +811,7 @@
         ],
         "has_lib": true,
         "rs_files": 152,
-        "loc": 121418,
+        "loc": 121509,
         "tests": 572,
         "unsafe_refs": 17,
         "todo": 1,
@@ -2054,8 +2054,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-04T11:43:08Z",
-        "commit": "c7936fda979d6373b4d212b61128344946194f3d",
+        "generated_at": "2026-10-04T13:01:42Z",
+        "commit": "67f241e192851e1df11c4a9fbc07d2a19f0e7fca",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -5238,7 +5238,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 117
+        "loc": 171
       }
     },
     {
@@ -5886,7 +5886,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 751
+        "loc": 999
       }
     },
     {
@@ -6291,7 +6291,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 228
+        "loc": 262
       }
     },
     {
@@ -6309,7 +6309,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 272
+        "loc": 455
       }
     },
     {
@@ -6381,7 +6381,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 3980
+        "loc": 4046
       }
     },
     {
@@ -8676,7 +8676,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1307
+        "loc": 1398
       }
     },
     {
@@ -10987,7 +10987,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/model_registry.rs",
-        "line": 969,
+        "line": 1060,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/model_registry"
       }
@@ -29263,7 +29263,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 2
+        "refs": 4
       }
     },
     {
@@ -30255,7 +30255,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 7
+        "refs": 9
       }
     },
     {

@@ -24,7 +24,8 @@ use futures::StreamExt;
 use op_cozo_store::{CozoError, CozoGraphShuttle, RegistryModel, RegistryModelRecord};
 use op_plugins::state_plugins::model_registry::{
     DEFAULT_PROVIDERS_PATH, ListModelsInput, ListModelsOutput, ListProvidersInput,
-    ListProvidersOutput, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES, MAX_PROVIDERS_FILE_BYTES,
+    ListProvidersOutput, MAX_KEY_BYTES, MAX_MODELS_RESPONSE_BYTES,
+    MAX_PROVIDERS_FILE_BYTES, MaintainCredentialsInput, MaintainCredentialsOutput,
     ModelListFormat, ModelRecord, ObservedModel, ProviderAuth, ProviderConfig, ProviderRefresh,
     ProviderStatus, ProvidersFile, RefreshInput, RefreshOutput, SECRETS_DIR, SetModelProfileInput,
     SetModelProfileOutput, bounded_error, page_limit, parse_models_response, parse_providers_toml,
@@ -285,6 +286,88 @@ fn now() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
+/// Operator credential gate read from `OP_BASH_MODELS_PATH`
+/// (default `/home/jeremy/.bash_models`). Line grammar:
+/// `provider_id:kind=slot` with kind ∈ {key, oauth, off}; off entries may
+/// omit the slot (`xai:off`). Slots are *references* (the bash_secrets
+/// variable a key installs from, or the native auth-profile id), never
+/// credential values. An absent file disables the gate → TOML `enabled`
+/// governs (migration-safe). A present file is fail-closed: every provider
+/// without a line is off, and a duplicate line, unknown kind, malformed
+/// grammar or oversized slot fails the whole gate.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BashModelsGate {
+    kinds: std::collections::BTreeMap<String, CredentialKind>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CredentialKind {
+    Key,
+    Oauth,
+    Off,
+}
+
+impl BashModelsGate {
+    fn off(&self, provider_id: &str) -> bool {
+        // With the gate file in place an unlisted provider is off by design.
+        self.kinds
+            .get(provider_id)
+            .is_none_or(|kind| *kind == CredentialKind::Off)
+    }
+}
+
+fn load_bash_models_gate() -> Result<Option<BashModelsGate>> {
+    let path = std::env::var("OP_BASH_MODELS_PATH")
+        .unwrap_or_else(|_| "/home/jeremy/.bash_models".to_string());
+    let raw = match std::fs::read_to_string(&path) {
+        Ok(raw) => raw,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(anyhow::Error::from(error)
+                .context(format!("bash_models gate file {path} is unreadable")))
+        }
+    };
+    let mut kinds = std::collections::BTreeMap::new();
+    for (index, raw) in raw.lines().enumerate() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let context = format!("bash_models line {}", index + 1);
+        let (provider_id, rest) = line
+            .split_once(':')
+            .with_context(|| format!("{context}: expected provider:kind=slot grammar"))?;
+        ensure!(
+            valid_provider_id(provider_id),
+            "{context}: invalid provider id"
+        );
+        let (kind_text, slot) = rest
+            .split_once('=')
+            .with_context(|| format!("{context}: expected kind=slot after the provider"))?;
+        let kind = match kind_text.trim() {
+            "key" => CredentialKind::Key,
+            "oauth" => CredentialKind::Oauth,
+            "off" => CredentialKind::Off,
+            other => anyhow::bail!("{context}: unknown kind {other:?}"),
+        };
+        if kind != CredentialKind::Off {
+            let slot = slot.trim();
+            ensure!(
+                !slot.is_empty()
+                    && slot.len() <= 128
+                    && !slot.chars().any(|c| c.is_whitespace() || c.is_control())
+                    && !slot.contains('#'),
+                "{context}: slot must be a compact non-empty reference"
+            );
+        }
+        ensure!(
+            kinds.insert(provider_id.to_string(), kind).is_none(),
+            "{context}: duplicate provider {provider_id}"
+        );
+    }
+    Ok(Some(BashModelsGate { kinds }))
+}
+
 pub(crate) async fn refresh(
     env: &Environment,
     lister: &dyn ModelLister,
@@ -293,6 +376,15 @@ pub(crate) async fn refresh(
 ) -> Result<RefreshOutput> {
     let _guard = REFRESH_LOCK.lock().await;
     let file = load_providers(env)?;
+    let gate = load_bash_models_gate()?;
+    if let Some(gate) = gate.as_ref() {
+        if let Some(explicit) = &input.provider_id {
+            ensure!(
+                !gate.off(explicit),
+                "provider {explicit} is off in the bash_models gate"
+            );
+        }
+    }
     let targets: Vec<&ProviderConfig> = match &input.provider_id {
         Some(id) => {
             ensure!(valid_provider_id(id), "invalid provider_id");
@@ -308,6 +400,9 @@ pub(crate) async fn refresh(
             .providers
             .iter()
             .filter(|provider| provider.enabled)
+            .filter(|provider| {
+                gate.as_ref().is_none_or(|gate| !gate.off(&provider.id))
+            })
             .collect(),
     };
     let at = now();
@@ -512,6 +607,17 @@ pub(crate) async fn list_models(
         .filter(|p| p.enabled)
         .map(|p| p.id.as_str())
         .collect();
+    // Credential gate second: with a bash_models file in place, rows of a
+    // gate-off provider disappear from the menu entirely (fail-closed hide,
+    // no error noise). With no gate file the TOML `enabled` flag governs.
+    let gate = load_bash_models_gate()?;
+    let rows = if let Some(gate) = gate.as_ref() {
+        rows.into_iter()
+            .filter(|row| !gate.off(&row.provider_id))
+            .collect::<Vec<_>>()
+    } else {
+        rows
+    };
     let mut models: Vec<ModelRecord> = rows
         .into_iter()
         .filter(|row| configured_providers.contains(row.provider_id.as_str()))
@@ -708,6 +814,131 @@ fn args<T: serde::de::DeserializeOwned>(args: &Value) -> Result<T> {
     serde_json::from_value(args.clone()).context("invalid model_registry arguments")
 }
 
+/// Apply add/subtract/off operations to the `~/.bash_models` flag file. The
+/// file is a value-free credential-gate list (`provider:kind=slot`); slots
+/// are references (bash_secrets variable names or native auth-profile ids),
+/// never credentials. Writes are atomic (temp file + rename), preserve mode
+/// 0600, and each applied operation is re-read back before admission.
+async fn maintain_credentials(
+    env: &Environment,
+    input: MaintainCredentialsInput,
+) -> Result<MaintainCredentialsOutput> {
+    let _ = env;
+    anyhow::ensure!(
+        !input.operations.is_empty() && input.operations.len() <= 32,
+        "maintain_credentials accepts 1..=32 operations"
+    );
+    let path = std::env::var("OP_BASH_MODELS_PATH")
+        .unwrap_or_else(|_| "/home/jeremy/.bash_models".to_string());
+    let existing = match std::fs::read_to_string(&path) {
+        Ok(raw) => raw,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => {
+            return Err(anyhow::Error::from(error)
+                .context(format!("bash_models gate file {path} is unreadable")))
+        }
+    };
+    // Parse the existing lines with the same strict grammar the gate uses.
+    let mut lines: Vec<(String, String)> = existing
+        .lines()
+        .filter(|line| {
+            let line = line.trim();
+            !line.is_empty() && !line.starts_with('#')
+        })
+        .map(|line| line.to_string())
+        .into_iter()
+        .map(|line| {
+            let (provider_id, rest) = line
+                .split_once(':')
+                .with_context(|| format!("bash_models entry {line:?}: expected provider:kind=slot"))?;
+            Ok((provider_id.to_string(), rest.to_string()))
+        })
+        .collect::<Result<Vec<(String, String)>>>()?;
+    for operation in &input.operations {
+        let kind = operation.kind.as_str();
+        match kind {
+            "key" | "oauth" => {
+                let slot = operation
+                    .slot
+                    .as_deref()
+                    .map(str::trim)
+                    .with_context(|| format!("credential op {}: kind {kind} needs a slot", operation.provider_id))?;
+                anyhow::ensure!(
+                    !slot.is_empty()
+                        && slot.len() <= 128
+                        && !slot.chars().any(|c| c.is_whitespace() || c.is_control())
+                        && !slot.contains('#'),
+                    "credential op {}: slot must be a compact non-empty reference",
+                    operation.provider_id
+                );
+                lines.retain(|(provider_id, _)| provider_id != &operation.provider_id);
+                lines.push((operation.provider_id.clone(), format!("{kind}={slot}")));
+            }
+            "off" => {
+                anyhow::ensure!(
+                    operation.slot.is_none(),
+                    "credential op {}: off entries carry no slot",
+                    operation.provider_id
+                );
+                lines.retain(|(provider_id, _)| provider_id != &operation.provider_id);
+                lines.push((operation.provider_id.clone(), "off".to_string()));
+            }
+            "remove" => {
+                anyhow::ensure!(
+                    operation.slot.is_none(),
+                    "credential op {}: remove entries carry no slot",
+                    operation.provider_id
+                );
+                lines.retain(|(provider_id, _)| provider_id != &operation.provider_id);
+            }
+            other => anyhow::bail!("credential op {}: unknown kind {other:?}", operation.provider_id),
+        }
+        anyhow::ensure!(
+            valid_provider_id(&operation.provider_id),
+            "credential op: invalid provider id {}",
+            operation.provider_id
+        );
+    }
+    let mut body = String::from("# Credential gate: provider:kind=slot (slots are references, never values)\n");
+    for (provider_id, rest) in &lines {
+        body.push_str(&format!("{provider_id}:{rest}\n"));
+    }
+    // Atomic replace preserving 0600; the gate parser re-validates on the
+    // next read, so a malformed write cannot take effect silently.
+    let parent = std::path::Path::new(&path)
+        .parent()
+        .with_context(|| format!("bash_models gate path {path} has no parent"))?;
+    let temp = parent.join(format!(
+        ".bash_models.tmp-{}",
+        uuid::Uuid::new_v4().simple()
+    ));
+    tokio::fs::write(&temp, body.as_bytes())
+        .await
+        .with_context(|| format!("bash_models gate temp write {temp:?} failed"))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&temp, std::fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("bash_models gate temp chmod {temp:?} failed"))?;
+    }
+    tokio::fs::rename(&temp, &path)
+        .await
+        .with_context(|| format!("bash_models gate atomic replace {path} failed"))?;
+    // Authoritative readback: the file must parse exactly as intended.
+    let verify = load_bash_models_gate()?.with_context(|| "bash_models gate readback missing")?;
+    for operation in &input.operations {
+        let off = matches!(operation.kind.as_str(), "off" | "remove");
+        anyhow::ensure!(
+            off == verify.off(&operation.provider_id),
+            "credential op {} readback diverged (expected off={off})",
+            operation.provider_id
+        );
+    }
+    Ok(MaintainCredentialsOutput {
+        applied: input.operations,
+    })
+}
+
 pub(crate) async fn dispatch(
     engine: &MutationEngine,
     method: &str,
@@ -733,6 +964,23 @@ pub(crate) async fn dispatch(
             serde_json::to_value(list_providers(&env, store).await?)?
         }
         "list_models" => serde_json::to_value(list_models(&env, store, args(arguments)?).await?)?,
+        "native_list_providers" => {
+            let _: op_plugins::state_plugins::model_registry::NativeListProvidersInput =
+                args(arguments)?;
+            let runtime = crate::tched_router_runtime::TchedRouterRuntimeClient::from_env();
+            let pinned = crate::sealed_schema_reader::read_manifest_pinned_schema_document(
+                &crate::sealed_schema_reader::blob_catalog_dir_from_env(),
+                "tched_router",
+            )?;
+            let secrets = crate::tched_config_engine::pinned_config_secrets(&pinned)?;
+            let providers = runtime.native_providers_inventory(&secrets).await?;
+            serde_json::to_value(op_plugins::state_plugins::model_registry::NativeListProvidersOutput {
+                providers,
+            })?
+        }
+        "maintain_credentials" => {
+            serde_json::to_value(maintain_credentials(&env, args(arguments)?).await?)?
+        }
         "set_model_profile" => {
             serde_json::to_value(set_model_profile(&env, store, args(arguments)?).await?)?
         }
