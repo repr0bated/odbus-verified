@@ -88,10 +88,38 @@ pub(crate) enum NativeGenerationTerminal {
 pub(crate) enum NativeErrorCode {
     Auth,
     Provider,
+    ProviderHttp(u16),
+    ProviderTransport,
+    ProviderResponse,
+    ProviderConfiguration,
     ApprovalRequired,
     Protocol,
     Bounds,
     Timeout,
+}
+
+impl std::fmt::Display for NativeErrorCode {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Provider => formatter.write_str("model provider failed to generate a response"),
+            Self::ProviderHttp(status) => {
+                write!(formatter, "model provider returned HTTP {status}")
+            }
+            Self::ProviderTransport => {
+                formatter.write_str("connection to the model provider failed")
+            }
+            Self::ProviderResponse => {
+                formatter.write_str("model provider returned an invalid response")
+            }
+            Self::ProviderConfiguration => {
+                formatter.write_str("model provider configuration is invalid")
+            }
+            _ => write!(
+                formatter,
+                "native generation protocol rejected the request: {self:?}"
+            ),
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -104,7 +132,7 @@ pub(crate) enum NativeGenerationError {
     Timeout,
     #[error("native generation was cancelled")]
     Cancelled,
-    #[error("native generation protocol rejected the request: {0:?}")]
+    #[error("{0}")]
     Terminal(NativeErrorCode),
 }
 
@@ -394,7 +422,7 @@ async fn run_native(
             "error" => {
                 let code = match value.get("code").and_then(Value::as_str).unwrap_or("") {
                     "AUTH_ERROR" => NativeErrorCode::Auth,
-                    "PROVIDER_ERROR" => NativeErrorCode::Provider,
+                    "PROVIDER_ERROR" => provider_error_code(&value),
                     "TIMEOUT" => NativeErrorCode::Timeout,
                     "BOUNDS" => NativeErrorCode::Bounds,
                     _ => NativeErrorCode::Protocol,
@@ -404,6 +432,27 @@ async fn run_native(
             }
             _ => return Err(NativeGenerationError::Terminal(NativeErrorCode::Protocol)),
         }
+    }
+}
+
+/// Accept only the native protocol's bounded diagnostic vocabulary. Provider
+/// response bodies, URLs, credentials and arbitrary error text never leave
+/// this boundary, including when an older or malformed peer sends them.
+fn provider_error_code(frame: &Value) -> NativeErrorCode {
+    let Some(detail) = frame.get("provider_error").and_then(Value::as_object) else {
+        return NativeErrorCode::Provider;
+    };
+    match detail.get("kind").and_then(Value::as_str) {
+        Some("http") => detail
+            .get("status")
+            .and_then(Value::as_u64)
+            .filter(|status| (400..=599).contains(status))
+            .map(|status| NativeErrorCode::ProviderHttp(status as u16))
+            .unwrap_or(NativeErrorCode::Provider),
+        Some("transport") => NativeErrorCode::ProviderTransport,
+        Some("response") => NativeErrorCode::ProviderResponse,
+        Some("configuration") => NativeErrorCode::ProviderConfiguration,
+        _ => NativeErrorCode::Provider,
     }
 }
 
@@ -673,6 +722,150 @@ mod tests {
         ) -> Pin<Box<dyn Future<Output = Result<(), NativeGenerationError>> + Send + '_>> {
             Box::pin(async { Ok(()) })
         }
+    }
+
+    #[test]
+    fn provider_diagnostics_accept_only_bounded_status_and_categories() {
+        for (detail, expected) in [
+            (
+                serde_json::json!({"kind":"http","status":401}),
+                NativeErrorCode::ProviderHttp(401),
+            ),
+            (
+                serde_json::json!({"kind":"http","status":429}),
+                NativeErrorCode::ProviderHttp(429),
+            ),
+            (
+                serde_json::json!({"kind":"http","status":503}),
+                NativeErrorCode::ProviderHttp(503),
+            ),
+            (
+                serde_json::json!({"kind":"transport"}),
+                NativeErrorCode::ProviderTransport,
+            ),
+            (
+                serde_json::json!({"kind":"response"}),
+                NativeErrorCode::ProviderResponse,
+            ),
+            (
+                serde_json::json!({"kind":"configuration"}),
+                NativeErrorCode::ProviderConfiguration,
+            ),
+            (
+                serde_json::json!({"kind":"unknown"}),
+                NativeErrorCode::Provider,
+            ),
+            (
+                serde_json::json!({"kind":"http","status":200}),
+                NativeErrorCode::Provider,
+            ),
+            (
+                serde_json::json!({"kind":"http","status":600}),
+                NativeErrorCode::Provider,
+            ),
+            (
+                serde_json::json!({"kind":"http","status":-401}),
+                NativeErrorCode::Provider,
+            ),
+            (
+                serde_json::json!({"kind":"http","status":"401"}),
+                NativeErrorCode::Provider,
+            ),
+            (
+                serde_json::json!({"kind":"http","status":401.5}),
+                NativeErrorCode::Provider,
+            ),
+            (
+                serde_json::json!({"kind":"http"}),
+                NativeErrorCode::Provider,
+            ),
+            (
+                serde_json::json!({"kind":"credential-secret"}),
+                NativeErrorCode::Provider,
+            ),
+            (
+                serde_json::json!("credential-secret"),
+                NativeErrorCode::Provider,
+            ),
+            (Value::Null, NativeErrorCode::Provider),
+        ] {
+            let frame = serde_json::json!({
+                "type":"error", "code":"PROVIDER_ERROR", "provider_error":detail,
+                "message":"credential-secret private-prompt https://private.example/",
+            });
+            let code = provider_error_code(&frame);
+            assert_eq!(code, expected);
+            let rendered = NativeGenerationError::Terminal(code).to_string();
+            assert!(!rendered.contains("credential-secret"));
+            assert!(!rendered.contains("private-prompt"));
+            assert!(!rendered.contains("private.example"));
+        }
+        assert_eq!(
+            provider_error_code(&serde_json::json!({"code":"PROVIDER_ERROR"})),
+            NativeErrorCode::Provider
+        );
+        assert_eq!(
+            NativeGenerationError::Terminal(NativeErrorCode::ProviderHttp(429)).to_string(),
+            "model provider returned HTTP 429"
+        );
+    }
+
+    #[tokio::test]
+    async fn provider_http_failure_survives_native_transport_without_response_body() {
+        let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
+            .await
+            .unwrap();
+        let address = listener.local_addr().unwrap();
+        let server =
+            tokio::spawn(async move {
+                let (stream, _) = listener.accept().await.unwrap();
+                let mut socket = accept_hdr_async(stream, |_: &Request, mut response: Response| {
+                    response
+                        .headers_mut()
+                        .insert("Sec-WebSocket-Protocol", WS_PROTOCOL.parse().unwrap());
+                    Ok(response)
+                })
+                .await
+                .unwrap();
+                let _ = socket.next().await;
+                socket
+                    .send(Message::Text(
+                        serde_json::json!({
+                            "type":"session_start", "session_id":"native-fixture-session",
+                            "resumed":false, "message_count":0, "stateless_generation":1,
+                        })
+                        .to_string(),
+                    ))
+                    .await
+                    .unwrap();
+                socket
+                    .send(Message::Text(
+                        serde_json::json!({
+                            "type":"connected", "stateless_generation":1,
+                            "provider":"fixture-provider", "model":"fixture-model",
+                        })
+                        .to_string(),
+                    ))
+                    .await
+                    .unwrap();
+                let _ = socket.next().await;
+                socket.send(Message::Text(serde_json::json!({
+                "type":"error", "code":"PROVIDER_ERROR",
+                "provider_error":{"kind":"http","status":429,"body":"credential-secret"},
+                "message":"private-prompt https://private.example/",
+            }).to_string())).await.unwrap();
+            });
+        let error = NativeGenerationTask::spawn(request(format!("http://{address}")))
+            .unwrap()
+            .wait()
+            .await
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            NativeGenerationError::Terminal(NativeErrorCode::ProviderHttp(429))
+        ));
+        assert_eq!(error.to_string(), "model provider returned HTTP 429");
+        server.await.unwrap();
     }
 
     #[test]

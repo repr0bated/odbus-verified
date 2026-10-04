@@ -10,7 +10,23 @@
   "toml_edit 0.25.12+spec-1.1.0",
 --- a/crates/zeroclaw-api/src/model_provider.rs
 +++ b/crates/zeroclaw-api/src/model_provider.rs
-@@ -441,6 +441,13 @@
+@@ -332,6 +332,15 @@
+     #[error("HTTP error: {0}")]
+     Http(String),
+
++    /// Provider rejected the request with an HTTP response. Keep the status
++    /// typed so bounded native diagnostics never need to inspect response text.
++    #[error("provider HTTP response status {status}")]
++    ProviderHttpStatus { status: u16 },
++
++    /// Local provider setup failed before an upstream response was received.
++    #[error("provider configuration failed")]
++    Configuration,
++
+     #[error("JSON parse error: {0}")]
+     Json(serde_json::Error),
+
+@@ -441,6 +450,13 @@
 
  #[async_trait]
  pub trait ModelProvider: Send + Sync + crate::attribution::Attributable {
@@ -24,7 +40,7 @@
      /// Query model_provider capabilities.
      fn capabilities(&self) -> ProviderCapabilities {
          ProviderCapabilities::default()
-@@ -713,6 +720,10 @@
+@@ -713,6 +729,10 @@
  /// boilerplate in test and production code.
  #[async_trait]
  impl<T: ModelProvider + ?Sized> ModelProvider for Arc<T> {
@@ -435,7 +451,26 @@
                  })
              } else {
                  let messages = effective_messages
-@@ -7197,3 +7222,43 @@
+@@ -3212,15 +3237,10 @@
+
+             if !response.status().is_success() {
+                 let status = response.status();
+-                let error = match response.text().await {
+-                    Ok(text) => text,
+-                    Err(_) => format!("HTTP error: {}", status),
+-                };
+                 let _ = tx
+-                    .send(Err(StreamError::ModelProvider(format!(
+-                        "{}: {}",
+-                        status, error
+-                    ))))
++                    .send(Err(StreamError::ProviderHttpStatus {
++                        status: status.as_u16(),
++                    }))
+                     .await;
+                 return;
+             }
+@@ -7197,3 +7217,43 @@
          assert_eq!(native[1].tool_call_id.as_deref(), Some("fc_456"));
      }
  }
@@ -516,6 +551,15 @@
  pub(crate) mod stream_guard;
  pub mod telnyx;
  pub mod traits;
+@@ -874,7 +878,7 @@
+             })),
+         "providers: API error"
+     );
+-    anyhow::Error::msg(format!(
++    anyhow::Error::new(crate::stateless::ProviderHttpStatus(status.as_u16())).context(format!(
+         "{model_provider} API error ({status}): {sanitized}"
+     ))
+ }
 @@ -1097,7 +1101,7 @@
      matches!(name, "kimi-code" | "kimi_coding" | "kimi_for_coding")
  }
@@ -639,7 +683,23 @@
      // ── ModelProvider-family defaults ──
      fn default_base_url(&self) -> Option<&str> {
          Some(BASE_URL)
-@@ -1150,6 +1153,9 @@
+@@ -837,12 +840,10 @@
+
+     if !http_response.status().is_success() {
+         let status = http_response.status();
+-        let body = http_response.text().await.unwrap_or_default();
+-        let sanitized = super::sanitize_api_error(&body);
+         let _ = tx
+-            .send(Err(StreamError::ModelProvider(format!(
+-                "OpenAI API error ({status}): {sanitized}"
+-            ))))
++            .send(Err(StreamError::ProviderHttpStatus {
++                status: status.as_u16(),
++            }))
+             .await;
+         return;
+     }
+@@ -1150,6 +1151,9 @@
 
  #[async_trait]
  impl ModelProvider for OpenAiResponsesModelProvider {
@@ -649,6 +709,15 @@
      fn capabilities(&self) -> ProviderCapabilities {
          ProviderCapabilities {
              native_tool_calling: true,
+@@ -1287,7 +1291,7 @@
+         let credential = match self.credential.clone() {
+             Some(c) => c,
+             None => {
+-                let err = StreamError::ModelProvider("OpenAI API key not set".to_string());
++                let err = StreamError::Configuration;
+                 return stream::once(async move { Err(err) }).boxed();
+             }
+         };
 --- a/crates/zeroclaw-providers/src/openrouter.rs
 +++ b/crates/zeroclaw-providers/src/openrouter.rs
 @@ -505,7 +505,9 @@
@@ -837,7 +906,7 @@
  }
 --- a/crates/zeroclaw-gateway/src/ws_stateless.rs
 +++ b/crates/zeroclaw-gateway/src/ws_stateless.rs
-@@ -0,0 +1,142 @@
+@@ -0,0 +1,183 @@
 +//! Bounded transport for one explicitly admitted provider-only turn. This
 +//! module never constructs an Agent or accesses session/history/workspace data.
 +use axum::extract::ws::{Message, WebSocket};
@@ -845,7 +914,37 @@
 +use serde::Deserialize;
 +use serde_json::{Value, json};
 +use std::time::Duration;
-+use zeroclaw_providers::stateless::{GenerationError, GenerationEvent, StatelessGeneration};
++use zeroclaw_providers::stateless::{
++    GenerationError, GenerationEvent, ProviderErrorKind, StatelessGeneration,
++};
++
++#[derive(Debug)]
++struct StatelessError {
++    code: &'static str,
++    provider_error: Option<ProviderErrorKind>,
++}
++
++impl StatelessError {
++    fn new(code: &'static str) -> Self {
++        Self {
++            code,
++            provider_error: None,
++        }
++    }
++
++    fn provider(kind: ProviderErrorKind) -> Self {
++        Self {
++            code: "PROVIDER_ERROR",
++            provider_error: Some(kind),
++        }
++    }
++}
++
++impl From<&'static str> for StatelessError {
++    fn from(code: &'static str) -> Self {
++        Self::new(code)
++    }
++}
 +
 +#[derive(Deserialize)]
 +#[serde(deny_unknown_fields)]
@@ -882,15 +981,24 @@
 +            run(&mut socket, generation, session_id),
 +        ))
 +        .await;
-+    let code = match result {
++    let error = match result {
 +        Ok(Ok(())) => None,
-+        Ok(Err(code)) => Some(code),
-+        Err(_) => Some("TIMEOUT"),
++        Ok(Err(error)) => Some(error),
++        Err(_) => Some(StatelessError::new("TIMEOUT")),
 +    };
-+    if let Some(code) = code {
++    if let Some(error) = error {
++        let mut frame = json!({"type":"error","code":error.code});
++        if let Some(kind) = error.provider_error {
++            let (kind, status) = kind.wire_parts();
++            frame["provider_error"] = if let Some(status) = status {
++                json!({"kind":kind,"status":status})
++            } else {
++                json!({"kind":kind})
++            };
++        }
 +        let _ = tokio::time::timeout(
 +            Duration::from_secs(1),
-+            send(&mut socket, json!({"type":"error","code":code})),
++            send(&mut socket, frame),
 +        )
 +        .await;
 +    }
@@ -919,14 +1027,14 @@
 +    socket: &mut WebSocket,
 +    generation: StatelessGeneration,
 +    session_id: String,
-+) -> Result<(), &'static str> {
++) -> Result<(), StatelessError> {
 +    let provider = generation.provider_ref.clone();
 +    let model = generation.model.clone();
 +    send(socket,json!({"type":"session_start","session_id":session_id,"resumed":false,"message_count":0,"stateless_generation":1})).await?;
 +    let connect: Connect =
 +        serde_json::from_value(receive(socket).await?).map_err(|_| "PROTOCOL")?;
 +    if connect.kind != "connect" || connect.session_id != session_id {
-+        return Err("PROTOCOL");
++        return Err(StatelessError::new("PROTOCOL"));
 +    }
 +    // This exact marker is emitted only by the provider-only branch. The bound
 +    // provider/model belong to the same consumed one-turn Config resolution.
@@ -937,7 +1045,7 @@
 +    .await?;
 +    let prompt: Prompt = serde_json::from_value(receive(socket).await?).map_err(|_| "PROTOCOL")?;
 +    if prompt.kind != "message" {
-+        return Err("PROTOCOL");
++        return Err(StatelessError::new("PROTOCOL"));
 +    }
 +    let mut events = generation.start(prompt.content).map_err(|_| "PROTOCOL")?;
 +    loop {
@@ -948,7 +1056,7 @@
 +                // Drop the owned provider stream on disconnect or another
 +                // request. A remote provider may already have accepted input.
 +                Some(Ok(Message::Close(_))) | None => return Ok(()),
-+                _ => return Err("PROTOCOL"),
++                _ => return Err(StatelessError::new("PROTOCOL")),
 +            },
 +            event = events.next() => match event {
 +                Some(Ok(GenerationEvent::Delta(delta))) => {
@@ -972,17 +1080,19 @@
 +                    send(socket,done).await?;
 +                    return Ok(());
 +                }
-+                Some(Err(GenerationError::Bounds)) => return Err("BOUNDS"),
-+                Some(Err(GenerationError::Protocol | GenerationError::InvalidRequest)) => return Err("PROTOCOL"),
-+                Some(Err(_)) => return Err("PROVIDER_ERROR"),
-+                None => return Err("PROTOCOL"),
++                Some(Err(GenerationError::Bounds)) => return Err(StatelessError::new("BOUNDS")),
++                Some(Err(GenerationError::Protocol | GenerationError::InvalidRequest)) => return Err(StatelessError::new("PROTOCOL")),
++                Some(Err(GenerationError::Provider(kind))) => return Err(StatelessError::provider(kind)),
++                Some(Err(GenerationError::Unavailable)) => return Err(StatelessError::provider(ProviderErrorKind::Configuration)),
++                Some(Err(_)) => return Err(StatelessError::provider(ProviderErrorKind::Unknown)),
++                None => return Err(StatelessError::new("PROTOCOL")),
 +            }
 +        }
 +    }
 +}
 --- a/crates/zeroclaw-gateway/src/ws_stateless_tests.rs
 +++ b/crates/zeroclaw-gateway/src/ws_stateless_tests.rs
-@@ -0,0 +1,796 @@
+@@ -0,0 +1,952 @@
 +//! Transport-boundary fixtures for the deliberately narrow stateless WS path.
 +//!
 +//! These tests use a real Axum upgrade plus a loopback OpenAI-compatible HTTP
@@ -1021,7 +1131,8 @@
 +    matchers::{method, path},
 +};
 +use zeroclaw_config::schema::{
-+    AliasedAgentConfig, ModelProviderConfig, OpenAIModelProviderConfig, WireApi,
++    AliasedAgentConfig, CustomModelProviderConfig, ModelProviderConfig,
++    OpenAIModelProviderConfig, WireApi,
 +};
 +use zeroclaw_providers::stateless::MAX_PROMPT_BYTES;
 +
@@ -1187,6 +1298,41 @@
 +    provider
 +}
 +
++async fn provider_failure_fixture(status: u16, body: &'static str) -> MockServer {
++    let provider = MockServer::start().await;
++    Mock::given(method("POST"))
++        .and(path("/v1/chat/completions"))
++        .respond_with(ResponseTemplate::new(status).set_body_string(body))
++        .mount(&provider)
++        .await;
++    provider
++}
++
++async fn assert_provider_failure(
++    provider_uri: String,
++    expected: Value,
++    prompt: &str,
++    sentinels: &[&str],
++) {
++    let tmp = tempfile::tempdir().expect("temporary workspace");
++    let state = stateless_state(&tmp, provider_uri);
++    let (base, _server) = start_gateway(state).await;
++    let mut socket = connect(&stateless_url(&base)).await;
++    assert_eq!(receive_json(&mut socket).await["type"], "session_start");
++    send_json(&mut socket, json!({"type":"connect","session_id":SESSION})).await;
++    assert_eq!(receive_json(&mut socket).await["type"], "connected");
++    send_json(&mut socket, json!({"type":"message","content":prompt})).await;
++    let error = receive_json(&mut socket).await;
++    assert_eq!(error, expected);
++    let serialized = error.to_string();
++    for sentinel in sentinels {
++        assert!(
++            !serialized.contains(sentinel),
++            "provider diagnostic leaked sentinel {sentinel:?}"
++        );
++    }
++}
++
 +#[derive(Clone)]
 +struct StreamingResponsesState {
 +    requests: Arc<parking_lot::Mutex<Vec<Value>>>,
@@ -1266,6 +1412,32 @@
 +
 +fn stateless_state(tmp: &tempfile::TempDir, provider_uri: String) -> crate::AppState {
 +    stateless_state_with_pairing(tmp, provider_uri, true)
++}
++
++fn compatible_stateless_state(tmp: &tempfile::TempDir, provider_uri: String) -> crate::AppState {
++    let state = crate::tests::admin_reload_state(tmp, false, true, &[TEST_TOKEN.to_string()]);
++    let mut config = state.config.write();
++    config.agents.insert(
++        AGENT.to_string(),
++        AliasedAgentConfig {
++            model_provider: "custom.fixture".to_string().into(),
++            ..Default::default()
++        },
++    );
++    config.providers.models.custom.insert(
++        "fixture".to_string(),
++        CustomModelProviderConfig {
++            base: ModelProviderConfig {
++                api_key: Some("fixture-api-key".to_string()),
++                uri: Some(provider_uri),
++                model: Some(MODEL.to_string()),
++                wire_api: Some(WireApi::ChatCompletions),
++                ..Default::default()
++            },
++        },
++    );
++    drop(config);
++    state
 +}
 +
 +fn stateless_state_with_pairing(
@@ -1429,8 +1601,9 @@
 +    let (base, _server) = start_gateway(state).await;
 +    let mut socket = connect(&stateless_url(&base)).await;
 +
++    let error = receive_json(&mut socket).await;
 +    assert_eq!(
-+        receive_json(&mut socket).await,
++        error,
 +        json!({
 +            "type": "session_start",
 +            "session_id": SESSION,
@@ -1456,8 +1629,9 @@
 +        json!({"type": "message", "content": "one user prompt"}),
 +    )
 +    .await;
++    let error = receive_json(&mut socket).await;
 +    assert_eq!(
-+        receive_json(&mut socket).await,
++        error,
 +        json!({"type": "chunk", "content": "provider reply"})
 +    );
 +    let done = receive_json(&mut socket).await;
@@ -1779,9 +1953,101 @@
 +    assert_eq!(done["output_tokens"], 4);
 +    assert_eq!(done["tokens_used"], 15);
 +}
++
++#[tokio::test]
++async fn ws_stateless_provider_http_diagnostics_are_typed_and_do_not_leak_content() {
++    for status in [401, 429, 503] {
++        let provider = provider_failure_fixture(
++            status,
++            "provider-body-sentinel api-key-sentinel",
++        )
++        .await;
++        assert_provider_failure(
++            format!("{}/v1", provider.uri()),
++            json!({
++                "type":"error",
++                "code":"PROVIDER_ERROR",
++                "provider_error":{"kind":"http","status":status}
++            }),
++            "prompt-sentinel",
++            &[
++                "provider-body-sentinel",
++                "api-key-sentinel",
++                "fixture-api-key",
++                "prompt-sentinel",
++            ],
++        )
++        .await;
++    }
++}
++
++#[tokio::test]
++async fn ws_stateless_provider_malformed_response_has_safe_category() {
++    let provider = provider_failure_fixture(200, "malformed-response-sentinel").await;
++    assert_provider_failure(
++        format!("{}/v1", provider.uri()),
++        json!({
++            "type":"error",
++            "code":"PROVIDER_ERROR",
++            "provider_error":{"kind":"response"}
++        }),
++        "prompt-sentinel",
++        &["malformed-response-sentinel", "prompt-sentinel"],
++    )
++    .await;
++}
++
++#[tokio::test]
++async fn ws_stateless_provider_transport_failure_has_safe_category() {
++    assert_provider_failure(
++        "http://127.0.0.1:1/v1".to_string(),
++        json!({
++            "type":"error",
++            "code":"PROVIDER_ERROR",
++            "provider_error":{"kind":"transport"}
++        }),
++        "prompt-sentinel",
++        &["prompt-sentinel", "127.0.0.1:1"],
++    )
++    .await;
++}
++
++#[tokio::test]
++async fn ws_stateless_compatible_stream_http_failure_preserves_typed_status() {
++    let provider = provider_failure_fixture(429, "compatible-body-sentinel").await;
++    let tmp = tempfile::tempdir().expect("temporary workspace");
++    let state = compatible_stateless_state(&tmp, format!("{}/v1", provider.uri()));
++    let (base, _server) = start_gateway(state).await;
++    let mut socket = connect(&stateless_url(&base)).await;
++    assert_eq!(receive_json(&mut socket).await["type"], "session_start");
++    send_json(&mut socket, json!({"type":"connect","session_id":SESSION})).await;
++    assert_eq!(receive_json(&mut socket).await["type"], "connected");
++    send_json(
++        &mut socket,
++        json!({"type":"message","content":"prompt-sentinel"}),
++    )
++    .await;
++    let error = receive_json(&mut socket).await;
++    assert_eq!(
++        error,
++        json!({
++            "type":"error",
++            "code":"PROVIDER_ERROR",
++            "provider_error":{"kind":"http","status":429}
++        })
++    );
++    let serialized = error.to_string();
++    for sentinel in [
++        "compatible-body-sentinel",
++        "prompt-sentinel",
++        "fixture-api-key",
++    ] {
++        assert!(!serialized.contains(sentinel));
++    }
++}
 --- a/crates/zeroclaw-providers/src/opencode_session.rs
 +++ b/crates/zeroclaw-providers/src/opencode_session.rs
-@@ -0,0 +1,1092 @@
+@@ -0,0 +1,1093 @@
 +//! Local OpenCode server transport for inference authenticated by OpenCode's
 +//! own provider/OAuth store. Each call uses a disposable, deny-all session.
 +
@@ -1910,7 +2176,8 @@
 +                        .map(str::to_string)
 +                })
 +                .unwrap_or_else(|| "request failed".to_string());
-+            bail!("OpenCode request failed with {status}: {detail}");
++            return Err(anyhow::Error::new(crate::stateless::ProviderHttpStatus(status.as_u16()))
++                .context(format!("OpenCode request failed with {status}: {detail}")));
 +        }
 +        serde_json::from_slice(&bytes).context("OpenCode returned invalid JSON")
 +    }
@@ -3724,22 +3991,96 @@
 +}
 --- a/crates/zeroclaw-providers/src/stateless.rs
 +++ b/crates/zeroclaw-providers/src/stateless.rs
-@@ -0,0 +1,320 @@
+@@ -0,0 +1,441 @@
 +//! One provider-only generation turn. Config owns provider/model selection;
 +//! this consumed view pins that selection for one request. There is no Agent,
 +//! memory, history, workspace, tool registry, provider fallback or persistence.
 +use crate::{ModelProvider, ProviderDispatch};
++use anyhow::Error as AnyhowError;
 +use futures_util::{
 +    StreamExt,
 +    stream::{self, BoxStream},
 +};
 +use zeroclaw_api::model_provider::{
-+    ChatMessage, ChatRequest, StreamEvent, StreamOptions, TokenUsage,
++    ChatMessage, ChatRequest, StreamError, StreamEvent, StreamOptions, TokenUsage,
 +};
 +
 +pub const MAX_PROMPT_BYTES: usize = 64 * 1024;
 +pub const MAX_OUTPUT_BYTES: usize = 256 * 1024;
 +const MAX_EVENTS: usize = 4096;
++
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct ProviderHttpStatus(pub u16);
++
++impl std::fmt::Display for ProviderHttpStatus {
++    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
++        write!(formatter, "provider HTTP status {}", self.0)
++    }
++}
++
++impl std::error::Error for ProviderHttpStatus {}
++
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub enum ProviderErrorKind {
++    Http { status: u16 },
++    Transport,
++    Response,
++    Configuration,
++    Unknown,
++}
++
++impl ProviderErrorKind {
++    pub fn wire_parts(self) -> (&'static str, Option<u16>) {
++        match self {
++            Self::Http { status } => ("http", Some(status)),
++            Self::Transport => ("transport", None),
++            Self::Response => ("response", None),
++            Self::Configuration => ("configuration", None),
++            Self::Unknown => ("unknown", None),
++        }
++    }
++}
++
++fn http_kind(status: u16) -> ProviderErrorKind {
++    if (400..=599).contains(&status) {
++        ProviderErrorKind::Http { status }
++    } else {
++        ProviderErrorKind::Unknown
++    }
++}
++
++fn classify_stream_error(error: &StreamError) -> ProviderErrorKind {
++    match error {
++        StreamError::ProviderHttpStatus { status } => http_kind(*status),
++        // Legacy Http(String) also carries parsing/stream-state diagnostics,
++        // so its display text is not a trustworthy transport classifier.
++        StreamError::Http(_) => ProviderErrorKind::Unknown,
++        StreamError::Io(_) => ProviderErrorKind::Transport,
++        StreamError::Json(_) | StreamError::InvalidSse(_) => ProviderErrorKind::Response,
++        StreamError::Configuration => ProviderErrorKind::Configuration,
++        StreamError::ModelProvider(_) => ProviderErrorKind::Unknown,
++    }
++}
++
++fn classify_unary_error(error: &AnyhowError) -> ProviderErrorKind {
++    for cause in error.chain() {
++        if let Some(status) = cause.downcast_ref::<ProviderHttpStatus>() {
++            return http_kind(status.0);
++        }
++        if let Some(error) = cause.downcast_ref::<reqwest::Error>() {
++            if error.is_decode() {
++                return ProviderErrorKind::Response;
++            }
++            if error.is_timeout() || error.is_connect() {
++                return ProviderErrorKind::Transport;
++            }
++        }
++        if cause.is::<serde_json::Error>() {
++            return ProviderErrorKind::Response;
++        }
++    }
++    ProviderErrorKind::Unknown
++}
 +
 +#[derive(Debug, Clone, Copy, thiserror::Error)]
 +pub enum GenerationError {
@@ -3748,7 +4089,7 @@
 +    #[error("stateless_generation_unavailable")]
 +    Unavailable,
 +    #[error("stateless_generation_provider_failed")]
-+    Provider,
++    Provider(ProviderErrorKind),
 +    #[error("stateless_generation_protocol_failed")]
 +    Protocol,
 +    #[error("stateless_generation_bounds_exceeded")]
@@ -3824,7 +4165,11 @@
 +                        None,
 +                        StreamOptions::new(true),
 +                    )
-+                    .map(|event| event.map_err(|_| GenerationError::Provider))
++                    .map(|event| {
++                        event.map_err(|error| {
++                            GenerationError::Provider(classify_stream_error(&error))
++                        })
++                    })
 +                    .boxed()
 +            } else {
 +                // The native provider still owns the HTTP request. A unary-only
@@ -3842,7 +4187,9 @@
 +                            None,
 +                        )
 +                        .await
-+                        .map_err(|_| GenerationError::Provider)?;
++                        .map_err(|error| {
++                            GenerationError::Provider(classify_unary_error(&error))
++                        })?;
 +                    if !response.tool_calls.is_empty() {
 +                        return Err(GenerationError::Protocol);
 +                    }
@@ -4001,6 +4348,47 @@
 +            assert!(!compatible.supports_stateless_generation());
 +            assert!(!router.supports_stateless_generation());
 +        }
++    }
++
++    #[test]
++    fn provider_diagnostics_are_typed_and_allowlisted() {
++        for status in [401, 429, 500, 503] {
++            assert_eq!(
++                classify_stream_error(&StreamError::ProviderHttpStatus { status }),
++                ProviderErrorKind::Http { status }
++            );
++        }
++        assert_eq!(
++            classify_stream_error(&StreamError::Configuration),
++            ProviderErrorKind::Configuration
++        );
++        assert_eq!(
++            classify_stream_error(&StreamError::Http("secret transport detail".into())),
++            ProviderErrorKind::Unknown
++        );
++        assert_eq!(
++            classify_stream_error(&StreamError::Json(
++                serde_json::from_str::<serde_json::Value>("invalid").unwrap_err()
++            )),
++            ProviderErrorKind::Response
++        );
++        assert_eq!(
++            classify_stream_error(&StreamError::ModelProvider(
++                "SENTINEL provider body with sk-proj-secret".into()
++            )),
++            ProviderErrorKind::Unknown
++        );
++
++        let legacy_message = "OpenAI API error (429): sanitized provider body";
++        let error = AnyhowError::new(ProviderHttpStatus(429)).context(legacy_message);
++        assert_eq!(
++            error.to_string(),
++            legacy_message,
++            "typed status context must preserve the legacy Display message"
++        );
++        let kind = classify_unary_error(&error);
++        assert_eq!(kind, ProviderErrorKind::Http { status: 429 });
++        assert_eq!(kind.wire_parts(), ("http", Some(429)));
 +    }
 +
 +    #[tokio::test]
