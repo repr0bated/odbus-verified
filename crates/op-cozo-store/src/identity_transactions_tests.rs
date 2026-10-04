@@ -1761,6 +1761,111 @@ fn physical_migration_refuses_conflict_incomplete_history_and_repeat() {
 }
 
 #[test]
+fn v2_shared_human_receipt_reads_and_permits_later_cas() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let migration = physical_fixture(&store);
+    let sid = migration.expected.session_id.clone();
+    let committed = physical_submit(&store, migration).unwrap();
+    // Reshape the committed receipt into the version-2 shared-human shape the
+    // own-human migration release commits: the provenance is the closed v2
+    // plan and the per-human instance binding is retired (empty column).
+    let v2_provenance = serde_json::json!({
+        "version": 2,
+        "session_id": sid,
+        "shared_runtime_session_id": "00000000-0000-4000-8000-00000000000c",
+        "binding": {"device_path": "/dev/fixture-leaf", "mount_point": "/mnt/fixture/@identity/x", "btrfs_uuid": "00000000-0000-4000-8000-00000000000a", "cozo_id": "retained-owner", "attached": true},
+    })
+    .to_string();
+    rewrite_receipt_row(&store, &sid, committed.current.revision, "", &v2_provenance);
+    let receipt = store.read_physical_root_migration(&sid).unwrap().unwrap();
+    assert_eq!(receipt.instance_json, "");
+    // The startup schema-hash refresh is the first later CAS on the session;
+    // an instance-less v2 human must not have it blocked by the receipt.
+    let expected = store.read_identity_revision(&sid).unwrap();
+    let mut genesis = expected.genesis.clone().unwrap();
+    genesis.schema_content_hash = "f".repeat(64);
+    let operation_id = format!("refresh-schema-hash-v2-{}", "9".repeat(16));
+    store
+        .apply_identity_intent(
+            &sid,
+            &operation_id,
+            IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                expected: expected.clone(),
+                record: expected.record.clone(),
+                genesis: Some(genesis.clone()),
+            })),
+        )
+        .unwrap();
+    assert_eq!(
+        store.read_identity_revision(&sid).unwrap().genesis,
+        Some(genesis)
+    );
+}
+
+#[test]
+fn non_v2_receipt_with_empty_instance_still_fails_closed() {
+    let store = CozoGraphShuttle::new_in_memory().unwrap();
+    let migration = physical_fixture(&store);
+    let sid = migration.expected.session_id.clone();
+    let committed = physical_submit(&store, migration).unwrap();
+    for (label, provenance) in [
+        (
+            "v1",
+            serde_json::json!({"receipt": "kernel-proof"}).to_string(),
+        ),
+        (
+            "v2-foreign-session",
+            serde_json::json!({"version": 2, "session_id": "00000000-0000-4000-8000-00000000000b"})
+                .to_string(),
+        ),
+    ] {
+        rewrite_receipt_row(&store, &sid, committed.current.revision, "", &provenance);
+        let error = store.read_physical_root_migration(&sid).unwrap_err();
+        assert!(
+            format!("{error:#}").contains("invalid physical migration document"),
+            "{label}: {error:#}"
+        );
+    }
+}
+
+fn rewrite_receipt_row(
+    store: &CozoGraphShuttle,
+    sid: &str,
+    committed_revision: u64,
+    instance_json: &str,
+    provenance_json: &str,
+) {
+    cozo_run(
+        &store.db,
+        "?[session_id,plan_sha256,operation_id,expected_revision,committed_revision,btrfs_device_json,instance_json,provenance_json] <- [[$sid,$plan,$op,$expected,$committed,$device,$instance,$provenance]] :put identity_physical_root_migrations {session_id => plan_sha256,operation_id,expected_revision,committed_revision,btrfs_device_json,instance_json,provenance_json}",
+        BTreeMap::from([
+            ("sid".into(), DataValue::Str(sid.into())),
+            ("plan".into(), DataValue::Str("b".repeat(64).into())),
+            (
+                "op".into(),
+                DataValue::Str(format!("physical-migrate-{}", "b".repeat(64)).into()),
+            ),
+            (
+                "expected".into(),
+                dv_int((committed_revision - 1) as i64),
+            ),
+            ("committed".into(), dv_int(committed_revision as i64)),
+            (
+                "device".into(),
+                DataValue::Str(
+                    serde_json::json!({"device_path": "/dev/fixture-leaf", "mount_point": "/mnt/fixture", "btrfs_uuid": "00000000-0000-4000-8000-00000000000a", "cozo_id": "retained-owner", "attached": true})
+                        .to_string()
+                        .into(),
+                ),
+            ),
+            ("instance".into(), DataValue::Str(instance_json.into())),
+            ("provenance".into(), DataValue::Str(provenance_json.into())),
+        ]),
+    )
+    .unwrap();
+}
+
+#[test]
 fn physical_migration_survives_private_persistent_reopen_and_power_updates() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("private");

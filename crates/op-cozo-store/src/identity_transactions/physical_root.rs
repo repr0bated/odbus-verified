@@ -101,7 +101,20 @@ pub(super) fn read_in_tx(
         return Err(err("corrupt physical migration receipt identity"));
     }
     object(&receipt.btrfs_device_json)?;
-    object(&receipt.instance_json)?;
+    // A committed version-2 shared-human migration retires the per-human
+    // instance binding: the receipt's instance column is empty by design —
+    // the same shape `validate_pair` already accepts for the record —
+    // because the shared runtime's container belongs to the service session,
+    // never to the human. For every other receipt an empty or non-object
+    // column is corruption and must keep failing closed.
+    let shared_human_v2 = receipt.instance_json.is_empty()
+        && serde_json::from_str::<Value>(&receipt.provenance_json).is_ok_and(|provenance| {
+            provenance.get("version").and_then(Value::as_u64) == Some(2)
+                && provenance.get("session_id").and_then(Value::as_str) == Some(sid)
+        });
+    if !shared_human_v2 {
+        object(&receipt.instance_json)?;
+    }
     object(&receipt.provenance_json)?;
     Ok(Some(receipt))
 }
