@@ -1,6 +1,8 @@
 //! Leftover HTTP SSE framing (`GET /api/events`). Live schema/state belongs to
 //! tonic-web / lungs at `10.0.0.2:8090` (`Subscribe` / `CallMethod`), not here.
 //! Default: readiness frames only (no catalog dump). Opt-in hydrate is legacy.
+//! Deprecated compatibility route: its 15-second SSE keepalive is timer-driven;
+//! state refresh is event-driven. Route removal requires owner approval.
 
 use anyhow::{Context, Result, ensure};
 use axum::{

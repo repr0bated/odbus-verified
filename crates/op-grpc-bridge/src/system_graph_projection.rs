@@ -378,19 +378,20 @@ impl Projection {
                     "disk" => {
                         self.extend(
                             &device_id,
-                            select(device, &["readonly", "recursive", "shift"]),
+                            select(device, &["readonly", "recursive", "shift", "source_identity"]),
                         );
                         if let Some(path) = text(device, "path").filter(|path| safe_path(path)) {
                             self.extend(&device_id, object(json!({"mount_path":path})));
                         }
                         if let Some(path) = text(device, "source").filter(|path| safe_path(path)) {
                             let path_id = id("filesystem_path", &[path]);
-                            self.node(
-                                &path_id,
-                                "filesystem_path",
-                                path,
-                                json!({"filesystem_type":"unknown"}),
-                            );
+                            let mut props = json!({"filesystem_type":"unknown"});
+                            if let Some(identity) = text(device, "source_identity") {
+                                props["mount_identity"] = json!(identity);
+                                props["identity_basis"] =
+                                    json!("sha256(dev:ino)[..16]");
+                            }
+                            self.node(&path_id, "filesystem_path", path, props);
                             self.edge(
                                 &device_id,
                                 "mounts_source",

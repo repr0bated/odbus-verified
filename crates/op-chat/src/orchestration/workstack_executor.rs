@@ -21,6 +21,7 @@ use tracing::{debug, error, info, instrument, warn};
 
 use super::error::{ErrorCode, OrchestrationError, OrchestrationResult};
 use super::grpc_pool::{GrpcAgentPool, StreamChunk};
+use super::{ExecutionControl, ScopeVerifier, VerifiedScope, WorkstackEventSink};
 
 // ============================================================================
 // WORKSTACK TYPES
@@ -266,7 +267,8 @@ pub enum WorkstackEvent {
 
 /// Context for workstack execution
 struct ExecutionContext {
-    session_id: String,
+    scope: VerifiedScope,
+    event_sink: Option<Arc<dyn WorkstackEventSink>>,
     execution_id: String,
     workstack: Workstack,
     variables: HashMap<String, Value>,
@@ -274,21 +276,16 @@ struct ExecutionContext {
     completed_phases: HashSet<String>,
     event_tx: Option<mpsc::Sender<WorkstackEvent>>,
     started_at: Instant,
-    cancelled: bool,
 }
 
 impl ExecutionContext {
     fn new(
-        session_id: String,
+        scope: VerifiedScope,
         workstack: Workstack,
         input_variables: HashMap<String, String>,
         event_tx: Option<mpsc::Sender<WorkstackEvent>>,
     ) -> Self {
-        let execution_id = format!(
-            "{}-{}",
-            workstack.id,
-            chrono::Utc::now().format("%Y%m%d%H%M%S")
-        );
+        let execution_id = format!("{}-{}", workstack.id, uuid::Uuid::new_v4());
 
         // Merge workstack variables with input variables
         let mut variables: HashMap<String, Value> = workstack
@@ -302,7 +299,8 @@ impl ExecutionContext {
         }
 
         Self {
-            session_id,
+            scope,
+            event_sink: None,
             execution_id,
             workstack,
             variables,
@@ -310,7 +308,6 @@ impl ExecutionContext {
             completed_phases: HashSet::new(),
             event_tx,
             started_at: Instant::now(),
-            cancelled: false,
         }
     }
 
@@ -370,6 +367,9 @@ impl ExecutionContext {
 
     /// Send an event
     async fn emit(&self, event: WorkstackEvent) {
+        if let Some(sink) = &self.event_sink {
+            sink.on_event(&self.scope, &self.execution_id, &event);
+        }
         if let Some(tx) = &self.event_tx {
             let _ = tx.send(event).await;
         }
@@ -418,6 +418,22 @@ impl ExecutionContext {
 
 /// Trait for tool execution (to be implemented by the caller)
 pub trait ToolExecutor: Send + Sync {
+    /// Implement through the canonical dispatcher with the sealed per-operation
+    /// capability. The unscoped method is never a fallback for workstacks.
+    fn execute_scoped<'a>(
+        &'a self,
+        _scope: &'a VerifiedScope,
+        _tool: &'a str,
+        _arguments: &'a Value,
+    ) -> super::ScopeFuture<'a, Value> {
+        Box::pin(async {
+            Err(OrchestrationError::new(
+                ErrorCode::OperationNotSupported,
+                "scoped tool dispatch is not wired",
+            ))
+        })
+    }
+
     fn execute<'a>(
         &'a self,
         tool: &'a str,
@@ -431,11 +447,15 @@ pub struct WorkstackExecutor {
     tool_executor: Arc<dyn ToolExecutor>,
     workstacks: RwLock<HashMap<String, Workstack>>,
     executions: RwLock<HashMap<String, ExecutionState>>,
+    scope_verifier: Option<Arc<dyn ScopeVerifier>>,
+    event_sink: Option<Arc<dyn WorkstackEventSink>>,
 }
 
 /// State of an execution
 #[derive(Debug)]
 struct ExecutionState {
+    owner: VerifiedScope,
+    cancel_tx: tokio::sync::watch::Sender<bool>,
     #[allow(dead_code)]
     execution_id: String,
     #[allow(dead_code)]
@@ -468,7 +488,40 @@ impl WorkstackExecutor {
             tool_executor,
             workstacks: RwLock::new(HashMap::new()),
             executions: RwLock::new(HashMap::new()),
+            scope_verifier: None,
+            event_sink: None,
         }
+    }
+
+    pub fn with_scope_verifier(mut self, verifier: Arc<dyn ScopeVerifier>) -> Self {
+        self.scope_verifier = Some(verifier);
+        self
+    }
+
+    pub fn with_event_sink(mut self, sink: Arc<dyn WorkstackEventSink>) -> Self {
+        self.event_sink = Some(sink);
+        self
+    }
+
+    async fn verified_scope(&self, session_id: &str) -> OrchestrationResult<VerifiedScope> {
+        let verifier = self.scope_verifier.as_ref().ok_or_else(|| {
+            OrchestrationError::new(
+                ErrorCode::OperationNotSupported,
+                "scope verifier is required",
+            )
+        })?;
+        let scope = verifier.verify(session_id).await?;
+        if scope.session_id != session_id
+            || scope.principal_id.is_empty()
+            || scope.session_id.is_empty()
+            || scope.session_genesis.is_empty()
+        {
+            return Err(OrchestrationError::new(
+                ErrorCode::SessionInvalid,
+                "invalid verified session scope",
+            ));
+        }
+        Ok(scope)
     }
 
     /// Register a workstack
@@ -519,6 +572,7 @@ impl WorkstackExecutor {
         variables: HashMap<String, String>,
         event_tx: Option<mpsc::Sender<WorkstackEvent>>,
     ) -> OrchestrationResult<WorkstackResult> {
+        let scope = self.verified_scope(session_id).await?;
         // Get workstack
         let workstack = self
             .workstacks
@@ -532,15 +586,14 @@ impl WorkstackExecutor {
         self.validate_dependencies(&workstack)?;
 
         // Create execution context
-        let mut ctx = ExecutionContext::new(
-            session_id.to_string(),
-            workstack.clone(),
-            variables,
-            event_tx,
-        );
+        let mut ctx = ExecutionContext::new(scope.clone(), workstack.clone(), variables, event_tx);
+        ctx.event_sink = self.event_sink.clone();
+        let (cancel_tx, mut cancel_rx) = tokio::sync::watch::channel(false);
 
         // Track execution
         let execution_state = ExecutionState {
+            owner: scope,
+            cancel_tx,
             execution_id: ctx.execution_id.clone(),
             workstack_id: workstack_id.to_string(),
             status: ExecutionStatus::Running,
@@ -569,13 +622,25 @@ impl WorkstackExecutor {
         .await;
 
         // Execute phases
-        let result = self.execute_phases(&mut ctx).await;
+        let mut result = tokio::select! {
+            biased;
+            _ = cancel_rx.changed() => Err(OrchestrationError::new(
+                ErrorCode::ExecutionCancelled, "Workstack execution cancelled",
+            )),
+            result = self.execute_phases(&mut ctx) => result,
+        };
 
         // Update execution state
         {
             let mut executions = self.executions.write().await;
             if let Some(state) = executions.get_mut(&ctx.execution_id) {
-                state.status = if result.is_ok() {
+                state.status = if state.status == ExecutionStatus::Cancelled {
+                    result = Err(OrchestrationError::new(
+                        ErrorCode::ExecutionCancelled,
+                        "Workstack execution cancelled",
+                    ));
+                    ExecutionStatus::Cancelled
+                } else if result.is_ok() {
                     ExecutionStatus::Completed
                 } else {
                     ExecutionStatus::Failed
@@ -591,6 +656,23 @@ impl WorkstackExecutor {
             && phases
                 .iter()
                 .all(|p| p.status == PhaseStatus::Completed || p.status == PhaseStatus::Skipped);
+
+        if let Some(state) = self.executions.write().await.get_mut(&ctx.execution_id)
+            && state.status != ExecutionStatus::Cancelled
+        {
+            state.status = if success {
+                ExecutionStatus::Completed
+            } else {
+                ExecutionStatus::Failed
+            };
+        }
+        if let Err(error) = &result {
+            ctx.emit(WorkstackEvent::Error {
+                phase_id: None,
+                error: error.to_string(),
+            })
+            .await;
+        }
 
         // Emit completed event
         ctx.emit(WorkstackEvent::Completed {
@@ -619,13 +701,6 @@ impl WorkstackExecutor {
 
         // Execute phases in order (respecting dependencies)
         for (index, phase_id) in phase_ids.iter().enumerate() {
-            if ctx.cancelled {
-                return Err(OrchestrationError::new(
-                    ErrorCode::ExecutionCancelled,
-                    "Workstack execution cancelled",
-                ));
-            }
-
             // Find the phase
             let phase = ctx
                 .workstack
@@ -766,7 +841,10 @@ impl WorkstackExecutor {
             debug!(tool = %tool_call.tool, "Executing tool");
 
             let tool_start = Instant::now();
-            let result = self.tool_executor.execute(&tool_call.tool, &args).await;
+            let result = self
+                .tool_executor
+                .execute_scoped(&ctx.scope, &tool_call.tool, &args)
+                .await;
             let tool_duration = tool_start.elapsed();
 
             match result {
@@ -822,27 +900,34 @@ impl WorkstackExecutor {
                     let phase_id = phase.id.clone();
                     let agent_id_clone = agent_id.clone();
                     let event_tx = ctx.event_tx.clone();
+                    let event_sink = ctx.event_sink.clone();
+                    let scope = ctx.scope.clone();
+                    let execution_id = ctx.execution_id.clone();
 
                     self.agent_pool
-                        .execute_streaming(
-                            &ctx.session_id,
+                        .execute_streaming_scoped(
+                            &ctx.scope,
                             agent_id,
                             operation,
                             args,
                             move |chunk| {
+                                let event = WorkstackEvent::AgentOutput {
+                                    phase_id: phase_id.clone(),
+                                    agent_id: agent_id_clone.clone(),
+                                    chunk,
+                                };
+                                if let Some(sink) = &event_sink {
+                                    sink.on_event(&scope, &execution_id, &event);
+                                }
                                 if let Some(tx) = &event_tx {
-                                    let _ = tx.try_send(WorkstackEvent::AgentOutput {
-                                        phase_id: phase_id.clone(),
-                                        agent_id: agent_id_clone.clone(),
-                                        chunk,
-                                    });
+                                    let _ = tx.try_send(event);
                                 }
                             },
                         )
                         .await
                 } else {
                     self.agent_pool
-                        .execute(&ctx.session_id, agent_id, operation, args)
+                        .execute_scoped(&ctx.scope, agent_id, operation, args)
                         .await
                 };
 
@@ -896,6 +981,31 @@ impl WorkstackExecutor {
 
     /// Execute rollback for a failed phase
     async fn execute_rollback(&self, ctx: &mut ExecutionContext, phase: &WorkstackPhase) {
+        let admitted = self
+            .authorize_execution_control(
+                &ctx.scope.session_id,
+                &ctx.execution_id,
+                ExecutionControl::Rollback,
+            )
+            .await
+            .and_then(|caller| {
+                if caller == ctx.scope {
+                    Ok(())
+                } else {
+                    Err(OrchestrationError::new(
+                        ErrorCode::PermissionDenied,
+                        "rollback owner scope changed",
+                    ))
+                }
+            });
+        if let Err(error) = admitted {
+            ctx.emit(WorkstackEvent::Error {
+                phase_id: Some(phase.id.clone()),
+                error: error.to_string(),
+            })
+            .await;
+            return;
+        }
         info!(phase = %phase.id, "Executing rollback");
 
         ctx.emit(WorkstackEvent::RollbackStarted {
@@ -910,7 +1020,11 @@ impl WorkstackExecutor {
 
             debug!(tool = %rollback_call.tool, "Executing rollback tool");
 
-            if let Err(e) = self.tool_executor.execute(&rollback_call.tool, &args).await {
+            if let Err(e) = self
+                .tool_executor
+                .execute_scoped(&ctx.scope, &rollback_call.tool, &args)
+                .await
+            {
                 error!(
                     tool = %rollback_call.tool,
                     error = %e,
@@ -927,7 +1041,9 @@ impl WorkstackExecutor {
         .await;
 
         // Update phase status
-        if let Some(result) = ctx.phase_results.get_mut(&phase.id) {
+        if let Some(result) = ctx.phase_results.get_mut(&phase.id)
+            && success
+        {
             result.status = PhaseStatus::RolledBack;
         }
     }
@@ -1015,12 +1131,53 @@ impl WorkstackExecutor {
 
     /// Cancel a running execution
     pub async fn cancel(&self, execution_id: &str) -> OrchestrationResult<bool> {
+        let _ = execution_id;
+        Err(OrchestrationError::new(
+            ErrorCode::OperationNotSupported,
+            "cancel requires verified caller scope",
+        ))
+    }
+
+    /// Work C uses this for Cancel/Rollback admission. Caller fields are resolved
+    /// again through the verifier; equality includes the session genesis.
+    pub async fn authorize_execution_control(
+        &self,
+        caller_session_id: &str,
+        execution_id: &str,
+        operation: ExecutionControl,
+    ) -> OrchestrationResult<VerifiedScope> {
+        let caller = self.verified_scope(caller_session_id).await?;
+        let owner = self
+            .executions
+            .read()
+            .await
+            .get(execution_id)
+            .map(|state| state.owner.clone())
+            .ok_or_else(|| OrchestrationError::invalid_arguments("execution not found"))?;
+        if caller != owner {
+            self.scope_verifier
+                .as_ref()
+                .ok_or_else(|| OrchestrationError::invalid_arguments("scope verifier missing"))?
+                .authorize_control(&caller, &owner, operation)
+                .await?;
+        }
+        Ok(caller)
+    }
+
+    pub async fn cancel_scoped(
+        &self,
+        caller_session_id: &str,
+        execution_id: &str,
+    ) -> OrchestrationResult<bool> {
+        self.authorize_execution_control(caller_session_id, execution_id, ExecutionControl::Cancel)
+            .await?;
         let mut executions = self.executions.write().await;
 
         if let Some(state) = executions.get_mut(execution_id)
             && state.status == ExecutionStatus::Running
         {
             state.status = ExecutionStatus::Cancelled;
+            state.cancel_tx.send_replace(true);
             info!(execution_id = %execution_id, "Execution cancelled");
             return Ok(true);
         }
@@ -1056,6 +1213,257 @@ pub struct WorkstackInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn scope(session: &str, genesis: &str) -> VerifiedScope {
+        VerifiedScope {
+            principal_id: "principal".into(),
+            session_id: session.into(),
+            session_genesis: genesis.into(),
+        }
+    }
+
+    struct Verifier;
+    impl ScopeVerifier for Verifier {
+        fn verify<'a>(&'a self, session: &'a str) -> super::super::ScopeFuture<'a, VerifiedScope> {
+            Box::pin(async move { Ok(scope(session, "genesis")) })
+        }
+    }
+
+    struct Sink(std::sync::Mutex<Vec<(VerifiedScope, String, WorkstackEvent)>>);
+    impl WorkstackEventSink for Sink {
+        fn on_event(&self, scope: &VerifiedScope, id: &str, event: &WorkstackEvent) {
+            self.0
+                .lock()
+                .unwrap()
+                .push((scope.clone(), id.into(), event.clone()));
+        }
+    }
+
+    #[tokio::test]
+    async fn unverified_execution_and_unscoped_cancel_are_refused() {
+        let executor = WorkstackExecutor::new(
+            Arc::new(GrpcAgentPool::with_defaults()),
+            Arc::new(MockToolExecutor),
+        );
+        executor
+            .register(Workstack::new("test", "Test", "fixture"))
+            .await;
+        assert!(
+            executor
+                .execute("default", "test", HashMap::new(), None)
+                .await
+                .is_err()
+        );
+        assert!(executor.executions.read().await.is_empty());
+        assert!(executor.cancel("unknown").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn ownership_includes_session_and_genesis_for_both_controls() {
+        let executor = WorkstackExecutor::new(
+            Arc::new(GrpcAgentPool::with_defaults()),
+            Arc::new(MockToolExecutor),
+        )
+        .with_scope_verifier(Arc::new(Verifier));
+        let (cancel_tx, _rx) = tokio::sync::watch::channel(false);
+        executor.executions.write().await.insert(
+            "run".into(),
+            ExecutionState {
+                owner: scope("owner", "old-genesis"),
+                cancel_tx,
+                execution_id: "run".into(),
+                workstack_id: "test".into(),
+                status: ExecutionStatus::Running,
+                current_phase: None,
+                started_at: Instant::now(),
+                completed_at: None,
+            },
+        );
+        for operation in [ExecutionControl::Cancel, ExecutionControl::Rollback] {
+            for caller in ["other", "owner"] {
+                assert!(
+                    executor
+                        .authorize_execution_control(caller, "run", operation)
+                        .await
+                        .is_err()
+                );
+            }
+        }
+        assert_eq!(
+            executor.get_status("run").await,
+            Some(ExecutionStatus::Running)
+        );
+        executor
+            .executions
+            .write()
+            .await
+            .get_mut("run")
+            .unwrap()
+            .owner = scope("owner", "genesis");
+        assert!(executor.cancel_scoped("owner", "run").await.unwrap());
+        assert_eq!(
+            executor.get_status("run").await,
+            Some(ExecutionStatus::Cancelled)
+        );
+    }
+
+    struct BlockingTool(Arc<tokio::sync::Notify>);
+
+    #[tokio::test]
+    async fn sink_receives_phase_completion_and_unique_execution_binding() {
+        let sink = Arc::new(Sink(std::sync::Mutex::new(Vec::new())));
+        let executor = WorkstackExecutor::new(
+            Arc::new(GrpcAgentPool::with_defaults()),
+            Arc::new(MockToolExecutor),
+        )
+        .with_scope_verifier(Arc::new(Verifier))
+        .with_event_sink(sink.clone());
+        executor
+            .register(
+                Workstack::new("test", "Test", "fixture").with_phase(WorkstackPhase {
+                    id: "phase".into(),
+                    ..Default::default()
+                }),
+            )
+            .await;
+        let first = executor
+            .execute("owner", "test", HashMap::new(), None)
+            .await
+            .unwrap();
+        let second = executor
+            .execute("owner", "test", HashMap::new(), None)
+            .await
+            .unwrap();
+        assert!(first.success && second.success);
+        assert_ne!(first.execution_id, second.execution_id);
+        let events = sink.0.lock().unwrap();
+        for id in [&first.execution_id, &second.execution_id] {
+            let run_events: Vec<_> = events.iter().filter(|(_, run, _)| run == id).collect();
+            assert_eq!(run_events.len(), 4);
+            assert!(
+                run_events
+                    .iter()
+                    .all(|(caller, _, _)| caller == &scope("owner", "genesis"))
+            );
+            assert!(matches!(
+                run_events[2].2,
+                WorkstackEvent::PhaseCompleted {
+                    status: PhaseStatus::Completed,
+                    ..
+                }
+            ));
+            assert!(matches!(
+                run_events[3].2,
+                WorkstackEvent::Completed { success: true, .. }
+            ));
+        }
+    }
+    impl ToolExecutor for BlockingTool {
+        fn execute<'a>(
+            &'a self,
+            _tool: &'a str,
+            _args: &'a Value,
+        ) -> super::super::ScopeFuture<'a, Value> {
+            Box::pin(async { panic!("unscoped fallback must never run") })
+        }
+        fn execute_scoped<'a>(
+            &'a self,
+            caller: &'a VerifiedScope,
+            _tool: &'a str,
+            _args: &'a Value,
+        ) -> super::super::ScopeFuture<'a, Value> {
+            Box::pin(async move {
+                assert_eq!(caller, &scope("owner", "genesis"));
+                self.0.notify_one();
+                std::future::pending().await
+            })
+        }
+    }
+
+    #[tokio::test]
+    async fn cancel_interrupts_active_tool_and_sink_receives_scoped_terminal() {
+        let entered = Arc::new(tokio::sync::Notify::new());
+        let sink = Arc::new(Sink(std::sync::Mutex::new(Vec::new())));
+        let executor = Arc::new(
+            WorkstackExecutor::new(
+                Arc::new(GrpcAgentPool::with_defaults()),
+                Arc::new(BlockingTool(entered.clone())),
+            )
+            .with_scope_verifier(Arc::new(Verifier))
+            .with_event_sink(sink.clone()),
+        );
+        executor
+            .register(
+                Workstack::new("test", "Test", "fixture").with_phase(WorkstackPhase {
+                    id: "phase".into(),
+                    tools: vec![PhaseToolCall {
+                        tool: "blocked".into(),
+                        arguments: simd_json::json!({}),
+                        store_as: None,
+                        retries: 0,
+                    }],
+                    ..Default::default()
+                }),
+            )
+            .await;
+        let runner = executor.clone();
+        let task =
+            tokio::spawn(
+                async move { runner.execute("owner", "test", HashMap::new(), None).await },
+            );
+        tokio::time::timeout(Duration::from_secs(2), entered.notified())
+            .await
+            .unwrap();
+        let id = sink.0.lock().unwrap()[0].1.clone();
+        assert!(executor.cancel_scoped("other", &id).await.is_err());
+        assert!(executor.cancel_scoped("owner", &id).await.unwrap());
+        let result = tokio::time::timeout(Duration::from_secs(2), task)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
+        assert!(!result.success);
+        assert_eq!(
+            executor.get_status(&id).await,
+            Some(ExecutionStatus::Cancelled)
+        );
+        let events = sink.0.lock().unwrap();
+        assert!(
+            events
+                .iter()
+                .all(|(caller, run, _)| caller == &scope("owner", "genesis") && run == &id)
+        );
+        assert!(
+            events
+                .iter()
+                .any(|(_, _, event)| matches!(event, WorkstackEvent::PhaseStarted { .. }))
+        );
+        assert!(matches!(
+            events.last().unwrap().2,
+            WorkstackEvent::Completed { success: false, .. }
+        ));
+    }
+
+    #[tokio::test]
+    async fn scope_cannot_fall_back_to_unwired_agent_or_unscoped_tool() {
+        let pool = GrpcAgentPool::with_defaults();
+        let caller = scope("owner", "genesis");
+        assert_eq!(
+            pool.execute_scoped(&caller, "rust_pro", "check", simd_json::json!({}))
+                .await
+                .unwrap_err()
+                .code,
+            ErrorCode::OperationNotSupported
+        );
+        assert_eq!(
+            MockToolExecutor
+                .execute_scoped(&caller, "tool", &simd_json::json!({}))
+                .await
+                .unwrap_err()
+                .code,
+            ErrorCode::OperationNotSupported
+        );
+    }
 
     struct MockToolExecutor;
 
@@ -1093,7 +1501,11 @@ mod tests {
     fn test_variable_interpolation() {
         let ws = Workstack::new("test", "Test", "Test");
         let mut ctx = ExecutionContext::new(
-            "session".to_string(),
+            VerifiedScope {
+                principal_id: "principal".into(),
+                session_id: "session".into(),
+                session_genesis: "genesis".into(),
+            },
             ws,
             HashMap::from([("name".to_string(), "world".to_string())]),
             None,

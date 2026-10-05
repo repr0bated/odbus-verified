@@ -352,7 +352,8 @@ the matching cognitive schema and binary.
 
 Physical identity leaves require the dedicated-mount lifecycle implementation.
 Before registering such a leaf in Cozo, activate and verify the release that
-checks its mounted filesystem and retains attachment when the guest stops.
+checks its mounted filesystem and retains Btrfs membership when the guest
+stops. Logical Cozo attachment may become false; this never means device removal.
 The older implementation used device removal on stop. Once a populated
 physical-seed leaf is registered, do not roll the bridge back to that older
 implementation. Retain a compatible fixed bridge for recovery; an older

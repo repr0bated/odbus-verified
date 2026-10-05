@@ -37,12 +37,6 @@ LUNGS_MOUNT="${OP_CHAT_RESPONDER_LUNGS_MOUNT:-/opt/run-mounts/3tched}"
 MQTT_HOST="${OP_CHAT_RESPONDER_MQTT_HOST:-10.0.0.3}"
 MQTT_PORT="${OP_CHAT_RESPONDER_MQTT_PORT:-1883}"
 
-# Poll interval (fallback when MQTT wake is delayed).
-POLL_INTERVAL="${OP_CHAT_RESPONDER_POLL_INTERVAL:-30}"
-
-# Polling mode: set to 1 to disable MQTT and rely only on polling.
-POLLING_MODE="${OP_CHAT_RESPONDER_POLLING_MODE:-}"
-
 export RUST_LOG="${OP_CHAT_RESPONDER_LOG:-info,rumqttc=warn}"
 
 # Wait for the lungs mount to be available.
@@ -60,7 +54,5 @@ args="--principal-id $RESPONDER_PRINCIPAL_ID"
 args="$args --lungs-mount $LUNGS_MOUNT"
 args="$args --mqtt-host $MQTT_HOST"
 args="$args --mqtt-port $MQTT_PORT"
-args="$args --poll-interval $POLL_INTERVAL"
-[ -n "$POLLING_MODE" ] && args="$args --polling-mode"
 
 exec /usr/local/bin/op-chat-responder $args

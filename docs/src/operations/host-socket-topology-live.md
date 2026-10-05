@@ -224,7 +224,7 @@ Incus TCP proxies and mesh `fwd-*` still exist for **mail / netmaker / qdrant / 
 | **Shared host UDS** `/run/ghostbridge/container.sock` | Single control surface (host binds; CT gets the dir bind-mounted) | **Listen live** (op-grpc-bridge dual-bind) |
 | **Host / CT loopbacks** | Services bind `127.0.0.1` (loopback), not a CT NIC; not an Incus `proxy` device | Pattern for NIC-less CTs |
 | **Disk bind of identity dir** | `/var/lib/opdbus-runtime/identities/<role>` → CT `/opt/run-mounts/identity` | Dir layout present; not full provision |
-| **btrfs fstorage** | Per-identity sealed image; `btrfs device add` onto seed rootfs (preferred cleaner persistence) | Keep this model. **Delete order:** `btrfs device delete` fstorage from seed **before** `incus delete` (provision `--recreate` does this). Deleting the CT while the loop is still in the array is how the host D-states. |
+| **Btrfs private leaf** | Cozo-assigned writable leaf paired permanently with the shared immutable seed | Host provisioning adds a blank leaf once. Start/stop preserves filesystem membership. Retirement stops the guest and releases its mounts/mappings through the storage owner; it does not run `btrfs device delete`. |
 | **No NIC** | Only **xray** has a real NIC on `ovsbr0` | Live |
 | **No Incus proxy for identity** | Proxy devices remain hybrid hangover for mail/netmaker/qdrant/cozo only | Live hybrid |
 
@@ -244,7 +244,7 @@ Correct provision (existing WG keys preferred) — **target sequence**, not all 
 
 1. `session_id = derive_session_id(wg_pubkey)` (or PSK-aware Argon2 form) — **container name IS the UUID**.
 2. `identity_sled.provision_container` with that pubkey → Incus create on **btrfs seed** (default pool), profiles without NIC, register sled.
-3. Create per-session **fstorage** image under `/var/lib/opdbus-runtime/identities/<role>/fstorage.img`; `attach_btrfs_device` → `btrfs device add` onto seed mount.
+3. The external host provisioner creates the private leaf once through its own read-only view of the shared seed. `attach_btrfs_device` then verifies the existing filesystem and records logical attachment in Cozo; it does not issue device-add.
 4. Register on shared socket: `createunixsocket` / `shared_unix_socket` with `name = session_id` (metadata only; host already owns `container.sock`).
 5. **Later:** ComponentRegistry **Register** + **Heartbeat** over shared UDS (lease / stale) — API present; **CT client not implemented/deployed**.
 

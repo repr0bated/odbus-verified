@@ -881,14 +881,22 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
             "refreshed drifted identity schema_content_hash rows"
         );
     }
-    let chatbot_containers =
-        crate::identity_sled_dispatch::start_service_identity_containers(mutation_engine.as_ref())
-            .await?;
-    if chatbot_containers > 0 {
-        tracing::info!(
+    // Identity recovery and bootstrap above remain startup requirements. A
+    // container's unavailable external storage must not take down the bridge
+    // surfaces needed to inspect and repair it. Explicit activation still
+    // returns its error and never substitutes a device-add or mount fallback.
+    match crate::identity_sled_dispatch::start_service_identity_containers(mutation_engine.as_ref())
+        .await
+    {
+        Ok(chatbot_containers) if chatbot_containers > 0 => tracing::info!(
             chatbot_containers,
             "control-plane chatbot identity container is running"
-        );
+        ),
+        Ok(_) => {}
+        Err(error) => tracing::error!(
+            error = %format!("{error:#}"),
+            "control-plane chatbot container is unavailable; bridge remains available for operator recovery"
+        ),
     }
     let unattended_engine = mutation_engine.clone();
     tokio::spawn(async move {
@@ -923,6 +931,11 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         .await?;
     let mutation_engine_for_dbus = mutation_engine.clone();
     mutation_engine.clone().start().await?;
+    // The reactive workstack runner owns one bounded queue per bridge; it
+    // is fed only by admitted `workflows.start_workflow` calls (no timer,
+    // no poll) and executes under each starter's verified identity session.
+    crate::workstack_runner::start_once(mutation_engine.clone());
+    crate::workstack_service::start_once(mutation_engine.clone());
     let operation_server = OperationGrpcServer::new(mutation_engine.clone());
     // The sealed SHM blob catalog IS the plugin set: hydrate reflection from
     // it so a bridge restart advertises every sealed plugin immediately.

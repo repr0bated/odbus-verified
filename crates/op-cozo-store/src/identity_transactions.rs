@@ -1159,15 +1159,15 @@ impl CozoGraphShuttle {
         // matcher rejects empty or non-object JSON, and treating that as a
         // mutation blocks every later CAS, including a schema-hash refresh.
         if matches!(&intent, IdentityIntent::CompareExchange(exchange)
-            if physical.is_some() && exchange.record.as_ref().is_some_and(|new|
-                previous.record.as_ref().is_some_and(|old| {
-                    new.btrfs_device_json != old.btrfs_device_json
-                        || (new.instance_json != old.instance_json
-                            && !physical_root_instance_binding_matches(
-                                &old.instance_json,
-                                &new.instance_json,
-                            ))
-                })))
+        if physical.is_some() && exchange.record.as_ref().is_some_and(|new|
+            previous.record.as_ref().is_some_and(|old| {
+                new.btrfs_device_json != old.btrfs_device_json
+                    || (new.instance_json != old.instance_json
+                        && !physical_root_instance_binding_matches(
+                            &old.instance_json,
+                            &new.instance_json,
+                        ))
+            })))
         {
             return Err(err("completed physical migration binding is immutable"));
         }

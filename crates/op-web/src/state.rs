@@ -47,10 +47,35 @@ pub struct GoogleOAuthConfig {
     pub redirect_url: String,
 }
 
+/// One sealed-door call carried by `identity`: the only way the op-web
+/// agent surface executes anything. The identity metadata crosses to the
+/// door unchanged (never inferred, never minted here), and the door's
+/// admission — sealed method contract, caller grants, MutationEngine — is
+/// the sole authority for what runs.
+pub(crate) async fn call_sealed_method(
+    plugin_id: &str,
+    method: &str,
+    arguments: serde_json::Value,
+    capability_id: &str,
+    identity: &op_grpc_bridge::GhostbridgeCallMetadata,
+) -> anyhow::Result<serde_json::Value> {
+    let mut bytes = serde_json::to_vec(&arguments)?;
+    let arguments = simd_json::to_owned_value(&mut bytes)?;
+    let envelope = crate::state_manager_client::call_plugin_method(
+        plugin_id,
+        method,
+        arguments,
+        capability_id,
+        identity,
+    )
+    .await?;
+    let result = envelope.get("result").cloned().unwrap_or_else(|| envelope.clone());
+    Ok(serde_json::to_value(&result)?)
+}
+
 /// User-specific API credentials
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserApiCredentials {
-    pub token: String,
+pub struct UserApiCredentials {    pub token: String,
     pub gemini_api_key: Option<String>,
     pub anthropic_api_key: Option<String>,
     pub openai_api_key: Option<String>,
@@ -59,8 +84,7 @@ pub struct UserApiCredentials {
 
 impl GoogleOAuthConfig {
     /// Load configuration from environment variables
-    pub fn from_env() -> Option<Self> {
-        let client_id = std::env::var("GOOGLE_OAUTH_CLIENT_ID").ok()?;
+    pub fn from_env() -> Option<Self> {        let client_id = std::env::var("GOOGLE_OAUTH_CLIENT_ID").ok()?;
         let client_secret = std::env::var("GOOGLE_OAUTH_CLIENT_SECRET").ok()?;
         let redirect_url = std::env::var("GOOGLE_OAUTH_REDIRECT_URL")
             .unwrap_or_else(|_| "http://localhost:8080/api/privacy/google/callback".to_string());

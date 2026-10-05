@@ -7,6 +7,7 @@ description = "Bidirectional D-Bus <-> gRPC bridge with event chain integration"
 
 [dependencies]
 op-core = { workspace = true }
+op-chat = { workspace = true }
 # gRPC
 tonic = { workspace = true }
 tonic-web = { workspace = true }

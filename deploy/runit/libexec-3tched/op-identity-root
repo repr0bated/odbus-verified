@@ -26,6 +26,9 @@
 #   sudo ARCHIVE_EXISTING=1 op-identity-root create <session> [size]
 #                                  # give an existing identity a device, fresh on Raccoon
 #   sudo op-identity-root seed-create NAME SESSION_UUID LEAF_PATH SIZE_BYTES
+#   sudo op-identity-root seed-preflight # read-only source/helper readiness
+#   sudo op-identity-root seed-profile # prepare exact shared lungs Incus profile
+#   sudo op-identity-root seed-inspect NAME # read-only retained receipt/guidance
 #   sudo op-identity-root seed-up NAME   # mount only; deliberately start separately
 #   sudo op-identity-root seed-down NAME # stopped candidate required; retain leaf
 #   sudo op-identity-root seed-rename OLD SESSION_UUID # after seed-down and Incus rename
@@ -34,18 +37,19 @@
 #   sudo op-identity-root seed-enable-boot NAME [true|false] # AFTER authoritative attach/Get proof
 #
 # Environment overrides (defaults shown):
-#   RACCOON_UUID=2dcac52c-fb0b-418a-95a4-cb6eacc80209
+#   RACCOON_UUID=b6561d54-3c69-4897-a2f3-79b867e33601
 #   SEEDS=/var/lib/opdbus-seeds            read-only Raccoon mount (fstab)
 #   SEEDS_IDMAP=/var/lib/opdbus-seeds-idmap
 #   IDMAP='b:0:1000000:1000000000'         must match the containers' idmap
 #   IDENTITIES=/var/lib/opdbus-runtime/identities
 #   POOL=identity-roots                    Incus dir pool for identity roots
 #   LUNGS_RUN=/run/opdbus-lungs
-#   LUNGS_SOCKET=/run/opdbus/lungs.sock    the bridge's shared lungs socket
+#   LUNGS_SOCKET=/run/opdbus/lungs/lungs.sock    the bridge's shared lungs socket
 #   THREETCHED_FS=/usr/local/bin/threetched-fs    the release binary
+#   OP_IDENTITY_IMAGE_HELPER=/usr/local/libexec/3tched/op-identity-image
 set -u
 
-RACCOON_UUID=${RACCOON_UUID:-2dcac52c-fb0b-418a-95a4-cb6eacc80209}
+RACCOON_UUID=${RACCOON_UUID:-b6561d54-3c69-4897-a2f3-79b867e33601}
 SEEDS=${SEEDS:-/var/lib/opdbus-seeds}
 SEEDS_IDMAP=${SEEDS_IDMAP:-/var/lib/opdbus-seeds-idmap}
 IDMAP=${IDMAP:-b:0:1000000:1000000000}
@@ -53,7 +57,7 @@ IDENTITIES=${IDENTITIES:-/var/lib/opdbus-runtime/identities}
 POOL=${POOL:-identity-roots}
 POOL_PATH=/var/lib/incus/storage-pools/$POOL/containers
 LUNGS_RUN=${LUNGS_RUN:-/run/opdbus-lungs}
-LUNGS_SOCKET=${LUNGS_SOCKET:-/run/opdbus/lungs.sock}
+LUNGS_SOCKET=${LUNGS_SOCKET:-/run/opdbus/lungs/lungs.sock}
 THREETCHED_FS=${THREETCHED_FS:-/usr/local/bin/threetched-fs}
 STATE=/dev/shm/opdbus/state
 CATALOG=/dev/shm/opdbus/plugin-blobs
@@ -165,30 +169,22 @@ loop_for() {
     losetup -j "$1" -O NAME -n 2>/dev/null | head -n 1
 }
 
-# Soul functions on the identity's Cozo device. Cozo itself is the
-# persistence. truths, boundaries and vibe are subvolumes a user-owned
-# process writes through the persist mount. Agents and hooks see the same
-# subvolumes read-only at /soul/<name>.
+# Historical soul layout is observational only. Its owner must prepare both
+# existing subvolumes and native devices; this helper never creates either.
 ensure_soul() {
     session=$1
     cozo=$IDENTITIES/$session/device/cozo
-    [ -d "$cozo" ] || return 0
-    mountpoint -q "$IDENTITIES/$session/device" || return 0
-    incus info "$session" >/dev/null 2>&1 || return 0
+    [ -d "$cozo" ] && [ ! -L "$cozo" ] || { log "$session: existing soul persistence is missing"; return 1; }
+    mountpoint -q "$IDENTITIES/$session/device" || return 1
+    incus info "$session" >/dev/null 2>&1 || return 1
     for name in truths boundaries vibe; do
         path=$cozo/$name
-        if ! btrfs subvolume show "$path" >/dev/null 2>&1; then
-            btrfs subvolume create "$path" || return 1
-        fi
-        chown 1000000:1000000 "$path"
-        chmod 0755 "$path"
-        if incus config device get "$session" "soul-$name" source >/dev/null 2>&1; then
-            incus config device set "$session" "soul-$name" \
-                source="$path" path="/soul/$name" readonly=true || return 1
-        else
-            incus config device add "$session" "soul-$name" disk \
-                source="$path" path="/soul/$name" readonly=true >/dev/null || return 1
-        fi
+        [ -d "$path" ] && [ ! -L "$path" ] && btrfs subvolume show "$path" >/dev/null 2>&1 || {
+            log "$session: existing soul subvolume missing: $name"; return 1;
+        }
+        [ "$(incus config device get "$session" "soul-$name" source)" = "$path" ] &&
+            [ "$(incus config device get "$session" "soul-$name" path)" = "/soul/$name" ] &&
+            [ "$(incus config device get "$session" "soul-$name" readonly)" = true ] || return 1
     done
 }
 
@@ -363,7 +359,9 @@ status() {
     done
 }
 
-# Transitional shared-partition storage only. These descriptors are operator
+# Shared seed partition and per-container writable leaf, without root copies
+# or subvolume snapshots. The seven inherited sibling subvolumes are used
+# directly. These descriptors are operator
 # mount receipts, never identity/grant/Cozo authority. No command starts or
 # creates an Incus instance. Boot: call seed-up NAME after Incus API readiness
 # and before deliberately starting that candidate (boot.autostart stays false).
@@ -390,6 +388,43 @@ seed_private_dir() {
     seed_secure_path "$1"
     [ -d "$1" ] && [ "$(stat -c %a -- "$1")" = 700 ] || seed_fail "directory must be mode 0700: $1"
 }
+seed_shared_lock() {
+    [ "${seed_shared_locked:-false}" != true ] || return 0
+    seed_private_dir /run/opdbus-shared-seed
+    shared_lock=/run/opdbus-shared-seed/lock
+    [ ! -L "$shared_lock" ] || seed_fail "symlink shared seed lock"
+    if [ ! -e "$shared_lock" ]; then
+        ( umask 077; set -C; : > "$shared_lock" ) || seed_fail "shared seed lock creation raced; retry inspection"
+    fi
+    seed_secure_path "$shared_lock"
+    [ -f "$shared_lock" ] && [ "$(stat -c %a "$shared_lock")" = 600 ] || seed_fail "unsafe shared seed lock"
+    exec 8>"$shared_lock"
+    flock -n 8 || seed_fail "shared seed alias setup/creation already owned; retry later"
+    seed_shared_locked=true
+}
+seed_inspect() (
+    # Inspection must also work when the physical source is unavailable or an
+    # intent is incomplete. It never creates locks, mounts, or loop mappings.
+    set -eu
+    [ "$(id -u)" = 0 ] || seed_fail "operator inspection requires root"
+    inspect_name=$1
+    printf '%s' "$inspect_name" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$' || seed_fail "unsafe instance name"
+    inspect_state=${OP_IDENTITY_SEED_STATE:-/var/lib/opdbus-runtime/seed-identities}
+    inspect_receipt=$inspect_state/$inspect_name/state.json
+    seed_secure_path "$inspect_receipt"
+    [ -f "$inspect_receipt" ] && [ "$(stat -c %a "$inspect_receipt")" = 600 ] &&
+        [ "$(stat -c %s "$inspect_receipt")" -le 16384 ] || seed_fail "unsafe inspection receipt"
+    jq -e --arg name "$inspect_name" '
+        .version == 1 and .layout == "shared-partition-siblings-v2" and .name == $name and
+        (.phase == "create-intent" or .phase == "device-add-intent" or .phase == "layout-intent" or .phase == "ready") and
+        ([.session,.seed_fsid,.instance_uuid,.boot_id] | all(type == "string" and test("^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$"))) and
+        ([.leaf,.root] | all(type == "string" and startswith("/") and (test("[[:cntrl:]]") | not)))
+    ' "$inspect_receipt" >/dev/null || seed_fail "invalid retained receipt; operator inspection required"
+    jq '{version,layout,name,session,phase,seed_fsid,seed_generation,sprout_fsid,instance_uuid,root,leaf,leaf_inode,leaf_size,boot_id,
+        recovery:(if .phase == "ready" then "Preserve the exact immutable seed and leaf pair. Use seed-check for mounted verification; seed-up only for the stopped pinned instance."
+        else "Retain receipt, seed, leaf and mappings. Do not retry creation, ADD_DEV, cleanup or reformat. A host operator must inspect the recorded intent and actual membership before any separately authorized recovery." end),
+        verification:"Receipt metadata only; storage/native state has not been verified."}' "$inspect_receipt"
+)
 seed_empty_dir() {
     seed_secure_path "$1"
     [ -d "$1" ] && [ -z "$(find "$1" -mindepth 1 -maxdepth 1 -print -quit)" ] || seed_fail "directory is not empty: $1"
@@ -401,8 +436,9 @@ seed_super() {
 seed_verify_source() {
     # Duplicate seed FSIDs make by-uuid aliases ambiguous once views exist.
     # The physical partition ID stays distinct from every loop view.
-    seed_device=$(readlink -f -- "${OP_IDENTITY_SEED_DEVICE:-/dev/disk/by-partuuid/${OP_IDENTITY_SEED_PARTUUID:-260b98c7-b4f8-4c77-9fe7-67173c08dc90}}")
+    seed_device=$(readlink -f -- "${OP_IDENTITY_SEED_DEVICE:-/dev/disk/by-partuuid/${OP_IDENTITY_SEED_PARTUUID:-911b270a-a88f-48cd-bf9c-9dcac4cdefe8}}")
     [ -b "$seed_device" ] || seed_fail "seed is not a block device"
+    [ "$(blockdev --getro "$seed_device")" = 1 ] || seed_fail "physical seed block device is not enforced read-only"
     seed_secure_path "$(dirname -- "$seed_device")"
     [ "$(stat -c %u "$seed_device")" = 0 ] &&
         [ $((0$(stat -c %a "$seed_device") & 002)) -eq 0 ] || seed_fail "unsafe block device ownership or mode"
@@ -412,11 +448,14 @@ seed_verify_source() {
     source_generation=$(printf '%s\n' "$super" | awk '$1 == "generation" {print $2; exit}')
     valid_session "$source_fsid" || seed_fail "invalid seed FSID"
     [ -n "$source_generation" ] || seed_fail "absent seed generation"
+    expected_seed_fsid=${OP_IDENTITY_SEED_EXPECTED_UUID:-$RACCOON_UUID}
+    valid_session "$expected_seed_fsid" && [ "$source_fsid" = "$expected_seed_fsid" ] || seed_fail "seed differs from expected UUID"
+    [ -z "${OP_IDENTITY_SEED_DEVICE:-}" ] || [ -n "${OP_IDENTITY_SEED_EXPECTED_UUID:-}" ] || seed_fail "explicit seed device requires explicit expected UUID"
     if [ -z "${OP_IDENTITY_SEED_DEVICE:-}" ]; then
         devno=$(stat -c '%t:%T' "$seed_device")
         major=${devno%:*} minor=${devno#*:}
         [ -f "/sys/dev/block/$((0x$major)):$((0x$minor))/partition" ] &&
-            [ "$source_fsid" = "$RACCOON_UUID" ] || seed_fail "default source is not the expected physical seed partition"
+            [ "$source_fsid" = "$expected_seed_fsid" ] || seed_fail "default source is not the expected physical seed partition"
     fi
 }
 seed_no_direct_mount() {
@@ -430,6 +469,82 @@ seed_no_direct_mount() {
         [ "$(stat -c '%t:%T' "$resolved_source")" != "$(stat -c '%t:%T' "$seed_device")" ] ||
             seed_fail "directly mounted seed source; unmount it and keep its fstab entry noauto"
     done
+}
+seed_preflight() (
+    set -eu
+    [ "$(id -u)" = 0 ] || seed_fail "operator preflight requires root"
+    seed_verify_source
+    seed_no_direct_mount
+    seed_image_helper_ready
+    jq -cn --arg fsid "$source_fsid" --arg generation "$source_generation" \
+        '{seed_fsid:$fsid,seed_generation:$generation,block_readonly:true,seeding:true,standalone_mount:false,verification:"Source and helper readiness only; image contents require a read-only seed view."}'
+)
+seed_profile_dir() {
+    profile_dir=$1
+    if [ -e "$profile_dir" ] || [ -L "$profile_dir" ]; then
+        [ -d "$profile_dir" ] && [ ! -L "$profile_dir" ] || seed_fail "profile socket path is not an ordinary directory: $profile_dir"
+    else
+        mkdir -m 0755 -- "$profile_dir" || seed_fail "cannot create profile socket directory: $profile_dir"
+    fi
+    [ "$(realpath -e -- "$profile_dir")" = "$profile_dir" ] &&
+        [ "$(stat -c %u:%g:%a -- "$profile_dir")" = 0:0:755 ] || seed_fail "profile socket directory must be canonical root:root mode 0755: $profile_dir"
+}
+seed_profile_validate_json() {
+    printf '%s\n' "$1" | jq -e --argjson devices "$seed_profile_devices" '
+        .name == "3tched-lungs" and .description == "" and .config == {} and .devices == $devices
+    ' >/dev/null || seed_fail "existing 3tched-lungs profile differs; refusing to overwrite it"
+}
+seed_profile() (
+    set -eu
+    [ "$(id -u)" = 0 ] || seed_fail "profile preparation requires root"
+    seed_profile_dir /run
+    seed_profile_dir /run/opdbus
+    seed_profile_dir /run/opdbus/lungs
+    seed_profile_runtime=$(jq -cn '{type:"disk",source:"tmpfs:",path:"/run","initial.mode":"0755"}')
+    seed_profile_socket=$(jq -cn '{type:"disk",source:"/run/opdbus/lungs",path:"/run/opdbus/lungs",readonly:"true"}')
+    seed_profile_devices=$(jq -cn --argjson runtime "$seed_profile_runtime" --argjson socket "$seed_profile_socket" \
+        '{"runtime-run":$runtime,"lungs-socket-dir":$socket}')
+    seed_profile_create=$(jq -cn --argjson devices "$seed_profile_devices" \
+        '{name:"3tched-lungs",description:"",config:{},devices:$devices}')
+    profile_list=$(incus query '/1.0/profiles?recursion=1') || seed_fail "cannot inspect Incus profiles"
+    printf '%s\n' "$profile_list" | jq -e 'type == "array" and all(.[]; type == "object" and (.name | type == "string"))' >/dev/null ||
+        seed_fail "Incus profile inventory is invalid"
+    profile_matches=$(printf '%s\n' "$profile_list" | jq --arg name 3tched-lungs '[.[] | select(.name == $name)] | length')
+    case "$profile_matches" in
+        0)
+            if ! incus query -X POST /1.0/profiles -d "$seed_profile_create" >/dev/null; then
+                # A concurrent exact creator is harmless; a partial or foreign
+                # profile is never adopted or rewritten.
+                profile_json=$(incus query /1.0/profiles/3tched-lungs 2>/dev/null) ||
+                    seed_fail "cannot create 3tched-lungs profile"
+                seed_profile_validate_json "$profile_json"
+            fi
+            ;;
+        1)
+            profile_json=$(printf '%s\n' "$profile_list" | jq -c --arg name 3tched-lungs '[.[] | select(.name == $name)][0]')
+            seed_profile_validate_json "$profile_json"
+            ;;
+        *) seed_fail "duplicate 3tched-lungs profiles in Incus inventory" ;;
+    esac
+    profile_json=$(incus query /1.0/profiles/3tched-lungs) || seed_fail "cannot read back 3tched-lungs profile"
+    seed_profile_validate_json "$profile_json"
+    printf '3tched-lungs profile ready; shared socket calls remain subject to existing root-only authorization\n'
+)
+seed_image_helper_ready() {
+    image_helper=${OP_IDENTITY_IMAGE_HELPER:-/usr/local/libexec/3tched/op-identity-image}
+    seed_secure_path "$image_helper"
+    [ -f "$image_helper" ] && [ -x "$image_helper" ] || seed_fail "image verifier unavailable; install the reviewed host helper"
+}
+seed_image_metadata() {
+    seed_image_helper_ready
+    # Full file hashes are checked only against the pristine seed before ADD.
+    # A running identity may update packages/files privately in its leaf.
+    image_result=$("$image_helper" "${1:-verify-metadata}" "$seed_dir/volume") || seed_fail "shared image verifier rejected the image"
+    printf '%s\n' "$image_result" | jq -ce '
+        select(.layout == "shared-partition-siblings-v2" and
+            (.release_id | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")) and
+            (.manifest_sha256 | type == "string" and test("^[0-9a-f]{64}$"))) |
+        {release_id,layout,manifest_sha256}' || seed_fail "shared image metadata verification failed"
 }
 seed_native_root_path() {
     native_containers=$native_state/storage-pools/$native_pool/containers
@@ -466,41 +581,111 @@ seed_empty_native_root() {
     [ -z "$(find "$native_root" -mindepth 1 -maxdepth 1 -print -quit)" ] || seed_fail "native root is not empty"
 }
 seed_verify_lungs_hook() {
+    if [ -e "$seed_dir/lungs-disk.json" ] || [ -L "$seed_dir/lungs-disk.json" ]; then
+        [ ! -e "$seed_dir/lungs-hook" ] && [ ! -L "$seed_dir/lungs-hook" ] || seed_fail "ambiguous lungs attachment receipts"
+        seed_secure_path "$seed_dir/lungs-disk.json"
+        [ -f "$seed_dir/lungs-disk.json" ] && [ "$(stat -c %a "$seed_dir/lungs-disk.json")" = 600 ] &&
+            [ "$(stat -c %s "$seed_dir/lungs-disk.json")" -le 8192 ] || seed_fail "unsafe lungs disk receipt"
+        seed_lungs_disk_expected
+        [ "$(jq -cS . "$seed_dir/lungs-disk.json")" = "$(jq -cnS --arg session "$seed_session" --argjson device "$lungs_device" '{session:$session,device:$device}')" ] || seed_fail "lungs disk receipt scope changed"
+        seed_lungs_disk_validate true
+        [ "$(printf '%s\n' "$native" | jq -r '.config["raw.lxc"] // ""')" = "lxc.uts.name = $seed_session" ] || seed_fail "native session hostname configuration changed"
+        return
+    fi
+    # Historical hook receipts remain observational; new provisioning never
+    # selects or converts them implicitly.
     [ -e "$seed_dir/lungs-hook" ] || [ -L "$seed_dir/lungs-hook" ] || return 0
     seed_secure_path "$seed_dir/lungs-hook"
     [ -f "$seed_dir/lungs-hook" ] && [ "$(stat -c %a "$seed_dir/lungs-hook")" = 600 ] &&
         [ "$(stat -c %s "$seed_dir/lungs-hook")" -le 8192 ] || seed_fail "unsafe persistent lungs hook marker"
     hook_selection=$(cat "$seed_dir/lungs-hook")
     hook_path=$(printf '%s\n' "$hook_selection" | sed -n '2s/^lxc.hook.start-host = //p')
-    [ "$hook_selection" = "$(printf 'lxc.hook.version = 1\nlxc.hook.start-host = %s' "$hook_path")" ] || seed_fail "invalid persistent lungs hook marker"
+    legacy_selection=$(printf 'lxc.hook.version = 1\nlxc.hook.start-host = %s' "$hook_path")
+    hostname_selection=$(printf '%s\nlxc.uts.name = %s' "$legacy_selection" "$seed_session")
+    # Retain existing receipts; newly provisioned guests also pin their UTS
+    # hostname to the identity, independent of the native/display name.
+    [ "$hook_selection" = "$legacy_selection" ] || [ "$hook_selection" = "$hostname_selection" ] || seed_fail "invalid persistent lungs hook marker"
     printf '%s' "$hook_path" | grep -Eq '^/[A-Za-z0-9_./-]+$' || seed_fail "unsafe hook path"
     seed_secure_path "$hook_path"
     [ -f "$hook_path" ] && [ -x "$hook_path" ] || seed_fail "selected lungs hook is not executable"
     [ "$(printf '%s\n' "$native" | jq -r '.config["raw.lxc"] // ""')" = "$hook_selection" ] || seed_fail "native persistent lungs hook differs from selected marker"
 }
 seed_select_lungs_hook() {
+    if [ -e "$seed_dir/lungs-disk.json" ] || [ -L "$seed_dir/lungs-disk.json" ]; then seed_verify_lungs_hook; return; fi
     if [ -e "$seed_dir/lungs-hook" ] || [ -L "$seed_dir/lungs-hook" ]; then seed_verify_lungs_hook; return; fi
-    # Running adoption is observational only; it is not a persistence opt-in.
-    [ "$(printf '%s\n' "$native" | jq -r '.status')" = Stopped ] || return 0
-    hook_path=$(readlink -f -- "${OP_IDENTITY_SEED_LUNGS_HOOK:-/usr/local/libexec/3tched/op-identity-lungs-hook}")
-    printf '%s' "$hook_path" | grep -Eq '^/[A-Za-z0-9_./-]+$' || seed_fail "unsafe hook path"
-    seed_secure_path "$hook_path"
-    [ -f "$hook_path" ] && [ -x "$hook_path" ] || seed_fail "missing selected release lungs hook"
-    hook_selection=$(printf 'lxc.hook.version = 1\nlxc.hook.start-host = %s' "$hook_path")
+    [ "$(printf '%s\n' "$native" | jq -r '.status')" = Stopped ] || seed_fail "new lungs disk selection requires stopped instance"
+    lungs_selected_uuid=$native_uuid
+    seed_lungs_disk_expected
+    seed_lungs_disk_validate false
+    hook_selection="lxc.uts.name = $seed_session"
     existing_raw=$(printf '%s\n' "$native" | jq -r '.config["raw.lxc"] // ""')
     [ -z "$existing_raw" ] || [ "$existing_raw" = "$hook_selection" ] || seed_fail "unrelated raw.lxc configuration; refusing overwrite"
     if [ -z "$existing_raw" ]; then
         incus config set "$seed_name" "raw.lxc=$hook_selection"
         seed_instance
-        [ "$(printf '%s\n' "$native" | jq -r '.config["raw.lxc"] // ""')" = "$hook_selection" ] || seed_fail "native hook configuration did not persist"
+        [ "$native_uuid" = "$lungs_selected_uuid" ] || seed_fail "native instance changed during hostname selection"
+        [ "$(printf '%s\n' "$native" | jq -r '.config["raw.lxc"] // ""')" = "$hook_selection" ] || seed_fail "native hostname configuration did not persist"
     fi
-    ( set -C; printf '%s\n' "$hook_selection" > "$seed_dir/lungs-hook" )
-    sync -f "$seed_dir/lungs-hook"
+    if printf '%s\n' "$native" | jq -e '.devices["3tched"] == null' >/dev/null; then
+        incus config device add "$seed_name" 3tched disk source="$lungs_disk_source" path=/run/mount/3tchedFS readonly=false
+    fi
+    seed_instance
+    [ "$native_uuid" = "$lungs_selected_uuid" ] || seed_fail "native instance changed during lungs disk selection"
+    seed_lungs_disk_validate true
+    ( set -C; jq -cn --arg session "$seed_session" --argjson device "$lungs_device" '{session:$session,device:$device}' > "$seed_dir/lungs-disk.json" )
+    sync -f "$seed_dir/lungs-disk.json"
     sync -f "$seed_dir"
     seed_verify_lungs_hook
 }
+seed_lungs_disk_expected() {
+    lungs_disk_source=${OP_IDENTITY_SEED_LUNGS_DIR:-/dev/shm/opdbus-physical-lungs}/$native_uuid/mount
+    lungs_device=$(jq -cn --arg source "$lungs_disk_source" '{type:"disk",source:$source,path:"/run/mount/3tchedFS",readonly:"false"}')
+}
+seed_lungs_profile_expected() {
+    lungs_runtime_device=$(jq -cn '{type:"disk",source:"tmpfs:",path:"/run","initial.mode":"0755"}')
+    lungs_socket_dir_device=$(jq -cn '{type:"disk",source:"/run/opdbus/lungs",path:"/run/opdbus/lungs",readonly:"true"}')
+}
+seed_lungs_profile_validate() {
+    lungs_config_device=$(jq -cn '{type:"disk",source:"/etc/3tched",path:"/etc/3tched",readonly:"true",shift:"true"}')
+    printf '%s\n' "$native" | jq -e --argjson runtime "$lungs_runtime_device" --argjson socket "$lungs_socket_dir_device" --argjson config "$lungs_config_device" '
+        .profiles == ["3tched-lungs"] and
+        ((.devices|keys|sort) as $keys |
+            ($keys == ["root"] or $keys == ["3tched-config","root"] or
+             $keys == ["3tched","root"] or $keys == ["3tched","3tched-config","root"])) and
+        .devices.root == .expanded_devices.root and
+        .expanded_devices["runtime-run"] == $runtime and
+        .expanded_devices["lungs-socket-dir"] == $socket and
+        ((.devices["3tched-config"] == null and .expanded_devices["3tched-config"] == null) or
+         (.devices["3tched-config"] == $config and .expanded_devices["3tched-config"] == $config)) and
+        ((.devices["3tched"] == null and .expanded_devices["3tched"] == null) or
+         (.devices["3tched"] != null and .expanded_devices["3tched"] == .devices["3tched"])) and
+        ((.expanded_devices|keys|sort) as $keys |
+            ($keys == ["lungs-socket-dir","root","runtime-run"] or
+             $keys == ["3tched-config","lungs-socket-dir","root","runtime-run"] or
+             $keys == ["3tched","lungs-socket-dir","root","runtime-run"] or
+             $keys == ["3tched","3tched-config","lungs-socket-dir","root","runtime-run"]))
+    ' >/dev/null || seed_fail "candidate profile or inherited runtime devices differ from 3tched-lungs contract"
+}
+seed_lungs_disk_validate() {
+    printf '%s\n' "$native" | jq -e --argjson expected "$lungs_device" --argjson required "$1" '
+        ((.devices["3tched"]==$expected and .expanded_devices["3tched"]==$expected) or
+         ($required|not) and .devices["3tched"]==null and .expanded_devices["3tched"]==null) and
+        all(.expanded_devices | to_entries[];
+            .value.type=="disk" and (.value.path | type=="string" and startswith("/") and (test("[[:cntrl:]]")|not)) and
+            (.key=="root" or .key=="3tched" or .key=="3tched-config" or .key=="runtime-run" or .key=="lungs-socket-dir" or
+             (.value.path!="/" and .value.path!="/run" and
+              (.value.path|startswith("/run/")|not) and .value.path!="/run/mount" and
+              .value.path!="/run/mount/3tchedFS" and (.value.path|startswith("/run/mount/3tchedFS/")|not))))
+    ' >/dev/null || seed_fail "conflicting or inherited lungs disk attachment"
+    seed_lungs_profile_expected
+    seed_lungs_profile_validate
+    for disk_path in $(printf '%s\n' "$native" | jq -r '.expanded_devices[] | .path'); do
+        [ "$(realpath -ms -- "$disk_path")" = "$disk_path" ] || seed_fail "noncanonical disk target"
+    done
+}
 seed_instance() {
     native=$(incus query "/1.0/instances/$seed_name")
+    seed_lungs_profile_expected
     printf '%s\n' "$native" | jq -e --arg name "$seed_name" --arg sid "$seed_session" --argjson running "$seed_allow_running" '
         .name == $name and .type == "container" and (.status == "Stopped" or ($running and .status == "Running")) and
         .config["user.opdbus.session_id"] == $sid and
@@ -512,9 +697,11 @@ seed_instance() {
         .expanded_devices.root == .devices.root and
         (.config["volatile.uuid"] | type == "string" and length > 0)
     ' >/dev/null || seed_fail "candidate must be stopped, unprivileged, disk-only, session-bound and non-autostart"
+    seed_lungs_profile_validate
     printf '%s\n' "$native" | jq -e '
         .expanded_config as $c |
         ($c["raw.seccomp"] // "") == "" and
+        ($c["raw.idmap"] // "") == "" and
         ($c["security.syscalls.allow"] // "") == "" and
         ($c["security.syscalls.whitelist"] // "") == "" and
         ($c["security.syscalls.deny_default"] // $c["security.syscalls.blacklist_default"] // "true") == "true" and
@@ -555,8 +742,8 @@ seed_read() {
     [ -f "$seed_dir/state.json" ] && [ "$(stat -c %a "$seed_dir/state.json")" = 600 ] || seed_fail "unsafe descriptor"
     [ "$(stat -c %s "$seed_dir/state.json")" -le 16384 ] || seed_fail "oversized descriptor"
     jq -e --arg name "$seed_name" '
-        .version == 1 and .name == $name and .phase == "ready" and
-        (keys | sort) == (["version","name","session","phase","seed_fsid","seed_generation","leaf","leaf_inode","leaf_size","sprout_fsid","instance_uuid","root","seed_loop","leaf_loop","boot_id"] | sort)
+        .version == 1 and .layout == "shared-partition-siblings-v2" and .name == $name and .phase == "ready" and
+        (keys | sort) == (["version","layout","image","members","persist","name","session","phase","seed_fsid","seed_generation","leaf","leaf_inode","leaf_size","sprout_fsid","instance_uuid","root","seed_loop","leaf_loop","boot_id"] | sort)
     ' "$seed_dir/state.json" >/dev/null || seed_fail "creation incomplete or descriptor invalid; inspect retained intent"
     seed_session=$(jq -er '.session' "$seed_dir/state.json")
     valid_session "$seed_session" || seed_fail "invalid session binding"
@@ -576,21 +763,27 @@ seed_read() {
     seed_verify_boot_marker
 }
 seed_boot_selection() {
-    jq --argjson start "$1" '{version:1,name,session,instance_uuid,root,seed_fsid,seed_generation,sprout_fsid,leaf,leaf_inode,leaf_size,start_on_boot:$start}' "$seed_dir/state.json"
+    jq --argjson start "$1" '{version,layout,image,members,persist,name,session,instance_uuid,root,seed_fsid,seed_generation,sprout_fsid,leaf,leaf_inode,leaf_size,start_on_boot:$start}' "$seed_dir/state.json"
+}
+seed_boot_name() {
+    [ "$seed_name" = "$seed_session" ] || {
+        [ "$seed_name" = 3tchedCtlbot ] &&
+            [ "$seed_session" = b0c777e3-0955-cd8b-3d01-ca12998cae28 ]
+    } || seed_fail "boot completion requires canonical session name or the pinned chatbot"
 }
 seed_verify_boot_marker() {
     [ -e "$seed_dir/boot-ready.json" ] || [ -L "$seed_dir/boot-ready.json" ] || return 0
     seed_secure_path "$seed_dir/boot-ready.json"
     [ -f "$seed_dir/boot-ready.json" ] && [ "$(stat -c %a "$seed_dir/boot-ready.json")" = 600 ] &&
         [ "$(stat -c %s "$seed_dir/boot-ready.json")" -le 8192 ] || seed_fail "unsafe boot completion marker"
-    [ "$seed_name" = "$seed_session" ] || seed_fail "boot completion requires canonical session name"
+    seed_boot_name
     marker_policy=$(jq -er '.start_on_boot | select(type == "boolean") | tostring' "$seed_dir/boot-ready.json")
     [ "$(jq -cS . "$seed_dir/boot-ready.json")" = "$(seed_boot_selection "$marker_policy" | jq -cS .)" ] || seed_fail "boot completion storage pins differ"
 }
 seed_enable_boot() {
     boot_policy=$1
-    [ "$seed_name" = "$seed_session" ] || seed_fail "boot completion requires canonical session name"
-    [ -e "$seed_dir/lungs-hook" ] || seed_fail "boot completion requires selected persistent lungs hook"
+    seed_boot_name
+    [ -e "$seed_dir/lungs-hook" ] || [ -e "$seed_dir/lungs-disk.json" ] || seed_fail "boot completion requires selected persistent lungs attachment"
     seed_verify_lungs_hook
     seed_lungs_paths
     seed_lungs_verify
@@ -652,6 +845,11 @@ seed_rename() {
         ( set -C; cat "$old_dir/lungs-hook" > "$new_dir/lungs-hook" )
         sync -f "$new_dir/lungs-hook"
     fi
+    if [ -e "$old_dir/lungs-disk.json" ]; then
+        seed_verify_lungs_hook
+        ( set -C; cat "$old_dir/lungs-disk.json" > "$new_dir/lungs-disk.json" )
+        sync -f "$new_dir/lungs-disk.json"
+    fi
     ( set -C; jq --arg name "$new_name" --arg root "$native_root" --arg boot "$boot_id" \
         '.name=$name | .root=$root | .boot_id=$boot' "$old_dir/state.json" > "$new_dir/state.tmp" )
     chmod 600 "$new_dir/state.tmp"
@@ -700,7 +898,7 @@ seed_lungs_verify() {
         .boot_id == $boot and .session == $session and .target == $target and
         (.pid | type == "number" and . > 1 and floor == .) and
         (.start | type == "string") and (.args | type == "array" and all(.[]; type == "string")) and
-        .args == [.args[0],"--store",$store,"mount","--allow-other","--auto-unmount","--state",$state,"--lungs-socket","/run/opdbus/lungs.sock","--lungs-session",$session,$target]
+        .args == [.args[0],"--store",$store,"mount","--allow-other","--auto-unmount","--state",$state,"--lungs-socket","/run/opdbus/lungs/lungs.sock","--lungs-session",$session,$target]
     ' "$lungs_private/mount.json" >/dev/null || seed_fail "lungs receipt scope changed"
     lungs_pid=$(jq -er '.pid' "$lungs_private/mount.json")
     [ -r "/proc/$lungs_pid/stat" ] &&
@@ -734,8 +932,8 @@ seed_lungs() {
     # Socket existence is deliberately irrelevant: connection happens only
     # on a call, after bridge startup. No SID1 or global/private SHM capture.
     setsid "$lungs_binary" --store "$lungs_private/store" mount --allow-other --auto-unmount \
-        --state "$lungs_private/empty-state" --lungs-socket /run/opdbus/lungs.sock --lungs-session "$seed_session" \
-        "$lungs_target" 9>&- </dev/null > "$lungs_private/mount.log" 2>&1 &
+        --state "$lungs_private/empty-state" --lungs-socket /run/opdbus/lungs/lungs.sock --lungs-session "$seed_session" \
+        "$lungs_target" 8>&- 9>&- </dev/null > "$lungs_private/mount.log" 2>&1 &
     lungs_pid=$!
     i=0
     until mountpoint -q "$lungs_target"; do
@@ -770,6 +968,9 @@ seed_unlungs() {
     fi
 }
 seed_attach() {
+    # Serialize shared-seed alias registration across identities. Keep this
+    # stable host lock separate from per-identity receipts/Cozo authority.
+    seed_shared_lock
     # Same-boot missing/reassigned mappings require operator inspection.
     # Cross-boot receipts are cleared only by seed_load's verified cold gate.
     if [ -n "$seed_view" ]; then
@@ -800,47 +1001,118 @@ seed_verify_volume() {
     expected_members=$(printf '%s\n' "$seed_view" "$leaf_loop" | sort)
     [ "$actual_members" = "$expected_members" ] || seed_fail "sprout members differ from own loop receipts"
 }
+seed_member_pin() {
+    [ -d "$1" ] && [ ! -L "$1" ] || seed_fail "missing or unsafe sibling subvolume: $1"
+    pin_show=$(btrfs subvolume show "$1") || seed_fail "not a subvolume: $1"
+    pin_id=$(printf '%s\n' "$pin_show" | awk '$1 == "Subvolume" && $2 == "ID:" {print $3}')
+    pin_uuid=$(printf '%s\n' "$pin_show" | awk '$1 == "UUID:" {print $2}')
+    printf '%s' "$pin_id" | grep -Eq '^[0-9]+$' && [ "$pin_id" -gt 5 ] && valid_session "$pin_uuid" || seed_fail "invalid sibling subvolume identity"
+    jq -cn --arg id "$pin_id" --arg uuid "$pin_uuid" '{id:$id,uuid:$uuid}'
+}
+seed_layout_pins() {
+    # Listing at subvolid=5 includes nested members. Do not merely check that
+    # the seven expected names exist: reject every extra or nested subvolume.
+    subvolume_listing=$(btrfs subvolume list "$seed_dir/volume") || seed_fail "cannot enumerate seed subvolumes"
+    actual_subvolumes=$(printf '%s\n' "$subvolume_listing" | sed -n 's/^.* path //p' | LC_ALL=C sort)
+    expected_subvolumes=$(printf '%s\n' @ @agent_memory @agent_rules @agent_shared @agent_skills @agent_soul @agent_user | LC_ALL=C sort)
+    [ "$actual_subvolumes" = "$expected_subvolumes" ] || seed_fail "seed must contain exactly seven flat sibling subvolumes"
+    [ ! -e "$seed_dir/volume/@persist" ] && [ ! -L "$seed_dir/volume/@persist" ] || seed_fail "old extra persistence subvolume/layout is unsupported"
+    pins='{}'
+    for sibling in @ @agent_memory @agent_rules @agent_shared @agent_skills @agent_soul @agent_user; do
+        pin=$(seed_member_pin "$seed_dir/volume/$sibling") || seed_fail "cannot pin sibling: $sibling"
+        pins=$(printf '%s\n' "$pins" | jq -c --arg member "$sibling" --argjson pin "$pin" '. + {($member):$pin}') || seed_fail "cannot record sibling pin"
+    done
+    printf '%s\n' "$pins" | jq -ce 'select(([.[].id] | unique | length) == 7 and ([.[].uuid] | unique | length) == 7)'
+}
+seed_persist_pin() {
+    persist_parent=$seed_dir/volume/@agent_user
+    persist_dir=$persist_parent/persist
+    parent_pin=$(seed_member_pin "$persist_parent") || seed_fail "invalid persistence parent"
+    [ -d "$persist_dir" ] && [ ! -L "$persist_dir" ] &&
+        [ "$(stat -c %a "$persist_dir")" = 700 ] || seed_fail "unsafe ordinary persistence directory"
+    ! btrfs subvolume show "$persist_dir" >/dev/null 2>&1 || seed_fail "persistence must not be a subvolume"
+    ! mountpoint -q "$persist_dir" || seed_fail "persistence source must not be a separate mount"
+    [ "$(stat -c %d "$persist_dir")" = "$(stat -c %d "$persist_parent")" ] || seed_fail "persistence is not on its parent filesystem"
+    # The sprout FSID identifies the device set across remounts. Kernel st_dev
+    # is checked against the parent live, never persisted as a reboot-stable ID.
+    jq -cn --argjson parent "$parent_pin" --arg inode "$(stat -c %i "$persist_dir")" --arg fsid "$sprout_fsid" \
+        '{path:"@agent_user/persist",parent:$parent,inode:$inode,fsid:$fsid}'
+}
+seed_verify_layout() {
+    [ "$(seed_image_metadata | jq -cS .)" = "$(jq -cS '.image' "$seed_dir/state.json")" ] || seed_fail "pinned image metadata changed"
+    actual_pins=$(seed_layout_pins) || seed_fail "invalid shared sibling layout"
+    [ "$(printf '%s\n' "$actual_pins" | jq -cS .)" = "$(jq -cS '.members' "$seed_dir/state.json")" ] || seed_fail "shared sibling IDs or UUIDs changed"
+    [ "$(seed_persist_pin | jq -cS .)" = "$(jq -cS '.persist' "$seed_dir/state.json")" ] || seed_fail "private persistence directory or parent identity changed"
+    for sibling in @ @agent_memory @agent_rules @agent_shared @agent_skills @agent_soul @agent_user; do
+        case "$sibling" in @agent_rules|@agent_shared|@agent_soul) readonly=true ;; *) readonly=false ;; esac
+        [ "$(btrfs property get -ts "$seed_dir/volume/$sibling" ro)" = "ro=$readonly" ] || seed_fail "sibling protection changed: $sibling"
+    done
+}
+seed_bind_member() {
+    member_source=$1 member_root=$2 member_readonly=$3
+    [ -d "$member_root" ] && [ ! -L "$member_root" ] || seed_fail "unsafe guest member target: $member_root"
+    if ! mountpoint -q "$member_root"; then
+        case "$mode" in
+            seed-check|seed-lungs|seed-enable-boot) seed_fail "guest member mount missing: $member_root" ;;
+            seed-down) return ;;
+        esac
+        [ -z "$(find "$member_root" -mindepth 1 -maxdepth 1 -print -quit)" ] || seed_fail "guest member target is not empty"
+        mount --bind "$member_source" "$member_root"
+        if [ "$member_readonly" = true ]; then mount -o remount,bind,ro "$member_root"; fi
+    fi
+    [ "$(stat -c '%d:%i' "$member_source")" = "$(stat -c '%d:%i' "$member_root")" ] &&
+        [ "$(findmnt -rn -M "$member_root" -o FSTYPE)" = btrfs ] &&
+        [ "$(findmnt -rn -M "$member_root" -o FSROOT)" = "/${member_source#"$seed_dir/volume/"}" ] || seed_fail "guest member mount source changed"
+    case ",$(findmnt -rn -M "$member_root" -o VFS-OPTIONS)," in
+        *,ro,*) [ "$member_readonly" = true ] || seed_fail "private member is mounted read-only" ;;
+        *) [ "$member_readonly" = false ] || seed_fail "protected member is writable" ;;
+    esac
+}
 seed_mount_guest() {
     seed_verify_volume
-    guest=$seed_dir/volume/guest
-    btrfs subvolume show "$guest" >/dev/null
-    for member in agent agent/soul agent/rules agent/shared agent/user agent/memory agent/skills opt/run-mounts/persist; do
-        [ ! -L "$guest/$member" ] || seed_fail "guest subvolume is a symlink"
-        btrfs subvolume show "$guest/$member" >/dev/null
-        case "$member" in agent|agent/soul|agent/rules|agent/shared) readonly=true ;; *) readonly=false ;; esac
-        [ "$(btrfs property get -ts "$guest/$member" ro)" = "ro=$readonly" ] || seed_fail "guest subvolume protection changed: $member"
-    done
-    [ -f "$guest/agent/rules/AGENTS.md" ] && [ ! -L "$guest/agent/rules/AGENTS.md" ] &&
-        [ -f "$guest/usr/local/bin/threetched-fs" ] && [ ! -L "$guest/usr/local/bin/threetched-fs" ] &&
-        [ -x "$guest/usr/local/bin/threetched-fs" ] || seed_fail "guest lacks regular agent rules or executable 3tchedFS"
+    seed_verify_layout
+    guest=$seed_dir/volume/@
+    [ -d "$guest/agent" ] && [ ! -L "$guest/agent" ] || seed_fail "guest agent parent is not an ordinary directory"
+    if btrfs subvolume show "$guest/agent" >/dev/null 2>&1; then seed_fail "guest agent parent must not be a subvolume"; fi
     if mountpoint -q "$native_root"; then
         [ "$(stat -c '%d:%i' "$native_root")" = "$(stat -c '%d:%i' "$guest")" ] &&
-            [ "$(findmnt -rn -M "$native_root" -o FSTYPE)" = btrfs ] || seed_fail "unexpected guest-root mount"
+            [ "$(findmnt -rn -M "$native_root" -o FSTYPE)" = btrfs ] &&
+            [ "$(findmnt -rn -M "$native_root" -o FSROOT)" = /@ ] || seed_fail "unexpected guest-root mount"
     else
+        case "$mode" in seed-check|seed-lungs|seed-enable-boot) seed_fail "guest-root mount missing" ;; esac
         seed_empty_native_root
         mount --bind "$guest" "$native_root"
     fi
-    # Guest root can unmount these views; the validated seccomp mutation
-    # policy plus RO agent parent protects the underlying subvolumes too.
-    for member in soul rules shared; do
-        protected_source=$guest/agent/$member
-        protected_root=$native_root/agent/$member
-        if ! mountpoint -q "$protected_root"; then
-            case "$mode" in
-                seed-check|seed-lungs|seed-enable-boot) seed_fail "protected guest mount missing: $member" ;;
-                seed-down) continue ;;
-            esac
-            mount --bind "$protected_source" "$protected_root"
-            mount -o remount,bind,ro "$protected_root"
-        fi
-        [ "$(stat -c '%d:%i' "$protected_source")" = "$(stat -c '%d:%i' "$protected_root")" ] &&
-            [ "$(findmnt -rn -M "$protected_root" -o FSTYPE)" = btrfs ] || seed_fail "protected guest mount source changed: $member"
-        case ",$(findmnt -rn -M "$protected_root" -o VFS-OPTIONS)," in
-            *,ro,*) ;; *) seed_fail "protected guest mount is writable: $member" ;;
-        esac
+    for member in memory rules shared skills soul user; do
+        case "$member" in rules|shared|soul) readonly=true ;; *) readonly=false ;; esac
+        seed_bind_member "$seed_dir/volume/@agent_$member" "$native_root/agent/$member" "$readonly"
     done
+    seed_bind_member "$seed_dir/volume/@agent_user/persist" "$native_root/opt/run-mounts/persist" false
+    [ -f "$guest/etc/hostname" ] && [ ! -L "$guest/etc/hostname" ] &&
+        [ "$(cat "$guest/etc/hostname")" = "$seed_session" ] || seed_fail "guest hostname differs from session"
+}
+seed_unmount_guest() {
+    # Reverse the exact mounting order; never recursively unmount another view.
+    for target in opt/run-mounts/persist agent/user agent/soul agent/skills agent/shared agent/rules agent/memory; do
+        ! mountpoint -q "$native_root/$target" || umount "$native_root/$target"
+    done
+    umount "$native_root"
+}
+seed_write_hostname() {
+    # Only called for a fresh, stopped sprout root, before Incus idmapping.
+    # Do not follow a seed-provided symlink or modify the shared seed itself.
+    valid_session "$seed_session" || seed_fail "hostname requires canonical session UUID"
+    seed_secure_path "$guest/etc"
+    [ -d "$guest/etc" ] && [ ! -L "$guest/etc/hostname" ] || seed_fail "unsafe guest hostname path"
+    [ ! -e "$guest/etc/hostname" ] || [ -f "$guest/etc/hostname" ] || seed_fail "guest hostname is not a regular file"
+    hostname_tmp=$(mktemp "$guest/etc/.hostname.XXXXXX")
+    printf '%s\n' "$seed_session" > "$hostname_tmp"
+    chmod 0644 "$hostname_tmp"
+    mv -T -- "$hostname_tmp" "$guest/etc/hostname"
+    sync -f "$guest/etc/hostname"
 }
 seed_create() {
+    seed_shared_lock
     seed_session=$1 leaf=$2 leaf_size=$3
     valid_session "$seed_session" || seed_fail "session must be a canonical UUID"
     printf '%s' "$leaf_size" | grep -Eq '^[0-9]{1,13}$' || seed_fail "size must be integer bytes"
@@ -853,7 +1125,7 @@ seed_create() {
     seed_empty_native_root
     ! mountpoint -q "$native_root" || seed_fail "candidate root is already mounted"
     ( set -C; jq -n --arg name "$seed_name" --arg sid "$seed_session" --arg fsid "$source_fsid" --arg gen "$source_generation" --arg leaf "$leaf" --arg size "$leaf_size" --arg uuid "$native_uuid" --arg root "$native_root" --arg boot "$boot_id" '
-        {version:1,name:$name,session:$sid,phase:"create-intent",seed_fsid:$fsid,seed_generation:$gen,leaf:$leaf,leaf_inode:"",leaf_size:$size,sprout_fsid:"",instance_uuid:$uuid,root:$root,seed_loop:"",leaf_loop:"",boot_id:$boot}
+        {version:1,layout:"shared-partition-siblings-v2",image:{},members:{},persist:{},name:$name,session:$sid,phase:"create-intent",seed_fsid:$fsid,seed_generation:$gen,leaf:$leaf,leaf_inode:"",leaf_size:$size,sprout_fsid:"",instance_uuid:$uuid,root:$root,seed_loop:"",leaf_loop:"",boot_id:$boot}
     ' > "$seed_dir/state.json" )
     sync -f "$seed_dir/state.json"
     sync -f "$seed_dir"
@@ -865,43 +1137,57 @@ seed_create() {
     seed_view= leaf_loop=
     seed_attach
     mount -t btrfs -o "ro,subvolid=5,device=$seed_view" "$seed_view" "$seed_dir/volume"
-    base=$seed_dir/volume/identity-base
-    btrfs subvolume show "$base" >/dev/null
-    [ "$(btrfs property get -ts "$base" ro)" = ro=true ] || seed_fail "identity-base is not read-only"
-    for member in agent agent/soul agent/rules agent/shared agent/user agent/memory agent/skills; do
-        btrfs subvolume show "$base/$member" >/dev/null
-    done
-    for member in soul rules shared; do
-        [ "$(btrfs property get -ts "$base/agent/$member" ro)" = ro=true ] || seed_fail "protected base member is writable"
-    done
-    [ -f "$base/agent/rules/AGENTS.md" ] && [ -x "$base/usr/local/bin/threetched-fs" ] || seed_fail "base lacks agent rules or 3tchedFS"
+    # Validate the inherited siblings before creating the sprout. Nothing is
+    # copied or snapshotted; all writes after ADD_DEV go to this new leaf.
+    initial_members=$(seed_layout_pins) || seed_fail "seed lacks seven distinct sibling subvolumes"
+    initial_image=$(seed_image_metadata verify) || seed_fail "seed image verification failed before device add"
+    seed_write --argjson image "$initial_image" '.image=$image'
+    [ "$(btrfs property get -ts "$seed_dir/volume/@" ro)" = ro=false ] || seed_fail "seed @ must be a normal writable subvolume"
+    [ -d "$seed_dir/volume/@/etc" ] && [ ! -L "$seed_dir/volume/@/etc" ] || seed_fail "seed root lacks safe etc directory"
+    seed_write --argjson members "$initial_members" '.members=$members'
+    current_seed_super=$(btrfs inspect-internal dump-super "$seed_device")
+    [ "$(blockdev --getro "$seed_device")" = 1 ] || seed_fail "physical seed lost block read-only enforcement"
+    printf '%s\n' "$current_seed_super" | grep -q SEEDING &&
+        [ "$(printf '%s\n' "$current_seed_super" | awk '$1 == "fsid" {print $2; exit}')" = "$source_fsid" ] &&
+        [ "$(printf '%s\n' "$current_seed_super" | awk '$1 == "generation" {print $2; exit}')" = "$source_generation" ] || seed_fail "seed changed before sprout creation"
+    seed_no_direct_mount
     seed_write '.phase="device-add-intent"'
     btrfs device add "$leaf_loop" "$seed_dir/volume"
     sync -f "$seed_dir/volume"
     umount "$seed_dir/volume"
     sprout_fsid=$(seed_super "$leaf")
     valid_session "$sprout_fsid" && [ "$sprout_fsid" != "$source_fsid" ] || seed_fail "invalid new sprout FSID"
-    seed_write --arg fsid "$sprout_fsid" '.sprout_fsid=$fsid | .phase="snapshot-intent"'
+    seed_write --arg fsid "$sprout_fsid" '.sprout_fsid=$fsid | .phase="layout-intent"'
     mount -t btrfs -o "rw,subvolid=5,device=$seed_view,device=$leaf_loop" "$leaf_loop" "$seed_dir/volume"
     seed_verify_volume
-    btrfs subvolume snapshot "$base" "$seed_dir/volume/guest"
-    for member in agent agent/soul agent/rules agent/shared agent/user agent/memory agent/skills; do
-        target=$seed_dir/volume/guest/$member
-        [ -d "$target" ] && [ ! -L "$target" ] && [ -z "$(find "$target" -mindepth 1 -maxdepth 1 -print -quit)" ] || seed_fail "snapshot placeholder is not an empty directory"
-        rmdir -- "$target"
-        case "$member" in agent/soul|agent/rules|agent/shared)
-            btrfs subvolume snapshot -r "$base/$member" "$target" ;;
-        *) btrfs subvolume snapshot "$base/$member" "$target" ;;
-        esac
+    [ "$(seed_layout_pins | jq -cS .)" = "$(printf '%s\n' "$initial_members" | jq -cS .)" ] || seed_fail "inherited sibling identities changed after sprout creation"
+    guest=$seed_dir/volume/@
+    # Parent and targets are ordinary directories in the leaf's COW root.
+    for target in agent opt opt/run-mounts opt/run-mounts/persist; do
+        [ ! -L "$guest/$target" ] || seed_fail "symlink guest parent or persistence target"
+        [ -e "$guest/$target" ] || mkdir -- "$guest/$target"
+        [ -d "$guest/$target" ] || seed_fail "guest target is not a directory"
     done
-    # Private database storage lives within this guest filesystem, rather than
-    # a second Incus disk or bind mount. No database is initialized or rebound.
-    persist=$seed_dir/volume/guest/opt/run-mounts/persist
-    [ -d "$persist" ] && [ ! -L "$persist" ] && [ -z "$(find "$persist" -mindepth 1 -maxdepth 1 -print -quit)" ] || seed_fail "base persist placeholder must be empty"
-    rmdir -- "$persist"
-    btrfs subvolume create "$persist"
-    chmod 700 "$persist"
-    btrfs property set -ts "$seed_dir/volume/guest/agent" ro true
+    if btrfs subvolume show "$guest/agent" >/dev/null 2>&1; then seed_fail "agent parent must be ordinary directory"; fi
+    for member in memory rules shared skills soul user; do
+        target=$guest/agent/$member
+        [ ! -L "$target" ] || seed_fail "symlink agent target"
+        [ -e "$target" ] || mkdir -- "$target"
+        [ -d "$target" ] && [ -z "$(find "$target" -mindepth 1 -maxdepth 1 -print -quit)" ] || seed_fail "agent target is not an empty directory"
+    done
+    [ -z "$(find "$guest/opt/run-mounts/persist" -mindepth 1 -maxdepth 1 -print -quit)" ] || seed_fail "persist target is not empty"
+    persist_dir=$seed_dir/volume/@agent_user/persist
+    [ ! -e "$persist_dir" ] && [ ! -L "$persist_dir" ] || seed_fail "seed already includes persistence directory; never adopt or overwrite"
+    mkdir -m 700 -- "$persist_dir"
+    persist_pin=$(seed_persist_pin)
+    seed_write --argjson pin "$persist_pin" '.persist=$pin'
+    for member in rules shared soul; do
+        btrfs property set -ts "$seed_dir/volume/@agent_$member" ro true
+    done
+    for member in memory skills user; do
+        btrfs property set -ts "$seed_dir/volume/@agent_$member" ro false
+    done
+    seed_write_hostname
     sync -f "$seed_dir/volume"
     seed_instance
     seed_mount_guest
@@ -967,10 +1253,7 @@ seed_mode() (
         if mountpoint -q "$native_root"; then
             seed_mount_guest
             seed_unlungs
-            for member in shared rules soul; do
-                ! mountpoint -q "$native_root/agent/$member" || umount "$native_root/agent/$member"
-            done
-            umount "$native_root"
+            seed_unmount_guest
         fi
         if mountpoint -q "$seed_dir/volume"; then seed_verify_volume; umount "$seed_dir/volume"; fi
         [ -z "$leaf_loop" ] || losetup -d "$leaf_loop"
@@ -984,6 +1267,18 @@ seed_mode() (
 command=${1:-status}
 [ "$#" -gt 0 ] && shift
 case $command in
+seed-profile)
+    [ "$#" -eq 0 ] || { log "usage: $0 seed-profile"; exit 2; }
+    seed_profile
+    ;;
+seed-preflight)
+    [ "$#" -eq 0 ] || { log "usage: $0 seed-preflight"; exit 2; }
+    seed_preflight
+    ;;
+seed-inspect)
+    [ "$#" -eq 1 ] || { log "usage: $0 seed-inspect NAME"; exit 2; }
+    seed_inspect "$1"
+    ;;
 seed-create)
     [ "$#" -eq 4 ] || { log "usage: $0 seed-create NAME SESSION_UUID LEAF_PATH SIZE_BYTES"; exit 2; }
     seed_mode seed-create "$@"

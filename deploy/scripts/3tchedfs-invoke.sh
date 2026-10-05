@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Invoke one plugin method through a mounted 3tchedFS namespace (write `call`, read
 # `result` / `error`). The mount must already be bound to the caller's identity
-# (e.g. /run/mount/3tchedFS + /run/opdbus/lungs.sock).
+# (e.g. /run/mount/3tchedFS + /run/opdbus/lungs/lungs.sock).
 #
 # Capability grants and op-grants-materializer are not exposed here; durable policy
 # stays under /etc/opdbus/local/ with owner-approved deltas only.

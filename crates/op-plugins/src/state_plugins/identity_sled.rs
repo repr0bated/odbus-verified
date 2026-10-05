@@ -88,16 +88,17 @@ pub struct ContainerIdentitySled {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.actor-class@v1"))]
     pub principal_kind: Option<String>,
-    /// Persistence leaf registered in Cozo. `/dev/sdb2` is the writable leaf
-    /// (not a btrfs seed): the identity sled lives on a subvolume of that leaf.
-    /// Login/start may `btrfs device add` extra members; shutdown removes only
-    /// those extras — never the sole leaf block device. No loop images.
+    /// Private persistence leaf assigned to this identity in Cozo. The host
+    /// provisioner creates its permanent relationship to the shared seed.
+    /// Login/start/stop only verify that relationship and update logical
+    /// attachment; they never add or remove Btrfs filesystem members.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.btrfs-device@v1"))]
     pub btrfs_device: Option<SledBtrfsDevice>,
     /// The container's full Incus definition (official `shared/api` shape) —
     /// the sled inherits the Incus schema; provisioning the container IS
-    /// writing this sled. The instance `name` is always the session_id.
+    /// writing this sled. The instance name is the session ID except for the
+    /// configured control-plane chatbot's narrowly validated native alias.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "src.service.identity-sled.instance@v1"))]
     pub instance: Option<super::incus::IncusInstance>,
@@ -156,15 +157,15 @@ impl ContainerIdentitySled {
     }
 }
 
-/// The btrfs leaf that hosts the sled's persistence subvolume. Truth is in
-/// Cozo. `device_path` is the leaf block device (`/dev/sdb2`); `mount_point`
-/// is the mounted identity subvolume on that leaf. Seeding is not used.
+/// The identity's private writable Btrfs leaf. Cozo owns its assignment;
+/// the external host provisioner owns its seed pairing and mounts. The leaf
+/// may be a block device or a persistent loop-backed file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, schemars::JsonSchema)]
 #[schemars(extend("x-oscal-subid" = "sch.service.identity-sled.btrfs-device.schema@v1"))]
 pub struct SledBtrfsDevice {
-    /// Writable leaf block device. `/dev/sdb2` replaced loop images.
+    /// Writable leaf block device or backing file, never the shared seed.
     pub device_path: String,
-    /// Mount of the identity sled subvolume on the leaf (not a seed mount).
+    /// Externally prepared mount of the identity filesystem.
     #[serde(default)]
     pub mount_point: String,
     /// btrfs filesystem UUID of the leaf.
@@ -175,7 +176,8 @@ pub struct SledBtrfsDevice {
     /// btrfs_device_json; repaired legacy records retain their prior value.
     #[serde(default)]
     pub cozo_id: String,
-    /// Whether `device_path` is currently a member of the mounted leaf FS.
+    /// Logical identity attachment after verifying the prepared filesystem.
+    /// False does not mean the leaf was removed from its Btrfs filesystem.
     #[serde(default)]
     pub attached: bool,
 }
@@ -235,12 +237,14 @@ impl StatePlugin for IdentitySledPlugin {
         "identity_sled"
     }
 
+    // v4.4.1 corrects storage lifecycle documentation: attachment is logical;
+    // start/stop never mutates Btrfs membership. Wire fields are unchanged.
     // Plugin contract v4.4 adds a separately granted, credential-free own read.
     // v4.3 added owner-only physical-root provenance migration.
     // The native Device discriminants remain unchanged.
     // SID1, RECORD_FORMAT and durable identity record/revision formats do not change.
     fn version(&self) -> &str {
-        "4.4.0"
+        "4.4.1"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -292,7 +296,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "identity_sled",
-        "4.4.0",
+        "4.4.1",
         "Container identity sleds: the container is the sled is the identity; host is container zero; each record is seeded by its sealed blob",
         &root,
     );
@@ -784,7 +788,7 @@ mod tests {
     #[test]
     fn schema_has_method_surface() {
         let schema = identity_sled_schema();
-        assert_eq!(schema.version, "4.4.0");
+        assert_eq!(schema.version, "4.4.1");
         for method in [
             "get_identity",
             "get_own_identity",

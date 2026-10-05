@@ -300,6 +300,36 @@ impl IncusPlugin {
         Ok((format!("/1.0/instances/{session_id}/state"), body))
     }
 
+    fn bound_identity_session_power_request(
+        session_id: &str,
+        instance_name: &str,
+        state: IdentitySessionPowerState,
+    ) -> Result<(String, &'static str)> {
+        let (_, body) = Self::identity_session_power_request(session_id, state)?;
+        if instance_name != session_id
+            && !(instance_name == "3tchedCtlbot"
+                && session_id == "b0c777e3-0955-cd8b-3d01-ca12998cae28")
+        {
+            anyhow::bail!("native identity power target is not canonical or the pinned chatbot");
+        }
+        Ok((format!("/1.0/instances/{instance_name}/state"), body))
+    }
+
+    /// The bridge supplies an already validated durable identity binding.
+    /// This transport admits only UUID names and the fixed chatbot pair; it
+    /// does not resolve identities, assign names, or modify their authority.
+    pub async fn set_bound_identity_session_power_state(
+        session_id: &str,
+        instance_name: &str,
+        state: IdentitySessionPowerState,
+    ) -> Result<()> {
+        let (path, body) = Self::bound_identity_session_power_request(session_id, instance_name, state)?;
+        Self::incus_api_call("PUT", &path, Some(body))
+            .await
+            .with_context(|| format!("failed to change bound identity container '{instance_name}' power state"))?;
+        Ok(())
+    }
+
     /// Change the power state of an identity-session container through the
     /// native Incus REST API. Identity container names are canonical UUIDs,
     /// so validating that invariant also prevents request-path injection.
@@ -1269,6 +1299,29 @@ mod tests {
         assert_eq!(value["instances"][0]["devices"][1]["device"]["mtu"], "1500");
         let validation = IncusPlugin::new().schema().unwrap().validate(&value);
         assert!(validation.valid, "{:?}", validation.errors);
+    }
+
+    #[test]
+    fn bound_identity_power_requests_target_only_the_pinned_native_name() {
+        let sid = "b0c777e3-0955-cd8b-3d01-ca12998cae28";
+        let (path, body) = IncusPlugin::bound_identity_session_power_request(
+            sid, "3tchedCtlbot", IdentitySessionPowerState::Running,
+        ).unwrap();
+        assert_eq!(path, "/1.0/instances/3tchedCtlbot/state");
+        assert_eq!(body, r#"{"action":"start"}"#);
+        let (_, body) = IncusPlugin::bound_identity_session_power_request(
+            sid, "3tchedCtlbot", IdentitySessionPowerState::Stopped,
+        ).unwrap();
+        assert_eq!(body, r#"{"action":"stop"}"#);
+        for (session, name) in [
+            ("00000000-0000-4000-8000-000000000001", "3tchedCtlbot"),
+            (sid, "another-container"),
+            (sid, "../../host?project=default"),
+        ] {
+            assert!(IncusPlugin::bound_identity_session_power_request(
+                session, name, IdentitySessionPowerState::Running,
+            ).is_err());
+        }
     }
 
     #[test]

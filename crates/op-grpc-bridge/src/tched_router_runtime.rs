@@ -2597,6 +2597,7 @@ mod tests {
             catalog_revision: 7,
             ordinary_reference: None,
             excluded_references: Default::default(),
+            family: "openai".into(),
         }
     }
 

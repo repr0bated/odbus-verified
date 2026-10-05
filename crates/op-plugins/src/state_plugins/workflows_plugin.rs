@@ -280,7 +280,10 @@ pub(crate) fn workflows_schema() -> PluginSchema {
     schema
 }
 
-const DEFAULT_WORKFLOW_JOURNAL: &str = "/var/lib/op-dbus/workflows/run-queue.jsonl";
+/// Durable receipt journal shared with the bridge's reactive workstack
+/// runner (the executor consumer; both write bounded terminal records).
+pub const DEFAULT_WORKFLOW_JOURNAL: &str = "/var/lib/op-dbus/workflows/run-queue.jsonl";
+
 static JOURNAL_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn workflow_summaries() -> Vec<WorkflowSummary> {

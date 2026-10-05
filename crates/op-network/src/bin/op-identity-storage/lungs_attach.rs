@@ -281,7 +281,7 @@ pub(super) fn attach(name: &str, pid: u32, expected_start: u64, source: &Path) -
         "--state".into(),
         private.join("empty-state").to_string_lossy().into_owned(),
         "--lungs-socket".into(),
-        "/run/opdbus/lungs.sock".into(),
+        "/run/opdbus/lungs/lungs.sock".into(),
         "--lungs-session".into(),
         session.into(),
         source.to_string_lossy().into_owned(),

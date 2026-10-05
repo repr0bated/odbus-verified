@@ -4520,6 +4520,7 @@ dependencies = [
  "nix 0.28.0",
  "op-agents",
  "op-blob",
+ "op-chat",
  "op-cognitive-mcp",
  "op-core",
  "op-cozo-store",

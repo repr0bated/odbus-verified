@@ -3813,10 +3813,45 @@ impl MutationEngine {
             }
             "workflows" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                op_plugins::state_plugins::workflows_plugin::dispatch_workflows_method(
-                    method, &args,
-                )
-                .await?
+                let result: serde_json::Value =
+                    op_plugins::state_plugins::workflows_plugin::dispatch_workflows_method(
+                        method, &args,
+                    )
+                    .await?;
+                // A `start_workflow` accepted through this sealed surface is
+                // the event that owns a workstack run; the reactive runner
+                // (no timers, no polls) executes its `params.steps` ledger
+                // under the starter's verified identity session.
+                if method == "start_workflow"
+                    && let Some(execution_id) =
+                        result.get("execution_id").and_then(serde_json::Value::as_str)
+                {
+                    let workflow_id = result
+                        .get("workflow_id")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or_default();
+                    let steps: Vec<String> = args
+                        .get("params")
+                        .and_then(|params| params.get("steps"))
+                        .and_then(serde_json::Value::as_array)
+                        .map(|entries| {
+                            entries
+                                .iter()
+                                .filter_map(serde_json::Value::as_str)
+                                .map(str::to_string)
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    crate::workstack_runner::enqueue(
+                        execution_id,
+                        workflow_id,
+                        steps,
+                        actor_id,
+                        session_id,
+                        session_genesis,
+                    );
+                }
+                result
             }
             "identity_sled" => {
                 let args = serde_json::to_value(&parsed_value)?;
@@ -6744,25 +6779,6 @@ mod xray_unavailable_method_tests {
 /// registry is therefore an implementation detail behind D-Bus, not a second
 /// listener or control plane.
 impl MutationEngine {
-    /// Resolve trusted per-tool authority metadata from the live in-process
-    /// registry. MCP callers never provide or override this descriptor.
-    #[allow(dead_code)] // infrastructure for cognitive MCP tool dispatch
-    pub(crate) async fn cognitive_tool_descriptor(
-        &self,
-        tool_name: &str,
-    ) -> anyhow::Result<Option<serde_json::Value>> {
-        let candidate = self
-            .cognitive_mcp()
-            .await?
-            .tool_registry()
-            .get_descriptor(tool_name)
-            .await
-            .map(serde_json::to_value)
-            .transpose()
-            .map_err(anyhow::Error::from)?;
-        Ok(candidate.and_then(project_sealed_cognitive_tool_descriptor))
-    }
-
     async fn dispatch_cognitive_mcp_method(
         &self,
         caller: crate::specialist::CognitiveCaller<'_>,

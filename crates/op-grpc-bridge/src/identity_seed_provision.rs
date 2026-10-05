@@ -380,20 +380,6 @@ async fn revalidate_provision(
     .await?
 }
 
-async fn prepare_persist(
-    mut guard: op_network::seeded_root::SeededProvisionGuard,
-    expected: PathBuf,
-) -> Result<op_network::seeded_root::SeededProvisionGuard> {
-    tokio::task::spawn_blocking(move || {
-        anyhow::ensure!(
-            guard.prepare_persist_subvolume("pool")? == expected,
-            "persist source differs from plan"
-        );
-        Ok::<_, anyhow::Error>(guard)
-    })
-    .await?
-}
-
 async fn install_provision_boot(
     guard: op_network::seeded_root::SeededProvisionGuard,
     plan: SeedProvisionPlan,
@@ -536,29 +522,9 @@ impl ProvisionExecution<'_> {
     }
 
     async fn compose_leaf(&mut self) -> Result<op_network::seeded_root::SeededProvisionGuard> {
-        self.admit().await?;
-        self.enter("leaf-intent").await?;
-        let plan = self.plan.clone();
-        let guard = tokio::task::spawn_blocking(move || {
-            let descriptor = op_network::seeded_root::SeededProvisionDescriptor {
-                seed_image: Path::new(&plan.seed_image_path),
-                seed_sha256: &plan.seed_sha256,
-                seed_fsid: uuid::Uuid::parse_str(&plan.seed_fsid)?,
-                image_fingerprint: &plan.image_fingerprint,
-                new_leaf_image: Path::new(&plan.new_leaf_image_path),
-                leaf_size_bytes: plan.leaf_size_bytes,
-                mount_point: Path::new(&plan.mount_point),
-            };
-            op_network::seeded_root::provision_seeded_leaf(&descriptor)
-        })
-        .await??;
-        let guard = revalidate_provision(guard).await?;
-        self.enter("leaf-ready").await?;
-        self.admit().await?;
-        self.enter("persist-intent").await?;
-        let guard = prepare_persist(guard, self.plan.persist_source()).await?;
-        self.enter("persist-ready").await?;
-        Ok(guard)
+        // Defense in depth: even an internal caller cannot allocate/map a leaf,
+        // change membership or mount storage through this retired continuation.
+        Err(anyhow::anyhow!(EXTERNAL_PROVISIONING_REQUIRED))
     }
 
     async fn import_pool(
@@ -752,6 +718,10 @@ pub(super) async fn provision_container(
     let _session_guard = lifecycle.lock_owned().await;
     let _host_guard = engine.lock_host_observation().await;
     admit(engine, store, actor, actor_session_id, actor_genesis, &seal).await?;
+    // Preserve the sealed method and exact-principal admission, but the old
+    // image-based implementation cannot own shared physical storage or roots.
+    // This unconditional gate precedes all journals and native effects.
+    require_external_shared_seed_provisioning()?;
     preflight_native_identity_effect().await?;
     let expected = load_revision(store, &sid).await?;
     anyhow::ensure!(
@@ -821,6 +791,12 @@ pub(super) async fn provision_container(
     };
     let outcome = execution.run().await;
     outcome.map_err(|error| pending(operation_id, execution.phase, error))
+}
+
+const EXTERNAL_PROVISIONING_REQUIRED: &str = "prepare the shared physical seed, private writable leaf and container through the external host provisioning script or Incus; the bridge cannot compose, mount or copy identity roots";
+
+fn require_external_shared_seed_provisioning() -> Result<()> {
+    anyhow::bail!(EXTERNAL_PROVISIONING_REQUIRED)
 }
 
 async fn completed_plan(
@@ -899,7 +875,8 @@ async fn mount_completed(
 ) -> Result<op_network::seeded_root::SeededRootMount> {
     tokio::task::spawn_blocking(move || {
         let descriptor = descriptor(&plan, &sled)?;
-        let mount = op_network::seeded_root::ensure_seeded_root_mounted(&descriptor)?;
+        let mount = op_network::seeded_root::verify_seeded_root_mounted(&descriptor)
+            .context("seeded identity storage must already be mounted by the external host provisioner or Incus; the bridge does not mount storage")?;
         mount.verify_persist_subvolume(&descriptor, "persist", false)?;
         Ok::<_, anyhow::Error>(mount)
     })
@@ -1073,6 +1050,13 @@ pub(super) async fn journal_incomplete(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn legacy_provisioning_requires_external_shared_seed_owner() {
+        let error = require_external_shared_seed_provisioning().unwrap_err();
+        assert!(error.to_string().contains("shared physical seed"));
+        assert!(error.to_string().contains("cannot compose, mount or copy"));
+    }
 
     fn fixture() -> (ProvisionInput, IdentityRevision, SeedProvisionPlan) {
         let key = "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=".to_string();

@@ -1164,6 +1164,14 @@ pub fn build_operation_routes_with_validator(
     interceptor::set_engine(server.mutation_engine.clone());
 
     let reflection_v1 = DynamicReflectionService::new(server.active_reflection()).into_v1_server();
+    // The existing v1 endpoint remains blob-backed. The already pinned op-chat
+    // descriptor exposes this mounted facade on v1alpha without advertising
+    // the unmounted agent services contained in that descriptor.
+    let workstack_reflection = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(op_chat::orchestration::proto::FILE_DESCRIPTOR_SET)
+        .with_service_name("op_chat.orchestration.WorkstackService")
+        .build_v1alpha()
+        .expect("pinned op-chat reflection descriptor");
 
     // Only PluginService and its canonical forwarding adapters remain live.
     // Domain implementations without a sealed PluginSchema method cannot
@@ -1210,6 +1218,14 @@ pub fn build_operation_routes_with_validator(
         ),
     ));
 
+    let routes = routes
+        .add_service(crate::grpc_web::enable(
+            op_chat::orchestration::proto::op_chat_orchestration::workstack_service_server::WorkstackServiceServer::with_interceptor(
+                crate::workstack_service::WorkstackServiceImpl,
+                assertion_intercept,
+            ),
+        ))
+        .add_service(crate::grpc_web::enable(workstack_reflection));
     let routes = add_routes(routes, server.clone(), validator);
     routes.add_service(crate::grpc_web::enable(reflection_v1))
 }
@@ -1305,6 +1321,12 @@ pub async fn run_grpc_server(
     health_reporter
         .set_serving::<crate::proto::chat::chat_service_server::ChatServiceServer<
             crate::chat_service::ChatServiceImpl,
+        >>()
+        .await;
+
+    health_reporter
+        .set_serving::<op_chat::orchestration::proto::op_chat_orchestration::workstack_service_server::WorkstackServiceServer<
+            crate::workstack_service::WorkstackServiceImpl,
         >>()
         .await;
 

@@ -298,10 +298,10 @@ impl WorkstackService for OrchestrationServer {
             }
         });
 
-        // Spawn executor in a Send-safe way: the WorkstackExecutor's internal
-        // iterator is not Send across await points, so we use a helper task.
+        // The executor owns its phase context and uses Send tool futures and
+        // Tokio locks. Spawn on the runtime; tonic workers have no LocalSet.
         {
-            tokio::task::spawn_local(async move {
+            tokio::spawn(async move {
                 let result = executor
                     .execute(&session_id, &workstack_id, variables, Some(event_tx))
                     .await;

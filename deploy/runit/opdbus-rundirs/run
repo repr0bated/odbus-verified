@@ -10,6 +10,17 @@ wait_dep() {
     done
 }
 /usr/local/libexec/3tched/opdbus-rundirs-up
+[ ! -L /run/opdbus/lungs ] || { echo "lungs directory must not be a symlink" >&2; exit 1; }
+if [ -e /run/opdbus/lungs ]; then
+    [ -d /run/opdbus/lungs ] && [ "$(stat -c '%u:%a' /run/opdbus/lungs)" = 0:755 ] || {
+        echo "existing lungs directory ownership or mode conflicts" >&2; exit 1;
+    }
+fi
+install -d -o root -g root -m 0755 /run/opdbus/lungs
+[ "$(realpath -e /run/opdbus/lungs)" = /run/opdbus/lungs ] &&
+    [ "$(stat -c '%u:%a' /run/opdbus/lungs)" = 0:755 ] || {
+    echo "unsafe dedicated lungs directory" >&2; exit 1;
+}
 install -d -m 0755 /run/opdbus/runit-ready
 touch /run/opdbus/runit-ready/opdbus-rundirs
 exec pause

@@ -1,5 +1,5 @@
 #!/bin/sh
 mountpoint -q /run/mount/3tchedFS || exit 1
-test -S /run/opdbus/lungs.sock || exit 1
+test -S /run/opdbus/lungs/lungs.sock || exit 1
 test -f /run/mount/3tchedFS/plugins/identity_sled/operations/get_identity/call || exit 1
 exit 0

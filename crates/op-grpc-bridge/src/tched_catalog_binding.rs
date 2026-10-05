@@ -182,6 +182,7 @@ mod tests {
             catalog_revision: 7,
             ordinary_reference: None,
             excluded_references: BTreeSet::new(),
+            family: "openai".into(),
         }
     }
     fn candidate(reference: &str, uri: &str) -> ProfileCandidate {

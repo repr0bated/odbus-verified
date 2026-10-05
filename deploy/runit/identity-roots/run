@@ -1,6 +1,7 @@
 #!/bin/sh
 # Mount physical-seed roots after Incus API readiness, then start only ready
-# canonical-session instances. Staging names remain stopped. This is storage
+# session instances (including the fixed chatbot alias). Staging names remain
+# stopped. This is storage
 # readiness, without a bridge/lungs dependency. A service restart observes
 # running instances without stopping them; finish never detaches their roots.
 exec 2>&1
@@ -37,7 +38,7 @@ for receipt in "$physical"/*/state.json; do
     [ -e "$receipt" ] || [ -L "$receipt" ] || continue
     physical_present=1
     name=$(basename "$(dirname "$receipt")")
-    if ! printf '%s' "$name" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+    if [ "$name" != 3tchedCtlbot ] && ! printf '%s' "$name" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
         echo "physical seed staging receipt $name: boot disabled"
         continue
     fi
@@ -48,7 +49,10 @@ for receipt in "$physical"/*/state.json; do
     fi
     # A canonical name alone does not prove provisioning completed. The helper
     # checks the owner attestation marker and all storage/native identity pins.
-    if ! jq -e --arg name "$name" '.name == $name and .session == $name and .phase == "ready"' "$receipt" >/dev/null; then
+    if ! jq -e --arg name "$name" '
+        .name == $name and .phase == "ready" and
+        (.session == $name or ($name == "3tchedCtlbot" and .session == "b0c777e3-0955-cd8b-3d01-ca12998cae28"))
+    ' "$receipt" >/dev/null; then
         echo "physical seed $name: invalid/incomplete receipt; legacy suppressed" >&2
         failed=$((failed + 1))
         continue

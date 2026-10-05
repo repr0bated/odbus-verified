@@ -5,7 +5,8 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
 helper=$repo/deploy/runit/libexec-3tched/op-identity-root
 seed_name=fixture
 hook_selection='lxc.hook.version = 1
-lxc.hook.start-host = /fixture/release/libexec/3tched/op-identity-lungs-hook'
+lxc.hook.start-host = /fixture/release/libexec/3tched/op-identity-lungs-hook
+lxc.uts.name = b0c777e3-0955-cd8b-3d01-ca12998cae28'
 invocation=$(awk '/^[[:space:]]*incus config set .*raw.lxc/ {print; n++} END {if (n != 1) exit 1}' "$helper")
 called=false
 incus() {

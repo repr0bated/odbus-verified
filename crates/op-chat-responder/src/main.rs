@@ -6,8 +6,9 @@
 //! happens in the chatbot; this service only ensures the chatbot is notified
 //! of pending work.
 //!
-//! The service can also poll `list_pending_turns` via 3tchedFS as a fallback
-//! when MQTT delivery is delayed.
+//! MQTT wake delivery is required. There is no pending-turn scan or timer retry.
+//! A transport failure terminates the relay explicitly; a missing publication
+//! cannot be inferred from an idle subscription and requires producer-side evidence.
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -16,7 +17,6 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use std::time::Duration;
-use tokio::fs;
 use tracing::{debug, error, info, warn};
 
 /// Out-of-band chat responder wake relay for OP-DBUS chatbot.
@@ -39,14 +39,6 @@ struct Args {
     /// MQTT broker port.
     #[arg(long, env = "MQTT_PORT", default_value = "1883")]
     mqtt_port: u16,
-
-    /// Poll interval in seconds for 3tchedFS fallback.
-    #[arg(long, env = "POLL_INTERVAL", default_value = "30")]
-    poll_interval: u64,
-
-    /// Enable polling mode (don't rely on MQTT wake).
-    #[arg(long, env = "POLLING_MODE")]
-    polling_mode: bool,
 
     /// D-Bus destination for the chatbot notification.
     #[arg(
@@ -75,23 +67,6 @@ struct ResponderWake {
     preview: Option<String>,
 }
 
-/// A pending turn from list_pending_turns.
-#[derive(Debug, Clone, Deserialize)]
-struct PendingTurnInfo {
-    turn_id: String,
-    conversation_id: String,
-    turn_index: u64,
-    owner_key: String,
-    owner_principal_id: String,
-    opened_at: String,
-}
-
-/// Output from list_pending_turns.
-#[derive(Debug, Clone, Deserialize)]
-struct ListPendingTurnsOutput {
-    pending_turns: Vec<PendingTurnInfo>,
-}
-
 fn responder_owner_key(principal_id: &str) -> String {
     format!("{:x}", Sha256::digest(principal_id.as_bytes()))
 }
@@ -108,34 +83,6 @@ struct WakeRelay {
 impl WakeRelay {
     fn new(args: Args) -> Self {
         Self { args }
-    }
-
-    /// Path to the list_pending_turns call file.
-    fn list_pending_path(&self) -> PathBuf {
-        self.args
-            .lungs_mount
-            .join("chat_response")
-            .join("list_pending_turns")
-    }
-
-    /// List pending turns via 3tchedFS.
-    async fn list_pending_turns(&self) -> Result<Vec<PendingTurnInfo>> {
-        let path = self.list_pending_path();
-        if !path.exists() {
-            debug!(?path, "list_pending_turns call file not found");
-            return Ok(vec![]);
-        }
-
-        // 3tchedFS call: write empty JSON to the call file and read the response
-        let input = serde_json::json!({});
-        fs::write(&path, serde_json::to_string(&input)?).await?;
-
-        // Read the response (3tchedFS provides response on read after write)
-        let response = fs::read_to_string(&path).await?;
-        let output: ListPendingTurnsOutput = serde_json::from_str(&response)
-            .context("failed to parse list_pending_turns response")?;
-
-        Ok(output.pending_turns)
     }
 
     /// Notify the control-plane chatbot of a pending turn via D-Bus.
@@ -204,38 +151,6 @@ impl WakeRelay {
         }
     }
 
-    /// Poll for pending turns and forward them to the chatbot.
-    async fn poll_pending(&self) {
-        match self.list_pending_turns().await {
-            Ok(turns) if turns.is_empty() => {
-                debug!("no pending turns");
-            }
-            Ok(turns) => {
-                info!(count = turns.len(), "found pending turns");
-                for turn in turns {
-                    info!(
-                        turn_id = %turn.turn_id,
-                        conversation_id = %turn.conversation_id,
-                        turn_index = turn.turn_index,
-                        opened_at = %turn.opened_at,
-                        "processing pending turn"
-                    );
-                    let wake = ResponderWake {
-                        request_id: turn.turn_id,
-                        owner_key: turn.owner_key,
-                        owner_principal_id: turn.owner_principal_id,
-                        conversation_id: Some(turn.conversation_id),
-                        preview: None,
-                    };
-                    self.handle_wake(wake).await;
-                }
-            }
-            Err(error) => {
-                warn!(%error, "failed to list pending turns");
-            }
-        }
-    }
-
     /// Run the relay loop with MQTT subscription.
     async fn run_mqtt(&self) -> Result<()> {
         let topic = responder_wake_topic(&self.args.principal_id);
@@ -257,9 +172,6 @@ impl WakeRelay {
         let (client, mut eventloop) = AsyncClient::new(mqtt_options, 10);
         client.subscribe(&topic, QoS::AtLeastOnce).await?;
 
-        // Initial poll to catch any pending turns from before we subscribed
-        self.poll_pending().await;
-
         loop {
             match eventloop.poll().await {
                 Ok(Event::Incoming(Packet::Publish(publish))) => {
@@ -273,42 +185,29 @@ impl WakeRelay {
                     }
                 }
                 Ok(Event::Incoming(Packet::ConnAck(_))) => {
-                    info!("MQTT connected, resubscribing");
-                    if let Err(error) = client.subscribe(&topic, QoS::AtLeastOnce).await {
-                        error!(%error, "failed to resubscribe");
-                    }
+                    info!("MQTT connected, subscribing to required wake channel");
+                    client
+                        .subscribe(&topic, QoS::AtLeastOnce)
+                        .await
+                        .context("required MQTT wake subscription could not be queued")?;
+                }
+                Ok(Event::Incoming(Packet::SubAck(ack))) => {
+                    anyhow::ensure!(
+                        ack.return_codes.len() == 1
+                            && matches!(
+                                ack.return_codes[0],
+                                rumqttc::SubscribeReasonCode::Success(_)
+                            ),
+                        "required MQTT wake subscription rejected; pending turns cannot be discovered"
+                    );
+                    info!("required MQTT wake subscription accepted");
                 }
                 Ok(_) => {}
                 Err(error) => {
-                    error!(%error, "MQTT error, reconnecting in 5s");
-                    tokio::time::sleep(Duration::from_secs(5)).await;
+                    error!(%error, "required MQTT wake channel failed; pending turns cannot be discovered");
+                    return Err(error).context("required MQTT wake channel unavailable");
                 }
             }
-        }
-    }
-
-    /// Run the relay loop with polling only.
-    async fn run_polling(&self) -> Result<()> {
-        let interval = Duration::from_secs(self.args.poll_interval);
-
-        info!(
-            principal_id = %self.args.principal_id,
-            interval_secs = self.args.poll_interval,
-            "starting polling wake relay"
-        );
-
-        loop {
-            self.poll_pending().await;
-            tokio::time::sleep(interval).await;
-        }
-    }
-
-    /// Run the relay.
-    async fn run(&self) -> Result<()> {
-        if self.args.polling_mode {
-            self.run_polling().await
-        } else {
-            self.run_mqtt().await
         }
     }
 }
@@ -324,5 +223,39 @@ async fn main() -> Result<()> {
 
     let args = Args::parse();
     let relay = WakeRelay::new(args);
-    relay.run().await
+    relay.run_mqtt().await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn service_arguments_use_mqtt_only() {
+        let args = Args::try_parse_from([
+            "op-chat-responder",
+            "--principal-id",
+            "fixture",
+            "--lungs-mount",
+            "/tmp/fixture-lungs",
+            "--mqtt-host",
+            "localhost",
+            "--mqtt-port",
+            "1883",
+        ])
+        .unwrap();
+        assert_eq!(args.principal_id, "fixture");
+        assert_eq!(args.mqtt_host, "localhost");
+        assert_eq!(args.mqtt_port, 1883);
+    }
+
+    #[test]
+    fn retired_polling_arguments_are_rejected() {
+        for retired in ["--poll-interval", "--polling-mode"] {
+            let error =
+                Args::try_parse_from(["op-chat-responder", "--principal-id", "fixture", retired])
+                    .unwrap_err();
+            assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
+        }
+    }
 }

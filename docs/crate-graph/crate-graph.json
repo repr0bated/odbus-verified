@@ -385,11 +385,11 @@
         ],
         "has_lib": true,
         "rs_files": 31,
-        "loc": 21287,
-        "tests": 36,
+        "loc": 21775,
+        "tests": 41,
         "unsafe_refs": 3,
         "todo": 6,
-        "unwrap_expect": 33
+        "unwrap_expect": 47
       }
     },
     {
@@ -403,11 +403,11 @@
         ],
         "has_lib": false,
         "rs_files": 1,
-        "loc": 328,
-        "tests": 0,
+        "loc": 261,
+        "tests": 2,
         "unsafe_refs": 0,
         "todo": 0,
-        "unwrap_expect": 0
+        "unwrap_expect": 1
       }
     },
     {
@@ -612,12 +612,12 @@
           "op-grpc-bridge"
         ],
         "has_lib": true,
-        "rs_files": 180,
-        "loc": 110087,
-        "tests": 846,
+        "rs_files": 181,
+        "loc": 111151,
+        "tests": 861,
         "unsafe_refs": 210,
         "todo": 177,
-        "unwrap_expect": 1968
+        "unwrap_expect": 2015
       }
     },
     {
@@ -765,11 +765,11 @@
         ],
         "has_lib": true,
         "rs_files": 32,
-        "loc": 17092,
-        "tests": 76,
-        "unsafe_refs": 122,
+        "loc": 17174,
+        "tests": 80,
+        "unsafe_refs": 115,
         "todo": 14,
-        "unwrap_expect": 195
+        "unwrap_expect": 212
       }
     },
     {
@@ -802,11 +802,11 @@
         ],
         "has_lib": true,
         "rs_files": 150,
-        "loc": 118038,
-        "tests": 569,
+        "loc": 117908,
+        "tests": 570,
         "unsafe_refs": 17,
         "todo": 1,
-        "unwrap_expect": 1331
+        "unwrap_expect": 1333
       }
     },
     {
@@ -925,11 +925,11 @@
         ],
         "has_lib": true,
         "rs_files": 59,
-        "loc": 13721,
-        "tests": 67,
+        "loc": 14124,
+        "tests": 71,
         "unsafe_refs": 1,
         "todo": 6,
-        "unwrap_expect": 104
+        "unwrap_expect": 114
       }
     },
     {
@@ -2045,8 +2045,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-04T18:47:31Z",
-        "commit": "f6e07631e765df8b8cfcb50a0a6dd8f72bad7890",
+        "generated_at": "2026-10-05T04:44:11Z",
+        "commit": "3cf5c47d1dd3baec2522c5ddac03de5bba1c5523",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -3897,7 +3897,7 @@
       "props": {
         "crate": "op-chat-responder",
         "kind": "src",
-        "loc": 328
+        "loc": 261
       }
     },
     {
@@ -4005,7 +4005,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 1376
+        "loc": 1403
       }
     },
     {
@@ -4014,7 +4014,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 308
+        "loc": 357
       }
     },
     {
@@ -4140,7 +4140,7 @@
       "props": {
         "crate": "op-chat",
         "kind": "src",
-        "loc": 1158
+        "loc": 1570
       }
     },
     {
@@ -5589,7 +5589,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 6091
+        "loc": 6113
       }
     },
     {
@@ -5670,7 +5670,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 2586
+        "loc": 2590
       }
     },
     {
@@ -5679,7 +5679,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1237
+        "loc": 1221
       }
     },
     {
@@ -5688,7 +5688,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 4366
+        "loc": 4585
       }
     },
     {
@@ -5697,7 +5697,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 598
+        "loc": 667
       }
     },
     {
@@ -5706,7 +5706,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 250
+        "loc": 295
       }
     },
     {
@@ -5778,7 +5778,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 386
+        "loc": 388
       }
     },
     {
@@ -5904,7 +5904,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 7500
+        "loc": 7516
       }
     },
     {
@@ -6183,7 +6183,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1529
+        "loc": 1542
       }
     },
     {
@@ -6246,7 +6246,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 1046
+        "loc": 1047
       }
     },
     {
@@ -6282,7 +6282,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 284
+        "loc": 285
       }
     },
     {
@@ -6372,7 +6372,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 4052
+        "loc": 4053
       }
     },
     {
@@ -6453,7 +6453,16 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 381
+        "loc": 538
+      }
+    },
+    {
+      "id": "mod:crates/op-grpc-bridge/src/workstack_service.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-grpc-bridge",
+        "kind": "src",
+        "loc": 507
       }
     },
     {
@@ -7479,7 +7488,7 @@
       "props": {
         "crate": "op-network",
         "kind": "src",
-        "loc": 401
+        "loc": 483
       }
     },
     {
@@ -8397,7 +8406,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1156
+        "loc": 1160
       }
     },
     {
@@ -8415,7 +8424,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 4117
+        "loc": 4170
       }
     },
     {
@@ -8424,7 +8433,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 755
+        "loc": 762
       }
     },
     {
@@ -8721,7 +8730,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 1916
+        "loc": 1719
       }
     },
     {
@@ -9153,7 +9162,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 417
+        "loc": 420
       }
     },
     {
@@ -9927,7 +9936,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 135
+        "loc": 449
       }
     },
     {
@@ -10071,7 +10080,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 735
+        "loc": 786
       }
     },
     {
@@ -10305,7 +10314,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 397
+        "loc": 399
       }
     },
     {
@@ -10323,7 +10332,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 640
+        "loc": 664
       }
     },
     {
@@ -10350,7 +10359,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 195
+        "loc": 207
       }
     },
     {
@@ -10869,7 +10878,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/identity_sled.rs",
-        "line": 1155,
+        "line": 1159,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/identity_sled"
       }
@@ -10879,7 +10888,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/incus.rs",
-        "line": 3128,
+        "line": 3181,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/incus"
       }
@@ -11009,7 +11018,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/openflow.rs",
-        "line": 1878,
+        "line": 1681,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/openflow"
       }
@@ -11279,7 +11288,7 @@
       "label": "plugin",
       "props": {
         "file": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
-        "line": 416,
+        "line": 419,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/workflows"
       }
@@ -18017,6 +18026,12 @@
     {
       "src": "crate:op-grpc-bridge",
       "rel": "contains",
+      "dst": "mod:crates/op-grpc-bridge/src/workstack_service.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "contains",
       "dst": "mod:crates/op-grpc-bridge/src/xray_methods.rs",
       "props": {}
     },
@@ -18236,6 +18251,14 @@
       "src": "crate:op-grpc-bridge",
       "rel": "depends_on",
       "dst": "crate:op-blob",
+      "props": {
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-grpc-bridge",
+      "rel": "depends_on",
+      "dst": "crate:op-chat",
       "props": {
         "optional": false
       }
@@ -28427,6 +28450,14 @@
     {
       "src": "mod:crates/op-grpc-bridge/src/grpc_server.rs",
       "rel": "imports",
+      "dst": "crate:op-chat",
+      "props": {
+        "refs": 3
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/grpc_server.rs",
+      "rel": "imports",
       "dst": "crate:op-cognitive-mcp",
       "props": {
         "refs": 1
@@ -28701,7 +28732,7 @@
       "rel": "imports",
       "dst": "crate:op-network",
       "props": {
-        "refs": 24
+        "refs": 20
       }
     },
     {
@@ -28733,7 +28764,7 @@
       "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 34
+        "refs": 35
       }
     },
     {
@@ -28741,7 +28772,7 @@
       "rel": "imports",
       "dst": "crate:op-network",
       "props": {
-        "refs": 2
+        "refs": 1
       }
     },
     {
@@ -28749,7 +28780,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 4
+        "refs": 3
       }
     },
     {
@@ -28765,7 +28796,7 @@
       "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 4
+        "refs": 6
       }
     },
     {
@@ -28805,7 +28836,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 2
+        "refs": 4
       }
     },
     {
@@ -30413,11 +30444,43 @@
       "rel": "imports",
       "dst": "crate:op-cozo-store",
       "props": {
-        "refs": 1
+        "refs": 3
       }
     },
     {
       "src": "mod:crates/op-grpc-bridge/src/workstack_runner.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugins",
+      "props": {
+        "refs": 6
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/workstack_runner.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/workstack_service.rs",
+      "rel": "imports",
+      "dst": "crate:op-chat",
+      "props": {
+        "refs": 5
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/workstack_service.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-grpc-bridge/src/workstack_service.rs",
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
@@ -33717,6 +33780,22 @@
       "rel": "imports",
       "dst": "crate:op-agents",
       "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-web/src/handlers/agents.rs",
+      "rel": "imports",
+      "dst": "crate:op-grpc-bridge",
+      "props": {
+        "refs": 4
+      }
+    },
+    {
+      "src": "mod:crates/op-web/src/handlers/agents.rs",
+      "rel": "imports",
+      "dst": "crate:op-identity",
+      "props": {
         "refs": 2
       }
     },
@@ -33797,7 +33876,7 @@
       "rel": "imports",
       "dst": "crate:op-identity",
       "props": {
-        "refs": 5
+        "refs": 6
       }
     },
     {
@@ -33949,7 +34028,7 @@
       "rel": "imports",
       "dst": "crate:op-grpc-bridge",
       "props": {
-        "refs": 1
+        "refs": 2
       }
     },
     {

@@ -3,12 +3,14 @@
 This identity's workspace is `/agent`. The shared base supplies this layout;
 the container's verified identity and grants determine what the agent can do.
 
-- `soul/`: reserved for approved persona and identity defaults.
+- `soul/`: common persona defaults in `SOUL.md`.
 - `rules/`: shared operating instructions and future hook configuration.
-- `shared/`: reserved for common skills and supporting files.
-- `user/`: reserved for identity-specific preferences.
-- `memory/`: reserved for private notes or projections of durable memory.
-- `skills/`: reserved for approved identity-specific skills.
+- `shared/`: links to the existing cognitive MCP and agent configuration owners.
+- `user/`: an initially blank `USER.md` preference template for this identity.
+- `memory/`: access to cognitive MCP memory through identity-bound 3tchedFS
+  operations; `MEMORY.md` documents that integration, not a separate note store.
+- `skills/`: integration with the existing tched-router skill owner; no separate
+  copied skill registry. See its README for the current integration limits.
 
 The soul, rules and shared directories are read-only Btrfs subvolumes. The
 whole base partition is mounted read-only. Writable identity storage and
@@ -18,6 +20,10 @@ hooks, tools, prompt loading or memory persistence by itself.
 Use the identity's granted 3tchedFS methods when available. Preserve caller
 identity, schema validation and capability checks. A file or skill does not
 grant permission. Keep private information within its identity's scope.
+The host mounts the identity's 3tchedFS and Incus attaches it at
+`/run/mount/3tchedFS`. Do not start another FUSE mount inside the container.
+Missing access is a provisioning or admission issue, not permission to use
+another identity. The provisioner supplies the session-ID hostname.
 
 Cozo remains the owner of durable structured state. Do not place workspace
 files inside its database-engine directory or treat a Markdown file as proof

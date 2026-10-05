@@ -1085,7 +1085,8 @@ async fn ensure_mounted_plan(
     let plan = plan.clone();
     tokio::task::spawn_blocking(move || {
         let descriptor = descriptor_for_plan(&plan)?;
-        let mount = op_network::seeded_root::ensure_seeded_root_mounted(&descriptor)?;
+        let mount = op_network::seeded_root::verify_seeded_root_mounted(&descriptor)
+            .context("repair storage must already be mounted by the external host provisioner or Incus; the bridge does not mount storage")?;
         anyhow::ensure!(
             mount.pool_path == Path::new(&plan.target_pool_source),
             "mounted pool path differs from trusted plan"
@@ -2082,6 +2083,9 @@ async fn repair_own_root_with_backend(request: RepairRequest<'_>) -> Result<Json
     // A populated old persist source requires a separate migration plan.
     // Reject it before importing a pool or rebuilding the missing root.
     verify_old_persist_empty(&plan).await?;
+    // External storage must be present before journal or native mutations.
+    let mounted = ensure_mounted_plan(&plan).await?;
+    let mounted = verify_selected_persist(&plan, mounted, true).await?;
     preflight_native_identity_effect().await?;
     let (original, etag) = native.instance(session_id).await?;
     verify_original_instance(&original, &etag, &plan)?;
@@ -2141,7 +2145,7 @@ async fn repair_own_root_with_backend(request: RepairRequest<'_>) -> Result<Json
         active_phase: "mount-intent",
     };
     let continuation: Result<JsonValue> = async {
-        let mut mounted = ensure_mounted_plan(&plan).await?;
+        let mut mounted = reverify_mounted_plan(&plan, mounted).await?;
         mounted = verify_selected_persist(&plan, mounted, true).await?;
         execution.enter("mounted").await?;
 

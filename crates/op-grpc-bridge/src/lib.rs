@@ -133,6 +133,8 @@ mod ui_workspace_dispatch;
 mod ui_workspace_stream;
 mod ui_workspace_stream_selection;
 mod web_ui_dispatch;
+mod workstack_runner;
+mod workstack_service;
 mod xray_methods;
 
 // Re-export main types

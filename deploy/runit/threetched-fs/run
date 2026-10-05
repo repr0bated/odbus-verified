@@ -29,7 +29,7 @@ mountpoint=/run/mount/3tchedFS
 store=/dev/shm/3tchedfs
 catalog=/dev/shm/opdbus/plugin-blobs
 state=/dev/shm/opdbus/state
-lungs=/run/opdbus/lungs.sock
+lungs=/run/opdbus/lungs/lungs.sock
 
 wait_dep opdbus-rundirs
 wait_dep op-session-bus

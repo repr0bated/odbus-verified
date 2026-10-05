@@ -3,13 +3,15 @@
 # Usage:
 #   sudo ./provision-workspace-subscriber.sh LABEL --session-id UUID --pubkey B64 \
 #     --operator-session UUID --leaf-path ABSOLUTE_PATH [--fstorage-gib N] [--no-start]
+#     [--container-name 3tchedCtlbot]   # existing Cozo-bound chatbot only
 #   sudo ./provision-workspace-subscriber.sh NAME --system \
 #     [--image ALIAS|FINGERPRINT] [--storage POOL] [--no-start]
 #   sudo ./provision-workspace-subscriber.sh --system NAME [system options]
 #
 # Identity mode never signs up an account, generates/copies credentials,
 # deletes/recreates a container, or attaches a leaf to an Incus filesystem.
-# The session UUID is the native name; LABEL is display metadata.
+# The session UUID is the native name unless the existing chatbot binding
+# explicitly names 3tchedCtlbot. LABEL is display metadata, never authority.
 # Existing native names and storage receipts are refused.
 # --no-start prepares storage, reconciles and verifies attach, leaving STOPPED.
 # Normal mode requires an inactive target with a canonical stored instance;
@@ -18,6 +20,14 @@
 # supported method results redact them. This wrapper never mints credentials.
 # Completion enables root/FUSE restoration on boot; --no-start records a
 # stopped boot policy. Incomplete storage never receives a boot-ready marker.
+# The physical seed is one immutable filesystem shared by all leaves. Storage
+# preparation uses its existing seven subvolumes through a private writable
+# sprout; it never snapshots, copies, sends or receives a container root.
+# Each guest gets its session ID as /etc/hostname and the LXC UTS hostname.
+# seed-lungs configures the persistent Incus disk attaching the identity's own
+# host FUSE mount at /run/mount/3tchedFS on every start.
+# The 3tched-lungs profile provides /run tmpfs and the dedicated host socket
+# directory at the same /run/opdbus/lungs path inside each new container.
 # Failures retain native/storage intent and private sanitized receipts.
 # Host helper/catalog defaults select activated release artifacts.
 # Selected overrides must be root-controlled. This is host operator maintenance,
@@ -36,17 +46,17 @@ SYSTEM_IMAGE=${SYSTEM_CONTAINER_IMAGE:-raccoon}
 SYSTEM_STORAGE_POOL=${SYSTEM_STORAGE_POOL:-3tched-storage}
 IMAGE=${IDENTITY_SEED_IMAGE:-3a639373bb7a} IMAGE_OVERRIDDEN=false
 SYSTEM_STORAGE=$SYSTEM_STORAGE_POOL SYSTEM_STORAGE_OVERRIDDEN=false
-IDENTITY_ONLY_FLAGS="" PUBKEY="" SESSION_ID="" OPERATOR_SESSION="" LEAF_PATH=""
+IDENTITY_ONLY_FLAGS="" PUBKEY="" SESSION_ID="" OPERATOR_SESSION="" LEAF_PATH="" NATIVE_NAME=""
 FSTORAGE_GIB=2 NO_START=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --pubkey|--session-id|--operator-session|--leaf-path|--fstorage-gib)
+        --pubkey|--session-id|--operator-session|--leaf-path|--fstorage-gib|--container-name)
             option=$1; IDENTITY_ONLY_FLAGS="$IDENTITY_ONLY_FLAGS $option"
             shift; value=${1:?option requires a value}
             case "$option" in
                 --pubkey) PUBKEY=$value ;; --session-id) SESSION_ID=$value ;;
                 --operator-session) OPERATOR_SESSION=$value ;; --leaf-path) LEAF_PATH=$value ;;
-                --fstorage-gib) FSTORAGE_GIB=$value ;;
+                --fstorage-gib) FSTORAGE_GIB=$value ;; --container-name) NATIVE_NAME=$value ;;
             esac ;;
         --image) shift; IMAGE=${1:?}; IMAGE_OVERRIDDEN=true ;;
         --storage) shift; SYSTEM_STORAGE=${1:?}; SYSTEM_STORAGE_OVERRIDDEN=true ;;
@@ -96,7 +106,7 @@ provision_system_container() {
     incus init "$IMAGE" "$SYSTEM_NAME" --storage "$SYSTEM_STORAGE" --no-profiles \
         --config security.privileged=false \
         --config security.nesting=false \
-        --config boot.autostart=false
+        --config boot.autostart=false </dev/null
     if [ "$NO_START" != true ]; then
         incus start "$SYSTEM_NAME"
     fi
@@ -123,36 +133,48 @@ valid_uuid() { [[ $1 =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
     die '--image and --storage are system-only; identity roots use the pinned physical seed'
 valid_uuid "$SESSION_ID" || die 'explicit canonical --session-id is required'
 valid_uuid "$OPERATOR_SESSION" || die 'explicit authorized --operator-session is required'
+NATIVE_NAME=${NATIVE_NAME:-$SESSION_ID}
+if [[ $NATIVE_NAME != "$SESSION_ID" ]]; then
+    [[ $NATIVE_NAME == 3tchedCtlbot && $SESSION_ID == b0c777e3-0955-cd8b-3d01-ca12998cae28 ]] ||
+        die 'only the existing control-plane chatbot may use a name different from its session ID'
+fi
 [[ $PUBKEY =~ ^[A-Za-z0-9+/]{43}=$ ]] || die 'explicit canonical 32-byte Base64 --pubkey is required'
 [[ ${#ROLE} -ge 1 && ${#ROLE} -le 63 && $ROLE =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || die 'invalid display label'
 [[ $FSTORAGE_GIB =~ ^[1-9][0-9]{0,3}$ ]] && (( FSTORAGE_GIB <= 1024 )) || die 'leaf size must be 1 to 1024 GiB'
 [[ $LEAF_PATH == /* && $LEAF_PATH != *$'\n'* && $LEAF_PATH != *$'\r'* ]] || die 'explicit absolute --leaf-path is required'
-for command in incus jq realpath stat timeout mktemp find cmp base64; do need_cmd "$command"; done
+for command in incus jq realpath stat timeout mktemp find cmp base64 flock; do need_cmd "$command"; done
 [[ $(printf '%s' "$PUBKEY" | base64 -d | base64 -w0) == "$PUBKEY" ]] || die 'public key encoding is not canonical'
 [[ $(realpath -m -- "$LEAF_PATH") == "$LEAF_PATH" ]] || die 'leaf path must be normalized'
 [[ ! -e $LEAF_PATH && ! -L $LEAF_PATH ]] || die 'leaf already exists; never recreate'
 ROOT_HELPER=$(realpath -e -- "${OP_IDENTITY_ROOT_HELPER:-/usr/local/libexec/3tched/op-identity-root}")
+HOST_FOLDERS_HELPER=$(realpath -e -- "${OP_IDENTITY_HOST_FOLDERS_HELPER:-/usr/local/libexec/3tched/attach-host-workspace-folders}")
 FS_BINARY=$(realpath -e -- "${THREETCHED_FS:-/usr/local/bin/threetched-fs}")
 CATALOG=$(realpath -e -- "${OP_IDENTITY_SEED_CATALOG:-/var/lib/opdbus/plugin-blobs}")
-LUNGS_HOOK=$(realpath -e -- "${OP_IDENTITY_SEED_LUNGS_HOOK:-$(dirname -- "$ROOT_HELPER")/op-identity-lungs-hook}")
 STATE_ROOT=${OP_IDENTITY_SEED_STATE:-/var/lib/opdbus-runtime/seed-identities}
 RECEIPT_ROOT=${OP_IDENTITY_PROVISION_RECEIPTS:-/var/lib/opdbus-runtime/identity-provision-receipts}
-root_path "$ROOT_HELPER"; root_path "$FS_BINARY"; root_path "$CATALOG"; root_path "$LUNGS_HOOK"
+root_path "$ROOT_HELPER"; root_path "$FS_BINARY"; root_path "$CATALOG"
+root_path "$HOST_FOLDERS_HELPER"
+[[ -f $HOST_FOLDERS_HELPER && -x $HOST_FOLDERS_HELPER ]] || die 'invalid selected host workspace folders helper'
 [[ -f $ROOT_HELPER && -x $ROOT_HELPER && -f $FS_BINARY && -x $FS_BINARY && -d $CATALOG ]] || die 'invalid selected artifacts'
-[[ -f $LUNGS_HOOK && -x $LUNGS_HOOK ]] || die 'invalid selected lungs hook'
 # Helpers must use the same selected artifacts, including received layouts.
 export THREETCHED_FS="$FS_BINARY" OP_IDENTITY_SEED_CATALOG="$CATALOG"
-export OP_IDENTITY_SEED_LUNGS_HOOK="$LUNGS_HOOK" OP_IDENTITY_SEED_STATE="$STATE_ROOT"
+export OP_IDENTITY_SEED_STATE="$STATE_ROOT"
 [[ $(stat -c %a -- "$(dirname -- "$LEAF_PATH")") == 700 ]] || die 'leaf parent must already be private mode 0700'
 root_path "$(dirname -- "$LEAF_PATH")"
 [[ $STATE_ROOT == /* && $(realpath -m -- "$STATE_ROOT") == "$STATE_ROOT" ]] || die 'invalid seed state root'
 root_path "$(dirname -- "$STATE_ROOT")"
-[[ ! -e $STATE_ROOT/$SESSION_ID && ! -L $STATE_ROOT/$SESSION_ID ]] || die 'seed receipt exists; inspect retained intent'
+[[ ! -e $STATE_ROOT/$NATIVE_NAME && ! -L $STATE_ROOT/$NATIVE_NAME ]] || die 'seed receipt exists; use seed-inspect on the retained intent'
 [[ $RECEIPT_ROOT == /* && $(realpath -m -- "$RECEIPT_ROOT") == "$RECEIPT_ROOT" ]] || die 'invalid operator receipt root'
 root_path "$(dirname -- "$RECEIPT_ROOT")"
 umask 077
 mkdir -p -- "$RECEIPT_ROOT"; root_path "$RECEIPT_ROOT"
 [[ $(stat -c %a -- "$RECEIPT_ROOT") == 700 ]] || die 'operator receipt root must be mode 0700'
+lock_path=$RECEIPT_ROOT/$SESSION_ID.lock
+[[ ! -L $lock_path && ( ! -e $lock_path || -f $lock_path ) ]] || die 'unsafe provisioning lock'
+exec 9>"$lock_path"
+root_path "$lock_path"
+[[ $(stat -c %a -- "$lock_path") == 600 ]] || die 'provisioning lock must be mode 0600'
+flock -n 9 || die 'this identity is already being provisioned'
 WORK=$(mktemp -d "$RECEIPT_ROOT/$SESSION_ID.XXXXXX")
 mkdir -- "$WORK/empty-state" "$WORK/store"
 printf 'Private sanitized receipts: %s\n' "$WORK"
@@ -165,7 +187,7 @@ mcp_call() (
     set -euo pipefail
     tool=$1 args=$2 kind=$3
     coproc MCP { timeout -k 5 90 "$FS_BINARY" --store "$WORK/store" mcp \
-        --state "$WORK/empty-state" --lungs-socket /run/opdbus/lungs.sock \
+        --state "$WORK/empty-state" --lungs-socket /run/opdbus/lungs/lungs.sock \
         --lungs-session "$OPERATOR_SESSION" --all 2>/dev/null; }
     pid=$MCP_PID old_read=${MCP[0]} old_write=${MCP[1]}
     exec {rfd}<&"$old_read"; exec {wfd}>&"$old_write"
@@ -185,7 +207,7 @@ mcp_call() (
         if jq -e '.id==2' >/dev/null 2>&1 <<<"$line"; then matched=true; break; fi
     done
     [[ $matched == true ]] || exit 1
-    jq -ce --arg sid "$SESSION_ID" --arg key "$PUBKEY" --arg kind "$kind" '
+    jq -ce --arg sid "$SESSION_ID" --arg name "$NATIVE_NAME" --arg key "$PUBKEY" --arg kind "$kind" '
         select(.error==null and .result.isError!=true) |
         (.result.structuredContent // ([.result.content[]? | select(.type=="text") | .text | fromjson?] | select(length==1) | .[0])) |
         select(.success==true) |
@@ -198,13 +220,14 @@ mcp_call() (
             select(.genesis|type=="string" and length>0) |
             select((.arrival_timestamp|type=="number" and .>0 and floor==.) and
                 (.chain_head_at_arrival|type=="string" and length>0)) |
-            select(.instance|type=="object" and .name==$sid and .type=="container") |
+            select(.instance|type=="object" and .name==$name and .type=="container") |
+            select($name==$sid or .principal_kind=="service") |
             select((.interface|type=="string") and ((.peer_ip==null) or (.peer_ip|type=="string"))) |
             select(.btrfs_device|type=="object") | select(.btrfs_device.cozo_id|type=="string" and length>0) |
             select(.btrfs_device | (.device_path|type=="string") and (.mount_point|type=="string") and
                 (.btrfs_uuid|type=="string") and (.attached|type=="boolean")) |
             select((.active|type=="boolean") and (.mutation_index|type=="number" and .>=0 and floor==.)) |
-            {session_id,interface,peer_ip,active,mutation_index,
+            {session_id,principal_kind,instance:(.instance|{name,type}),interface,peer_ip,active,mutation_index,
              btrfs_device:(.btrfs_device|{device_path,mount_point,btrfs_uuid,cozo_id,attached})}
         end' <<<"$line" 2>/dev/null
 )
@@ -218,31 +241,35 @@ if [[ $NO_START == false ]]; then
 fi
 instance_list=$(incus query '/1.0/instances?recursion=1') || die 'cannot list native instances'
 jq -e 'type=="array" and all(.[]; type=="object" and (.name|type=="string"))' >/dev/null <<<"$instance_list" || die 'invalid native inventory'
-if jq -e --arg sid "$SESSION_ID" 'any(.[]; .name==$sid)' >/dev/null <<<"$instance_list"; then die 'canonical instance exists; manual retirement required'; fi
+if jq -e --arg name "$NATIVE_NAME" 'any(.[]; .name==$name)' >/dev/null <<<"$instance_list"; then die 'selected instance exists; manual retirement required'; fi
+"$ROOT_HELPER" seed-preflight || die 'seed preflight failed; no container or leaf was created'
+"$ROOT_HELPER" seed-profile || die 'shared socket profile preparation failed; no container or leaf was created'
 pool=$(incus query /1.0/storage-pools/identity-roots) || die 'identity-roots pool unavailable'
 jq -e '.name=="identity-roots" and .driver=="dir" and .status=="Created"' >/dev/null <<<"$pool" || die 'identity-roots must be an existing dir pool'
 deny_policy=$(printf '%s\n' \
     'ioctl errno 1 [1,0x4008941a,SCMP_CMP_MASKED_EQ,0xffffffff]' \
     'ioctl errno 1 [1,0x5000940f,SCMP_CMP_MASKED_EQ,0xffffffff]' \
     'ioctl errno 1 [1,0x5000943f,SCMP_CMP_MASKED_EQ,0xffffffff]')
-incus init --empty "$SESSION_ID" --storage identity-roots --no-profiles \
+incus init --empty "$NATIVE_NAME" --storage identity-roots --profile 3tched-lungs \
     --config security.privileged=false --config security.nesting=false \
     --config boot.autostart=false --config security.syscalls.deny_default=true \
     --config "security.syscalls.deny=$deny_policy" \
     --config "user.opdbus.session_id=$SESSION_ID" --config "user.display_name=$ROLE" \
-    --config "user.opdbus.wireguard_public_key=$PUBKEY"
-"$ROOT_HELPER" seed-create "$SESSION_ID" "$SESSION_ID" "$LEAF_PATH" "$((FSTORAGE_GIB*1073741824))" >/dev/null 2>/dev/null || die 'seed creation failed; retain intent'
-"$ROOT_HELPER" seed-check "$SESSION_ID" >/dev/null 2>/dev/null || die 'physical/native readback failed'
-"$ROOT_HELPER" seed-lungs "$SESSION_ID" >/dev/null 2>/dev/null || die 'identity-bound lungs/hook preparation failed'
-"$ROOT_HELPER" seed-check "$SESSION_ID" >/dev/null 2>/dev/null || die 'root/hook readback failed'
-descriptor="$STATE_ROOT/$SESSION_ID/state.json"
+    --config "user.opdbus.wireguard_public_key=$PUBKEY" </dev/null
+"$ROOT_HELPER" seed-create "$NATIVE_NAME" "$SESSION_ID" "$LEAF_PATH" "$((FSTORAGE_GIB*1073741824))" >/dev/null 2>/dev/null || die "leaf creation failed; run op-identity-root seed-inspect $NATIVE_NAME; do not repeat device-add"
+"$ROOT_HELPER" seed-check "$NATIVE_NAME" >/dev/null 2>/dev/null || die 'physical/native readback failed'
+"$HOST_FOLDERS_HELPER" "$NATIVE_NAME" || die 'host workspace folders attachment failed; retain stopped candidate'
+"$ROOT_HELPER" seed-lungs "$NATIVE_NAME" >/dev/null 2>/dev/null || die 'identity-bound host FUSE and Incus disk preparation failed'
+"$ROOT_HELPER" seed-check "$NATIVE_NAME" >/dev/null 2>/dev/null || die 'root and FUSE disk readback failed'
+descriptor="$STATE_ROOT/$NATIVE_NAME/state.json"
 root_path "$descriptor"
 [[ -f $descriptor && ! -L $descriptor && $(stat -c %a -- "$descriptor") == 600 ]] || die 'unsafe storage receipt'
-jq -e --arg sid "$SESSION_ID" --arg leaf "$LEAF_PATH" '
-    .version==1 and .phase=="ready" and .session==$sid and .name==$sid and .leaf==$leaf and
+jq -e --arg sid "$SESSION_ID" --arg name "$NATIVE_NAME" --arg leaf "$LEAF_PATH" '
+    .version==1 and .layout=="shared-partition-siblings-v2" and
+    .phase=="ready" and .session==$sid and .name==$name and .leaf==$leaf and
     (.sprout_fsid|type=="string" and test("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"))
 ' "$descriptor" >/dev/null || die 'storage receipt differs from selected identity/leaf'
-write_args=$(jq -cn --arg key "$PUBKEY" --arg leaf "$LEAF_PATH" --arg mount "$STATE_ROOT/$SESSION_ID/volume" \
+write_args=$(jq -cn --arg key "$PUBKEY" --arg leaf "$LEAF_PATH" --arg mount "$STATE_ROOT/$NATIVE_NAME/volume" \
     --slurpfile old "$WORK/before.json" --slurpfile storage "$descriptor" \
     '{wireguard_pubkey:$key,btrfs_device:{device_path:$leaf,mount_point:$mount,
       btrfs_uuid:$storage[0].sprout_fsid,cozo_id:$old[0].btrfs_device.cozo_id,attached:false}}')
@@ -257,7 +284,7 @@ mcp_call identity_sled__get_identity "$get_args" identity > "$WORK/after.json" |
 jq -e --argjson args "$write_args" --slurpfile old "$WORK/before.json" '
     .btrfs_device==($args.btrfs_device|.attached=true) and .interface==$old[0].interface and .peer_ip==$old[0].peer_ip
 ' "$WORK/after.json" >/dev/null || die 'authoritative attached binding differs'
-"$ROOT_HELPER" seed-check "$SESSION_ID" >/dev/null 2>/dev/null || die 'final physical readback failed'
+"$ROOT_HELPER" seed-check "$NATIVE_NAME" >/dev/null 2>/dev/null || die 'final physical readback failed'
 if [[ $NO_START == false ]]; then
     # Canonical lifecycle admission verifies storage, starts the native guest
     # and commits its active session state; native start alone is insufficient.
@@ -272,10 +299,10 @@ else
     jq -e --slurpfile old "$WORK/before.json" '.active==$old[0].active' "$WORK/after.json" >/dev/null || die '--no-start changed active state'
     expected_status=Stopped
 fi
-native=$(incus query "/1.0/instances/$SESSION_ID")
-jq -e --arg sid "$SESSION_ID" --arg status "$expected_status" '
-    .name==$sid and .status==$status and .config["user.opdbus.session_id"]==$sid
+native=$(incus query "/1.0/instances/$NATIVE_NAME")
+jq -e --arg sid "$SESSION_ID" --arg name "$NATIVE_NAME" --arg status "$expected_status" '
+    .name==$name and .status==$status and .config["user.opdbus.session_id"]==$sid
 ' >/dev/null <<<"$native" || die 'guest power-state readback failed'
 if [[ $NO_START == true ]]; then start_on_boot=false; else start_on_boot=true; fi
-"$ROOT_HELPER" seed-enable-boot "$SESSION_ID" "$start_on_boot" >/dev/null 2>/dev/null || die 'boot completion publication failed; inspect retained receipts'
-printf 'Existing identity %s physical root/binding verified; guest %s. No account minted.\n' "$SESSION_ID" "$expected_status"
+"$ROOT_HELPER" seed-enable-boot "$NATIVE_NAME" "$start_on_boot" >/dev/null 2>/dev/null || die 'boot completion publication failed; inspect retained receipts'
+printf 'Existing identity %s physical root/binding verified; container %s is %s. No account minted.\n' "$SESSION_ID" "$NATIVE_NAME" "$expected_status"

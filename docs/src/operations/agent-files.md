@@ -1,6 +1,15 @@
 # Shared agent files and the chatbot display alias
 
-## Current delivered workspace, 2026-09-30
+## Provisioning correction, 2026-10-05
+
+The owner requires one shared read-only physical seed and a private writable
+leaf per container, without snapshots or copied container roots. The new
+seven-sibling layout and source-only provisioning change are described in
+[Shared physical seed and private leaves](shared-seed-provisioning.md).
+The delivered contents and snapshot procedures below are historical; they do
+not authorize restoring the old seed contents or cloning roots during provisioning.
+
+## Historical delivered workspace, 2026-09-30
 
 The owner narrowed the immediate deliverable to the subvolume layout,
 `AGENTS.md`, and already available skills. Content development, runtime loading,

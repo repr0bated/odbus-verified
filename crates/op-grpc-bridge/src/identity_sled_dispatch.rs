@@ -148,51 +148,100 @@ impl From<CozoGraphShuttle> for IdentitySledStore {
 pub(crate) trait IdentityContainerLifecycle: Send + Sync {
     async fn start(&self, session_id: &str) -> anyhow::Result<()>;
     async fn stop(&self, session_id: &str) -> anyhow::Result<()>;
+    async fn start_bound(&self, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
+        self.start(&sled.session_id).await
+    }
+    async fn stop_bound(&self, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
+        self.stop(&sled.session_id).await
+    }
 }
 
 #[derive(Clone)]
 struct IncusIdentityContainerLifecycle;
 
+fn native_identity_power_target(sled: &ContainerIdentitySled) -> anyhow::Result<&str> {
+    let instance = sled.instance.as_ref().context("identity has no native instance binding")?;
+    anyhow::ensure!(
+        identity_instance_matches(sled, instance),
+        "native power target does not match the authoritative identity binding"
+    );
+    Ok(&instance.name)
+}
+
+#[cfg(test)]
+mod native_power_target_tests {
+    use super::*;
+
+    #[test]
+    fn native_power_target_requires_the_existing_identity_binding() {
+        let session = "00000000-0000-4000-8000-000000000001";
+        let mut sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+            "session_id": session, "wireguard_pubkey": "fixture-public-key"
+        })).unwrap();
+        assert!(native_identity_power_target(&sled).is_err());
+        sled.instance = Some(IncusInstance {
+            name: session.to_string(),
+            instance_type: "container".to_string(),
+            ..Default::default()
+        });
+        assert_eq!(native_identity_power_target(&sled).unwrap(), session);
+        sled.instance.as_mut().unwrap().name = "another-container".to_string();
+        assert!(native_identity_power_target(&sled).is_err());
+        sled.instance.as_mut().unwrap().name = CONTROL_PLANE_CHATBOT_CONTAINER.to_string();
+        // A name alone never authorizes the singleton service exception.
+        assert!(native_identity_power_target(&sled).is_err());
+    }
+}
+
 #[async_trait]
 impl IdentityContainerLifecycle for IncusIdentityContainerLifecycle {
-    async fn start(&self, session_id: &str) -> anyhow::Result<()> {
-        IncusPlugin::set_identity_session_power_state(
-            session_id,
+    async fn start_bound(&self, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
+        IncusPlugin::set_bound_identity_session_power_state(
+            &sled.session_id,
+            native_identity_power_target(sled)?,
             IdentitySessionPowerState::Running,
         )
         .await
     }
-    async fn stop(&self, session_id: &str) -> anyhow::Result<()> {
-        IncusPlugin::set_identity_session_power_state(
-            session_id,
+    async fn stop_bound(&self, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
+        IncusPlugin::set_bound_identity_session_power_state(
+            &sled.session_id,
+            native_identity_power_target(sled)?,
             IdentitySessionPowerState::Stopped,
         )
         .await
+    }
+    async fn start(&self, _session_id: &str) -> anyhow::Result<()> {
+        anyhow::bail!("native identity start requires its validated durable instance binding")
+    }
+    async fn stop(&self, _session_id: &str) -> anyhow::Result<()> {
+        anyhow::bail!("native identity stop requires its validated durable instance binding")
     }
 }
 
 type SledCacheState = IdentitySledState;
 
-/// Membership of the Cozo-registered leaf in its mounted filesystem.
-/// `/dev/sdb2` is the writable leaf (no seeding); the sled is a subvolume.
+/// Logical attachment of the Cozo-registered identity filesystem.
+/// Both logical transitions only verify external storage. Neither mounts,
+/// unmounts nor changes device membership.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum BtrfsDeviceEffect {
-    /// `btrfs device add` before the guest starts (extra members only).
-    Add,
-    /// `btrfs device remove` after the guest has stopped (never sole leaf).
-    Remove,
+enum IdentityStorageAttachment {
+    /// Verify externally mounted storage before marking it logically attached.
+    Attached,
+    /// Verify storage after guest shutdown, leaving its mount and members intact.
+    Detached,
 }
 
-type BtrfsDeviceEffector = Arc<
-    dyn Fn(BtrfsDeviceEffect, &std::path::Path, &std::path::Path, &str) -> anyhow::Result<()>
+type IdentityStorageVerifier = Arc<
+    dyn Fn(IdentityStorageAttachment, &std::path::Path, &std::path::Path, &str) -> anyhow::Result<()>
         + Send
         + Sync,
 >;
 
-fn native_btrfs_device_effector() -> BtrfsDeviceEffector {
-    Arc::new(|effect, device, mount, _uuid| match effect {
-        BtrfsDeviceEffect::Add => op_network::btrfs::ensure_device_added(device, mount),
-        BtrfsDeviceEffect::Remove => op_network::btrfs::ensure_device_removed(device, mount),
+fn native_identity_storage_verifier() -> IdentityStorageVerifier {
+    Arc::new(|_effect, device, mount, uuid| {
+        op_network::btrfs::verify_identity_mount(device, mount, uuid)
+            .context("identity storage must already be mounted by the external host provisioner or Incus; the bridge does not mount storage")
     })
 }
 
@@ -317,6 +366,43 @@ fn sled_to_genesis(sled: &ContainerIdentitySled) -> GenesisInputsRecord {
     }
 }
 
+const CONTROL_PLANE_CHATBOT_CONTAINER: &str = "3tchedCtlbot";
+
+fn configured_chatbot_key() -> Option<String> {
+    std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY")
+        .ok()
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+}
+
+fn chatbot_binding_matches(
+    sled: &ContainerIdentitySled,
+    instance: &IncusInstance,
+    configured_session: Option<&str>,
+    configured_key: Option<&str>,
+) -> bool {
+    instance.name == CONTROL_PLANE_CHATBOT_CONTAINER
+        && instance.instance_type == "container"
+        && sled.principal_kind.as_deref() == Some("service")
+        && configured_session == Some(sled.session_id.as_str())
+        && configured_key == Some(sled.wireguard_pubkey.as_str())
+        && op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id
+        && instance.config.as_ref().is_some_and(|config| {
+            config.get("user.opdbus.session_id") == Some(&sled.session_id)
+                && config.get("user.opdbus.wireguard_public_key") == Some(&sled.wireguard_pubkey)
+        })
+}
+
+fn identity_instance_matches(sled: &ContainerIdentitySled, instance: &IncusInstance) -> bool {
+    (instance.name == sled.session_id && instance.instance_type == "container")
+        || chatbot_binding_matches(
+            sled,
+            instance,
+            control_plane_chatbot_session_id().as_deref(),
+            configured_chatbot_key().as_deref(),
+        )
+}
+
 fn validate_sled(sled: &ContainerIdentitySled) -> anyhow::Result<()> {
     anyhow::ensure!(!sled.session_id.is_empty(), "identity session id is empty");
     anyhow::ensure!(
@@ -325,7 +411,7 @@ fn validate_sled(sled: &ContainerIdentitySled) -> anyhow::Result<()> {
     );
     if let Some(instance) = &sled.instance {
         anyhow::ensure!(
-            instance.name == sled.session_id && instance.instance_type == "container",
+            identity_instance_matches(sled, instance),
             "identity instance does not match session container"
         );
     }
@@ -659,7 +745,7 @@ pub(crate) async fn authenticate_sid1_wire(
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "sealed identity session was not found".to_string())?;
     if !sled.instance.as_ref().is_some_and(|instance| {
-        instance.name == sled.session_id && instance.instance_type == "container"
+        identity_instance_matches(&sled, instance)
     }) {
         return Err("sealed identity has no matching provisioned container binding".into());
     }
@@ -700,7 +786,7 @@ fn apply_genesis_stamp(
 ) -> anyhow::Result<()> {
     anyhow::ensure!(
         sled.instance.as_ref().is_some_and(|instance| {
-            instance.name == sled.session_id && instance.instance_type == "container"
+            identity_instance_matches(sled, instance)
         }),
         "SID1 minting requires the exact provisioned identity container"
     );
@@ -1015,13 +1101,13 @@ async fn commit_sled_update<T: Send + 'static>(
     .await
 }
 
-/// Login and container startup add the Cozo device before the guest runs.
-/// Shutdown removes it only after the guest has stopped. The device stays out
-/// of the seed filesystem while the container is down.
+/// Validate the registered mount before committing a logical attachment change.
+/// Mount preparation belongs to an explicit root owner or the existing UUID
+/// fstab configuration; the generic binding cannot guess a default subvolume.
 async fn apply_identity_btrfs(
     sled: &mut ContainerIdentitySled,
-    effect: BtrfsDeviceEffect,
-    effector: &BtrfsDeviceEffector,
+    effect: IdentityStorageAttachment,
+    effector: &IdentityStorageVerifier,
 ) -> anyhow::Result<()> {
     let Some(device) = sled.btrfs_device.clone() else {
         return Ok(());
@@ -1038,7 +1124,7 @@ async fn apply_identity_btrfs(
     let effector = effector.clone();
     tokio::task::spawn_blocking(move || effector(effect, &path, &mount, &uuid)).await??;
     if let Some(device) = sled.btrfs_device.as_mut() {
-        device.attached = matches!(effect, BtrfsDeviceEffect::Add);
+        device.attached = matches!(effect, IdentityStorageAttachment::Attached);
     }
     Ok(())
 }
@@ -1047,9 +1133,10 @@ async fn stop_native_identity(
     lifecycle: &dyn IdentityContainerLifecycle,
     session_id: &str,
     sled: &ContainerIdentitySled,
-    effector: &BtrfsDeviceEffector,
+    effector: &IdentityStorageVerifier,
 ) -> anyhow::Result<()> {
-    if let Err(error) = lifecycle.stop(session_id).await {
+    anyhow::ensure!(sled.session_id == session_id, "native stop session binding mismatch");
+    if let Err(error) = lifecycle.stop_bound(sled).await {
         let detail = format!("{error:#}");
         if !detail.contains("already stopped") && !detail.contains("in Error status") {
             return Err(error);
@@ -1057,12 +1144,50 @@ async fn stop_native_identity(
         tracing::warn!(
             session_id,
             %error,
-            "identity container is already stopped; removing its btrfs device"
+            "identity container is already stopped; verifying its registered mount"
         );
     }
-    apply_identity_btrfs(&mut sled.clone(), BtrfsDeviceEffect::Remove, effector)
+    apply_identity_btrfs(&mut sled.clone(), IdentityStorageAttachment::Detached, effector)
         .await
-        .context("native identity stopped but btrfs device remove requires reconciliation")
+        .context("native identity stopped but registered mount requires reconciliation")
+}
+
+async fn prepare_identity_root_start(
+    store: &IdentitySledStore,
+    expected: &IdentityRevision,
+    sled: &mut ContainerIdentitySled,
+    effector: &IdentityStorageVerifier,
+) -> anyhow::Result<Option<IdentityRootStartGuard>> {
+    let block_backed = sled
+        .btrfs_device
+        .as_ref()
+        .is_some_and(|device| std::path::Path::new(&device.device_path).starts_with("/dev"));
+    if block_backed {
+        // Physical root guards may require this configured mount to exist.
+        apply_identity_btrfs(sled, IdentityStorageAttachment::Attached, effector).await?;
+    } else if let Some(device) = sled.btrfs_device.as_mut() {
+        // Historical image-root guards require logical attachment while
+        // verifying an externally prepared sprout. This provisional flag
+        // remains local until all storage verification and readback succeed.
+        device.attached = true;
+    }
+    let guard = if sled.instance.is_none() {
+        None
+    } else {
+        match physical_root::guard_start(store, expected, sled).await? {
+            Some(guard) => Some(IdentityRootStartGuard::from(guard)),
+            None => match root_repair::guard_own_root_start(store, expected, sled).await? {
+                Some(guard) => Some(IdentityRootStartGuard::from(guard)),
+                None => seed_provision::guard_start(store, expected, sled)
+                    .await?
+                    .map(IdentityRootStartGuard::from),
+            },
+        }
+    };
+    if !block_backed {
+        apply_identity_btrfs(sled, IdentityStorageAttachment::Attached, effector).await?;
+    }
+    Ok(guard)
 }
 
 async fn set_session_active_owned(
@@ -1078,7 +1203,7 @@ async fn set_session_active_owned(
         lifecycle,
         session_id,
         active,
-        native_btrfs_device_effector(),
+        native_identity_storage_verifier(),
     )
     .await
 }
@@ -1089,7 +1214,7 @@ async fn set_session_active_owned_with_verifier(
     lifecycle: Arc<dyn IdentityContainerLifecycle>,
     session_id: String,
     active: bool,
-    btrfs_device_effector: BtrfsDeviceEffector,
+    storage_verifier: IdentityStorageVerifier,
 ) -> anyhow::Result<ContainerIdentitySled> {
     let lifecycle_lock = store.lifecycle_lock(&session_id).await;
     let _lifecycle_guard = lifecycle_lock.lock_owned().await;
@@ -1102,17 +1227,10 @@ async fn set_session_active_owned_with_verifier(
     let has_instance = sled.instance.is_some();
     let mut seeded_root_guard = None;
     if active && has_instance {
-        apply_identity_btrfs(&mut sled, BtrfsDeviceEffect::Add, &btrfs_device_effector).await?;
-        let started: anyhow::Result<()> = async {
-            let seeded = match physical_root::guard_start(&store, &expected, &sled).await? {
-                Some(guard) => Some(IdentityRootStartGuard::from(guard)),
-                None => match root_repair::guard_own_root_start(&store, &expected, &sled).await? {
-                    Some(guard) => Some(IdentityRootStartGuard::from(guard)),
-                    None => seed_provision::guard_start(&store, &expected, &sled)
-                        .await?
-                        .map(IdentityRootStartGuard::from),
-                },
-            };
+        {
+            let seeded =
+                prepare_identity_root_start(&store, &expected, &mut sled, &storage_verifier)
+                    .await?;
             match seeded {
                 Some(guard) => {
                     anyhow::ensure!(
@@ -1120,28 +1238,16 @@ async fn set_session_active_owned_with_verifier(
                         "identity revision changed before seeded native activation"
                     );
                     if guard.should_start {
-                        lifecycle.start(&session_id).await?;
+                        lifecycle.start_bound(&sled).await?;
                     }
                     seeded_root_guard = Some(guard);
                 }
                 None if !sled.active => {
                     preflight_native_identity_effect().await?;
-                    lifecycle.start(&session_id).await?;
+                    lifecycle.start_bound(&sled).await?;
                 }
                 None => {}
             }
-            Ok(())
-        }
-        .await;
-        if let Err(error) = started {
-            // The guest is not running. Leave the device out of the filesystem.
-            if let Err(remove_error) =
-                apply_identity_btrfs(&mut sled, BtrfsDeviceEffect::Remove, &btrfs_device_effector)
-                    .await
-            {
-                return Err(remove_error.context(format!("{error:#}")));
-            }
-            return Err(error);
         }
     }
     if !active {
@@ -1156,7 +1262,7 @@ async fn set_session_active_owned_with_verifier(
                 lifecycle.as_ref(),
                 &session_id,
                 &sled,
-                &btrfs_device_effector,
+                &storage_verifier,
             )
             .await?;
             anyhow::bail!(
@@ -1180,7 +1286,7 @@ async fn set_session_active_owned_with_verifier(
                 lifecycle.as_ref(),
                 &session_id,
                 &sled,
-                &btrfs_device_effector,
+                &storage_verifier,
             )
             .await?;
             let expected = load_revision(&store, &session_id).await?;
@@ -1212,7 +1318,8 @@ async fn set_session_active_owned_with_verifier(
                 instance.status = "Stopped".into();
             }
             if let Some(device) = stopped.btrfs_device.as_mut() {
-                // The guest is stopped and the device has left the seed.
+                // Compatibility: attached records logical session attachment.
+                // Stopping does not unmount storage or alter Btrfs membership.
                 device.attached = false;
             }
             return commit_sled_update(
@@ -1380,8 +1487,8 @@ pub(crate) async fn activate_human_session_on_login(
 pub(crate) const UNATTENDED_HUMAN_CONTAINER_SECS: i64 = 30 * 60;
 
 /// Stop human containers whose interceptor session is gone.
-/// The control-plane chatbot stays up. The stop removes the Cozo-registered
-/// btrfs device from the seed after the guest is down. The Cozo row stays.
+/// The control-plane chatbot stays up. Stop clears logical attachment after
+/// the guest is down; externally owned storage stays mounted.
 /// A stop that times out is left for the next pass.
 pub(crate) async fn park_human_containers_without_login(
     engine: &MutationEngine,
@@ -1466,19 +1573,33 @@ pub(crate) async fn start_service_identity_containers(
     let Some(session_id) = control_plane_chatbot_session_id() else {
         return Ok(0);
     };
+    start_service_identity_container(engine, &session_id).await
+}
+
+async fn start_service_identity_container(
+    engine: &MutationEngine,
+    session_id: &str,
+) -> anyhow::Result<usize> {
     let state = read_private_state().await?;
-    let present = state
+    let configured = state
         .sleds
         .into_iter()
-        .any(|sled| sled.session_id == session_id && sled.instance.is_some());
-    if !present {
+        .find(|sled| sled.session_id == session_id && sled.instance.is_some());
+    let Some(sled) = configured else {
         tracing::warn!(
             %session_id,
             "control-plane chatbot session has no identity container"
         );
         return Ok(0);
+    };
+    // Bootstrap preserves existing power policy while validating/sealing the
+    // identity. Startup must not turn an explicitly parked container into an
+    // activation request. Explicit touch/activation remains unchanged.
+    if !sled.active {
+        tracing::info!(%session_id, "control-plane chatbot remains deliberately parked");
+        return Ok(0);
     }
-    match activate_session(engine, &session_id).await {
+    match activate_session(engine, session_id).await {
         Ok(_) => Ok(1),
         Err(error) => {
             anyhow::bail!(
@@ -1665,62 +1786,6 @@ pub(crate) async fn deactivate_session(
     task.await?
 }
 
-/// Revoke the durable identity before attempting the physical stop. A stop
-/// failure never restores the old SID1-readable row. The tombstone remains a
-/// valid expected revision for a later explicitly authorized reprovision.
-#[allow(dead_code)]
-pub(crate) async fn tombstone_session(
-    engine: &MutationEngine,
-    store: &IdentitySledStore,
-    operation_id: String,
-    session_id: &str,
-) -> anyhow::Result<()> {
-    let engine = engine.clone();
-    let store = store.clone();
-    let session_id = session_id.to_string();
-    tokio::spawn(async move {
-        let lifecycle_lock = store.lifecycle_lock(&session_id).await;
-        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
-        let expected = load_revision(&store, &session_id).await?;
-        let sled = revision_sled(&expected)?
-            .ok_or_else(|| anyhow::anyhow!("identity session is already absent"))?;
-        let had_instance = sled.instance.is_some();
-        commit_cas(
-            &engine,
-            &store,
-            operation_id,
-            session_id.clone(),
-            expected,
-            None,
-            None,
-            (),
-        )
-        .await?;
-        // The revoked sled's doorbell connection must not outlive the row.
-        // Best effort: the next subscribe would be refused anyway.
-        if let Some(owner_key) = crate::wake_doorbell::owner_key_for_sled(&sled) {
-            let args = serde_json::json!({ "client_id": owner_key });
-            if let Err(error) =
-                op_plugins::state_plugins::emqx::dispatch_emqx_method("kick_client", &args).await
-            {
-                tracing::debug!(%error, "doorbell client not kicked");
-            }
-        }
-        if had_instance {
-            preflight_native_identity_effect().await?;
-            stop_native_identity(
-                &IncusIdentityContainerLifecycle,
-                &session_id,
-                &sled,
-                &native_btrfs_device_effector(),
-            )
-            .await?;
-        }
-        Ok(())
-    })
-    .await?
-}
-
 async fn dispatch_identity_sled_method_owned(
     engine: &MutationEngine,
     store: &IdentitySledStore,
@@ -1735,7 +1800,7 @@ async fn dispatch_identity_sled_method_owned(
         method,
         args,
         Arc::new(IncusIdentityContainerLifecycle),
-        native_btrfs_device_effector(),
+        native_identity_storage_verifier(),
     )
     .await
 }
@@ -1747,7 +1812,7 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
     method: &str,
     args: &JsonValue,
     lifecycle: Arc<dyn IdentityContainerLifecycle>,
-    btrfs_device_effector: BtrfsDeviceEffector,
+    storage_verifier: IdentityStorageVerifier,
 ) -> anyhow::Result<JsonValue> {
     match method {
         "inspect_identity_inventory" => {
@@ -1848,6 +1913,7 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
             let session_id = arg_str(args, "session_id");
             let lifecycle_lock = store.lifecycle_lock(&session_id).await;
             let _session_guard = lifecycle_lock.lock_owned().await;
+            let _observation_guard = engine.lock_host_observation().await;
             let expected = load_revision(store, &session_id).await?;
             let mut sled =
                 revision_sled(&expected)?.ok_or_else(|| anyhow::anyhow!("identity not found"))?;
@@ -1860,7 +1926,11 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
                 !device.device_path.is_empty() && !device.mount_point.is_empty(),
                 "btrfs device path and mount are required"
             );
-            apply_identity_btrfs(&mut sled, BtrfsDeviceEffect::Add, &btrfs_device_effector).await?;
+            // Root owners or the exact UUID fstab entry prepare the mount.
+            // Attachment never starts the guest or adds a Btrfs member.
+            let _root_guard =
+                prepare_identity_root_start(store, &expected, &mut sled, &storage_verifier)
+                    .await?;
             sled.last_seen_at = now();
             sled.mutation_index = sled
                 .mutation_index
@@ -1879,7 +1949,7 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
                 lifecycle,
                 session_id,
                 true,
-                btrfs_device_effector,
+                storage_verifier,
             )
             .await?;
             Ok(serde_json::json!({"identity": identity}))
@@ -2003,8 +2073,7 @@ async fn refresh_credential_owned(
     anyhow::ensure!(
         sled.instance
             .as_ref()
-            .is_some_and(|instance| instance.name == sled.session_id
-                && instance.instance_type == "container"),
+            .is_some_and(|instance| identity_instance_matches(&sled, instance)),
         "identity has no matching provisioned container binding"
     );
     anyhow::ensure!(
@@ -2689,6 +2758,7 @@ pub(crate) mod tests {
     #[derive(Default)]
     struct RecordingLifecycle {
         calls: Mutex<Vec<String>>,
+        fail_start: bool,
         fail_stop: bool,
     }
 
@@ -2726,6 +2796,9 @@ pub(crate) mod tests {
                 .lock()
                 .unwrap()
                 .push(format!("start:{session_id}"));
+            if self.fail_start {
+                anyhow::bail!("injected Incus start failure");
+            }
             Ok(())
         }
         async fn stop(&self, session_id: &str) -> anyhow::Result<()> {
@@ -2782,7 +2855,7 @@ pub(crate) mod tests {
     async fn dispatch_with_fixtures(
         engine: &Arc<MutationEngine>,
         lifecycle: Arc<dyn IdentityContainerLifecycle>,
-        btrfs_device_effector: BtrfsDeviceEffector,
+        storage_verifier: IdentityStorageVerifier,
         method: &str,
         args: JsonValue,
     ) -> anyhow::Result<JsonValue> {
@@ -2794,12 +2867,12 @@ pub(crate) mod tests {
             method,
             &args,
             lifecycle,
-            btrfs_device_effector,
+            storage_verifier,
         )
         .await
     }
 
-    fn no_btrfs_mount_verifier() -> BtrfsDeviceEffector {
+    fn no_btrfs_mount_verifier() -> IdentityStorageVerifier {
         Arc::new(|_effect, _device, _mount, _uuid| Ok(()))
     }
 
@@ -3661,6 +3734,29 @@ pub(crate) mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn service_startup_preserves_parked_identity_after_bootstrap() {
+        let (engine, _shm) = sled_engine();
+        let identity = write_identity(&engine, &pk(0xa8)).await.unwrap();
+        assert!(!identity.active);
+        // Exercise the existing-record bootstrap steps without changing env
+        // or invoking any native lifecycle/storage fixture.
+        engine.mint_and_store_genesis(&identity.session_id, &identity.wireguard_pubkey)
+            .await.unwrap();
+        let bootstrapped = set_session_actor_class(&engine, &identity.session_id, "service")
+            .await.unwrap();
+        assert!(!bootstrapped.active);
+        assert_eq!(bootstrapped.sealed_id, identity.sealed_id);
+        let store = engine.identity_sled_store().unwrap();
+        let before = load_revision(store, &identity.session_id).await.unwrap();
+        assert_eq!(start_service_identity_container(&engine, &identity.session_id).await.unwrap(), 0);
+        assert_eq!(load_revision(store, &identity.session_id).await.unwrap(), before);
+        let after = stored_session(&engine, &identity.session_id).await.unwrap().unwrap();
+        assert!(!after.active);
+        assert_eq!(serde_json::to_value(after.instance).unwrap(), serde_json::to_value(bootstrapped.instance).unwrap());
+        assert_eq!(after.genesis, identity.genesis);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn parked_anchored_sled_authenticates_without_treating_active_as_revocation() {
         let (engine, _shm) = sled_engine();
         let identity = write_identity(&engine, &pk(0x71)).await.unwrap();
@@ -3788,13 +3884,13 @@ pub(crate) mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn device_added_before_start_and_removed_after_stop() {
+    async fn registered_mount_verified_before_start_and_after_stop() {
         let (engine, _shm) = sled_engine();
         let identity = identity_with_dedicated_filesystem(&engine, 0xa1).await;
         let lifecycle = Arc::new(RecordingLifecycle::default());
         let checks = Arc::new(Mutex::new(Vec::new()));
         let observed = checks.clone();
-        let verifier: BtrfsDeviceEffector = Arc::new(move |effect, device, mount, uuid| {
+        let verifier: IdentityStorageVerifier = Arc::new(move |effect, device, mount, uuid| {
             observed.lock().unwrap().push((
                 effect,
                 device.to_path_buf(),
@@ -3815,8 +3911,8 @@ pub(crate) mod tests {
         .await
         .unwrap();
         assert!(active.btrfs_device.as_ref().unwrap().attached);
-        // An already-running guest is not started again. The add is repeated
-        // and is idempotent when the device is already a member.
+        // An already-running guest is not started again; its UUID and exact
+        // mount are verified again before logical attachment is committed.
         set_session_active_owned_with_verifier(
             engine.as_ref().clone(),
             store.clone(),
@@ -3856,18 +3952,18 @@ pub(crate) mod tests {
             *checks.lock().unwrap(),
             vec![
                 (
-                    BtrfsDeviceEffect::Add,
+                    IdentityStorageAttachment::Attached,
                     device.0.clone(),
                     device.1.clone(),
                     device.2.clone(),
                 ),
                 (
-                    BtrfsDeviceEffect::Add,
+                    IdentityStorageAttachment::Attached,
                     device.0.clone(),
                     device.1.clone(),
                     device.2.clone(),
                 ),
-                (BtrfsDeviceEffect::Remove, device.0, device.1, device.2),
+                (IdentityStorageAttachment::Detached, device.0, device.1, device.2),
             ]
         );
         assert_eq!(
@@ -3896,6 +3992,128 @@ pub(crate) mod tests {
         .await;
         assert!(result.unwrap_err().to_string().contains("mount is absent"));
         assert!(lifecycle.calls.lock().unwrap().is_empty());
+        assert_sibling_unchanged(&engine, &identity).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn registered_uuid_mismatch_prevents_guest_start_and_durable_attachment() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa4).await;
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let store = engine.identity_sled_store().unwrap().clone();
+        let revision = load_revision(&store, &identity.session_id).await.unwrap();
+        let result = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store.clone(),
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            true,
+            Arc::new(|effect, _, _, uuid| {
+                assert_eq!(effect, IdentityStorageAttachment::Attached);
+                assert_eq!(uuid, "806e2801-8be0-4b0d-919c-3e319452667b");
+                anyhow::bail!("registered filesystem UUID differs")
+            }),
+        )
+        .await;
+        assert!(result.unwrap_err().to_string().contains("UUID differs"));
+        assert!(lifecycle.calls.lock().unwrap().is_empty());
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            revision
+        );
+        assert_sibling_unchanged(&engine, &identity).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn native_registered_mount_verification_failure_preserves_identity() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa5).await;
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let store = engine.identity_sled_store().unwrap().clone();
+        let revision = load_revision(&store, &identity.session_id).await.unwrap();
+        let result = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store.clone(),
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            true,
+            native_identity_storage_verifier(),
+        )
+        .await;
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("external host provisioner or Incus"),
+            "absent fixture mount must fail without a mount fallback"
+        );
+        assert!(lifecycle.calls.lock().unwrap().is_empty());
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            revision
+        );
+        assert_sibling_unchanged(&engine, &identity).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn failed_registered_mount_attachment_does_not_commit_provisional_flag() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa6).await;
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let store = engine.identity_sled_store().unwrap().clone();
+        let revision = load_revision(&store, &identity.session_id).await.unwrap();
+        let result = dispatch_with_fixtures(
+            &engine,
+            lifecycle.clone(),
+            Arc::new(|_, _, _, _| anyhow::bail!("registered filesystem UUID differs")),
+            "attach_btrfs_device",
+            serde_json::json!({"session_id": identity.session_id}),
+        )
+        .await;
+        assert!(result.unwrap_err().to_string().contains("UUID differs"));
+        assert!(lifecycle.calls.lock().unwrap().is_empty());
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            revision
+        );
+        assert_sibling_unchanged(&engine, &identity).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn failed_start_preserves_membership_and_durable_binding() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa7).await;
+        let lifecycle = Arc::new(RecordingLifecycle {
+            fail_start: true,
+            ..Default::default()
+        });
+        let checks = Arc::new(Mutex::new(Vec::new()));
+        let observed = checks.clone();
+        let store = engine.identity_sled_store().unwrap().clone();
+        let before = load_revision(&store, &identity.session_id).await.unwrap();
+        let result = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store.clone(),
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            true,
+            Arc::new(move |attachment, _, _, _| {
+                observed.lock().unwrap().push(attachment);
+                Ok(())
+            }),
+        )
+        .await;
+        assert!(result.unwrap_err().to_string().contains("Incus start failure"));
+        assert_eq!(
+            *checks.lock().unwrap(),
+            vec![IdentityStorageAttachment::Attached],
+            "failed start must not run a detach/remove cleanup"
+        );
+        assert_eq!(
+            *lifecycle.calls.lock().unwrap(),
+            vec![format!("start:{}", identity.session_id)]
+        );
+        assert_eq!(load_revision(&store, &identity.session_id).await.unwrap(), before);
         assert_sibling_unchanged(&engine, &identity).await;
     }
 
@@ -4126,8 +4344,8 @@ pub(crate) mod tests {
         assert_eq!(before.genesis, anchored.genesis);
         let calls = Arc::new(Mutex::new(Vec::<(String, String, String)>::new()));
         let observed_calls = calls.clone();
-        let verifier: BtrfsDeviceEffector = Arc::new(move |effect, device, mount, uuid| {
-            anyhow::ensure!(effect == BtrfsDeviceEffect::Add);
+        let verifier: IdentityStorageVerifier = Arc::new(move |effect, device, mount, uuid| {
+            anyhow::ensure!(effect == IdentityStorageAttachment::Attached);
             observed_calls.lock().unwrap().push((
                 device.display().to_string(),
                 mount.display().to_string(),
@@ -4247,6 +4465,7 @@ pub(crate) mod tests {
         .unwrap();
         let failing = Arc::new(RecordingLifecycle {
             calls: Mutex::new(Vec::new()),
+            fail_start: false,
             fail_stop: true,
         });
         let result = set_session_active_owned(
