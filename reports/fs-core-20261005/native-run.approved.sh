@@ -132,7 +132,7 @@ if [ "$filesystem_enabled" = true ] || [ -e "$filesystem_root_receipt" ] || [ -L
         protected_filesystem_file "$filesystem_root_receipt" || exit 78
         [ "$(cat "$filesystem_root_receipt")" = "$filesystem_root" ] || exit 78
     fi
-    roots=$(native_config get risk_profiles.control_plane.allowed_roots --json | jq -ce '.value | arrays | select(all(.[]; type == "string"))')
+    roots=$(native_config get risk_profiles.control_plane.allowed_roots --json | jq -ce '.value | if type == "string" then fromjson else . end | arrays | select(all(.[]; type == "string"))')
     if [ "$filesystem_enabled" = true ]; then
         [ "$(findmnt -rn -M "$filesystem_root" -o FSTYPE)" = fuse.3tchedFS ] || { echo 'tched-router: native filesystem mount is not ready' >&2; exit 78; }
         jq -e --arg session "$OPDBUS_FILESYSTEM_SESSION" '.mount_identity.kind == "host_session" and .mount_identity.session == $session and .local_call_owner_uid == 1001 and .workspace_id == null' "$filesystem_root/.3tchedfs.json" >/dev/null || exit 78
