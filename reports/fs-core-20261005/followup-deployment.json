@@ -1,0 +1,61 @@
+{
+  "format": "opdbus.fs-core-followup-deployment.v1",
+  "task_id": "fs-core-20261005",
+  "status": "active-readiness-verified-functional-tests-delegated",
+  "selected_release": "releases/20261005T224836Z-f373feb",
+  "source_baseline": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+  "current_checkout_commit": "f373feb009bcebbde885a8e943731b510d62dfef",
+  "catalog": {
+    "generation": 1425,
+    "hash": "db7419ea95627f90a3d1f85b061d9dc12420ac3267a2cb32820dd78624f1cc77",
+    "plugins": 69,
+    "matching_received_persisted_shm": true
+  },
+  "build": {
+    "gnu_workspace": "passed",
+    "derived_exports": "passed",
+    "bindings_generation": "passed",
+    "sealed_specialization": "passed",
+    "examples_compilation": "passed",
+    "tests": "not run; separate owner agent"
+  },
+  "mounts": {
+    "guest": {
+      "format": "3tchedfs/1",
+      "local_call_owner_uid": 1000000,
+      "object_count": 69,
+      "source_catalog_generation": 1425,
+      "identity_kind": "host_session"
+    },
+    "native": {
+      "format": "3tchedfs/1",
+      "local_call_owner_uid": 1001,
+      "object_count": 69,
+      "source_catalog_generation": 1425,
+      "identity_kind": "host_session"
+    }
+  },
+  "native_permissions": "approved UID1001 mount and readonly native route; guest UID1000000 and backend grants unchanged",
+  "notebook_sync": {
+    "supervised": "running",
+    "last_cycle": {
+      "phase": "failed",
+      "exit_code": 1,
+      "finished_at": 1791240497,
+      "interval_seconds": 300
+    },
+    "successful_sync": "unverified; last recorded cycle failed"
+  },
+  "concurrent_activation": {
+    "observed": true,
+    "actor": "unverified",
+    "effect": "selected f373feb received release superseded our follow-up selector; bridge artifact and three changed plugin hashes match built follow-up; no overwrite performed"
+  },
+  "remaining": {
+    "workstack_orchestration": "separate; audited only, unchanged",
+    "legacy_op_web_orchestrator": "audited only, unchanged",
+    "live_cognitive_methods": "unverified beyond deployment readiness",
+    "old_get_health_receipt_recovery": "pending through declared mounted get_receipt"
+  },
+  "evidence_directory": "/var/tmp/fs-core-20261005-final3-release"
+}

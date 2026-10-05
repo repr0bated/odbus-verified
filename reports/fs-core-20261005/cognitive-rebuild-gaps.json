@@ -3,7 +3,7 @@
   "task_id": "fs-core-20261005",
   "observed_at": "2026-10-05T21:57:00Z",
   "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
-  "status": "implemented-build-pending",
+  "status": "implemented-compiled-deployed-functional-tests-pending",
   "scope": "Four source-confirmed workflow and mounted-discovery gaps; not an exhaustive audit of 670 cognitive methods",
   "gaps": [
     {
@@ -72,10 +72,10 @@
   "validation": {
     "source_review": "completed; identified admission/control/ownership races repaired",
     "regression_fixtures": "authored, not run",
-    "build": "Initial build failed during concurrent publication-field edit; incremental GNU build running against frozen source",
+    "build": "GNU workspace and generated bindings examples compilation passed",
     "tests": "not run; separate owner-assigned agent",
-    "runtime": "unverified",
-    "deployment": "194135Z baseline remains active; new source not activated"
+    "runtime": "Deployment readiness verified; method behavior and cancellation/restart tests delegated",
+    "deployment": "Active received f373feb release includes matching compiled bridge and cognitive/workflows/filesystem schema hashes; see followup-deployment.json"
   },
   "concept_scope": "Named workflow fixes only; phased workstack findings remain separate in orchestration-audit.json",
   "additional_workflow_repair": {
