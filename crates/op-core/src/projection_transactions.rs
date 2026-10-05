@@ -211,11 +211,26 @@ fn read_file(directory: &File, name: &str, maximum: u64, private: bool) -> Resul
         "projection file exceeds its size limit"
     );
     let mut bytes = Vec::new();
-    file.take(maximum + 1).read_to_end(&mut bytes)?;
-    ensure!(
-        bytes.len() as u64 <= maximum,
-        "projection file grew beyond its size limit"
-    );
+    let mut reader = file.take(maximum.saturating_add(1));
+    let mut chunk = [0_u8; 8192];
+    loop {
+        let count = reader.read(&mut chunk)?;
+        if count == 0 {
+            break;
+        }
+        let length = bytes
+            .len()
+            .checked_add(count)
+            .context("projection file length overflow")?;
+        ensure!(
+            length as u64 <= maximum,
+            "projection file grew beyond its size limit"
+        );
+        bytes
+            .try_reserve_exact(count)
+            .context("allocate bounded projection document")?;
+        bytes.extend_from_slice(&chunk[..count]);
+    }
     Ok(Some(bytes))
 }
 

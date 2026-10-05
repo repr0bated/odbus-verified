@@ -1,0 +1,89 @@
+{
+  "format": "opdbus.cognitive-rebuild-gaps.v1",
+  "task_id": "fs-core-20261005",
+  "observed_at": "2026-10-05T21:57:00Z",
+  "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+  "status": "implemented-build-pending",
+  "scope": "Four source-confirmed workflow and mounted-discovery gaps; not an exhaustive audit of 670 cognitive methods",
+  "gaps": [
+    {
+      "id": "cognitive-workflow-run-skips-executor",
+      "status": "implemented",
+      "repair": "Both admitted workflow entry points call the same runner under verified principal/session/genesis; each step receives canonical admission again",
+      "source_refs": [
+        "crates/op-grpc-bridge/src/mutation_engine.rs:3878",
+        "crates/op-grpc-bridge/src/mutation_engine.rs:6985",
+        "crates/op-grpc-bridge/src/workstack_runner.rs:693"
+      ]
+    },
+    {
+      "id": "workflow-enqueue-rejection-ignored",
+      "status": "implemented",
+      "repair": "Bounded lifetime capacity reservation precedes durable acceptance; detached admission preserves ownership across requester disconnect. Initial persistence and lifecycle transitions serialize. Persistence failure closes ownership, rejects later controls and prevents further dispatch",
+      "source_refs": [
+        "crates/op-grpc-bridge/src/workstack_runner.rs:89",
+        "crates/op-grpc-bridge/src/workstack_runner.rs:120",
+        "crates/op-cozo-store/src/workflow_executions.rs:164"
+      ]
+    },
+    {
+      "id": "workflow-lifecycle-unimplemented",
+      "status": "implemented",
+      "repair": "Typed pause/resume/cancel results, exact session-owned execution selection, optional execution_id for ambiguity, cooperative pause/cancel after in-flight settlement; no backend undo or automatic replay",
+      "source_refs": [
+        "crates/op-grpc-bridge/src/workstack_runner.rs:235",
+        "crates/op-grpc-bridge/src/workstack_runner.rs:572",
+        "crates/op-grpc-bridge/src/workstack_runner.rs:607",
+        "crates/op-plugins/src/state_plugins/workflows_plugin.rs:70",
+        "crates/op-plugins/src/state_plugins/workflows_plugin.rs:97"
+      ]
+    },
+    {
+      "id": "mounted-mcp-global-state-startup",
+      "status": "implemented",
+      "repair": "Read existing mounted schema.json/object.hash with identity/catalog verification; retain declarations only; load addressed state freshly; do not fabricate missing source-schema provenance",
+      "source_refs": [
+        "crates/threetched-fs/src/mounted.rs:184",
+        "crates/threetched-fs/src/mcp.rs:95",
+        "crates/threetched-fs/src/mcp.rs:129"
+      ]
+    }
+  ],
+  "contracts": {
+    "workflows": "2.0.0",
+    "cognitive_mcp": "4.1.0",
+    "threetched_fs": "2.0.1",
+    "authority": "Plugin-owned Rust schemas; cognitive workflow declarations reuse workflows owner types"
+  },
+  "rw_and_memory": {
+    "authority": "Private Cozo execution records in the existing isolated episode store; terminal episodes use existing private SHM publication",
+    "lifetime_coordination": "At most 64 admitted executions, two concurrently dispatched steps; paused runs release worker capacity",
+    "bounds": "1..32 explicit executable steps, 16 KiB JSON args per step, 128 KiB initial execution document, 256 KiB durable document, 200-row bounded history or exact scoped execution lookup",
+    "cache": "No payload cache added",
+    "policy": "Exact verified principal/session/genesis; existing read/write grants unchanged; per-step canonical admission; workflow audit arguments receive private treatment"
+  },
+  "limitations": [
+    "Progress is queried through the scoped workflow method; no lifecycle watch or new SHM streaming surface is advertised",
+    "Unknown backend outcomes and lost ownership are not replayed; cancellation does not undo completed or in-flight effects",
+    "Historical unscoped workflow journal receipts remain untouched and are not migrated or executed",
+    "Named workflow templates require explicit executable params.steps; decorative/default steps are no longer accepted as successful empty runs",
+    "Functional and restart behavior remains unverified until the separately assigned testing agent runs its checks"
+  ],
+  "validation": {
+    "source_review": "completed; identified admission/control/ownership races repaired",
+    "regression_fixtures": "authored, not run",
+    "build": "Initial build failed during concurrent publication-field edit; incremental GNU build running against frozen source",
+    "tests": "not run; separate owner-assigned agent",
+    "runtime": "unverified",
+    "deployment": "194135Z baseline remains active; new source not activated"
+  },
+  "concept_scope": "Named workflow fixes only; phased workstack findings remain separate in orchestration-audit.json",
+  "additional_workflow_repair": {
+    "finding": "Transport success did not imply native/domain step success",
+    "repair": "Reuse canonical child_success exit_code/success interpretation; stop later steps after known failure, preserve unknown result errors",
+    "source_refs": [
+      "crates/op-grpc-bridge/src/agent_workflow.rs:284",
+      "crates/op-grpc-bridge/src/workstack_runner.rs:438"
+    ]
+  }
+}

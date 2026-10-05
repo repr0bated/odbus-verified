@@ -93,6 +93,8 @@ pub mod software;
 pub mod tched_router;
 pub mod tched_router_contract;
 pub mod tched_router_legacy_methods;
+pub mod threetched_fs;
+pub mod threetched_fs_contract;
 pub mod unix_socket;
 pub mod users;
 pub mod web_ui;

@@ -1,0 +1,133 @@
+{
+  "format": "3tchedfs-rw-memory-policy/2",
+  "task_id": "fs-core-20261005",
+  "status": "implemented-source-unverified",
+  "implementation_status": "Current source implementation; tests and deployment pending",
+  "owner_directive": "No reusable caches; preserve identity and sealed capability admission; deploy then test.",
+  "interpretation": "Policy below describes authored current behavior, not a passed historical proposal. Source pointers and topology are required bounded contract ownership; explicitly returned snapshots and active FD buffers are transient ownership, never lookup caches.",
+  "access_matrix": [
+    {
+      "class": "Directory",
+      "read": "Fresh current discovery; per-opendir stable listing.",
+      "write": "Unsupported arbitrary node lifecycle mutation.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:885-1012"
+      ]
+    },
+    {
+      "class": "StaticJson",
+      "read": "Fresh selected immutable declaration/artifact; TypedObject payload sanitized public or explicit schema_only.",
+      "write": "EROFS",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:515-667"
+      ]
+    },
+    {
+      "class": "FrozenValue",
+      "read": "Sanitized captured immutable public state snapshot.",
+      "write": "EROFS",
+      "source_refs": [
+        "crates/threetched-fs/src/model.rs:92-144"
+      ]
+    },
+    {
+      "class": "WorkspaceField",
+      "read": "Current frozen workspace public state pointer.",
+      "write": "Stage complete validated candidate only under expected-object CAS; backend state untouched.",
+      "source_refs": [
+        "crates/threetched-fs/src/store.rs:198-249"
+      ]
+    },
+    {
+      "class": "LiveValue",
+      "read": "Fresh canonical committed public state with exact active catalog/policy pin and generation; absent/pending/invalid pointer unavailable.",
+      "write": "EROFS; direct SHM route read-only.",
+      "source_refs": [
+        "crates/threetched-fs/src/source.rs:42-149"
+      ]
+    },
+    {
+      "class": "CallFile",
+      "read": "Own originating descriptor's terminal receipt or attributed diagnostic only.",
+      "write": "Bounded schema-admitted input; exactly one canonical backend dispatch, permanent scoped operation reservation, durable linked attempt/terminal, exact result validation, no automatic replay.",
+      "source_refs": [
+        "crates/threetched-fs/src/fuse_fs.rs:275-581",
+        "crates/op-grpc-bridge/src/method_receipt_audit.rs:241-561"
+      ]
+    },
+    {
+      "class": "Symlink",
+      "read": "Relative semantic target inside mount.",
+      "write": "Unsupported link creation/retarget.",
+      "source_refs": [
+        "crates/threetched-fs/src/namespace.rs:108-472"
+      ]
+    },
+    {
+      "class": "ObjectHashFile",
+      "read": "Real captured artifact pin; not a digest of current live state.",
+      "write": "EROFS",
+      "source_refs": [
+        "crates/threetched-fs/src/typed_runtime.rs:1100-1132"
+      ]
+    }
+  ],
+  "read_protocol": [
+    "Resolve only pinned declared locator and validate identity/public exposure policy.",
+    "Read one bounded locked committed snapshot and decode fresh owned value; verify active catalog before/after live read.",
+    "Refresh discovery shape independently; snapshot existing open file/directory version until release.",
+    "Fail unavailable/pending/malformed/invalid/drift explicitly; no schema-template/stale-value/null fallback for authoritative reads."
+  ],
+  "write_protocol": [
+    "Check exact per-FD UID/access/local writable class and bounded input before acceptance.",
+    "Workspace: single local object writer; checked expected-object CAS under durable store lock; complete candidate/public constraints and immutable base; atomic file publication.",
+    "Call: exact sealed args and returns contract admission, identity/grants, canonical UUID reservation and confirmed durable attempt before effect.",
+    "Cancellation-owned backend commit must precede change notification; validate declared domain output, append durable linked terminal and journal status before completed receipt.",
+    "Unknown effects remain unknown; preserve operation UUID and query only declared caller-scoped proof recovery, never resubmit automatically."
+  ],
+  "memory_strategy": {
+    "reusable_caches": "none",
+    "fd_ownership": "Capacity charged before vector growth; RAII charge remains until descriptor and any admitted worker drop. Freed source decodes are not memoized.",
+    "limits": {
+      "input_bytes": 1048576,
+      "document_bytes": 16777216,
+      "total_fuse_serialized_capacity": 67108864,
+      "file_and_directory_handles": 256,
+      "async_fuse_jobs": 4,
+      "reply_waiters_per_handle": 32,
+      "canonical_engine_owners": 32,
+      "credential_bytes": 16384,
+      "journal_document_bytes": 8192,
+      "source_snapshot_bytes": 67108864,
+      "topology_nodes": 100000,
+      "json_depth": 128
+    },
+    "scope": "Limits bound serialized/source/staging/topology ownership, not every allocator/native backend or system-wide audit Vec. Large domain method buffers remain each backend owner's responsibility.",
+    "source_refs": [
+      "crates/threetched-fs/src/fuse_buffers.rs:4-109",
+      "crates/threetched-fs/src/source.rs:21-22",
+      "crates/op-grpc-bridge/src/method_receipt_audit.rs:20-21"
+    ]
+  },
+  "concurrency": {
+    "callbacks": "Backend execution is asynchronous relative to FUSE loop; at most four jobs and32 per-FD flush waiters.",
+    "cancellation": "Exact elevation arguments are consumed inside owned task after cancellable compliance/session attribution and capacity admission, then dropped before audit. Dropping FD/caller does not erase admitted reservation/attempt/backend/terminal and never causes replay.",
+    "cross_process": "Workspace object CAS checks expected hash under existing exclusive writer lock; no local mutex alone is claimed cross-process protection.",
+    "cross_store": "Cozo journal, audit timing trail, and SHM/filesystem owners do not form one invented atomic transaction; failed uncertainty remains unknown."
+  },
+  "identity_rules": [
+    "Mounted mode declaration and UUID are provenance, not credentials; source authentication stays bridge.",
+    "Local UID ownership supplements kernel/default_permissions; it does not replace caller identity or grant capability.",
+    "No grants broadened, no alternate transport, no principal/session selectors in receipt arguments.",
+    "Private Cozo journal namespace receiver-derived and disjoint from public domain document keys; generic cognitive DB alias rejected."
+  ],
+  "validation": {
+    "status": "not-run",
+    "sequence": "source freeze -> preparatory generation -> native GNU release build -> snapshot/send-receive deployment -> tests and /verify",
+    "historical": "Prior audit/component receipts retained under verification.historical only."
+  },
+  "remaining_limits": [
+    "Existing global audit EventChain lifetime RAM growth.",
+    "No raw mmap/watch/arbitrary node mutation/cancellation rollback guarantees."
+  ]
+}

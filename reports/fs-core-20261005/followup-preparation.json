@@ -1,0 +1,25 @@
+{
+  "task_id": "fs-core-20261005",
+  "status": "held-for-grok-and-notebook-sync-repair",
+  "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+  "generation": 1425,
+  "catalog_hash": "64578f6498b7983c09428bff6559fdf1e516b5f2e8c9ed55051b08e22fae198d",
+  "plugins": 69,
+  "added": [],
+  "removed": [],
+  "changed": [
+    "cognitive_mcp",
+    "threetched_fs"
+  ],
+  "source_of_truth": "plugin-owned Rust PluginSchema; sealed by freshly built opblob",
+  "live_catalog_changed": false,
+  "tests": "owned by separate owner-assigned agent",
+  "prepared_golden": {
+    "build_stamp": "20261005T211158Z",
+    "preparation_exit_code": 0,
+    "transferred": false,
+    "activated": false,
+    "stale_after_later_source_edits": true
+  },
+  "release_scope": "Owner latest instruction: wait for Grok; supersedes release-completed-build answer"
+}

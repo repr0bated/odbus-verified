@@ -37,6 +37,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //   3. Add rerun-if-changed below
     //   4. Add the generated server/client to grpc_server.rs
     tonic_build::configure()
+        // Generated inputs live in OUT_DIR; watching them would make this
+        // script invalidate itself on the next Cargo invocation. The authored
+        // proto roots and plugin inputs are explicitly watched below.
+        .emit_rerun_if_changed(false)
         .build_server(true)
         .build_client(true)
         .file_descriptor_set_path(out_dir.join("operation_descriptor.bin"))
@@ -64,6 +68,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ],
         )?;
 
+    // Watch imported authored protos as well as the entry points.
+    println!("cargo:rerun-if-changed=proto");
+    println!("cargo:rerun-if-changed=../op-chat/proto");
+    println!("cargo:rerun-if-changed=src/grpc");
     println!("cargo:rerun-if-changed=proto/operation.proto");
     println!("cargo:rerun-if-changed=proto/mail.proto");
     println!("cargo:rerun-if-changed=proto/privacy_network.proto");

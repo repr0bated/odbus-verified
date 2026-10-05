@@ -43,6 +43,8 @@ pub use chat_response_conversations::{
     MAX_CHAT_CONVERSATION_BYTES, MAX_CHAT_TURN_BYTES, MAX_CHAT_TURN_WINDOW_BYTES,
 };
 mod ctl_plane_chatbot_episodes;
+mod workflow_executions;
+pub use workflow_executions::WorkflowExecutionRecord;
 pub use ctl_plane_chatbot_episodes::{
     EpisodeEmbeddingRecord, EpisodePage, EpisodeScope, EpisodeSnapshot, KNOWLEDGE_SNAPSHOT_LIMIT,
     MAX_CHATBOT_EPISODE_BYTES, MAX_CHATBOT_SNAPSHOT_BYTES, ScopedEpisodeRecord,

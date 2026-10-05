@@ -1,0 +1,50 @@
+{
+  "task_id": "fs-core-20261005",
+  "status": "activated-with-functional-follow-up-required",
+  "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+  "source_state": "dirty working tree; 42 source fingerprints retained in evidence directory",
+  "release_id": "20261005T194135Z-26a4ad1-fs",
+  "activated_at": "2026-10-05T19:45:16Z",
+  "previous_release": "20261005T083153Z-26a4ad1",
+  "selector": "/opt/op-dbus/current",
+  "deployment_method": "official golden preparation followed by read-only Btrfs snapshot/send/receive and atomic selector activation",
+  "source_snapshot_uuid": "fd98c3af-425b-f741-bd8b-730a3c7df1b2",
+  "received_subvolume_uuid": "c8ad2ed0-1de1-bd4c-9b4c-3d775d859486",
+  "received_uuid_matches_source": true,
+  "received_read_only": true,
+  "manifest_sha256": "565ee0f8989b81088cba180c96741712e13995ba4e455afbffcd4be80855d998",
+  "received_binary_digests_matched": 38,
+  "catalog": {
+    "generation": 1356,
+    "hash": "e4eb66049a57ecb8c04fc467770307012db9b5bbec31197f5c64e4e33879cb4c",
+    "plugins": 69,
+    "added": ["threetched_fs"],
+    "removed": [],
+    "threetched_fs_schema_hash": "a7ccb95158ee001e04d48bec296c914cae0ad312f91867b2ae89812bf1a85f72",
+    "received_persisted_live_manifests_equal": true
+  },
+  "readiness_passed": ["threetched-fs", "op-grpc-bridge", "opdbus-grants", "op-web", "emqx"],
+  "running_binary_digests_matched": ["threetched-fs", "op-grpc-bridge", "op-grants-materializer", "op-web-server"],
+  "local_call_owner_uid": 1000000,
+  "grant_policy_changed": false,
+  "grant_policy_sha256": "c68dfc9e26c5e086e3516478bb7dbd699119df5114b1b75a25042099bc562801",
+  "preserved_previous_release_paths": [
+    "/usr/local/bin/op-ovsbr0-setup",
+    "/etc/runit/sv/op-grpc-bridge/run.unfiltered",
+    "/etc/runit/sv/op-web/run"
+  ],
+  "chatbot_container_started": false,
+  "tests": {"status": "not-run-by-this-task", "owner": "separate owner-assigned testing agent"},
+  "functional_follow_up": {
+    "route": "mounted 3tchedFS only",
+    "operation": "cognitive_mcp.get_health",
+    "operation_id": "d148e116-0795-45e5-88ca-26f5060dc104",
+    "status": "outcome_unknown",
+    "diagnostic": "method receipt event proof invalid",
+    "retried": false,
+    "source_cause": "New receipt validation required 64 hex digits; existing ChainEvent emits lowercase 32-character MD5. Source correction pending subsequent release.",
+    "source_refs": ["crates/op-state-store/src/event_chain.rs:1101", "crates/op-state-store/src/method_receipt.rs:69"]
+  },
+  "evidence_directory": "/var/tmp/fs-core-20261005-release",
+  "functional_evidence_directory": "/var/tmp/cognitive-fs-20261005"
+}

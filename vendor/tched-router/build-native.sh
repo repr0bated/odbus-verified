@@ -3,6 +3,7 @@ set -eu
 
 package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$package_dir/source.pin"
+source_pin_sha256=$(sha256sum "$package_dir/source.pin" | awk '{print $1}')
 
 output_dir=target/native-artifacts/tched-router
 cache_dir=
@@ -58,10 +59,14 @@ verify_package_file() {
         exit 2
     }
 }
-verify_package_file "$package_dir/patches/0001-close-native-event-stream-on-lag.patch" "$PATCH_LAGGED_SSE_SHA256"
-verify_package_file "$package_dir/patches/0002-stateless-provider-generation.patch" "$PATCH_STATELESS_GENERATION_SHA256"
-verify_package_file "$package_dir/patch-inventory" "$PATCH_INVENTORY_SHA256"
-verify_package_file "$package_dir/base-sha256sums" "$BASE_MANIFEST_SHA256"
+verify_build_inputs() {
+    verify_package_file "$package_dir/source.pin" "$source_pin_sha256"
+    verify_package_file "$package_dir/patches/0001-close-native-event-stream-on-lag.patch" "$PATCH_LAGGED_SSE_SHA256"
+    verify_package_file "$package_dir/patches/0002-stateless-provider-generation.patch" "$PATCH_STATELESS_GENERATION_SHA256"
+    verify_package_file "$package_dir/patch-inventory" "$PATCH_INVENTORY_SHA256"
+    verify_package_file "$package_dir/base-sha256sums" "$BASE_MANIFEST_SHA256"
+}
+verify_build_inputs
 [ ! -f "$package_dir/source.tar.gz" ] ||
     verify_package_file "$package_dir/source.tar.gz" "$VENDORED_SOURCE_GZIP_SHA256"
 
@@ -136,9 +141,13 @@ source_root="$work_dir/source"
 mkdir -p -- "$source_root"
 tar -xf "$cache_archive" -C "$source_root"
 "$package_dir/apply-native-patches.sh" "$source_root"
+verify_build_inputs
 
 export CARGO_TARGET_DIR="$cargo_target_dir"
 (cd "$source_root" && cargo build --locked --release --bin zeroclaw)
+# A shared checkout may change during a long compile. Never label an older
+# materialized source tree with the newly edited patch package's provenance.
+verify_build_inputs
 candidate_binary="$cargo_target_dir/release/zeroclaw"
 [ -x "$candidate_binary" ] || {
     echo "native build did not produce zeroclaw" >&2
@@ -155,10 +164,10 @@ strings "$candidate_binary" | grep -F "tched_router.generation.v1" >/dev/null ||
 
 binary_sha256=$(sha256sum "$candidate_binary" | awk '{print $1}')
 binary_bytes=$(wc -c < "$candidate_binary" | tr -d ' ')
-patch_one_sha256=$(sha256sum "$package_dir/patches/0001-close-native-event-stream-on-lag.patch" | awk '{print $1}')
-patch_two_sha256=$(sha256sum "$package_dir/patches/0002-stateless-provider-generation.patch" | awk '{print $1}')
-patch_inventory_sha256=$(sha256sum "$package_dir/patch-inventory" | awk '{print $1}')
-base_manifest_sha256=$(sha256sum "$package_dir/base-sha256sums" | awk '{print $1}')
+patch_one_sha256=$PATCH_LAGGED_SSE_SHA256
+patch_two_sha256=$PATCH_STATELESS_GENERATION_SHA256
+patch_inventory_sha256=$PATCH_INVENTORY_SHA256
+base_manifest_sha256=$BASE_MANIFEST_SHA256
 patched_lock_sha256=$(sha256sum "$source_root/Cargo.lock" | awk '{print $1}')
 rust_target=$(rustc -vV | sed -n 's/^host: //p')
 rust_version=$(rustc --version)

@@ -613,6 +613,13 @@ build_golden() {
         "$GOLDEN_DIR/libexec/3tched/provision-workspace-subscriber"
     run install -Dm755 "$SCRIPT_DIR/../workspace-image/prepare-lungs-client.sh" \
         "$GOLDEN_DIR/libexec/3tched/prepare-lungs-client"
+    # Synchronization code belongs to the received release, while its corpus
+    # and resumable upload receipts remain in the existing user's data tree.
+    for helper in notebook-sync notebook-sources-sync-up notebook-sources-upload \
+                  export-llm-sessions-to-notebooklm-sources.py uv-tools/notebook_sync.py; do
+        run install -Dm755 "$PROJECT_ROOT/scripts/$helper" \
+            "$GOLDEN_DIR/share/op-dbus/notebook-sync/scripts/$helper"
+    done
     ok "staged control scripts into golden/sbin"
 
     # Standalone EMQX is part of the release artifact and is never copied from

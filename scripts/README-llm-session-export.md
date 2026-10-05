@@ -1,6 +1,25 @@
 # LLM session export → `/home/jeremy/.notebooklm-sources`
 
-Collect conversations **and tool calls** from all agent CLIs into model-sorted folders for NotebookLM MCP (`add_source_file` / source sync).
+Local exports collect conversations **and tool calls** into model-sorted folders.
+The scheduled NotebookLM sync separately captures raw records and uses the
+identity-bound 3tchedFS namespace. Formatted exports are preserved as explicitly
+labelled fallback history when the original transcript is unavailable.
+
+The received `notebook-sources-sync` service selects the existing human session
+and approved `/run/mount/3tchedFS-native` mount explicitly. Its code comes from
+the received release; project documents come from `/srv/git/odbus-verified`, and
+the corpus plus upload journal stay in `~/.notebooklm-sources/.grouped-sync`.
+There is no direct `nlm`, gRPC or unauthenticated D-Bus fallback in sync.
+
+The client resumes the exact saved plan before capturing later appends. It
+records mutation intent before dispatch and retains receipts; an unknown
+outcome is not permission to repeat an upload or deletion. Old owned sources
+remain until replacements are readable. Exit 0 means the cycle completed,
+2 means processing or bounded work remains, and other exits mean failure.
+The service publishes that distinction in
+`/run/opdbus/notebook-sync/status.json`; a running process alone is not proof
+of synchronization. Tests are owned by the separate testing agent for the
+2026-10-05 repair; deployment and live synchronization remain pending.
 
 ## Storage reality
 
@@ -30,8 +49,9 @@ llm-session-on-exit              # all CLIs
 llm-session-on-exit opencode     # one CLI
 llm-session-on-exit factory
 
-# Optional NotebookLM push (needs OP_NOTEBOOK_ID + nlm CLI)
-OP_NOTEBOOK_ID=... llm-session-backfill --sync
+# Optional push uses the same explicitly configured mounted sync client.
+# It requires the OPDBUS_NOTEBOOK_* settings from the received service.
+llm-session-backfill --sync
 ```
 
 Output:
@@ -49,20 +69,39 @@ Output:
 
 ## Triggers
 
-1. **CLI wrapper exit** (`~/.bashrc`): `claude`, `codex`, `opencode`, `grok`, `kilo`, `droid`/`factory`, `agy`, `agent` → `_post_cli_export` → `llm-session-on-exit <cli>` (background).
-2. **Shell EXIT trap**: same incremental export for anything still dirty when the shell dies.
-3. **Manual backfill**: `llm-session-backfill` when you want a clean full rewrite (e.g. before a NotebookLM sync).
+1. **Prepared sync service:** one cycle after dependencies become ready, then
+   300 seconds after each cycle ends by default. This service is currently
+   stopped pending the combined release; the repaired source is not active.
+2. **Optional CLI/shell exit hook:** `scripts/llm-session-on-exit.sh` supports
+   export on exit, but the 2026-10-05 inspection found no matching wiring in
+   Jeremy's current `.bashrc` or `.profile`, and no installed
+   `llm-session-on-exit` at the checked user/local bin paths. Automatic exit
+   capture is therefore unverified; older claims that it was installed are
+   superseded.
+3. **Manual backfill:** `scripts/llm-session-backfill.sh` performs local export.
+   The separately configured mounted sync can also be invoked manually.
 
 Persistent CLIs: exit ≠ end of conversation. The watermark in `.export-state.json` is the trick — every exit re-scans the DB/JSONL; only new turns change the hash and rewrite the NotebookLM source file.
 
 ## NotebookLM
 
-Plugin methods: `add_source_file`, `list_sources`, `sync_drive_sources`.  
-Point sync at `/home/jeremy/.notebooklm-sources` (or per-file paths from `MANIFEST.json`). Override with `NOTEBOOKLM_SOURCES_DIR`.
+The client uses the mounted declarations for `notebook_list`, `notebook_get`,
+`notebook_create`, `source_add`, `source_get_content` and `source_delete`.
+The installed `threetched-fs` helper validates arguments, exact session,
+permissions, result contracts and operation receipts. Backend grants remain
+unchanged. Native router autonomy remains read-only; the separately requested
+sync service performs its owned corpus mutations under existing human grants.
 
-## Keep sources ≤300 (cleanup agent)
+Manual runs require explicit `OPDBUS_NOTEBOOK_SYNC_MODE=per-model`,
+`OPDBUS_NOTEBOOK_FS_ROOT`, `OPDBUS_NOTEBOOK_SESSION_ID`,
+`OPDBUS_NOTEBOOK_PROJECT_ROOT` and `NOTEBOOKLM_SOURCES_DIR`. Use
+`scripts/notebook-sources-sync-up`; no notebook or session is guessed from a
+title, source address or credential helper.
 
-NotebookLM caps sources; we roll per-session files into append-only bundles:
+## Legacy local export cleanup
+
+This older cleanup maintains local formatted export bundles. It is not part
+of the raw grouped sync pipeline and must not replace its pending snapshots:
 
 ```bash
 # one agent does all model folders (default)
@@ -80,10 +119,9 @@ notebook-sources-cleanup --dry-run -v
 - Rolled files move to `<folder>/_archived_sessions/` when `--archive-sessions`.
 - Cap: `--max-sources 300` (default), rotate bundles at **195 MiB** (`--max-bundle-bytes`, env `NLM_MAX_BUNDLE_BYTES`).
 - **OpenCode** + **Kilo** use the same path as factory/codex: export sessions → append into that model’s `_bundle_*.md` → archive loose files.
-- Exit hooks run cleanup after export so the tree stays under the cap.
+- The optional exit-hook script invokes cleanup after export; installed hook
+  activation is unverified as described above.
 
-Then re-ingest bundles only (preferred):
-
-```bash
-notebook-sync ingest   # uses title key; prefer adding only _bundle_*.md if you filter
-```
+The grouped sync reads original native histories and records missing-original
+gaps explicitly. It does not upload these legacy bundles through a second
+provider transport.

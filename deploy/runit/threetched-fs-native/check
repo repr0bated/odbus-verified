@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+marker=/etc/op-dbus/native-filesystem.enabled
+[ -f "$marker" ] && [ ! -L "$marker" ] || exit 1
+set -- $(stat -c '%u %a' "$marker")
+[ "$1" = 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || exit 1
+[ "$(cat "$marker")" = true ] || exit 1
+[ "$(findmnt -rn -M /run/mount/3tchedFS-native -o FSTYPE)" = fuse.3tchedFS ] || exit 1
+session_file=/etc/op-dbus/human-lungs-session
+[ -f "$session_file" ] && [ ! -L "$session_file" ] || exit 1
+set -- $(stat -c '%u %a' "$session_file")
+[ "$1" = 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; } || exit 1
+[ "$(wc -c <"$session_file")" -le 37 ] || exit 1
+jq -e --arg session "$(cat "$session_file")" '.mount_identity.kind == "host_session" and .mount_identity.session == $session and .session_id == $session and .local_call_owner_uid == 1001 and .workspace_id == null' /run/mount/3tchedFS-native/.3tchedfs.json >/dev/null

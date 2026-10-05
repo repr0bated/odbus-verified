@@ -1,0 +1,375 @@
+{
+  "task_id": "fs-core-20261005",
+  "status": "implemented-source-unverified",
+  "source_review": "current implementations and citations refreshed",
+  "build": "Prior GNU workspace/native and generated-wrapper builds completed before Grok follow-up; current modified-source rebuild pending. Evidence: HANDOFF.md final2 and 211158Z preparation entries, reports/fs-core-20261005/native-build.json.",
+  "tests": "No current-source test claim by this contract refresh; separate owner-assigned testing agent owns execution. Grok source-test handoff claims require their dated evidence and do not establish complete deployed workflow proof.",
+  "deployment": "Prior baseline194135Z deployed, functional follow-up required; current source revision and prepared follow-up catalog1425 remain undeployed. See reports/fs-core-20261005/deployment.json and followup-preparation.json.",
+  "next_gate": "Wait for mounted-MCP/workflow source freeze, refresh affected fingerprints/citations, regenerate exports/specializations and compile native GNU release, then prepare immutable snapshot/send-receive activation and verify affected mounted workflow. Preserve separate test ownership.",
+  "historical": {
+    "fs_schema_20261005": {
+      "task_id": "fs-schema-20261005",
+      "status": "scoped validation passed; full workspace gate blocked",
+      "target": "x86_64-unknown-linux-gnu",
+      "schema_version": "1.0.0",
+      "schema_validation": {
+        "status": "passed",
+        "checks": [
+          "JSON Schema 2020-12 metaschema",
+          "contract self-validation",
+          "type and local reference closure",
+          "unique node/method identifiers",
+          "method-to-generator signature and route equality",
+          "source citation line bounds",
+          "source SHA-256 equality"
+        ],
+        "types": 82,
+        "node_variants": 42,
+        "routed_methods": 16,
+        "source_citations_checked": 667,
+        "log": "/var/tmp/fs-schema-20261005-final2-validate.log"
+      },
+      "generated_binding_compile": {
+        "status": "passed",
+        "generator_input": "crates/threetched-fs/docs/typed-filesystem.schema.json",
+        "output": "crates/threetched-fs/src/typed_bindings.rs",
+        "compile_integration": "examples/typed_check.rs includes the generated module, runtime and existing authoritative source modules; main.rs and production binary integration were not changed",
+        "deterministic_regeneration": "passed --check against the complete schema",
+        "logs": [
+          "/var/tmp/fs-schema-20261005-final2-generate.log",
+          "/var/tmp/fs-schema-20261005-final2-regenerate.log"
+        ]
+      },
+      "tests": {
+        "status": "passed",
+        "command": "cargo test -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_check",
+        "passed": 31,
+        "failed": 0,
+        "ignored": 0,
+        "coverage": [
+          "disposable immutable capture and real ObjectStore routes",
+          "same-owner typed entry and route guards",
+          "empty/special/reserved-looking field names",
+          "typed pointer/link target enumeration",
+          "schema-bound arguments and preserved terminal diagnostic stages",
+          "ordinary-directory impersonation refusal",
+          "bounded JSON input",
+          "backing corruption rejected on a subsequent get; no reusable value cache; prior owned result remains valid",
+          "existing imported source model/store/mounted helper tests"
+        ],
+        "timing_note": "31 tests passed before three lint-only expression fixes; final compilation and scoped Clippy passed afterward. Tests were not redundantly rerun for those expression changes.",
+        "log": "/var/tmp/fs-schema-20261005-final-test.log"
+      },
+      "route_fixture": {
+        "status": "passed",
+        "frozen_values": 14,
+        "object_hashes": 1,
+        "semantic_symlinks": 3,
+        "static_payloads": 8,
+        "log": "/var/tmp/fs-schema-20261005-final-run.log"
+      },
+      "scoped_clippy": {
+        "status": "passed",
+        "command": "cargo clippy -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate --example typed_validate --example typed_check -- -D warnings",
+        "log": "/var/tmp/fs-schema-20261005-final2-clippy.log"
+      },
+      "workspace_verify": {
+        "status": "failed at format gate",
+        "command": "cargo fmt --all -- --check",
+        "exit_code": 1,
+        "reason": "Pre-existing formatting drift across unrelated workspace source, including op-web; no unrelated source was reformatted.",
+        "log": "/var/tmp/fs-schema-20261005-final-verify-fmt.log",
+        "workspace_clippy": "skipped after failing format gate",
+        "workspace_tests": "skipped after failing format gate"
+      },
+      "unverified": [
+        "Live execution of the newly generated via-fuse bindings against an actual mount",
+        "Guest/credential/plain-view factory parity",
+        "Direct-shm/mmap route",
+        "Static specialization of each dynamic plugin method contract",
+        "Nested canonical receipt event/hash and backend output proof",
+        "Implementation of proposed RW/no-cache memory policy in the production filesystem"
+      ],
+      "deployment": "not deployed; no service, mount, grant, catalog or live state mutation",
+      "reproduction": [
+        "sh crates/threetched-fs/docs/typed-filesystem-build.sh",
+        "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/threetched-fs/docs/typed-filesystem.schema.json crates/threetched-fs/src/typed_bindings.rs",
+        "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_generate -- crates/threetched-fs/docs/typed-filesystem.schema.json crates/threetched-fs/src/typed_bindings.rs --check",
+        "cargo run -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_validate",
+        "cargo test -p threetched-fs --target x86_64-unknown-linux-gnu --example typed_check"
+      ],
+      "execution_routing": "Cargo commands run from repository root through the assigned gpt-6-luna execution worker with CARGO_CALLER_FAMILY=gpt and CARGO_DISPATCHED=1; normal callers follow scripts/cargo-dispatch.md."
+    },
+    "pre_repair_gaps": {
+      "format": "3tchedfs/typed-filesystem-gaps/1",
+      "task_id": "fs-schema-20261005",
+      "scope": "Source analysis and generated bindings; production filesystem behavior is unchanged.",
+      "deployment": "not deployed",
+      "ranking": "Identity and committed-state correctness first, then typed access coverage and performance.",
+      "gaps": [
+        {
+          "rank": 1,
+          "id": "existing-cache-policy-conflict",
+          "status": "verified",
+          "affected_methods": [
+            "LiveValue.get"
+          ],
+          "finding": "TypedFuse currently retains rendered live values in live_cache across opens. The owner explicitly disallows caches in this session. Source behavior is documented, not endorsed by the proposed memory policy.",
+          "owner_policy": "no l1 cache. caches generall not allowed on this system",
+          "owner_policy_provenance": "User steering in fs-schema-20261005; policy instruction, not a source-code fact.",
+          "fixable": true,
+          "source_change": "Remove TypedFuse.live_cache and StateKey memoization. Each open should obtain an authorized committed snapshot through the canonical reader and decode it into a bounded transient handle buffer. Drop buffers on release; do not add per-mount, cross-mount or SHM result caches. Audit the existing one-second view metadata TTL against the same no-cache policy.",
+          "payoff": "Conforms read behavior and memory ownership to the owner's no-cache policy.",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:17-35",
+            "crates/threetched-fs/src/fuse_fs.rs:92-93",
+            "crates/threetched-fs/src/fuse_fs.rs:314-342"
+          ]
+        },
+        {
+          "rank": 2,
+          "id": "committed-state-and-exposure",
+          "status": "verified",
+          "affected_methods": [
+            "LiveValue.get",
+            "SourceCatalog.capture"
+          ],
+          "finding": "FUSE live reads stat/read a raw plugin JSON pathname without the existing projection transaction lock, publishing gate, pending-document/credential gates, or sealed public-state projection. Capture compares generations but its StateManifest decodes only generation and can substitute templates. A matching generation is not proof of a committed, identity-scoped state snapshot.",
+          "route_difference": "An authoritative direct reader using the existing projection API can reject an incomplete publication which the current FUSE reader may expose. Direct-shm is deliberately unavailable in the generated bindings.",
+          "fixable": true,
+          "source_change": "Use read_projection_snapshot_bounded_in (or an identity-scoped equivalent owned by the existing backend) in capture and live reads; apply the plugin-owned exposure policy with verified caller scope before projection. Return a typed unavailable/incomplete-publication result instead of silently substituting defaults when authority is required.",
+          "payoff": "Makes direct and mounted reads agree on committed state and identity boundaries; prerequisite to safe direct-shm access.",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:314-342",
+            "crates/threetched-fs/src/source.rs:40-43",
+            "crates/threetched-fs/src/source.rs:53-78",
+            "crates/threetched-fs/src/source.rs:86-123",
+            "crates/op-core/src/projection_transactions.rs:279-305",
+            "crates/op-core/src/projection_transactions.rs:425-489"
+          ]
+        },
+        {
+          "rank": 3,
+          "id": "canonical-mutations-are-not-blob-writes",
+          "status": "verified",
+          "affected_methods": [
+            "CallFile.invoke",
+            "WorkspaceField.put"
+          ],
+          "finding": "Workspace staging changes content-addressed local COW objects. A call authenticates an identity and executes a declared method through D-Bus/MutationEngine. These are different effects; a direct SHM/blob replacement cannot implement a plugin call.",
+          "route_difference": "CallFile has only via-fuse; no direct mutation implementation is emitted. Workspace put does not apply backend state.",
+          "fixable": true,
+          "source_change": "Keep mutations on the existing authenticated dispatch path. If a native typed transport is needed, expose the existing declaration, validation, identity, capability, audit and receipt contract through that owner rather than adding a store writer.",
+          "payoff": "Preserves identity and audit semantics while allowing generated typed arguments and results.",
+          "source_refs": [
+            "crates/threetched-fs/src/store.rs:143-189",
+            "crates/threetched-fs/src/fuse_fs.rs:187-253",
+            "crates/threetched-fs/src/dispatch.rs:190-252",
+            "crates/threetched-fs/src/mounted.rs:284-333"
+          ]
+        },
+        {
+          "rank": 4,
+          "id": "audit-attempt-versus-completion",
+          "status": "verified",
+          "affected_methods": [
+            "CallFile.invoke"
+          ],
+          "finding": "MutationEngine appends the attempt event and emits MethodCall before backend execution; durable audit persistence failure is logged. An event/hash alone does not prove effect completion. Caller cancellation does not cancel admitted backend work.",
+          "route_difference": "A direct mutation implementation would have to preserve admission, attempt ordering, owned execution, state publication and terminal result semantics. No such implementation is claimed.",
+          "fixable": true,
+          "source_change": "Add a linked, durable terminal outcome in the existing audit/receipt owner if completion-proof semantics are desired; preserve the attempt record. Define succeeded, failed and unknown outcomes plus retry rules. Do not reorder the existing attempt record and call it an equivalent change.",
+          "payoff": "Lets callers distinguish attempted, completed and unknown effects and avoid duplicate mutations after disconnect.",
+          "source_refs": [
+            "crates/op-grpc-bridge/src/mutation_engine.rs:3483-3559",
+            "crates/op-grpc-bridge/src/mutation_engine.rs:4915-4922",
+            "crates/op-grpc-bridge/src/owned_method_task.rs:15-38",
+            "crates/threetched-fs/src/mounted.rs:327-333"
+          ]
+        },
+        {
+          "rank": 5,
+          "id": "dynamic-schema-specialization",
+          "status": "verified",
+          "affected_methods": [
+            "CallFile.invoke",
+            "LiveValue.get",
+            "FrozenValue.get",
+            "WorkspaceField.put"
+          ],
+          "finding": "Plugin state and method args/results depend on the selected sealed catalog. The generic filesystem module uses an explicit recursive JSON sum type and the canonical runtime schema; it does not invent static Rust structs for every possible future plugin. Custom field validators are named but not executed by the standalone projection; OneOf accepts at least one reduced branch.",
+          "route_difference": "Full per-plugin compile-time shapes are not generated by this generic binding. JSON is structured and decoded, not opaque bytes.",
+          "fixable": true,
+          "source_change": "Specialize this generator against an explicitly pinned sealed PluginSchema catalog, using the existing schema authority for input/output definitions; carry the schema hash in generated method handles and reject a different catalog. Keep plugin custom validation in canonical dispatch.",
+          "payoff": "Compile-time per-plugin fields and tighter return types without a second plugin schema authority.",
+          "source_refs": [
+            "crates/threetched-fs/src/model.rs:202-219",
+            "crates/threetched-fs/src/model.rs:269-286",
+            "crates/threetched-fs/src/model.rs:361-364",
+            "crates/threetched-fs/src/model.rs:371-381",
+            "crates/threetched-fs/src/model.rs:413-421",
+            "crates/threetched-fs/src/dispatch.rs:103-108"
+          ]
+        },
+        {
+          "rank": 6,
+          "id": "topology-staleness",
+          "status": "verified",
+          "affected_methods": [
+            "Directory.list",
+            "LiveValue.get"
+          ],
+          "finding": "The namespace tree is built from captured object.value. Live file content changes at open, but newly added keys and array elements do not gain nodes in an existing view. Missing live pointers produce JSON null.",
+          "route_difference": "Enumerating current SHM keys would differ from mounted readdir. Bindings enumerate pinned topology to retain existing semantics.",
+          "fixable": true,
+          "source_change": "Add an explicit generation-pinned topology refresh owned by the filesystem, or define schema-backed map/array enumeration with a separate typed generation token. Update inode/cache invalidation at the same boundary.",
+          "payoff": "Reliable typed enumeration of changing collections.",
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:119-172",
+            "crates/threetched-fs/src/namespace.rs:323-423",
+            "crates/threetched-fs/src/fuse_fs.rs:329-342",
+            "crates/threetched-fs/src/fuse_fs.rs:346-360"
+          ]
+        },
+        {
+          "rank": 7,
+          "id": "workspace-mount-refresh",
+          "status": "verified",
+          "affected_methods": [
+            "WorkspaceField.put",
+            "FrozenValue.get",
+            "Directory.list"
+          ],
+          "finding": "ObjectStore stage_pointer holds the store-wide lock and publishes the workspace manifest atomically. FUSE then rebuilds its in-memory namespace. Direct store staging cannot refresh another running mount's namespace; concurrent open handles retain their original buffers.",
+          "route_difference": "A direct WorkspaceField.put would leave the existing mounted topology stale; the generated workspace mutation uses via-fuse. A refresh failure after successful store publication returns EIO even though staging already occurred.",
+          "fixable": true,
+          "source_change": "Provide an explicit store-generation notification and mount refresh acknowledgement through the filesystem owner; define conflict detection/versioned compare-and-swap for stale same-field writes if needed.",
+          "payoff": "Safe direct workspace staging and clear post-write consistency.",
+          "source_refs": [
+            "crates/threetched-fs/src/store.rs:143-189",
+            "crates/threetched-fs/src/store.rs:385-407",
+            "crates/threetched-fs/src/fuse_fs.rs:363-405",
+            "crates/threetched-fs/src/fuse_fs.rs:576-632"
+          ]
+        },
+        {
+          "rank": 8,
+          "id": "outcome-locators",
+          "status": "verified",
+          "affected_methods": [
+            "Outcome.get",
+            "CallFile.invoke"
+          ],
+          "finding": "result and error are synthetic last-outcome buffers indexed only by plugin and method inside the mount. They have no stable SHM/blob locator and can be overwritten by another call. The invoking file handle retains its own terminal receipt.",
+          "route_difference": "No direct outcome read exists. Bindings return call receipts from the same opened descriptor; Outcome.get is explicitly a last-method snapshot.",
+          "fixable": true,
+          "source_change": "If durable retrieval is required, add a caller-scoped operation ID and immutable terminal receipt location owned by canonical dispatch. Do not use shared last-result files for correlation.",
+          "payoff": "Reliable correlation and recovery after caller disconnect.",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:48-56",
+            "crates/threetched-fs/src/fuse_fs.rs:77-93",
+            "crates/threetched-fs/src/fuse_fs.rs:145-184",
+            "crates/threetched-fs/src/fuse_fs.rs:367-389",
+            "crates/threetched-fs/src/mounted.rs:264-282"
+          ]
+        },
+        {
+          "rank": 9,
+          "id": "absolute-symlinks",
+          "status": "verified",
+          "affected_methods": [
+            "Symlink.target"
+          ],
+          "finding": "Namespace links target absolute /plugins/... paths. Kernel following resolves them relative to the process root, which is not necessarily the mount root. The binding returns a semantic target without following the operating-system symlink.",
+          "route_difference": "Semantic mount-local resolution is intentionally different from kernel absolute-path following.",
+          "fixable": true,
+          "source_change": "Generate correct relative targets for operation/capability/dependency aliases, or formally constrain the mount to the process root and enforce that constraint.",
+          "payoff": "Aliases work reliably at arbitrary mount locations.",
+          "source_refs": [
+            "crates/threetched-fs/src/namespace.rs:186-211",
+            "crates/threetched-fs/src/fuse_fs.rs:535-541"
+          ]
+        },
+        {
+          "rank": 10,
+          "id": "no-posix-segment-or-zero-copy-layout",
+          "status": "verified",
+          "affected_methods": [
+            "FrozenValue.get",
+            "LiveValue.get",
+            "map"
+          ],
+          "finding": "The filesystem consumes ordinary JSON/OPBLOB files under tmpfs paths with fs::read. ObjectStore JSON is compact content-addressed BLAKE3 data, distinct from the source OPBLOB01 binary schema container. No POSIX shared-memory segment name or fixed-layout plugin state record is exposed by this code.",
+          "route_difference": "BlobRef and ShmHandle are immutable owned decoded values, not mapped borrowed Rust structs. No map method or shm_open implementation is emitted; segment size/alignment/lifetime cannot be invented from a /dev/shm prefix.",
+          "fixable": true,
+          "source_change": "If measured decoding cost warrants it, define a versioned validated binary state ABI in the existing owner, with publication, mapping lifetime and exposure rules. For current JSON, a bounded mapped byte source still requires decoding and does not make T zero-copy.",
+          "payoff": "Performance only after correctness and a measured need; prevents invalid typed mmap claims.",
+          "source_refs": [
+            "crates/threetched-fs/src/source.rs:11-17",
+            "crates/threetched-fs/src/source.rs:143-160",
+            "crates/threetched-fs/src/store.rs:14",
+            "crates/threetched-fs/src/store.rs:297-309",
+            "crates/threetched-fs/src/store.rs:340-350",
+            "crates/threetched-fs/src/fuse_fs.rs:314-342"
+          ]
+        },
+        {
+          "rank": 11,
+          "id": "nested-receipt-contract",
+          "status": "verified",
+          "affected_methods": [
+            "CallFile.invoke"
+          ],
+          "finding": "The mounted helper validates outer plugin/method attribution, declaration metadata, successful fsync and existence of result. It does not validate nested engine success/event_id/event_hash or the domain result against MethodDecl.returns. The generic binding preserves that nested structured result without claiming a verified audit proof.",
+          "fixable": true,
+          "source_change": "Define and validate the common engine receipt envelope in its existing owner, then validate the nested domain result against the pinned method return schema. Keep a distinct typed unknown-outcome error when a backend effect may already have occurred.",
+          "payoff": "Typed terminal results and stronger completion evidence without retrying an ambiguous mutation.",
+          "source_refs": [
+            "crates/threetched-fs/src/mounted.rs:336-368",
+            "crates/threetched-fs/src/dispatch.rs:273-284",
+            "crates/op-grpc-bridge/src/mutation_engine.rs:4915-4922"
+          ]
+        },
+        {
+          "rank": 12,
+          "id": "mount-modes-and-cancellation",
+          "status": "verified",
+          "affected_methods": [
+            "TypedFilesystem.via_fuse",
+            "CallFile.invoke",
+            "watch",
+            "seal",
+            "map"
+          ],
+          "finding": "The new mounted binding pins a declared human session; guest kernel-authenticated, credential-backed and plain view mounts may not expose session_id and therefore do not have equivalent factory support. The FUSE loop blocks while the scoped D-Bus thread is joined; FUSE_INTERRUPT is unsupported. No watch, map, seal, capture, workspace commit/abort or snapshot control node is projected.",
+          "fixable": true,
+          "source_change": "Add a verifiable public mount-mode/identity declaration without credentials for the other supported modes. Define cancellation semantics in the existing operation owner before adding asynchronous handles. Expose additional operations only through an explicitly authored canonical schema; ObjectStore CLI lifecycle methods are not filesystem node methods.",
+          "payoff": "Broader factory coverage and responsive mounts with honest cancellation guarantees.",
+          "source_refs": [
+            "crates/threetched-fs/src/fuse_fs.rs:59-73",
+            "crates/threetched-fs/src/fuse_fs.rs:120-125",
+            "crates/threetched-fs/src/fuse_fs.rs:207-253",
+            "crates/threetched-fs/src/namespace.rs:101-215",
+            "crates/threetched-fs/src/namespace.rs:276-321",
+            "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs:173-175"
+          ]
+        }
+      ],
+      "opaque_payloads": {
+        "status": "verified",
+        "projected_file_contents": [],
+        "explanation": "Projected payloads are structured JSON, hash text, or symlink targets. Runtime-defined JSON uses a recursive JSON type plus the canonical sealed schema, not Opaque. Unconsumed OPBLOB binary sections are outside the projected content contract; see schema backing evidence.",
+        "source_refs": [
+          "crates/threetched-fs/src/namespace.rs:129-211",
+          "crates/threetched-fs/src/namespace.rs:491-504",
+          "crates/threetched-fs/src/source.rs:174-215"
+        ]
+      },
+      "unverified": [
+        "Performance and end-to-end behavior of a future direct-shm implementation.",
+        "Durable completion outcome for every individual plugin/backend method; only the common dispatch and projection paths were traced.",
+        "Live mounted execution of the new generated binding module; no user operation was submitted for this analysis."
+      ]
+    }
+  }
+}

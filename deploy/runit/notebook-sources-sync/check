@@ -1,0 +1,8 @@
+#!/bin/sh
+# An alive scheduling process alone is not evidence of completed synchronization.
+set -eu
+[ "$(findmnt -rn -M /run/mount/3tchedFS-native -o FSTYPE)" = fuse.3tchedFS ] || exit 1
+jq -e --argjson now "$(date +%s)" \
+    '.phase == "complete" and .exit_code == 0 and .finished_at <= $now and
+     ($now - .finished_at) <= (2 * .interval_seconds + 300)' \
+    /run/opdbus/notebook-sync/status.json >/dev/null

@@ -3100,8 +3100,6 @@ dependencies = [
 [[package]]
 name = "jsonschema"
 version = "0.29.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "161c33c3ec738cfea3288c5c53dfcdb32fd4fc2954de86ea06f71b5a1a40bfcd"
 dependencies = [
  "ahash 0.8.12",
  "base64 0.22.1",
@@ -4858,6 +4856,8 @@ dependencies = [
  "op-state",
  "op-state-store",
  "parking_lot",
+ "prost 0.13.5",
+ "prost-reflect",
  "regex",
  "reqwest 0.11.27",
  "reqwest 0.12.28",
@@ -4989,6 +4989,7 @@ dependencies = [
  "prometheus",
  "regex",
  "reqwest 0.11.27",
+ "schemars 1.2.1",
  "serde",
  "serde_json",
  "simd-json",
@@ -7597,6 +7598,7 @@ dependencies = [
  "fuser",
  "jsonschema",
  "libc",
+ "op-core",
  "op-state-store",
  "parking_lot",
  "regex",

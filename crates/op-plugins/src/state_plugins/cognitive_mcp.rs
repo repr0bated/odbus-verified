@@ -24,7 +24,7 @@ use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 // =============================================================================
 
 const PLUGIN_NAME: &str = "cognitive_mcp";
-const PLUGIN_VERSION: &str = "3.0.0";
+const PLUGIN_VERSION: &str = "4.1.0";
 const PLUGIN_CATEGORY: &str = "service";
 const PLUGIN_DESCRIPTION: &str = "Bridge-owned cognitive MCP tools — memory, code context, and grounded query capabilities compiled into op-grpc-bridge. THE PLUGIN IS THE SCHEMA: every method, tool, property, and field is declared here. Downstream inherits.";
 const PLUGIN_DISPLAY_NAME: &str = "GB.CognitiveMcp";
@@ -663,22 +663,10 @@ pub enum RustProInput {
     },
 }
 
-/// Stable HOT workflow query.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct WorkflowQueryInput {
-    #[schemars(description = "Optional exact workflow id")]
-    pub workflow_id: Option<String>,
-}
-
-/// Stable HOT workflow enqueue request.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct WorkflowRunInput {
-    #[schemars(description = "Exact id of a declared workflow")]
-    pub workflow_id: String,
-    #[serde(default)]
-    #[schemars(description = "Typed workflow parameters")]
-    pub params: Option<serde_json::Value>,
-}
+// HOT aliases derive from the authoritative workflows plugin contract.
+pub use super::workflows_plugin::{
+    QueryWorkflowsInput as WorkflowQueryInput, StartWorkflowInput as WorkflowRunInput,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -851,13 +839,6 @@ pub struct ListToolsOutput {
     pub tools: Vec<String>,
 }
 
-/// Output for RegisterTool method
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct RegisterToolOutput {
-    pub success: bool,
-    pub tool_name: String,
-}
-
 /// Output for MemoryStore method
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct MemoryStoreOutput {
@@ -885,23 +866,9 @@ pub struct MemoryEntrySummary {
     pub updated_at: String,
 }
 
-/// Output for workflow_query. The concrete entries inherit the authoritative
-/// workflow plugin contract.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct WorkflowQueryOutput {
-    pub workflows: Vec<serde_json::Value>,
-    pub count: usize,
-}
-
-/// Output for workflow_run.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct WorkflowRunOutput {
-    pub accepted: bool,
-    pub execution_id: String,
-    pub workflow_id: String,
-    pub status: String,
-    pub accepted_at: String,
-}
+pub use super::workflows_plugin::{
+    QueryWorkflowsOutput as WorkflowQueryOutput, StartWorkflowOutput as WorkflowRunOutput,
+};
 
 /// Public shape of the local toolset response. Detailed set entries and the
 /// canonical selector are emitted by the bridge after MutationEngine admission.
@@ -1144,7 +1111,6 @@ pub struct CognitiveMcpState {
 // Handler audit — where each method is actually backed:
 // get_health              → op-grpc-bridge/mutation_engine.rs in-process runtime and quota
 // list_tools              → op-grpc-bridge/mutation_engine.rs in-process ToolRegistry
-// register_tool           → embedded op_cognitive_mcp::cognitive_tools::RegisterToolTool
 //                           (stub — no dynamic tool-registration mechanism exists yet)
 // memory_store            → embedded op_cognitive_mcp::cognitive_tools::MemoryTool::op_store
 // memory_retrieve         → embedded op_cognitive_mcp::cognitive_tools::MemoryTool::op_retrieve
@@ -1154,7 +1120,7 @@ pub struct CognitiveMcpState {
 // code_search             → embedded op_cognitive_mcp::code_tools::CodeSearchTool
 // code_index              → embedded op_cognitive_mcp::code_tools::CodeIndexTool
 // code_context            → embedded op_cognitive_mcp::code_tools::CodeContextTool
-// gemini_query            → embedded op_cognitive_mcp::cognitive_tools::AskQuestionTool
+// gemini_query            → embedded op_cognitive_mcp::cognitive_tools::GeminiQueryTool
 // invoke_tool             → op-grpc-bridge/mutation_engine.rs in-process ToolRegistry
 // memory_recall           → cognitive_memory query operation (HOT facade)
 // workflow_query          → workflows.query_workflows (HOT facade)
@@ -1196,16 +1162,6 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             true,
             "cognitive_mcp.read",
             "obs.service.cognitive-mcp.tool.list@v1",
-        ),
-    );
-    schema.methods.insert(
-        "register_tool".to_string(),
-        method_decl_from_schemars_with_output::<(), RegisterToolOutput>(
-            "register_tool",
-            SideEffect::Mutation,
-            false,
-            "cognitive_mcp.invoke",
-            "mut.service.cognitive-mcp.tool.register@v1",
         ),
     );
     schema.methods.insert(
@@ -1433,7 +1389,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "gemini_query".to_string(),
-        method_decl_from_schemars_with_output::<(), GeminiQueryOutput>(
+        method_decl_from_schemars_with_output::<GeminiQueryRequest, GeminiQueryOutput>(
             "gemini_query",
             SideEffect::Mutation,
             false,
@@ -1630,7 +1586,6 @@ mod tests {
         let expected_methods = [
             "get_health",
             "list_tools",
-            "register_tool",
             "memory_store",
             "memory_recall",
             "memory_retrieve",
@@ -1659,6 +1614,7 @@ mod tests {
             "specialist",
         ];
         let catalog_methods: Vec<_> = cognitive_agents::catalog_agent_methods().collect();
+        assert!(!schema.methods.contains_key("register_tool"));
         assert_eq!(
             schema.methods.len(),
             expected_methods.len() + catalog_methods.len(),

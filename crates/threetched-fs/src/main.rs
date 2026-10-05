@@ -2,6 +2,7 @@ mod dispatch;
 mod fuse_fs;
 mod mcp;
 mod model;
+mod mounted;
 mod namespace;
 mod source;
 mod store;
@@ -45,6 +46,10 @@ enum Command {
         catalog: PathBuf,
         #[arg(long, default_value = DEFAULT_STATE_DIR)]
         state: PathBuf,
+        /// Capture only sealed declarations. State is explicitly unavailable,
+        /// allowing boot before the authoritative state owner is ready.
+        #[arg(long)]
+        schema_only: bool,
         /// Write the view without advancing the current pointer.
         #[arg(long)]
         no_activate: bool,
@@ -84,6 +89,11 @@ enum Command {
         method: String,
         #[command(flatten)]
         target: TargetArgs,
+        /// Use an existing identity-bound FUSE namespace, without a direct transport.
+        #[arg(long, conflicts_with_all = ["view", "workspace", "bus_address", "store"])]
+        mount: Option<PathBuf>,
+        #[arg(long, requires = "mount")]
+        expected_session: Option<String>,
         /// JSON argument object, or '-' to read stdin.
         #[arg(long, conflicts_with = "args_file", default_value = "{}")]
         args: String,
@@ -96,6 +106,30 @@ enum Command {
         #[arg(long)]
         confirm_side_effects: bool,
     },
+    /// Invoke one canonical mount-relative operation path through FUSE.
+    Invoke {
+        /// plugins/<encoded-plugin>/operations/<encoded-method>/call
+        path: String,
+        #[arg(long, conflicts_with = "store")]
+        mount: PathBuf,
+        #[arg(long)]
+        expected_session: Option<String>,
+        #[arg(long, conflicts_with = "args_file", default_value = "{}")]
+        args: String,
+        #[arg(long)]
+        args_file: Option<PathBuf>,
+        #[arg(long)]
+        confirm_side_effects: bool,
+    },
+    /// Discover operation declarations from an identity-bound mounted namespace.
+    Describe {
+        #[arg(long, conflicts_with = "store")]
+        mount: PathBuf,
+        #[arg(long)]
+        expected_session: String,
+        #[arg(long)]
+        plugin: Option<String>,
+    },
     /// Mount a pinned immutable view or writable COW workspace through FUSE.
     Mount {
         mountpoint: PathBuf,
@@ -103,8 +137,15 @@ enum Command {
         target: TargetArgs,
         #[arg(long, default_value = DEFAULT_STATE_DIR)]
         state: PathBuf,
+        /// Active sealed catalog whose policy must still match the pinned view.
+        #[arg(long, default_value = DEFAULT_CATALOG_DIR)]
+        catalog: PathBuf,
         #[arg(long)]
         allow_other: bool,
+        /// Exact local UID allowed to write call/workspace files. Only a root
+        /// mount owner may delegate to another UID; backend identity is unchanged.
+        #[arg(long)]
+        call_owner_uid: Option<u32>,
         /// Ask libfuse to unmount on exit (may require user_allow_other).
         #[arg(long)]
         auto_unmount: bool,
@@ -126,14 +167,34 @@ enum Command {
     },
     /// Serve this identity's MCP on stdio: sealed methods as tools, every
     /// plugin's schema and state as resources, each call dispatched as the
-    /// identity. Launch it from an IDE's MCP server configuration.
+    /// identity. `--mount` reads and calls only through that FUSE namespace.
+    /// Launch it from an IDE's MCP server configuration.
     Mcp {
         #[command(flatten)]
         target: TargetArgs,
         #[command(flatten)]
         lungs: LungsArgs,
+        /// Identity-bound FUSE mount. Tools, resources and calls use this
+        /// namespace and do not open the object store, SHM state or lungs socket.
+        #[arg(
+            long,
+            conflicts_with_all = [
+                "view",
+                "workspace",
+                "lungs_socket",
+                "lungs_credential",
+                "state",
+                "catalog",
+                "store"
+            ]
+        )]
+        mount: Option<PathBuf>,
+        #[arg(long, requires = "mount")]
+        expected_session: Option<String>,
         #[arg(long, default_value = DEFAULT_STATE_DIR)]
         state: PathBuf,
+        #[arg(long, default_value = DEFAULT_CATALOG_DIR)]
+        catalog: PathBuf,
         /// List every method as its own tool instead of toolsets.
         #[arg(long, conflicts_with = "compact")]
         all: bool,
@@ -252,27 +313,108 @@ enum SnapshotCommand {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
+    // Mounted mode must never open/create an ObjectStore or resolve SHM state.
+    if let Command::Describe {
+        mount,
+        expected_session,
+        plugin,
+    } = &cli.command
+    {
+        let namespace = mounted::MountedNamespace::open(mount, Some(expected_session))?;
+        return print_json(&namespace.describe(plugin.as_deref())?);
+    }
+    if let Command::Call {
+        mount: Some(path),
+        expected_session,
+        plugin,
+        method,
+        args,
+        args_file,
+        confirm_side_effects,
+        ..
+    } = &cli.command
+    {
+        let namespace = mounted::MountedNamespace::open(path, expected_session.as_deref())?;
+        let decl = namespace.method_decl(plugin, method)?;
+        if decl.side_effect != model::SideEffect::Read && !confirm_side_effects {
+            bail!("operation requires --confirm-side-effects");
+        }
+        let arguments = input_json(Some(args), args_file.as_ref())?;
+        return print_json(&namespace.call(plugin, method, &decl, arguments)?);
+    }
+    if let Command::Invoke {
+        path,
+        mount,
+        expected_session,
+        args,
+        args_file,
+        confirm_side_effects,
+    } = &cli.command
+    {
+        let namespace = mounted::MountedNamespace::open(mount, expected_session.as_deref())?;
+        let arguments = input_json(Some(args), args_file.as_ref())?;
+        return print_json(&namespace.invoke(path, arguments, *confirm_side_effects)?);
+    }
+    if let Command::Mcp {
+        mount: Some(mount),
+        expected_session,
+        all,
+        compact,
+        load,
+        announce_toolsets,
+        ..
+    } = &cli.command
+    {
+        let namespace = mounted::MountedNamespace::open(mount, expected_session.as_deref())?;
+        let surface = match (*all, *compact) {
+            (true, _) => mcp::Surface::Full,
+            (_, true) => mcp::Surface::Compact,
+            _ => mcp::Surface::Toolsets,
+        };
+        let server = mcp::IdentityMcp::from_mount(namespace, surface)?;
+        server.preload(load)?;
+        if *announce_toolsets {
+            match server.announce_toolsets().await {
+                Ok(receipt) => eprintln!("3tchedfs: toolsets announced: {receipt}"),
+                Err(error) => eprintln!("3tchedfs: toolsets not announced: {error:#}"),
+            }
+        }
+        return server.serve_stdio().await;
+    }
     let store = ObjectStore::open(&cli.store)?;
 
     match cli.command {
+        Command::Invoke { .. } | Command::Describe { .. } | Command::Mcp { mount: Some(_), .. } => {
+            unreachable!("mounted invocation returned before opening an ObjectStore")
+        }
         Command::Capture {
             catalog,
             state,
+            schema_only,
             no_activate,
         } => {
             let source = SourceCatalog::new(catalog, state);
-            print_json(&store.capture(&source, !no_activate)?)?;
+            let snapshot = if schema_only {
+                source.capture_schema_only()?
+            } else {
+                source.capture()?
+            };
+            print_json(&store.capture_snapshot(snapshot, !no_activate)?)?;
         }
         Command::Inspect { target, plugin } => {
             let target = resolve_target(&store, &target)?;
             match (&target, plugin) {
                 (ProjectionTarget::View(id), Some(plugin)) => {
                     let view = store.read_view(id)?;
-                    print_json(&store.object_for_view(&view, &plugin)?)?;
+                    print_json(&store.object_for_view(&view, &plugin)?.public_projection()?)?;
                 }
                 (ProjectionTarget::Workspace(id), Some(plugin)) => {
                     let workspace = store.read_workspace(id)?;
-                    print_json(&store.workspace_object(&workspace, &plugin)?)?;
+                    print_json(
+                        &store
+                            .workspace_object(&workspace, &plugin)?
+                            .public_projection()?,
+                    )?;
                 }
                 (ProjectionTarget::View(id), None) => print_json(&store.read_view(id)?)?,
                 (ProjectionTarget::Workspace(id), None) => print_json(&store.read_workspace(id)?)?,
@@ -288,7 +430,7 @@ async fn main() -> Result<()> {
                 let marker = match node.kind {
                     NodeKind::Directory => "d",
                     NodeKind::File(_) if node.write_target.is_some() => "w",
-                    NodeKind::File(_) | NodeKind::LiveFile { .. } | NodeKind::Outcome { .. } => "f",
+                    NodeKind::File(_) | NodeKind::LiveFile { .. } => "f",
                     NodeKind::CallFile { .. } => "c",
                     NodeKind::Symlink(_) => "l",
                 };
@@ -364,6 +506,8 @@ async fn main() -> Result<()> {
             args_file,
             bus_address,
             confirm_side_effects,
+            mount: _,
+            expected_session: _,
         } => {
             let target = resolve_target(&store, &target)?;
             let arguments = input_json(Some(&args), args_file.as_ref())?;
@@ -382,11 +526,14 @@ async fn main() -> Result<()> {
         Command::Mcp {
             target,
             lungs,
+            mount: None,
             state,
+            catalog,
             all,
             compact,
             load,
             announce_toolsets,
+            ..
         } => {
             let target = resolve_target(&store, &target)?;
             let lungs = lungs
@@ -397,7 +544,8 @@ async fn main() -> Result<()> {
                 (_, true) => mcp::Surface::Compact,
                 _ => mcp::Surface::Toolsets,
             };
-            let server = mcp::IdentityMcp::new(store, target, state, lungs, surface)?;
+            let server = mcp::IdentityMcp::new(store, target, state, lungs, surface)?
+                .with_catalog_dir(catalog);
             server.preload(&load)?;
             if announce_toolsets {
                 // stdout is the MCP stream; report on stderr and keep serving.
@@ -440,7 +588,9 @@ async fn main() -> Result<()> {
             mountpoint,
             target,
             state,
+            catalog,
             allow_other,
+            call_owner_uid,
             auto_unmount,
             lungs_credential,
             lungs_socket,
@@ -467,13 +617,17 @@ async fn main() -> Result<()> {
             let writable = lungs.is_some() || matches!(target, ProjectionTarget::Workspace(_));
             // View mounts read live state from SHM; workspace mounts use
             // frozen COW objects and don't need the state directory.
-            let filesystem = match lungs {
+            let mut filesystem = match lungs {
                 Some(lungs) => TypedFuse::lungs(store, target, state, lungs)?,
                 None if matches!(target, ProjectionTarget::Workspace(_)) => {
                     TypedFuse::new(store, target)?
                 }
                 None => TypedFuse::with_state_dir(store, target, state)?,
             };
+            if let Some(uid) = call_owner_uid {
+                filesystem = filesystem.with_call_owner_uid(uid)?;
+            }
+            filesystem = filesystem.with_catalog_dir(catalog)?;
             let mut options = vec![
                 MountOption::FSName("3tchedFS".to_string()),
                 MountOption::Subtype("3tchedFS".to_string()),
@@ -521,15 +675,24 @@ fn resolve_target(store: &ObjectStore, args: &TargetArgs) -> Result<ProjectionTa
 }
 
 fn input_json(inline: Option<&str>, file: Option<&PathBuf>) -> Result<Value> {
+    const MAX_INPUT: usize = 1024 * 1024;
+    fn bounded_text(reader: impl std::io::Read) -> Result<String> {
+        let mut text = String::new();
+        reader
+            .take((MAX_INPUT + 1) as u64)
+            .read_to_string(&mut text)?;
+        anyhow::ensure!(text.len() <= MAX_INPUT, "JSON input exceeds 1 MiB");
+        Ok(text)
+    }
     let text = match (inline, file) {
-        (_, Some(path)) => fs::read_to_string(path)
-            .with_context(|| format!("read JSON input {}", path.display()))?,
-        (Some("-"), None) => {
-            let mut text = String::new();
-            std::io::stdin().read_to_string(&mut text)?;
-            text
+        (_, Some(path)) => bounded_text(
+            fs::File::open(path).with_context(|| format!("read JSON input {}", path.display()))?,
+        )?,
+        (Some("-"), None) => bounded_text(std::io::stdin().lock())?,
+        (Some(text), None) => {
+            anyhow::ensure!(text.len() <= MAX_INPUT, "JSON input exceeds 1 MiB");
+            text.to_string()
         }
-        (Some(text), None) => text.to_string(),
         (None, None) => bail!("provide --json or --file"),
     };
     serde_json::from_str(&text).context("parse JSON input")
@@ -543,6 +706,94 @@ fn print_json(value: &impl Serialize) -> Result<()> {
 #[cfg(test)]
 mod cli_tests {
     use super::*;
+
+    #[test]
+    fn mounted_commands_preserve_identity_and_reject_transport_fallback() {
+        let args = vec![
+            "threetched-fs",
+            "call",
+            "demo",
+            "get_status",
+            "--mount",
+            "/run/mount/3tchedFS",
+            "--expected-session",
+            "human",
+        ];
+        assert!(Cli::try_parse_from(&args).is_ok());
+        for fallback in [
+            vec!["--view", "other"],
+            vec!["--workspace", "other"],
+            vec!["--bus-address", "unix:path=/alternate"],
+            vec!["--store", "/alternate"],
+        ] {
+            let mut conflict = args.clone();
+            conflict.extend(fallback);
+            assert!(Cli::try_parse_from(conflict).is_err());
+        }
+        assert!(
+            Cli::try_parse_from(["threetched-fs", "mcp", "--expected-session", "human"]).is_err()
+        );
+        assert!(matches!(
+            Cli::try_parse_from([
+                "threetched-fs",
+                "mcp",
+                "--mount",
+                "/run/mount/3tchedFS",
+                "--expected-session",
+                "human",
+            ])
+            .unwrap()
+            .command,
+            Command::Mcp { mount: Some(_), .. }
+        ));
+        assert!(
+            Cli::try_parse_from([
+                "threetched-fs",
+                "mcp",
+                "--mount",
+                "/run/mount/3tchedFS",
+                "--lungs-socket",
+                "/run/opdbus/lungs/lungs.sock",
+            ])
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn invoke_requires_mount_and_has_no_direct_transport_selectors() {
+        let args = [
+            "threetched-fs",
+            "invoke",
+            "plugins/demo/operations/get_status/call",
+            "--mount",
+            "/run/mount/3tchedFS",
+            "--expected-session",
+            "human",
+        ];
+        assert!(matches!(
+            Cli::try_parse_from(args).unwrap().command,
+            Command::Invoke { .. }
+        ));
+        assert!(
+            Cli::try_parse_from([
+                "threetched-fs",
+                "invoke",
+                "plugins/demo/operations/get_status/call"
+            ])
+            .is_err()
+        );
+        for alternate in [
+            "--view",
+            "--workspace",
+            "--store",
+            "--bus-address",
+            "--lungs-socket",
+        ] {
+            let mut conflict = args.to_vec();
+            conflict.extend([alternate, "alternate"]);
+            assert!(Cli::try_parse_from(conflict).is_err());
+        }
+    }
 
     #[test]
     fn guest_mcp_socket_requires_no_session_input() {

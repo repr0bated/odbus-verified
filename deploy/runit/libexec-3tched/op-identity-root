@@ -564,7 +564,8 @@ seed_profile() (
     printf '3tched-lungs profile ready; shared socket calls require authenticated host or native container identity\n'
 )
 seed_image_helper_ready() {
-    image_helper=${OP_IDENTITY_IMAGE_HELPER:-/usr/local/libexec/3tched/op-identity-image}
+    image_helper=$(realpath -e -- "${OP_IDENTITY_IMAGE_HELPER:-/usr/local/libexec/3tched/op-identity-image}") ||
+        seed_fail "image verifier path is absent"
     seed_secure_path "$image_helper"
     [ -f "$image_helper" ] && [ -x "$image_helper" ] || seed_fail "image verifier unavailable; install the reviewed host helper"
 }

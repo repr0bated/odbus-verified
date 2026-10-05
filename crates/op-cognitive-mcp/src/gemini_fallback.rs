@@ -304,8 +304,13 @@ impl GeminiFallback {
                     });
                 }
                 Err(e) => {
-                    warn!(step, error = %e, "Deep research step failed, continuing");
-                    break;
+                    return Err(e).with_context(|| {
+                        format!(
+                            "deep research incomplete: {} of {} requested sections completed",
+                            sections.len(),
+                            depth
+                        )
+                    });
                 }
             }
         }

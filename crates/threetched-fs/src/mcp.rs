@@ -2,11 +2,12 @@
 //!
 //! One identity, fully loaded: every sealed plugin method in the projected
 //! view is a tool, every plugin's schema and live state is a resource, and
-//! each call is dispatched as that identity over its lungs (the shared lungs
-//! socket bound to its session, or its SID1 on its own device). Nothing here
-//! grants authority: the bridge admits each call through MutationEngine under
-//! the identity's own grants. The server speaks stdio through the reference
-//! Rust SDK (`rmcp`), so any IDE that launches an MCP server can use it.
+//! each call runs as that identity. With `--mount`, tools, resources and
+//! calls use only that identity's FUSE namespace: a tool call writes the
+//! mounted `call` file and reads its receipt. The store-and-lungs path remains
+//! for a schema-only guest that has no mount. Nothing here grants authority.
+//! The server speaks stdio through the reference Rust SDK (`rmcp`), so any
+//! IDE that launches an MCP server can use it.
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
@@ -30,7 +31,8 @@ use serde_json::{Value, json};
 
 use crate::dispatch::{self, LungsError};
 use crate::fuse_fs::Lungs;
-use crate::model::{SideEffect, TypedObjectBlob};
+use crate::model::{PluginSchema, SideEffect, StateValueScope, TypedObjectBlob};
+use crate::mounted::{MountedDiagnostic, MountedNamespace};
 use crate::namespace::ProjectionTarget;
 use crate::store::ObjectStore;
 
@@ -40,7 +42,7 @@ const PAGE_SIZE: usize = 200;
 /// IDE agents pass MCP tool names straight through, so names stay inside it.
 const MAX_TOOL_NAME: usize = 64;
 
-fn graph_notice(objects: &BTreeMap<String, TypedObjectBlob>) -> &'static str {
+fn graph_notice(objects: &BTreeMap<String, CatalogDeclaration>) -> &'static str {
     if objects.get("cozo").is_some_and(|object| {
         object
             .schema
@@ -87,10 +89,18 @@ struct ToolRef {
     method: String,
 }
 
-/// One captured catalog: the sealed objects of the projected view, and the
+/// Sealed declarations only. Mounted delivery keeps its provenance in the
+/// pinned namespace; lungs delivery also needs the source hash for state reads.
+#[derive(Clone)]
+struct CatalogDeclaration {
+    schema: PluginSchema,
+    source_schema_hash: Option<String>,
+}
+
+/// One captured catalog: the sealed declarations of the projected view, and the
 /// tool names derived from them.
 struct Catalog {
-    objects: BTreeMap<String, TypedObjectBlob>,
+    objects: BTreeMap<String, CatalogDeclaration>,
     tools: Vec<Tool>,
     by_name: HashMap<String, ToolRef>,
     sets: Vec<Toolset>,
@@ -99,6 +109,40 @@ struct Catalog {
 impl Catalog {
     fn load(store: &ObjectStore, target: &ProjectionTarget) -> Result<Self> {
         let objects = load_objects(store, target)?;
+        // Retain only sealed declarations and locators between operations.
+        // Resource values are read from their authority for each request.
+        let objects = objects
+            .into_iter()
+            .map(|(plugin, object)| {
+                (
+                    plugin,
+                    CatalogDeclaration {
+                        schema: object.schema,
+                        source_schema_hash: Some(object.source_schema_hash),
+                    },
+                )
+            })
+            .collect();
+        Ok(Self::from_declared(objects))
+    }
+
+    fn load_mount(mount: &MountedNamespace) -> Result<Self> {
+        let mut objects = BTreeMap::new();
+        for plugin in mount.plugins()? {
+            let schema = mount.schema(&plugin)?;
+            objects.insert(
+                plugin,
+                CatalogDeclaration {
+                    schema,
+                    source_schema_hash: None,
+                },
+            );
+        }
+        mount.verify()?;
+        Ok(Self::from_declared(objects))
+    }
+
+    fn from_declared(objects: BTreeMap<String, CatalogDeclaration>) -> Self {
         let mut tools = Vec::new();
         let mut by_name = HashMap::new();
         for (plugin, object) in &objects {
@@ -153,12 +197,12 @@ impl Catalog {
                     .collect(),
             })
             .collect();
-        Ok(Self {
+        Self {
             objects,
             tools,
             by_name,
             sets,
-        })
+        }
     }
 }
 
@@ -248,6 +292,15 @@ fn cursor(request: &Option<PaginatedRequestParams>) -> Option<&str> {
         .and_then(|request| request.cursor.as_deref())
 }
 
+fn mounted_call_error(error: anyhow::Error) -> CallToolResult {
+    let stage = error
+        .downcast_ref::<LungsError>()
+        .map(LungsError::stage)
+        .or_else(|| error.downcast_ref::<MountedDiagnostic>().map(|_| "call"))
+        .unwrap_or("mount");
+    text_result(&json!({"error": error.to_string(), "stage": stage}), true)
+}
+
 fn text_result(value: &Value, error: bool) -> CallToolResult {
     let text = serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string());
     match (value.is_object(), error) {
@@ -261,15 +314,30 @@ fn text_result(value: &Value, error: bool) -> CallToolResult {
     }
 }
 
+/// Where this MCP server reads declarations and submits calls.
+#[derive(Clone)]
+enum Delivery {
+    /// Schema-only guest: object store plus a direct lungs connection.
+    Lungs {
+        store: ObjectStore,
+        catalog_dir: PathBuf,
+        target: ProjectionTarget,
+        state_dir: PathBuf,
+        lungs: Arc<Lungs>,
+        view_id: String,
+    },
+    /// Identity mount: every read and call stays inside that namespace.
+    Mount {
+        namespace: Arc<MountedNamespace>,
+        view_id: String,
+    },
+}
+
 #[derive(Clone)]
 pub struct IdentityMcp {
-    target: ProjectionTarget,
-    state_dir: PathBuf,
-    lungs: Arc<Lungs>,
+    delivery: Delivery,
     surface: Surface,
     catalog: Arc<RwLock<Arc<Catalog>>>,
-    /// The captured view the catalog came from (a workspace's base view).
-    view_id: String,
     /// Sets this connection has loaded (toolset surface only).
     loaded: Arc<RwLock<std::collections::BTreeSet<String>>>,
 }
@@ -288,14 +356,49 @@ impl IdentityMcp {
             ProjectionTarget::Workspace(id) => store.read_workspace(id)?.base_view,
         };
         Ok(Self {
-            view_id,
-            target,
-            state_dir,
-            lungs: Arc::new(lungs),
+            delivery: Delivery::Lungs {
+                store,
+                catalog_dir: crate::source::DEFAULT_CATALOG_DIR.into(),
+                target,
+                state_dir,
+                lungs: Arc::new(lungs),
+                view_id,
+            },
             surface,
             catalog: Arc::new(RwLock::new(Arc::new(catalog))),
             loaded: Arc::new(RwLock::new(Default::default())),
         })
+    }
+
+    /// Tools, resources and calls come only from this identity's FUSE mount.
+    pub fn from_mount(namespace: MountedNamespace, surface: Surface) -> Result<Self> {
+        let view_id = namespace.view_id()?.to_owned();
+        let catalog = Catalog::load_mount(&namespace).context("load the mounted catalog")?;
+        Ok(Self {
+            delivery: Delivery::Mount {
+                namespace: Arc::new(namespace),
+                view_id,
+            },
+            surface,
+            catalog: Arc::new(RwLock::new(Arc::new(catalog))),
+            loaded: Arc::new(RwLock::new(Default::default())),
+        })
+    }
+
+    pub fn with_catalog_dir(mut self, catalog_dir: PathBuf) -> Self {
+        if let Delivery::Lungs {
+            catalog_dir: slot, ..
+        } = &mut self.delivery
+        {
+            *slot = catalog_dir;
+        }
+        self
+    }
+
+    fn view_id(&self) -> &str {
+        match &self.delivery {
+            Delivery::Lungs { view_id, .. } | Delivery::Mount { view_id, .. } => view_id,
+        }
     }
 
     /// Load sets before any client connects (`--load`).
@@ -321,7 +424,7 @@ impl IdentityMcp {
     /// holds it retained on `opdbus/toolsets` for every live identity.
     pub async fn announce_toolsets(&self) -> Result<Value> {
         let arguments = json!({
-            "view_id": self.view_id,
+            "view_id": self.view_id(),
             "sets": self.toolsets(),
         });
         let result = self
@@ -475,15 +578,60 @@ impl IdentityMcp {
         self.catalog.read().clone()
     }
 
-    fn live_state(&self, plugin: &str, object: &TypedObjectBlob) -> Value {
-        if matches!(self.target, ProjectionTarget::Workspace(_)) {
-            return object.value.clone();
-        }
-        // The catalog key is a sealed plugin id; it never names another path.
-        std::fs::read(self.state_dir.join(format!("{plugin}.json")))
-            .ok()
-            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-            .unwrap_or_else(|| object.value.clone())
+    fn live_state(&self, plugin: &str, object: &CatalogDeclaration) -> Result<Value, McpError> {
+        let read = || -> Result<Value> {
+            let Delivery::Lungs {
+                store,
+                catalog_dir,
+                target,
+                state_dir,
+                view_id,
+                ..
+            } = &self.delivery
+            else {
+                let Delivery::Mount { namespace, .. } = &self.delivery else {
+                    unreachable!("delivery is mount when it is not lungs");
+                };
+                return namespace.state(plugin);
+            };
+            if let ProjectionTarget::Workspace(id) = target {
+                let workspace = store.read_workspace(id)?;
+                let object = store
+                    .workspace_object(&workspace, plugin)?
+                    .public_projection()?;
+                anyhow::ensure!(
+                    object.value_scope != StateValueScope::SchemaOnly,
+                    "workspace state unavailable"
+                );
+                return Ok(object.value);
+            }
+            let view = store.read_view(view_id)?;
+            let hash = object
+                .source_schema_hash
+                .as_ref()
+                .context("source schema hash absent")?;
+            let hashes = BTreeMap::from([(plugin.to_owned(), hash.clone())]);
+            let schemas = BTreeMap::from([(plugin.to_owned(), object.schema.clone())]);
+            let verify = || {
+                crate::source::verify_pinned_catalog(
+                    catalog_dir,
+                    &view.source_catalog_hash,
+                    view.source_catalog_generation,
+                    &hashes,
+                    &schemas,
+                )
+            };
+            verify()?;
+            let committed = crate::source::read_committed_public_value(
+                state_dir,
+                plugin,
+                &object.schema,
+                16 * 1024 * 1024,
+            )?;
+            verify()?;
+            Ok(committed.value)
+        };
+        read().map_err(|_| McpError::internal_error("committed public state unavailable", None))
     }
 
     async fn dispatch(&self, plugin: &str, method: &str, arguments: Value) -> CallToolResult {
@@ -501,9 +649,31 @@ impl IdentityMcp {
                 );
             }
         };
+        if let Delivery::Mount { namespace, .. } = &self.delivery {
+            let namespace = Arc::clone(namespace);
+            let plugin = plugin.to_owned();
+            let method = method.to_owned();
+            let outcome = tokio::task::spawn_blocking(move || {
+                namespace.call(&plugin, &method, &decl, arguments)
+            })
+            .await;
+            return match outcome {
+                Ok(Ok(receipt)) => text_result(&receipt["result"], false),
+                Ok(Err(error)) => mounted_call_error(error),
+                Err(error) => {
+                    text_result(&json!({"error": error.to_string(), "stage": "mount"}), true)
+                }
+            };
+        }
+        let Delivery::Lungs { lungs, .. } = &self.delivery else {
+            return text_result(
+                &json!({"error": "mount delivery was not dispatched", "stage": "mount"}),
+                true,
+            );
+        };
         let outcome: Result<_, LungsError> = async {
             dispatch::validate_arguments(&decl, &arguments)?;
-            match self.lungs.as_ref() {
+            match lungs.as_ref() {
                 Lungs::Socket { path, session } => {
                     dispatch::call_over_socket(path, session, plugin, method, &decl, arguments)
                         .await
@@ -699,11 +869,15 @@ impl IdentityMcp {
         let path = uri.strip_prefix(URI_PREFIX).ok_or_else(not_found)?;
         let catalog = self.catalog();
         if path == "view" {
-            return Ok(json!({
-                "target": match &self.target {
+            let target = match &self.delivery {
+                Delivery::Lungs { target, .. } => match target {
                     ProjectionTarget::View(id) => json!({"view": id}),
                     ProjectionTarget::Workspace(id) => json!({"workspace": id}),
                 },
+                Delivery::Mount { view_id, .. } => json!({"mount": true, "view": view_id}),
+            };
+            return Ok(json!({
+                "target": target,
                 "plugins": catalog.objects.keys().collect::<Vec<_>>(),
             }));
         }
@@ -714,9 +888,9 @@ impl IdentityMcp {
             None if rest == "schema" => serde_json::to_value(&object.schema).map_err(|error| {
                 McpError::internal_error(format!("schema of {plugin}: {error}"), None)
             }),
-            None if rest == "state" => Ok(self.live_state(plugin, object)),
+            None if rest == "state" => self.live_state(plugin, object),
             Some(("state", pointer)) => self
-                .live_state(plugin, object)
+                .live_state(plugin, object)?
                 .pointer(&format!("/{pointer}"))
                 .cloned()
                 .ok_or_else(not_found),
@@ -1076,16 +1250,15 @@ mod tests {
     }
 
     fn fixture_with(surface: Surface) -> (tempfile::TempDir, IdentityMcp) {
-        use crate::model::{MethodDecl, PluginSchema};
-        use crate::source::SourceSnapshot;
+        use crate::model::MethodDecl;
 
         let directory = tempfile::tempdir().unwrap();
         let state = directory.path().join("state");
-        std::fs::create_dir_all(&state).unwrap();
-        std::fs::write(
-            state.join("demo.json"),
-            br#"{"mode":"live","nested":{"n":7}}"#,
-        )
+        op_core::projection_shm::update_projection_in(state.to_str().unwrap(), "demo", |_| {
+            Ok(Some(
+                br#"{"mode":"live","nested":{"n":7},"secret":"private"}"#.to_vec(),
+            ))
+        })
         .unwrap();
         let store = ObjectStore::open(directory.path().join("store")).unwrap();
         let method = |name: &str, side_effect| MethodDecl {
@@ -1096,41 +1269,30 @@ mod tests {
                 "required": ["event"],
                 "additionalProperties": false
             }),
-            returns: None,
+            returns: Some(json!({"type":"object"})),
             side_effect,
             idempotent: false,
             required_capability: Some("cap.demo@v1".into()),
             subid: format!("demo.{name}@v1"),
         };
-        let object = TypedObjectBlob::new(
-            "demo".into(),
-            "a".repeat(64),
-            PluginSchema {
-                name: "demo".into(),
-                version: "1".into(),
-                description: "Demo plugin".into(),
-                methods: BTreeMap::from([
-                    ("get_status".into(), method("get_status", SideEffect::Read)),
-                    (
-                        "record_event".into(),
-                        method("record_event", SideEffect::Mutation),
-                    ),
-                ]),
-                ..Default::default()
+        let mut schema = crate::model::from_sealed(serde_json::from_value(json!({
+            "name":"demo", "version":"1", "description":"Demo plugin",
+            "fields": {
+                "mode":{"field_type":"string","required":true},
+                "nested":{"field_type":{"object":{"n":{"field_type":"integer","required":true}}},"required":true},
+                "secret":{"field_type":"string","required":true}
             },
-            json!({"mode": "sealed"}),
-        )
-        .unwrap();
-        let view = store
-            .capture_snapshot(
-                SourceSnapshot {
-                    catalog_hash: "catalog".into(),
-                    catalog_generation: 1,
-                    objects: BTreeMap::from([("demo".into(), object)]),
-                },
-                true,
-            )
-            .unwrap();
+            "public_state":{"paths":["/mode","/nested"]}
+        })).unwrap()).unwrap();
+        schema.methods = BTreeMap::from([
+            ("get_status".into(), method("get_status", SideEffect::Read)),
+            (
+                "record_event".into(),
+                method("record_event", SideEffect::Mutation),
+            ),
+        ]);
+        let source = crate::source::tests::fixture_catalog(directory.path(), &schema);
+        let view = store.capture(&source, true).unwrap();
         let lungs = Lungs::Socket {
             path: directory.path().join("no-lungs.sock"),
             session: "session".into(),
@@ -1142,12 +1304,42 @@ mod tests {
             lungs,
             surface,
         )
-        .unwrap();
+        .unwrap()
+        .with_catalog_dir(source.catalog_dir);
         (directory, server)
     }
 
     fn text(result: &CallToolResult) -> String {
         result.content[0].as_text().unwrap().text.clone()
+    }
+
+    #[test]
+    fn resources_use_public_committed_values_without_fallback_or_retention() {
+        let (_directory, server) = fixture();
+        let value = server.read("3tched://plugins/demo/state").unwrap();
+        assert_eq!(value, json!({"mode":"live","nested":{"n":7}}));
+        assert!(server.read("3tched://plugins/demo/state/secret").is_err());
+        let Delivery::Lungs { state_dir, .. } = &server.delivery else {
+            panic!("fixture uses lungs delivery");
+        };
+        op_core::projection_shm::update_projection_in(state_dir.to_str().unwrap(), "demo", |_| {
+            Ok(None)
+        })
+        .unwrap();
+        assert!(server.read("3tched://plugins/demo/state").is_err());
+    }
+
+    #[test]
+    fn resources_refuse_a_catalog_that_no_longer_authorizes_the_pin() {
+        let (_directory, server) = fixture();
+        let Delivery::Lungs { catalog_dir, .. } = &server.delivery else {
+            panic!("fixture uses lungs delivery");
+        };
+        let path = catalog_dir.join(".manifest.json");
+        let mut manifest: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        manifest["generation"] = json!(2);
+        std::fs::write(path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+        assert!(server.read("3tched://plugins/demo/state").is_err());
     }
 
     #[tokio::test]
@@ -1318,5 +1510,58 @@ mod tests {
         let (_directory, server) = fixture_with(Surface::Toolsets);
         let error = server.announce_toolsets().await.unwrap_err().to_string();
         assert!(error.contains("not in this view"), "{error}");
+    }
+
+    #[test]
+    fn mounted_discovery_needs_no_state_payload_and_resources_remain_fresh() {
+        let (directory, namespace, _) = crate::mounted::tests::fixture();
+        let plugin = directory.path().join("plugins/demo");
+        std::fs::remove_file(plugin.join("object.blob.json")).unwrap();
+        std::fs::remove_file(plugin.join("value.json")).unwrap();
+        let server = IdentityMcp::from_mount(namespace, Surface::Full).unwrap();
+        assert_eq!(server.catalog().tools.len(), 1);
+        assert_eq!(server.toolsets()[0].id, "demo");
+        assert!(server.catalog().objects["demo"].source_schema_hash.is_none());
+        assert_eq!(
+            server.read("3tched://plugins/demo/schema").unwrap()["name"],
+            "demo"
+        );
+        assert!(server.read("3tched://plugins/demo/state").is_err());
+        for value in [json!({"mode":"first"}), json!({"mode":"second"})] {
+            std::fs::write(plugin.join("value.json"), value.to_string()).unwrap();
+            assert_eq!(server.read("3tched://plugins/demo/state").unwrap(), value);
+        }
+        std::fs::remove_file(plugin.join("value.json")).unwrap();
+        assert!(server.read("3tched://plugins/demo/state").is_err());
+    }
+
+    #[tokio::test]
+    async fn mounted_delivery_reads_the_namespace_and_writes_its_call_file() {
+        let (directory, namespace, _) = crate::mounted::tests::fixture();
+        let server = IdentityMcp::from_mount(namespace, Surface::Full).unwrap();
+        let value = server.read("3tched://plugins/demo/state").unwrap();
+        assert_eq!(value, json!({"mode": "mounted", "nested": {"n": 7}}));
+        assert!(server.read("3tched://plugins/demo/state/secret").is_err());
+        let refused = server
+            .dispatch("demo", "get_status", json!({"wrong": 1}))
+            .await;
+        assert_eq!(refused.is_error, Some(true));
+        assert!(
+            text(&refused).contains("\"stage\": \"validate\""),
+            "{}",
+            text(&refused)
+        );
+        let call = directory
+            .path()
+            .join("plugins/demo/operations/get_status/call");
+        assert_eq!(std::fs::read_to_string(&call).unwrap(), "");
+        let submitted = server
+            .dispatch("demo", "get_status", json!({"event": "x"}))
+            .await;
+        assert_eq!(submitted.is_error, Some(true));
+        let written = std::fs::read_to_string(&call).unwrap();
+        assert!(written.contains("\"event\""), "{written}");
+        std::fs::write(directory.path().join(".3tchedfs.json"), b"{}").unwrap();
+        assert!(server.read("3tched://plugins/demo/state").is_err());
     }
 }

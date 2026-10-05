@@ -49,6 +49,33 @@ pub const SECTION_META_JSON: u32 = 4;
 const HEADER_LEN: usize = 64;
 const SECTION_ENTRY_LEN: usize = 24;
 
+/// Return JSON with object keys inserted in lexical order at every depth.
+/// serde_json's `preserve_order` feature changes `Map` to an insertion-ordered
+/// map, so deterministic producers must sort explicitly instead of relying on
+/// the map implementation. Arrays and scalar values retain their input order
+/// and values.
+pub(crate) fn canonicalize_json_object_keys(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Array(values) => serde_json::Value::Array(
+            values
+                .into_iter()
+                .map(canonicalize_json_object_keys)
+                .collect(),
+        ),
+        serde_json::Value::Object(object) => {
+            let mut entries: Vec<_> = object.into_iter().collect();
+            entries.sort_unstable_by(|(left, _), (right, _)| left.cmp(right));
+
+            let mut canonical = serde_json::Map::with_capacity(entries.len());
+            for (key, value) in entries {
+                canonical.insert(key, canonicalize_json_object_keys(value));
+            }
+            serde_json::Value::Object(canonical)
+        }
+        scalar => scalar,
+    }
+}
+
 /// D-Bus identity carried by the blob (REQ-7.1/7.2).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DbusIdentity {
@@ -208,13 +235,13 @@ pub fn blobify_canonical(
         methods,
     };
 
-    let meta = serde_json::json!({
+    let meta = canonicalize_json_object_keys(serde_json::json!({
         "blob_format": FORMAT_VERSION,
         "dialect": schema.dialect,
         "subids": schema.subids,
         "immutable_paths": schema.immutable_paths,
         "json_schema": schema.to_json_schema(),
-    });
+    }));
 
     PluginObjectBlob {
         manifest,

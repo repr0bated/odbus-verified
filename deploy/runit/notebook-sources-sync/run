@@ -1,40 +1,70 @@
 #!/bin/sh
-/usr/local/libexec/3tched/runit-ready-signal notebook-sources-sync
+# Resume the existing owned NotebookLM corpus through the approved local lungs.
+set -eu
 exec 2>&1
-
-/usr/local/libexec/3tched/wait-ready opdbus-rundirs 90 || { echo "dependency opdbus-rundirs not ready after 90s" >&2; exit 1; }
-# Depend on the BRIDGE, never on the standalone op-cognitive-mcp service.
-# cognitive_mcp is reached through the bridge's socket (PluginV1.Call on
-# /org/opdbus/v1/plugins/cognitive_mcp), which is both the single-writer path
-# to CozoDB and the identity gate. Starting op-cognitive-mcp opens the store
-# in-process, racing the bridge for the RocksDB LOCK and bypassing auth.
-# wait-ready never runs `sv start`, so it can no longer resurrect a
-# down-flagged service the way the old wait_dep did.
-/usr/local/libexec/3tched/wait-ready op-grpc-bridge 90 || { echo "dependency op-grpc-bridge not ready after 90s" >&2; exit 1; }
-
+session_file=/etc/op-dbus/human-lungs-session
+marker=/etc/op-dbus/native-filesystem.enabled
+status_dir=/run/opdbus/notebook-sync
+ready=/run/opdbus/runit-ready/notebook-sources-sync
 export HOME=/home/jeremy
 export USER=jeremy
-export OP_DBUS_ROOT=/srv/git/odbus-verified
+export PATH=/usr/local/bin:/usr/bin:/bin
+export OP_DBUS_ROOT=/opt/op-dbus/current/share/op-dbus/notebook-sync
+export OPDBUS_NOTEBOOK_PROJECT_ROOT=/srv/git/odbus-verified
 export NOTEBOOKLM_SOURCES_DIR=/home/jeremy/.notebooklm-sources
-export PATH="/home/jeremy/.local/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin"
-# 5 minutes default; override with env file if needed
-INTERVAL="${NOTEBOOK_SYNC_INTERVAL_SEC:-300}"
-# The cycle runs from the checkout, like its exporter, cleanup and uploader.
-HELPER="$OP_DBUS_ROOT/scripts/notebook-sources-sync-up"
+export OPDBUS_NOTEBOOK_SYNC_MODE=per-model
+export OPDBUS_NOTEBOOK_FS_ROOT=/run/mount/3tchedFS-native
+INTERVAL=${NOTEBOOK_SYNC_INTERVAL_SEC:-300}
+case "$INTERVAL" in ''|*[!0-9]*) exit 78 ;; esac
+[ "$INTERVAL" -ge 30 ] && [ "$INTERVAL" -le 86400 ] || exit 78
+[ "$(id -u jeremy)" = 1001 ] || exit 78
+[ ! -L /etc/op-dbus ] && [ "$(stat -c '%u %a' /etc/op-dbus)" = '0 755' ] || exit 78
+protected_file() {
+    [ -f "$1" ] && [ ! -L "$1" ] || return 1
+    set -- $(stat -c '%u %a' "$1")
+    [ "$1" = 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; }
+}
+protected_file "$marker" && [ "$(cat "$marker")" = true ] || exit 78
+install -d -o root -g root -m 0755 "$status_dir" /run/opdbus/runit-ready
+rm -f "$ready"
+# Observe the supervised service's actual check contract. The native mount
+# publishes no legacy runit-ready flag, and dependency observation must not
+# start a service that the operator deliberately left down.
+sv -w 90 check /etc/runit/sv/op-grpc-bridge || exit 1
+sv -w 90 check /etc/runit/sv/threetched-fs-native || exit 1
 
-echo "notebook-sources-sync: starting (interval=${INTERVAL}s) as $USER"
-
-if command -v chpst >/dev/null 2>&1 && id jeremy >/dev/null 2>&1; then
-    RUN="chpst -u jeremy:jeremy:secrets"
-else
-    RUN=""
-fi
-
-while true; do
-    if [ -x "$HELPER" ]; then
-        $RUN "$HELPER" || echo "notebook-sources-sync: cycle error"
-    else
-        echo "notebook-sources-sync: missing $HELPER"
+sync_pid=
+stop_cycle() {
+    trap '' TERM INT
+    if [ -n "$sync_pid" ]; then
+        kill -TERM "$sync_pid" 2>/dev/null || true
+        wait "$sync_pid" 2>/dev/null || true
     fi
+    exit 143
+}
+trap stop_cycle TERM INT
+while true; do
+    protected_file "$marker" && [ "$(cat "$marker")" = true ] || exit 78
+    protected_file "$session_file" || exit 78
+    [ "$(wc -c <"$session_file")" -le 37 ] || exit 78
+    OPDBUS_NOTEBOOK_SESSION_ID=$(cat "$session_file")
+    printf '%s' "$OPDBUS_NOTEBOOK_SESSION_ID" | jq -Re 'test("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")' >/dev/null || exit 78
+    export OPDBUS_NOTEBOOK_SESSION_ID
+    cycle_result=0
+    chpst -u jeremy:jeremy "$OP_DBUS_ROOT/scripts/notebook-sources-sync-up" &
+    sync_pid=$!
+    wait "$sync_pid" || cycle_result=$?
+    sync_pid=
+    case "$cycle_result" in
+        0) phase=complete; touch "$ready" ;;
+        2) phase=pending; rm -f "$ready" ;;
+        *) phase=failed; rm -f "$ready" ;;
+    esac
+    jq -n --arg phase "$phase" --argjson code "$cycle_result" \
+        --argjson finished_at "$(date +%s)" --argjson interval "$INTERVAL" \
+        '{phase:$phase,exit_code:$code,finished_at:$finished_at,interval_seconds:$interval}' \
+        > "$status_dir/status.json.new"
+    mv -f "$status_dir/status.json.new" "$status_dir/status.json"
+    printf 'notebook-sources-sync: cycle %s (exit %s)\n' "$phase" "$cycle_result"
     sleep "$INTERVAL"
 done

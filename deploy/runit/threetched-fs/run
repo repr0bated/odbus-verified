@@ -1,23 +1,13 @@
 #!/bin/sh
-# Human identity 3tchedFS: production store, single bridge lungs socket.
+# Mount the identity's sealed namespace independently of bridge/network readiness.
+set -eu
 exec 2>&1
 
-wait_dep() {
-    sv start "$1" >/dev/null 2>&1 || true
-    i=0
-    until sv check "$1" >/dev/null 2>&1; do
-        i=$((i + 1))
-        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
-        sleep 1
-    done
-}
-
 THREETCHED=/opt/op-dbus/current/bin/threetched-fs
-RUNIT_READY=/usr/local/libexec/3tched/runit-ready-signal
-[ -x "$THREETCHED" ] || THREETCHED=/usr/local/sbin/threetched-fs
-[ -x "$RUNIT_READY" ] || RUNIT_READY=/usr/local/libexec/3tched/runit-ready-signal
-
+catalog=/opt/op-dbus/current/var/lib/opdbus/plugin-blobs
 session_file=/etc/op-dbus/human-lungs-session
+[ -x "$THREETCHED" ] || { echo "missing $THREETCHED" >&2; exit 1; }
+[ -r "$catalog/.manifest.json" ] || { echo "missing sealed release catalog" >&2; exit 1; }
 [ -r "$session_file" ] || { echo "missing $session_file" >&2; exit 1; }
 session=$(tr -d '[:space:]' <"$session_file")
 case "$session" in
@@ -27,35 +17,25 @@ esac
 
 mountpoint=/run/mount/3tchedFS
 store=/dev/shm/3tchedfs
-catalog=/dev/shm/opdbus/plugin-blobs
 state=/dev/shm/opdbus/state
 lungs=/run/opdbus/lungs/lungs.sock
-
-wait_dep opdbus-rundirs
-wait_dep op-session-bus
-wait_dep op-grpc-bridge
-
-i=0
-until [ -S "$lungs" ]; do
-    i=$((i + 1))
-    [ "$i" -ge 90 ] && { echo "$lungs not ready after 90s" >&2; exit 1; }
-    sleep 1
-done
-
 install -d -m 0755 "$mountpoint"
-
-i=0
-until [ -n "$(ls -A "$catalog" 2>/dev/null)" ] && [ -n "$(ls -A "$state" 2>/dev/null)" ]; do
-    i=$((i + 1))
-    [ "$i" -ge 90 ] && { echo "blob catalog or state dir still empty after 90s" >&2; exit 1; }
-    sleep 1
-done
-
-"$THREETCHED" --store "$store" capture --catalog "$catalog" --state "$state" >/dev/null
-
-"$RUNIT_READY" threetched-fs
+# Explicit declaration-only capture does not fabricate missing live state.
+# State reads and operation calls
+# reach the authoritative bridge when it becomes available; mounting does not
+# establish authorization or fabricate a successful operation receipt.
+"$THREETCHED" --store "$store" capture --schema-only --catalog "$catalog" --state "$state" >/dev/null
+owner_file=/etc/op-dbus/human-lungs-call-owner-uid
+owner_uid=0
+if [ -r "$owner_file" ]; then
+    owner_uid=$(tr -d '[:space:]' <"$owner_file")
+    case "$owner_uid" in
+        ''|*[!0-9]*) echo "invalid local lungs owner in $owner_file" >&2; exit 1 ;;
+    esac
+fi
 exec "$THREETCHED" --store "$store" mount \
     --allow-other \
+    --call-owner-uid "$owner_uid" \
     --auto-unmount \
     --state "$state" \
     --lungs-socket "$lungs" \

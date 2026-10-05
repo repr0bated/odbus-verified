@@ -8,6 +8,8 @@
 
 #[path = "identity_publication.rs"]
 mod identity_publication;
+#[path = "method_receipt_audit.rs"]
+mod method_receipt_audit;
 #[path = "owned_method_task.rs"]
 mod owned_method_task;
 
@@ -187,6 +189,7 @@ fn audit_method_arguments(
         plugin_id,
         "project"
             | "cognitive_mcp"
+            | "workflows"
             | "persona"
             | "memory"
             | "cozo"
@@ -266,8 +269,14 @@ pub struct MutationEngine {
     /// optimized form also mirrors footprints into the NUMA-aware Btrfs cache;
     /// cache initialization is best-effort and never gates the timing trail.
     /// Empty until [`MutationEngine::init_audit_durability`] runs; a missing
-    /// sink degrades to RAM-only recording rather than failing dispatches.
+    /// sink prevents admitted methods from executing; legacy non-method audit
+    /// paths retain their existing best-effort persistence behavior.
     audit_sink: Arc<OnceCell<AuditSink>>,
+    /// An uncertain durable append forbids further method effects until restart
+    /// replays the actual timing trail. No speculative chain-head recovery.
+    method_audit_uncertain: Arc<std::sync::atomic::AtomicBool>,
+    method_journal_documents:
+        Arc<OnceCell<Arc<op_plugins::state_plugins::runtime_documents::RuntimeDocuments>>>,
     /// Vectorize on mutation (OD-64): woken after every audit write.
     vector_projector: Arc<OnceCell<crate::chain_vector_projector::ChainVectorProjector>>,
 
@@ -795,7 +804,9 @@ impl MutationEngine {
                 anyhow::bail!("configured control-plane chatbot registry unavailable: {error:?}")
             }
         }
-        if crate::identity_sled_dispatch::chatbot_awaits_explicit_reprovision(self, &session_id).await? {
+        if crate::identity_sled_dispatch::chatbot_awaits_explicit_reprovision(self, &session_id)
+            .await?
+        {
             tracing::info!(%session_id, "configured chatbot record was explicitly deleted; awaiting provisioning");
             return Ok(None);
         }
@@ -988,7 +999,8 @@ impl MutationEngine {
             anyhow::bail!("session genesis requires a session_id");
         }
         anyhow::ensure!(
-            !crate::identity_sled_dispatch::chatbot_awaits_explicit_reprovision(self, session_id).await?,
+            !crate::identity_sled_dispatch::chatbot_awaits_explicit_reprovision(self, session_id)
+                .await?,
             "explicitly deleted identity requires supported provisioning before minting"
         );
         let existing_record =
@@ -1070,7 +1082,7 @@ impl MutationEngine {
         let args = serde_json::json!({ "session_id": session_id }).to_string();
         let event = {
             let mut chain = self.event_chain.write().await;
-            chain
+            let event = chain
                 .record_method_call(
                     session_id.to_string(),
                     "identity_sled".to_string(),
@@ -1078,9 +1090,12 @@ impl MutationEngine {
                     Some("identity_sled.write".to_string()),
                     &args,
                 )
-                .clone()
+                .clone();
+            // Serialize timing persistence with every chain append, including
+            // observations interleaved with an admitted method's two proofs.
+            self.persist_audit_event(&event).await;
+            event
         };
-        self.persist_audit_event(&event).await;
         let _ = self.chain_tx.send(event);
     }
 
@@ -1105,6 +1120,8 @@ impl MutationEngine {
             signal_bus: Arc::new(OnceCell::new()),
             dbus_call_limiter: Arc::new(Semaphore::new(32)),
             audit_sink: Arc::new(OnceCell::new()),
+            method_audit_uncertain: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            method_journal_documents: Arc::new(OnceCell::new()),
             ovsdb,
             ovsdb_monitor_tasks: Arc::new(Mutex::new(HashMap::new())),
             ovsdb_monitor_state: Arc::new(Mutex::new(())),
@@ -2123,12 +2140,14 @@ impl MutationEngine {
     ///
     /// Runs inline on the dispatch path (NFR-4: not deferred to a background
     /// task). A write failure is logged and swallowed — the event is already in
-    /// the in-memory chain, and losing durability must not fail the caller's
-    /// method call.
+    /// the in-memory chain. A failure blocks subsequent method completion
+    /// proofs until restart/replay; observations keep their existing API.
     ///
     /// OSCAL subid: `evt.service.event-chain.persist@v1`
     async fn persist_audit_event(&self, event: &ChainEvent) {
         let Some(sink) = self.audit_sink.get() else {
+            self.method_audit_uncertain
+                .store(true, std::sync::atomic::Ordering::Release);
             return;
         };
         match sink.add_footprint(event_to_footprint(event)).await {
@@ -2138,6 +2157,8 @@ impl MutationEngine {
                 }
             }
             Err(error) => {
+                self.method_audit_uncertain
+                    .store(true, std::sync::atomic::Ordering::Release);
                 tracing::warn!(
                     %error,
                     event_id = event.event_id,
@@ -2854,12 +2875,12 @@ impl MutationEngine {
             }
             // Hash covers the identity and capability fields set above.
             event.event_hash = event.compute_hash();
-            chain.append(event).clone()
+            let event = chain.append(event).clone();
+            // Keep persistence ordered with the chain head. Otherwise a
+            // method proof could overtake a not-yet-durable state event.
+            self.persist_audit_event(&event).await;
+            event
         };
-
-        // Durability: mirror the event into the timing_subvol so it survives a
-        // restart. Inline with the change, never deferred.
-        self.persist_audit_event(&event).await;
         let _ = self.chain_tx.send(event.clone());
 
         let change = StateChange {
@@ -3282,6 +3303,35 @@ impl MutationEngine {
         )
     }
 
+    /// Caller-chosen correlation only; identity and grants still come solely
+    /// from the receiver. Reusing an admitted ID cannot execute another effect.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn dispatch_method_call_with_operation_id<'a>(
+        &'a self,
+        plugin_id: &'a str,
+        method: &'a str,
+        json_args: &'a str,
+        capability_id: Option<&'a str>,
+        actor_id: &'a str,
+        session_id: Option<&'a str>,
+        session_genesis: Option<&'a str>,
+        operation_id: &'a str,
+    ) -> futures::future::BoxFuture<'a, anyhow::Result<serde_json::Value>> {
+        self.dispatch_method_call_with_origins(
+            plugin_id,
+            method,
+            json_args,
+            capability_id,
+            actor_id,
+            session_id,
+            session_genesis,
+            None,
+            None,
+            None,
+            Some(operation_id),
+        )
+    }
+
     /// Internal facade evidence is supplied only by the admitted LLM wrapper.
     /// It conveys no grant and does not bypass the same canonical admission.
     #[allow(clippy::too_many_arguments)]
@@ -3305,6 +3355,7 @@ impl MutationEngine {
             session_id,
             session_genesis,
             generation_origin,
+            None,
             None,
             None,
         )
@@ -3332,6 +3383,7 @@ impl MutationEngine {
             session_genesis,
             None,
             Some(origin),
+            None,
             None,
         )
     }
@@ -3361,6 +3413,7 @@ impl MutationEngine {
             None,
             None,
             proof,
+            None,
         )
     }
 
@@ -3377,10 +3430,22 @@ impl MutationEngine {
         generation_origin: Option<crate::generation_admission::GenerationOrigin>,
         facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
         bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
+        operation_id: Option<&'a str>,
     ) -> futures::future::BoxFuture<'a, anyhow::Result<serde_json::Value>> {
         // Explicit Send erasure breaks recursive facade/property dispatch's
         // future-type cycle while preserving all pre-task admission below.
         Box::pin(async move {
+            if let Some(operation_id) = operation_id {
+                let parsed = uuid::Uuid::parse_str(operation_id)?;
+                anyhow::ensure!(
+                    parsed.to_string() == operation_id,
+                    "noncanonical operation id"
+                );
+            }
+            anyhow::ensure!(
+                json_args.len() <= op_state_store::method_receipt::MAX_METHOD_ARGUMENT_BYTES,
+                "method arguments exceed 1 MiB"
+            );
             if let Some(proof) = &bound_oracle {
                 crate::interceptor::revalidate_bound_oracle(
                     self,
@@ -3425,18 +3490,24 @@ impl MutationEngine {
                     method,
                     capability_id,
                 )?;
+            anyhow::ensure!(declaration.returns.is_some(), "missing_result_contract");
+            let return_contract = serde_json::to_value(
+                declaration
+                    .returns
+                    .as_ref()
+                    .expect("checked result contract"),
+            )?;
+            jsonschema::validator_for(&return_contract)
+                .context("invalid admitted result contract")?;
             let mut canonical_args = serde_json::to_value(&parsed_value)?;
             crate::method_contract_admission::validate_admitted_arguments(
                 &declaration,
                 &canonical_args,
             )?;
-            self.task_elevation.consume(
-                actor_id,
-                session_id,
-                plugin_id,
-                method,
-                &canonical_args,
-            )?;
+            // Keep the exact admitted arguments used to issue a one-use
+            // elevation. Consumption belongs to the owned task, after all
+            // cancellable admission awaits and capacity acquisition.
+            let elevation_arguments = canonical_args.clone();
             crate::schema_integer_arguments::normalize_declared_integers(
                 &serde_json::to_value(&declaration.args)?,
                 &mut canonical_args,
@@ -3480,42 +3551,13 @@ impl MutationEngine {
                 serde_json::Value,
             >(&audit_json)?)?;
 
-            // Record the immutable event with the full accountability surface.
-            // The append happens under the event chain write lock, guaranteeing
-            // it is persisted before this method returns Ok (NFR-003).
-            let event_summary = {
-                let mut chain = self.event_chain.write().await;
-                let event = chain.record_method_call_with_transport(
-                    actor_id.to_string(),
-                    session_id.map(str::to_string),
-                    session_genesis.map(str::to_string),
-                    method_sealed_id_digest,
-                    plugin_id.to_string(),
-                    method.to_string(),
-                    capability_id.map(|s| s.to_string()),
-                    &audit_json,
-                    bound_oracle
-                        .as_ref()
-                        .map(crate::oracle_assertion::BoundOracleProof::audit_value),
-                );
-                (
-                    event.event_id,
-                    event.event_hash.clone(),
-                    event.timestamp,
-                    event.clone(),
-                )
-            };
-
-            // Durability: write the event to the timing_subvol before returning, so
-            // the audit trail survives a restart (FR-6). A failure here is logged
-            // and does not fail the dispatch (NFR-4).
-            self.persist_audit_event(&event_summary.3).await;
-            let _ = self.chain_tx.send(event_summary.3.clone());
-
-            // Broadcast the method-call change to gRPC subscribers.
+            // The owner task encloses persistence too: dropping the caller while
+            // the durable writer runs cannot leave a committed, untracked attempt.
             let change = StateChange {
-                change_id: uuid::Uuid::new_v4().to_string(),
-                event_id: event_summary.0,
+                change_id: operation_id
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+                event_id: 0,
                 plugin_id: plugin_id.to_string(),
                 object_path: format!("/org/opdbus/v1/plugins/{}", plugin_id),
                 change_type: ChangeType::MethodCall,
@@ -3523,13 +3565,11 @@ impl MutationEngine {
                 old_value: None,
                 new_value: audit_value,
                 tags_touched: vec![],
-                event_hash: event_summary.1.clone(),
-                timestamp: event_summary.2,
+                event_hash: String::new(),
+                timestamp: chrono::Utc::now(),
                 actor_id: actor_id.to_string(),
                 source: ChangeSource::DBus,
             };
-            let _ = self.change_tx.send(change.clone());
-
             let operation = owned_method_task::OperationMetadata {
                 operation_id: change.change_id.clone(),
                 event_id: change.event_id,
@@ -3552,11 +3592,27 @@ impl MutationEngine {
                 change,
             };
             let engine = self.clone();
+            let permit = self
+                .dbus_call_limiter
+                .clone()
+                .try_acquire_owned()
+                .map_err(|_| anyhow::anyhow!("admitted_method_capacity_exhausted"))?;
             // Transport identity/grants precede engine entry; compiled contract and
             // input admission above precede this spawn. Backend-specific identity
             // checks and independently admitted nested target calls stay intact.
             owned_method_task::spawn(operation, async move {
-                engine.dispatch_admitted_method(call).await
+                let _permit = permit;
+                engine.task_elevation.consume(
+                    &call.actor_id,
+                    call.session_id.as_deref(),
+                    &call.plugin_id,
+                    &call.method,
+                    &elevation_arguments,
+                )?;
+                drop(elevation_arguments);
+                engine
+                    .audit_and_dispatch_admitted(call, method_sealed_id_digest)
+                    .await
             })
             .await
             .map_err(|_| anyhow::anyhow!("admitted_method_owner_failed"))?
@@ -3821,45 +3877,15 @@ impl MutationEngine {
             }
             "workflows" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                let result: serde_json::Value =
-                    op_plugins::state_plugins::workflows_plugin::dispatch_workflows_method(
-                        method, &args,
-                    )
-                    .await?;
-                // A `start_workflow` accepted through this sealed surface is
-                // the event that owns a workstack run; the reactive runner
-                // (no timers, no polls) executes its `params.steps` ledger
-                // under the starter's verified identity session.
-                if method == "start_workflow"
-                    && let Some(execution_id) =
-                        result.get("execution_id").and_then(serde_json::Value::as_str)
-                {
-                    let workflow_id = result
-                        .get("workflow_id")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or_default();
-                    let steps: Vec<String> = args
-                        .get("params")
-                        .and_then(|params| params.get("steps"))
-                        .and_then(serde_json::Value::as_array)
-                        .map(|entries| {
-                            entries
-                                .iter()
-                                .filter_map(serde_json::Value::as_str)
-                                .map(str::to_string)
-                                .collect()
-                        })
-                        .unwrap_or_default();
-                    crate::workstack_runner::enqueue(
-                        execution_id,
-                        workflow_id,
-                        steps,
-                        actor_id,
-                        session_id,
-                        session_genesis,
-                    );
-                }
-                result
+                crate::workstack_runner::dispatch(
+                    self,
+                    method,
+                    &args,
+                    actor_id,
+                    session_id,
+                    session_genesis,
+                )
+                .await?
             }
             "identity_sled" => {
                 let args = serde_json::to_value(&parsed_value)?;
@@ -4168,6 +4194,27 @@ impl MutationEngine {
             "software" => {
                 let args = serde_json::to_value(&parsed_value)?;
                 op_plugins::state_plugins::software::dispatch_software_method(method, &args).await?
+            }
+            "threetched_fs" => {
+                let args = serde_json::to_value(&parsed_value)?;
+                let output = if method == "get_receipt" {
+                    let request: op_state_store::method_receipt::GetMethodReceiptInput =
+                        serde_json::from_value(args)?;
+                    serde_json::to_value(
+                        self.recover_method_receipt(&request.operation_id, actor_id, session_id)
+                            .await?,
+                    )?
+                } else {
+                    op_plugins::state_plugins::threetched_fs::dispatch(method, &args)?
+                };
+                self.publish_plugin_projection_state(
+                    plugin_id,
+                    op_plugins::state_plugins::threetched_fs::protocol_value()?,
+                    ChangeType::PropertySet,
+                    true,
+                )
+                .await?;
+                output
             }
             "procfs" => {
                 let _observation = self.lock_host_observation().await;
@@ -4746,29 +4793,14 @@ impl MutationEngine {
                         &admitted_schema,
                     )
                     .await?;
-                if crate::memory_binding::is_memory_method(method)
-                    || matches!(method, "code_search" | "code_context" | "code_index")
-                    || op_plugins::state_plugins::cognitive_agents::method_by_name(method).is_some()
-                    || matches!(
-                        method,
-                        "specialist"
-                            | "rust_pro"
-                            | "python_pro"
-                            | "typescript_pro"
-                            | "sequential_thinking"
-                            | "context_manager"
-                            | "code_review_orchestrator"
-                    )
-                {
-                    let declaration = admitted_schema
-                        .methods
-                        .get(method)
-                        .context("admitted cognitive method is absent")?;
-                    crate::method_contract_admission::validate_admitted_output(
-                        declaration,
-                        &result,
-                    )?;
-                }
+                let declaration = admitted_schema
+                    .methods
+                    .get(method)
+                    .context("admitted cognitive method is absent")?;
+                crate::method_contract_admission::validate_admitted_output(
+                    declaration,
+                    &result,
+                )?;
                 result
             }
             "oscal_subid_registry" => {
@@ -6795,26 +6827,28 @@ impl MutationEngine {
         admitted_schema: &op_state_store::PluginSchema,
     ) -> anyhow::Result<serde_json::Value> {
         if method == "invoke_tool" {
-            let target = args
+            let requested = args
                 .get("tool_name")
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or_default();
-            if let Some(catalog) =
-                op_plugins::state_plugins::cognitive_agents::method_by_name(target)
-            {
-                let required = catalog
-                    .declaration
+            let mut arguments = args
+                .get("arguments")
+                .cloned()
+                .unwrap_or_else(|| serde_json::json!({}));
+            let target = canonical_generic_cognitive_target(requested, &mut arguments)?;
+            anyhow::ensure!(
+                requested != "cognitive_memory" || admitted_schema.methods.contains_key(target),
+                "generic memory target is absent from the admitted schema"
+            );
+            if let Some(declaration) = admitted_schema.methods.get(target) {
+                let required = declaration
                     .required_capability
                     .as_deref()
-                    .context("agent requires exact capability")?;
+                    .context("target requires exact capability")?;
                 anyhow::ensure!(
                     crate::interceptor::load_capability_grants(caller.actor_id).contains(required),
-                    "generic invocation does not grant the target agent capability"
+                    "generic invocation does not grant the target capability"
                 );
-                let arguments = args
-                    .get("arguments")
-                    .cloned()
-                    .unwrap_or_else(|| serde_json::json!({}));
                 let envelope = self
                     .dispatch_method_call_with_identity(
                         "cognitive_mcp",
@@ -6827,7 +6861,7 @@ impl MutationEngine {
                     )
                     .await?;
                 return Ok(
-                    serde_json::json!({"success":true,"tool_name":target,"result":envelope.get("result").unwrap_or(&envelope)}),
+                    serde_json::json!({"success":true,"tool_name":requested,"result":envelope.get("result").unwrap_or(&envelope)}),
                 );
             }
         }
@@ -6890,6 +6924,12 @@ impl MutationEngine {
                 .into_iter()
                 .filter_map(|descriptor| serde_json::to_value(descriptor).ok())
                 .filter_map(project_sealed_cognitive_tool_descriptor)
+                .filter_map(|descriptor| {
+                    descriptor
+                        .get("name")
+                        .and_then(|name| name.as_str())
+                        .map(str::to_owned)
+                })
                 .collect::<Vec<_>>();
             return Ok(serde_json::json!({ "tools": descriptors }));
         }
@@ -6935,24 +6975,32 @@ impl MutationEngine {
             .map_err(|error| anyhow::anyhow!("OSCAL subid task failed: {error}"))?;
         }
 
-        // `toolsets` is admitted and audited here exactly once. The bridge
-        // computes the principal/grant-specific projection after this common
-        // MutationEngine boundary; the policy result is never authority.
+        // Admission and the actual policy result share this boundary for every
+        // transport. The stateless selector is never identity/grant authority.
         if method == "toolsets" {
-            return Ok(serde_json::json!({ "admitted": true }));
+            return crate::mcp_frontend::canonical_toolsets_result(self, caller.actor_id, args)
+                .await;
         }
 
         if method == "workflow_query" {
-            return op_plugins::state_plugins::workflows_plugin::dispatch_workflows_method(
+            return crate::workstack_runner::dispatch(
+                self,
                 "query_workflows",
                 args,
+                caller.actor_id,
+                caller.session_id,
+                caller.session_genesis,
             )
             .await;
         }
         if method == "workflow_run" {
-            return op_plugins::state_plugins::workflows_plugin::dispatch_workflows_method(
+            return crate::workstack_runner::dispatch(
+                self,
                 "start_workflow",
                 args,
+                caller.actor_id,
+                caller.session_id,
+                caller.session_genesis,
             )
             .await;
         }
@@ -7042,16 +7090,50 @@ impl MutationEngine {
                 )
                 .await;
         }
+        if method == "invoke_tool" {
+            return Ok(serde_json::json!({
+                "success": true,
+                "tool_name": args.get("tool_name").and_then(|name| name.as_str()).unwrap_or_default(),
+                "result": value
+            }));
+        }
         Ok(value)
     }
 }
 
+/// Normalize implementation-only memory operations into admitted public methods.
+fn canonical_generic_cognitive_target<'a>(
+    requested: &'a str,
+    arguments: &mut serde_json::Value,
+) -> anyhow::Result<&'a str> {
+    anyhow::ensure!(
+        requested != "invoke_tool",
+        "recursive generic invocation is forbidden"
+    );
+    if requested != "cognitive_memory" {
+        return Ok(requested);
+    }
+    let operation = arguments
+        .get("operation")
+        .and_then(|v| v.as_str())
+        .context("generic memory invocation requires operation")?;
+    let target = match operation {
+        "store" => "memory_store",
+        "retrieve" => "memory_retrieve",
+        "query" => "memory_query",
+        "semantic_query" => "memory_semantic_query",
+        "delete" => "memory_delete",
+        "list_namespaces" => "memory_list_namespaces",
+        _ => anyhow::bail!("generic memory operation has no admitted public method"),
+    };
+    if let Some(object) = arguments.as_object_mut() {
+        object.remove("operation");
+    }
+    Ok(target)
+}
+
 /// Project a runtime tool candidate through the sealed cognitive PluginSchema.
-///
-/// A tool is callable only when its public name is itself a declared schema
-/// method and its implementation candidates exactly match that method's
-/// capability and OSCAL subid. Dynamic, multiplexed, and implementation-only
-/// tools therefore remain registered for internal use but fail closed at MCP.
+/// Implementation-only tools remain internal unless their exact authority matches.
 fn project_sealed_cognitive_tool_descriptor(
     mut candidate: serde_json::Value,
 ) -> Option<serde_json::Value> {
@@ -7151,17 +7233,7 @@ fn map_schema_method_to_tool(
         "code_search" => Ok(("code_search".into(), base)),
         "code_index" => Ok(("code_index".into(), base)),
         "code_context" => Ok(("code_context".into(), base)),
-        // Gemini question answering: the tool names the field `question`.
-        "gemini_query" => {
-            let mut v = base.clone();
-            if let Some(obj) = v.as_object_mut()
-                && let Some(q) = obj.remove("query")
-            {
-                obj.insert("question".to_string(), q);
-            }
-            Ok(("ask_question".into(), v))
-        }
-        "register_tool" => Ok(("register_tool".into(), base)),
+        "gemini_query" => Ok(("gemini_query".into(), base)),
         // Generic door: the caller names the tool.
         "invoke_tool" => {
             let tool_name = args
@@ -7189,6 +7261,71 @@ fn map_schema_method_to_tool(
 #[cfg(test)]
 mod cognitive_dispatch_tests {
     use super::{map_schema_method_to_tool, project_sealed_cognitive_tool_descriptor};
+
+    #[test]
+    fn generic_memory_routes_through_public_methods_and_rejects_unbound_operations() {
+        for (operation, target) in [
+            ("store", "memory_store"),
+            ("delete", "memory_delete"),
+            ("query", "memory_query"),
+            ("semantic_query", "memory_semantic_query"),
+            ("retrieve", "memory_retrieve"),
+            ("list_namespaces", "memory_list_namespaces"),
+        ] {
+            let mut args = serde_json::json!({"operation":operation,"key":"k"});
+            assert_eq!(
+                super::canonical_generic_cognitive_target("cognitive_memory", &mut args).unwrap(),
+                target
+            );
+            assert!(args.get("operation").is_none());
+        }
+        for operation in ["ensure_soul", "stats", "unknown"] {
+            assert!(
+                super::canonical_generic_cognitive_target(
+                    "cognitive_memory",
+                    &mut serde_json::json!({"operation":operation})
+                )
+                .is_err()
+            );
+        }
+        assert!(
+            super::canonical_generic_cognitive_target("invoke_tool", &mut serde_json::json!({}))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn cognitive_discovery_contracts_reject_admission_placeholders_and_descriptor_objects() {
+        let schema = op_plugins::cognitive_mcp_plugin_schema();
+        let validate = crate::method_contract_admission::validate_admitted_output;
+        assert!(
+            validate(
+                &schema.methods["toolsets"],
+                &serde_json::json!({"admitted":true})
+            )
+            .is_err()
+        );
+        assert!(
+            validate(
+                &schema.methods["list_tools"],
+                &serde_json::json!({"tools":[{"name":"gemini_query"}]})
+            )
+            .is_err()
+        );
+        validate(
+            &schema.methods["list_tools"],
+            &serde_json::json!({"tools":["gemini_query"]}),
+        )
+        .unwrap();
+        validate(
+            &schema.methods["toolsets"],
+            &serde_json::json!({
+                "operation":"list", "toolset_generation":1, "relist_required":false,
+                "result":{"sets":[]}
+            }),
+        )
+        .unwrap();
+    }
 
     #[test]
     fn tool_authority_is_projected_only_from_an_exact_sealed_method() {
@@ -7375,6 +7512,11 @@ mod private_method_audit_tests {
                 r#"{"question":"private code"}"#,
             ),
             ("persona", "execute", r#"{"query":"private code"}"#),
+            (
+                "workflows",
+                "start_workflow",
+                r#"{"workflow_id":"deploy","params":{"steps":["agent.operation|{private credentials}"]}}"#,
+            ),
             ("tched_router", "Chat", r#"{"message":"private message"}"#),
         ] {
             let audit = audit_method_arguments(plugin, method, input, None);

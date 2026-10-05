@@ -1,0 +1,183 @@
+{
+  "source_files": [
+    {
+      "sha256": "b1b31b4008cf0513c00e23f1b09570ebd2851ae1e8edc626cad3f7e23fa59630",
+      "path": "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs"
+    },
+    {
+      "sha256": "cba7d11c358e011d58767e53f9cdae5f451ac8dd06a2c17ec2156a286d5d43f4",
+      "path": "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/request.rs"
+    },
+    {
+      "sha256": "09eb6d57411c29d23f28d19c0709e3c59ce19e2bf7f14bdf9c46f44cc31f59f3",
+      "path": "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/session.rs"
+    },
+    {
+      "sha256": "c2ff1353afaa7291c87f0a40ca4d65c183133cc6ffd4dc57cc16eef7ad1620eb",
+      "path": "crates/op-blob/src/blob.rs"
+    },
+    {
+      "sha256": "80f067e5598ad88e424ca96861eec43e44b90351cc63e18f4298c9d428cf5c80",
+      "path": "crates/op-blob/src/catalog.rs"
+    },
+    {
+      "sha256": "22c60c25b41b1ac9f7677008c872a509ded9aa24f6c0363a56bb728de6f187d0",
+      "path": "crates/op-blob/src/identity.rs"
+    },
+    {
+      "sha256": "245a578f509fc4682502d5d80a5e76dcec3ee4588f7db397c3319e45eb8ea561",
+      "path": "crates/op-blob/src/lib.rs"
+    },
+    {
+      "sha256": "52042299ff89361f744c423e2215c1eca026c647e58c6b3cfcca094e5f373515",
+      "path": "crates/op-core/src/identity_projection_transaction.rs"
+    },
+    {
+      "sha256": "dc28bf6bfa9e99dd435e7605ec5fa1051165998ff9c360aa38a7bd0307ec9077",
+      "path": "crates/op-core/src/projection_shm.rs"
+    },
+    {
+      "sha256": "928240ff74fd8486354491cc8b31b18c19321b8b0bb25b8d802f0aded64a76d5",
+      "path": "crates/op-core/src/projection_transactions.rs"
+    },
+    {
+      "sha256": "0c1738789b3d078bbb3cd4948c342d211d9528e37ab5de1d7677abd1686391f1",
+      "path": "crates/op-cozo-store/src/runtime_document_transactions.rs"
+    },
+    {
+      "sha256": "9fc05dc5308c309ea6371d2889bfd126a920feebc0ecae9d97cb37f4a5b16a26",
+      "path": "crates/op-grpc-bridge/src/lungs_socket.rs"
+    },
+    {
+      "sha256": "c3b95658d450f241011eade7a000a8c08f64f0f6c68bcb994852d74239cf23ca",
+      "path": "crates/op-grpc-bridge/src/method_receipt_audit.rs"
+    },
+    {
+      "sha256": "8599ca0de7f13cdf5437b11374a853bdb54a78abb55b97b5cd091b8d8cbba613",
+      "path": "crates/op-grpc-bridge/src/mutation_engine.rs"
+    },
+    {
+      "sha256": "6ef8da351c5861be9081261c749ac969e7cf958e891cc59d6c5cc7bfb9e4a450",
+      "path": "crates/op-grpc-bridge/src/owned_method_task.rs"
+    },
+    {
+      "sha256": "2692193aa7a88cb6b6500e3c40a94a5c47c19890df971b547c26bb7814bf6f9d",
+      "path": "crates/op-grpc-bridge/src/schema_router.rs"
+    },
+    {
+      "sha256": "3c82d3e1358dfd919231a5885468bc9e442044e44191f22cd4fd05c8bbb5a5cf",
+      "path": "crates/op-grpc-bridge/src/state_tree_fold.rs"
+    },
+    {
+      "sha256": "12b253adbc51b280a457eccd019174cff8107e10a42f70d4b419bd2233bcc891",
+      "path": "crates/op-plugins/src/bin/opblob.rs"
+    },
+    {
+      "sha256": "eaddddc37de952f8fb2092f41a385a23136669d845566484eb2fb94c2895fb3e",
+      "path": "crates/op-plugins/src/state_plugins/runtime_documents.rs"
+    },
+    {
+      "sha256": "3b2f39d0416fd36013d70243af3ec48e37ceaaab1ca6f19e28bb72ae50fe809e",
+      "path": "crates/op-plugins/src/state_plugins/threetched_fs.rs"
+    },
+    {
+      "sha256": "17a9ff1ce5f612a953025a1287ccc6a6ea7cd4f5ad04840fcb3f0a3161ccde49",
+      "path": "crates/op-state-store/Cargo.toml"
+    },
+    {
+      "sha256": "b1079a93337ed851b4888307a313f32175a0b16d54447714ea659da5b8baf34b",
+      "path": "crates/op-state-store/src/event_chain.rs"
+    },
+    {
+      "sha256": "65940c2b1daffeab9867c9dab5ef8b668775a38bfe889a75e04a37914f66c395",
+      "path": "crates/op-state-store/src/method_receipt.rs"
+    },
+    {
+      "sha256": "359e328c190c3847231ecdb87449fd95fde53741a063cfc0c1d0b262359e8f17",
+      "path": "crates/op-state-store/src/plugin_schema.rs"
+    },
+    {
+      "sha256": "c649f87cc0c979713261d738de708a0175dec601c23897e40c358d1370ac2362",
+      "path": "crates/op-state-store/src/public_state.rs"
+    },
+    {
+      "sha256": "71122379896ff949f8f83bc66381d1273834c7855a07e79ea7cf412fe7ec05a3",
+      "path": "crates/threetched-fs/Cargo.toml"
+    },
+    {
+      "sha256": "4a9f8c9e345aff0e792e79d6204e964b573a497a9ebbef09c77221cec1e5c983",
+      "path": "crates/threetched-fs/examples/typed_export.rs"
+    },
+    {
+      "sha256": "fdd3cb70e87f49b1d0fc86856867f1996ab6066a03a5c6d74858bade19f4a667",
+      "path": "crates/threetched-fs/examples/typed_generate.rs"
+    },
+    {
+      "sha256": "d7f2d0c0360b0304755bc434132ad5f94cf79a99c833ec4a91fbf2a22236aadd",
+      "path": "crates/threetched-fs/examples/typed_specialize.rs"
+    },
+    {
+      "sha256": "74e0f6a829e19c880809dece6bed764c861a8f8c7a7ef1d02b9983dbe1e7bdcd",
+      "path": "crates/threetched-fs/src/dispatch.rs"
+    },
+    {
+      "sha256": "a0edfd2ac2ff0b5b99387917ccdf6fa72fed9b9adeaf2d5a39681efba169f369",
+      "path": "crates/threetched-fs/src/fuse_buffers.rs"
+    },
+    {
+      "sha256": "47bfd1378781799631595e14275a1b814f0a0ae72f8cc2980526ed82066a4006",
+      "path": "crates/threetched-fs/src/fuse_fs.rs"
+    },
+    {
+      "sha256": "d4cd88eae9735a6de23582a909b4e1c9101120b356926b8a78252e74e4542b0c",
+      "path": "crates/threetched-fs/src/main.rs"
+    },
+    {
+      "sha256": "f5661e0bb50222085b3b975110d23f7f2316bd935851ecba7b515ac370f4d90b",
+      "path": "crates/threetched-fs/src/mcp.rs"
+    },
+    {
+      "sha256": "4bc7b17bd49f1c564ba1efb97182421f8b958a339ecc32fb65e42e76a3a241c0",
+      "path": "crates/threetched-fs/src/model.rs"
+    },
+    {
+      "sha256": "2a83fd89057d38da2fec7ced8af159c18eed6857644a3f1a5417bc8d8988cab8",
+      "path": "crates/threetched-fs/src/mounted.rs"
+    },
+    {
+      "sha256": "a6de2fdd90ad11b5106cce9bd7150f46ab0f83715754ac73781c252498b90a77",
+      "path": "crates/threetched-fs/src/namespace.rs"
+    },
+    {
+      "sha256": "24f3cd2ef38c40fdf9217f3a47a7eccb9620ec29ee50125e1c326777f0ae7a32",
+      "path": "crates/threetched-fs/src/source.rs"
+    },
+    {
+      "sha256": "943f3bbd29a1cef8caa3f9c135f72479935dfed5abfed29e93b260498c088ffb",
+      "path": "crates/threetched-fs/src/store.rs"
+    },
+    {
+      "sha256": "8fe9e13560cb345b35b46c0ba62d1466579da0dabc7c2ea1e22cc78449725f89",
+      "path": "crates/threetched-fs/src/typed_runtime.rs"
+    },
+    {
+      "sha256": "bf120b2884a97302bee15e5b7c143840ecdc9a4492828f242d5d82316aa41d05",
+      "path": "deploy/config/container-socket-contract.schema.json"
+    },
+    {
+      "sha256": "0732c7bdce1cad547c5a7bc757724a238bb95fa73ca754bd99719bbfcdf26f2c",
+      "path": "deploy/runit/threetched-fs/run"
+    }
+  ],
+  "source_hash_algorithm": "SHA-256",
+  "assembly_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+  "schema_version": "2.0.1",
+  "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+  "derivation": "fs-core-20261005 working-tree source. source_commit identifies the unchanged checkout baseline; source_files pins current authored implementation. Generated review exports are outputs, not authorities.",
+  "pin_exclusions": [
+    "Plugin-owned embedded contract excludes itself to avoid a self-hash cycle; its canonical sealed document supplies exact identity.",
+    "Derived docs and typed_bindings.rs are outputs and excluded from source input pins."
+  ],
+  "citation_policy": "Current source refs remapped through stable Rust function/type anchors after scoped formatting. verification.historical/authority.import/runtime_observations preserve prior revision citations and are historical only.",
+  "latest_source_refresh": "2.0.1 source follow-up: canonical audit proof hashes are 32 lowercase hexadecimal characters; FUSE startup/static traversal avoids SHM, live data discovery reads only the addressed committed plugin; mounted describe enumerates declarations from the assigned identity namespace. No tests/build/deployment verified by this contract update."
+}

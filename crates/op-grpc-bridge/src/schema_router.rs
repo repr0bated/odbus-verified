@@ -805,6 +805,9 @@ impl SchemaBackedInterface {
     /// This validation happens before dispatch, so invalid args cause no mutation
     /// (Requirement 6.3 / VAL-VALIDATE-003).
     fn validate_json_args(&self, method_decl: &JsonValue, json_args: &str) -> Result<(), String> {
+        if json_args.len() > op_state_store::method_receipt::MAX_METHOD_ARGUMENT_BYTES {
+            return Err("arguments exceed 1 MiB".into());
+        }
         let args_schema = method_decl
             .get("args")
             .ok_or_else(|| "missing args schema".to_string())?;
@@ -830,6 +833,17 @@ impl SchemaBackedInterface {
         method: String,
         json_args: String,
         identity: Option<&GhostbridgeIdentity>,
+    ) -> zbus::fdo::Result<String> {
+        self.dispatch_call_for_identity_operation(method, json_args, identity, None)
+            .await
+    }
+
+    async fn dispatch_call_for_identity_operation(
+        &self,
+        method: String,
+        json_args: String,
+        identity: Option<&GhostbridgeIdentity>,
+        operation_id: Option<&str>,
     ) -> zbus::fdo::Result<String> {
         let method_decl = match self.route.methods.get(&method) {
             Some(decl) => decl,
@@ -876,8 +890,19 @@ impl SchemaBackedInterface {
                 "MutationEngine not wired to this interface — dispatch unavailable".to_string(),
             )
         })?;
-        let result = engine
-            .dispatch_method_call_with_identity(
+        let dispatch = if let Some(operation_id) = operation_id {
+            engine.dispatch_method_call_with_operation_id(
+                &self.plugin_id,
+                &method,
+                &json_args,
+                required_cap,
+                &identity.principal_id,
+                Some(&identity.session_id),
+                Some(&identity.session_genesis),
+                operation_id,
+            )
+        } else {
+            engine.dispatch_method_call_with_identity(
                 &self.plugin_id,
                 &method,
                 &json_args,
@@ -886,6 +911,8 @@ impl SchemaBackedInterface {
                 Some(&identity.session_id),
                 Some(&identity.session_genesis),
             )
+        };
+        let result = dispatch
             .await
             .map_err(|error| zbus::fdo::Error::Failed(error.to_string()))?;
 
@@ -955,6 +982,52 @@ impl SchemaBackedInterface {
             .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
         self.dispatch_call_for_identity(method, json_args, Some(&identity))
             .await
+    }
+
+    /// Same admission as Call, with caller-scoped correlation retained before
+    /// submission. This identifier is never identity or capability evidence.
+    async fn call_with_operation_id(
+        &self,
+        method: String,
+        json_args: String,
+        operation_id: String,
+        #[zbus(header)] header: Header<'_>,
+    ) -> zbus::fdo::Result<String> {
+        let parsed = uuid::Uuid::parse_str(&operation_id)
+            .map_err(|_| zbus::fdo::Error::InvalidArgs("invalid operation id".into()))?;
+        if parsed.to_string() != operation_id {
+            return Err(zbus::fdo::Error::InvalidArgs(
+                "noncanonical operation id".into(),
+            ));
+        }
+        if let Some(lungs) = &self.lungs_identity {
+            let identity = lungs
+                .resolve()
+                .await
+                .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
+            return self
+                .dispatch_call_for_identity_operation(
+                    method,
+                    json_args,
+                    Some(&identity),
+                    Some(&operation_id),
+                )
+                .await;
+        }
+        let resolver = self.identity_resolver.as_ref().ok_or_else(|| {
+            zbus::fdo::Error::AccessDenied("D-Bus identity resolver is not available".into())
+        })?;
+        let identity = resolver
+            .resolve(&header)
+            .await
+            .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
+        self.dispatch_call_for_identity_operation(
+            method,
+            json_args,
+            Some(&identity),
+            Some(&operation_id),
+        )
+        .await
     }
 
     /// Get a property value from SHM present-state.

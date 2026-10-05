@@ -69,6 +69,8 @@ sha2 = { workspace = true }
 [dev-dependencies]
 # Isolated protocol fixtures use paired sockets, never the host's system bus.
 zbus = { workspace = true, features = ["p2p"] }
+prost = { workspace = true }
+prost-reflect = { workspace = true }
 
 [[bin]]
 name = "opblob"

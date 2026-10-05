@@ -403,6 +403,20 @@ struct MutationEngineMcpBackend {
     test_grants: Option<Arc<std::sync::RwLock<HashMap<String, HashSet<String>>>>>,
 }
 
+/// Common canonical result for every transport, including identity-bound FUSE.
+/// The installed policy owner and freshly loaded principal grants remain the
+/// authority; selection returns a stateless selector, never a persistent grant.
+pub(crate) async fn canonical_toolsets_result(
+    engine: &MutationEngine,
+    principal_id: &str,
+    arguments: &Value,
+) -> anyhow::Result<Value> {
+    let backend =
+        MutationEngineMcpBackend::new(Arc::new(engine.clone()), engine.mcp_policy_owner()?);
+    let grants = backend.current_grants(principal_id);
+    backend.toolsets_result(&grants, arguments).await
+}
+
 impl MutationEngineMcpBackend {
     fn new(engine: Arc<MutationEngine>, policy: Arc<McpPolicyOwner>) -> Self {
         let blob_catalog_dir = blob_catalog_dir_from_env();
@@ -714,10 +728,9 @@ impl MutationEngineMcpBackend {
 
     async fn toolsets_result(
         &self,
-        caller: &AuthenticatedCaller,
+        grants: &HashSet<String>,
         arguments: &Value,
     ) -> anyhow::Result<Value> {
-        let grants = self.current_grants(&caller.principal_id);
         let policy = self.policy.snapshot();
         let mut schemas = HashMap::new();
         let operation = arguments
@@ -727,7 +740,7 @@ impl MutationEngineMcpBackend {
         let mut projected = Vec::new();
         for set in &policy.toolsets.sets {
             let authorized_count = self
-                .authorized_toolset_tools_without_health(set, &grants, &mut schemas)
+                .authorized_toolset_tools_without_health(set, grants, &mut schemas)
                 .await?
                 .len();
             if authorized_count == 0 {
@@ -761,7 +774,7 @@ impl MutationEngineMcpBackend {
                     anyhow::bail!("provider_unavailable: {}", set.provider);
                 }
                 let tools = self
-                    .authorized_toolset_tools(set, &grants, &mut schemas)
+                    .authorized_toolset_tools(set, grants, &mut schemas)
                     .await?;
                 if tools.is_empty() {
                     anyhow::bail!("AccessDenied: no authorized tools in toolset '{id}'");
@@ -826,11 +839,7 @@ impl MutationEngineMcpBackend {
                 required_capability,
             )
             .await?;
-        if name == "toolsets" {
-            self.toolsets_result(caller, &arguments).await
-        } else {
-            Ok(admitted)
-        }
+        Ok(admitted)
     }
 }
 

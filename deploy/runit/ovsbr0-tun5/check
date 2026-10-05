@@ -1,0 +1,10 @@
+#!/bin/sh
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-}"
+[ -f /run/opdbus/runit-ready/ovsbr0-tun5 ] || exit 1
+set -a
+[ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf
+set +a
+BRIDGE="${BRIDGE:-ovsbr0}"
+TUN_PORT="${OVS_TUN_PORT:-tun5}"
+cur=$(/usr/local/libexec/3tched/ovsdb-port port-to-br "$TUN_PORT" 2>/dev/null) || exit 1
+[ "$cur" = "$BRIDGE" ]

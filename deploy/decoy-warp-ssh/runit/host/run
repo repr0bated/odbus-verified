@@ -8,4 +8,8 @@ jq -e '.role == "host"' "$config" >/dev/null
 mkdir -p /run/op-warp-ssh
 /usr/local/libexec/op-warp-ssh/endpoint.sh up
 /usr/local/libexec/op-warp-ssh/admission.sh install
+# The administrative daemon may have started before tun5's private address.
+# Reload only its listeners after the owned address and firewall are ready;
+# existing SSH sessions survive HUP. If it has not started, it will bind later.
+sv hup sshd >/dev/null 2>&1 || true
 exec /usr/bin/sshd -D -e -f /etc/op-dbus/warp-ssh-sshd.conf

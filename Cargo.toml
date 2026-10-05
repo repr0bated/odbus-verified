@@ -258,6 +258,9 @@ tempfile.workspace = true
 # Vendored: adds OF1.5 packet_type match (OXM 0x8000/44) — upstream rovs-openflow 0.2.0 lacks it.
 # Needed so op-of-controller can install the netmaker L3-port encap flow itself.
 rovs-openflow = { path = "vendor/rovs-openflow" }
+# Vendored same-version fix: compare JSON objects by key, independent of
+# serde_json's insertion order when the workspace enables preserve_order.
+jsonschema = { path = "vendor/jsonschema" }
 
 # ── Build profiles ───────────────────────────────────────────────────────────
 # Added 2026-09-01. There was no [profile.*] section at all, so everything ran

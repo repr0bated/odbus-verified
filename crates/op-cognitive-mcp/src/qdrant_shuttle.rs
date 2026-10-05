@@ -1,8 +1,8 @@
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use op_state_store::{FieldType, PluginSchema};
 use qdrant_client::qdrant::{
-    Condition, Filter, PointStruct, QueryPointsBuilder, RetrievedPoint, ScoredPoint,
-    ScrollPointsBuilder, UpsertPointsBuilder,
+    Condition, DeletePointsBuilder, Filter, PointStruct, QueryPointsBuilder, RetrievedPoint,
+    ScoredPoint, ScrollPointsBuilder, UpsertPointsBuilder,
 };
 use qdrant_client::{Payload, Qdrant};
 use reqwest::Client;
@@ -239,10 +239,10 @@ impl QdrantSemanticShuttle {
         let point = PointStruct::new(point_id.into(), vector, payload);
 
         self.client
-            .upsert_points(UpsertPointsBuilder::new(
-                self.user_memory_collection.clone(),
-                vec![point],
-            ))
+            .upsert_points(
+                UpsertPointsBuilder::new(self.user_memory_collection.clone(), vec![point])
+                    .wait(true),
+            )
             .await
             .with_context(|| {
                 format!(
@@ -258,6 +258,22 @@ impl QdrantSemanticShuttle {
             "User memory upserted to Qdrant"
         );
 
+        Ok(())
+    }
+
+    /// Semantic search over user_memory scoped to a container_id
+    pub async fn delete_user_memory(&self, container_id: &str, entry_key: &str) -> Result<()> {
+        self.client
+            .delete_points(
+                DeletePointsBuilder::new(self.user_memory_collection.clone())
+                    .points(Filter::must([
+                        Condition::matches("container_id", container_id.to_string()),
+                        Condition::matches("entry_key", entry_key.to_string()),
+                    ]))
+                    .wait(true),
+            )
+            .await
+            .context("failed to remove scoped semantic memory; Cozo entry retained")?;
         Ok(())
     }
 
@@ -423,7 +439,13 @@ impl VoyageClient {
             .unwrap_or(DEFAULT_VOYAGE_OUTPUT_DIMENSION);
 
         Ok(Self {
-            client: Client::new(),
+            // Memory operations hold their consistency guard while embedding.
+            // A stalled provider must not retain that guard indefinitely.
+            client: Client::builder()
+                .connect_timeout(std::time::Duration::from_secs(5))
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .context("failed to construct bounded Voyage HTTP client")?,
             api_url,
             api_key,
             model,

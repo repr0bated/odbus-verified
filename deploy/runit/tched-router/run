@@ -2,6 +2,43 @@
 exec 2>&1
 set -eu
 
+# This root-controlled opt-in is deliberately absent from default releases.
+# Session selectors are operator input, never credentials or model arguments.
+filesystem_marker=/etc/op-dbus/native-filesystem.enabled
+filesystem_session_file=/etc/op-dbus/human-lungs-session
+filesystem_root=/run/mount/3tchedFS-native
+filesystem_root_receipt=/etc/op-dbus/native-filesystem.allowed-root-owned
+filesystem_enabled=false
+protected_filesystem_file() {
+    [ -f "$1" ] && [ ! -L "$1" ] || return 1
+    set -- $(stat -c '%u %a' "$1")
+    [ "$1" = 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; }
+}
+unset OPDBUS_FILESYSTEM_ROOT OPDBUS_FILESYSTEM_SESSION OPDBUS_FILESYSTEM_READ_HELPER
+set --
+if [ -e "$filesystem_marker" ] || [ -L "$filesystem_marker" ]; then
+    [ ! -L /etc/op-dbus ] && [ "$(stat -c '%u %a' /etc/op-dbus)" = '0 755' ] || exit 78
+    protected_filesystem_file "$filesystem_marker" || { echo 'tched-router: unprotected filesystem opt-in marker' >&2; exit 78; }
+    [ "$(wc -c <"$filesystem_marker")" -le 6 ] || exit 78
+    case "$(cat "$filesystem_marker")" in
+        true) filesystem_enabled=true ;;
+        false) ;;
+        *) echo 'tched-router: filesystem opt-in marker must contain true or false' >&2; exit 78 ;;
+    esac
+fi
+if [ "$filesystem_enabled" = true ]; then
+    [ "$(id -u jeremy)" = 1001 ] || exit 78
+    protected_filesystem_file "$filesystem_session_file" || { echo 'tched-router: unprotected human session source' >&2; exit 78; }
+    [ "$(wc -c <"$filesystem_session_file")" -le 37 ] || exit 78
+    OPDBUS_FILESYSTEM_ROOT=$filesystem_root
+    OPDBUS_FILESYSTEM_SESSION=$(cat "$filesystem_session_file")
+    OPDBUS_FILESYSTEM_READ_HELPER=1
+    printf '%s' "$OPDBUS_FILESYSTEM_SESSION" | jq -Re 'test("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")' >/dev/null || exit 78
+    export OPDBUS_FILESYSTEM_ROOT OPDBUS_FILESYSTEM_SESSION OPDBUS_FILESYSTEM_READ_HELPER
+    set -- OPDBUS_FILESYSTEM_ROOT="$OPDBUS_FILESYSTEM_ROOT" \
+        OPDBUS_FILESYSTEM_SESSION="$OPDBUS_FILESYSTEM_SESSION" OPDBUS_FILESYSTEM_READ_HELPER=1
+fi
+
 # Keep only public service settings across the first exec. The shared
 # environment file can contain unrelated provider credentials; none of those
 # become ambient input to the router daemon.
@@ -22,7 +59,7 @@ if [ "${TCHED_ROUTER_SANITIZED:-}" != 1 ]; then
         TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER="${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}" \
         OPDBUS_SLED_AUTH_URL="${OPDBUS_SLED_AUTH_URL:-https://10.0.0.2:8090/mcp}" \
         OPDBUS_SLED_CA_FILE="${OPDBUS_SLED_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}" \
-        /bin/sh "$0" --sanitized
+        "$@" /bin/sh "$0" --sanitized
 fi
 
 CONFIG_DIR=${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}
@@ -86,6 +123,40 @@ for risk in control_plane accountability; do
       {op:"add",path:($p+"/block_high_risk_commands"),value:true}
     ]' | native_config patch - >/dev/null
 done
+
+# The native config owner applies one compare-and-swap of this exact list.
+# An ownership receipt distinguishes our addition from a pre-existing root.
+if [ "$filesystem_enabled" = true ] || [ -e "$filesystem_root_receipt" ] || [ -L "$filesystem_root_receipt" ]; then
+    [ ! -L /etc/op-dbus ] && [ "$(stat -c '%u %a' /etc/op-dbus)" = '0 755' ] || exit 78
+    if [ -e "$filesystem_root_receipt" ] || [ -L "$filesystem_root_receipt" ]; then
+        protected_filesystem_file "$filesystem_root_receipt" || exit 78
+        [ "$(cat "$filesystem_root_receipt")" = "$filesystem_root" ] || exit 78
+    fi
+    roots=$(native_config get risk_profiles.control_plane.allowed_roots --json | jq -ce '.value | arrays | select(all(.[]; type == "string"))')
+    if [ "$filesystem_enabled" = true ]; then
+        [ "$(findmnt -rn -M "$filesystem_root" -o FSTYPE)" = fuse.3tchedFS ] || { echo 'tched-router: native filesystem mount is not ready' >&2; exit 78; }
+        jq -e --arg session "$OPDBUS_FILESYSTEM_SESSION" '.mount_identity.kind == "host_session" and .mount_identity.session == $session and .local_call_owner_uid == 1001 and .workspace_id == null' "$filesystem_root/.3tchedfs.json" >/dev/null || exit 78
+        if ! printf '%s' "$roots" | jq -e --arg root "$filesystem_root" 'index($root) != null' >/dev/null; then
+            # Record intent before the atomic native patch, so interrupted
+            # startup can still roll back only this exact added permission.
+            receipt_tmp=$(mktemp /etc/op-dbus/.native-filesystem-root.XXXXXX)
+            chmod 0600 "$receipt_tmp"
+            printf '%s\n' "$filesystem_root" >"$receipt_tmp"
+            mv -f "$receipt_tmp" "$filesystem_root_receipt"
+            jq -n --argjson roots "$roots" --arg root "$filesystem_root" '[
+                {op:"test",path:"/risk_profiles/control_plane/allowed_roots",value:$roots},
+                {op:"replace",path:"/risk_profiles/control_plane/allowed_roots",value:($roots + [$root])}
+            ]' | native_config patch - >/dev/null
+        fi
+    elif [ -e "$filesystem_root_receipt" ]; then
+        jq -n --argjson roots "$roots" --arg root "$filesystem_root" '[
+            {op:"test",path:"/risk_profiles/control_plane/allowed_roots",value:$roots},
+            {op:"replace",path:"/risk_profiles/control_plane/allowed_roots",value:($roots | map(select(. != $root)))}
+        ]' | native_config patch - >/dev/null
+        rm -f "$filesystem_root_receipt"
+    fi
+    unset roots receipt_tmp
+fi
 # OpenCode Go, an upstream provider like OpenRouter. Chat-completions and
 # Responses models use the native `opencode` provider at /zen/go/v1;
 # Messages-API models use the native `anthropic` provider, which posts to

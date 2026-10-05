@@ -87,10 +87,11 @@ pub fn blobify_plugin_schema_with_identity(
     identity: Option<BlobIdentity>,
 ) -> PluginObjectBlob {
     schema.name = blob::canonical_plugin_id(plugin_id);
-    let canonical_value =
-        serde_json::to_value(&schema).expect("op-state-store PluginSchema serializes");
-    // serde_json's Map is BTreeMap-backed (no `preserve_order`), so this is
-    // deterministic key-sorted canonical JSON.
+    let canonical_value = blob::canonicalize_json_object_keys(
+        serde_json::to_value(&schema).expect("op-state-store PluginSchema serializes"),
+    );
+    // Explicitly sort object keys because serde_json's `preserve_order`
+    // feature may be enabled elsewhere in the workspace.
     let canonical_json =
         serde_json::to_string(&canonical_value).expect("canonical value serializes");
     let working: PluginSchema = serde_json::from_value(canonical_value)

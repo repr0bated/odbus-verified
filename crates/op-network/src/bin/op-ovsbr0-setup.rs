@@ -4,6 +4,8 @@
 //! unixctl socket to stop the daemon cleanly.  No ovs-vsctl/ovsdb-client shell
 //! commands are used.  `ovs-dpctl del-dp` is used only while vswitchd is down
 //! to clear stale kernel datapath state.
+//! The SSH/MASQUE interface `tun5` is always included as a system port;
+//! its creation and addresses remain owned by the tunnel service.
 //!
 //! Environment variables:
 //!   BRIDGE         OVS bridge name          (default: ovsbr0)
@@ -649,10 +651,10 @@ async fn main() -> Result<()> {
         None => info!("bridge {} not found in OVSDB", cfg.bridge),
     }
 
-    // The physical uplink (when configured) rides in the same create
-    // transact — see create_bridge_system.
-    let mut seed_ports: Vec<&str> = Vec::new();
-    if !cfg.uplink.is_empty() {
+    // The SSH/MASQUE tunnel and optional physical uplink ride in the same
+    // create transact as system ports — see create_bridge_system.
+    let mut seed_ports: Vec<&str> = vec!["tun5"];
+    if !cfg.uplink.is_empty() && cfg.uplink != "tun5" {
         seed_ports.push(cfg.uplink.as_str());
     }
     let shared_mac = resolve_shared_mac(&cfg);
@@ -758,8 +760,8 @@ async fn main() -> Result<()> {
     // ── 4. Idempotent port adds for a pre-existing bridge ────────────────────
     // (On the create path these are no-ops: the ports were enslaved inside
     // the create transact.)
-    if !cfg.uplink.is_empty() {
-        add_port(&mut client, &cfg.bridge, &cfg.uplink).await?;
+    for port in &seed_ports {
+        add_port(&mut client, &cfg.bridge, port).await?;
     }
 
     // ── 5. Bring ports up (ip link is a network utility, not an OVS tool) ────

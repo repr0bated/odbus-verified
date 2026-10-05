@@ -1,0 +1,112 @@
+{
+  "format": "opdbus.notebook-sync-repair.v1",
+  "task_id": "fs-core-20261005",
+  "board": "OD-51",
+  "generated_at": "2026-10-05T21:28:27Z",
+  "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+  "status": "implemented-source-not-deployed",
+  "release": {
+    "selected": "releases/20261005T194135Z-26a4ad1-fs",
+    "hold": "Grok source freeze received; combined compilation/preparation pending, no new activation",
+    "prepared_golden_requires_refresh": true
+  },
+  "observations": {
+    "mounted_plugin": {
+      "name": "notebooklm",
+      "version": "5.0.0",
+      "method_count": 47,
+      "evidence": "/var/tmp/fs-core-20261005-notebooklm-mounted-schema.json"
+    },
+    "saved_state": {
+      "groups": 57,
+      "verified_sources": 404,
+      "pending": 1,
+      "retired": 3,
+      "plan_chunks": 405,
+      "missing_original_gaps": 305,
+      "evidence": "metadata-only jq reads of existing .grouped-sync/remote-state.json and plan.json"
+    },
+    "old_service": {
+      "helper": "/usr/local/libexec/3tched/notebook-sources-sync-up",
+      "checkout": "/srv/git/odbus",
+      "last_retained_log": "2026-09-10T03:22:46Z: no notebook id; skipped ingest",
+      "logger_mismatch": "run requested s6log, existing log directory/files owned by svlog",
+      "action": "Stopped only notebook-sources-sync at 2026-10-05T21:19:38Z; old loop remains stopped until reviewed received activation"
+    }
+  },
+  "implementation": [
+    {
+      "name": "mounted_transport_only",
+      "source_refs": [
+        "scripts/uv-tools/notebook_sync.py:463",
+        "scripts/notebook-sources-sync-up:1",
+        "scripts/notebook-sync:1"
+      ],
+      "details": "Installed helper with exact configured session and mount; schema/receipt validation; no credential reader or backend transport fallback"
+    },
+    {
+      "name": "durable_resumption",
+      "source_refs": [
+        "scripts/uv-tools/notebook_sync.py:281",
+        "scripts/uv-tools/notebook_sync.py:310",
+        "scripts/uv-tools/notebook_sync.py:795"
+      ],
+      "details": "Drain frozen plan; durable intent before mutation; completed receipts or typed recovery locators; no blind retry; keep old sources until replacements readable"
+    },
+    {
+      "name": "bounded_cycle",
+      "source_refs": [
+        "scripts/uv-tools/notebook_sync.py:784",
+        "scripts/uv-tools/notebook_sync.py:795"
+      ],
+      "details": "Serial calls,128-call admission budget,15-minute admission deadline,250-second per-call timeout; a final admitted call may finish after the cycle admission deadline"
+    },
+    {
+      "name": "received_service",
+      "source_refs": [
+        "deploy/runit/notebook-sources-sync/run:1",
+        "deploy/runit/notebook-sources-sync/check:1",
+        "deploy/runit/notebook-sources-sync/log/run:1",
+        "deploy/runit/build-golden.sh:616"
+      ],
+      "details": "Received code, existing mutable data, protected explicit human selector and approved UID1001 mount;0 complete/2 pending/other failure; svlog logger; stop forwards termination to active sync process"
+    },
+    {
+      "name": "dependency_readiness",
+      "source_refs": [
+        "deploy/runit/notebook-sources-sync/run:30",
+        "deploy/runit/threetched-fs-native/check:1"
+      ],
+      "details": "Use supervised sv check readiness; native FUSE service does not publish the legacy ready flag. Dependency observation does not start deliberately stopped services."
+    }
+  ],
+  "permission_scope": {
+    "local_uid": 1001,
+    "mount": "/run/mount/3tchedFS-native",
+    "approval": "Existing scoped native mount approval; owner additionally requests sync repair",
+    "native_router_autonomy": "readonly unchanged",
+    "backend_grants": "unchanged",
+    "sync_mutations": "existing notebooklm.invoke under selected human, only owned grouped corpus"
+  },
+  "verification": {
+    "source_review": "completed for candidate; not execution proof",
+    "tests": "not run; separate owner-assigned testing agent",
+    "live_sync": "unverified; repair not deployed",
+    "google_authentication": "unverified",
+    "old_pending_processing": "unverified"
+  },
+  "limitations": [
+    "Grok source freeze and mounted catalog startup-state dependency must be reconciled before combined release",
+    "Unknown creation receipts or inconclusive upload/deletion evidence need explicit scoped reconciliation; no automatic mutation retry",
+    "Provider-normalized content may prevent exact SHA256 recovery of a lost upload response",
+    "Existing305exports lack original raw transcripts; no inferred reconstruction",
+    "Stopping a client cannot roll back an already admitted backend operation; durable intent remains for reconciliation"
+  ],
+  "next_actions": [
+    "Integrate frozen Grok sources and refresh source-backed contract, generated bindings and builds",
+    "Prepare full golden including repaired sync scripts and scoped native run candidate",
+    "Transfer immutable release by Btrfs send/receive and activate approved native mount",
+    "Select received sync service/log/check/finish and compatibility helper links, preserve data and grants, then deliberately restart sync",
+    "Verify exact receipts and authoritative source state; tests remain separate owner responsibility"
+  ]
+}

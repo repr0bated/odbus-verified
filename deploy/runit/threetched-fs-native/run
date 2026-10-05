@@ -1,0 +1,46 @@
+#!/bin/sh
+# Optional host-native lungs; operator approval and explicit enablement required.
+set -eu
+exec 2>&1
+marker=/etc/op-dbus/native-filesystem.enabled
+session_file=/etc/op-dbus/human-lungs-session
+mountpoint=/run/mount/3tchedFS-native
+THREETCHED=/opt/op-dbus/current/bin/threetched-fs
+catalog=/opt/op-dbus/current/var/lib/opdbus/plugin-blobs
+store=/dev/shm/3tchedfs-native
+state=/dev/shm/opdbus/state
+lungs=/run/opdbus/lungs/lungs.sock
+
+protected_file() {
+    [ -f "$1" ] && [ ! -L "$1" ] || return 1
+    set -- $(stat -c '%u %a' "$1")
+    [ "$1" = 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; }
+}
+[ ! -L /etc/op-dbus ] && [ "$(stat -c '%u %a' /etc/op-dbus)" = '0 755' ] || exit 78
+if [ ! -e "$marker" ] && [ ! -L "$marker" ]; then
+    exec pause
+fi
+protected_file "$marker" || { echo 'unprotected native filesystem opt-in marker' >&2; exit 78; }
+[ "$(wc -c <"$marker")" -le 6 ] || exit 78
+case "$(cat "$marker")" in
+    true) ;;
+    false) exec pause ;;
+    *) echo 'native filesystem opt-in marker must contain true or false' >&2; exit 78 ;;
+esac
+[ "$(id -u jeremy)" = 1001 ] || { echo 'native filesystem owner UID changed' >&2; exit 78; }
+protected_file "$session_file" || { echo 'unprotected human lungs session source' >&2; exit 78; }
+[ "$(wc -c <"$session_file")" -le 37 ] || exit 78
+session=$(cat "$session_file")
+printf '%s' "$session" | jq -Re 'test("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")' >/dev/null || exit 78
+[ -x "$THREETCHED" ] && [ -r "$catalog/.manifest.json" ] || exit 78
+for ancestor in /run /run/mount; do
+    [ ! -L "$ancestor" ] && [ "$(stat -c '%u %a' "$ancestor")" = '0 755' ] || exit 78
+done
+[ ! -L "$mountpoint" ] && [ ! -L "$store" ] || exit 78
+[ -z "$(findmnt -rn -M "$mountpoint" -o FSTYPE)" ] || { echo 'native filesystem mount already occupied' >&2; exit 78; }
+install -d -o root -g root -m 0755 "$mountpoint"
+install -d -o root -g root -m 0700 "$store"
+"$THREETCHED" --store "$store" capture --schema-only --catalog "$catalog" --state "$state" >/dev/null
+exec "$THREETCHED" --store "$store" mount --allow-other --call-owner-uid 1001 \
+    --auto-unmount --state "$state" --catalog /dev/shm/opdbus/plugin-blobs \
+    --lungs-socket "$lungs" --lungs-session "$session" "$mountpoint"

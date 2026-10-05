@@ -1,0 +1,76 @@
+{
+  "format": "opdbus.orchestration-audit.v1",
+  "task_id": "fs-core-20261005",
+  "observed_at": "2026-10-05T22:02:00Z",
+  "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+  "status": "source-reviewed-runtime-unverified",
+  "owner_correction": "Workflow and workstack are distinct. Their contracts, execution semantics and completion evidence must remain separate. Workflow fixes do not demonstrate workstack correctness.",
+  "surfaces": [
+    {
+      "concept": "named_workflow",
+      "entry": ["workflows.start_workflow", "cognitive_mcp.workflow_run"],
+      "executor": "bridge workstack_runner (legacy module name; named workflow owner)",
+      "status": "source repaired; compilation pending; no new activation",
+      "source_refs": ["crates/op-plugins/src/state_plugins/workflows_plugin.rs:30", "crates/op-grpc-bridge/src/mutation_engine.rs:3878", "crates/op-grpc-bridge/src/mutation_engine.rs:6996"]
+    },
+    {
+      "concept": "cognitive_workflow_composition",
+      "entry": "catalog agent run_workflow",
+      "executor": "agent_workflow",
+      "semantics": "Structured child steps, conditions and context; exact caller identity and per-child canonical admission",
+      "source_refs": ["crates/op-grpc-bridge/src/agent_catalog_dispatch.rs:111", "crates/op-grpc-bridge/src/agent_workflow.rs:45"]
+    },
+    {
+      "concept": "phased_workstack",
+      "entry": "registered WorkstackService RPC facade",
+      "executor": "op-chat WorkstackExecutor",
+      "definition": "Workstack has phases, variables, required_agents and optional timeout; phases declare dependencies, conditions, rollback, continue_on_failure and phase timeout",
+      "backing": "runtime_documents owner, document key workflows, workstacks field; shared document location does not equate the concepts",
+      "status": "separately audited; implementation unchanged; live definitions/use unverified",
+      "source_refs": ["crates/op-chat/src/orchestration/workstack_executor.rs:32", "crates/op-chat/src/orchestration/workstack_executor.rs:86", "crates/op-grpc-bridge/src/workstack_service.rs:278", "crates/op-grpc-bridge/src/grpc_server.rs:1223"]
+    },
+    {
+      "concept": "op_web_agent_adapters",
+      "entry": "HTTP agent routes",
+      "behavior": "Mutation adapters forward identity to sealed methods but route capability middleware deliberately returns 403; listings use templates and legacy registry rather than scoped execution history",
+      "source_refs": ["crates/op-web/src/handlers/agents.rs:109", "crates/op-web/src/middleware/security.rs:41", "crates/op-web/src/middleware/security.rs:50"]
+    },
+    {
+      "concept": "legacy_op_web_orchestrator",
+      "entry": "/ws",
+      "behavior": "Source route reaches local UnifiedOrchestrator; connection session is randomly generated and tools execute directly rather than through verified plugin admission",
+      "source_refs": ["crates/op-web/src/routes/mod.rs:291", "crates/op-web/src/websocket.rs:49", "crates/op-web/src/websocket.rs:59", "crates/op-web/src/websocket.rs:145", "crates/op-web/src/orchestrator/execution.rs:30"]
+    }
+  ],
+  "remaining_findings": [
+    {
+      "id": "legacy-websocket-unbound-tool-loop",
+      "priority": "high",
+      "status": "not fixed by this audit",
+      "repair_direction": "Require supported verified canonical admission for this surface or disable the legacy local tool route; do not map arbitrary remote callers into an existing human mount",
+      "source_refs": ["crates/op-web/src/routes/mod.rs:291", "crates/op-web/src/orchestrator/execution.rs:30"]
+    },
+    {
+      "id": "workstack-not-projected-as-plugin-methods",
+      "priority": "high",
+      "status": "not fixed by named workflow changes",
+      "repair_direction": "Give workstack operations a plugin-owned typed admission contract and identity-bound filesystem projection while preserving workstack phases and control semantics",
+      "source_refs": ["crates/op-grpc-bridge/src/grpc_server.rs:1223", "crates/op-grpc-bridge/src/workstack_service.rs:278"]
+    },
+    {
+      "id": "workstack-lifetime-state-and-cancellation",
+      "priority": "high",
+      "status": "not fixed by named workflow changes",
+      "repair_direction": "Bound active workstack lifetime state, persist scoped execution/control evidence through its owner, distinguish cancelled from unknown effects and commit authoritative state before progress notifications",
+      "source_refs": ["crates/op-chat/src/orchestration/workstack_executor.rs:445", "crates/op-chat/src/orchestration/workstack_executor.rs:624", "crates/op-chat/src/orchestration/workstack_executor.rs:631"]
+    }
+  ],
+  "validation": {
+    "source_review": "completed; parent verified source definitions, registration, backing and cancellation",
+    "tests": "not run; assigned separately by owner",
+    "runtime": "unverified; no workstack operation or exploit probe submitted",
+    "deployment": "new changes not activated",
+    "caches_added": false,
+    "permissions_changed": false
+  }
+}

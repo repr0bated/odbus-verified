@@ -3,14 +3,13 @@
 //! Unified web server for op-dbus-v2.
 
 use anyhow::Context;
-use std::future::IntoFuture;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use op_web::AppState;
 use op_web::routes;
+use op_web::AppState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -53,18 +52,41 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .unwrap_or(8080);
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    info!("Listening on http://{}", addr);
-    info!("WebSocket available at ws://{}/ws", addr);
-    info!("API available at http://{}/api", addr);
-
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    let http = axum::serve(
-        listener,
-        app.clone()
-            .into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .into_future();
+    // Door and page segment addresses on tun5 (comma-separated). Never bind 0.0.0.0.
+    let bind_hosts =
+        std::env::var("OP_WEB_BIND_ADDR").unwrap_or_else(|_| "10.0.0.2,10.0.0.4".to_string());
+    let mut listeners = Vec::new();
+    for bind_host in bind_hosts
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
+        let bind_ip: std::net::IpAddr = bind_host
+            .parse()
+            .with_context(|| format!("parsing OP_WEB_BIND_ADDR entry={bind_host}"))?;
+        let addr = SocketAddr::new(bind_ip, port);
+        info!("Listening on http://{}", addr);
+        info!("WebSocket available at ws://{}/ws", addr);
+        info!("API available at http://{}/api", addr);
+        listeners.push(tokio::net::TcpListener::bind(addr).await?);
+    }
+    let http_servers = async {
+        let mut set = tokio::task::JoinSet::new();
+        for listener in listeners {
+            let app = app.clone();
+            set.spawn(async move {
+                axum::serve(
+                    listener,
+                    app.into_make_service_with_connect_info::<SocketAddr>(),
+                )
+                .await
+            });
+        }
+        while let Some(result) = set.join_next().await {
+            result??;
+        }
+        Ok::<(), anyhow::Error>(())
+    };
 
     // Optional HTTPS listener for the same router, such as the page address
     // 10.0.0.4:443 with its internal-CA certificate. A configured bind without
@@ -73,7 +95,7 @@ async fn main() -> anyhow::Result<()> {
         .ok()
         .filter(|value| !value.trim().is_empty())
     else {
-        http.await?;
+        http_servers.await?;
         return Ok(());
     };
     let tls_addr: SocketAddr = tls_bind
@@ -95,8 +117,8 @@ async fn main() -> anyhow::Result<()> {
     info!("Listening on https://{}", tls_addr);
 
     tokio::select! {
-        result = http => result?,
-        result = op_grpc_bridge::serve_upgradeable_tcp(tls_listener, tls, app) => result?,
+        result = http_servers => result?,
+        result = op_grpc_bridge::serve_upgradeable_tcp(tls_listener, tls, app.clone()) => result?,
     }
     Ok(())
 }
