@@ -204,8 +204,10 @@ pub async fn call_as_identity(
 }
 
 /// Dispatch over the bridge's shared lungs socket. The connection first binds
-/// to this identity's session, so no credential crosses it, and the call runs
-/// through MutationEngine as that identity under its own grants.
+/// to this identity's session, so no credential crosses it. An empty session
+/// calls the no-argument container bootstrap; the bridge derives identity
+/// from its kernel peer and native Incus binding. A named session uses the
+/// host-root-only bootstrap. Both run through the identity's own grants.
 pub async fn call_over_socket(
     socket: &Path,
     session: &str,
@@ -237,14 +239,15 @@ pub async fn call_over_socket(
     )
     .await
     .map_err(|error| LungsError::Transport(format!("lungs bind proxy: {error}")))?;
-    let bound: bool =
-        lungs
-            .call("Bind", &(session,))
-            .await
-            .map_err(|error| match refusal(&error) {
-                true => LungsError::Registration(error.to_string()),
-                false => LungsError::Transport(format!("bind: {error}")),
-            })?;
+    let binding = if session.is_empty() {
+        lungs.call("BindCurrentContainer", &()).await
+    } else {
+        lungs.call("Bind", &(session,)).await
+    };
+    let bound: bool = binding.map_err(|error| match refusal(&error) {
+        true => LungsError::Registration(error.to_string()),
+        false => LungsError::Transport(format!("bind: {error}")),
+    })?;
     if !bound {
         return Err(LungsError::Registration(
             "bridge declined to bind this session".into(),

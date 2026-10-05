@@ -114,11 +114,11 @@ enum Command {
         #[arg(long, conflicts_with_all = ["workspace", "lungs_socket"])]
         lungs_credential: Option<PathBuf>,
         /// Mount as one identity's lungs, dispatching every `call` write over
-        /// the bridge's shared lungs socket bound to --lungs-session. No
-        /// credential is stored.
-        #[arg(long, conflicts_with = "workspace", requires = "lungs_session")]
+        /// the bridge's shared lungs socket. Without --lungs-session the
+        /// bridge derives the current container identity from its kernel peer.
+        #[arg(long, conflicts_with = "workspace")]
         lungs_socket: Option<PathBuf>,
-        /// The session these lungs breathe for (with --lungs-socket).
+        /// Host root only: the session these lungs breathe for.
         #[arg(long, requires = "lungs_socket")]
         lungs_session: Option<String>,
         #[arg(long, default_value = DEFAULT_BUS_ADDRESS)]
@@ -160,13 +160,13 @@ enum Command {
     },
 }
 
-/// An identity's lungs: the shared lungs socket bound to its session, or
-/// its SID1 on its own device.
+/// An identity's lungs: the shared socket authenticates the current container
+/// unless host root explicitly supplies a session.
 #[derive(Debug, Args, Clone)]
 struct LungsArgs {
-    #[arg(long, requires = "lungs_session", conflicts_with = "lungs_credential")]
+    #[arg(long, conflicts_with = "lungs_credential")]
     lungs_socket: Option<PathBuf>,
-    /// The session this identity breathes for (with --lungs-socket).
+    /// Host root only: the session this identity breathes for.
     #[arg(long, requires = "lungs_socket")]
     lungs_session: Option<String>,
     /// The identity's SID1 on its own device, registered per call.
@@ -538,4 +538,53 @@ fn input_json(inline: Option<&str>, file: Option<&PathBuf>) -> Result<Value> {
 fn print_json(value: &impl Serialize) -> Result<()> {
     println!("{}", serde_json::to_string_pretty(value)?);
     Ok(())
+}
+
+#[cfg(test)]
+mod cli_tests {
+    use super::*;
+
+    #[test]
+    fn guest_mcp_socket_requires_no_session_input() {
+        let cli = Cli::try_parse_from([
+            "threetched-fs",
+            "--store",
+            "/usr/share/op-dbus/lungs-view",
+            "mcp",
+            "--lungs-socket",
+            "/run/opdbus/lungs/lungs.sock",
+            "--all",
+        ])
+        .unwrap();
+        let Command::Mcp { lungs, .. } = cli.command else {
+            panic!("MCP command expected")
+        };
+        let Some(Lungs::Socket { session, .. }) = lungs.lungs() else {
+            panic!("socket expected")
+        };
+        assert!(session.is_empty());
+    }
+
+    #[test]
+    fn host_session_still_requires_socket_and_preserves_selected_identity() {
+        assert!(
+            Cli::try_parse_from(["threetched-fs", "mcp", "--lungs-session", "session"]).is_err()
+        );
+        let cli = Cli::try_parse_from([
+            "threetched-fs",
+            "mcp",
+            "--lungs-socket",
+            "/run/opdbus/lungs/lungs.sock",
+            "--lungs-session",
+            "session",
+        ])
+        .unwrap();
+        let Command::Mcp { lungs, .. } = cli.command else {
+            panic!("MCP command expected")
+        };
+        let Some(Lungs::Socket { session, .. }) = lungs.lungs() else {
+            panic!("socket expected")
+        };
+        assert_eq!(session, "session");
+    }
 }

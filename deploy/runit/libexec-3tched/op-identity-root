@@ -434,11 +434,17 @@ seed_super() {
     printf '%s\n' "$ss" | awk '$1 == "fsid" {print $2; exit}'
 }
 seed_verify_source() {
-    # Duplicate seed FSIDs make by-uuid aliases ambiguous once views exist.
-    # The physical partition ID stays distinct from every loop view.
     seed_device=$(readlink -f -- "${OP_IDENTITY_SEED_DEVICE:-/dev/disk/by-partuuid/${OP_IDENTITY_SEED_PARTUUID:-911b270a-a88f-48cd-bf9c-9dcac4cdefe8}}")
     [ -b "$seed_device" ] || seed_fail "seed is not a block device"
     [ "$(blockdev --getro "$seed_device")" = 1 ] || seed_fail "physical seed block device is not enforced read-only"
+    seed_verify_source_identity
+}
+seed_verify_source_identity() {
+    # Duplicate seed FSIDs make by-uuid aliases ambiguous once views exist.
+    # The physical partition ID stays distinct from every loop view.
+    seed_partuuid=${OP_IDENTITY_SEED_PARTUUID:-911b270a-a88f-48cd-bf9c-9dcac4cdefe8}
+    seed_device=$(readlink -f -- "${OP_IDENTITY_SEED_DEVICE:-/dev/disk/by-partuuid/$seed_partuuid}")
+    [ -b "$seed_device" ] || seed_fail "seed is not a block device"
     seed_secure_path "$(dirname -- "$seed_device")"
     [ "$(stat -c %u "$seed_device")" = 0 ] &&
         [ $((0$(stat -c %a "$seed_device") & 002)) -eq 0 ] || seed_fail "unsafe block device ownership or mode"
@@ -458,6 +464,33 @@ seed_verify_source() {
             [ "$source_fsid" = "$expected_seed_fsid" ] || seed_fail "default source is not the expected physical seed partition"
     fi
 }
+seed_readonly() (
+    # Host mount-owner maintenance: only restore the volatile kernel RO flag.
+    # Never convert a filesystem to SEEDING or alter any mount/member/leaf.
+    set -eu
+    umask 077
+    [ "$(id -u)" = 0 ] || seed_fail "operator seed-readonly requires root"
+    seed_shared_lock
+    seed_verify_source_identity
+    valid_session "$seed_partuuid" || seed_fail "invalid physical seed PARTUUID"
+    [ "$(readlink -f -- "/dev/disk/by-partuuid/$seed_partuuid")" = "$seed_device" ] ||
+        seed_fail "seed-readonly requires the expected physical PARTUUID"
+    devno=$(stat -c '%t:%T' "$seed_device")
+    major=${devno%:*} minor=${devno#*:}
+    [ -f "/sys/dev/block/$((0x$major)):$((0x$minor))/partition" ] ||
+        seed_fail "seed-readonly requires a physical partition"
+    case "$(readlink -f -- "/sys/dev/block/$((0x$major)):$((0x$minor))")" in
+        /sys/devices/virtual/*) seed_fail "seed-readonly refuses a virtual partition" ;;
+        /sys/devices/*) ;;
+        *) seed_fail "seed-readonly cannot verify the physical device path" ;;
+    esac
+    readonly_fsid=$source_fsid readonly_generation=$source_generation
+    blockdev --setro "$seed_device" || seed_fail "cannot enforce physical seed read-only"
+    seed_verify_source
+    [ "$source_fsid" = "$readonly_fsid" ] && [ "$source_generation" = "$readonly_generation" ] ||
+        seed_fail "seed changed while enforcing read-only"
+    log "physical shared seed verified and block read-only enforced"
+)
 seed_no_direct_mount() {
     # Resolve source aliases to block rdev; do not confuse distinct loop views
     # of the partition with a forbidden standalone physical-source mount.
@@ -528,7 +561,7 @@ seed_profile() (
     esac
     profile_json=$(incus query /1.0/profiles/3tched-lungs) || seed_fail "cannot read back 3tched-lungs profile"
     seed_profile_validate_json "$profile_json"
-    printf '3tched-lungs profile ready; shared socket calls remain subject to existing root-only authorization\n'
+    printf '3tched-lungs profile ready; shared socket calls require authenticated host or native container identity\n'
 )
 seed_image_helper_ready() {
     image_helper=${OP_IDENTITY_IMAGE_HELPER:-/usr/local/libexec/3tched/op-identity-image}
@@ -767,7 +800,7 @@ seed_boot_selection() {
 }
 seed_boot_name() {
     [ "$seed_name" = "$seed_session" ] || {
-        [ "$seed_name" = 3tchedCtlbot ] &&
+        [ "$seed_name" = 3tchedChatbot ] &&
             [ "$seed_session" = b0c777e3-0955-cd8b-3d01-ca12998cae28 ]
     } || seed_fail "boot completion requires canonical session name or the pinned chatbot"
 }
@@ -1267,6 +1300,10 @@ seed_mode() (
 command=${1:-status}
 [ "$#" -gt 0 ] && shift
 case $command in
+seed-readonly)
+    [ "$#" -eq 0 ] || { log "usage: $0 seed-readonly"; exit 2; }
+    seed_readonly
+    ;;
 seed-profile)
     [ "$#" -eq 0 ] || { log "usage: $0 seed-profile"; exit 2; }
     seed_profile

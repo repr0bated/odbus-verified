@@ -237,6 +237,7 @@ impl StatePlugin for IdentitySledPlugin {
         "identity_sled"
     }
 
+    // v4.5 adopts an externally prepared fresh container with same-key CAS.
     // v4.4.1 corrects storage lifecycle documentation: attachment is logical;
     // start/stop never mutates Btrfs membership. Wire fields are unchanged.
     // Plugin contract v4.4 adds a separately granted, credential-free own read.
@@ -244,7 +245,7 @@ impl StatePlugin for IdentitySledPlugin {
     // The native Device discriminants remain unchanged.
     // SID1, RECORD_FORMAT and durable identity record/revision formats do not change.
     fn version(&self) -> &str {
-        "4.4.1"
+        "4.6.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -296,7 +297,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "identity_sled",
-        "4.4.1",
+        "4.6.0",
         "Container identity sleds: the container is the sled is the identity; host is container zero; each record is seeded by its sealed blob",
         &root,
     );
@@ -370,10 +371,49 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         /// WireGuard public key (base64). session_id — and therefore the
         /// container name — is DERIVED from this, never supplied.
         pub wireguard_pubkey: String,
-        /// Digest of the root-owned, session-bound seeded storage plan. The
-        /// method never accepts native paths, instance overrides or devices.
+        /// Digest of the root-owned version-2 external adoption plan. The
+        /// bridge only verifies prepared storage/native state and atomically
+        /// writes fresh same-key records; it never composes or mounts roots.
         #[schemars(length(min = 64, max = 64), regex(pattern = "^[0-9a-f]{64}$"))]
         pub plan_sha256: String,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    #[serde(deny_unknown_fields)]
+    pub struct InspectProvisionPreflightInput {
+        pub wireguard_pubkey: String,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    #[serde(deny_unknown_fields)]
+    pub struct DeleteProvisionRecordInput {
+        pub wireguard_pubkey: String,
+        pub expected_revision: u64,
+        pub expected_revision_operation_id: String,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct DeleteProvisionRecordOutput {
+        pub session_id: String,
+        pub operation_id: String,
+        pub committed_revision: u64,
+        pub record_present: bool,
+        pub replayed: bool,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct InspectProvisionPreflightOutput {
+        pub session_id: String,
+        pub wireguard_pubkey: String,
+        pub expected_revision: u64,
+        pub expected_revision_operation_id: String,
+        pub previous_instance: Option<super::incus::IncusInstance>,
+        pub previous_instance_etag: String,
+        pub previous_native_instance: serde_json::Value,
+    }
+    #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+    pub struct ProvisionContainerOutput {
+        pub identity: ContainerIdentitySled,
+        pub plan_sha256: String,
+        pub operation_id: String,
+        pub committed_revision: u64,
+        pub replayed: bool,
     }
     /// The caller supplies only the digest of a root-owned, session-bound
     /// repair plan. Paths, Incus names, native request bodies and credentials
@@ -538,12 +578,26 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
     );
     schema.methods.insert(
         "provision_container".to_string(),
-        method_decl_from_schemars_with_output::<ProvisionContainerInput, GetIdentityOutput>(
+        method_decl_from_schemars_with_output::<ProvisionContainerInput, ProvisionContainerOutput>(
             "provision_container",
             SideEffect::Mutation,
             false,
             "identity_sled.write",
             "mut.service.identity-sled.container.provision@v2",
+        ),
+    );
+    schema.methods.insert(
+        "inspect_provision_preflight".to_string(),
+        method_decl_from_schemars_with_output::<InspectProvisionPreflightInput, InspectProvisionPreflightOutput>(
+            "inspect_provision_preflight", SideEffect::Read, true,
+            "identity_sled.write", "obs.service.identity-sled.container.provision-preflight@v1",
+        ),
+    );
+    schema.methods.insert(
+        "delete_provision_record".to_string(),
+        method_decl_from_schemars_with_output::<DeleteProvisionRecordInput, DeleteProvisionRecordOutput>(
+            "delete_provision_record", SideEffect::Mutation, true,
+            "identity_sled.write", "mut.service.identity-sled.provision-record.delete@v1",
         ),
     );
     schema.methods.insert(
@@ -650,7 +704,7 @@ pub(crate) fn identity_sled_schema() -> PluginSchema {
         "identity_sled.write".to_string(),
         op_state_store::CapabilityDecl {
             id: "identity_sled.write".to_string(),
-            description: "Grants: write_identity, provision_container, attach_btrfs_device, touch_session, record_session_event.".to_string(),
+            description: "Grants: write_identity, provision_container, inspect_provision_preflight, delete_provision_record, attach_btrfs_device, touch_session, record_session_event.".to_string(),
         },
     );
     schema.capabilities.insert(
@@ -788,7 +842,7 @@ mod tests {
     #[test]
     fn schema_has_method_surface() {
         let schema = identity_sled_schema();
-        assert_eq!(schema.version, "4.4.1");
+        assert_eq!(schema.version, "4.6.0");
         for method in [
             "get_identity",
             "get_own_identity",

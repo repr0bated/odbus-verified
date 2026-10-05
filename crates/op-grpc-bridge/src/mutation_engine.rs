@@ -795,6 +795,10 @@ impl MutationEngine {
                 anyhow::bail!("configured control-plane chatbot registry unavailable: {error:?}")
             }
         }
+        if crate::identity_sled_dispatch::chatbot_awaits_explicit_reprovision(self, &session_id).await? {
+            tracing::info!(%session_id, "configured chatbot record was explicitly deleted; awaiting provisioning");
+            return Ok(None);
+        }
         self.mint_and_store_genesis(&session_id, wireguard_pubkey)
             .await?;
         crate::identity_sled_dispatch::set_session_actor_class(self, &session_id, "service")
@@ -983,6 +987,10 @@ impl MutationEngine {
         if session_id.is_empty() {
             anyhow::bail!("session genesis requires a session_id");
         }
+        anyhow::ensure!(
+            !crate::identity_sled_dispatch::chatbot_awaits_explicit_reprovision(self, session_id).await?,
+            "explicitly deleted identity requires supported provisioning before minting"
+        );
         let existing_record =
             crate::identity_sled_dispatch::stored_session(self, session_id).await?;
         if let Some(existing) = existing_record

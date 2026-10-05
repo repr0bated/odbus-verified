@@ -62,7 +62,8 @@ struct OpenFile {
 /// How a lungs mount reaches the bridge.
 pub enum Lungs {
     /// The bridge's shared lungs socket. Each connection binds to this
-    /// identity's session before calling, so no credential is stored.
+    /// identity's session before calling, so no credential is stored. An empty
+    /// session requests kernel authentication of the current container.
     Socket { path: PathBuf, session: String },
     /// Register a SID1 read from the identity's device on the shared bus.
     Credential {
@@ -115,7 +116,9 @@ impl TypedFuse {
         lungs: Lungs,
     ) -> anyhow::Result<Self> {
         let mut namespace = Namespace::build_lungs(&store, target, &state_dir)?;
-        if let Lungs::Socket { session, .. } = &lungs {
+        if let Lungs::Socket { session, .. } = &lungs
+            && !session.is_empty()
+        {
             namespace.declare_socket_session(session)?;
         }
         Ok(Self::from_parts(store, namespace, Some(lungs)))
@@ -347,7 +350,9 @@ impl TypedFuse {
             state_dir.as_deref(),
             self.namespace.lungs,
         )?;
-        if let Some(Lungs::Socket { session, .. }) = &self.lungs {
+        if let Some(Lungs::Socket { session, .. }) = &self.lungs
+            && !session.is_empty()
+        {
             self.namespace.declare_socket_session(session)?;
         }
         Ok(())
@@ -1128,6 +1133,66 @@ mod tests {
             *self.0.lock().unwrap() = Some(session_id);
             true
         }
+
+        async fn bind_current_container(&self) -> bool {
+            *self.0.lock().unwrap() = Some("kernel-container".into());
+            true
+        }
+    }
+
+    #[test]
+    fn guest_socket_bootstrap_sends_no_session_and_returns_operation_receipt() {
+        let directory = tempdir().unwrap();
+        let socket = directory.path().join("lungs.sock");
+        let bound = std::sync::Arc::new(std::sync::Mutex::new(None));
+        let bound_by_server = bound.clone();
+        let listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let server = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            runtime.block_on(async move {
+                let listener = tokio::net::UnixListener::from_std(listener).unwrap();
+                let (stream, _) = listener.accept().await.unwrap();
+                let connection = zbus::connection::Builder::unix_stream(stream)
+                    .server(zbus::Guid::generate())
+                    .unwrap()
+                    .p2p()
+                    .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
+                    .serve_at("/org/opdbus/v1/plugins/demo", FixtureBridge)
+                    .unwrap()
+                    .serve_at("/org/opdbus/v1/lungs", FixtureLungs(bound_by_server))
+                    .unwrap()
+                    .build()
+                    .await
+                    .unwrap();
+                connection.closed().await;
+            });
+        });
+        let (_fixture, mut fs) = lungs_fixture_with(Lungs::Socket {
+            path: socket,
+            session: String::new(),
+        });
+        let ino = method_node(&fs, "call").ino;
+        fs.open_files.insert(
+            7,
+            OpenFile {
+                ino,
+                bytes: br#"{"event":"arrival"}"#.to_vec(),
+                dirty: true,
+                completed: None,
+            },
+        );
+        assert_eq!(fs.flush_handle(7), Ok(()));
+        let result = method_node(&fs, "result");
+        let receipt: Value =
+            serde_json::from_slice(&fs.read_bytes(result.ino, 0).unwrap()).unwrap();
+        assert_eq!(receipt["result"]["method"], "record_event");
+        assert_eq!(bound.lock().unwrap().as_deref(), Some("kernel-container"));
+        fs.refresh_namespace().unwrap();
+        server.join().unwrap();
     }
 
     #[test]

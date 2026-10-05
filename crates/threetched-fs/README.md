@@ -149,14 +149,21 @@ holds no credential, because the connection is the identity:
   "mcpServers": {
     "opdbus": {
       "command": "threetched-fs",
-      "args": ["mcp", "--lungs-socket", "/run/opdbus/lungs.sock",
-               "--lungs-session", "<session>"]
+      "args": ["--store", "/usr/share/op-dbus/lungs-view", "mcp",
+               "--state", "/usr/share/op-dbus/lungs-empty-state",
+               "--lungs-socket", "/run/opdbus/lungs/lungs.sock"]
     }
   }
 }
 ```
 
-(`--lungs-credential <SID1 path>` registers the identity's own SID1 instead.)
+Inside a provisioned container, omit `--lungs-session`: the bridge derives the
+identity from the socket's kernel peer process and the exact running Incus
+container binding. The schema-only store and empty state directory are prepared
+in the shared base; no private state or credential is captured there. `--view`
+selects a view hash in that store, not a mounted FUSE path. Host FUSE callers
+running as root in the bridge's own user and PID namespaces may additionally
+supply `--lungs-session <session>`.
 
 - **Tools**: every sealed method in the view, named `plugin__method`, with
   the sealed argument schema as its input schema. Read methods are marked

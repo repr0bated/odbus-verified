@@ -243,7 +243,7 @@ fn verify_creation_config(
     Ok(())
 }
 
-async fn target_key_is_registered(public_key: &str) -> Result<()> {
+pub(super) async fn target_key_is_registered(public_key: &str) -> Result<()> {
     let principal_id = op_identity::session::derive_principal_id(public_key);
     anyhow::ensure!(
         crate::human_principal_dispatch::resolve_key_for_assertion(public_key)
@@ -256,24 +256,30 @@ async fn target_key_is_registered(public_key: &str) -> Result<()> {
 }
 
 pub(super) struct ProvisionSealPin {
+    method: String,
     schema_hash: String,
     blob: op_blob::PluginObjectBlob,
 }
 
 pub(super) fn capture_provision_seal() -> Result<ProvisionSealPin> {
+    capture_method_seal("provision_container")
+}
+
+pub(super) fn capture_method_seal(method: &str) -> Result<ProvisionSealPin> {
     crate::method_contract_admission::admit_compiled_method(
         "identity_sled",
-        "provision_container",
+        method,
         Some(PROVISION_CAPABILITY),
     )?;
     let pinned = strict_identity_contract()?;
     Ok(ProvisionSealPin {
+        method: method.to_string(),
         schema_hash: pinned.schema_hash,
         blob: pinned.blob,
     })
 }
 
-async fn admit(
+pub(super) async fn admit(
     engine: &MutationEngine,
     store: &IdentitySledStore,
     actor: &str,
@@ -283,7 +289,7 @@ async fn admit(
 ) -> Result<()> {
     crate::method_contract_admission::admit_compiled_method(
         "identity_sled",
-        "provision_container",
+        &original.method,
         Some(PROVISION_CAPABILITY),
     )?;
     let current = strict_identity_contract()?;
@@ -309,7 +315,13 @@ async fn admit(
     );
     let revision = load_revision(store, actor_session_id).await?;
     let sled = revision_sled(&revision)?.context("provisioning caller identity disappeared")?;
-    super::root_repair::verify_current_repair_sid1(engine, &sled, actor, actor_genesis).await?;
+    // Humans have no per-account container (not scalable); their liveness is
+    // already proven above by the live session/genesis match. The stored-SID1
+    // self-instance check only makes sense for a principal that owns a
+    // container, so it stays scoped to non-human actors.
+    if sled.principal_kind.as_deref() != Some("human") {
+        super::root_repair::verify_current_repair_sid1(engine, &sled, actor, actor_genesis).await?;
+    }
     Ok(())
 }
 
@@ -704,6 +716,18 @@ pub(super) async fn provision_container(
     seal: ProvisionSealPin,
     operation_id: &str,
 ) -> Result<JsonValue> {
+    if super::root_repair::valid_digest(&input.plan_sha256) {
+        return super::clean_provision::provision(
+            engine,
+            store,
+            actor,
+            input,
+            seal,
+            operation_id,
+            false,
+        )
+        .await;
+    }
     let VerifiedIdentityActor {
         actor_id: actor,
         session_id: actor_session_id,

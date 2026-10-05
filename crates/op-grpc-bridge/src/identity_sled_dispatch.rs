@@ -37,11 +37,16 @@ mod physical_root;
 mod root_repair;
 #[path = "identity_seed_provision.rs"]
 mod seed_provision;
+#[path = "identity_clean_provision.rs"]
+mod clean_provision;
+#[path = "identity_delete_provision.rs"]
+mod delete_provision;
 
 pub(crate) struct IdentityRootStartGuard {
     should_start: bool,
     _legacy: Option<root_repair::RootStartGuard>,
     _physical: Option<physical_root::PhysicalRootGuard>,
+    _clean: Option<clean_provision::CleanRootGuard>,
 }
 
 impl From<root_repair::RootStartGuard> for IdentityRootStartGuard {
@@ -50,6 +55,7 @@ impl From<root_repair::RootStartGuard> for IdentityRootStartGuard {
             should_start: guard.should_start,
             _legacy: Some(guard),
             _physical: None,
+            _clean: None,
         }
     }
 }
@@ -59,7 +65,13 @@ impl From<physical_root::PhysicalRootGuard> for IdentityRootStartGuard {
             should_start: guard.should_start,
             _legacy: None,
             _physical: Some(guard),
+            _clean: None,
         }
+    }
+}
+impl From<clean_provision::CleanRootGuard> for IdentityRootStartGuard {
+    fn from(guard: clean_provision::CleanRootGuard) -> Self {
+        Self { should_start: guard.should_start, _legacy: None, _physical: None, _clean: Some(guard) }
     }
 }
 
@@ -366,7 +378,7 @@ fn sled_to_genesis(sled: &ContainerIdentitySled) -> GenesisInputsRecord {
     }
 }
 
-const CONTROL_PLANE_CHATBOT_CONTAINER: &str = "3tchedCtlbot";
+const CONTROL_PLANE_CHATBOT_CONTAINER: &str = "3tchedChatbot";
 
 fn configured_chatbot_key() -> Option<String> {
     std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY")
@@ -393,7 +405,7 @@ fn chatbot_binding_matches(
         })
 }
 
-fn identity_instance_matches(sled: &ContainerIdentitySled, instance: &IncusInstance) -> bool {
+pub(crate) fn identity_instance_matches(sled: &ContainerIdentitySled, instance: &IncusInstance) -> bool {
     (instance.name == sled.session_id && instance.instance_type == "container")
         || chatbot_binding_matches(
             sled,
@@ -1158,6 +1170,10 @@ async fn prepare_identity_root_start(
     sled: &mut ContainerIdentitySled,
     effector: &IdentityStorageVerifier,
 ) -> anyhow::Result<Option<IdentityRootStartGuard>> {
+    if let Some(guard) = clean_provision::guard_start(store, expected, sled).await? {
+        if let Some(device) = sled.btrfs_device.as_mut() { device.attached = true; }
+        return Ok(Some(guard.into()));
+    }
     let block_backed = sled
         .btrfs_device
         .as_ref()
@@ -1292,7 +1308,8 @@ async fn set_session_active_owned_with_verifier(
             let expected = load_revision(&store, &session_id).await?;
             let mut stopped =
                 revision_sled(&expected)?.ok_or_else(|| anyhow::anyhow!("identity disappeared"))?;
-            let root_observed =
+            let clean_observed = clean_provision::observe_power(&engine, &store, &expected, &stopped, "Stopped").await?;
+            let root_observed = if clean_observed.is_some() { clean_observed } else {
                 match physical_root::observe_power(&engine, &store, &expected, &stopped, "Stopped")
                     .await?
                 {
@@ -1304,7 +1321,8 @@ async fn set_session_active_owned_with_verifier(
                     .context(
                         "native stop completed but authoritative readback requires reconciliation",
                     )?,
-                };
+                }
+            };
             let seeded_observed = if root_observed.is_some() {
                 root_observed
             } else {
@@ -1337,7 +1355,8 @@ async fn set_session_active_owned_with_verifier(
     sled.active = true;
     sled.last_seen_at = now();
     if seeded_root_guard.is_some() {
-        let root_observed =
+        let clean_observed = clean_provision::observe_power(&engine, &store, &expected, &sled, "Running").await?;
+        let root_observed = if clean_observed.is_some() { clean_observed } else {
             match physical_root::observe_power(&engine, &store, &expected, &sled, "Running").await?
             {
                 Some(observed) => Some(observed),
@@ -1348,7 +1367,8 @@ async fn set_session_active_owned_with_verifier(
                 .context(
                     "native start completed but authoritative readback requires reconciliation",
                 )?,
-            };
+            }
+        };
         let observed = if let Some(observed) = root_observed {
             Some(observed)
         } else {
@@ -1403,6 +1423,12 @@ impl IdentityIncusTargetGuard {
         method: &str,
     ) -> anyhow::Result<Option<IdentityRootStartGuard>> {
         let revision = load_revision(&self.store, &self.session_id).await?;
+        if let Some(sled) = revision_sled(&revision)?
+            && let Some(guard) = clean_provision::guard_start(&self.store, &revision, &sled).await?
+        {
+            anyhow::ensure!(method == "exec_instance", "clean identity storage and lifecycle are identity-owned");
+            return Ok(Some(guard.into()));
+        }
         if let Some(sled) = revision_sled(&revision)?
             && let Some(guard) = physical_root::guard_start(&self.store, &revision, &sled).await?
         {
@@ -1563,6 +1589,12 @@ pub(crate) fn control_plane_chatbot_session_id() -> Option<String> {
         .ok()
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
+}
+
+pub(crate) async fn chatbot_awaits_explicit_reprovision(engine: &MutationEngine, session_id: &str) -> anyhow::Result<bool> {
+    let revision = load_revision(engine.identity_sled_store()?, session_id).await?;
+    Ok(revision.record.is_none() && revision.genesis.is_none()
+        && revision.operation_id.starts_with(&format!("delete-provision-{session_id}-")))
 }
 
 /// Bring up the control-plane chatbot container named by
@@ -2264,6 +2296,20 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
     session_id: Option<&str>,
     session_genesis: Option<&str>,
 ) -> anyhow::Result<JsonValue> {
+    if method == "delete_provision_record" {
+        let caller_session = session_id.filter(|s| !s.is_empty()).context("deletion requires a verified caller session")?.to_string();
+        let caller_genesis = session_genesis.filter(|s| !s.is_empty()).context("deletion requires a verified caller genesis")?.to_string();
+        let input: delete_provision::DeleteInput = serde_json::from_value(args.clone())?;
+        let seal = seed_provision::capture_method_seal(method)?;
+        let engine = engine.clone();
+        let store = engine.identity_sled_store()?.clone();
+        let actor_id = actor_id.to_string();
+        return tokio::spawn(async move {
+            delete_provision::delete(&engine, &store, VerifiedIdentityActor {
+                actor_id: &actor_id, session_id: &caller_session, genesis: &caller_genesis,
+            }, input, seal).await
+        }).await?;
+    }
     if method == "get_own_identity" {
         anyhow::ensure!(
             args.as_object().is_some_and(|object| object.is_empty()),
@@ -2388,15 +2434,20 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
         )
         .await;
     }
-    if method == "provision_container" {
+    if matches!(method, "provision_container" | "inspect_provision_preflight") {
         let caller_session = session_id
             .filter(|value| !value.is_empty())
             .ok_or_else(|| anyhow::anyhow!("seed provision requires a verified actor session"))?;
         let caller_genesis = session_genesis
             .filter(|value| !value.is_empty())
             .ok_or_else(|| anyhow::anyhow!("seed provision requires verified actor genesis"))?;
-        let input: seed_provision::ProvisionInput = serde_json::from_value(args.clone())?;
-        let seal = seed_provision::capture_provision_seal()?;
+        let input: seed_provision::ProvisionInput = if method == "provision_container" {
+            serde_json::from_value(args.clone())?
+        } else {
+            anyhow::ensure!(args.as_object().is_some_and(|object| object.len() == 1 && object.contains_key("wireguard_pubkey")), "invalid provision preflight arguments");
+            seed_provision::ProvisionInput { wireguard_pubkey: arg_str(args, "wireguard_pubkey"), plan_sha256: String::new() }
+        };
+        let seal = if method == "provision_container" { seed_provision::capture_provision_seal()? } else { seed_provision::capture_method_seal(method)? };
         let owned_engine = engine.clone();
         let owned_store = engine.identity_sled_store()?.clone();
         let actor_id = actor_id.to_string();
@@ -2404,8 +2455,14 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
         let caller_genesis = caller_genesis.to_string();
         let operation_id = opid("seed-provision");
         let owned_operation_id = operation_id.clone();
+        let preflight = method == "inspect_provision_preflight";
         return tokio::spawn(async move {
-            seed_provision::provision_container(
+            if !preflight {
+                return seed_provision::provision_container(&owned_engine, &owned_store, VerifiedIdentityActor {
+                    actor_id: &actor_id, session_id: &caller_session, genesis: &caller_genesis,
+                }, input, seal, &owned_operation_id).await;
+            }
+            clean_provision::provision(
                 &owned_engine,
                 &owned_store,
                 VerifiedIdentityActor {
@@ -2416,6 +2473,7 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
                 input,
                 seal,
                 &owned_operation_id,
+                preflight,
             )
             .await
         })
@@ -2952,6 +3010,16 @@ pub(crate) mod tests {
         expires_at: i64,
         transport_scope: Option<&str>,
     ) -> anyhow::Result<ContainerIdentitySled> {
+        write_identity_fixture(engine, pubkey, expires_at, transport_scope, "human").await
+    }
+
+    async fn write_identity_fixture(
+        engine: &MutationEngine,
+        pubkey: &str,
+        expires_at: i64,
+        transport_scope: Option<&str>,
+        principal_kind: &str,
+    ) -> anyhow::Result<ContainerIdentitySled> {
         let store = engine.identity_sled_store()?;
         let session_id = op_identity::session::derive_session_id(pubkey);
         let expected = load_revision(store, &session_id).await?;
@@ -2970,7 +3038,7 @@ pub(crate) mod tests {
             schema_version: RECORD_FORMAT,
             vector_id: String::new(),
             sealed_id: None,
-            principal_kind: Some("human".into()),
+            principal_kind: Some(principal_kind.into()),
             btrfs_device: None,
             instance: Some(prepare_parked_instance(
                 &session_id,
@@ -3736,23 +3804,44 @@ pub(crate) mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn service_startup_preserves_parked_identity_after_bootstrap() {
         let (engine, _shm) = sled_engine();
-        let identity = write_identity(&engine, &pk(0xa8)).await.unwrap();
+        let identity = write_identity_fixture(&engine, &pk(0xa8), 0, None, "service")
+            .await
+            .unwrap();
         assert!(!identity.active);
+        assert_eq!(identity.principal_kind.as_deref(), Some("service"));
         // Exercise the existing-record bootstrap steps without changing env
         // or invoking any native lifecycle/storage fixture.
-        engine.mint_and_store_genesis(&identity.session_id, &identity.wireguard_pubkey)
-            .await.unwrap();
+        engine
+            .mint_and_store_genesis(&identity.session_id, &identity.wireguard_pubkey)
+            .await
+            .unwrap();
         let bootstrapped = set_session_actor_class(&engine, &identity.session_id, "service")
-            .await.unwrap();
+            .await
+            .unwrap();
         assert!(!bootstrapped.active);
         assert_eq!(bootstrapped.sealed_id, identity.sealed_id);
         let store = engine.identity_sled_store().unwrap();
         let before = load_revision(store, &identity.session_id).await.unwrap();
-        assert_eq!(start_service_identity_container(&engine, &identity.session_id).await.unwrap(), 0);
-        assert_eq!(load_revision(store, &identity.session_id).await.unwrap(), before);
-        let after = stored_session(&engine, &identity.session_id).await.unwrap().unwrap();
+        assert_eq!(
+            start_service_identity_container(&engine, &identity.session_id)
+                .await
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            load_revision(store, &identity.session_id).await.unwrap(),
+            before
+        );
+        let after = stored_session(&engine, &identity.session_id)
+            .await
+            .unwrap()
+            .unwrap();
         assert!(!after.active);
-        assert_eq!(serde_json::to_value(after.instance).unwrap(), serde_json::to_value(bootstrapped.instance).unwrap());
+        assert_eq!(after.principal_kind.as_deref(), Some("service"));
+        assert_eq!(
+            serde_json::to_value(after.instance).unwrap(),
+            serde_json::to_value(bootstrapped.instance).unwrap()
+        );
         assert_eq!(after.genesis, identity.genesis);
     }
 

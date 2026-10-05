@@ -3,6 +3,8 @@
 //! Legacy writes are rejected after a session acquires a revision/tombstone.
 use super::*;
 mod physical_root;
+mod clean_provision;
+pub use clean_provision::{CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches};
 use cozo::{MultiTransaction, TransactionPayload};
 use nix::{fcntl::OFlag, sys::stat::Mode};
 pub use physical_root::{
@@ -18,7 +20,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct IdentityRevision {
     pub session_id: String,
     pub revision: u64,
@@ -34,6 +36,7 @@ pub struct IdentityCompareExchange {
 }
 
 pub enum IdentityIntent {
+    CleanProvision(Box<IdentityCleanProvision>),
     CompareExchange(Box<IdentityCompareExchange>),
     MigratePhysicalRoot(Box<IdentityPhysicalRootMigration>),
     /// A narrowly bounded credential refresh authored by the identity owner.
@@ -1153,6 +1156,9 @@ impl CozoGraphShuttle {
         }
         let tx = self.db.multi_transaction(true);
         let (previous, metadata) = read_one(&tx, session_id)?;
+        if let IdentityIntent::CompareExchange(exchange) = &intent {
+            clean_provision::validate_cas(&tx, &previous, exchange.record.as_ref())?;
+        }
         let physical = physical_root::read_in_tx(&tx, session_id)?;
         // A completed migration pins storage and instance identity. An
         // unchanged instance string is not an edit: the power-observation
@@ -1221,6 +1227,15 @@ impl CozoGraphShuttle {
             }
         }
         let (record, genesis, kind, value, replayed) = match intent {
+            IdentityIntent::CleanProvision(provision) => {
+                clean_provision::validate(&tx, session_id, operation_id, &previous, &metadata, &provision)?;
+                let replayed = previous.operation_id == operation_id;
+                if !replayed {
+                    clean_provision::append(&tx, session_id, operation_id, &provision)?;
+                }
+                (Some(provision.record), Some(provision.genesis), "clean-provision",
+                    i64::try_from(provision.expected.revision).map_err(native)?, replayed)
+            }
             IdentityIntent::MigratePhysicalRoot(migration) => {
                 physical_root::validate_intent(
                     &tx,
@@ -1520,7 +1535,7 @@ fn decode_revision(row: &[DataValue]) -> std::result::Result<RevisionMetadata, C
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
         || !matches!(
             kind.as_str(),
-            "cas" | "advance" | "transport-refresh" | "physical-migrate"
+            "cas" | "advance" | "transport-refresh" | "physical-migrate" | "clean-provision"
         )
         || value < 0
         || !matches!(principal_kind.as_str(), "" | "human" | "service")

@@ -13,13 +13,13 @@ use op_state::{
 use op_state_store::PluginSchema;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use simd_json::{OwnedValue as Value, json, prelude::*};
+use simd_json::{json, prelude::*, OwnedValue as Value};
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 use tokio::net::UnixStream;
 use tokio_tungstenite::{
+    tungstenite::{protocol::WebSocketConfig, Message},
     WebSocketStream,
-    tungstenite::{Message, protocol::WebSocketConfig},
 };
 
 use super::incus_device::{Device, NamedDevice};
@@ -307,7 +307,7 @@ impl IncusPlugin {
     ) -> Result<(String, &'static str)> {
         let (_, body) = Self::identity_session_power_request(session_id, state)?;
         if instance_name != session_id
-            && !(instance_name == "3tchedCtlbot"
+            && !(instance_name == "Chatbot3tched"
                 && session_id == "b0c777e3-0955-cd8b-3d01-ca12998cae28")
         {
             anyhow::bail!("native identity power target is not canonical or the pinned chatbot");
@@ -323,10 +323,13 @@ impl IncusPlugin {
         instance_name: &str,
         state: IdentitySessionPowerState,
     ) -> Result<()> {
-        let (path, body) = Self::bound_identity_session_power_request(session_id, instance_name, state)?;
+        let (path, body) =
+            Self::bound_identity_session_power_request(session_id, instance_name, state)?;
         Self::incus_api_call("PUT", &path, Some(body))
             .await
-            .with_context(|| format!("failed to change bound identity container '{instance_name}' power state"))?;
+            .with_context(|| {
+                format!("failed to change bound identity container '{instance_name}' power state")
+            })?;
         Ok(())
     }
 
@@ -641,6 +644,22 @@ impl IncusPlugin {
             simd_json::from_slice(&mut raw_json).context("Failed to parse incus list JSON")?;
 
         Self::convert_instance_list(raw_instances)
+    }
+
+    /// Normalize one official native Instance document through the same
+    /// conversion used by complete Incus observations. Native device maps
+    /// become the sealed contract's typed NamedDevice lists without loss.
+    pub fn instance_from_native_metadata(metadata: serde_json::Value) -> Result<IncusInstance> {
+        let mut raw: RawIncusInstance =
+            serde_json::from_value(metadata).context("invalid native Incus instance metadata")?;
+        // A GET through the fixed default-project instance path can omit this
+        // field on older native responses. It cannot select another project.
+        if raw.project.is_empty() {
+            raw.project = "default".into();
+        }
+        Self::convert_instance_list(vec![raw])?
+            .pop()
+            .context("native Incus instance conversion returned no instance")
     }
 
     fn convert_instance_list(raw_instances: Vec<RawIncusInstance>) -> Result<Vec<IncusInstance>> {
@@ -1305,22 +1324,31 @@ mod tests {
     fn bound_identity_power_requests_target_only_the_pinned_native_name() {
         let sid = "b0c777e3-0955-cd8b-3d01-ca12998cae28";
         let (path, body) = IncusPlugin::bound_identity_session_power_request(
-            sid, "3tchedCtlbot", IdentitySessionPowerState::Running,
-        ).unwrap();
-        assert_eq!(path, "/1.0/instances/3tchedCtlbot/state");
+            sid,
+            "Chatbot3tched",
+            IdentitySessionPowerState::Running,
+        )
+        .unwrap();
+        assert_eq!(path, "/1.0/instances/Chatbot3tched/state");
         assert_eq!(body, r#"{"action":"start"}"#);
         let (_, body) = IncusPlugin::bound_identity_session_power_request(
-            sid, "3tchedCtlbot", IdentitySessionPowerState::Stopped,
-        ).unwrap();
+            sid,
+            "Chatbot3tched",
+            IdentitySessionPowerState::Stopped,
+        )
+        .unwrap();
         assert_eq!(body, r#"{"action":"stop"}"#);
         for (session, name) in [
-            ("00000000-0000-4000-8000-000000000001", "3tchedCtlbot"),
+            ("00000000-0000-4000-8000-000000000001", "Chatbot3tched"),
             (sid, "another-container"),
             (sid, "../../host?project=default"),
         ] {
             assert!(IncusPlugin::bound_identity_session_power_request(
-                session, name, IdentitySessionPowerState::Running,
-            ).is_err());
+                session,
+                name,
+                IdentitySessionPowerState::Running,
+            )
+            .is_err());
         }
     }
 
@@ -1341,20 +1369,16 @@ mod tests {
         )
         .expect("stop request");
         assert_eq!(stop_body, r#"{"action":"stop"}"#);
-        assert!(
-            IncusPlugin::identity_session_power_request(
-                "../../host?project=default",
-                IdentitySessionPowerState::Running,
-            )
-            .is_err()
-        );
-        assert!(
-            IncusPlugin::identity_session_power_request(
-                &session_id.to_uppercase(),
-                IdentitySessionPowerState::Running,
-            )
-            .is_err()
-        );
+        assert!(IncusPlugin::identity_session_power_request(
+            "../../host?project=default",
+            IdentitySessionPowerState::Running,
+        )
+        .is_err());
+        assert!(IncusPlugin::identity_session_power_request(
+            &session_id.to_uppercase(),
+            IdentitySessionPowerState::Running,
+        )
+        .is_err());
     }
 
     #[test]
@@ -1626,6 +1650,28 @@ impl IncusRootRepairBackend {
 
     pub async fn instance(&self, name: &str) -> Result<(serde_json::Value, String)> {
         self.api.instance(name).await
+    }
+
+    /// Read the current running init PID for kernel-authenticated local lungs.
+    /// The instance name comes from the committed identity binding, never a
+    /// guest-selected REST path. This performs no lifecycle effect.
+    pub async fn instance_init_pid(&self, name: &str) -> Result<u32> {
+        let path = format!("{}/state", instance_path(name)?);
+        let server = self.api.call("GET", "/1.0", None, None).await?;
+        anyhow::ensure!(
+            server["environment"]["server_clustered"].as_bool() == Some(false),
+            "local lungs require a non-clustered Incus server"
+        );
+        let state = self.api.call("GET", &path, None, None).await?;
+        anyhow::ensure!(
+            state["status"] == "Running" && state["status_code"] == 103,
+            "identity container is not running"
+        );
+        state["pid"]
+            .as_u64()
+            .and_then(|pid| u32::try_from(pid).ok())
+            .filter(|pid| *pid > 0)
+            .context("identity container init PID is unavailable")
     }
 
     pub async fn pool(&self, name: &str) -> Result<Option<serde_json::Value>> {
@@ -3190,6 +3236,83 @@ mod transport_tests {
     use tokio::net::UnixListener;
     use tokio_tungstenite::tungstenite::Message;
 
+    #[tokio::test]
+    async fn lungs_native_init_pid_requires_a_current_running_positive_pid() -> anyhow::Result<()> {
+        for (metadata, clustered, expected) in [
+            (
+                serde_json::json!({"status":"Running","status_code":103,"pid":42}),
+                false,
+                Some(42),
+            ),
+            (
+                serde_json::json!({"status":"Stopped","status_code":102,"pid":42}),
+                false,
+                None,
+            ),
+            (
+                serde_json::json!({"status":"Running","status_code":103,"pid":0}),
+                false,
+                None,
+            ),
+            (
+                serde_json::json!({"status":"Running","status_code":103,"pid":-1}),
+                false,
+                None,
+            ),
+            (
+                serde_json::json!({"status":"Running","status_code":103}),
+                false,
+                None,
+            ),
+            (
+                serde_json::json!({"status":"Running","status_code":103,"pid":42}),
+                true,
+                None,
+            ),
+        ] {
+            let directory = tempfile::tempdir()?;
+            let socket = directory.path().join("incus.sock");
+            let listener = UnixListener::bind(&socket)?;
+            let server = tokio::spawn(async move {
+                let mut steps = vec![(
+                    "/1.0",
+                    serde_json::json!({"environment":{"server_clustered":clustered}}),
+                )];
+                if !clustered {
+                    steps.push(("/1.0/instances/Chatbot3tched/state", metadata));
+                }
+                for (path, metadata) in steps {
+                    let (mut stream, _) = listener.accept().await?;
+                    let mut bytes = Vec::new();
+                    while !bytes.ends_with(b"\r\n\r\n") {
+                        bytes.push(stream.read_u8().await?);
+                        anyhow::ensure!(bytes.len() < 8192, "fixture headers exceeded bound");
+                    }
+                    let request = String::from_utf8(bytes)?;
+                    anyhow::ensure!(
+                        request.starts_with(&format!("GET {path} HTTP/1.1\r\n")),
+                        "native PID request must use only the fixed local read paths"
+                    );
+                    let body = sync(metadata).to_string();
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        body.len(),
+                        body
+                    );
+                    stream.write_all(response.as_bytes()).await?;
+                }
+                anyhow::Ok(())
+            });
+            let backend = super::IncusRootRepairBackend::on_socket(socket);
+            assert_eq!(
+                backend.instance_init_pid("Chatbot3tched").await.ok(),
+                expected
+            );
+            server.await??;
+        }
+        Ok(())
+    }
+
     async fn request_with_response(response: &[u8], deadline: Duration) -> anyhow::Result<Vec<u8>> {
         let directory = tempfile::tempdir()?;
         let socket = directory.path().join("incus.sock");
@@ -3231,21 +3354,17 @@ mod transport_tests {
     #[tokio::test]
     async fn rejects_truncated_chunked_response() {
         let response = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n";
-        assert!(
-            request_with_response(response, Duration::from_secs(1))
-                .await
-                .is_err()
-        );
+        assert!(request_with_response(response, Duration::from_secs(1))
+            .await
+            .is_err());
     }
 
     #[tokio::test]
     async fn rejects_truncated_content_length_response() {
         let response = b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhi";
-        assert!(
-            request_with_response(response, Duration::from_secs(1))
-                .await
-                .is_err()
-        );
+        assert!(request_with_response(response, Duration::from_secs(1))
+            .await
+            .is_err());
     }
 
     #[tokio::test]
@@ -3279,11 +3398,9 @@ mod transport_tests {
     #[tokio::test]
     async fn timeout_rejects_incomplete_response() {
         let response = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhe";
-        assert!(
-            request_with_response(response, Duration::from_millis(30))
-                .await
-                .is_err()
-        );
+        assert!(request_with_response(response, Duration::from_millis(30))
+            .await
+            .is_err());
     }
 
     #[tokio::test]
@@ -3292,11 +3409,9 @@ mod transport_tests {
             super::dispatch_incus_method("start_instance", &serde_json::json!({"name": 42}))
                 .await
                 .expect_err("typed input must reject non-string names");
-        assert!(
-            malformed
-                .to_string()
-                .contains("invalid start_instance arguments")
-        );
+        assert!(malformed
+            .to_string()
+            .contains("invalid start_instance arguments"));
 
         let unknown = super::dispatch_incus_method("not_declared", &serde_json::json!({}))
             .await
@@ -3606,10 +3721,35 @@ mod transport_tests {
 
         let mut wrong_project = observed_instance("demo", "Running", 103);
         wrong_project["project"] = "other".into();
-        assert!(
-            IncusPlugin::parse_instance_list(serde_json::to_vec(&vec![wrong_project]).unwrap())
-                .is_err()
+        assert!(IncusPlugin::parse_instance_list(
+            serde_json::to_vec(&vec![wrong_project]).unwrap()
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn individual_native_instance_conversion_preserves_device_maps_and_uuid() {
+        let mut native = observed_instance("Chatbot3tched", "Running", 103);
+        native["config"]["volatile.uuid"] = "4dece3a4-d987-44a0-b8b5-d7cb27211ed0".into();
+        native.as_object_mut().unwrap().remove("project");
+        let typed = IncusPlugin::instance_from_native_metadata(native.clone()).unwrap();
+        assert_eq!(typed.name, "Chatbot3tched");
+        assert_eq!(typed.project.as_deref(), Some("default"));
+        assert_eq!(
+            typed
+                .config
+                .as_ref()
+                .unwrap()
+                .get("volatile.uuid")
+                .map(String::as_str),
+            Some("4dece3a4-d987-44a0-b8b5-d7cb27211ed0")
         );
+        assert_eq!(
+            typed.devices.len(),
+            native["devices"].as_object().unwrap().len()
+        );
+        native["devices"]["root"]["future.provider.key"] = "must-not-disappear".into();
+        assert!(IncusPlugin::instance_from_native_metadata(native).is_err());
     }
 
     #[tokio::test]
@@ -4041,11 +4181,9 @@ mod transport_tests {
             )
             .await
             .expect_err("unfinished or failed operation must not acknowledge completion");
-            assert!(
-                result
-                    .to_string()
-                    .contains(if error.is_empty() { status } else { error })
-            );
+            assert!(result
+                .to_string()
+                .contains(if error.is_empty() { status } else { error }));
         }
         let error = dispatch_fixture("delete_instance", serde_json::json!({"name": "demo"}), vec![
             instance_read(),
@@ -4124,13 +4262,11 @@ mod transport_tests {
             serde_json::json!({"name": "demo", "command": [""]}),
             serde_json::json!({"name": "demo", "command": ["tool", "\0"]}),
         ] {
-            assert!(
-                super::dispatch_incus_with_api(&api, "exec_instance", &args)
-                    .await
-                    .unwrap_err()
-                    .to_string()
-                    .contains("Incus exec")
-            );
+            assert!(super::dispatch_incus_with_api(&api, "exec_instance", &args)
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("Incus exec"));
         }
         let error = super::dispatch_incus_with_api(
             &api,

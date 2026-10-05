@@ -18,6 +18,7 @@ pub use identity_inventory::{
     IdentityInventoryCounts, IdentityInventoryEntry, IdentityInventoryPage, IdentityInventoryQuery,
 };
 pub use identity_transactions::{
+    CleanProvisionReceipt, IdentityCleanProvision, clean_provision_instance_binding_matches,
     IdentityCommit, IdentityCompareExchange, IdentityIntent, IdentityPhysicalRootMigration,
     IdentityRecoverySnapshot, IdentityRevision, PhysicalRootMigrationReceipt, RootRepairJournal,
     SeedProvisionJournal, physical_root_instance_binding_matches,
@@ -108,7 +109,7 @@ pub struct WgSessionRecord {
 /// One container identity sled row (mirrors op-plugins' `ContainerIdentitySled`).
 /// `btrfs_device_json` is the sled's btrfs device record pre-serialized to JSON;
 /// `peer_ip`, `sealed_id`, and `btrfs_device_json` use `""` for absent.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct IdentitySledRecord {
     pub session_id: String,
     pub wireguard_pubkey: String,
@@ -134,7 +135,7 @@ pub struct IdentitySledRecord {
 }
 
 /// The genesis inputs stored beside a session's sled row (version 3 records).
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct GenesisInputsRecord {
     pub session_id: String,
     pub arrival_timestamp: i64,
@@ -547,6 +548,12 @@ impl CozoGraphShuttle {
                 operation_id: String, old_btrfs_device_json: String,
                 old_instance_json: String, old_journals_json: String,
                 old_revision_operation_id: String
+            }"#,
+            r#":create identity_clean_provisions {
+                session_id: String, committed_revision: Int => plan_sha256: String,
+                operation_id: String, expected_revision: Int, provenance_json: String,
+                btrfs_device_json: String, instance_json: String,
+                old_revision_json: String, old_journals_json: String
             }"#,
             // (the immutable event chain is the proof; this is the queryable copy)
             r#":create session_events {

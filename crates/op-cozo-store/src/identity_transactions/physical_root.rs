@@ -11,7 +11,7 @@ pub struct IdentityPhysicalRootMigration {
     pub provenance_json: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PhysicalRootMigrationReceipt {
     pub plan_sha256: String,
     pub operation_id: String,

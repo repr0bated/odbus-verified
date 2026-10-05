@@ -1,7 +1,8 @@
 # Bridge recovery — 2026-10-05
 
 Status: corrected release deployed; bridge and host FUSE healthy; post-deployment
-Cargo verification in progress.
+focused Cargo verification passed57, with5 native fixtures ignored. Full
+`/verify` has not passed.
 Recovery is owned by Codex at the user's explicit request. No replacement
 container is being provisioned during bridge recovery.
 
@@ -114,6 +115,42 @@ Receipt summary: `/var/tmp/bridge-recovery-20261005/fuse-read-probe.json`.
 Received, persisted and SHM catalog manifests match. `/dev/sdb2` is still
 block-read-only. The old chatbot containers remain stopped; mail, Qdrant and
 Xray remain running. No live `3tched-lungs` profile or replacement was created.
+
+## Post-deployment verification
+
+- `cargo fmt --all -- --check`: exit1. Formatting differences include the
+  integrated `identity_sled_dispatch.rs` and `incus.rs`, plus several files from
+  other work. No automatic formatting or unrelated edits were made.
+- `cargo clippy --workspace --all-targets --all-features -- -D warnings`:
+  exit101 at `op-chat/src/orchestration/workstack_executor.rs:991`,
+  `clippy::result_large_err`. This file belongs to the other integrated work.
+- `cargo test --workspace --all-targets --all-features`: interrupted (130)
+  during compilation, before tests ran, when available space reached about
+  8.66 GiB. Resource reserve prevented continuing the broad build.
+- Focused Btrfs tests passed4, with1 intentionally ignored native loop fixture.
+  Focused identity plugin schema tests passed13. All4 socket tests passed,
+  including root-only admission and refusing to replace a non-socket file.
+- First bridge lifecycle run:35 passed,1 failed,4 ignored. The newly added
+  parked-service regression incorrectly used the shared human fixture, then
+  attempted to change its immutable principal kind. A test-only correction now
+  creates the service kind initially and asserts it survives bootstrap. The
+  runtime kind check is unchanged. The corrected lifecycle filter passed36,
+  failed0, ignored4. The correction is inside `cfg(test)` and does not require
+  redeploying the binary.
+- No ignored/native destructive tests were run.
+
+Another session committed the shared checkout as `db97951` during verification
+and started its own release build. That process was not stopped or modified.
+Recovery still selects the received release identified above; its manifest and
+saved binary hashes are the deployed evidence. Shared-worktree HEAD is not a
+substitute for that received-release provenance.
+
+Final independent runtime verification at 05:05:05 UTC passed: current still
+selects the recovery release, bridge PID14689 and FUSE PID15796 have not
+restarted (1386s and1365s uptime), both readiness checks pass, exact process
+executables point into the received release, socket/directory modes remain
+0600/0755 with root ownership, all3 catalogs match, and sdb2 is still blockRO.
+Receipt: `/var/tmp/bridge-recovery-20261005/final-runtime-proof.txt`.
 
 ## Provisioning follow-up
 

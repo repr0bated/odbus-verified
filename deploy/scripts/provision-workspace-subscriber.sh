@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
-# Prepare a physical root for an EXISTING authoritative identity.
+# Provision a fresh shared root for the EXISTING configured chatbot key.
 # Usage:
 #   sudo ./provision-workspace-subscriber.sh LABEL --session-id UUID --pubkey B64 \
 #     --operator-session UUID --leaf-path ABSOLUTE_PATH [--fstorage-gib N] [--no-start]
-#     [--container-name 3tchedCtlbot]   # existing Cozo-bound chatbot only
+#     [--container-name 3tchedChatbot]   # configured chatbot key only
 #   sudo ./provision-workspace-subscriber.sh NAME --system \
 #     [--image ALIAS|FINGERPRINT] [--storage POOL] [--no-start]
 #   sudo ./provision-workspace-subscriber.sh --system NAME [system options]
 #
 # Identity mode never signs up an account, generates/copies credentials,
 # deletes/recreates a container, or attaches a leaf to an Incus filesystem.
-# The session UUID is the native name unless the existing chatbot binding
-# explicitly names 3tchedCtlbot. LABEL is display metadata, never authority.
+# Clean replacement is currently scoped to the configured chatbot alias
+# 3tchedChatbot. LABEL is display metadata, never authority.
 # Existing native names and storage receipts are refused.
 # --no-start prepares storage, reconciles and verifies attach, leaving STOPPED.
-# Normal mode requires an inactive target with a canonical stored instance;
-# supported touch then starts it after attached readback. --no-start preserves
-# prior active metadata. Credential bytes are not requested or inspected;
+# The old native instance must be stopped. The supported owner operation
+# creates a fresh parked current-schema record using the same key and SID;
+# supported touch then starts it after attached readback. --no-start leaves
+# the new identity parked. Credential bytes are not requested or inspected;
 # supported method results redact them. This wrapper never mints credentials.
 # Completion enables root/FUSE restoration on boot; --no-start records a
 # stopped boot policy. Incomplete storage never receives a boot-ready marker.
@@ -133,27 +134,31 @@ valid_uuid() { [[ $1 =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
     die '--image and --storage are system-only; identity roots use the pinned physical seed'
 valid_uuid "$SESSION_ID" || die 'explicit canonical --session-id is required'
 valid_uuid "$OPERATOR_SESSION" || die 'explicit authorized --operator-session is required'
-NATIVE_NAME=${NATIVE_NAME:-$SESSION_ID}
-if [[ $NATIVE_NAME != "$SESSION_ID" ]]; then
-    [[ $NATIVE_NAME == 3tchedCtlbot && $SESSION_ID == b0c777e3-0955-cd8b-3d01-ca12998cae28 ]] ||
-        die 'only the existing control-plane chatbot may use a name different from its session ID'
-fi
+NATIVE_NAME=${NATIVE_NAME:-3tchedChatbot}
+[[ $NATIVE_NAME == 3tchedChatbot && $SESSION_ID == b0c777e3-0955-cd8b-3d01-ca12998cae28 ]] ||
+    die 'clean replacement is scoped to the configured 3tchedChatbot identity'
 [[ $PUBKEY =~ ^[A-Za-z0-9+/]{43}=$ ]] || die 'explicit canonical 32-byte Base64 --pubkey is required'
 [[ ${#ROLE} -ge 1 && ${#ROLE} -le 63 && $ROLE =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || die 'invalid display label'
 [[ $FSTORAGE_GIB =~ ^[1-9][0-9]{0,3}$ ]] && (( FSTORAGE_GIB <= 1024 )) || die 'leaf size must be 1 to 1024 GiB'
 [[ $LEAF_PATH == /* && $LEAF_PATH != *$'\n'* && $LEAF_PATH != *$'\r'* ]] || die 'explicit absolute --leaf-path is required'
-for command in incus jq realpath stat timeout mktemp find cmp base64 flock; do need_cmd "$command"; done
+for command in incus jq realpath stat timeout mktemp find findmnt cmp base64 flock curl sha256sum sync; do need_cmd "$command"; done
+# Identity plans and the bridge bind the local host, never the CLI's selected
+# remote. Standalone --system provisioning keeps its existing remote behavior.
+incus() { command incus --force-local "$@"; }
 [[ $(printf '%s' "$PUBKEY" | base64 -d | base64 -w0) == "$PUBKEY" ]] || die 'public key encoding is not canonical'
 [[ $(realpath -m -- "$LEAF_PATH") == "$LEAF_PATH" ]] || die 'leaf path must be normalized'
-[[ ! -e $LEAF_PATH && ! -L $LEAF_PATH ]] || die 'leaf already exists; never recreate'
+[[ ! -e $LEAF_PATH && ! -L $LEAF_PATH ]] || die 'leaf already exists; inspect retained intent, never retry creation'
 ROOT_HELPER=$(realpath -e -- "${OP_IDENTITY_ROOT_HELPER:-/usr/local/libexec/3tched/op-identity-root}")
 HOST_FOLDERS_HELPER=$(realpath -e -- "${OP_IDENTITY_HOST_FOLDERS_HELPER:-/usr/local/libexec/3tched/attach-host-workspace-folders}")
 FS_BINARY=$(realpath -e -- "${THREETCHED_FS:-/usr/local/bin/threetched-fs}")
 CATALOG=$(realpath -e -- "${OP_IDENTITY_SEED_CATALOG:-/var/lib/opdbus/plugin-blobs}")
 STATE_ROOT=${OP_IDENTITY_SEED_STATE:-/var/lib/opdbus-runtime/seed-identities}
 RECEIPT_ROOT=${OP_IDENTITY_PROVISION_RECEIPTS:-/var/lib/opdbus-runtime/identity-provision-receipts}
+PLAN_ROOT=${OP_IDENTITY_PROVISION_PLAN_ROOT:-/var/lib/op-dbus/identity-provision-plans}
+INCUS_SOCKET=/var/lib/incus/unix.socket
 root_path "$ROOT_HELPER"; root_path "$FS_BINARY"; root_path "$CATALOG"
 root_path "$HOST_FOLDERS_HELPER"
+[[ $PLAN_ROOT == /* && $(realpath -m -- "$PLAN_ROOT") == "$PLAN_ROOT" ]] || die 'invalid provision plan directory'
 [[ -f $HOST_FOLDERS_HELPER && -x $HOST_FOLDERS_HELPER ]] || die 'invalid selected host workspace folders helper'
 [[ -f $ROOT_HELPER && -x $ROOT_HELPER && -f $FS_BINARY && -x $FS_BINARY && -d $CATALOG ]] || die 'invalid selected artifacts'
 # Helpers must use the same selected artifacts, including received layouts.
@@ -179,42 +184,54 @@ WORK=$(mktemp -d "$RECEIPT_ROOT/$SESSION_ID.XXXXXX")
 mkdir -- "$WORK/empty-state" "$WORK/store"
 printf 'Private sanitized receipts: %s\n' "$WORK"
 trap 'printf "Failure; retained private receipts at %s; no automatic cleanup.\n" "$WORK" >&2' ERR
-"$FS_BINARY" --store "$WORK/store" capture --catalog "$CATALOG" --state "$WORK/empty-state" >/dev/null 2>/dev/null ||
-    die 'schema-only capture failed; no native mutation performed'
+LUNGS_MOUNT=/run/mount/3tchedFS
+[[ $(findmnt -rn -M "$LUNGS_MOUNT" -o FSTYPE) == fuse.3tchedFS ]] || die 'operator lungs namespace is not mounted'
+jq -e --arg session "$OPERATOR_SESSION" --slurpfile catalog "$CATALOG/.manifest.json" '
+    .session_id==$session and .source_catalog_hash==$catalog[0].catalog_hash
+' "$LUNGS_MOUNT/.3tchedfs.json" >/dev/null || die 'operator lungs identity or sealed catalog differs'
 
 # No credential input. Every response passes a metadata allowlist before storage.
-mcp_call() (
+lungs_call() (
     set -euo pipefail
     tool=$1 args=$2 kind=$3
-    coproc MCP { timeout -k 5 90 "$FS_BINARY" --store "$WORK/store" mcp \
-        --state "$WORK/empty-state" --lungs-socket /run/opdbus/lungs/lungs.sock \
-        --lungs-session "$OPERATOR_SESSION" --all 2>/dev/null; }
-    pid=$MCP_PID old_read=${MCP[0]} old_write=${MCP[1]}
-    exec {rfd}<&"$old_read"; exec {wfd}>&"$old_write"
-    exec {old_read}<&-; exec {old_write}>&-
-    trap 'exec {wfd}>&-; exec {rfd}<&-; wait "$pid" 2>/dev/null || true' EXIT
-    printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"existing-identity-root-operator","version":"1"}}}' >&"$wfd"
-    ready=false matched=false
-    while IFS= read -r -t 30 -u "$rfd" line; do
-        ((${#line} <= 2097152)) || exit 1
-        if jq -e '.id==1 and has("result")' >/dev/null 2>&1 <<<"$line"; then ready=true; break; fi
-    done
-    [[ $ready == true ]] || exit 1
-    printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}' >&"$wfd"
-    jq -cn --arg tool "$tool" --argjson args "$args" '{jsonrpc:"2.0",id:2,method:"tools/call",params:{name:$tool,arguments:$args}}' >&"$wfd"
-    while IFS= read -r -t 60 -u "$rfd" line; do
-        ((${#line} <= 2097152)) || exit 1
-        if jq -e '.id==2' >/dev/null 2>&1 <<<"$line"; then matched=true; break; fi
-    done
-    [[ $matched == true ]] || exit 1
+    [[ $tool == identity_sled__* ]] || exit 1
+    method=${tool#identity_sled__}
+    [[ $method =~ ^[a-z_]+$ ]] || exit 1
+    operation=$LUNGS_MOUNT/plugins/identity_sled/operations/$method
+    [[ -f $operation/input.schema.json && -f $operation/call ]] || exit 1
+    # FUSE validates the sealed method and dispatches synchronously on close.
+    # Never clear read-only receipts or treat a successful write as completion.
+    printf '%s' "$args" > "$operation/call"
+    [[ ! -s $operation/error ]] || { printf 'Lungs operation %s failed; inspect its protected error receipt.\n' "$method" >&2; exit 1; }
+    line=$(jq -ce --arg method "$method" 'select(.plugin_id=="identity_sled" and .method==$method) | {result:{structuredContent:.result}}' "$operation/result")
     jq -ce --arg sid "$SESSION_ID" --arg name "$NATIVE_NAME" --arg key "$PUBKEY" --arg kind "$kind" '
         select(.error==null and .result.isError!=true) |
-        (.result.structuredContent // ([.result.content[]? | select(.type=="text") | .text | fromjson?] | select(length==1) | .[0])) |
-        select(.success==true) |
+        (.result.structuredContent // ([.result.content[]? | select(.type=="text") | .text | fromjson?] | select(length==1) | .[0])) as $body |
+        if $kind=="device-add" then
+            ($body.result // $body) |
+            select(.operation=="device_add" and (.device|type=="string" and length>0) and
+                (.filesystem_uuid|type=="string" and length>0) and (.devices|type=="array")) |
+            {operation,filesystem_uuid,device,devices:[.devices[]|{id,uuid,path,total_bytes,bytes_used}]}
+        else $body | select(.success==true) |
         if $kind=="inventory" then
             [.. | objects | select(has("entries") and has("counts"))] | select(length==1) | .[0] |
             select(.entries|type=="array") | select(.counts|type=="object") | {verified:true}
+        elif $kind=="preflight" then
+            [.. | objects | select(has("wireguard_pubkey") and has("session_id") and has("expected_revision_operation_id"))] |
+            select(length==1) | .[0] |             select(.session_id==$sid and .wireguard_pubkey==$key) |
+            select(.expected_revision|type=="number" and .>0 and floor==.) |
+            select(.expected_revision_operation_id|type=="string" and length>0) |
+            {session_id,wireguard_pubkey,expected_revision,expected_revision_operation_id,previous_instance,previous_instance_etag,previous_native_instance}
         else
+            (if $kind=="provision" then
+                [.. | objects | select(has("committed_revision") and has("plan_sha256") and has("identity"))] |
+                select(length==1) | .[0] |
+                select(.plan_sha256|type=="string" and test("^[0-9a-f]{64}$")) |
+                select(.operation_id|type=="string" and length>0) |
+                select(.committed_revision|type=="number" and .>0 and floor==.) |
+                select(.replayed|type=="boolean")
+             else {identity:.} end) as $receipt |
+            $receipt.identity |
             [.. | objects | select(has("wireguard_pubkey") and has("session_id"))] |
             select(length==1) | .[0] | select(.session_id==$sid and .wireguard_pubkey==$key) |
             select(.genesis|type=="string" and length>0) |
@@ -228,16 +245,29 @@ mcp_call() (
                 (.btrfs_uuid|type=="string") and (.attached|type=="boolean")) |
             select((.active|type=="boolean") and (.mutation_index|type=="number" and .>=0 and floor==.)) |
             {session_id,principal_kind,instance:(.instance|{name,type}),interface,peer_ip,active,mutation_index,
-             btrfs_device:(.btrfs_device|{device_path,mount_point,btrfs_uuid,cozo_id,attached})}
-        end' <<<"$line" 2>/dev/null
+             btrfs_device:(.btrfs_device|{device_path,mount_point,btrfs_uuid,cozo_id,attached})} as $identity |
+            if $kind=="provision" then $receipt | .identity=$identity else $identity end
+        end
+        end' <<<"$line" >"$WORK/operation-filter.json" 2>/dev/null || {
+        if [[ $kind == device-add ]]; then
+            jq -r '.error.message // ([.result.content[]? | select(.type=="text") | .text] | first) // "device_add failed"' <<<"$line" >&2
+        fi
+        exit 1
+    }
+    cat "$WORK/operation-filter.json"
 )
-mcp_call identity_sled__inspect_identity_inventory '{"limit":1}' inventory > "$WORK/inventory.json" ||
+lungs_call identity_sled__inspect_identity_inventory '{"limit":1}' inventory > "$WORK/inventory.json" ||
     die 'corrected backend/inventory authorization unavailable; no native mutation performed'
 get_args=$(jq -cn --arg sid "$SESSION_ID" '{session_id:$sid}')
-mcp_call identity_sled__get_identity "$get_args" identity > "$WORK/before.json" ||
-    die 'existing anchored identity/public-key verification failed; new signup unsupported'
-if [[ $NO_START == false ]]; then
-    jq -e '.active==false' "$WORK/before.json" >/dev/null || die 'normal mode requires a parked inactive target; use --no-start for active maintenance'
+preflight_args=$(jq -cn --arg key "$PUBKEY" '{wireguard_pubkey:$key}')
+lungs_call identity_sled__inspect_provision_preflight "$preflight_args" preflight > "$WORK/before.json" ||
+    die 'sealed owner preflight unavailable; no native mutation performed'
+if jq -e '.previous_instance==null' "$WORK/before.json" >/dev/null; then
+    plan_version=3
+else
+    plan_version=2
+    jq -e --arg name "$NATIVE_NAME" '.previous_instance.name!=$name' "$WORK/before.json" >/dev/null ||
+        die 'previous instance uses the replacement name; explicit retirement is required'
 fi
 instance_list=$(incus query '/1.0/instances?recursion=1') || die 'cannot list native instances'
 jq -e 'type=="array" and all(.[]; type=="object" and (.name|type=="string"))' >/dev/null <<<"$instance_list" || die 'invalid native inventory'
@@ -252,6 +282,7 @@ deny_policy=$(printf '%s\n' \
     'ioctl errno 1 [1,0x5000943f,SCMP_CMP_MASKED_EQ,0xffffffff]')
 incus init --empty "$NATIVE_NAME" --storage identity-roots --profile 3tched-lungs \
     --config security.privileged=false --config security.nesting=false \
+    --config security.protection.shift=true \
     --config boot.autostart=false --config security.syscalls.deny_default=true \
     --config "security.syscalls.deny=$deny_policy" \
     --config "user.opdbus.session_id=$SESSION_ID" --config "user.display_name=$ROLE" \
@@ -269,34 +300,79 @@ jq -e --arg sid "$SESSION_ID" --arg name "$NATIVE_NAME" --arg leaf "$LEAF_PATH" 
     .phase=="ready" and .session==$sid and .name==$name and .leaf==$leaf and
     (.sprout_fsid|type=="string" and test("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"))
 ' "$descriptor" >/dev/null || die 'storage receipt differs from selected identity/leaf'
-write_args=$(jq -cn --arg key "$PUBKEY" --arg leaf "$LEAF_PATH" --arg mount "$STATE_ROOT/$NATIVE_NAME/volume" \
-    --slurpfile old "$WORK/before.json" --slurpfile storage "$descriptor" \
-    '{wireguard_pubkey:$key,btrfs_device:{device_path:$leaf,mount_point:$mount,
-      btrfs_uuid:$storage[0].sprout_fsid,cozo_id:$old[0].btrfs_device.cozo_id,attached:false}}')
-mcp_call identity_sled__get_identity "$get_args" identity > "$WORK/recheck.json" || die 'identity recheck failed'
-cmp -s "$WORK/before.json" "$WORK/recheck.json" || die 'identity changed; binding left untouched'
-mcp_call identity_sled__write_identity "$write_args" identity > "$WORK/write.json" || die 'binding update rejected; preserve journal and old receipt'
-jq -e --argjson args "$write_args" --slurpfile old "$WORK/before.json" '
-    .btrfs_device==$args.btrfs_device and .interface==$old[0].interface and .peer_ip==$old[0].peer_ip
-' "$WORK/write.json" >/dev/null || die 'binding update readback differs'
-mcp_call identity_sled__attach_btrfs_device "$get_args" identity > "$WORK/attach.json" || die 'attach verification failed; no guest start'
-mcp_call identity_sled__get_identity "$get_args" identity > "$WORK/after.json" || die 'authoritative final readback failed'
-jq -e --argjson args "$write_args" --slurpfile old "$WORK/before.json" '
-    .btrfs_device==($args.btrfs_device|.attached=true) and .interface==$old[0].interface and .peer_ip==$old[0].peer_ip
+# Pin the official native definition and conditional ETag after all disk/profile
+# edits. The owner independently re-reads both; the CLI query omits ETag headers.
+[[ -S $INCUS_SOCKET ]] || die 'local Incus socket unavailable'
+root_path "$(dirname -- "$INCUS_SOCKET")"
+curl --silent --show-error --fail --noproxy '*' --max-time 30 \
+    --unix-socket "$INCUS_SOCKET" --dump-header "$WORK/instance.headers" \
+    --output "$WORK/instance-response.json" "http://unix.socket/1.0/instances/$NATIVE_NAME" ||
+    die 'native instance and ETag readback failed'
+jq -ce --arg name "$NATIVE_NAME" '
+    select(.type=="sync" and .status_code==200) | .metadata |
+    select(.name==$name and .type=="container" and .status=="Stopped")
+' "$WORK/instance-response.json" > "$WORK/instance.json" || die 'native stopped definition unavailable'
+instance_etag=$(awk 'tolower($1)=="etag:" {sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print}' "$WORK/instance.headers")
+[[ -n $instance_etag && $instance_etag != *$'\n'* ]] || die 'missing or ambiguous native ETag'
+lungs_call identity_sled__inspect_provision_preflight "$preflight_args" preflight > "$WORK/preflight-recheck.json" ||
+    die 'owner preflight recheck failed; new leaf retained without adoption'
+cmp -s "$WORK/before.json" "$WORK/preflight-recheck.json" ||
+    die 'prior identity/native binding changed; new leaf retained without adoption'
+seed_device=$(readlink -f -- "${OP_IDENTITY_SEED_DEVICE:-/dev/disk/by-partuuid/${OP_IDENTITY_SEED_PARTUUID:-911b270a-a88f-48cd-bf9c-9dcac4cdefe8}}")
+jq -n --argjson version "$plan_version" --arg sid "$SESSION_ID" --arg key "$PUBKEY" --arg leaf "$LEAF_PATH" \
+    --arg mount "$STATE_ROOT/$NATIVE_NAME/volume" --arg seed_device "$seed_device" --arg etag "$instance_etag" \
+    --argjson pool "$pool" --slurpfile old "$WORK/before.json" --slurpfile storage "$descriptor" \
+    --slurpfile instance "$WORK/instance.json" '
+    {version:$version,session_id:$sid,wireguard_pubkey:$key,
+     expected_revision:$old[0].expected_revision,
+     expected_revision_operation_id:$old[0].expected_revision_operation_id,
+     binding:{device_path:$leaf,mount_point:$mount,btrfs_uuid:$storage[0].sprout_fsid,cozo_id:$sid,attached:true},
+     seed_device:$seed_device,seed_fsid:$storage[0].seed_fsid,seed_generation:($storage[0].seed_generation|tonumber),
+     leaf_inode:($storage[0].leaf_inode|tonumber),leaf_size:($storage[0].leaf_size|tonumber),
+     members:($storage[0].members|with_entries(.value.id|=tonumber)),persist_inode:($storage[0].persist.inode|tonumber),
+     native_root:$storage[0].root,pool_name:$pool.name,pool_source:$pool.config.source,
+     instance_etag:$etag,instance:$instance[0],
+     previous_instance_etag:$old[0].previous_instance_etag,previous_instance:$old[0].previous_native_instance}
+' > "$WORK/plan.json" || die 'cannot assemble exact clean-provision plan'
+[[ $(stat -c %s "$WORK/plan.json") -le 32768 ]] || die 'provision plan exceeds the owner bound'
+root_path "$(dirname -- "$PLAN_ROOT")"
+if [[ ! -e $PLAN_ROOT && ! -L $PLAN_ROOT ]]; then mkdir -m 0700 -- "$PLAN_ROOT"; fi
+root_path "$PLAN_ROOT"
+[[ -d $PLAN_ROOT && ! -L $PLAN_ROOT && $(stat -c %a "$PLAN_ROOT") == 700 ]] || die 'unsafe provision plan directory'
+plan_path=$PLAN_ROOT/$SESSION_ID.json
+if [[ -e $plan_path || -L $plan_path ]]; then
+    root_path "$plan_path"
+    [[ -f $plan_path && ! -L $plan_path && $(stat -c %a "$plan_path") == 600 ]] || die 'unsafe previous provision plan'
+    cp -- "$plan_path" "$WORK/previous-plan.json"
+fi
+plan_tmp=$(mktemp "$PLAN_ROOT/.$SESSION_ID.XXXXXX")
+cat "$WORK/plan.json" > "$plan_tmp"
+sync -f "$plan_tmp"
+mv -T -- "$plan_tmp" "$plan_path"
+sync -f "$PLAN_ROOT"
+plan_sha256=$(sha256sum "$plan_path"); plan_sha256=${plan_sha256%% *}
+provision_args=$(jq -cn --arg key "$PUBKEY" --arg digest "$plan_sha256" '{wireguard_pubkey:$key,plan_sha256:$digest}')
+lungs_call identity_sled__provision_container "$provision_args" provision > "$WORK/provision.json" ||
+    die 'clean owner adoption rejected; preserve the plan, leaf, native definition and receipts for reconciliation'
+jq -e --arg digest "$plan_sha256" --slurpfile plan "$WORK/plan.json" '
+    .plan_sha256==$digest and .identity.active==false and .identity.btrfs_device==$plan[0].binding
+' "$WORK/provision.json" >/dev/null || die 'clean owner receipt differs from pinned plan'
+lungs_call identity_sled__get_identity "$get_args" identity > "$WORK/after.json" || die 'authoritative final readback failed'
+jq -e --slurpfile plan "$WORK/plan.json" '
+    .active==false and .btrfs_device==$plan[0].binding
 ' "$WORK/after.json" >/dev/null || die 'authoritative attached binding differs'
 "$ROOT_HELPER" seed-check "$NATIVE_NAME" >/dev/null 2>/dev/null || die 'final physical readback failed'
 if [[ $NO_START == false ]]; then
     # Canonical lifecycle admission verifies storage, starts the native guest
     # and commits its active session state; native start alone is insufficient.
-    mcp_call identity_sled__touch_session "$get_args" identity > "$WORK/active.json" || die 'supported identity activation failed'
-    mcp_call identity_sled__get_identity "$get_args" identity > "$WORK/running.json" || die 'active identity readback failed'
-    jq -e --argjson args "$write_args" --slurpfile old "$WORK/before.json" '
-        .active==true and .btrfs_device==($args.btrfs_device|.attached=true) and
-        .interface==$old[0].interface and .peer_ip==$old[0].peer_ip
+    lungs_call identity_sled__touch_session "$get_args" identity > "$WORK/active.json" || die 'supported identity activation failed'
+    lungs_call identity_sled__get_identity "$get_args" identity > "$WORK/running.json" || die 'active identity readback failed'
+    jq -e --slurpfile plan "$WORK/plan.json" '
+        .active==true and .btrfs_device==$plan[0].binding
     ' "$WORK/running.json" >/dev/null || die 'active identity binding differs'
     expected_status=Running
 else
-    jq -e --slurpfile old "$WORK/before.json" '.active==$old[0].active' "$WORK/after.json" >/dev/null || die '--no-start changed active state'
+    jq -e '.active==false' "$WORK/after.json" >/dev/null || die '--no-start did not leave the fresh identity parked'
     expected_status=Stopped
 fi
 native=$(incus query "/1.0/instances/$NATIVE_NAME")
@@ -305,4 +381,4 @@ jq -e --arg sid "$SESSION_ID" --arg name "$NATIVE_NAME" --arg status "$expected_
 ' >/dev/null <<<"$native" || die 'guest power-state readback failed'
 if [[ $NO_START == true ]]; then start_on_boot=false; else start_on_boot=true; fi
 "$ROOT_HELPER" seed-enable-boot "$NATIVE_NAME" "$start_on_boot" >/dev/null 2>/dev/null || die 'boot completion publication failed; inspect retained receipts'
-printf 'Existing identity %s physical root/binding verified; container %s is %s. No account minted.\n' "$SESSION_ID" "$NATIVE_NAME" "$expected_status"
+printf 'Fresh physical root and current-schema binding verified for existing key identity %s; container %s is %s.\n' "$SESSION_ID" "$NATIVE_NAME" "$expected_status"

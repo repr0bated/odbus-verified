@@ -30,7 +30,8 @@ export OP_WEB_STATIC_DIR="${OP_WEB_STATIC_DIR:-/usr/local/share/op-dbus/dashboar
 export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://10.0.0.2:8090}"
 export OP_DBUS_GRPC_CA_FILE="${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}"
 # Browser TLS terminates on the decoy. This host serves plain HTTP on 8080.
-wait_dep "${OP_WEB_TRANSPORT_SERVICE:-gre-decoy}"
+# Owner selected the SSH-TUN cutover (2026-10-05); gre-decoy is retired.
+wait_dep "${OP_WEB_TRANSPORT_SERVICE:-op-warp-ssh-host}"
 unset OP_WEB_TLS_BIND
 # Live subscribe is tonic-web on lungs (10.0.0.2:8090), not HTTP SSE.
 # OP_WEB_SSE_BRIDGE / OP_WEB_SSE_HYDRATE stay unset (off). Allowlist only

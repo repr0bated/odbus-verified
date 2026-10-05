@@ -48,8 +48,8 @@ set -a
 set +a
 
 # A dedicated directory can be mounted through Incus without exposing the
-# bridge's other runtime sockets. Socket mode and host-UID authentication
-# remain unchanged; mounting it does not authenticate unprivileged guests.
+# bridge's other runtime sockets. The bridge authenticates host callers or
+# derives guest identity from kernel peer credentials and native Incus state.
 export OPDBUS_LUNGS_SOCKET=/run/opdbus/lungs/lungs.sock
 
 # The native router's provider-only generation protocol requires a real paired
@@ -128,10 +128,10 @@ wait_for_ipv4() {
     done
 }
 
-# The operator selects the door's address carrier at SSH-TUN cutover (tun5).
-# Keep the current OVS default until that runtime environment is selected.
+# Owner selected the SSH-TUN cutover (2026-10-05): the door's address carrier
+# is tun5. The retired "3tched" OVS interface default no longer exists.
 # MQTT stays on ovsbr0; certificate filenames retain their svc0 names.
-wait_for_ipv4 "${OP_GRPC_DOOR_INTERFACE:-3tched}" 10.0.0.2 "${OP_GRPC_3TCHED_WAIT_SECS:-90}"
+wait_for_ipv4 "${OP_GRPC_DOOR_INTERFACE:-tun5}" 10.0.0.2 "${OP_GRPC_3TCHED_WAIT_SECS:-90}"
 wait_for_ipv4 ovsbr0 10.0.0.3 "${OP_GRPC_MQTT_WAIT_SECS:-90}"
 
 # `:8090` is tonic on 10.0.0.2, with the internal certificate.

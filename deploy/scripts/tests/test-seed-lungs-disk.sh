@@ -13,7 +13,7 @@ for name in seed_verify_lungs_hook seed_select_lungs_hook seed_lungs_disk_expect
     eval "$(sed -n "/^$name() {/,/^}/p" "$helper")"
 done
 seed_dir=$fixture
-seed_name=3tchedCtlbot
+seed_name=3tchedChatbot
 seed_session=b0c777e3-0955-cd8b-3d01-ca12998cae28
 native_uuid=00000000-0000-4000-8000-000000000001
 OP_IDENTITY_SEED_LUNGS_DIR=/private/session-lungs

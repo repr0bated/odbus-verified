@@ -31,6 +31,26 @@ The caller is responsible for downloading and verifying those artifacts before
 calling `prepare`. The helper records the downloaded archive's provenance;
 it does not claim to perform the signature or archive verification itself.
 
+Before metadata preparation, `prepare-lungs-client TOP RECEIVED_RELEASE`
+installs the received `threetched-fs` client and a public schema-only view in
+the already writable offline base. It requires a read-only release under
+`/opt/op-dbus/releases`, refuses existing client/view targets, and never
+captures live SHM or credentials. Host-side FUSE still owns the guest's
+`/run/mount/3tchedFS` attachment. A guest may also serve its MCP clients with:
+
+```sh
+threetched-fs --store /usr/share/op-dbus/lungs-view mcp \
+  --state /usr/share/op-dbus/lungs-empty-state \
+  --lungs-socket /run/opdbus/lungs/lungs.sock --all
+```
+
+Omitting `--lungs-session` selects `BindCurrentContainer`; the bridge derives
+the caller from its kernel peer process and the committed native container.
+The socket accepts connections with mode `0666` beneath a root-owned `0755`
+directory. Connection permission conveys no plugin authority: binding and
+every operation revalidate the native identity and existing grants. Explicit
+session binding is restricted to root in the bridge's host namespaces.
+
 `verify TOP` is the pre-seal check. It validates the exact seven Btrfs sibling
 names and mount layout, metadata schema and artifact hashes, the complete
 offline dpkg installed-package inventory, hashes and symlink targets for the

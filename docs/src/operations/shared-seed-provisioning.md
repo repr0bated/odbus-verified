@@ -13,7 +13,10 @@ uses these existing subvolumes in the sprout. It does not create snapshots,
 send/receive root filesystems, copy seed images, or use an overlay root.
 Readonly loop views reference the same physical partition bytes.
 
-`provision-workspace-subscriber.sh` first invokes the read-only
+`provision-workspace-subscriber.sh` first verifies the mounted operator
+3tchedFS session and sealed catalog, then calls the declared identity inventory
+and provisioning preflight operations through their `call` files. It checks
+the operation receipts before invoking the read-only
 `op-identity-root seed-preflight`, followed by `seed-profile`, before creating
 an empty Incus instance with the `3tched-lungs` profile.
 The helper checks the physical seed identity, SEEDING flag and block read-only
@@ -86,20 +89,32 @@ configuration drift. Provisioning also verifies the inherited devices and
 rejects local overrides. The `/run` tmpfs is mounted before its child devices;
 image directories alone would not establish that boot ordering.
 
-The mount does not change socket ownership, mode 0600, or the bridge's host-UID-0
-peer check. Direct calls from an unprivileged guest remain refused by that
-existing authentication contract. No scoped listener, relay, shared GID mapping
-or permission relaxation is included. The profile and path migration are
-prepared source changes, not live configuration; the complete arrangement still
-needs post-deployment validation.
+The bridge creates a root-owned socket with mode 0666 beneath the root-owned
+0755 directory. Connection permission allows negotiation; each operation still
+requires an authenticated identity and its existing capability grant. Host
+`Bind(session)` requires UID 0 in the bridge's own user and PID namespaces.
+Guest `BindCurrentContainer()` takes no session argument: it pins the socket's
+original process with SO_PEERPIDFD and derives identity from the exact running
+native container. Process, native UUID and authoritative identity are checked
+again for each call. No SID1 file is installed in the guest.
 
-The native container name defaults to the session UUID. Only the service
-identity `b0c777e3-0955-cd8b-3d01-ca12998cae28` may use `--container-name
-3tchedCtlbot`, and its authoritative Cozo instance binding must already name
-that container. The wrapper does not rewrite the binding or recreate existing
-instances. Hostname remains the session UUID. Start and stop target the
-validated stored native name. Incomplete replacements do not receive a
-boot-ready marker or replace the retained chatbot in the boot service.
+Clean replacement is scoped to the configured chatbot key and service identity
+`b0c777e3-0955-cd8b-3d01-ca12998cae28`, using the provisioner's configured native
+alias `3tchedCtlbot`. Hostname remains the session UUID. The old native instance
+must be stopped or authoritatively absent, and the new name and leaf must be
+unused. Explicit retirement uses `identity_sled.delete_provision_record` through
+the operator's mounted namespace, with the existing human write capability
+and exact revision. This removes the current row and retains an audit tombstone;
+startup respects that tombstone. A version3 plan permits fresh provisioning
+from that exact deletion receipt. Ordinary missing rows are not accepted.
+After host storage/mount
+preparation, the wrapper submits a digest-pinned private plan through the
+supported `identity_sled.provision_container` operation. The owner atomically
+creates fresh current-schema state and binds it to the new native instance;
+legacy persistence and record fields are not imported. Existing external
+capability policy remains in force. Normal provisioning starts through
+`touch_session`; `--no-start` leaves the fresh identity parked. Only verified
+completion receives a boot-ready marker.
 
 If creation fails, `op-identity-root seed-inspect NAME` reports sanitized
 receipt metadata and recovery guidance without mounting, formatting or
@@ -109,6 +124,10 @@ recorded intent and actual membership have been reconciled.
 Preparing or changing the live seed is a separate operator action. The helper
 does not set or clear SEEDING, format the partition, or unmount an unrelated
 source mount. Once leaves depend on a seed, that seed must remain unchanged.
+At boot, the host storage service uses `seed-readonly` to verify the physical
+partition identity and existing SEEDING state, then restore its volatile block
+read-only flag before restoring opted-in roots. This never changes filesystem
+membership or the SEEDING flag.
 The current source change has not been deployed or validated with concurrent
 live containers on the fresh base. The September 30 file-backed and physical
 seed experiments did demonstrate independent writes, peer-active remounts and

@@ -27,8 +27,8 @@ wait_dep identity-roots
 NAME='b0c777e3-0955-cd8b-3d01-ca12998cae28'
 # Switch only after the host storage owner has verified a completed named
 # replacement. An incomplete candidate does not retire the existing identity.
-if [ -f /var/lib/opdbus-runtime/seed-identities/3tchedCtlbot/boot-ready.json ]; then
-    NAME=3tchedCtlbot
+if [ -f /var/lib/opdbus-runtime/seed-identities/3tchedChatbot/boot-ready.json ]; then
+    NAME=3tchedChatbot
 fi
 
 i=0

@@ -611,6 +611,8 @@ build_golden() {
     done
     run install -Dm755 "$SCRIPT_DIR/../scripts/provision-workspace-subscriber.sh" \
         "$GOLDEN_DIR/libexec/3tched/provision-workspace-subscriber"
+    run install -Dm755 "$SCRIPT_DIR/../workspace-image/prepare-lungs-client.sh" \
+        "$GOLDEN_DIR/libexec/3tched/prepare-lungs-client"
     ok "staged control scripts into golden/sbin"
 
     # Standalone EMQX is part of the release artifact and is never copied from
