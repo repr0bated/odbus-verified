@@ -961,13 +961,22 @@ impl MutationEngine {
 
     /// External human transport admission must not count as a container login.
     pub(crate) async fn register_external_mcp_context(&self, context: SessionContext) {
-        self.sessions.write().await.insert(context.session_id.clone(), context);
+        self.sessions
+            .write()
+            .await
+            .insert(context.session_id.clone(), context);
     }
 
     pub(crate) async fn external_mcp_chain_head(&self) -> (String, i64) {
         let chain = self.event_chain.read().await;
-        (chain.last_hash().to_string(),
-         chain.events().last().map(|event| event.timestamp.timestamp()).unwrap_or(0))
+        (
+            chain.last_hash().to_string(),
+            chain
+                .events()
+                .last()
+                .map(|event| event.timestamp.timestamp())
+                .unwrap_or(0),
+        )
     }
 
     pub async fn register_session_context(&self, context: SessionContext) {
@@ -1891,7 +1900,8 @@ impl MutationEngine {
     /// its mandatory durable Cozo/vector initialization.
     #[cfg(test)]
     pub(crate) fn configure_cognitive_runtime_fixture(
-        &self, runtime: Arc<CognitiveMcpServer>,
+        &self,
+        runtime: Arc<CognitiveMcpServer>,
     ) -> anyhow::Result<()> {
         self.cognitive_mcp
             .set(runtime)
@@ -3225,7 +3235,9 @@ impl MutationEngine {
 
         if let Some(session) = session_to_advance
             && (session.sealed_id_digest.is_some()
-                || crate::external_mcp_session::lookup(&session.session_id).await?.is_none())
+                || crate::external_mcp_session::lookup(&session.session_id)
+                    .await?
+                    .is_none())
         {
             crate::identity_sled_dispatch::advance_mutation_index(
                 self,
@@ -3645,10 +3657,14 @@ impl MutationEngine {
                 let scoped_session = call.session_id.clone();
                 let scoped_genesis = call.session_genesis.clone();
                 crate::external_mcp_session::with_authoring_scope(
-                    &engine, &scoped_actor, scoped_session.as_deref(), scoped_genesis.as_deref(),
+                    &engine,
+                    &scoped_actor,
+                    scoped_session.as_deref(),
+                    scoped_genesis.as_deref(),
                     // Keep the large audit future out of task-local wrapper frames.
                     Box::pin(engine.audit_and_dispatch_admitted(call, method_sealed_id_digest)),
-                ).await?
+                )
+                .await?
             })
             .await
             .map_err(|_| anyhow::anyhow!("admitted_method_owner_failed"))?
@@ -6585,6 +6601,10 @@ async fn dispatch_snowball_verify_chain(
     })?)
 }
 
+#[cfg(test)]
+#[path = "rovs_method_ack_tests.rs"]
+mod rovs_method_ack_tests;
+
 /// Execute rovs_commands methods via OVSDB proxy
 async fn dispatch_rovs_commands_method(
     ovsdb: &op_network::rovs_proxy::OvsdbDbusClient,
@@ -6625,6 +6645,7 @@ async fn dispatch_rovs_commands_method(
                 .add_port_with_type(bridge_name, port_name, Some(interface_type))
                 .await?;
             Ok(serde_json::json!({
+                "success": true,
                 "added": port_name,
                 "to": bridge_name,
                 "interface_type": interface_type
@@ -6657,7 +6678,7 @@ async fn dispatch_rovs_commands_method(
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| anyhow::anyhow!("port_name required"))?;
             ovsdb.delete_port(bridge_name, port_name).await?;
-            Ok(serde_json::json!({"removed": port_name, "from": bridge_name}))
+            Ok(serde_json::json!({"success": true, "removed": port_name, "from": bridge_name}))
         }
         "list_bridges" => {
             let bridges = ovsdb.list_bridges().await?;

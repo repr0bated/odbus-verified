@@ -1536,7 +1536,7 @@
         "path": "crates/op-grpc-bridge/src/method_receipt_audit.rs"
       },
       {
-        "sha256": "0950b0950343b538dcab4777503b95ca8420d6307c8319c0065f566f3ca1ea07",
+        "sha256": "8c0ceea0f963e6819c1dc1a9c722ddf20a2c52ebd7fd0a5f3579a5b6d6a8b77c",
         "path": "crates/op-grpc-bridge/src/mutation_engine.rs"
       },
       {
