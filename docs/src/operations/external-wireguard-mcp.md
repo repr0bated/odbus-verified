@@ -57,9 +57,11 @@ and the existing door CA has been verified against the VPS and installed in the
 local trust store. The live certificate retains every existing SAN plus these
 two names. VPS HTTPS checks pass for both root pages, native login/refusal,
 OpenCode event streaming/cancellation, Paseo authenticated WebSockets, and
-cross-origin WebSocket refusal. Home-to-VPS TCP access is still under diagnosis:
-SYN packets from the actual WireGuard peer 10.0.0.9 reach tun5 but receive no reply.
-The user's WireGuard connection is on the home router, not on the VPS.
+cross-origin WebSocket refusal. Direct laptop HTTPS now returns HTTP200 for
+both private URLs after the scoped network repair below. WireGuard remains on
+the home router, not the VPS. The private names currently use laptop
+`/etc/hosts`; no DNS service was added. Other WireGuard clients need name
+resolution and trust for the existing door CA.
 
 Service credentials stay in mode-600 files under
 `/home/jeremy/.config/opdbus-agents` on the VPS. They are not embedded in URLs,
@@ -97,8 +99,9 @@ with every other principal entry verified unchanged. The existing materializer
 published an identical root-only projection; both SHA-256 hashes are
 `80b65206244c88440a962b7855537da687f6c72b09b650bab1ba959ecfb5f5c0`.
 This capability lasts until removed and has the resource limits documented in
-the grant proposal. Registration remains unverified; no key registration,
-identity credential, write capability or administrative grant was changed.
+the grant proposal. That initial read-grant approval excluded registration.
+The owner subsequently approved the exact peer registration below; no machine
+identity credential, write capability or administrative grant was added.
 Receipt: `/opt/op-dbus/recovery/wireguard-read-grant-20261007/receipt.json`.
 
 The post-restart context failure was reproduced with both the original and new
@@ -128,3 +131,36 @@ The retained CLI passes type-check, lint, production build and all 86 affected
 CLI/adapter tests; the unsupported pending search/evidence wiring is archived.
 Distributed local/VPS CLI
 copies match the retained CLI source, with CA/configuration hashes preserved.
+
+## External completion and separate acknowledgement follow-up
+
+The typed OVS removal detached only tun5's master; addresses/routes were
+verified unchanged. Its effect completed despite a missing required success
+field, so the result failed its contract and was not replayed. Packet/syscall
+evidence then isolated stalled decoy SSH return traffic. Restarting only
+op-warp-ssh.service through Ubuntu systemd D-Bus restored the return path.
+No home-router, WireGuard-key or firewall changes were made.
+
+After separate explicit approval, one native human_principal.register_key
+call registered existing peer4V4Wob4v8YxCcQ4nz95Jt3b/aQcAInLq+ABIvvS7/Qg=
+to principal e4d3c524-7478-f714-bcfd-6c21ddcd93f2: operation
+d3fe4392-c2e2-42e3-87f7-96e6b541cf56, attempt246532/terminal246533.
+No additional grant or container was created.
+
+The actual laptop MCP client passed initialize(protocol2025-06-18),14
+permitted tools, memory_recall and cognitive_mcp.code_context(limit1).
+Memory write/delete and code_index remained unexposed. Fresh OIA1 proofs were
+used without machine SID1; the stable origin was
+https://wg-df4af19e08a545254bb3b68440c49a99.opdbus.invalid.
+Receipts are under /var/tmp/wireguard-mcp-tun5-repair-20261007:
+register-approved-peer.receipt.json, network-repair-receipt.json and
+external-mcp-before-ack-release.jsonl.
+
+A separate minimal rovs add/remove acknowledgement repair is awaiting the
+final worker build and reviewed deployment. Its current-source pin and derived
+metadata refresh require bridge/opblob/threetched-fs plus a fresh catalog with
+only the threetched_fs hash changed at unchanged2.0.6. No ACK-fix release is
+claimed yet. Repeat external/native read proofs after activation. New foreign
+Qdrant/Voyage refactoring in the shared checkout is preserved and excluded
+from this isolated candidate. The broader verification limitations above
+remain; focused runtime successes do not establish a full workspace pass.
