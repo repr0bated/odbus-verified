@@ -55,7 +55,7 @@
       "status": "implemented-source-unverified",
       "finding": "Durable reservation and confirmed attempt precede effect; validated result+committed publication+durable linked terminal precede completed receipt. Post-effect/cross-store failure remains unknown; cancellation-owned task continues.",
       "source_refs": [
-        "crates/op-grpc-bridge/src/method_receipt_audit.rs:241-561",
+        "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736",
         "crates/op-grpc-bridge/src/owned_method_task.rs:15-40"
       ]
     },
@@ -86,7 +86,7 @@
       "finding": "Result/error files and Outcome nodes removed. Same original call descriptor carries transient terminal payload; declared get_receipt recovers permanent caller-private status/proofs, never a private result.",
       "source_refs": [
         "crates/threetched-fs/src/namespace.rs:844-873",
-        "crates/op-grpc-bridge/src/method_receipt_audit.rs:465-561"
+        "crates/op-grpc-bridge/src/method_receipt_audit.rs:644-736"
       ]
     },
     {

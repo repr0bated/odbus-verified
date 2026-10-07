@@ -1,112 +1,154 @@
 {
-  "format": "opdbus.notebook-sync-repair.v1",
+  "format": "opdbus.notebook-sync-repair.v2",
   "task_id": "fs-core-20261005",
   "board": "OD-51",
-  "generated_at": "2026-10-05T21:28:27Z",
-  "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
-  "status": "implemented-source-not-deployed",
-  "release": {
-    "selected": "releases/20261005T194135Z-26a4ad1-fs",
-    "hold": "Grok source freeze received; combined compilation/preparation pending, no new activation",
-    "prepared_golden_requires_refresh": true
+  "agent": "Codex",
+  "observed_at": "2026-10-06T05:47:28Z",
+  "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
+  "status": "deployed-fresh-uploads-confirmed-processing-pending",
+  "supersedes": "Prior report described pre-Oct5 deployment state; retained NotebookLM plugin and received sync service are active.",
+  "deployment": {
+    "release_id": "20261006T054013Z-ed02a78-notebook-progress",
+    "activated_at": "2026-10-06T05:40:45Z",
+    "transport": "complete golden filesystem snapshot via btrfs send/receive",
+    "manifest_sha256": "1676cdbb1d289ef83fed15058899e7b5a3ea27c69f827aa51d7c5a82d0d16025",
+    "baseline": "20261006T032316Z-ed02a78-openai-stateless",
+    "provenance": {
+      "format": "opdbus.source-only-release.v1",
+      "release_id": "20261006T054013Z-ed02a78-notebook-progress",
+      "baseline_release": "releases/20261006T032316Z-ed02a78-openai-stateless",
+      "baseline_manifest_sha256": "2bacfccdbbd1b035096b9c04a24b45ab4e542f62387128e64d366395bd9eef96",
+      "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
+      "source_worktree": "modified",
+      "changed_runtime_files": [
+        {
+          "path": "share/op-dbus/notebook-sync/scripts/uv-tools/notebook_sync.py",
+          "sha256": "c2af7436342e4dcbe3da1c10bd576a976646767db970c1a523f4e2feeab654e1"
+        }
+      ],
+      "patch_sha256": "a22187fd2215798532879d3cb96f9884bf932006a7b7c56ea56836efef6ae6c4",
+      "assembly": "complete working received filesystem cloned into isolated golden, authorized sync source substituted, complete readonly snapshot sent/received",
+      "retained_components": "native binaries, sealed catalog, UI, services, identity and grants",
+      "tests": "not run; owner testing agent"
+    },
+    "restarted_services": [
+      "notebook-sources-sync"
+    ],
+    "recovery": "/opt/op-dbus/recovery/notebook-sync-20261006",
+    "working_chat": "same binaries, catalog and UI retained; no Chat restart"
   },
-  "observations": {
-    "mounted_plugin": {
-      "name": "notebooklm",
-      "version": "5.0.0",
-      "method_count": 47,
-      "evidence": "/var/tmp/fs-core-20261005-notebooklm-mounted-schema.json"
-    },
-    "saved_state": {
-      "groups": 57,
-      "verified_sources": 404,
-      "pending": 1,
-      "retired": 3,
-      "plan_chunks": 405,
-      "missing_original_gaps": 305,
-      "evidence": "metadata-only jq reads of existing .grouped-sync/remote-state.json and plan.json"
-    },
-    "old_service": {
-      "helper": "/usr/local/libexec/3tched/notebook-sources-sync-up",
-      "checkout": "/srv/git/odbus",
-      "last_retained_log": "2026-09-10T03:22:46Z: no notebook id; skipped ingest",
-      "logger_mismatch": "run requested s6log, existing log directory/files owned by svlog",
-      "action": "Stopped only notebook-sources-sync at 2026-10-05T21:19:38Z; old loop remains stopped until reviewed received activation"
-    }
+  "diagnosis": {
+    "service": "running, failing every cycle",
+    "cause": "Single legacy pending source absent from complete owned notebook_get listing aborts cycle and starves later groups/capture",
+    "owned_notebook_id": "f9b013a6-5167-42fc-a700-61b7bcf7fe0e",
+    "missing_source_id": "21b8c6d6-08ee-48bb-b67d-b04f67734e6f",
+    "frozen_bytes": 93350,
+    "frozen_sha256": "64d18fc6bd2510368701219db01627d3881f6c34f3970fabcca5f5a289354264",
+    "read_receipt": "14be328f-a592-42d1-a7d7-d77d6a43dda7",
+    "source_count": 141,
+    "evidence": "/var/tmp/notebook-sync-20261006/owned-notebook-get.json",
+    "original_upload_outcome": "unverified; legacy record contains no operation locator"
   },
   "implementation": [
     {
-      "name": "mounted_transport_only",
+      "name": "receipt-backed-absence-quarantine",
       "source_refs": [
-        "scripts/uv-tools/notebook_sync.py:463",
-        "scripts/notebook-sources-sync-up:1",
-        "scripts/notebook-sync:1"
+        "scripts/uv-tools/notebook_sync.py:813",
+        "scripts/uv-tools/notebook_sync.py:1025"
       ],
-      "details": "Installed helper with exact configured session and mount; schema/receipt validation; no credential reader or backend transport fallback"
+      "behavior": "Require exact notebook, complete unique count, completed mounted receipt and canonical operation ID. Preserve original source ID/hash/path, append closed absence proof; never reupload absent legacy source."
     },
     {
-      "name": "durable_resumption",
+      "name": "independent-groups-continue",
       "source_refs": [
-        "scripts/uv-tools/notebook_sync.py:281",
-        "scripts/uv-tools/notebook_sync.py:310",
-        "scripts/uv-tools/notebook_sync.py:795"
+        "scripts/uv-tools/notebook_sync.py:899",
+        "scripts/uv-tools/notebook_sync.py:1028",
+        "scripts/uv-tools/notebook_sync.py:1082"
       ],
-      "details": "Drain frozen plan; durable intent before mutation; completed receipts or typed recovery locators; no blind retry; keep old sources until replacements readable"
+      "behavior": "Count quarantine honestly as pending, advance cursor through other groups within existing budget. Do not suppress other permission/transport failures."
     },
     {
-      "name": "bounded_cycle",
+      "name": "independent-capture-resumes",
       "source_refs": [
-        "scripts/uv-tools/notebook_sync.py:784",
-        "scripts/uv-tools/notebook_sync.py:795"
+        "scripts/uv-tools/notebook_sync.py:294",
+        "scripts/uv-tools/notebook_sync.py:614",
+        "scripts/uv-tools/notebook_sync.py:626",
+        "scripts/uv-tools/notebook_sync.py:789"
       ],
-      "details": "Serial calls,128-call admission budget,15-minute admission deadline,250-second per-call timeout; a final admitted call may finish after the cycle admission deadline"
-    },
-    {
-      "name": "received_service",
-      "source_refs": [
-        "deploy/runit/notebook-sources-sync/run:1",
-        "deploy/runit/notebook-sources-sync/check:1",
-        "deploy/runit/notebook-sources-sync/log/run:1",
-        "deploy/runit/build-golden.sh:616"
-      ],
-      "details": "Received code, existing mutable data, protected explicit human selector and approved UID1001 mount;0 complete/2 pending/other failure; svlog logger; stop forwards termination to active sync process"
-    },
-    {
-      "name": "dependency_readiness",
-      "source_refs": [
-        "deploy/runit/notebook-sources-sync/run:30",
-        "deploy/runit/threetched-fs-native/check:1"
-      ],
-      "details": "Use supervised sv check readiness; native FUSE service does not publish the legacy ready flag. Dependency observation does not start deliberately stopped services."
+      "behavior": "After full cycle with unresolved work confined to quarantined groups, capture independent groups; retain entire unresolved frozen plan and byte hashes. Default manual preparation still refuses incomplete work."
     }
   ],
   "permission_scope": {
-    "local_uid": 1001,
+    "session_id": "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e",
     "mount": "/run/mount/3tchedFS-native",
-    "approval": "Existing scoped native mount approval; owner additionally requests sync repair",
-    "native_router_autonomy": "readonly unchanged",
-    "backend_grants": "unchanged",
-    "sync_mutations": "existing notebooklm.invoke under selected human, only owned grouped corpus"
+    "local_uid": 1001,
+    "grants": "unchanged",
+    "credential": "existing selected identity forwarded by installed threetched-fs helper"
   },
   "verification": {
-    "source_review": "completed for candidate; not execution proof",
-    "tests": "not run; separate owner-assigned testing agent",
-    "live_sync": "unverified; repair not deployed",
-    "google_authentication": "unverified",
-    "old_pending_processing": "unverified"
+    "cursor": "model-nemotron-3.5-lightning-free-78ff58fb",
+    "verified_sources": 404,
+    "legacy_pending": [
+      {
+        "slot": "model-gpt-5.6-sol-419255f2__0092-part1__0001-part1__0001-part1__0001",
+        "source_id": "21b8c6d6-08ee-48bb-b67d-b04f67734e6f",
+        "blocked_reason": "legacy_source_absent_requires_reconciliation",
+        "absence_proof": {
+          "notebook_id": "f9b013a6-5167-42fc-a700-61b7bcf7fe0e",
+          "observed_at": "2026-10-06T05:40:55Z",
+          "operation_id": "49a3bb03-1538-499a-8dc5-f531022f4635",
+          "source_count": 141,
+          "source_ids_sha256": "2c2eb6cfbd8706f9d82c7f1bb3111c2088dcc88578e05822aa9708aecf79bad1"
+        }
+      }
+    ],
+    "cycle_complete": false,
+    "new_capture": {
+      "groups": 81,
+      "chunks": 1054,
+      "previous_groups": 57,
+      "previous_chunks": 405,
+      "previous_plan_timestamp": "2026-09-09T11:03:38Z"
+    },
+    "tests": "not run; owner testing agent",
+    "fixtures": "three new regression fixtures authored in existing test_notebook_sync.py",
+    "first_cycle": {
+      "created": 0,
+      "uploaded": 0,
+      "skipped": 404,
+      "replaced": 0,
+      "pending": 4,
+      "quarantined": 1,
+      "full_plan_iteration": true,
+      "quarantine_only": true
+    },
+    "fresh_remote_sources": {
+      "operation_id": "7b0e22f0-a8ca-4c3c-880b-db88fe1e61af",
+      "outcome": "completed",
+      "notebook_id": "ec3a06e0-594f-4c91-8e8b-79c461ec6179",
+      "url": "https://notebooklm.google.com/notebook/ec3a06e0-594f-4c91-8e8b-79c461ec6179",
+      "title": "Conversations & Tools — gpt-5.6-terra",
+      "source_count": 49,
+      "new_source_ids": [
+        "5affaf36-ecca-4184-8edc-a5d615eaae00",
+        "2bd792af-3722-4f43-886c-725653d4d664"
+      ],
+      "evidence": "/var/tmp/notebook-sync-20261006/fresh-upload-notebook-get.private.json",
+      "content_processing": "pending; presence is not indexed/readable-content proof"
+    }
   },
-  "limitations": [
-    "Grok source freeze and mounted catalog startup-state dependency must be reconciled before combined release",
-    "Unknown creation receipts or inconclusive upload/deletion evidence need explicit scoped reconciliation; no automatic mutation retry",
-    "Provider-normalized content may prevent exact SHA256 recovery of a lost upload response",
-    "Existing305exports lack original raw transcripts; no inferred reconstruction",
-    "Stopping a client cannot roll back an already admitted backend operation; durable intent remains for reconciliation"
-  ],
-  "next_actions": [
-    "Integrate frozen Grok sources and refresh source-backed contract, generated bindings and builds",
-    "Prepare full golden including repaired sync scripts and scoped native run candidate",
-    "Transfer immutable release by Btrfs send/receive and activate approved native mount",
-    "Select received sync service/log/check/finish and compatibility helper links, preserve data and grants, then deliberately restart sync",
-    "Verify exact receipts and authoritative source state; tests remain separate owner responsibility"
+  "denied_diagnostic": {
+    "operation": "threetched_fs.get_receipt",
+    "session_id": "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e",
+    "missing_capability": "cap.storage.3tchedfs.receipt.read@v1",
+    "requested_receipt": "9c409e1c-d5db-48a7-b531-b02930ed1c14",
+    "response": "AccessDenied",
+    "action": "denial retained; no direct database/audit/alternate-identity fallback",
+    "source_content_probe": "outcome unknown; no retry"
+  },
+  "remaining": [
+    "Legacy missing source and its three predecessor records remain retained for explicit scoped reconciliation.",
+    "New uploads are present in authoritative NotebookLM listing; readable processing and full corpus convergence remain pending.",
+    "No unit or workflow tests were run by this agent."
   ]
 }

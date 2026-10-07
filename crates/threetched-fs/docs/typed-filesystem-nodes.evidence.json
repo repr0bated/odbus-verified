@@ -98,7 +98,7 @@
             "path": "crates/op-grpc-bridge/src/lungs_socket.rs"
           },
           {
-            "sha256": "8000117b528ad4929285449519ef1dbc0d05f42d184df3747d9388186ba455ff",
+            "sha256": "6eaca04bc700ef996ae16176fb4c46dd1a6a757b012f94e3b645d23b8495373a",
             "path": "crates/op-grpc-bridge/src/mutation_engine.rs"
           },
           {
@@ -234,15 +234,19 @@
         "path": "crates/op-cozo-store/src/runtime_document_transactions.rs"
       },
       {
+        "sha256": "ba88089d5ae60fce5930c5851a08679b8e9097c7d90b410145136a2cc4d9499c",
+        "path": "crates/op-grpc-bridge/src/chatbot_episode_state.rs"
+      },
+      {
         "sha256": "9fc05dc5308c309ea6371d2889bfd126a920feebc0ecae9d97cb37f4a5b16a26",
         "path": "crates/op-grpc-bridge/src/lungs_socket.rs"
       },
       {
-        "sha256": "c3b95658d450f241011eade7a000a8c08f64f0f6c68bcb994852d74239cf23ca",
+        "sha256": "71152d6c0e3dc8c17828748e21cefa2986243441e1a9b7e1ea919d23c88c2d32",
         "path": "crates/op-grpc-bridge/src/method_receipt_audit.rs"
       },
       {
-        "sha256": "8599ca0de7f13cdf5437b11374a853bdb54a78abb55b97b5cd091b8d8cbba613",
+        "sha256": "0950b0950343b538dcab4777503b95ca8420d6307c8319c0065f566f3ca1ea07",
         "path": "crates/op-grpc-bridge/src/mutation_engine.rs"
       },
       {
@@ -250,7 +254,7 @@
         "path": "crates/op-grpc-bridge/src/owned_method_task.rs"
       },
       {
-        "sha256": "2692193aa7a88cb6b6500e3c40a94a5c47c19890df971b547c26bb7814bf6f9d",
+        "sha256": "f9dd5a2802502ad3d1bf3d0d9772808a7bdbe77ef1ba768c13749524acba1afb",
         "path": "crates/op-grpc-bridge/src/schema_router.rs"
       },
       {
@@ -266,7 +270,11 @@
         "path": "crates/op-plugins/src/state_plugins/runtime_documents.rs"
       },
       {
-        "sha256": "3b2f39d0416fd36013d70243af3ec48e37ceaaab1ca6f19e28bb72ae50fe809e",
+        "sha256": "9a87b6ad09a9fa98c74dcd6660a924adbc6d450d8853f3f60770bf7ab4a19af9",
+        "path": "crates/op-plugins/src/state_plugins/tched_router.rs"
+      },
+      {
+        "sha256": "b2fc25d21703d07b2a7640fa49c09d155d64f55054a94b1b450a4183d2f02ef8",
         "path": "crates/op-plugins/src/state_plugins/threetched_fs.rs"
       },
       {
@@ -314,7 +322,7 @@
         "path": "crates/threetched-fs/src/fuse_buffers.rs"
       },
       {
-        "sha256": "47bfd1378781799631595e14275a1b814f0a0ae72f8cc2980526ed82066a4006",
+        "sha256": "8dee0d77af3de669cf3a34282b051b0fb4a4d23059a70b4a1fa722f4086f099e",
         "path": "crates/threetched-fs/src/fuse_fs.rs"
       },
       {
@@ -359,16 +367,16 @@
       }
     ],
     "source_hash_algorithm": "SHA-256",
-    "assembly_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
-    "schema_version": "2.0.1",
-    "source_commit": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
+    "assembly_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
+    "schema_version": "2.0.6",
+    "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
     "derivation": "fs-core-20261005 working-tree source. source_commit identifies the unchanged checkout baseline; source_files pins current authored implementation. Generated review exports are outputs, not authorities.",
     "pin_exclusions": [
       "Plugin-owned embedded contract excludes itself to avoid a self-hash cycle; its canonical sealed document supplies exact identity.",
       "Derived docs and typed_bindings.rs are outputs and excluded from source input pins."
     ],
     "citation_policy": "Current source refs remapped through stable Rust function/type anchors after scoped formatting. verification.historical/authority.import/runtime_observations preserve prior revision citations and are historical only.",
-    "latest_source_refresh": "2.0.1 source follow-up: canonical audit proof hashes are 32 lowercase hexadecimal characters; FUSE startup/static traversal avoids SHM, live data discovery reads only the addressed committed plugin; mounted describe enumerates declarations from the assigned identity namespace. No tests/build/deployment verified by this contract update."
+    "latest_source_refresh": "2.0.6: source provenance refresh for verified external WireGuard MCP origin sessions, existing live principal grants, canonical private D-Bus dispatch and fixed native agent UI proxy. Native SID1 and container credential paths retain their existing requirements. Active no-manual-recovery Chat behavior is preserved. Source candidate; build and deployment evidence is recorded separately."
   },
   "nodes": [
     {
@@ -3400,7 +3408,7 @@
       "status": "implemented",
       "platform": "Linux GNU (also compiled elsewhere if crate supported)",
       "rust_signature": "fn release(&mut self, request: &Request<'_>, ino: u64, fh: u64, _flags: i32, _lock_owner: Option<u64>, _flush: bool, reply: ReplyEmpty)",
-      "behavior": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file.",
+      "behavior": "Same bounded submission; removes FH lookup immediately while worker keeps descriptor/slot/budget/guard until completion. Duplicate terminal never dispatches again; failed workspace stage never retries automatically. No receipt survives release as a global result file. Kernel cleanup validates exact FH/inode without requiring the unset request UID to match the opener; accepted data and pinned mount identity remain authoritative.",
       "source_refs": [
         "crates/threetched-fs/src/fuse_fs.rs:863-874"
       ],
@@ -3967,8 +3975,8 @@
     "releasedir": {
       "status": "implemented",
       "platform": "Linux GNU",
-      "rust_signature": "fn releasedir(&mut self, request: &Request<'_>, ino: u64, fh: u64, _flags: i32, reply: ReplyEmpty)",
-      "behavior": "Drops charged listing only for exact FH/inode/UID; unknown FH EBADF and mismatched attribution EACCES.",
+      "rust_signature": "fn releasedir(&mut self, _request: &Request<'_>, ino: u64, fh: u64, _flags: i32, reply: ReplyEmpty)",
+      "behavior": "Drops charged listing for exact kernel FH/inode regardless of the unset release UID. Unknown FH EBADF and wrong inode EACCES; readdir still requires opener UID.",
       "source_refs": [
         "/home/jeremy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/fuser-0.16.0/src/lib.rs:648-657",
         "crates/threetched-fs/src/fuse_fs.rs:996-1012"
@@ -3977,7 +3985,7 @@
         {
           "name": "request",
           "rust_type": "&Request<'_>",
-          "ignored": false
+          "ignored": true
         },
         {
           "name": "ino",
@@ -5104,7 +5112,7 @@
         },
         "releasedir": {
           "operation_ref": "#/fuse_operations/releasedir",
-          "outcome": "Drops charged listing only for exact FH/inode/UID; unknown FH EBADF and mismatched attribution EACCES.",
+          "outcome": "Drops charged listing for exact kernel FH/inode regardless of the unset release UID. Unknown FH EBADF and wrong inode EACCES; readdir still requires opener UID.",
           "partial_io": "not applicable",
           "atomicity": "Callback or explicit owned snapshot; no multi-node transaction",
           "blocking": "Synchronous source read/callback; no latency bound",
@@ -9567,7 +9575,7 @@
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/op-grpc-bridge/src/method_receipt_audit.rs:18-561",
+            "crates/op-grpc-bridge/src/method_receipt_audit.rs:18-736",
             "crates/op-grpc-bridge/src/mutation_engine.rs:3421-3621",
             "crates/op-grpc-bridge/src/owned_method_task.rs:15-40"
           ]
@@ -9578,8 +9586,8 @@
           "basis": "current source",
           "verification": "implemented source; build, deployment and tests pending",
           "source_refs": [
-            "crates/op-grpc-bridge/src/method_receipt_audit.rs:18-240",
-            "crates/op-grpc-bridge/src/method_receipt_audit.rs:465-561",
+            "crates/op-grpc-bridge/src/method_receipt_audit.rs:18-414",
+            "crates/op-grpc-bridge/src/method_receipt_audit.rs:644-736",
             "crates/op-plugins/src/state_plugins/runtime_documents.rs:154-252"
           ]
         },
@@ -9632,7 +9640,7 @@
             "crates/op-grpc-bridge/src/mutation_engine.rs:1081-1100",
             "crates/op-grpc-bridge/src/mutation_engine.rs:2147-2171",
             "crates/op-grpc-bridge/src/mutation_engine.rs:2876-2883",
-            "crates/op-grpc-bridge/src/method_receipt_audit.rs:241-561"
+            "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736"
           ]
         }
       ]
@@ -9721,7 +9729,7 @@
         "status": "implemented-source-unverified",
         "source_refs": [
           "crates/threetched-fs/src/mounted.rs:184-497",
-          "crates/op-grpc-bridge/src/method_receipt_audit.rs:241-561"
+          "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736"
         ]
       },
       {

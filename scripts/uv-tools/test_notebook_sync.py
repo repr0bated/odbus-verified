@@ -461,6 +461,82 @@ class NotebookSyncRecoveryTest(unittest.TestCase):
         write_plan_and_state(root, digest, source, old_id="old-src")
         return root, source, digest
 
+    def test_absent_legacy_source_does_not_starve_independent_group(self):
+        root, source, digest = self.fixture()
+        state = json.loads((root / "remote-state.json").read_text())
+        pending = {"source_id": "missing-src", "sha256": digest, "path": str(source)}
+        state["groups"]["model-a"]["pending"] = {"model-a__0001": pending}
+        state["groups"]["model-b"] = {"notebook_id": "nb-2", "sources": {
+            "model-b__0001": {"source_id": "verified-src", "sha256": digest, "verified": True}}}
+        notebook_sync.atomic_json(root / "remote-state.json", state)
+        plan = json.loads((root / "plan.json").read_text())
+        plan["groups"]["model-b"] = {"title": "Model B", "inputs": [], "chunks": [
+            {"slot": "model-b__0001", "sha256": digest, "path": str(source)}]}
+        notebook_sync.atomic_json(root / "plan.json", plan)
+        before_plan = (root / "plan.json").read_bytes()
+        attempts = []
+        def fake(method, args, session):
+            attempts.append((method, args))
+            if method == "notebook_list":
+                return [{"id": "nb-1"}, {"id": "nb-2"}]
+            if method == "notebook_get":
+                sid = "old-src" if args["notebook_id"] == "nb-1" else "verified-src"
+                return notebook_sync.MountedPayload(
+                    {"notebook_id": args["notebook_id"], "source_count": 1, "sources": [{"id": sid}]},
+                    {"plugin_id": "notebooklm", "method": method, "result": {
+                        "success": True, "outcome": "completed", "operation_id": SESSION}})
+            raise AssertionError(method)
+        with mock.patch.object(notebook_sync, "grouped_call", side_effect=fake):
+            counts = notebook_sync.sync_groups(root, SESSION, defer_processing=True)
+        self.assertEqual(counts["quarantined"], 1)
+        self.assertEqual(counts["skipped"], 1)
+        self.assertTrue(any(args.get("notebook_id") == "nb-2" for _, args in attempts))
+        self.assertFalse(any(method in {"source_add", "source_delete", "source_get_content"} for method, _ in attempts))
+        saved = json.loads((root / "remote-state.json").read_text())
+        retained = saved["groups"]["model-a"]["pending"]["model-a__0001"]
+        self.assertEqual({key: retained[key] for key in pending}, pending)
+        self.assertTrue(saved["cycle_incomplete"])
+        self.assertTrue(saved["quarantine_only"])
+        self.assertEqual((root / "plan.json").read_bytes(), before_plan)
+
+    def test_absence_requires_complete_unique_attributed_mounted_result(self):
+        receipt = {"plugin_id": "notebooklm", "method": "notebook_get", "result": {
+            "success": True, "outcome": "completed", "operation_id": SESSION}}
+        variants = [
+            {"notebook_id": "nb-1", "source_count": 2, "sources": [{"id": "s"}]},
+            {"notebook_id": "nb-1", "source_count": 2, "sources": [{"id": "s"}, {"id": "s"}]},
+            {"notebook_id": "nb-other", "source_count": 0, "sources": []},
+        ]
+        for result in variants:
+            with self.assertRaises(notebook_sync.NotebookSyncError):
+                notebook_sync.complete_absence_proof(notebook_sync.MountedPayload(result, receipt), "nb-1")
+        with self.assertRaises(notebook_sync.NotebookSyncError):
+            notebook_sync.complete_absence_proof({"notebook_id": "nb-1", "source_count": 0, "sources": []}, "nb-1")
+
+    def test_refresh_preserves_entire_quarantined_plan_and_receipts(self):
+        root, source, digest = self.fixture()
+        frozen = json.loads((root / "plan.json").read_text())["groups"]["model-a"]
+        state = json.loads((root / "remote-state.json").read_text())
+        state.update(cycle_incomplete=True, quarantine_only=True)
+        state["groups"]["model-a"]["pending"] = {"model-a__0001": {
+            "source_id": "missing-src", "sha256": digest, "path": str(source),
+            "blocked_reason": "legacy_source_absent_requires_reconciliation",
+            "absence_proof": {"notebook_id": "nb-1"}}}
+        notebook_sync.atomic_json(root / "remote-state.json", state)
+        before_state = (root / "remote-state.json").read_bytes()
+        home, repo = root / "empty-home", root / "repo"
+        home.mkdir()
+        repo.mkdir()
+        (repo / "AGENTS.md").write_text("new independent capture")
+        with mock.patch.object(notebook_sync, "SOURCES", root / "empty-sources"):
+            with self.assertRaises(notebook_sync.NotebookSyncError):
+                notebook_sync.prepare_groups(root, home=home, repo=repo)
+            plan = notebook_sync.prepare_groups(root, home=home, repo=repo, preserve_unresolved=True)
+        self.assertEqual(plan["groups"]["model-a"], frozen)
+        self.assertGreater(len(plan["groups"]), 1)
+        self.assertEqual((root / "remote-state.json").read_bytes(), before_state)
+        self.assertEqual(source.read_bytes(), b"complete frozen raw source\r\n")
+
     def test_unknown_upload_is_journaled_once_and_never_retried_on_absence(self):
         root, source, digest = self.fixture()
         attempts = []

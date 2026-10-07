@@ -52,7 +52,7 @@
       "mutation_order": "CAS absent revision0 reserve -> confirmed durable attempt -> attempt journal CAS -> backend commit -> result validation -> terminal durable audit -> terminal journal CAS",
       "recovery": "One receiver-scoped durable point read with persistence barrier; missing/foreign IDs do not reveal another caller's operation",
       "source_refs": [
-        "crates/op-grpc-bridge/src/method_receipt_audit.rs:18-561",
+        "crates/op-grpc-bridge/src/method_receipt_audit.rs:18-736",
         "crates/op-plugins/src/state_plugins/runtime_documents.rs:154-252",
         "crates/op-cozo-store/src/runtime_document_transactions.rs:113-213"
       ]

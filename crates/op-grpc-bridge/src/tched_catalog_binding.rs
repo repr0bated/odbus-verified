@@ -132,9 +132,11 @@ pub(crate) fn select(
         {
             continue;
         }
-        let match_family = target
-            .family
-            .as_str();
+        let match_family = target.family.as_str();
+        ensure!(
+            !candidate.oauth || match_family == "openai",
+            "subscription authentication requires an OpenAI native profile"
+        );
         ensure!(
             candidate
                 .reference
@@ -166,7 +168,12 @@ pub(crate) fn select(
         model_id: target.model_id.clone(),
         reference: candidate.reference.clone(),
         model: target.model_id.clone(),
-        uri: candidate.uri.clone(),
+        uri: if candidate.oauth {
+            String::new()
+        } else {
+            candidate.uri.clone()
+        },
+        oauth: candidate.oauth,
         catalog_revision: target.catalog_revision,
     })
 }
@@ -241,6 +248,7 @@ mod tests {
             select(&target(), &[oauth.clone()]).unwrap().reference,
             "openai.catalog"
         );
+        assert!(select(&target(), &[oauth.clone()]).unwrap().oauth);
         // Without the oauth declaration the same empty endpoint still fails
         // closed (an unexplained endpoint is never trusted).
         let mut keyed = oauth.clone();

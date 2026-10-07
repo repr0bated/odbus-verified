@@ -38,6 +38,13 @@ const MAX_GATEWAY_QUERY_VALUE_BYTES: usize = 4096;
 const MAX_GATEWAY_REQUEST_BYTES: usize = MAX_CHAT_REQUEST_BYTES;
 static RUNTIME_SWITCH_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
+#[derive(Debug, thiserror::Error)]
+#[error("tched_router {operation} returned HTTP {status}")]
+pub(crate) struct NativeHttpFailure {
+    pub(crate) operation: String,
+    pub(crate) status: u16,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum GatewayMethod {
     Get,
@@ -468,11 +475,13 @@ impl TchedRouterRuntimeClient {
             body.extend_from_slice(&chunk);
         }
         if !status.is_success() {
-            let detail = String::from_utf8_lossy(&body);
-            return Err(anyhow!(
-                "tched_router {operation} returned {status}: {}",
-                truncate_error(&detail)
-            ));
+            // A provider error body may echo credentials or private arguments.
+            // Keep only the typed public status and adapter operation.
+            return Err(NativeHttpFailure {
+                operation: operation.to_owned(),
+                status: status.as_u16(),
+            }
+            .into());
         }
         serde_json::from_slice(&body)
             .with_context(|| format!("tched_router {operation} returned invalid JSON"))
@@ -715,9 +724,12 @@ impl TchedRouterRuntimeClient {
                 redact_secret_leaves(value);
             }
         }
+        // Native ListResponse omits this array when empty. Absence means no
+        // drift; a present value must still have the declared array shape.
         let drifted = object
-            .get_mut("drifted")
-            .and_then(Value::as_array_mut)
+            .entry("drifted")
+            .or_insert_with(|| json!([]))
+            .as_array_mut()
             .context("tched_router config list response has no drifted array")?;
         anyhow::ensure!(
             drifted.len() <= MAX_CONFIG_LIST_ENTRIES,
@@ -1279,10 +1291,7 @@ impl TchedRouterRuntimeClient {
     ) -> anyhow::Result<Vec<op_plugins::state_plugins::model_registry::NativeProviderProfile>> {
         let config = self.read_masked_config(secrets).await?;
         let configured = self.configured_providers().await?;
-        let agents = config
-            .get("agents")
-            .and_then(Value::as_object)
-            .context("native provider inventory agent section is absent")?;
+        let private = agent_owned_profiles(&config)?;
         let mut profiles = Vec::new();
         for provider in configured {
             let reference = provider.reference.clone();
@@ -1300,12 +1309,8 @@ impl TchedRouterRuntimeClient {
                 .get("requires_openai_auth")
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
-            let selectable = alias == DEFAULT_AGENT_ALIAS
-                || agents
-                    .get(alias.as_str())
-                    .and_then(|agent| agent.get("model_provider"))
-                    .and_then(Value::as_str)
-                    .is_none();
+            let selectable = !private.contains(&reference)
+                && (!self.opencode_only() || is_door_selectable_reference(&reference));
             profiles.push(
                 op_plugins::state_plugins::model_registry::NativeProviderProfile {
                     reference: provider.reference,
@@ -1317,6 +1322,25 @@ impl TchedRouterRuntimeClient {
             );
         }
         Ok(profiles)
+    }
+
+    /// Check profile ownership before provisioning or changing its model.
+    /// Final binding observation repeats this check after native effects.
+    pub(crate) async fn guard_ordinary_profile(
+        &self,
+        reference: &str,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            crate::tched_catalog_binding::valid_reference(reference),
+            "ordinary native profile reference is invalid"
+        );
+        let config = self.read_masked_config(secrets).await?;
+        anyhow::ensure!(
+            !agent_owned_profiles(&config)?.contains(reference),
+            "ordinary native profile is owned by a non-dashboard agent"
+        );
+        Ok(())
     }
 
     fn opencode_only(&self) -> bool {
@@ -2342,6 +2366,19 @@ fn is_door_selectable_route(provider: &ConfiguredProvider) -> bool {
     is_door_selectable_reference(&provider.reference)
 }
 
+fn agent_owned_profiles(config: &Value) -> anyhow::Result<std::collections::BTreeSet<String>> {
+    let agents = config
+        .get("agents")
+        .and_then(Value::as_object)
+        .context("native provider inventory agent section is absent")?;
+    Ok(agents
+        .iter()
+        .filter(|(alias, _)| alias.as_str() != DEFAULT_AGENT_ALIAS)
+        .filter_map(|(_, agent)| agent.get("model_provider").and_then(Value::as_str))
+        .map(str::to_owned)
+        .collect())
+}
+
 fn binding_profiles(
     config: &Value,
     configured: Vec<ConfiguredProvider>,
@@ -2349,17 +2386,7 @@ fn binding_profiles(
     opencode_only: bool,
 ) -> anyhow::Result<Vec<ConfiguredProvider>> {
     let mut private = target.excluded_references.clone();
-    let agents = config
-        .get("agents")
-        .and_then(Value::as_object)
-        .context("catalog binding native agent inventory is absent")?;
-    for (alias, agent) in agents {
-        if alias != DEFAULT_AGENT_ALIAS
-            && let Some(reference) = agent.get("model_provider").and_then(Value::as_str)
-        {
-            private.insert(reference.to_string());
-        }
-    }
+    private.extend(agent_owned_profiles(config)?);
     let mut eligible = Vec::new();
     for provider in configured {
         anyhow::ensure!(
@@ -2602,6 +2629,31 @@ mod tests {
     }
 
     #[test]
+    fn differently_named_agent_keeps_its_profile_private() {
+        let config = json!({"agents": {
+            "salad_chat": {"model_provider": "custom.salad"},
+            "dashboard": {"model_provider": "custom.salad_personal"}
+        }});
+        let private = agent_owned_profiles(&config).unwrap();
+        assert!(private.contains("custom.salad"));
+        assert!(!private.contains("custom.salad_personal"));
+        let mut target = binding_target();
+        target.family = "custom".into();
+        target.ordinary_reference = Some("custom.salad_personal".into());
+        let configured = ["custom.salad", "custom.salad_personal"]
+            .into_iter()
+            .map(|reference| ConfiguredProvider {
+                family: "custom".into(),
+                reference: reference.into(),
+                selected_model: "test-model".into(),
+            })
+            .collect();
+        let eligible = binding_profiles(&config, configured, &target, false).unwrap();
+        assert_eq!(eligible.len(), 1);
+        assert_eq!(eligible[0].reference, "custom.salad_personal");
+    }
+
+    #[test]
     fn catalog_binding_policy_respects_flag_and_never_overrides_private_exclusion() {
         let config = json!({"agents":{"dashboard":{"model_provider":"openai.dashboard"}, "control_plane":{"model_provider":"custom.private"}}});
         let configured = || {
@@ -2648,6 +2700,50 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
+    }
+
+    #[tokio::test]
+    async fn profile_guard_and_http_errors_preserve_agent_and_secret_boundaries() {
+        use axum::{Json, routing::get};
+        let app = axum::Router::new()
+            .route("/health", get(|| async { Json(json!({"status":"ok"})) }))
+            .route(
+                "/api/config",
+                get(|| async {
+                    Json(json!({"agents":{"salad_chat":{"model_provider":"custom.salad"}}}))
+                }),
+            )
+            .route(
+                "/api/config/catalog/models",
+                get(|| async {
+                    (
+                        axum::http::StatusCode::UNAUTHORIZED,
+                        "PRIVATE_PROVIDER_ERROR_BODY",
+                    )
+                }),
+            );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let client = TchedRouterRuntimeClient::new(endpoint, "dashboard".into(), None);
+        assert!(
+            client
+                .guard_ordinary_profile("custom.salad", &StaticSecretPolicy)
+                .await
+                .is_err()
+        );
+        client
+            .guard_ordinary_profile("custom.salad_personal", &StaticSecretPolicy)
+            .await
+            .unwrap();
+        let error = client
+            .model_catalog("custom.salad_personal")
+            .await
+            .unwrap_err();
+        let http = error.downcast_ref::<NativeHttpFailure>().unwrap();
+        assert_eq!(http.status, 401);
+        assert!(!error.to_string().contains("PRIVATE_PROVIDER_ERROR_BODY"));
+        server.abort();
     }
 
     #[tokio::test]
@@ -3672,11 +3768,11 @@ mod tests {
         }
         async fn list() -> Json<Value> {
             Json(json!({"entries":[
-            {"path":"gateway.port","category":"Gateway","kind":"integer","type_hint":"u16",
-             "value":"8084","populated":true,"is_secret":false,"enum_variants":[],"tab":"","multiline":false},
-            {"path":"providers.api_key","category":"Providers","kind":"string","type_hint":"Option<String>",
-             "value":"provider-leak","populated":true,"is_secret":true,"enum_variants":[],"tab":"","multiline":false}
-        ],"drifted":[]}))
+                {"path":"gateway.port","category":"Gateway","kind":"integer","type_hint":"u16",
+                 "value":"8084","populated":true,"is_secret":false,"enum_variants":[],"tab":"","multiline":false},
+                {"path":"providers.api_key","category":"Providers","kind":"string","type_hint":"Option<String>",
+                 "value":"provider-leak","populated":true,"is_secret":true,"enum_variants":[],"tab":"","multiline":false}
+            ]}))
         }
         async fn put_prop(
             State(state): State<FixtureState>,
@@ -3743,6 +3839,7 @@ mod tests {
             assert_eq!(full["gateway"]["port"], 8084);
             let list = runtime.read_config_list(None, &policy).await.unwrap();
             assert!(list["entries"][1].get("value").is_none());
+            assert_eq!(list["drifted"], json!([]));
             let secret = runtime
                 .read_config_property("providers.api_key", &policy)
                 .await

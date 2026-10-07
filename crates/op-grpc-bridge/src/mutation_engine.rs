@@ -913,9 +913,15 @@ impl MutationEngine {
         if actor_id.is_empty() || actor_id == ANONYMOUS_ACTOR {
             return None;
         }
+        if let Some(context) = crate::external_mcp_session::scoped_context(actor_id) {
+            return Some(context);
+        }
         let record = crate::identity_sled_dispatch::session_record_for_actor(self, actor_id)
             .await
-            .ok()??;
+            .ok()?;
+        let Some(record) = record else {
+            return crate::external_mcp_session::context_for_actor(self, actor_id).await;
+        };
         let genesis_hex = record.genesis.clone().filter(|g| !g.is_empty())?;
         let context = SessionContext {
             genesis_hex,
@@ -951,6 +957,17 @@ impl MutationEngine {
                 None
             }
         }
+    }
+
+    /// External human transport admission must not count as a container login.
+    pub(crate) async fn register_external_mcp_context(&self, context: SessionContext) {
+        self.sessions.write().await.insert(context.session_id.clone(), context);
+    }
+
+    pub(crate) async fn external_mcp_chain_head(&self) -> (String, i64) {
+        let chain = self.event_chain.read().await;
+        (chain.last_hash().to_string(),
+         chain.events().last().map(|event| event.timestamp.timestamp()).unwrap_or(0))
     }
 
     pub async fn register_session_context(&self, context: SessionContext) {
@@ -1868,6 +1885,17 @@ impl MutationEngine {
             true,
         )
         .await
+    }
+
+    /// Explicit ephemeral owner for isolated transport tests; production keeps
+    /// its mandatory durable Cozo/vector initialization.
+    #[cfg(test)]
+    pub(crate) fn configure_cognitive_runtime_fixture(
+        &self, runtime: Arc<CognitiveMcpServer>,
+    ) -> anyhow::Result<()> {
+        self.cognitive_mcp
+            .set(runtime)
+            .map_err(|_| anyhow::anyhow!("cognitive fixture owner already configured"))
     }
 
     pub(crate) async fn cognitive_mcp(&self) -> anyhow::Result<&Arc<CognitiveMcpServer>> {
@@ -3195,7 +3223,10 @@ impl MutationEngine {
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
 
-        if let Some(session) = session_to_advance {
+        if let Some(session) = session_to_advance
+            && (session.sealed_id_digest.is_some()
+                || crate::external_mcp_session::lookup(&session.session_id).await?.is_none())
+        {
             crate::identity_sled_dispatch::advance_mutation_index(
                 self,
                 &session.session_id,
@@ -3610,9 +3641,14 @@ impl MutationEngine {
                     &elevation_arguments,
                 )?;
                 drop(elevation_arguments);
-                engine
-                    .audit_and_dispatch_admitted(call, method_sealed_id_digest)
-                    .await
+                let scoped_actor = call.actor_id.clone();
+                let scoped_session = call.session_id.clone();
+                let scoped_genesis = call.session_genesis.clone();
+                crate::external_mcp_session::with_authoring_scope(
+                    &engine, &scoped_actor, scoped_session.as_deref(), scoped_genesis.as_deref(),
+                    // Keep the large audit future out of task-local wrapper frames.
+                    Box::pin(engine.audit_and_dispatch_admitted(call, method_sealed_id_digest)),
+                ).await?
             })
             .await
             .map_err(|_| anyhow::anyhow!("admitted_method_owner_failed"))?
@@ -5102,7 +5138,7 @@ impl MutationEngine {
                 )
                 .await?;
             }
-            if let Some(reference) = &target.ordinary_reference {
+            if applying && target.ordinary_reference.is_some() {
                 let env = crate::model_registry_dispatch::Environment::from_env();
                 let file = crate::model_registry_dispatch::load_providers(&env)?;
                 if let Some(provider) = file
@@ -5120,7 +5156,7 @@ impl MutationEngine {
                         &env,
                         &runtime,
                         provider,
-                        reference,
+                        &target,
                         &input.model_id,
                         &secrets,
                     )
@@ -5353,7 +5389,7 @@ impl MutationEngine {
                 self.ctl_plane_chatbot_episode_cozo().await?;
                 Some(
                     self.chatbot_episode_publisher()?
-                        .admit_effect(self, scope.clone())
+                        .admit_chat_effect(self, scope.clone())
                         .await?,
                 )
             } else {

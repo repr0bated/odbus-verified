@@ -192,6 +192,65 @@ pub struct HumanPrincipalIdentity {
     pub session_genesis: String,
 }
 
+/// Receiver-created origin of a remote MCP caller. The issuer only signs an
+/// inner address after resolving an exact WireGuard AllowedIP (/32 or /128).
+/// These claims become evidence only after signature, lifetime, transport and
+/// principal validation; neither HTTP Origin nor client metadata can create it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct VerifiedWireGuardOrigin {
+    principal_id: String,
+    peer_key: String,
+    issuer_key_id: String,
+    signed_inner_ip: IpAddr,
+    assertion_digest: String,
+    expires_at: i64,
+}
+
+impl VerifiedWireGuardOrigin {
+    pub(crate) fn principal_id(&self) -> &str {
+        &self.principal_id
+    }
+    pub(crate) fn peer_key(&self) -> &str {
+        &self.peer_key
+    }
+    pub(crate) fn issuer_key_id(&self) -> &str {
+        &self.issuer_key_id
+    }
+    pub(crate) fn signed_inner_ip(&self) -> IpAddr {
+        self.signed_inner_ip
+    }
+    pub(crate) fn assertion_digest(&self) -> &str {
+        &self.assertion_digest
+    }
+    pub(crate) fn expires_at(&self) -> i64 {
+        self.expires_at
+    }
+
+    pub(crate) fn allowed_ip_scope(&self) -> String {
+        format!(
+            "{}/{}",
+            self.signed_inner_ip,
+            if self.signed_inner_ip.is_ipv4() {
+                32
+            } else {
+                128
+            }
+        )
+    }
+
+    /// A stable logical origin, never a destination or an authorization key.
+    /// Grants remain keyed by the registered principal. The full signed tuple
+    /// is retained by the external-session owner for scope validation.
+    pub(crate) fn origin(&self) -> String {
+        op_cozo_store::ExternalMcpSessionRecord::canonical_origin(
+            &self.principal_id,
+            &self.peer_key,
+            &self.issuer_key_id,
+            &self.allowed_ip_scope(),
+        )
+    }
+}
+
 /// Fail-closed rejection reasons for the assertion pipeline.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum AssertionRejection {
@@ -623,6 +682,7 @@ impl AssertionReplayCache {
 #[derive(Debug)]
 pub(crate) struct PendingAssertion {
     identity: HumanPrincipalIdentity,
+    verified_origin: VerifiedWireGuardOrigin,
     issuer_key_id: String,
     nonce: [u8; 16],
     expires_at: i64,
@@ -631,6 +691,10 @@ pub(crate) struct PendingAssertion {
 }
 
 impl PendingAssertion {
+    pub(crate) fn verified_origin(&self) -> &VerifiedWireGuardOrigin {
+        &self.verified_origin
+    }
+
     pub(crate) fn identity(&self) -> &HumanPrincipalIdentity {
         &self.identity
     }
@@ -754,6 +818,29 @@ impl AssertionValidator {
         now: i64,
         registration_bootstrap: bool,
     ) -> Result<PendingAssertion, AssertionRejection> {
+        self.validate_pending(wire, source, now, registration_bootstrap, true)
+    }
+
+    /// External MCP represents the verified WireGuard principal itself.
+    /// Browser-to-chatbot assignments cannot supply a different identity or
+    /// bootstrap an unregistered key on this transport.
+    pub(crate) fn validate_pending_for_mcp(
+        &self,
+        wire: &[u8],
+        source: Option<SocketAddr>,
+        now: i64,
+    ) -> Result<PendingAssertion, AssertionRejection> {
+        self.validate_pending(wire, source, now, false, false)
+    }
+
+    fn validate_pending(
+        &self,
+        wire: &[u8],
+        source: Option<SocketAddr>,
+        now: i64,
+        registration_bootstrap: bool,
+        allow_browser_binding: bool,
+    ) -> Result<PendingAssertion, AssertionRejection> {
         let signed = match SignedAssertion::from_wire(wire) {
             Ok(value) => value,
             Err(_) => return Err(AssertionRejection::Malformed),
@@ -807,6 +894,7 @@ impl AssertionValidator {
         }
 
         let assigned = match &self.browser_binding {
+            _ if !allow_browser_binding => None,
             BrowserBindingPolicy::Invalid => {
                 return Err(AssertionRejection::InvalidBrowserIdentityBinding);
             }
@@ -822,6 +910,14 @@ impl AssertionValidator {
             assertion.expires_at,
             registration_bootstrap || assigned.is_some(),
         )?;
+        let verified_origin = VerifiedWireGuardOrigin {
+            principal_id: identity.principal_id.clone(),
+            peer_key: assertion.human_pubkey.clone(),
+            issuer_key_id: assertion.decoy_key_id.clone(),
+            signed_inner_ip: assertion.tunnel_inner_ip,
+            assertion_digest: blake3::hash(wire).to_hex().to_string(),
+            expires_at: assertion.expires_at,
+        };
         let bound_oracle = assigned.map(|binding| BoundOracleProof {
             binding: binding.clone(),
             assertion_digest: blake3::hash(wire).to_hex().to_string(),
@@ -832,6 +928,7 @@ impl AssertionValidator {
         });
         Ok(PendingAssertion {
             identity,
+            verified_origin,
             issuer_key_id: assertion.decoy_key_id.clone(),
             nonce: assertion.nonce,
             expires_at: assertion.expires_at,
@@ -981,6 +1078,111 @@ pub mod tests {
 
     const TEST_KEY_BYTES: [u8; 32] = [7u8; 32];
     const SAMPLE_PUBKEY_LOCAL: &str = "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=";
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn external_mcp_origin_is_stable_on_renewal_and_separates_peer_and_allowed_ip() {
+        let issuer = test_issuer();
+        let peer = pk(111);
+        let (_cozo, validator) = validator_with_registered(&issuer, &peer).await;
+        let validator =
+            validator.with_source_binding(AssertionSourceBinding::TrustedDecoySignature);
+        register(&pk(112), "second-external-peer").await.unwrap();
+        let now = 1_700_000_100;
+        let origin_for = |key: &str, ip: IpAddr, nonce: u8| {
+            let proof = signed_with_fields(&issuer, key, ip, now - 5, now + 300, [nonce; 16], None);
+            validator
+                .validate_pending_for_mcp(&proof.to_wire(), None, now)
+                .unwrap()
+                .verified_origin()
+                .clone()
+        };
+        let first = origin_for(&peer, "10.0.0.5".parse().unwrap(), 1);
+        let renewed = origin_for(&peer, "10.0.0.5".parse().unwrap(), 2);
+        assert_eq!(first.origin(), renewed.origin());
+        assert_ne!(first.assertion_digest(), renewed.assertion_digest());
+        assert_eq!(first.allowed_ip_scope(), "10.0.0.5/32");
+        assert_eq!(first.principal_id(), derive_principal_id(&peer));
+        assert_ne!(
+            first.origin(),
+            origin_for(&pk(112), "10.0.0.5".parse().unwrap(), 3).origin()
+        );
+        assert_ne!(
+            first.origin(),
+            origin_for(&peer, "10.0.0.6".parse().unwrap(), 4).origin()
+        );
+        let ipv6 = origin_for(&peer, "fd00::5".parse().unwrap(), 5);
+        assert_eq!(ipv6.allowed_ip_scope(), "fd00::5/128");
+        assert_ne!(first.origin(), ipv6.origin());
+        assert!(!first.origin().contains(&peer));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn external_mcp_never_uses_browser_assignment_to_bootstrap_or_change_principal() {
+        let _cozo = temp_cozo();
+        let issuer = test_issuer();
+        let peer = pk(113);
+        let target = pk(114);
+        let validator = AssertionValidator::new(trust_store_for_issuer(&issuer))
+            .with_browser_binding(
+                &peer,
+                &derive_principal_id(&target),
+                &derive_session_id(&target),
+            );
+        let now = 1_700_000_100;
+        let proof =
+            signed_with_fields(&issuer, &peer, test_ip(), now - 5, now + 300, [6; 16], None);
+        let wire = proof.to_wire();
+        assert!(matches!(
+            validator.validate_pending_for_mcp(&wire, Some(source_at(test_ip())), now),
+            Err(AssertionRejection::UnknownPrincipal)
+        ));
+        register(&peer, "external-peer").await.unwrap();
+        let pending = validator
+            .validate_pending_for_mcp(&wire, Some(source_at(test_ip())), now)
+            .unwrap();
+        assert!(pending.bound_oracle().is_none());
+        assert_eq!(pending.identity().principal_id, derive_principal_id(&peer));
+        validator.consume_pending(pending).unwrap();
+        assert!(matches!(
+            validator.validate_pending_for_mcp(&wire, Some(source_at(test_ip())), now),
+            Err(AssertionRejection::Replay)
+        ));
+        revoke(&peer).await.unwrap();
+        let fresh =
+            signed_with_fields(&issuer, &peer, test_ip(), now - 5, now + 300, [7; 16], None);
+        assert!(matches!(
+            validator.validate_pending_for_mcp(&fresh.to_wire(), Some(source_at(test_ip())), now),
+            Err(AssertionRejection::RevokedPrincipal)
+        ));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn external_mcp_origin_requires_authentic_current_signed_scope() {
+        let issuer = test_issuer();
+        let peer = pk(115);
+        let (_cozo, validator) = validator_with_registered(&issuer, &peer).await;
+        let now = 1_700_000_100;
+        let mut proof =
+            signed_with_fields(&issuer, &peer, test_ip(), now - 5, now + 300, [8; 16], None);
+        proof.assertion.tunnel_inner_ip = "10.0.0.9".parse().unwrap();
+        assert!(matches!(
+            validator.validate_pending_for_mcp(&proof.to_wire(), Some(source_at(test_ip())), now),
+            Err(AssertionRejection::BadSignature)
+        ));
+        let expired = signed_with_fields(
+            &issuer,
+            &peer,
+            test_ip(),
+            now - 300,
+            now - 100,
+            [9; 16],
+            None,
+        );
+        assert!(matches!(
+            validator.validate_pending_for_mcp(&expired.to_wire(), Some(source_at(test_ip())), now),
+            Err(AssertionRejection::Expired)
+        ));
+    }
 
     #[test]
     fn browser_binding_config_is_single_canonical_assignment_or_fail_closed() {

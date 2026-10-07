@@ -66,6 +66,11 @@ fn store() -> Option<CozoGraphShuttle> {
     }
 }
 
+/// Strict shared durable owner for receiver-authored external MCP anchors.
+pub(crate) fn external_mcp_store() -> anyhow::Result<CozoGraphShuttle> {
+    store().ok_or_else(|| anyhow!("human principal Cozo store unavailable"))
+}
+
 /// Registry lookup for the assertion validator. Unlike the degraded read
 /// path used by ordinary `resolve_key` dispatch, store unavailability is an
 /// error (VAL-BRIDGE-017).

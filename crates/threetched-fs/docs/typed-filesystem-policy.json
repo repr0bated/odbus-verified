@@ -52,7 +52,7 @@
       "write": "Bounded schema-admitted input; exactly one canonical backend dispatch, permanent scoped operation reservation, durable linked attempt/terminal, exact result validation, no automatic replay.",
       "source_refs": [
         "crates/threetched-fs/src/fuse_fs.rs:275-581",
-        "crates/op-grpc-bridge/src/method_receipt_audit.rs:241-561"
+        "crates/op-grpc-bridge/src/method_receipt_audit.rs:415-736"
       ]
     },
     {

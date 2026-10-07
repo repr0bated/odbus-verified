@@ -1,7 +1,7 @@
 {
   "format": "opdbus.fs-core-followup-deployment.v1",
   "task_id": "fs-core-20261005",
-  "status": "active-readiness-verified-functional-tests-delegated",
+  "status": "superseded-by-fs-enomem-release",
   "selected_release": "releases/20261005T224836Z-f373feb",
   "source_baseline": "26a4ad132fbbd4523b05724060bfdeb9ca661824",
   "current_checkout_commit": "f373feb009bcebbde885a8e943731b510d62dfef",
@@ -57,5 +57,7 @@
     "live_cognitive_methods": "unverified beyond deployment readiness",
     "old_get_health_receipt_recovery": "pending through declared mounted get_receipt"
   },
-  "evidence_directory": "/var/tmp/fs-core-20261005-final3-release"
+  "evidence_directory": "/var/tmp/fs-core-20261005-final3-release",
+  "superseded_at": "2026-10-05T23:33:08Z",
+  "current_evidence": "reports/fs-core-20261005/mount-enomem-repair.json"
 }

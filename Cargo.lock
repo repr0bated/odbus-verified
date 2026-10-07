@@ -4307,8 +4307,11 @@ name = "op-cozo-store"
 version = "1.0.0"
 dependencies = [
  "anyhow",
+ "base64 0.21.7",
+ "blake3",
  "chrono",
  "cozo",
+ "hex",
  "nix 0.28.0",
  "op-identity",
  "schemars 1.2.1",

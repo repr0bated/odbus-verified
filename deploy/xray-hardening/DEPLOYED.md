@@ -1,3 +1,11 @@
+**October 7 follow-up:** the relay executable modes were restored through
+received component `20261007T001957Z-xray-sni-repair`. Host-to-decoy egress is
+now paired XHTTP/REALITY using `www.cloudflarestatus.com` with the original
+MLDSA authentication. Apple is absent from the legacy allowed names. The
+reverse encrypted XHTTP web/mail bridge is unchanged. See
+[`REPAIR-20261007.md`](REPAIR-20261007.md) for current verification and rollback;
+the TCP/REALITY description below is the October 4 historical receipt.
+
 OD-106 was activated and verified on 2026-10-04 at 08:29 UTC under the owner's
 explicit scoped native Xray maintenance exception. This supersedes the earlier
 prepared-only status in the 08:17 handoff. `ACTIVATION.md` remains the procedure

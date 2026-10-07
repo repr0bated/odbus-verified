@@ -350,14 +350,14 @@ impl TypedFuse {
         Ok(fh)
     }
     /// Enqueue the reply, launch at most four bounded jobs, then immediately
-    /// return to the FUSE loop. No callback waits for a backend round trip.
+    /// return to the FUSE loop. Kernel release uses pinned FH/inode, not its unset UID.
     fn submit(&mut self, ino: u64, fh: u64, uid: u32, reply: PendingReply, release: bool) {
         let Some(state) = self.open_files.get(&fh).cloned() else {
             reply.error(EBADF);
             return;
         };
         let mut handle = state.lock();
-        if handle.node.ino != ino || handle.uid != uid {
+        if handle.node.ino != ino || (!release && handle.uid != uid) {
             reply.error(EACCES);
             return;
         }
@@ -995,14 +995,14 @@ impl Filesystem for TypedFuse {
     }
     fn releasedir(
         &mut self,
-        request: &Request<'_>,
+        _request: &Request<'_>,
         ino: u64,
         fh: u64,
         _flags: i32,
         reply: ReplyEmpty,
     ) {
         match self.directories.get(&fh) {
-            Some(directory) if directory.ino == ino && directory.uid == request.uid() => {
+            Some(directory) if directory.ino == ino => {
                 self.directories.remove(&fh);
                 reply.ok();
             }
@@ -1677,5 +1677,31 @@ mod tests {
         std::fs::remove_file(state.join("demo.json")).unwrap();
         assert!(fs.open_handle(ino, libc::O_RDONLY, fs.uid).is_err());
         assert_eq!(fs.open_files[&first].lock().readable_bytes(), b"1\n");
+    }
+
+    #[test]
+    fn kernel_release_reclaims_nonroot_handles_without_weakening_io_checks() {
+        let (_directory, mut fs) = lungs_fixture(PathBuf::from("/nonexistent"));
+        let ino = method_node(&fs, "args.json").ino;
+        let owner = 1001;
+        for _ in 0..HANDLE_LIMIT * 2 {
+            let fh = fs.open_handle(ino, libc::O_RDONLY, owner).unwrap();
+            assert_eq!(fs.open_files[&fh].lock().check(ino, 0, false), Err(EACCES));
+            let (sender, receiver) = std::sync::mpsc::channel();
+            fs.submit(ino, fh, 0, PendingReply::Test(sender), false);
+            assert_eq!(receiver.recv().unwrap(), EACCES);
+            assert!(fs.open_files.contains_key(&fh));
+            let (sender, receiver) = std::sync::mpsc::channel();
+            fs.submit(ino.wrapping_add(1), fh, 0, PendingReply::Test(sender), true);
+            assert_eq!(receiver.recv().unwrap(), EACCES);
+            assert!(fs.open_files.contains_key(&fh));
+            let (sender, receiver) = std::sync::mpsc::channel();
+            fs.submit(ino, fh, 0, PendingReply::Test(sender), true);
+            assert_eq!(receiver.recv().unwrap(), 0);
+            assert!(fs.open_files.is_empty());
+        }
+        let slots = fs.slots.take(HANDLE_LIMIT, HANDLE_LIMIT).unwrap();
+        let bytes = fs.budget.take(TOTAL_LIMIT, TOTAL_LIMIT).unwrap();
+        drop((slots, bytes));
     }
 }

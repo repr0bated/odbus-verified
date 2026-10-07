@@ -129,10 +129,35 @@ const RUST_PRO_CODEBASE_ENV: &str = "OP_MCP_RUST_PRO_CODEBASE";
 const DEFAULT_RUST_PRO_CODEBASE: &str = "/srv/git/odbus";
 
 #[derive(Clone, Debug)]
-struct AuthenticatedCaller {
+pub(crate) struct AuthenticatedCaller {
     principal_id: String,
     session_id: String,
     session_genesis: String,
+    /// Receiver-derived scope of an external WireGuard caller, never HTTP Origin.
+    wireguard_origin: Option<String>,
+}
+
+impl AuthenticatedCaller {
+    pub(crate) fn identity_claims(&self) -> (&str, &str, &str, Option<&str>) {
+        (
+            &self.principal_id,
+            &self.session_id,
+            &self.session_genesis,
+            self.wireguard_origin.as_deref(),
+        )
+    }
+}
+
+#[cfg(test)]
+pub(crate) async fn authenticate_dbus_fixture(
+    engine: Arc<MutationEngine>,
+    validator: Arc<AssertionValidator>,
+    headers: &HeaderMap,
+) -> Result<AuthenticatedCaller, String> {
+    OracleHttpAuthenticator { engine, validator }
+        .authenticate(headers, None)
+        .await
+        .map_err(|e| e.0)
 }
 
 #[derive(Debug)]
@@ -150,6 +175,7 @@ struct McpSession {
     principal_id: String,
     identity_session_id: String,
     session_genesis: String,
+    wireguard_origin: Option<String>,
     view: McpView,
     selection: RwLock<Option<ToolsetSelection>>,
     events: broadcast::Sender<String>,
@@ -166,6 +192,7 @@ impl McpSession {
             principal_id: caller.principal_id.clone(),
             identity_session_id: caller.session_id.clone(),
             session_genesis: caller.session_genesis.clone(),
+            wireguard_origin: caller.wireguard_origin.clone(),
             view,
             selection: RwLock::new(None),
             events,
@@ -191,6 +218,7 @@ impl McpSession {
         self.principal_id == caller.principal_id
             && self.identity_session_id == caller.session_id
             && self.session_genesis == caller.session_genesis
+            && self.wireguard_origin == caller.wireguard_origin
     }
 
     fn caller(&self) -> AuthenticatedCaller {
@@ -198,6 +226,7 @@ impl McpSession {
             principal_id: self.principal_id.clone(),
             session_id: self.identity_session_id.clone(),
             session_genesis: self.session_genesis.clone(),
+            wireguard_origin: self.wireguard_origin.clone(),
         }
     }
 }
@@ -264,27 +293,28 @@ impl OracleHttpAuthenticator {
 
         let mut pending = self
             .validator
-            .validate_pending_with_bootstrap(&wire, peer, chrono::Utc::now().timestamp(), false)
+            .validate_pending_for_mcp(&wire, peer, chrono::Utc::now().timestamp())
             .map_err(|error| McpAuthError(error.to_string()))?;
-        // Match native gRPC ordering: validate signature/binding and resolve the
-        // principal, anchor the durable human session, then atomically consume
-        // the nonce. A missing session must not burn an otherwise valid nonce.
-        let session = crate::interceptor::anchor_verified_human_session(
-            self.engine.as_ref(),
-            &pending.identity().human_pubkey,
-        )
-        .await
-        .ok_or_else(|| McpAuthError("Assertion identity has no anchored session genesis".into()))?;
-        pending.identity_mut().session_id = session.session_id;
-        pending.identity_mut().session_genesis = session.genesis_hex;
+        // External humans have a durable, origin-scoped audit session, without
+        // a container, SID1, or browser-to-chatbot identity assignment. Preserve
+        // nonce consumption after successful durable admission.
+        let wireguard_origin = pending.verified_origin().origin();
+        let session =
+            crate::external_mcp_session::anchor(self.engine.as_ref(), pending.verified_origin())
+                .await
+                .map_err(|error| McpAuthError(error.to_string()))?;
+        pending.identity_mut().session_id = session.session_id.clone();
+        pending.identity_mut().session_genesis = session.genesis_hex.clone();
         let identity = self
             .validator
             .consume_pending(pending)
             .map_err(|error| McpAuthError(error.to_string()))?;
+        self.engine.register_external_mcp_context(session).await;
         Ok(AuthenticatedCaller {
             principal_id: identity.principal_id,
             session_id: identity.session_id,
             session_genesis: identity.session_genesis,
+            wireguard_origin: Some(wireguard_origin),
         })
     }
 
@@ -340,6 +370,7 @@ impl OracleHttpAuthenticator {
             principal_id: claims.principal_id,
             session_id: claims.session_id,
             session_genesis: claims.session_genesis,
+            wireguard_origin: None,
         })
     }
 }
@@ -463,19 +494,14 @@ impl MutationEngineMcpBackend {
         self.authorize(caller, required_capability)?;
         // Stable principal identity is the audit actor. Session identity stays
         // in the authenticated request context and never becomes authority.
-        let actor = caller.principal_id.clone();
-        let result = self
-            .engine
-            .dispatch_method_call_with_identity(
-                plugin_id,
-                method,
-                &serde_json::to_string(&arguments)?,
-                Some(required_capability),
-                &actor,
-                Some(&caller.session_id),
-                Some(&caller.session_genesis),
-            )
-            .await?;
+        let result = crate::mcp_dbus_dispatch::dispatch(
+            self.engine.clone(),
+            caller.clone(),
+            plugin_id,
+            method,
+            arguments,
+        )
+        .await?;
         Ok(result.get("result").cloned().unwrap_or(result))
     }
 
@@ -1416,7 +1442,12 @@ async fn process_rpc(
     .await;
 
     match outcome {
-        Ok(Ok(result)) => {
+        Ok(Ok(mut result)) => {
+            if rpc.method == "initialize" {
+                if let Some(origin) = &caller.wireguard_origin {
+                    result["_meta"]["opdbus/wireguardOrigin"] = json!(origin);
+                }
+            }
             if let (Some(session), Some(selection)) =
                 (session.as_ref(), selected_toolset_from_result(&result))
             {
@@ -2729,8 +2760,142 @@ mod tests {
                 principal_id: format!("test-principal-{identity}"),
                 session_id: format!("test-session-{identity}"),
                 session_genesis: "test-genesis".into(),
+                wireguard_origin: None,
             })
         }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn external_mcp_http_accepts_one_wireguard_identity_and_preserves_admission() {
+        use crate::human_principal_dispatch::tests::{pk, temp_shm, test_engine};
+        use crate::oracle_assertion::AssertionSourceBinding;
+        use crate::oracle_assertion::tests::{
+            signed_with_fields, test_issuer, validator_with_registered,
+        };
+
+        struct RestoreGrants(Option<std::ffi::OsString>);
+        impl Drop for RestoreGrants {
+            fn drop(&mut self) {
+                match self.0.take() {
+                    Some(value) => unsafe { std::env::set_var("OP_GRANTS_PATH", value) },
+                    None => unsafe { std::env::remove_var("OP_GRANTS_PATH") },
+                }
+            }
+        }
+        let issuer = test_issuer();
+        let key = pk(208);
+        let (_registry, validator) = validator_with_registered(&issuer, &key).await;
+        let _shm = temp_shm();
+        let engine = test_engine();
+        let grants = tempfile::tempdir().unwrap();
+        let grants_path = grants.path().join("grants.json");
+        let _restore = RestoreGrants(std::env::var_os("OP_GRANTS_PATH"));
+        unsafe { std::env::set_var("OP_GRANTS_PATH", &grants_path) };
+        std::fs::write(&grants_path, "{}").unwrap();
+        let principal = op_identity::session::derive_principal_id(&key);
+        let router = router_with_state(McpFrontendState {
+            authenticator: Arc::new(OracleHttpAuthenticator {
+                validator: Arc::new(
+                    validator.with_source_binding(AssertionSourceBinding::TrustedDecoySignature),
+                ),
+                engine: engine.clone(),
+            }),
+            backend: Arc::new(TestBackend::default()),
+            allowed_origins: Arc::new(HashSet::new()),
+            sessions: Arc::new(RwLock::new(HashMap::new())),
+        });
+        let now = chrono::Utc::now().timestamp();
+        let request = |nonce: u8, ip: &str, session: Option<&str>| {
+            let proof = signed_with_fields(
+                &issuer,
+                &key,
+                ip.parse().unwrap(),
+                now - 1,
+                now + 300,
+                [nonce; 16],
+                None,
+            );
+            let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(proof.to_wire());
+            let mut builder = Request::builder()
+                .method("POST")
+                .uri(MCP_PATH)
+                .header(CONTENT_TYPE, "application/json")
+                .header("accept", "application/json, text/event-stream")
+                .header(HTTP_ASSERTION_HEADER, encoded);
+            let body = if let Some(session) = session {
+                builder = builder
+                    .header(MCP_SESSION_HEADER, session)
+                    .header("mcp-protocol-version", MCP_PROTOCOL_VERSION);
+                json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
+            } else {
+                json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": MCP_PROTOCOL_VERSION}})
+            };
+            builder.body(Body::from(body.to_string())).unwrap()
+        };
+        let denied = router
+            .clone()
+            .oneshot(request(81, "10.0.0.5", None))
+            .await
+            .unwrap();
+        assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+        assert!(engine.connected_session_ids().await.is_empty());
+        std::fs::write(
+            &grants_path,
+            serde_json::to_vec(&json!({
+                principal: {"capabilities": ["cognitive_mcp.read"]}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        // A failed admission did not consume the nonce. There is no SID1, no
+        // browser Origin, and no identity container in this request or fixture.
+        let initialized = router
+            .clone()
+            .oneshot(request(81, "10.0.0.5", None))
+            .await
+            .unwrap();
+        assert_eq!(initialized.status(), StatusCode::OK);
+        let session = initialized.headers()[MCP_SESSION_HEADER]
+            .to_str()
+            .unwrap()
+            .to_string();
+        let body: Value = serde_json::from_slice(
+            &to_bytes(initialized.into_body(), MAX_BODY_BYTES)
+                .await
+                .unwrap(),
+        )
+        .unwrap();
+        assert!(
+            body["result"]["_meta"]["opdbus/wireguardOrigin"]
+                .as_str()
+                .unwrap()
+                .starts_with("https://wg-")
+        );
+        let replay = router
+            .clone()
+            .oneshot(request(81, "10.0.0.5", None))
+            .await
+            .unwrap();
+        assert_eq!(replay.status(), StatusCode::UNAUTHORIZED);
+        let renewed = router
+            .clone()
+            .oneshot(request(82, "10.0.0.5", Some(&session)))
+            .await
+            .unwrap();
+        assert_eq!(renewed.status(), StatusCode::OK);
+        let moved = router
+            .clone()
+            .oneshot(request(83, "10.0.0.6", Some(&session)))
+            .await
+            .unwrap();
+        assert_eq!(moved.status(), StatusCode::NOT_FOUND);
+        std::fs::write(&grants_path, "{}").unwrap();
+        let revoked = router
+            .oneshot(request(84, "10.0.0.5", Some(&session)))
+            .await
+            .unwrap();
+        assert_eq!(revoked.status(), StatusCode::UNAUTHORIZED);
+        assert!(engine.logged_in_principal_sessions(300).await.is_empty());
     }
 
     #[derive(Clone, Default)]
@@ -3045,6 +3210,23 @@ mod tests {
             .await
             .unwrap();
         serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[test]
+    fn external_mcp_conversation_cannot_move_to_a_different_wireguard_origin() {
+        let mut caller = AuthenticatedCaller {
+            principal_id: "same-principal".into(),
+            session_id: "same-session".into(),
+            session_genesis: "same-genesis".into(),
+            wireguard_origin: Some("https://wg-first.opdbus.invalid".into()),
+        };
+        let session = McpSession::new(&caller, McpView::Typed);
+        assert!(session.belongs_to(&caller));
+        assert_eq!(session.caller().wireguard_origin, caller.wireguard_origin);
+        caller.wireguard_origin = Some("https://wg-other.opdbus.invalid".into());
+        assert!(!session.belongs_to(&caller));
+        caller.wireguard_origin = None;
+        assert!(!session.belongs_to(&caller));
     }
 
     #[tokio::test]
@@ -4069,6 +4251,7 @@ mod tests {
             principal_id: "ordinary-principal".into(),
             session_id: "ordinary-session".into(),
             session_genesis: "ordinary-genesis".into(),
+            wireguard_origin: None,
         };
         let unknown = "plugin.unlisted.operation";
         let error = backend
@@ -4111,14 +4294,19 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn singleton_projection_uses_exact_grants_and_sealed_typed_dispatch() {
-        let policy = deployed_mcp_policy();
-        let caller = AuthenticatedCaller {
-            principal_id: policy.audience.singleton_chatbot_principal_id.clone(),
-            session_id: "chatbot-session".into(),
-            session_genesis: "chatbot-genesis".into(),
-        };
+        // A projection-only invented session cannot pass the real D-Bus owner.
+        // Use a genuine verified receiver term while preserving singleton-role
+        // projection assertions through an isolated fixture audience policy.
+        let _registry = crate::human_principal_dispatch::tests::temp_cozo();
+        let peer = crate::human_principal_dispatch::tests::pk(213);
+        crate::human_principal_dispatch::tests::register(&peer, "singleton-read-fixture")
+            .await
+            .unwrap();
+        let principal = op_identity::session::derive_principal_id(&peer);
+        let mut policy = deployed_mcp_policy();
+        policy.audience.singleton_chatbot_principal_id = principal.clone();
         let snowball_schema = op_state::StatePlugin::schema(
             &op_plugins::state_plugins::snowball_plugin::SnowballPlugin::default(),
         )
@@ -4143,13 +4331,34 @@ mod tests {
             router_schema.clone(),
             gap_schema,
         ]);
-        let mut backend = MutationEngineMcpBackend::new(
-            crate::human_principal_dispatch::tests::test_engine(),
-            McpPolicyOwner::for_fixture(policy),
+        let engine = crate::human_principal_dispatch::tests::test_engine();
+        let fixture = tempfile::tempdir().unwrap();
+        let documents = Arc::new(
+            op_plugins::state_plugins::runtime_documents::RuntimeDocuments::new(
+                op_cozo_store::CozoGraphShuttle::new_persistent_private(
+                    fixture.path().join("journal"),
+                )
+                .unwrap(),
+            ),
         );
+        engine
+            .configure_method_journal_documents(documents)
+            .unwrap();
+        engine
+            .configure_cognitive_runtime_fixture(Arc::new(
+                op_cognitive_mcp::CognitiveMcpServer::new_in_memory()
+                    .await
+                    .unwrap(),
+            ))
+            .unwrap();
+        engine
+            .init_audit_durability_at(fixture.path().join("audit").to_str().unwrap())
+            .await;
+        let mut backend =
+            MutationEngineMcpBackend::new(engine.clone(), McpPolicyOwner::for_fixture(policy));
 
         let grants = Arc::new(std::sync::RwLock::new(HashMap::from([(
-            caller.principal_id.clone(),
+            principal.clone(),
             HashSet::from([
                 "cognitive_mcp.read".to_string(),
                 "snowball.read".to_string(),
@@ -4158,6 +4367,61 @@ mod tests {
             ]),
         )])));
         backend.test_grants = Some(Arc::clone(&grants));
+
+        struct GrantPath(Option<std::ffi::OsString>);
+        impl Drop for GrantPath {
+            fn drop(&mut self) {
+                match self.0.take() {
+                    Some(path) => unsafe { std::env::set_var("OP_GRANTS_PATH", path) },
+                    None => unsafe { std::env::remove_var("OP_GRANTS_PATH") },
+                }
+            }
+        }
+        let _grant_path = GrantPath(std::env::var_os("OP_GRANTS_PATH"));
+        let real_grants = fixture.path().join("grants.json");
+        unsafe { std::env::set_var("OP_GRANTS_PATH", &real_grants) };
+        let capability_list = grants.read().unwrap()[&principal]
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
+        std::fs::write(
+            &real_grants,
+            serde_json::to_vec(&json!({
+                principal.clone(): {"capabilities": capability_list}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let issuer = crate::oracle_assertion::tests::test_issuer();
+        let validator = Arc::new(
+            AssertionValidator::new(crate::oracle_assertion::tests::trust_store_for_issuer(
+                &issuer,
+            ))
+            .with_source_binding(
+                crate::oracle_assertion::AssertionSourceBinding::TrustedDecoySignature,
+            ),
+        );
+        let now = chrono::Utc::now().timestamp();
+        let proof = crate::oracle_assertion::tests::signed_with_fields(
+            &issuer,
+            &peer,
+            "10.0.0.5".parse().unwrap(),
+            now - 1,
+            now + 300,
+            [82; 16],
+            None,
+        );
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            HTTP_ASSERTION_HEADER,
+            base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .encode(proof.to_wire())
+                .parse()
+                .unwrap(),
+        );
+        let caller = authenticate_dbus_fixture(engine, validator, &headers)
+            .await
+            .unwrap();
 
         let tools = backend.list_tools(&caller, None).await.unwrap();
         let call_name = "plugin.snowball.verify_chain";
@@ -4208,6 +4472,7 @@ mod tests {
             .find(|tool| tool_name(tool) == call_name)
             .unwrap();
         grants.write().unwrap().clear();
+        std::fs::write(&real_grants, "{}").unwrap();
         let error = backend
             .dispatch_projected_tool(&caller, descriptor, call_name, json!({}))
             .await
@@ -4233,8 +4498,12 @@ mod tests {
             .write()
             .unwrap()
             .insert("*".into(), HashSet::from(["snowball.read".to_string()]));
-        let wildcard = backend.list_tools(&caller, None).await.unwrap();
+        let wildcard = backend.authorized_singleton_tools(&caller).await.unwrap();
         assert!(!wildcard.iter().any(|tool| tool_name(tool) == call_name));
+        // The public path also rechecks the real owner, whose revoked grants
+        // remain empty. Projection-only fixture entries cannot restore admission.
+        let error = backend.list_tools(&caller, None).await.unwrap_err();
+        assert!(error.to_string().contains("no capabilities"));
         let error = backend
             .call_tool(&caller, "plugin.snowball_gap.query_events", json!({}), None)
             .await
@@ -4260,6 +4529,7 @@ mod tests {
             principal_id: policy.audience.singleton_chatbot_principal_id.clone(),
             session_id: "chatbot-session".into(),
             session_genesis: "chatbot-genesis".into(),
+            wireguard_origin: None,
         };
         let names = [
             "shell_execute",

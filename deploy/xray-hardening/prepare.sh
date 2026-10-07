@@ -5,11 +5,11 @@ umask 077
 fail() { printf 'xray-hardening: %s\n' "$*" >&2; exit 1; }
 [[ $# == 4 ]] || fail 'usage: prepare.sh PROFILE INPUT.json PRIVATE-PARAMS.json NEW-CANDIDATE.json'
 profile=$1 input=$2 params=$3 output=$4
-case $profile in host-reality|decoy-reality|host-xhttp|decoy-xhttp) ;; *) fail 'unknown profile';; esac
+case $profile in host-reality|decoy-reality|host-xhttp|decoy-xhttp|host-egress-xhttp|decoy-egress-xhttp) ;; *) fail 'unknown profile';; esac
 [[ -f $input && -f $params ]] || fail 'input and private parameter files required'
 [[ ! -e $output && ! -L $output ]] || fail 'output must not already exist'
 output=$(realpath -m -- "$output")
-case $output in /etc/xray/.od106-prepared-20261004/*) ;; /etc/*|/dev/*|/proc/*|/sys/*) fail 'output must be an offline preparation path';; esac
+case $output in /etc/xray/.od106-prepared-20261004/*|/etc/xray/.xhttp-cloudflare-prepared-20261007/*) ;; /etc/*|/dev/*|/proc/*|/sys/*) fail 'output must be an offline preparation path';; esac
 [[ -d $(dirname -- "$output") ]] || fail 'output directory must exist'
 # Reserve the destination without replacing any existing file (including symlinks).
 (set -o noclobber; : > "$output") 2>/dev/null || fail 'cannot reserve new output'

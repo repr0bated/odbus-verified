@@ -722,6 +722,7 @@ fn build_axum_app_with_mcp(
     )
     .merge(build_routes(loader, server, validator).into_axum_router())
     .layer(cors)
+    .layer(axum::middleware::from_fn(crate::agent_ui_proxy::route))
     .layer(GhostbridgeTraceLayer::new())
 }
 

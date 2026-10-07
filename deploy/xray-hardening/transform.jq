@@ -10,7 +10,7 @@ def xhttp($p): {path:$p,mode:"packet-up",extra:{xPaddingBytes:"100-1000"}};
 require(type == "array" and length == 1; "one source JSON object required") | .[0] |
 require(type == "object"; "source must be an object") |
 require((.inbounds|tags_ok) and (.outbounds|tags_ok); "source arrays require unique nonempty tags") |
-require((($profile == "decoy-reality") and (.routing == null or ((.routing|type == "object") and (.routing.rules == null or (.routing.rules|type == "array"))))) or ((.routing|type == "object") and (.routing.rules|type == "array")); "expected explicit routing rules") |
+require((($profile == "decoy-reality" or $profile == "decoy-egress-xhttp") and (.routing == null or ((.routing|type == "object") and (.routing.rules == null or (.routing.rules|type == "array"))))) or ((.routing|type == "object") and (.routing.rules|type == "array")); "expected explicit routing rules") |
 require(($parameters|length == 1) and ($parameters[0]|type == "object"); "one private parameters object required") |
 $parameters[0] as $p |
 if $profile == "host-reality" then
@@ -40,4 +40,27 @@ elif $profile == "decoy-xhttp" then
   (.outbounds[]|select(.tag == "tunnel")|.settings.vnext[0].users[].encryption) = $p.xhttp_encryption |
   (.outbounds[]|select(.tag == "tunnel")|.streamSettings.xhttpSettings) = (xhttp($p.xhttp_path) | .extra.xmux=xmux | .extra.downloadSettings={address:"192.168.255.1",port:8444,network:"xhttp",security:"none",xhttpSettings:(xhttp($p.xhttp_path)|.extra.xmux=xmux)}) |
   (.outbounds[]|select(.tag == "tunnel")|.mux) = {enabled:false}
+elif $profile == "host-egress-xhttp" then
+  one(.outbounds;"od106-reality-egress") as $o |
+  one(.inbounds;"reality-in") as $i |
+  require($o.protocol == "vless" and ($o.settings.vnext|type == "array" and length == 1) and $o.settings.vnext[0].address == "127.0.0.1" and $o.settings.vnext[0].port == 19443 and ($o.settings.vnext[0].users|clients_ok) and ($o.settings.vnext[0].users|length == 1) and all($o.settings.vnext[0].users[]; .encryption == "none" and .flow == "xtls-rprx-vision") and $o.streamSettings.network == "tcp" and $o.streamSettings.security == "reality" and $o.streamSettings.realitySettings.serverName == "assistant.ghostbridge.tech" and ($o.streamSettings.realitySettings.mldsa65Verify|b64(2603)); "unexpected existing host egress shape") |
+  require($i.protocol == "vless" and $i.streamSettings.security == "reality" and ($i.streamSettings.realitySettings.serverNames|type == "array") and $i.streamSettings.realitySettings.dest == "127.0.0.1:1443"; "unexpected legacy host cover shape") |
+  require(($p.xhttp_path|type == "string" and test("^/[A-Za-z0-9_-]{24,128}$")); "invalid paired egress XHTTP path") |
+  (.outbounds[]|select(.tag == "od106-reality-egress")) |= (
+    .settings.vnext[0].users |= map(del(.flow)) |
+    .streamSettings.network="xhttp" |
+    .streamSettings.xhttpSettings=xhttp($p.xhttp_path) |
+    .streamSettings.realitySettings.serverName="www.cloudflarestatus.com" |
+    .mux={enabled:false}) |
+  (.inbounds[]|select(.tag == "reality-in")|.streamSettings.realitySettings.serverNames) |= map(select(. != "www.apple.com" and . != "apple.com"))
+elif $profile == "decoy-egress-xhttp" then
+  one(.inbounds;"egress-reality") as $i |
+  require($i.protocol == "vless" and $i.listen == "0.0.0.0" and $i.port == 9443 and ($i.settings.clients|clients_ok) and ($i.settings.clients|length == 1) and $i.settings.clients[0].flow == "xtls-rprx-vision" and $i.settings.decryption == "none" and $i.streamSettings.network == "tcp" and $i.streamSettings.security == "reality" and $i.streamSettings.realitySettings.dest == "127.0.0.1:443" and $i.streamSettings.realitySettings.serverNames == ["assistant.ghostbridge.tech"] and ($i.streamSettings.realitySettings.mldsa65Seed|b64(43)); "unexpected existing decoy egress shape") |
+  require(($p.xhttp_path|type == "string" and test("^/[A-Za-z0-9_-]{24,128}$")); "invalid paired egress XHTTP path") |
+  (.inbounds[]|select(.tag == "egress-reality")) |= (
+    .settings.clients |= map(del(.flow)) |
+    .streamSettings.network="xhttp" |
+    .streamSettings.xhttpSettings=xhttp($p.xhttp_path) |
+    .streamSettings.realitySettings.dest="www.cloudflarestatus.com:443" |
+    .streamSettings.realitySettings.serverNames=["www.cloudflarestatus.com"])
 else error("unknown profile") end

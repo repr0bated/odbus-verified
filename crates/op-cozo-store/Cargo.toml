@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+base64 = { workspace = true }
+blake3 = { workspace = true }
+hex = { workspace = true }
 serde = { workspace = true }
 nix = { version = "0.28", features = ["fs", "user"] }
 anyhow = { workspace = true }

@@ -5307,3 +5307,54 @@
 +        }
 +    }
 +}
+--- a/crates/zeroclaw-providers/src/openai_codex.rs
++++ b/crates/zeroclaw-providers/src/openai_codex.rs
+@@ -1465,6 +1465,12 @@
+ 
+ #[async_trait]
+ impl ModelProvider for OpenAiCodexModelProvider {
++    // Explicit messages-only Responses requests: no inherited agent session,
++    // local tools or workspace state. OAuth remains owned by this provider.
++    fn supports_stateless_generation(&self) -> bool {
++        true
++    }
++
+     // ── Provider-family defaults ──
+     fn default_wire_api(&self) -> &str {
+         WIRE_API
+@@ -1676,6 +1682,35 @@
+ mod tests {
+     use super::*;
+ 
++    #[test]
++    fn subscription_profile_is_admitted_by_the_stateless_factory() {
++        use zeroclaw_config::schema::{
++            AliasedAgentConfig, Config, ModelProviderConfig, OpenAIModelProviderConfig,
++        };
++        let mut config = Config::default();
++        config.agents.insert(
++            "fixture".into(),
++            AliasedAgentConfig {
++                model_provider: "openai.fixture".into(),
++                ..Default::default()
++            },
++        );
++        config.providers.models.openai.insert(
++            "fixture".into(),
++            OpenAIModelProviderConfig {
++                base: ModelProviderConfig {
++                    requires_openai_auth: true,
++                    model: Some("fixture-model".into()),
++                    ..Default::default()
++                },
++            },
++        );
++        let generation = crate::stateless::StatelessGeneration::from_config(&config, "fixture")
++            .expect("subscription provider must reach the provider-only generation path");
++        assert_eq!(generation.provider_ref, "openai.fixture");
++        assert_eq!(generation.model, "fixture-model");
++    }
++
+     enum MockCodexReply {
+         Sse(&'static str),
+         Json(serde_json::Value),

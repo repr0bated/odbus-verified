@@ -25,7 +25,7 @@ use simd_json::OwnedValue as Value;
 // =============================================================================
 
 const PLUGIN_NAME: &str = "tched_router";
-const PLUGIN_VERSION: &str = "4.3.0";
+const PLUGIN_VERSION: &str = "4.4.1";
 const PLUGIN_CATEGORY: &str = "llm";
 const PLUGIN_DESCRIPTION: &str = "3tched Router — schema/RPC-native model router for Antigravity UI, CLI providers, and structured JSON output";
 const PLUGIN_DISPLAY_NAME: &str = "GB.3tchedRouter";
@@ -429,6 +429,10 @@ pub struct ResolveCatalogModelBindingOutput {
     pub reference: String,
     pub model: String,
     pub uri: String,
+    /// Verified OpenAI subscription profile; its native auth owner chooses the
+    /// inference origin. This is not inferred from an empty URI or catalog label.
+    #[serde(default)]
+    pub oauth: bool,
     pub catalog_revision: u64,
 }
 
@@ -2723,6 +2727,7 @@ mod tests {
             reference: "openai.private".into(),
             model: "PRIVATE_MODEL".into(),
             uri: "https://private.example/v1".into(),
+            oauth: false,
             catalog_revision: 7,
         });
         let observed = super::dispatch_tched_router_method("GetState", "{}", &state).unwrap();

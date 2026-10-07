@@ -20,6 +20,180 @@ use super::{AdmittedMethodCall, MutationEngine, event_to_footprint, require_boun
 const JOURNAL_NAMESPACE: &str = "__method_operation_v1";
 const MAX_JOURNAL_BYTES: usize = 8192;
 
+/// Closed diagnostic vocabulary. Backend error text can contain possession
+/// material; only matched source conditions leave this boundary, never text.
+fn safe_backend_failure_kind(error: &anyhow::Error) -> &'static str {
+    for cause in error.chain() {
+        if let Some(http) = cause.downcast_ref::<crate::tched_router_runtime::NativeHttpFailure>() {
+            let catalog =
+                http.operation.starts_with("list ") && http.operation.ends_with(" models");
+            return match (catalog, http.operation.as_str(), http.status) {
+                (true, _, 401 | 403) => "native_model_catalog_auth_rejected",
+                (true, _, _) => "native_model_catalog_http_failed",
+                (false, "chat", 401 | 403) => "native_agent_auth_rejected",
+                (false, "chat", _) => "native_agent_http_failed",
+                _ => "native_config_http_failed",
+            };
+        }
+        let message = cause.to_string();
+        for (condition, code) in [
+            (
+                "config list response has no drifted array",
+                "native_config_list_missing_drift",
+            ),
+            (
+                "masked native configuration failed sealed-contract validation",
+                "native_config_contract_mismatch",
+            ),
+            (
+                "native configuration is unavailable",
+                "native_config_unavailable",
+            ),
+            (
+                "model catalog is unavailable",
+                "native_model_catalog_unavailable",
+            ),
+            (
+                "catalog model has no unique live ordinary native binding",
+                "native_binding_not_unique",
+            ),
+            (
+                "catalog binding profile inventory exceeds bound",
+                "native_binding_inventory_bound",
+            ),
+            (
+                "catalog binding native profile reference is invalid",
+                "native_binding_reference_invalid",
+            ),
+            (
+                "property display value is not a string",
+                "native_property_shape_invalid",
+            ),
+            (
+                "configured provider model is missing a string value",
+                "native_provider_model_absent",
+            ),
+            (
+                "config path is absent from pinned contract",
+                "native_config_path_unclassified",
+            ),
+            (
+                "config contract reference",
+                "native_config_reference_unresolved",
+            ),
+            (
+                "selected model is absent from its configured alias catalog",
+                "native_selected_model_not_catalogued",
+            ),
+            ("model catalog is empty", "native_selected_catalog_empty"),
+            (
+                "native generation protocol rejected",
+                "native_generation_rejected",
+            ),
+            ("model provider failed", "native_provider_failed"),
+            (
+                "model provider returned HTTP",
+                "native_provider_http_failed",
+            ),
+            (
+                "connection to the model provider failed",
+                "native_provider_transport_failed",
+            ),
+            (
+                "model provider returned an invalid response",
+                "native_provider_response_invalid",
+            ),
+            (
+                "model provider configuration is invalid",
+                "native_provider_configuration_invalid",
+            ),
+            (
+                "native generation transport failed",
+                "native_generation_transport_failed",
+            ),
+            ("native generation HTTP", "native_generation_http_failed"),
+            (
+                "did not authenticate the forwarded SID1",
+                "native_identity_ack_absent",
+            ),
+            (
+                "native config changed after observation publication",
+                "native_config_publication_changed",
+            ),
+            (
+                "human message was not recorded",
+                "conversation_record_failed",
+            ),
+            ("chat episode", "chat_episode_failed"),
+            ("requires verified", "verified_context_missing"),
+            ("compiled/sealed", "compiled_sealed_contract_mismatch"),
+            ("tched_router list ", "native_model_catalog_failed"),
+            (
+                "tched_router read masked config",
+                "native_config_read_failed",
+            ),
+            (
+                "tched_router read config property",
+                "native_property_read_failed",
+            ),
+            ("tched_router health", "native_health_failed"),
+            (
+                "ordinary native profile is owned",
+                "ordinary_profile_agent_owned",
+            ),
+            (
+                "ordinary native profile is reserved",
+                "ordinary_profile_dedicated",
+            ),
+            (
+                "episode publication requires recovery",
+                "chat_episode_recovery_required",
+            ),
+            ("tched_router chat failed", "native_agent_rpc_failed"),
+            (
+                "tched_router chat returned invalid JSON",
+                "native_agent_response_invalid",
+            ),
+            ("tched_router chat returned", "native_agent_http_failed"),
+            (
+                "tched_router chat request failed",
+                "native_agent_transport_failed",
+            ),
+            ("requested provider", "native_selection_provider_mismatch"),
+            ("requested model", "native_selection_model_mismatch"),
+            (
+                "canonical identity credential projection is unavailable",
+                "native_identity_projection_unavailable",
+            ),
+            (
+                "canonical MCP SID1 projection is unavailable",
+                "native_identity_credential_unavailable",
+            ),
+            (
+                "canonical SID1 claims are invalid",
+                "native_identity_claims_invalid",
+            ),
+            (
+                "SID1 actor does not match caller",
+                "native_identity_principal_mismatch",
+            ),
+            (
+                "SID1 session does not match caller",
+                "native_identity_session_mismatch",
+            ),
+            (
+                "SID1 genesis does not match caller",
+                "native_identity_genesis_mismatch",
+            ),
+        ] {
+            if message.contains(condition) {
+                return code;
+            }
+        }
+    }
+    "unclassified_backend_failure"
+}
+
 async fn journal_documents(
     engine: &MutationEngine,
 ) -> anyhow::Result<std::sync::Arc<RuntimeDocuments>> {
@@ -380,7 +554,12 @@ impl MutationEngine {
             .await;
         let mut envelope = match outcome {
             Ok(Ok(value)) => value,
-            Ok(Err(_)) => {
+            Ok(Err(error)) => {
+                tracing::error!(
+                    operation_id = %operation_id,
+                    failure_kind = safe_backend_failure_kind(&error),
+                    "Admitted backend failed; outcome remains unknown"
+                );
                 self.record_method_terminal(
                     &attempt,
                     &operation_id,

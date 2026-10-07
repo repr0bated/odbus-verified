@@ -134,6 +134,7 @@ credential = "off"
 # Salad AI. OpenAI-compatible list at the same host the router already uses.
 [[providers]]
 id = "salad"
+native_provider_id = "custom.salad_personal"
 inference_url_prefix = "https://ai.salad.cloud/v1"
 name = "Salad AI"
 models_url = "https://ai.salad.cloud/v1/models"

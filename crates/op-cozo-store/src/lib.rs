@@ -9,6 +9,9 @@ use tracing::{info, warn};
 
 type Params = BTreeMap<String, DataValue>;
 
+mod external_mcp_sessions;
+pub use external_mcp_sessions::ExternalMcpSessionRecord;
+
 mod system_graph;
 pub use system_graph::*;
 
@@ -579,6 +582,7 @@ impl CozoGraphShuttle {
                 registered_at: Int default 0,
                 revoked_at: Int default 0
             }"#,
+            r#":create external_mcp_sessions { session_id: String => principal_id: String, document: String }"#,
             // human_pubkey → principal_id lookup; the pubkey is unique across
             // ALL principals, active or revoked (tombstones keep their mapping)
             r#":create human_principal_pubkeys {

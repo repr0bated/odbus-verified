@@ -291,11 +291,12 @@ def ingest(title: str | None = None, notebook_id: str | None = None,
             # Drain the exact frozen snapshot before capturing later appends.
             recover_repair(state_dir)
             remote = json.loads(remote_path.read_text()) if remote_path.exists() else {"groups": {}}
-            if not remote.get("cycle_incomplete") and not any(
-                group.get("pending") or group.get("retired") or
-                (group.get("create_intent") and not group.get("notebook_id")) or
-                any(item.get("status") != "confirmed_absent" for item in group.get("deletions", {}).values())
-                for group in remote["groups"].values()
+            if remote.get("session_id", session) != session:
+                raise NotebookSyncError("saved remote state belongs to another session")
+            if remote.get("quarantine_only"):
+                prepare_groups(state_dir, preserve_unresolved=True)
+            elif not remote.get("cycle_incomplete") and not any(
+                unresolved_group(group) for group in remote["groups"].values()
             ):
                 prepare_groups(state_dir)
             counts = sync_groups(state_dir, session, defer_processing=True)
@@ -603,17 +604,42 @@ def topic_for(path: str) -> str:
     return next((topic for topic, pattern in rules if re.search(pattern, name)), "architecture")
 
 
-def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None) -> dict:
+def unresolved_group(group: dict) -> bool:
+    return bool(group.get("pending") or group.get("retired") or
+                (group.get("create_intent") and not group.get("notebook_id")) or
+                any(item.get("status") != "confirmed_absent"
+                    for item in group.get("deletions", {}).values()))
+
+
+def quarantined_group(group: dict) -> bool:
+    pending = group.get("pending", {})
+    return bool(pending) and all(
+        item.get("blocked_reason") == "legacy_source_absent_requires_reconciliation" and
+        item.get("absence_proof", {}).get("notebook_id") == group.get("notebook_id")
+        for item in pending.values()
+    ) and not (group.get("create_intent") and not group.get("notebook_id")) and all(
+        item.get("status") == "confirmed_absent" for item in group.get("deletions", {}).values()
+    )
+
+
+def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None,
+                   *, preserve_unresolved: bool = False) -> dict:
     state_path = state_dir / "remote-state.json"
+    frozen_groups = {}
     if state_path.exists():
         remote = json.loads(state_path.read_text())
-        if remote.get("cycle_incomplete") or any(
-            group.get("pending") or group.get("retired") or
-            (group.get("create_intent") and not group.get("notebook_id")) or
-            any(item.get("status") != "confirmed_absent" for item in group.get("deletions", {}).values())
-            for group in remote["groups"].values()
-        ):
-            raise NotebookSyncError("drain the frozen plan before preparing later appends")
+        unresolved = {key for key, group in remote["groups"].items() if unresolved_group(group)}
+        if remote.get("cycle_incomplete") or unresolved:
+            if not preserve_unresolved or not remote.get("quarantine_only") or not all(
+                quarantined_group(remote["groups"][key]) for key in unresolved
+            ):
+                raise NotebookSyncError("drain the frozen plan before preparing later appends")
+            previous = json.loads((state_dir / "plan.json").read_text())
+            for key in unresolved:
+                frozen_groups[key] = previous["groups"][key]
+                for chunk in frozen_groups[key]["chunks"]:
+                    if hashlib.sha256(Path(chunk["path"]).read_bytes()).hexdigest() != chunk["sha256"]:
+                        raise NotebookSyncError("quarantined frozen source changed; reconciliation required")
     repo = repo or Path(os.environ.get("OPDBUS_NOTEBOOK_PROJECT_ROOT", str(Path(__file__).resolve().parents[2])))
     if not repo.is_absolute() or not (repo / "AGENTS.md").is_file():
         raise NotebookSyncError("project capture root must be an absolute repository with AGENTS.md")
@@ -755,6 +781,9 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None)
         target.flush()
         if target.chunks:
             plan["groups"][key] = {"title": target.title, "chunks": apply_repartitions(target.chunks, repairs), "inputs": target.inputs}
+    # Only independent groups advance. Every chunk and receipt in unresolved
+    # groups stays attached to its exact original content-addressed plan.
+    plan["groups"].update(frozen_groups)
     atomic_json(state_dir / "plan.json", plan)
     return plan
 
@@ -781,10 +810,36 @@ def mutation_record(result: Any) -> dict:
     return {"result": dict(result), **({"receipt": receipt} if receipt else {})}
 
 
+def complete_absence_proof(remote: Any, notebook_id: str) -> dict:
+    """Absence requires a complete attributed read receipt, never a partial list."""
+    receipt = getattr(remote, "receipt", None)
+    sources = remote.get("sources")
+    if not isinstance(receipt, dict) or receipt.get("plugin_id") != "notebooklm" or receipt.get("method") != "notebook_get":
+        raise NotebookSyncError("legacy pending absence requires a completed mounted notebook receipt")
+    engine = receipt.get("result")
+    if not isinstance(engine, dict) or engine.get("success") is not True or engine.get("outcome") != "completed":
+        raise NotebookSyncError("legacy pending absence has no completed read proof")
+    if remote.get("notebook_id") != notebook_id or not isinstance(sources, list):
+        raise NotebookSyncError("legacy pending absence notebook attribution mismatch")
+    count = remote.get("source_count")
+    identifiers = [item.get("id") for item in sources if isinstance(item, dict)]
+    if type(count) is not int or count != len(sources) or len(identifiers) != count or any(
+        not isinstance(sid, str) or not sid for sid in identifiers
+    ) or len(set(identifiers)) != count:
+        raise NotebookSyncError("legacy pending absence requires a complete unique source listing")
+    try:
+        operation_id = selected_session(engine["operation_id"])
+    except (KeyError, NotebookSyncError) as error:
+        raise NotebookSyncError("legacy pending absence lacks a canonical operation locator") from error
+    return {"notebook_id": notebook_id, "operation_id": operation_id, "source_count": count,
+            "source_ids_sha256": hashlib.sha256(compact_json(sorted(identifiers)).encode()).hexdigest(),
+            "observed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+
+
 def sync_groups(state_dir: Path, session: str, only: str | None = None,
                 defer_processing: bool = False) -> dict:
     selected_session(session)
-    counts = {"created": 0, "uploaded": 0, "skipped": 0, "replaced": 0, "pending": 0}
+    counts = {"created": 0, "uploaded": 0, "skipped": 0, "replaced": 0, "pending": 0, "quarantined": 0}
     try:
         _sync_groups(state_dir, session, only, defer_processing, counts)
     except CycleLimit:
@@ -805,6 +860,7 @@ def _sync_groups(state_dir: Path, session: str, only: str | None,
     state["session_id"] = session
     state["version"] = 2
     state["cycle_incomplete"] = True
+    state["quarantine_only"] = False
     atomic_json(state_path, state)
     calls = 0
     deadline = time.monotonic() + 900
@@ -840,6 +896,7 @@ def _sync_groups(state_dir: Path, session: str, only: str | None,
         raise NotebookSyncError("invalid notebook list result")
     notebook_ids = {item["id"] for item in notebooks}
     keys = list(plan["groups"])
+    quarantined_groups = set()
     cursor = state.get("next_group")
     if cursor in keys:
         start = keys.index(cursor)
@@ -966,7 +1023,15 @@ def _sync_groups(state_dir: Path, session: str, only: str | None,
             # Accepted legacy pending records have an owned source ID. A source
             # missing from the scoped notebook is unresolved, never reuploaded.
             if pending.get("source_id") not in existing and not pending.get("confirmed"):
-                raise NotebookSyncError("legacy pending source absent; explicit receipt reconciliation required")
+                pending["blocked_reason"] = "legacy_source_absent_requires_reconciliation"
+                pending["absence_proof"] = complete_absence_proof(remote, notebook_id)
+                quarantined_groups.add(key)
+                counts["quarantined"] += 1
+                counts["pending"] += 1
+                publish()
+                continue
+            pending.pop("blocked_reason", None)
+            pending.pop("absence_proof", None)
             if not verified:
                 for attempt in range(1 if defer_processing else 6):
                     # Permissions, missing mount and transport failures fail
@@ -1013,6 +1078,11 @@ def _sync_groups(state_dir: Path, session: str, only: str | None,
         publish()
     if only is None:
         state["cycle_incomplete"] = bool(counts["pending"])
+        unresolved = {key for key, saved in state["groups"].items() if unresolved_group(saved)}
+        state["quarantine_only"] = bool(unresolved) and all(
+            key in quarantined_groups and quarantined_group(saved)
+            for key, saved in state["groups"].items() if key in unresolved
+        )
         publish()
 
 

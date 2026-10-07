@@ -33,11 +33,20 @@ pub(crate) async fn ensure_ordinary_profile(
     env: &Environment,
     runtime: &TchedRouterRuntimeClient,
     provider: &ProviderConfig,
-    reference: &str,
+    target: &crate::tched_catalog_binding::BindingTarget,
     model_id: &str,
     secrets: &dyn ConfigSecretPolicy,
 ) -> Result<()> {
     ensure!(provider.enabled, "catalog provider is disabled");
+    let reference = target
+        .ordinary_reference
+        .as_deref()
+        .context("catalog provider has no ordinary profile")?;
+    ensure!(
+        !target.excluded_references.contains(reference),
+        "ordinary native profile is reserved for a dedicated route"
+    );
+    runtime.guard_ordinary_profile(reference, secrets).await?;
     // Subscription-native profiles (`requires_openai_auth`) are provisioned
     // by the operator through the native auth CLI; admission only keeps
     // their model current. No key material and no HTTP endpoint are ever
@@ -51,16 +60,36 @@ pub(crate) async fn ensure_ordinary_profile(
             .and_then(|value| value.get("value").and_then(Value::as_str).map(String::from)),
         Some(ref value) if value == "true"
     );
-    let key_file = if oauth_profile {
-        None
-    } else {
-        Some(
-            provider
-                .key_file
-                .as_ref()
-                .context("catalog provider has no key_file for native provisioning")?,
-        )
-    };
+    // An existing subscription profile owns its credential, wire API and
+    // origin. Update only the selected model; never initialize or re-provision
+    // that profile just because it deliberately has no URI.
+    if oauth_profile {
+        ensure!(
+            reference.starts_with("openai."),
+            "subscription profile is not OpenAI"
+        );
+        let model_path = format!("{}.model", profile_section(reference));
+        let current = runtime.read_config_property(&model_path, secrets).await?;
+        if current.get("value").and_then(Value::as_str) != Some(model_id) {
+            runtime
+                .patch_config(
+                    &ConfigPatchInput {
+                        operations: vec![ConfigPatchOperation::Replace {
+                            path: slash_path(reference, "model"),
+                            value: json!(model_id),
+                        }],
+                    },
+                    secrets,
+                )
+                .await
+                .context("update subscription profile model")?;
+        }
+        return Ok(());
+    }
+    let key_file = provider
+        .key_file
+        .as_ref()
+        .context("catalog provider has no key_file for native provisioning")?;
     let uri_path = format!("{}.uri", profile_section(reference));
     let model_path = format!("{}.model", profile_section(reference));
     if runtime
@@ -95,53 +124,15 @@ pub(crate) async fn ensure_ordinary_profile(
             .with_context(|| format!("update native profile {reference} model"))?;
         return Ok(());
     }
-    let uri = if oauth_profile {
-        // Subscription profiles are served from the native auth store's own
-        // backend; no HTTP endpoint is provisioned into the profile.
-        None
-    } else {
-        Some(
-            provider
-                .inference_url_prefix
-                .as_deref()
-                .context("catalog provider has no inference endpoint authority")?,
-        )
-    };
+    let uri = provider
+        .inference_url_prefix
+        .as_deref()
+        .context("catalog provider has no inference endpoint authority")?;
     runtime
         .init_provider_model_reference(reference, secrets)
         .await
         .with_context(|| format!("initialize native profile {reference}"))?;
-    if oauth_profile {
-        let patch = ConfigPatchInput {
-            operations: vec![
-                ConfigPatchOperation::Add {
-                    path: slash_path(reference, "model"),
-                    value: json!(model_id),
-                },
-                ConfigPatchOperation::Add {
-                    path: slash_path(reference, "wire_api"),
-                    value: json!(wire_api(provider.format)),
-                },
-                ConfigPatchOperation::Add {
-                    path: slash_path(reference, "requires_openai_auth"),
-                    value: json!(true),
-                },
-                ConfigPatchOperation::Add {
-                    path: slash_path(reference, "native_tools"),
-                    value: json!(false),
-                },
-            ],
-        };
-        runtime
-            .patch_config(&patch, secrets)
-            .await
-            .with_context(|| format!("provision subscription-native profile {reference}"))?;
-        return Ok(());
-    }
-    let api_key = read_provider_key(
-        env,
-        key_file.expect("keyed provisioning requires a key_file"),
-    )?;
+    let api_key = read_provider_key(env, key_file)?;
     let patch = ConfigPatchInput {
         operations: vec![
             ConfigPatchOperation::Add {
@@ -150,7 +141,7 @@ pub(crate) async fn ensure_ordinary_profile(
             },
             ConfigPatchOperation::Add {
                 path: slash_path(reference, "uri"),
-                value: json!(uri.context("keyed provisioning requires an endpoint authority")?),
+                value: json!(uri),
             },
             ConfigPatchOperation::Add {
                 path: slash_path(reference, "wire_api"),

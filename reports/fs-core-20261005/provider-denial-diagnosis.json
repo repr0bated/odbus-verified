@@ -1,0 +1,154 @@
+{
+  "format": "opdbus.provider-denial-diagnosis.v1",
+  "task_id": "provider-denial-20261005",
+  "agent": "Codex",
+  "observed_at": "2026-10-05T23:40:45Z",
+  "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
+  "page": "http://10.0.0.2:8080",
+  "status": "binding-repair-built-deployed-browser-and-tests-pending",
+  "evidence": {
+    "user_console": {
+      "identity_pickup_http_status": 403,
+      "door_log": "[door] dispatch refused Object; fields collapsed",
+      "denied_operation": {
+        "plugin": "tched_router",
+        "method": "GetState",
+        "code": "PERMISSION_DENIED",
+        "detail": "matching request capability and exact-principal grant are required",
+        "required_capability": "cap.software.3tched-router.state.read@v1"
+      }
+    },
+    "browser_automation": "No enabled browser/tab surfaces available",
+    "catalog_operation": {
+      "plugin": "model_registry",
+      "method": "list_providers",
+      "required_capability": "model_registry.read",
+      "source": "/run/mount/3tchedFS-native/plugins/model_registry/schema.json",
+      "execution": "Successful provider/model reads inferred directly from confirmed later GetState call and sequential source startup; no alternate-identity replay"
+    },
+    "configured_grants": {
+      "human": {
+        "principal": "c9bdf32e-811d-2495-b688-277c9e5c4d36",
+        "catalog_read": true,
+        "global_router_state_read": true
+      },
+      "control_plane": {
+        "principal": "1262e982-14c1-44d4-0771-7ce74213211b",
+        "catalog_read": true,
+        "global_router_state_read": false
+      },
+      "source": "/etc/opdbus/capability-grants.json",
+      "materialization": "Fresh from supported read-only op-grants-materializer check; no projection drift"
+    },
+    "startup_source": {
+      "operations": [
+        "model_registry.list_providers",
+        "model_registry.list_models",
+        "tched_router.GetState"
+      ],
+      "global_state_capability": "cap.software.3tched-router.state.read@v1",
+      "references": [
+        "/srv/git/3tched.com/src/chat/door-chat-adapter.ts:156",
+        "/srv/git/3tched.com/src/chat/door-chat-adapter.ts:169",
+        "/srv/git/3tched.com/src/chat/router-committed-route.ts:83"
+      ]
+    },
+    "ui_message": {
+      "classification": "Generic PERMISSION_DENIED message; catalog-phase label covers failures after provider/model reads as well",
+      "references": [
+        "/srv/git/3tched.com/src/grpc/door.ts:137",
+        "/srv/git/3tched.com/src/svelte/App.svelte:112"
+      ]
+    },
+    "identity_pickup": {
+      "classification": "IP-host pickup returns403; handler never infers identity from TCP/Host/Origin. Resolver can continue to decoy issuer.",
+      "references": [
+        "crates/op-web/src/handlers/identity_self.rs:15",
+        "crates/op-web/src/middleware/security.rs:88",
+        "/srv/git/3tched.com/src/chat/door-config.ts:170"
+      ]
+    },
+    "latest_user_console": {
+      "model_apply": "Reconnect to renew this identity binding",
+      "catalog_refresh": "Reconnect to renew this identity binding",
+      "denied_methods": [
+        "tched_router.GetState",
+        "project.list"
+      ]
+    }
+  },
+  "unverified": [
+    "Actual verified browser principal/assigned identity",
+    "Browser page after reload",
+    "Auth/cancellation and catalog-denial regressions; separate owner tester"
+  ],
+  "permission_boundary": {
+    "grants_changed": false,
+    "identity_changed": false,
+    "denied_operation_retried_as_other_identity": false
+  },
+  "next_action": "Owner reloads/reconnects .2:8080 and retries selection. Separate testing agent: npm test -- src/grpc/door-identity.test.ts src/chat/door-chat-adapter.test.ts; then assigned type/lint gates. Bound feeds and project/global-state admission remain unavailable.",
+  "tests": "Not run; separate owner testing agent",
+  "updated_at": "2026-10-05T23:59:55Z",
+  "repair": {
+    "source": "/srv/git/3tched.com/src/chat/router-committed-route.ts:83",
+    "behavior": "Only denied optional global GetState returns unknown/unapplied route; admitted providers/models retained; authentication/transport/cancellation errors propagate",
+    "admission": "No selection/chat mutation or alternate route added; existing authorization and route-application guards unchanged",
+    "fixtures": "Narrow adapter bootstrap and RPC-error matrix authored, not run",
+    "ui_source_head": "0bfb5dd9bc695bc7aae2c0613f77d797c135352c",
+    "source_worktree": "modified",
+    "source_archive_sha256": "c7b89ec5746ab717b88ffcb31ba1cd5de4d55753e6eab9753d521aecd032b2eb",
+    "asset_archive_sha256": "23d22bc59f83d663024ba89eb5b8a6f6ace0e6a7ee97483afe50e93d32db9abc"
+  },
+  "deployment": {
+    "release": "20261005T235745Z-ed02a78-binding-ui-2",
+    "manifest_sha256": "e04375dee7497a95dc58777c4b3645dec7a5f5ae10b2efca9128c273564075c7",
+    "boundary": "full golden/read-only snapshot/Btrfs send-receive; received index/assets links activated",
+    "unchanged": "All38 binaries, sealed catalog1494, native readonly policy, identities and grants",
+    "services_restarted": false,
+    "http_index": "200; exact received-file comparison passed",
+    "recovery": "/opt/op-dbus/recovery/binding-ui-20261005",
+    "evidence": "/var/tmp/binding-ui-20261005"
+  },
+  "validation": {
+    "production_build": "passed",
+    "tests": "not run; owner assigned separate agent",
+    "lint": "not run",
+    "type_check": "not run",
+    "actual_browser": "unverified; owner retry required",
+    "passive_server_capture": "Timed out without a fresh denial; detached; no credentials observed",
+    "release_preparation": "Initial candidate graph digest unreadable to nonroot. Corrected via authorized preparation read and verified received digest before activation; unused first candidate retained, never activated."
+  },
+  "prior_ui_repair": {
+    "source": "/srv/git/3tched.com/src/chat/router-committed-route.ts:83",
+    "behavior": "Only denied optional global GetState returns unknown/unapplied route; admitted providers/models retained; authentication/transport/cancellation errors propagate",
+    "admission": "No selection/chat mutation or alternate route added; existing authorization and route-application guards unchanged",
+    "fixtures": "Narrow adapter bootstrap and RPC-error matrix authored, not run",
+    "ui_source_head": "0bfb5dd9bc695bc7aae2c0613f77d797c135352c",
+    "source_worktree": "modified",
+    "source_archive_sha256": "c7b89ec5746ab717b88ffcb31ba1cd5de4d55753e6eab9753d521aecd032b2eb",
+    "asset_archive_sha256": "23d22bc59f83d663024ba89eb5b8a6f6ace0e6a7ee97483afe50e93d32db9abc"
+  },
+  "prior_ui_deployment": {
+    "release": "20261005T234709Z-ed02a78-provider-ui",
+    "manifest_sha256": "fb1985bac1e2598796748f639933c3b2b73f94356cec89131cea01a831eaf8ea",
+    "boundary": "full golden/read-only Btrfs snapshot/send/receive; explicit received index/assets links",
+    "unchanged": "All38 binaries, sealed catalog1494, native readonly policy, identities and grants",
+    "services_restarted": false,
+    "http_index": "200 and exact received-file comparison passed",
+    "backend_grants": "same before/after digest",
+    "recovery": "/opt/op-dbus/recovery/provider-ui-20261005",
+    "evidence": "/var/tmp/provider-ui-20261005"
+  },
+  "binding_repair": {
+    "source": "/srv/git/3tched.com/src/grpc/door.ts:202",
+    "receiver_policy": "crates/op-grpc-bridge/src/interceptor.rs:513",
+    "feed_activation": "/srv/git/3tched.com/src/svelte/RuntimeHost.svelte:33",
+    "cause": "Assigned bound Oracle is canonical-method-only. Optional StateSync activation tries to validate absent binding headers and can invalidate the shared method client.",
+    "behavior": "Reject unsupported bound feed locally with UNIMPLEMENTED before credential renewal or dispatch; canonical methods retain fresh assertions and exact receiver binding validation.",
+    "fixture": "src/grpc/door-identity.test.ts:31; authored, not run",
+    "remaining": "Bound browser state feeds unavailable until receiver supports an identity-scoped admission contract; project.list/global GetState remain denied; actual browser model Apply unverified",
+    "source_archive_sha256": "1d33f93c73c0ad3eac24220f6d142210da611f469797bcc2d675b113b3048079",
+    "asset_archive_sha256": "34171a19084b0817186318aabe35efa8be07e5916c7c110592855635144264b1"
+  }
+}

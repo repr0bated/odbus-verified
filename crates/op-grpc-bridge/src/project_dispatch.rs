@@ -154,6 +154,11 @@ pub(crate) async fn verified_session(
         .filter(|id| !id.is_empty())
         .ok_or_else(|| anyhow!("verified session is required"))?;
     canonical_id(session)?;
+    if let Some(external) = crate::external_mcp_session::verify_connected_session(
+        engine, actor, session, genesis,
+    ).await? {
+        return Ok(external);
+    }
     let sled = crate::identity_sled_dispatch::stored_session(engine, session)
         .await
         .context("identity credential projection is unavailable")?

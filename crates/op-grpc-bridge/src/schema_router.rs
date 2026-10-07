@@ -497,7 +497,7 @@ impl SchemaRouter {
         Some(routes)
     }
 
-    fn build_route(plugin_id: &str, schema: &JsonValue) -> PluginRoute {
+    pub(crate) fn build_route(plugin_id: &str, schema: &JsonValue) -> PluginRoute {
         let dbus_path = canonical::plugin_path(plugin_id);
         let dbus_destination = BASE_SERVICE_NAME.to_string();
         let dbus_interface = canonical::plugin_interface(plugin_id);
@@ -578,6 +578,8 @@ pub struct SchemaBackedInterface {
     /// Set only on objects served over one identity's lungs socket: every
     /// call on that connection is that identity, whatever the header says.
     lungs_identity: Option<Arc<crate::lungs_socket::LungsIdentity>>,
+    /// Receiver-bound private MCP connection; never negotiated from D-Bus arguments.
+    mcp_identity: Option<Arc<crate::mcp_dbus_dispatch::McpDbusIdentity>>,
 }
 
 impl SchemaBackedInterface {
@@ -652,7 +654,27 @@ impl SchemaBackedInterface {
             engine: None,
             identity_resolver: None,
             lungs_identity: None,
+            mcp_identity: None,
         }
+    }
+
+    pub(crate) fn with_mcp_receiver(
+        plugin_id: String,
+        route: PluginRoute,
+        engine: Arc<MutationEngine>,
+        identity: Arc<crate::mcp_dbus_dispatch::McpDbusIdentity>,
+    ) -> Self {
+        let state_dir =
+            std::env::var("OP_SHM_STATE_DIR").unwrap_or_else(|_| DEFAULT_SHM_STATE_DIR.to_string());
+        let mut interface = Self::with_engine_and_storage(
+            plugin_id,
+            route,
+            Some(engine),
+            state_dir,
+            crate::sealed_schema_reader::blob_catalog_dir_from_env(),
+        );
+        interface.mcp_identity = Some(identity);
+        interface
     }
 
     /// Reads one complete committed projection through the exact sealed
@@ -964,6 +986,15 @@ impl SchemaBackedInterface {
         json_args: String,
         #[zbus(header)] header: Header<'_>,
     ) -> zbus::fdo::Result<String> {
+        if let Some(receiver) = &self.mcp_identity {
+            let identity = receiver
+                .resolve()
+                .await
+                .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
+            return self
+                .dispatch_call_for_identity(method, json_args, Some(&identity))
+                .await;
+        }
         if let Some(lungs) = &self.lungs_identity {
             let identity = lungs
                 .resolve()
@@ -999,6 +1030,20 @@ impl SchemaBackedInterface {
             return Err(zbus::fdo::Error::InvalidArgs(
                 "noncanonical operation id".into(),
             ));
+        }
+        if let Some(receiver) = &self.mcp_identity {
+            let identity = receiver
+                .resolve()
+                .await
+                .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
+            return self
+                .dispatch_call_for_identity_operation(
+                    method,
+                    json_args,
+                    Some(&identity),
+                    Some(&operation_id),
+                )
+                .await;
         }
         if let Some(lungs) = &self.lungs_identity {
             let identity = lungs

@@ -15,7 +15,7 @@ use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 use super::threetched_fs_contract;
 
 pub const PLUGIN_NAME: &str = "threetched_fs";
-const VERSION: &str = "2.0.1";
+const VERSION: &str = "2.0.6";
 const READ_PROTOCOL: &str = "cap.storage.3tchedfs.protocol.read@v1";
 const READ_CONTRACT: &str = "cap.storage.3tchedfs.contract.read@v1";
 const READ_RECEIPT: &str = "cap.storage.3tchedfs.receipt.read@v1";
