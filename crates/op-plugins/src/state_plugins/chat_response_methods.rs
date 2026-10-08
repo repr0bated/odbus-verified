@@ -8,7 +8,7 @@
 use super::chat_response::{
     ChatTurn, ConversationSummary, MessageType, RefusalCategory, ResponseContent,
 };
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

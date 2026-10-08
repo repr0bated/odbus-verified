@@ -28,6 +28,7 @@
 //! snapshot) that already holds the vectors.
 
 use anyhow::{Context, Result};
+use op_cozo_store::CozoGraphShuttle;
 use op_snowball::btrfs_delta;
 use op_snowball::{ChainBlockRef, StreamingSnowball};
 use qdrant_client::qdrant::{
@@ -208,6 +209,26 @@ impl ChainVectorIndex {
             std::env::var("OPDBUS_SNOWBALL_PATH")
                 .unwrap_or_else(|_| DEFAULT_CHAIN_PATH.to_string()),
         );
+        let chain = StreamingSnowball::new(&chain_path)
+            .await
+            .with_context(|| format!("failed to open chain at {}", chain_path.display()))?;
+        Self::build_with_chain(chain_path, chain, voyage).await
+    }
+
+    /// Received dump root: read-only `timing/` and `vectors/` children, watermark on `dest`.
+    pub async fn open_received_root(dest: &Path) -> Result<Self> {
+        let chain_path = dest.to_path_buf();
+        let chain = StreamingSnowball::open_received(dest)
+            .await
+            .with_context(|| format!("failed to open received chain at {}", dest.display()))?;
+        Self::build_with_chain(chain_path, chain, None).await
+    }
+
+    async fn build_with_chain(
+        chain_path: PathBuf,
+        chain: StreamingSnowball,
+        voyage: Option<VoyageClient>,
+    ) -> Result<Self> {
         let url = qdrant_url();
         let collection = std::env::var("OPDBUS_QDRANT_SNOWBALL_COLLECTION")
             .unwrap_or_else(|_| DEFAULT_COLLECTION.to_string());
@@ -215,10 +236,6 @@ impl ChainVectorIndex {
             .ok()
             .and_then(|value| value.parse().ok())
             .unwrap_or(DEFAULT_DIMS);
-
-        let chain = StreamingSnowball::new(&chain_path)
-            .await
-            .with_context(|| format!("failed to open chain at {}", chain_path.display()))?;
 
         let qdrant = Qdrant::from_url(&url)
             .build()
@@ -458,6 +475,13 @@ impl ChainVectorIndex {
     /// Pass `None` to resume from the persisted watermark (`0` on first run,
     /// which indexes everything present).
     pub async fn ingest_received(&self, from_block: Option<u64>) -> Result<IngestSummary> {
+        let cozo_path = std::env::var("COGNITIVE_MCP_COZO_DB_PATH").context(
+            "COGNITIVE_MCP_COZO_DB_PATH is required to persist chain vector links",
+        )?;
+        let cozo = CozoGraphShuttle::new_persistent(std::path::PathBuf::from(cozo_path))
+            .map_err(|error| anyhow::anyhow!(error))
+            .context("open Cozo for chain vector links")?;
+
         let watermark = match from_block {
             Some(block) => block,
             None => self.read_indexed_block().await?,
@@ -489,7 +513,23 @@ impl ChainVectorIndex {
             let vector = self.fit_dims(vector, *block_num)?;
 
             match blocks.iter().find(|block| block.block_num == *block_num) {
-                Some(block) => self.upsert_block(block, vector).await?,
+                Some(block) => {
+                    self.upsert_block(block, vector).await?;
+                    let links = chain_links(block);
+                    let link_refs: Vec<(&str, &str)> = links
+                        .iter()
+                        .map(|(kind, value)| (kind.as_str(), value.as_str()))
+                        .collect();
+                    cozo
+                        .replace_chain_vector_links(&point_id(block.block_num).to_string(), &link_refs)
+                        .map_err(|e| anyhow::Error::new(e))
+                        .with_context(|| {
+                            format!(
+                                "failed to write chain links for block {}",
+                                block.block_num
+                            )
+                        })?;
+                }
                 // Vector present without its timing record (partial or
                 // out-of-order receive). Index it by block number so a later
                 // pass can enrich it rather than dropping it.
@@ -744,6 +784,50 @@ fn point_id(block_num: u64) -> uuid::Uuid {
     )
 }
 
+/// Identity links for the chain Cozo relation, read only from the timing record.
+pub fn chain_links(block: &ChainBlockRef) -> Vec<(String, String)> {
+    let mut links = Vec::new();
+    let mut push = |kind: &str, value: &str| {
+        if !value.is_empty() {
+            links.push((kind.to_string(), value.to_string()));
+        }
+    };
+
+    if let Some(value) = block.field("data.payload.conversation_id") {
+        push("conversation_id", value);
+    }
+    if let Some(value) = flattened_suffix(block, "turn_id") {
+        push("turn_id", value);
+    }
+    push("event_hash", &block.hash);
+    if let Some(value) = block.field("data.payload.input_patch_hash") {
+        push("input_patch_hash", value);
+    }
+    push("plugin_id", &block.category);
+    for (kind, path) in [
+        ("actor_id", "data.metadata.actor_id"),
+        ("session_id", "data.metadata.session_id"),
+        ("sealed_id_digest", "data.metadata.sealed_id_digest"),
+        ("capability_id", "data.metadata.capability_id"),
+    ] {
+        if let Some(value) = block.field(path) {
+            push(kind, value);
+        }
+    }
+    if let Some(value) = flattened_suffix(block, "subid") {
+        push("subid", value);
+    }
+    links
+}
+
+fn flattened_suffix(block: &ChainBlockRef, leaf: &str) -> Option<&str> {
+    block
+        .data_fields
+        .iter()
+        .find(|(path, _)| path == leaf || path.ends_with(&format!(".{leaf}")))
+        .map(|(_, value)| value.as_str())
+}
+
 fn qdrant_url() -> String {
     std::env::var("OPDBUS_QDRANT_URL")
         .or_else(|_| std::env::var("COGNITIVE_MCP_QDRANT_URL"))
@@ -798,5 +882,197 @@ mod tests {
         assert_eq!(summary.upserted_to_qdrant, 0);
         let json = serde_json::to_value(&summary).unwrap();
         assert_eq!(json["upserted_to_qdrant"], 0);
+    }
+
+    /// Same JSON shape as on-disk timing records (`ChainBlockRef::from_timing_bytes`).
+    fn block_from_timing_json(json: &str, block_num: u64) -> ChainBlockRef {
+        parse_timing_record(block_num, json)
+    }
+
+    fn parse_timing_record(block_num: u64, json: &str) -> ChainBlockRef {
+        let mut bytes = json.as_bytes().to_vec();
+        let mut value = simd_json::to_owned_value(&mut bytes).expect("timing JSON");
+        let mut data_fields = Vec::new();
+        let data = match &mut value {
+            simd_json::OwnedValue::Object(map) => map.remove("data"),
+            _ => None,
+        }
+        .unwrap_or(simd_json::OwnedValue::Static(simd_json::StaticNode::Null));
+        flatten_timing_data(&data, "data", &mut data_fields);
+        let hash = timing_str(&value, "hash").unwrap_or_default();
+        let category = timing_str(&value, "category").unwrap_or_default();
+        let action = timing_str(&value, "action").unwrap_or_default();
+        let timestamp = timing_u64(&value, "timestamp").unwrap_or_default();
+        ChainBlockRef {
+            block_num,
+            hash,
+            category,
+            action,
+            timestamp,
+            data_fields,
+            has_vector: true,
+            data,
+        }
+    }
+
+    fn timing_str(value: &simd_json::OwnedValue, key: &str) -> Option<String> {
+        match value {
+            simd_json::OwnedValue::Object(map) => map.get(key).and_then(|v| match v {
+                simd_json::OwnedValue::String(s) => Some(s.to_string()),
+                _ => None,
+            }),
+            _ => None,
+        }
+    }
+
+    fn timing_u64(value: &simd_json::OwnedValue, key: &str) -> Option<u64> {
+        match value {
+            simd_json::OwnedValue::Object(map) => map.get(key).and_then(|v| match v {
+                simd_json::OwnedValue::I64(n) => Some(*n as u64),
+                simd_json::OwnedValue::U64(n) => Some(*n),
+                _ => None,
+            }),
+            _ => None,
+        }
+    }
+
+    fn flatten_timing_data(
+        value: &simd_json::OwnedValue,
+        prefix: &str,
+        out: &mut Vec<(String, String)>,
+    ) {
+        match value {
+            simd_json::OwnedValue::Object(map) => {
+                for (key, child) in map {
+                    flatten_timing_data(child, &format!("{prefix}.{key}"), out);
+                }
+            }
+            simd_json::OwnedValue::Array(items) => {
+                for (index, item) in items.iter().enumerate() {
+                    flatten_timing_data(item, &format!("{prefix}[{index}]"), out);
+                }
+            }
+            simd_json::OwnedValue::String(s) => out.push((prefix.to_string(), s.to_string())),
+            simd_json::OwnedValue::I64(n) => out.push((prefix.to_string(), n.to_string())),
+            simd_json::OwnedValue::U64(n) => out.push((prefix.to_string(), n.to_string())),
+            simd_json::OwnedValue::F64(n) => out.push((prefix.to_string(), n.to_string())),
+            simd_json::OwnedValue::Bool(b) => out.push((prefix.to_string(), b.to_string())),
+            simd_json::OwnedValue::Static(simd_json::StaticNode::Null) => {}
+            simd_json::OwnedValue::Static(simd_json::StaticNode::Bool(b)) => {
+                out.push((prefix.to_string(), b.to_string()));
+            }
+        }
+    }
+
+    fn links_map(block: &ChainBlockRef) -> std::collections::BTreeMap<String, String> {
+        chain_links(block).into_iter().collect()
+    }
+
+    #[test]
+    fn chain_links_reads_declared_ids_from_timing_record() {
+        let json = r#"{
+            "timestamp": 1,
+            "category": "chat_plugin",
+            "action": "Chat",
+            "hash": "block-event-hash",
+            "vector": [],
+            "data": {
+                "payload": {
+                    "conversation_id": "conv-abc",
+                    "turn_id": "turn-7",
+                    "input_patch_hash": "patch-digest"
+                },
+                "metadata": {
+                    "actor_id": "actor-1",
+                    "session_id": "session-1",
+                    "sealed_id_digest": "sealed-1",
+                    "capability_id": "cap-1",
+                    "subid": "schema-subid"
+                }
+            }
+        }"#;
+        let block = block_from_timing_json(json, 12);
+        let links = links_map(&block);
+        assert_eq!(links.get("conversation_id").map(String::as_str), Some("conv-abc"));
+        assert_eq!(links.get("turn_id").map(String::as_str), Some("turn-7"));
+        assert_eq!(links.get("event_hash").map(String::as_str), Some("block-event-hash"));
+        assert_eq!(links.get("input_patch_hash").map(String::as_str), Some("patch-digest"));
+        assert_eq!(links.get("plugin_id").map(String::as_str), Some("chat_plugin"));
+        assert_eq!(links.get("actor_id").map(String::as_str), Some("actor-1"));
+        assert_eq!(links.get("session_id").map(String::as_str), Some("session-1"));
+        assert_eq!(links.get("sealed_id_digest").map(String::as_str), Some("sealed-1"));
+        assert_eq!(links.get("capability_id").map(String::as_str), Some("cap-1"));
+        assert_eq!(links.get("subid").map(String::as_str), Some("schema-subid"));
+        assert!(!links.contains_key("chat_id"));
+    }
+
+    #[test]
+    fn chain_links_omits_session_genesis() {
+        let json = r#"{
+            "timestamp": 1,
+            "category": "p",
+            "action": "a",
+            "hash": "h",
+            "vector": [],
+            "data": {
+                "metadata": { "session_genesis": "genesis-value" }
+            }
+        }"#;
+        let block = block_from_timing_json(json, 3);
+        let links = links_map(&block);
+        assert!(!links.contains_key("session_genesis"));
+        assert_eq!(links.get("event_hash").map(String::as_str), Some("h"));
+    }
+
+    #[test]
+    fn chain_links_omits_absent_optional_ids() {
+        let json = r#"{
+            "timestamp": 1,
+            "category": "only-plugin",
+            "action": "a",
+            "hash": "ev",
+            "vector": [],
+            "data": { "payload": {} }
+        }"#;
+        let block = block_from_timing_json(json, 4);
+        let links = chain_links(&block);
+        assert_eq!(links.len(), 2);
+        assert!(links.iter().any(|(k, v)| k == "event_hash" && v == "ev"));
+        assert!(links.iter().any(|(k, v)| k == "plugin_id" && v == "only-plugin"));
+        for (kind, value) in &links {
+            assert!(!value.is_empty(), "kind {kind} must not be an empty string");
+        }
+    }
+
+    #[test]
+    fn chain_links_includes_subid_only_when_timing_carries_it() {
+        let without = block_from_timing_json(
+            r#"{
+            "timestamp": 1,
+            "category": "p",
+            "action": "a",
+            "hash": "h",
+            "vector": [],
+            "data": { "metadata": { "actor_id": "a1" } }
+        }"#,
+            5,
+        );
+        assert!(!links_map(&without).contains_key("subid"));
+
+        let with = block_from_timing_json(
+            r#"{
+            "timestamp": 1,
+            "category": "p",
+            "action": "a",
+            "hash": "h",
+            "vector": [],
+            "data": { "metadata": { "subid": "from-timing" } }
+        }"#,
+            6,
+        );
+        assert_eq!(
+            links_map(&with).get("subid").map(String::as_str),
+            Some("from-timing")
+        );
     }
 }

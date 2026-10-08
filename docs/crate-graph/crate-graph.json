@@ -89,6 +89,14 @@
       }
     },
     {
+      "id": "bin:op-chain-vector-ingest",
+      "label": "bin",
+      "props": {
+        "crate": "op-cognitive-mcp",
+        "src": "crates/op-cognitive-mcp/src/bin/op-chain-vector-ingest.rs"
+      }
+    },
+    {
       "id": "bin:op-chain-vectors",
       "label": "bin",
       "props": {
@@ -417,16 +425,17 @@
         "path": "crates/op-cognitive-mcp",
         "description": "",
         "bins": [
+          "op-chain-vector-ingest",
           "op-chain-vectors",
           "op-cog-admin"
         ],
         "has_lib": true,
-        "rs_files": 30,
-        "loc": 11581,
-        "tests": 53,
+        "rs_files": 31,
+        "loc": 11884,
+        "tests": 57,
         "unsafe_refs": 9,
         "todo": 11,
-        "unwrap_expect": 73
+        "unwrap_expect": 74
       }
     },
     {
@@ -478,7 +487,7 @@
         ],
         "has_lib": true,
         "rs_files": 27,
-        "loc": 16795,
+        "loc": 16841,
         "tests": 116,
         "unsafe_refs": 4,
         "todo": 2,
@@ -613,8 +622,8 @@
         ],
         "has_lib": true,
         "rs_files": 189,
-        "loc": 116936,
-        "tests": 899,
+        "loc": 116950,
+        "tests": 900,
         "unsafe_refs": 242,
         "todo": 177,
         "unwrap_expect": 2184
@@ -802,11 +811,11 @@
         ],
         "has_lib": true,
         "rs_files": 153,
-        "loc": 135142,
+        "loc": 135146,
         "tests": 581,
         "unsafe_refs": 17,
         "todo": 1,
-        "unwrap_expect": 1390
+        "unwrap_expect": 1393
       }
     },
     {
@@ -856,11 +865,11 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 8,
-        "loc": 4699,
-        "tests": 58,
+        "loc": 5247,
+        "tests": 63,
         "unsafe_refs": 11,
         "todo": 4,
-        "unwrap_expect": 182
+        "unwrap_expect": 201
       }
     },
     {
@@ -2045,8 +2054,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-08T20:07:09Z",
-        "commit": "0258b2262a66f8399a4db6d9741c3332babb6414",
+        "generated_at": "2026-10-08T23:05:03Z",
+        "commit": "85c6880c8ffe2ec7425b781826de9f23d135a405",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -4216,6 +4225,15 @@
       }
     },
     {
+      "id": "mod:crates/op-cognitive-mcp/src/bin/op-chain-vector-ingest.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-cognitive-mcp",
+        "kind": "bin",
+        "loc": 27
+      }
+    },
+    {
       "id": "mod:crates/op-cognitive-mcp/src/bin/op-chain-vectors.rs",
       "label": "module",
       "props": {
@@ -4257,7 +4275,7 @@
       "props": {
         "crate": "op-cognitive-mcp",
         "kind": "src",
-        "loc": 802
+        "loc": 1078
       }
     },
     {
@@ -4815,7 +4833,7 @@
       "props": {
         "crate": "op-cozo-store",
         "kind": "src",
-        "loc": 2816
+        "loc": 2862
       }
     },
     {
@@ -5319,7 +5337,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 785
+        "loc": 782
       }
     },
     {
@@ -6471,7 +6489,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 4150
+        "loc": 4167
       }
     },
     {
@@ -9108,7 +9126,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 464
+        "loc": 468
       }
     },
     {
@@ -9486,7 +9504,7 @@
       "props": {
         "crate": "op-snowball",
         "kind": "src",
-        "loc": 165
+        "loc": 170
       }
     },
     {
@@ -9513,7 +9531,7 @@
       "props": {
         "crate": "op-snowball",
         "kind": "src",
-        "loc": 147
+        "loc": 153
       }
     },
     {
@@ -9531,7 +9549,7 @@
       "props": {
         "crate": "op-snowball",
         "kind": "src",
-        "loc": 2834
+        "loc": 3371
       }
     },
     {
@@ -11800,6 +11818,12 @@
       "src": "bin:op-assistant-grpc",
       "rel": "bin_entry",
       "dst": "mod:crates/op-assistant-grpc/src/bin/op-assistant-grpc.rs",
+      "props": {}
+    },
+    {
+      "src": "bin:op-chain-vector-ingest",
+      "rel": "bin_entry",
+      "dst": "mod:crates/op-cognitive-mcp/src/bin/op-chain-vector-ingest.rs",
       "props": {}
     },
     {
@@ -14767,6 +14791,12 @@
     {
       "src": "crate:op-cognitive-mcp",
       "rel": "contains",
+      "dst": "mod:crates/op-cognitive-mcp/src/bin/op-chain-vector-ingest.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-cognitive-mcp",
+      "rel": "contains",
       "dst": "mod:crates/op-cognitive-mcp/src/bin/op-chain-vectors.rs",
       "props": {}
     },
@@ -14989,6 +15019,12 @@
       "props": {
         "optional": false
       }
+    },
+    {
+      "src": "crate:op-cognitive-mcp",
+      "rel": "provides_bin",
+      "dst": "bin:op-chain-vector-ingest",
+      "props": {}
     },
     {
       "src": "crate:op-cognitive-mcp",
@@ -27636,6 +27672,14 @@
       "src": "mod:crates/op-cognitive-mcp/src/blob_vectors_tool.rs",
       "rel": "imports",
       "dst": "crate:op-mcp",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-cognitive-mcp/src/chain_vectors.rs",
+      "rel": "imports",
+      "dst": "crate:op-cozo-store",
       "props": {
         "refs": 1
       }

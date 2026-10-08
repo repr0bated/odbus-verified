@@ -8,6 +8,8 @@ The owner is starting a new session. **Finish the release and identity migration
 
 | Agent | Task | Where | Since | Do not touch |
 |-------|------|-------|-------|--------------|
+| Grok (Cursor) — zcall mount and disk retention | Vector dump source is in tree: `dump_vectors`, `open_received`, `chain_vector_link`, `op-chain-vector-ingest`. Failed sends drop the unsent local dump. Ingest requires `COGNITIVE_MCP_COZO_DB_PATH`. Cargo waits until after deploy. `retain_snapshots` unchanged. The six `@agent_*` subvolumes stay on the 100GB seed. | `crates/op-snowball`, `crates/op-cognitive-mcp`, `crates/op-cozo-store` | 2026-10-08T22:58Z | Do not delete seed `@agent_*`. Do not switch the live `seed-create` to `qemu-img` until that provisioning runs. Do not retry GetState `084c5379`. Do not delete `target/release`, the three kept releases, or the Sept 25 `.snapshot` pair. Do not restart OVS, `tched-router`, or `threetched-fs`. Do not run cargo. |
+| Grok (Cursor) — GOLDEN DEPLOY | Owner ordered build and golden deploy of the working tree, including the one-line Chat reminder `zcall cozo list_system_graphs --limit <limit>`. | Workspace release, isolated catalog, `/opt/op-dbus/golden`, then send/receive and `current` | 2026-10-08T21:00Z | Do not restart OVS, uplink, DHCP, Xray, containers, `tched-router`, or `threetched-fs`. Do not replace live grants if their hash differs. Rollback stays `releases/20261008T142647Z-9e6bfd7-dirty`. |
 | Grok (Cursor) — MODEL_ROUTES ACTIVATED | Release `20261008T142647Z-9e6bfd7-dirty` is current. Catalog generation 1977, hash `6a8a40f6ae1000db92317a22b7b4f57b17a42c258ba7e3644b8b4cdfdc406917`. `tched_router` schema `e98be75cb7019e37` declares `get`, `set`, `init`, `list`, and `patch`. Bridge pid 32242 matches that release. Grants hash unchanged. An unbound session-bus `Call` is denied before dispatch. | Received `/opt/op-dbus/releases/20261008T142647Z-9e6bfd7-dirty`; receipt `/opt/op-dbus/recovery/activation-20261008T142647Z-9e6bfd7-dirty` | 2026-10-08T14:28Z | Do not rename the binary. Do not make a new plugin. Do not check the schema in. Do not copy `/var/lib/tched-router/config.toml`. Do not replace live grants. Do not restart OVS, uplink, DHCP, Xray, containers, `tched-router`, or `threetched-fs`. Rollback is `releases/20261007T182154Z-9e6bfd7-dirty` plus that receipt. |
 | Codex p0_256 — CANDIDATE VALIDATED; INTEGRATION PENDING | Original 256 cleanup defect reproduced and deployed correction stress-tested; Qdrant maintenance access restored; final isolated full suite 2759/0/24, fmt/Clippy pass | Frozen a4b5cd7128a4de7e7d3806f67d5683cea6e8e3c5 in /home/jeremy/odbus-p0-integrated-20261008; closed evidence /var/tmp/p0-256-20261008; no active Cargo | 2026-10-08T18:14Z | Preserve newer shared source and live mount ownership; additional application fixes remain undeployed; retain Qdrant recovery component; no cross-root chat messages while window mapping is unverified |
 | Grok (Cursor) — ACTIVATED | Release `20261007T182154Z-9e6bfd7-dirty` is current. Catalog generation 1908, same hash as 1839, 69 plugins. | Received `/opt/op-dbus/releases/20261007T182154Z-9e6bfd7-dirty`; receipt `/opt/op-dbus/recovery/activation-20261007T182154Z-9e6bfd7-dirty` | 2026-10-07T18:22Z | Rollback is `releases/20261007T094537Z-wireguard-mcp-dbus` plus that receipt. Live `/etc/opdbus/capability-grants.json` was not replaced. Do not restart OVS, uplink, DHCP, Xray, containers, `tched-router`, or `threetched-fs`. |
@@ -126,6 +128,70 @@ The owner is starting a new session. **Finish the release and identity migration
 | Claude (cloud) | OD-94 built and pushed at `d57c497`. Owner asked Grok to finish the uncommitted `set_model_profile` edits in place | branch `claude/amazing-carson-8bg4yr` | 2026-09-29 | Gallery files still Claude's: `json_render_gallery.rs`, `json_render_chat_canvas*.rs` |
 
 ## Handoffs
+
+### 2026-10-08T23:05Z · Grok (Cursor) — committing dump, then release build
+
+Owner ordered commit, release build, golden, and activation. Application services restart with the received release. OVS, uplink, DHCP, Xray, containers, `tched-router`, and `threetched-fs` stay up. Cargo is the release build only.
+
+### 2026-10-08T22:58Z · Grok (Cursor) — dump code in tree, cargo still deferred
+
+Composer 2.5 wrote `dump_vectors`, `open_received`, `chain_vector_link`, and `op-chain-vector-ingest`. Follow-up: a failed send drops that local `DMP-*` so it is not the next parent; remote prune runs `btrfs subvolume delete` as its own command; ingest requires `COGNITIVE_MCP_COZO_DB_PATH`. Cargo still waits until after deploy.
+
+### 2026-10-08T22:52Z · Grok (Cursor) — dump implementation started, cargo deferred
+
+Owner: implement `.kiro/specs/vector-dump-chain-links/` with Composer 2.5 workers. Tests and builds wait until after deploy. Two workers: snowball dump plus `open_received`; Cozo `chain_vector_link` plus the receive-hook binary. Do not run cargo. Do not change `retain_snapshots`.
+
+### 2026-10-08T22:50Z · Grok (Cursor) — spec receive rules edited
+
+Edited `.kiro/specs/vector-dump-chain-links/` requirements, design, and tasks. Each dump gets a new chain root; the previous root stays as the UUID parents. Timing is sent first with `on_receive` unset; the hook is only on the vector transfer and opens the parent of `<dest>/vectors`. Ingest uses a read-only open and does not call `StreamingSnowball::new` on `<dest>`. After both sends succeed the source keeps the two snapshots just sent. `retain_snapshots` is unchanged. Not implemented.
+
+### 2026-10-08T22:46Z · Grok (Cursor) — third spec review, not edited
+
+Re-read `.kiro/specs/vector-dump-chain-links/`. Two-stream chain root, source-side gap, read-only received children, and `subid` are in the requirements. Still open: `btrfs receive` creates `<dest>/<snapshot name>` and will not replace an existing `timing` or `vectors`; each dump needs a new chain root and the previous received pair stays as the incremental parents. `on_receive` runs per transfer with the received subvolume path, so the hook belongs only on the second transfer and opens that path's parent. `StreamingSnowball::new` on `<dest>` still creates `state`. Intro still says the dump sends the vector member alone. Spec files not edited.
+
+### 2026-10-08T22:36Z · Grok (Cursor) — second spec review, not edited
+
+Re-read `.kiro/specs/vector-dump-chain-links/`. Source-side missing-vector account, `subid` only when carried, and task 4.2 are closed. Still open: the dump never says the timing snapshot is its own send into a chain root whose children are `timing/` and `vectors/`. `StreamingSnowball::new` looks there and also creates a `state` subvolume; pointing `OPDBUS_SNOWBALL_PATH` at the received vector snapshot does not. Overview still says the replica can see a block the vector stream does not contain. Calendar bucket names remain only as a ban. Spec files not edited.
+
+### 2026-10-08T22:23Z · Grok (Cursor) — spec review returned, not edited
+
+Reviewed `.kiro/specs/vector-dump-chain-links/`. Weekly/hourly/daily/quarterly appears only as a ban (R6, out of scope, tasks footer), not as a feature. Asked Kiro to delete those words. Larger holes: a vector-only receive cannot see a timing-without-vector gap or `conversation_id` (those live in the timing record, not `vec-*.bin`); `ingest_received` reads the opened chain path, not the received subvolume; replica `FlattenAll` cannot invent `subid`. Spec files not edited.
+
+### 2026-10-08T22:16Z · Grok (Cursor) — Kiro prompt only
+
+Owner will feed Kiro a prompt for the vector-dump spec. This session does not write the spec. Next step is review of the spec Kiro produces. Scope locked in the prompt: timing snapshot then live vectors then send; no cross-volume snapshot; chain Cozo links beside Qdrant ingest; not the system graph; schema filter stays.
+
+### 2026-10-08T22:15Z · Grok (Cursor) — chain links are a small write
+
+Owner asked if the Cozo link piece is hard. It is not. `upsert_block` already holds the vector point id and the ids copied onto the point. `conversation_id` is on the stored chain event; `turn_id` is on the chat payload when present. The work is one chain relation and a put in that same ingest pass. Receive still does not call ingest. Not started.
+
+### 2026-10-08T22:13Z · Grok (Cursor) — chain link keys
+
+Every id carried on a vector is a Cozo link from that vector's point id. Named by the owner: chat id and `conversation_id`. On the chain event the chat session id is `conversation_id`; `turn_id` is present when the chat payload carries it. Also link every id already copied onto the Qdrant point: `event_hash`, `input_patch_hash`, `plugin_id`, `actor_id`, `session_id`, `sealed_id_digest`, `capability_id`, and schema `subid`. `session_genesis` stays off that point and off the link. Not the system graph. Not implemented.
+
+### 2026-10-08T22:12Z · Grok (Cursor) — chain edges are their own Cozo relation
+
+Owner: the receive ingest needs the Cozo edge write in the same pass as the Qdrant upsert. Chain vectors do not belong in the system graph. `system_graph_edges` is a replaced inventory snapshot (source, release, observed runtime) with node and edge caps. The chain is the append-only mutation stream. The missing piece is a chain relation written by `ingest_received` beside `snowball_footprints`, not a row in the system graph. Not implemented.
+
+### 2026-10-08T22:10Z · Grok (Cursor) — receive ingest does not write Cozo edges
+
+`ingest_received` reads vector files from the opened chain and `upsert_block` writes Qdrant `snowball_footprints` only. No Voyage call on that path. `store_edge` and `system_graph_edges` are separate and are not called from `chain_vectors.rs`. Receive does not run ingest by itself: `transfer_snapshot_set` sets `on_receive: None`.
+
+### 2026-10-08T22:08Z · Grok (Cursor) — vector dump cannot cross volumes
+
+Owner: incremental send/receive stays on the original snapshot pair, and a snapshot cannot cross volumes. A vector snapshot is created on the live vectors filesystem. If the stream is that same filesystem, the snapshot path can sit under a fixed subvolume; it is then a nested subvolume and a send of the outer subvolume does not carry it. If the stream is another volume, the snapshot gets there only by send/receive. Receive always creates a new read-only subvolume. The destination directory can be created per dump. The previous received snapshot must remain on that destination filesystem, found by UUID, or the next transfer is a full send. There is no nested send stream inside another send stream.
+
+### 2026-10-08T22:03Z · Grok (Cursor) — blockchain snapshot order is the one to bring
+
+Owner asked if the pre-snowball workflow is the better way and if it is hard to bring over. Answer given, not implemented. Bring the order from `streaming_blockchain.rs`: snapshot timing, then the live vectors, then send the vector snapshot. Keep the current prepared transfer, the schema filter, and the send parent. Do not bring the `bash`/`ssh` send, the calendar window, or origin Qdrant upsert. The order fits inside `commit_snapshot_set_sync`. Automatic send still needs a receive destination; the old `stream_vectors` was unused and took the remote from the caller.
+
+### 2026-10-08T21:58Z · Grok (Cursor) — original timing rule is in op-blockchain
+
+There was no snowball then. The rule is in `/home/home/artix/git/operation-dbus-proto/crates/op-blockchain/`. `streaming_blockchain.rs` snapshotted timing, then the live vectors, then `btrfs send` of the vector snapshot. Current snowball does not do that. What remains is a live pending scan (timing file present, vector file absent) and one aligned snapshot triple. The schema filter is a separate path and is still wired: `MutationEngine::start_vector_projection` installs `SchemaProjectionPolicy`, and `project_pending` embeds only `described_fields` (`x-secret` and `x-opdbus-private` dropped, undeclared keys ignored). The operator CLI `op-chain-vectors project` still opens `FlattenAll` and does not use that policy.
+
+### 2026-10-08T21:55Z · Grok (Cursor) — timing dump accounts for in-flight vectors
+
+Owner: live vectorization writes the vectors. The timing snapshot captures that live set and dumps it into the send stream. A vector still being written at snapshot time is accounted for by its timing record. The writer lock is that pairing (`concurrent_event_and_snapshot_never_split_timing_from_vector`). `select_pending_timing` is the later pass for a timing block that still has no vector. The 5 hourly / 5 daily / 5 weekly / 5 quarterly window is not a recovery archive. `retain_snapshots` now keeps only the newest counter. Disaster recovery, not yet built, is a whole-system JSON snapshot with each plugin's dependencies and a systemfs inventory; reconstruct uses D-Bus PackageKit to install dependencies. Tests that assumed two local dumps survive are updated and not yet run. Live `SNP-000571`–`SNP-000575` remain until the new binary prunes them.
 
 ### 2026-10-08T14:28Z · Grok (Cursor) — model_routes release activated
 

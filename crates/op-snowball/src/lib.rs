@@ -26,8 +26,8 @@ pub use footprint::{BlockEvent, PluginFootprint};
 pub use retention::RetentionPolicy;
 pub use snapshot::SnapshotInterval;
 pub use snowball::{
-    ChainBlockRef, SNAPSHOT_LABELS, SnowballTransferReport, StreamingSnowball, decode_vector,
-    encode_vector, parse_block_number, parse_vector_block_number,
+    ChainBlockRef, ChainVectorDump, ChainVectorDumpReport, SNAPSHOT_LABELS, SnowballTransferReport,
+    StreamingSnowball, decode_vector, encode_vector, parse_block_number, parse_vector_block_number,
 };
 
 /// Prelude for convenient imports

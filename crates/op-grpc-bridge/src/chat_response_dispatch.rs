@@ -12,16 +12,16 @@ use anyhow::{Context, Result};
 use op_cozo_store::{ChatConversationRecord, ChatTurnDraft, CozoError, EpisodeScope};
 use op_plugins::state_plugins::{
     chat_response::{
-        ChatTurn, ConversationSummary, RESPOND_CAPABILITY, RESPONSE_COMMITTED_SIGNAL,
-        ResponseCommittedSignal, ResponseContent,
+        ChatTurn, ConversationSummary, ResponseCommittedSignal, ResponseContent,
+        RESPOND_CAPABILITY, RESPONSE_COMMITTED_SIGNAL,
     },
     chat_response_methods::{
-        CannotPerformInput, GetConversationInput, GetConversationOutput, GetTurnResponseInput,
-        GetTurnResponseOutput, ListConversationsInput, ListConversationsOutput, NewConversation,
-        NewTurn, RequestClarificationInput, RespondToUserInput, RespondToUserOutput,
-        ResponseCommitOutput, StartConversationInput, StartConversationOutput, build_conversation,
-        build_turn, validate_conversation, validate_title, validate_turn, validate_uuid,
-        verify_turn_chain,
+        build_conversation, build_turn, validate_conversation, validate_title, validate_turn,
+        validate_uuid, verify_turn_chain, CannotPerformInput, GetConversationInput,
+        GetConversationOutput, GetTurnResponseInput, GetTurnResponseOutput, ListConversationsInput,
+        ListConversationsOutput, NewConversation, NewTurn, RequestClarificationInput,
+        RespondToUserInput, RespondToUserOutput, ResponseCommitOutput, StartConversationInput,
+        StartConversationOutput,
     },
     json_render::canvas_profile::PinnedCanvasValidator,
 };
@@ -29,7 +29,7 @@ use op_state_store::PluginSchema;
 
 use crate::{
     chat_response_state::{
-        CONVERSATION_SNAPSHOT_LIMIT, DoorbellWake, PLUGIN, TURN_SNAPSHOT_LIMIT, owner_key,
+        owner_key, DoorbellWake, CONVERSATION_SNAPSHOT_LIMIT, PLUGIN, TURN_SNAPSHOT_LIMIT,
     },
     chat_response_turns::{TurnClaim, TurnOwner},
     interceptor::load_capability_grants,

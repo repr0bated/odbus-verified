@@ -5,11 +5,10 @@
 //! - vectors: ML embeddings for semantic search
 //! - state: Current system state for DR/reinstall
 
-use anyhow::{Context, Result, ensure};
-use chrono::{DateTime, Datelike, Utc};
+use anyhow::{Context, Result, bail, ensure};
+use chrono::{DateTime, Utc};
 use nix::fcntl::{Flock, FlockArg};
-use std::cmp::Reverse;
-use std::collections::{BTreeMap, BinaryHeap, HashSet};
+use std::collections::{BinaryHeap, HashSet};
 use std::fs::{File as StdFile, OpenOptions as StdOpenOptions};
 use std::io::Write as _;
 use std::os::fd::AsRawFd;
@@ -40,6 +39,24 @@ pub struct SnowballTransferReport {
     pub members: Vec<crate::replication::PreparedSnapshotReport>,
 }
 
+/// Operator request to dump live timing and vectors to a new remote chain root.
+#[derive(Debug, Clone)]
+pub struct ChainVectorDump {
+    pub host: String,
+    pub remote_parent: String,
+    pub on_receive: String,
+    pub timeout: Duration,
+}
+
+/// Outcome of one vector dump after both prepared transfers succeed.
+#[derive(Debug)]
+pub struct ChainVectorDumpReport {
+    pub dump_name: String,
+    pub remote_chain_root: String,
+    pub timing: crate::replication::PreparedSnapshotReport,
+    pub vectors: crate::replication::PreparedSnapshotReport,
+}
+
 /// Cap on a single flattened field's length in embedding text, so one large
 /// payload cannot dominate a block's vector.
 const MAX_EMBEDDING_FIELD_LEN: usize = 512;
@@ -59,71 +76,19 @@ struct SnapshotEntry {
 
 /// Decide which snapshots of one family to keep.
 ///
-/// Sorts newest-first and returns the keep set. Two rules exist independently of
-/// the time buckets, because losing either snapshot breaks a chain guarantee:
-///
-/// - the highest counter is always kept: it is the latest recovery point and the
-///   next incremental send's parent;
-///
-/// This matters when filesystem timestamps tie: the highest counter still
-/// identifies the newest committed logical snapshot.
+/// Live vectorization writes the vectors. A snapshot captures that live set
+/// and is the dump. The timing record accounts for a vector still being
+/// written when the snapshot is taken: the writer lock commits the pair
+/// together, and a timing block with no vector yet stays pending. The only
+/// standing local keep is the highest counter, the parent of the next send.
+/// An in-flight send also pins its source and parent. Hourly, daily, weekly,
+/// and quarterly copies are not kept.
 fn retain_snapshots(
     snapshots: &mut [SnapshotEntry],
-    policy: &RetentionPolicy,
-    now: DateTime<Utc>,
+    _policy: &RetentionPolicy,
+    _now: DateTime<Utc>,
 ) -> HashSet<String> {
-    use chrono::Duration;
-
-    snapshots.sort_by_key(|entry| (Reverse(entry.created), Reverse(entry.counter)));
-
-    let mut hourly: Vec<&str> = Vec::new();
-    let mut daily: BTreeMap<String, &str> = BTreeMap::new();
-    let mut weekly: BTreeMap<(i32, u32), &str> = BTreeMap::new();
-    let mut quarterly: BTreeMap<String, &str> = BTreeMap::new();
-
-    for entry in snapshots.iter() {
-        let age = now.signed_duration_since(entry.created);
-        if age <= Duration::hours(24) {
-            hourly.push(&entry.name);
-        } else if age <= Duration::days(30) {
-            daily
-                .entry(entry.created.format("%Y%m%d").to_string())
-                .or_insert(&entry.name);
-        } else if age <= Duration::weeks(12) {
-            weekly
-                .entry((entry.created.year(), entry.created.iso_week().week()))
-                .or_insert(&entry.name);
-        } else {
-            let quarter = (entry.created.month() - 1) / 3 + 1;
-            quarterly
-                .entry(format!("{}-Q{}", entry.created.year(), quarter))
-                .or_insert(&entry.name);
-        }
-    }
-
-    let mut keep: HashSet<String> = HashSet::new();
-    keep.extend(hourly.iter().take(policy.hourly).map(|n| n.to_string()));
-    for (bucket, count) in [
-        (daily, policy.daily),
-        (
-            weekly
-                .into_iter()
-                .map(|((year, week), name)| (format!("{year}-W{week:02}"), name))
-                .collect(),
-            policy.weekly,
-        ),
-        (quarterly, policy.quarterly),
-    ] {
-        // Buckets are keyed chronologically, so reversing takes the newest.
-        keep.extend(
-            bucket
-                .into_values()
-                .rev()
-                .take(count)
-                .map(|name| name.to_string()),
-        );
-    }
-
+    let mut keep = HashSet::new();
     if let Some(newest) = snapshots.iter().max_by_key(|entry| entry.counter) {
         keep.insert(newest.name.clone());
     }
@@ -289,6 +254,39 @@ impl StreamingSnowball {
             retention_policy: Arc::new(RwLock::new(retention_policy)),
             snapshot_lock: Arc::new(Mutex::new(())),
             writer_lock_path,
+            last_snapshot_time: Arc::new(RwLock::new(Instant::now())),
+            block_counter: Arc::new(RwLock::new(resumed_from)),
+            writer,
+        })
+    }
+
+    /// Open an existing received chain root for read-only access.
+    ///
+    /// The root must already contain real `timing/` and `vectors/` directories.
+    /// This does not create subvolumes, `state/`, `snapshots/`, or `.writer.lock`.
+    pub async fn open_received(base_path: impl AsRef<Path>) -> Result<Self> {
+        let base_path = base_path.as_ref().to_path_buf();
+        verify_chain_data_directory(&base_path).context("invalid received chain root")?;
+        let timing_subvol = base_path.join("timing");
+        let vector_subvol = base_path.join("vectors");
+        verify_chain_data_directory(&timing_subvol).context("invalid received timing directory")?;
+        verify_chain_data_directory(&vector_subvol).context("invalid received vectors directory")?;
+
+        let resumed_from = highest_block_number(&timing_subvol).await?;
+        let retention_policy = Self::load_retention_policy(&base_path)
+            .await?
+            .unwrap_or_else(RetentionPolicy::from_env);
+        let writer = SnowballWriter::spawn("snowball-reader".to_string(), None)?;
+
+        Ok(Self {
+            base_path,
+            timing_subvol,
+            vector_subvol,
+            state_subvol: base_path.join("state"),
+            snapshot_interval: SnapshotInterval::from_env(),
+            retention_policy: Arc::new(RwLock::new(retention_policy)),
+            snapshot_lock: Arc::new(Mutex::new(())),
+            writer_lock_path: base_path.join(".writer.lock"),
             last_snapshot_time: Arc::new(RwLock::new(Instant::now())),
             block_counter: Arc::new(RwLock::new(resumed_from)),
             writer,
@@ -606,11 +604,14 @@ impl StreamingSnowball {
         &self.state_subvol
     }
 
-    /// Snapshot all three data directories under one aligned counter.
+    /// Snapshot the live timing, vector, and state directories under one counter.
     ///
-    /// Each published set is an ordinary directory containing three aligned,
-    /// read-only Btrfs subvolume snapshots. The enclosing directory and its
-    /// commit marker give readers one complete recovery point.
+    /// This is not the pre-snowball dump. That code, in
+    /// `operation-dbus-proto` `crates/op-blockchain/src/streaming_blockchain.rs`,
+    /// snapshotted timing, then snapshotted the live vectors, then sent the
+    /// vector snapshot. Timing was how a vector still being written stayed
+    /// accounted for. This function takes one aligned triple and does not do
+    /// that send.
     ///
     /// Returns the aligned counter used in the committed snapshot-set name.
     pub async fn create_snapshot(&self) -> Result<String> {
@@ -726,6 +727,122 @@ impl StreamingSnowball {
         Ok(SnowballTransferReport {
             snapshot_name: snapshot_name.to_owned(),
             members,
+        })
+    }
+
+    /// Snapshot timing, then live vectors, and send both members into a new
+    /// remote chain root through the native prepared transfer.
+    pub async fn dump_vectors(&self, request: ChainVectorDump) -> Result<ChainVectorDumpReport> {
+        ensure!(
+            request.timeout >= Duration::from_secs(1)
+                && request.timeout <= Duration::from_secs(86_400),
+            "dump transfer timeout must be between 1 and 86400 seconds"
+        );
+        dump_validate_absolute_path(Path::new(&request.remote_parent))?;
+        dump_validate_absolute_path(Path::new(&request.on_receive))?;
+        dump_validate_host(&request.host)?;
+
+        let operation_guard = Arc::clone(&self.snapshot_lock).lock_owned().await;
+        let dumps_dir = self.base_path.join("dumps");
+        let writer_lock_path = self.writer_lock_path.clone();
+        let timing_source = self.timing_subvol.clone();
+        let vectors_source = self.vector_subvol.clone();
+        let prepared = tokio::task::spawn_blocking(move || {
+            let file = open_writer_lock(&writer_lock_path)?;
+            let _writer_lock =
+                Flock::lock(file, FlockArg::LockExclusive).map_err(|(_, error)| {
+                    anyhow::anyhow!("lock {}: {error}", writer_lock_path.display())
+                })?;
+            std::fs::create_dir_all(&dumps_dir)?;
+            let previous = previous_dump_member_paths(&dumps_dir)?;
+            let counter = next_dump_counter_sync(&dumps_dir)?;
+            let dump_name = dump_set_name(counter);
+            let dump_dir = dumps_dir.join(&dump_name);
+            ensure!(
+                !dump_dir.exists(),
+                "dump directory already exists: {}",
+                dump_dir.display()
+            );
+            std::fs::create_dir(&dump_dir)?;
+            btrfs_snapshot_readonly(&timing_source, &dump_dir.join("timing"))?;
+            btrfs_snapshot_readonly(&vectors_source, &dump_dir.join("vectors"))?;
+            Ok(PreparedDumpSnapshots {
+                dumps_dir,
+                dump_name,
+                dump_dir,
+                counter,
+                previous_timing_parent: previous.map(|(timing, _)| timing),
+                previous_vectors_parent: previous.map(|(_, vectors)| vectors),
+            })
+        })
+        .await
+        .context("Snowball vector dump snapshot task failed")??;
+
+        let remote_chain_root = dump_remote_chain_root(&request.remote_parent, prepared.counter)?;
+        remote_mkdir_chain_root(&request.host, &remote_chain_root, request.timeout).await?;
+
+        let timing_report = match crate::replication::transfer_prepared_snapshot(
+            crate::replication::PreparedSnapshotTransfer {
+                snapshot: prepared.dump_dir.join("timing"),
+                parent: prepared.previous_timing_parent,
+                host: request.host.clone(),
+                remote_directory: remote_chain_root.clone(),
+                on_receive: None,
+                timeout: request.timeout,
+            },
+        )
+        .await
+        {
+            Ok(report) => report,
+            Err(error) => {
+                discard_unsent_dump(&prepared.dump_dir).await;
+                return Err(error).context("vector dump timing transfer failed");
+            }
+        };
+
+        let vectors_report = match crate::replication::transfer_prepared_snapshot(
+            crate::replication::PreparedSnapshotTransfer {
+                snapshot: prepared.dump_dir.join("vectors"),
+                parent: prepared.previous_vectors_parent,
+                host: request.host.clone(),
+                remote_directory: remote_chain_root.clone(),
+                on_receive: Some(request.on_receive.clone()),
+                timeout: request.timeout,
+            },
+        )
+        .await
+        {
+            Ok(report) => report,
+            Err(error) => {
+                discard_unsent_dump(&prepared.dump_dir).await;
+                return Err(error).context("vector dump vectors transfer failed");
+            }
+        };
+
+        tokio::task::spawn_blocking({
+            let dumps_dir = prepared.dumps_dir.clone();
+            let dump_name = prepared.dump_name.clone();
+            move || remove_older_local_dumps(&dumps_dir, &dump_name)
+        })
+        .await
+        .context("Snowball vector dump local retention task failed")??;
+
+        let received_roots_path = prepared.dumps_dir.join(RECEIVED_ROOTS_FILE);
+        update_received_roots_file(
+            &received_roots_path,
+            &request.host,
+            &remote_chain_root,
+            request.timeout,
+        )
+        .await?;
+
+        drop(operation_guard);
+
+        Ok(ChainVectorDumpReport {
+            dump_name: prepared.dump_name,
+            remote_chain_root,
+            timing: timing_report,
+            vectors: vectors_report,
         })
     }
 
@@ -1769,6 +1886,347 @@ fn next_snapshot_counter_sync(snapshot_dir: &Path) -> Result<u64> {
         .context("Snowball snapshot counter overflow")
 }
 
+const RECEIVED_ROOTS_FILE: &str = "received-roots";
+
+struct PreparedDumpSnapshots {
+    dumps_dir: PathBuf,
+    dump_name: String,
+    dump_dir: PathBuf,
+    counter: u64,
+    previous_timing_parent: Option<PathBuf>,
+    previous_vectors_parent: Option<PathBuf>,
+}
+
+fn dump_set_name(counter: u64) -> String {
+    format!("DMP-{counter:06}")
+}
+
+fn parse_dump_set_counter(name: &str) -> Option<u64> {
+    let counter = name.strip_prefix("DMP-")?.parse::<u64>().ok()?;
+    (name == dump_set_name(counter)).then_some(counter)
+}
+
+fn next_dump_counter_sync(dumps_dir: &Path) -> Result<u64> {
+    let mut max_counter = 0_u64;
+    if dumps_dir.is_dir() {
+        for entry in std::fs::read_dir(dumps_dir)? {
+            let name = entry?.file_name().to_string_lossy();
+            if let Some(counter) = parse_dump_set_counter(&name) {
+                max_counter = max_counter.max(counter);
+            }
+        }
+    }
+    max_counter
+        .checked_add(1)
+        .context("Snowball dump counter overflow")
+}
+
+fn previous_dump_member_paths(dumps_dir: &Path) -> Result<Option<(PathBuf, PathBuf)>> {
+    let mut latest = None;
+    if dumps_dir.is_dir() {
+        for entry in std::fs::read_dir(dumps_dir)? {
+            let entry = entry?;
+            let name = entry.file_name().to_string_lossy();
+            if let Some(counter) = parse_dump_set_counter(&name) {
+                latest = Some(latest.map_or(counter, |current| current.max(counter)));
+            }
+        }
+    }
+    Ok(latest.map(|counter| {
+        let dump_dir = dumps_dir.join(dump_set_name(counter));
+        (dump_dir.join("timing"), dump_dir.join("vectors"))
+    }))
+}
+
+fn verify_chain_data_directory(path: &Path) -> Result<()> {
+    let metadata = std::fs::symlink_metadata(path)
+        .with_context(|| format!("inspect chain directory {}", path.display()))?;
+    ensure!(
+        metadata.is_dir() && !metadata.file_type().is_symlink(),
+        "chain path is not a real directory: {}",
+        path.display()
+    );
+    Ok(())
+}
+
+fn remove_older_local_dumps(dumps_dir: &Path, keep_name: &str) -> Result<()> {
+    if !dumps_dir.is_dir() {
+        return Ok(());
+    }
+    for entry in std::fs::read_dir(dumps_dir)? {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy();
+        if parse_dump_set_counter(&name).is_none() || name == keep_name {
+            continue;
+        }
+        remove_one_local_dump(&entry.path())?;
+    }
+    Ok(())
+}
+
+fn remove_one_local_dump(dump_dir: &Path) -> Result<()> {
+    if !dump_dir.exists() {
+        return Ok(());
+    }
+    for label in ["timing", "vectors"] {
+        let member = dump_dir.join(label);
+        if std::fs::symlink_metadata(&member).is_ok() {
+            delete_snapshot_member(&member)?;
+        }
+    }
+    if dump_dir.exists() {
+        std::fs::remove_dir(dump_dir)?;
+    }
+    Ok(())
+}
+
+async fn discard_unsent_dump(dump_dir: &Path) {
+    let path = dump_dir.to_path_buf();
+    let removed = tokio::task::spawn_blocking(move || remove_one_local_dump(&path)).await;
+    if let Err(error) = removed
+        .context("discard unsent vector dump")
+        .and_then(|result| result)
+    {
+        warn!(
+            "failed to discard unsent vector dump {}: {error:#}",
+            dump_dir.display()
+        );
+    }
+}
+
+fn dump_validate_absolute_path(path: &Path) -> Result<()> {
+    let text = path
+        .to_str()
+        .context("dump paths must be UTF-8")?;
+    ensure!(
+        path.is_absolute() && path != Path::new("/"),
+        "path must be absolute and must not be the filesystem root"
+    );
+    ensure!(
+        !text.chars().any(char::is_control)
+            && !text.split('/').any(|part| part == "." || part == ".."),
+        "path must not contain control characters or dot components"
+    );
+    Ok(())
+}
+
+fn dump_validate_host(host: &str) -> Result<()> {
+    ensure!(
+        !host.is_empty()
+            && !host.starts_with('-')
+            && host.bytes().all(|byte| byte.is_ascii_alphanumeric()
+                || matches!(byte, b'.' | b'-' | b'_' | b'@' | b':' | b'[' | b']' | b'%')),
+        "SSH host must be a hostname/address or user@host without options or shell syntax"
+    );
+    ensure!(host.matches('@').count() <= 1, "invalid SSH user@host");
+    ensure!(
+        !host.starts_with('@') && !host.ends_with('@'),
+        "SSH username and hostname must be nonempty"
+    );
+    Ok(())
+}
+
+fn dump_shell_quote(argument: &str) -> String {
+    format!("'{}'", argument.replace('\'', "'\\''"))
+}
+
+fn dump_ssh_arguments(host: &str, remote_command: String) -> Result<Vec<String>> {
+    dump_validate_host(host)?;
+    Ok([
+        "-T",
+        "-oBatchMode=yes",
+        "-oConnectTimeout=15",
+        "-oServerAliveInterval=15",
+        "-oServerAliveCountMax=3",
+        "--",
+        host,
+        &remote_command,
+    ]
+    .into_iter()
+    .map(str::to_owned)
+    .collect())
+}
+
+async fn remote_ssh_command(
+    host: &str,
+    remote_command: String,
+    timeout: Duration,
+) -> Result<()> {
+    let arguments = dump_ssh_arguments(host, remote_command)?;
+    let mut child = tokio::process::Command::new("ssh")
+        .args(&arguments)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .context("start SSH command for vector dump")?;
+    let stderr = child.stderr.take().context("SSH stderr missing")?;
+    let completed = tokio::time::timeout(timeout, async move {
+        let status = child.wait().await?;
+        let mut buffer = Vec::new();
+        tokio::io::AsyncReadExt::read_to_end(&mut stderr, &mut buffer).await?;
+        let diagnostic = String::from_utf8_lossy(&buffer);
+        ensure!(
+            status.success(),
+            "SSH command failed with {status}: {diagnostic}"
+        );
+        Ok(())
+    })
+    .await;
+    match completed {
+        Ok(result) => result,
+        Err(_) => bail!("SSH command timed out"),
+    }
+}
+
+async fn remote_mkdir_chain_root(host: &str, remote_chain_root: &str, timeout: Duration) -> Result<()> {
+    dump_validate_absolute_path(Path::new(remote_chain_root))?;
+    let command = format!("exec mkdir -- {}", dump_shell_quote(remote_chain_root));
+    remote_ssh_command(host, command, timeout).await
+}
+
+fn dump_remote_chain_root(remote_parent: &str, counter: u64) -> Result<String> {
+    dump_validate_absolute_path(Path::new(remote_parent))?;
+    Ok(format!("{remote_parent}/{}", dump_set_name(counter)))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DumpSendPlanStep {
+    pub member: &'static str,
+    pub on_receive: bool,
+}
+
+pub(crate) fn dump_send_plan() -> [DumpSendPlanStep; 2] {
+    [
+        DumpSendPlanStep {
+            member: "timing",
+            on_receive: false,
+        },
+        DumpSendPlanStep {
+            member: "vectors",
+            on_receive: true,
+        },
+    ]
+}
+
+pub(crate) fn local_dump_keep_set(dumps_dir: &Path, keep_counter: u64) -> Result<Vec<String>> {
+    let keep_name = dump_set_name(keep_counter);
+    let mut remaining = Vec::new();
+    if dumps_dir.is_dir() {
+        for entry in std::fs::read_dir(dumps_dir)? {
+            let name = entry?.file_name().to_string_lossy();
+            if parse_dump_set_counter(&name).is_some() {
+                remaining.push(name.to_string());
+            }
+        }
+    }
+    remaining.retain(|name| name == &keep_name);
+    remaining.sort();
+    Ok(remaining)
+}
+
+async fn update_received_roots_file(
+    path: &Path,
+    host: &str,
+    new_root: &str,
+    timeout: Duration,
+) -> Result<()> {
+    dump_validate_absolute_path(Path::new(new_root))?;
+    let mut roots = read_received_roots(path)?;
+    if roots.last().as_deref() != Some(new_root) {
+        roots.push(new_root.to_owned());
+    }
+    let current = roots.last().cloned().unwrap_or_else(|| new_root.to_owned());
+    let previous = if roots.len() >= 2 {
+        Some(roots[roots.len() - 2].clone())
+    } else {
+        None
+    };
+    let mut retained = Vec::new();
+    for root in roots {
+        if root == current || previous.as_deref() == Some(root.as_str()) {
+            retained.push(root);
+            continue;
+        }
+        if !received_root_eligible_for_prune(&root) {
+            retained.push(root);
+            continue;
+        }
+        match remote_delete_chain_root(host, &root, timeout).await {
+            Ok(()) => {}
+            Err(error) => {
+                warn!("failed to delete remote chain root {}: {error:#}", root);
+                retained.push(root);
+            }
+        }
+    }
+    write_received_roots(path, &retained)?;
+    Ok(())
+}
+
+fn received_root_eligible_for_prune(path: &str) -> bool {
+    dump_validate_absolute_path(Path::new(path)).is_ok()
+}
+
+fn read_received_roots(path: &Path) -> Result<Vec<String>> {
+    let file = match std::fs::File::open(path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(error.into()),
+    };
+    let mut roots = Vec::new();
+    for line in std::io::BufReader::new(file).lines() {
+        let line = line?;
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        roots.push(trimmed.to_owned());
+    }
+    Ok(roots)
+}
+
+fn write_received_roots(path: &Path, roots: &[String]) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut data = String::new();
+    for root in roots {
+        data.push_str(root);
+        data.push('\n');
+    }
+    atomic_write_sync(
+        path.parent().unwrap_or(Path::new(".")),
+        path,
+        ".received-roots",
+        data.as_bytes(),
+    )
+}
+
+async fn remote_delete_chain_root(host: &str, root: &str, timeout: Duration) -> Result<()> {
+    dump_validate_absolute_path(Path::new(root))?;
+    for member in ["timing", "vectors"] {
+        let child = format!("{root}/{}", member);
+        dump_validate_absolute_path(Path::new(&child))?;
+        let quoted = dump_shell_quote(&child);
+        remote_ssh_command(
+            host,
+            format!("exec btrfs property set -ts {quoted} ro false"),
+            timeout,
+        )
+        .await?;
+        remote_ssh_command(
+            host,
+            format!("exec btrfs subvolume delete {quoted}"),
+            timeout,
+        )
+        .await?;
+    }
+    let command = format!("exec rmdir -- {}", dump_shell_quote(root));
+    remote_ssh_command(host, command, timeout).await
+}
+
 fn read_snapshot_state_sync(snapshot_set: &Path) -> Result<Option<simd_json::OwnedValue>> {
     if let Some(counter) = snapshot_set
         .file_name()
@@ -1885,8 +2343,8 @@ fn prune_snapshot_sets_sync(snapshot_dir: &Path, policy: &RetentionPolicy) -> Re
     if deleted > 0 {
         StdFile::open(snapshot_dir)?.sync_all()?;
         info!(
-            "Pruned {} snapshots (retention: {}h/{}d/{}w/{}q)",
-            deleted, policy.hourly, policy.daily, policy.weekly, policy.quarterly
+            "Pruned {} snapshots; kept the send/receive parent",
+            deleted
         );
     }
     Ok(())
@@ -2270,11 +2728,14 @@ pub(crate) mod tests {
         let mut names = vec![first_task.await.unwrap(), second_task.await.unwrap()];
         names.sort();
         assert_eq!(names, ["SNP-000001", "SNP-000002"]);
-        assert_eq!(first.list_snapshots().await.unwrap().len(), 2);
-        for name in names {
-            let set = path.join("snapshots").join(name);
-            complete_btrfs_snapshot_set(&set).unwrap();
-        }
+        first
+            .set_retention_policy(RetentionPolicy::minimal())
+            .await
+            .unwrap();
+        let listed = first.list_snapshots().await.unwrap();
+        assert_eq!(listed.len(), 1, "only the send parent remains: {listed:?}");
+        assert_eq!(listed[0].0, "SNP-000002");
+        complete_btrfs_snapshot_set(&path.join("snapshots/SNP-000002")).unwrap();
     }
 
     #[tokio::test]
@@ -2698,14 +3159,15 @@ pub(crate) mod tests {
         };
 
         let keep = retain_snapshots(&mut snapshots, &policy, Utc::now());
-        assert!(
-            keep.contains("SNP-000002"),
+        assert_eq!(
+            keep,
+            HashSet::from([String::from("SNP-000002")]),
             "the newest counter must always survive: {keep:?}"
         );
     }
 
     #[test]
-    fn retention_still_prunes_beyond_the_policy() {
+    fn retention_keeps_only_the_send_parent() {
         let now = Utc::now();
         let mut snapshots = vec![
             entry("SNP-000001", now - chrono::Duration::hours(1), 1),
@@ -2713,20 +3175,18 @@ pub(crate) mod tests {
             entry("SNP-000003", now - chrono::Duration::hours(3), 3),
         ];
         let policy = RetentionPolicy {
-            hourly: 1,
-            daily: 0,
-            weekly: 0,
-            quarterly: 0,
+            hourly: 5,
+            daily: 5,
+            weekly: 5,
+            quarterly: 5,
         };
 
         let keep = retain_snapshots(&mut snapshots, &policy, now);
         assert_eq!(
-            keep.len(),
-            2,
-            "one hourly slot plus the mandatory newest counter: {keep:?}"
+            keep,
+            HashSet::from([String::from("SNP-000003")]),
+            "calendar buckets must not keep older sets: {keep:?}"
         );
-        assert!(keep.contains("SNP-000001"), "newest by time");
-        assert!(keep.contains("SNP-000003"), "highest counter");
     }
 
     #[test]
@@ -2830,5 +3290,82 @@ pub(crate) mod tests {
                 .await
                 .is_ok()
         );
+    }
+
+    #[test]
+    fn dump_send_plan_orders_timing_before_vectors_with_hook_on_vectors_only() {
+        let plan = dump_send_plan();
+        assert_eq!(plan.len(), 2);
+        assert_eq!(plan[0].member, "timing");
+        assert!(!plan[0].on_receive);
+        assert_eq!(plan[1].member, "vectors");
+        assert!(plan[1].on_receive);
+    }
+
+    #[test]
+    fn dump_remote_chain_roots_differ_per_counter() {
+        let first = dump_remote_chain_root("/var/lib/opdbus/chain-roots", 1).unwrap();
+        let second = dump_remote_chain_root("/var/lib/opdbus/chain-roots", 2).unwrap();
+        assert_ne!(first, second);
+        assert_eq!(first, "/var/lib/opdbus/chain-roots/DMP-000001");
+        assert_eq!(second, "/var/lib/opdbus/chain-roots/DMP-000002");
+    }
+
+    #[test]
+    fn local_dump_keep_set_retains_only_the_dump_just_sent() {
+        let fixture = tempdir().unwrap();
+        let dumps = fixture.path().join("dumps");
+        std::fs::create_dir_all(&dumps).unwrap();
+        for counter in [1_u64, 2, 3] {
+            std::fs::create_dir(dumps.join(dump_set_name(counter))).unwrap();
+        }
+        assert_eq!(
+            local_dump_keep_set(&dumps, 3).unwrap(),
+            vec!["DMP-000003".to_owned()]
+        );
+    }
+
+    #[test]
+    fn remove_older_local_dumps_keeps_only_the_latest_dump_pair() {
+        let fixture = tempdir().unwrap();
+        let chain = fixture.path().join("snowball");
+        std::fs::create_dir_all(&chain).unwrap();
+        for label in SNAPSHOT_LABELS {
+            let output = Command::new("btrfs")
+                .args(["subvolume", "create"])
+                .arg(chain.join(label))
+                .output()
+                .unwrap();
+            assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        }
+        let dumps = chain.join("dumps");
+        std::fs::create_dir(&dumps).unwrap();
+        for counter in [1_u64, 2] {
+            let dump_dir = dumps.join(dump_set_name(counter));
+            std::fs::create_dir(&dump_dir).unwrap();
+            btrfs_snapshot_readonly(&chain.join("timing"), &dump_dir.join("timing")).unwrap();
+            btrfs_snapshot_readonly(&chain.join("vectors"), &dump_dir.join("vectors")).unwrap();
+        }
+        remove_older_local_dumps(&dumps, "DMP-000002").unwrap();
+        assert!(!dumps.join("DMP-000001").exists());
+        assert!(dumps.join("DMP-000002").join("timing").exists());
+        assert!(dumps.join("DMP-000002").join("vectors").exists());
+        assert_eq!(
+            local_dump_keep_set(&dumps, 2).unwrap(),
+            vec!["DMP-000002".to_owned()]
+        );
+    }
+
+    #[tokio::test]
+    async fn open_received_requires_timing_and_does_not_create_state() {
+        let fixture = tempfile::tempdir().unwrap();
+        let root = fixture.path().join("received-chain");
+        std::fs::create_dir(&root).unwrap();
+        std::fs::create_dir(root.join("vectors")).unwrap();
+        let error = StreamingSnowball::open_received(&root).await.unwrap_err();
+        assert!(error.to_string().contains("timing"));
+        assert!(!root.join("state").exists());
+        assert!(!root.join("snapshots").exists());
+        assert!(!root.join(".writer.lock").exists());
     }
 }

@@ -582,6 +582,12 @@ impl CozoGraphShuttle {
                 registered_at: Int default 0,
                 revoked_at: Int default 0
             }"#,
+            r#":create chain_vector_link {
+                point_id: String,
+                kind: String
+                =>
+                value: String
+            }"#,
             r#":create external_mcp_sessions { session_id: String => principal_id: String, document: String }"#,
             // human_pubkey → principal_id lookup; the pubkey is unique across
             // ALL principals, active or revoked (tombstones keep their mapping)
@@ -881,6 +887,46 @@ impl CozoGraphShuttle {
         );
         cozo_run(&self.db, query, p)
             .map_err(|e| CozoError::Other(format!("store graph edge: {e}")))?;
+        Ok(())
+    }
+
+    /// Replace every chain-vector link for one Qdrant point id (idempotent re-ingest).
+    pub fn replace_chain_vector_links(
+        &self,
+        point_id: &str,
+        links: &[(&str, &str)],
+    ) -> std::result::Result<(), CozoError> {
+        let mut p: Params = BTreeMap::new();
+        p.insert("pid".into(), DataValue::Str(point_id.into()));
+        cozo_run(
+            &self.db,
+            "?[point_id, kind] := *chain_vector_link{point_id, kind, value}, point_id = $pid \
+             :rm chain_vector_link {point_id, kind}",
+            p.clone(),
+        )
+        .map_err(|e| CozoError::Other(format!("replace chain_vector_link rm: {e}")))?;
+
+        if links.is_empty() {
+            return Ok(());
+        }
+
+        let rows: Vec<DataValue> = links
+            .iter()
+            .map(|(kind, value)| {
+                DataValue::List(vec![
+                    DataValue::Str(point_id.into()),
+                    DataValue::Str(kind.into()),
+                    DataValue::Str(value.into()),
+                ])
+            })
+            .collect();
+        p.insert("rows".into(), DataValue::List(rows));
+        cozo_run(
+            &self.db,
+            "?[point_id, kind, value] <- $rows :put chain_vector_link { point_id, kind => value }",
+            p,
+        )
+        .map_err(|e| CozoError::Other(format!("replace chain_vector_link put: {e}")))?;
         Ok(())
     }
 

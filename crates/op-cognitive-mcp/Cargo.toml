@@ -64,6 +64,10 @@ path = "src/bin/op-cog-admin.rs"
 name = "op-chain-vectors"
 path = "src/bin/op-chain-vectors.rs"
 
+[[bin]]
+name = "op-chain-vector-ingest"
+path = "src/bin/op-chain-vector-ingest.rs"
+
 [build-dependencies]
 tonic-build = { version = "0.12" }
 

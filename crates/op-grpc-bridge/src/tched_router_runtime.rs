@@ -2565,7 +2565,9 @@ fn conversation_prompt(input: &ChatInput) -> anyhow::Result<String> {
         if input.message.trim().is_empty() {
             return Err(anyhow!("tched_router.Chat requires message or messages"));
         }
-        return Ok(input.message.clone());
+        let mut prompt = input.message.clone();
+        prompt.push_str(&graph_command_reminder());
+        return Ok(prompt);
     }
     let mut prompt = String::from(
         "Continue the following ordered conversation. Respond only as the assistant.\n\n",
@@ -2577,7 +2579,13 @@ fn conversation_prompt(input: &ChatInput) -> anyhow::Result<String> {
         prompt.push_str(&message.content);
         prompt.push_str("\n\n");
     }
+    prompt.push_str(&graph_command_reminder());
     Ok(prompt)
+}
+
+/// The graph command itself. It is not executed.
+fn graph_command_reminder() -> String {
+    "\nzcall cozo list_system_graphs --limit <limit>\n".to_string()
 }
 
 fn extract_chat_text(response: &Value) -> anyhow::Result<String> {
@@ -3484,6 +3492,15 @@ mod tests {
         let prompt = conversation_prompt(&input).unwrap();
         assert!(
             prompt.find("[user]\nfirst").unwrap() < prompt.find("[assistant]\nsecond").unwrap()
+        );
+    }
+
+    #[test]
+    fn graph_reminder_is_one_line() {
+        let reminder = graph_command_reminder();
+        assert_eq!(
+            reminder.trim(),
+            "zcall cozo list_system_graphs --limit <limit>"
         );
     }
 
