@@ -2054,8 +2054,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-08T23:09:02Z",
-        "commit": "4ce8d019b881488875fb07170949524e371e0474",
+        "generated_at": "2026-10-08T23:12:36Z",
+        "commit": "3d94199f7a6ba325289ed86bb52cba7065677cdc",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [

@@ -820,7 +820,7 @@ pub fn chain_links(block: &ChainBlockRef) -> Vec<(String, String)> {
     links
 }
 
-fn flattened_suffix(block: &ChainBlockRef, leaf: &str) -> Option<&str> {
+fn flattened_suffix<'a>(block: &'a ChainBlockRef, leaf: &str) -> Option<&'a str> {
     block
         .data_fields
         .iter()
