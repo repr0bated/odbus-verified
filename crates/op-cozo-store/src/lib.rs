@@ -912,7 +912,7 @@ impl CozoGraphShuttle {
 
         let rows: Vec<DataValue> = links
             .iter()
-            .map(|(kind, value)| {
+            .map(|&(kind, value)| {
                 DataValue::List(vec![
                     DataValue::Str(point_id.into()),
                     DataValue::Str(kind.into()),
