@@ -215,6 +215,28 @@ pub struct VerifyChainOutput {
     pub errors: Vec<String>,
 }
 
+/// Input for `get_projector_stats` — no arguments.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
+#[schemars(extend("x-oscal-subid" = "sch.service.snowball.projector-stats-input@v1"))]
+pub struct GetProjectorStatsInput {}
+
+/// Output for `get_projector_stats` — status of the OD-64 chain-vectorization
+/// background loop (`ChainVectorProjector`), previously visible only as a
+/// private struct inside `op-grpc-bridge`'s tokio task.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[schemars(extend("x-oscal-subid" = "sch.service.snowball.projector-stats-output@v1"))]
+pub struct ProjectorStatsOutput {
+    /// Completed projection passes since the bridge started.
+    pub passes: u64,
+    /// Chain blocks embedded and written to the vector subvolume so far.
+    pub embedded: u64,
+    /// Passes that errored (index open failure or a failed embed/write).
+    pub failures: u64,
+    /// The most recent pass failure, if any pass has failed since start.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
+}
+
 /// Snowball plugin state schema.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[schemars(extend("x-oscal-subid" = "sch.software.plugin.snowball.schema@v1"))]
@@ -319,7 +341,16 @@ impl SnowballPlugin {
             current_state,
         })
     }
+}
 
+/// Read-live wrapper for callers outside this module (the bridge's typed
+/// dispatch, which has no other way to fetch this plugin's current state to
+/// publish into the SHM projection after a successful call).
+pub async fn current_state() -> Result<SnowballState> {
+    SnowballPlugin::new().read_live().await
+}
+
+impl SnowballPlugin {
     /// Synchronous shape exemplar used only to derive the [`PluginSchema`]. The
     /// schema describes the *shape* of the plugin's live state output (field
     /// names + types); the data path itself is always live.
@@ -521,12 +552,22 @@ pub(crate) fn snowball_schema() -> PluginSchema {
             "obs.service.snowball.chain.verify@v1",
         ),
     );
+    schema.methods.insert(
+        "get_projector_stats".to_string(),
+        method_decl_from_schemars_with_output::<GetProjectorStatsInput, ProjectorStatsOutput>(
+            "get_projector_stats",
+            SideEffect::Read,
+            true,
+            "snowball.read",
+            "obs.service.snowball.projector-stats@v1",
+        ),
+    );
 
     schema.capabilities.insert(
         "snowball.read".to_string(),
         op_state_store::CapabilityDecl {
             id: "snowball.read".to_string(),
-            description: "Grants: list_snapshots, get_snapshot, get_current_state, get_stats, query_events, verify_chain.".to_string(),
+            description: "Grants: list_snapshots, get_snapshot, get_current_state, get_stats, query_events, verify_chain, get_projector_stats.".to_string(),
         },
     );
     schema.capabilities.insert(

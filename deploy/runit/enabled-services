@@ -12,3 +12,7 @@ unified-execution
 # Identity-centric storage: restore completed physical roots and their scoped
 # lungs after incusd, then honor each explicit boot-completion start policy.
 identity-roots
+
+# Bridge boot: enslave tun5 after ovsbr0-uplink. The service is supervised
+# from runsvdir, so a golden apply starts it on every boot.
+ovsbr0-tun5

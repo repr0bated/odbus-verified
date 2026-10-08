@@ -17,6 +17,7 @@ pub mod agent_config;
 pub mod agent_triggers;
 pub mod antigravity;
 pub mod antigravity_chat;
+pub mod binary_namespace;
 pub mod btrfs_plugin;
 pub mod chat_response;
 pub mod chat_response_methods;

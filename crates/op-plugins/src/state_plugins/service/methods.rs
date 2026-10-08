@@ -1,13 +1,13 @@
 //! Runit lifecycle through the existing root-guarded native D-Bus provider.
 use super::{InitInput, RunInput, ServiceName, ShutdownInput};
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Duration;
 use zbus::{Connection, Proxy};
 
-const DESTINATION: &str = "org.opdbus.v1.Runit.Systemctl";
-const PATH: &str = "/org/opdbus/v1/plugins/runit/systemctl";
+const DESTINATION: &str = "org.opdbus.v1.plugins.runit";
+const PATH: &str = "/org/opdbus/v1/plugins/runit";
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ServiceInitOutput {
@@ -126,7 +126,7 @@ mod tests {
         calls: Arc<Mutex<Vec<String>>>,
         reject: bool,
     }
-    #[zbus::interface(name = "org.opdbus.v1.Runit.Systemctl")]
+    #[zbus::interface(name = "org.opdbus.v1.plugins.runit")]
     impl Fixture {
         fn get_unit_type(&self, _name: &str) -> &str {
             "longrun"
@@ -232,12 +232,10 @@ mod tests {
         }
         assert!(calls.lock().unwrap().is_empty());
         let (_server, client, _) = pair(true).await;
-        assert!(
-            dispatch_on(&client, "run", &json!({"name":"fixture"}))
-                .await
-                .unwrap_err()
-                .to_string()
-                .contains("rejected")
-        );
+        assert!(dispatch_on(&client, "run", &json!({"name":"fixture"}))
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("rejected"));
     }
 }

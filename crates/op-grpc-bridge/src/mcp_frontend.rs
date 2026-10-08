@@ -4088,6 +4088,58 @@ mod tests {
     }
 
     #[test]
+    fn group_membership_adds_capabilities_and_a_group_name_is_not_a_caller() {
+        let document = json!({
+            "$GUEST": {"capabilities": ["cap.data.cozo.system-graph.read@v1"]},
+            "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
+                "groups": ["$GUEST"],
+                "capabilities": ["cognitive_mcp.read"]
+            }
+        });
+        let granted = capabilities_for_principal(
+            &document,
+            "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff",
+        );
+        assert!(granted.contains("cognitive_mcp.read"));
+        assert!(granted.contains("cap.data.cozo.system-graph.read@v1"));
+        assert!(capabilities_for_principal(&document, "$GUEST").is_empty());
+    }
+
+    #[test]
+    fn unknown_group_key_invalidates_entire_grant_document() {
+        let document = json!({
+            "$NOPE": {"capabilities": ["cognitive_mcp.read"]},
+            "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
+                "capabilities": ["cognitive_mcp.read"]
+            }
+        });
+        assert!(
+            capabilities_for_principal(&document, "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff")
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn group_membership_adds_the_group_capabilities() {
+        let document = json!({
+            "$ROOT": {"capabilities": ["cap.data.cozo.system-graph.read@v1"]},
+            "$SUPERADMIN": {"capabilities": ["human_principal.write"]},
+            "1262e982-14c1-44d4-0771-7ce74213211b": {
+                "groups": ["$ROOT"],
+                "capabilities": ["chat_response.respond"]
+            }
+        });
+        let chatbot = capabilities_for_principal(
+            &document,
+            "1262e982-14c1-44d4-0771-7ce74213211b",
+        );
+        assert!(chatbot.contains("cap.data.cozo.system-graph.read@v1"));
+        assert!(chatbot.contains("chat_response.respond"));
+        assert!(!chatbot.contains("human_principal.write"));
+        assert!(capabilities_for_principal(&document, "$ROOT").is_empty());
+    }
+
+    #[test]
     fn legacy_footprint_key_invalidates_entire_grant_document() {
         let document = json!({
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef": {

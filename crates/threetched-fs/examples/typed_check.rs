@@ -9,6 +9,8 @@ mod model;
 mod mounted;
 #[path = "../src/namespace.rs"]
 mod namespace;
+#[path = "../src/zeroclaw_surface.rs"]
+mod zeroclaw_surface;
 #[path = "../src/source.rs"]
 mod source;
 #[path = "../src/store.rs"]

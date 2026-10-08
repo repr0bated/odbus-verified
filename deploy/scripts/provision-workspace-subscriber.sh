@@ -2,7 +2,8 @@
 # Provision a fresh shared root for the EXISTING configured chatbot key.
 # Usage:
 #   sudo ./provision-workspace-subscriber.sh LABEL --session-id UUID --pubkey B64 \
-#     --operator-session UUID --leaf-path ABSOLUTE_PATH [--fstorage-gib N] [--no-start]
+#     --operator-session UUID --leaf-path ABSOLUTE_PATH --principal-group '$ROOT' \
+#     [--fstorage-gib N] [--no-start]
 #     [--container-name 3tchedChatbot]   # configured chatbot key only
 #   sudo ./provision-workspace-subscriber.sh NAME --system \
 #     [--image ALIAS|FINGERPRINT] [--storage POOL] [--no-start]
@@ -48,16 +49,17 @@ SYSTEM_STORAGE_POOL=${SYSTEM_STORAGE_POOL:-3tched-storage}
 IMAGE=${IDENTITY_SEED_IMAGE:-3a639373bb7a} IMAGE_OVERRIDDEN=false
 SYSTEM_STORAGE=$SYSTEM_STORAGE_POOL SYSTEM_STORAGE_OVERRIDDEN=false
 IDENTITY_ONLY_FLAGS="" PUBKEY="" SESSION_ID="" OPERATOR_SESSION="" LEAF_PATH="" NATIVE_NAME=""
-FSTORAGE_GIB=2 NO_START=false
+PRINCIPAL_GROUP="" FSTORAGE_GIB=2 NO_START=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --pubkey|--session-id|--operator-session|--leaf-path|--fstorage-gib|--container-name)
+        --pubkey|--session-id|--operator-session|--leaf-path|--fstorage-gib|--container-name|--principal-group)
             option=$1; IDENTITY_ONLY_FLAGS="$IDENTITY_ONLY_FLAGS $option"
             shift; value=${1:?option requires a value}
             case "$option" in
                 --pubkey) PUBKEY=$value ;; --session-id) SESSION_ID=$value ;;
                 --operator-session) OPERATOR_SESSION=$value ;; --leaf-path) LEAF_PATH=$value ;;
                 --fstorage-gib) FSTORAGE_GIB=$value ;; --container-name) NATIVE_NAME=$value ;;
+                --principal-group) PRINCIPAL_GROUP=$value ;;
             esac ;;
         --image) shift; IMAGE=${1:?}; IMAGE_OVERRIDDEN=true ;;
         --storage) shift; SYSTEM_STORAGE=${1:?}; SYSTEM_STORAGE_OVERRIDDEN=true ;;
@@ -129,6 +131,11 @@ root_path() {
     done
 }
 valid_uuid() { [[ $1 =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; }
+case "$PRINCIPAL_GROUP" in
+    '$ROOT'|'$ADMIN'|'$SUPERADMIN'|'$EXTERNAL-MCP'|'$VENDOR'|'$GUEST'|'$AGENT-L1'|'$AGENT-L2'|'$AGENT-L3'|'$AGENT-L4') ;;
+    '') die '--principal-group is required; quote it, for example --principal-group '\''$ROOT'\''' ;;
+    *) die "unknown principal group: $PRINCIPAL_GROUP" ;;
+esac
 [[ $(id -u) == 0 ]] || die 'identity physical-root preparation requires host root'
 [[ $SYSTEM_STORAGE_OVERRIDDEN == false && $IMAGE_OVERRIDDEN == false ]] ||
     die '--image and --storage are system-only; identity roots use the pinned physical seed'
@@ -321,9 +328,10 @@ cmp -s "$WORK/before.json" "$WORK/preflight-recheck.json" ||
 seed_device=$(readlink -f -- "${OP_IDENTITY_SEED_DEVICE:-/dev/disk/by-partuuid/${OP_IDENTITY_SEED_PARTUUID:-911b270a-a88f-48cd-bf9c-9dcac4cdefe8}}")
 jq -n --argjson version "$plan_version" --arg sid "$SESSION_ID" --arg key "$PUBKEY" --arg leaf "$LEAF_PATH" \
     --arg mount "$STATE_ROOT/$NATIVE_NAME/volume" --arg seed_device "$seed_device" --arg etag "$instance_etag" \
+    --arg group "$PRINCIPAL_GROUP" \
     --argjson pool "$pool" --slurpfile old "$WORK/before.json" --slurpfile storage "$descriptor" \
     --slurpfile instance "$WORK/instance.json" '
-    {version:$version,session_id:$sid,wireguard_pubkey:$key,
+    {version:$version,session_id:$sid,wireguard_pubkey:$key,principal_group:$group,
      expected_revision:$old[0].expected_revision,
      expected_revision_operation_id:$old[0].expected_revision_operation_id,
      binding:{device_path:$leaf,mount_point:$mount,btrfs_uuid:$storage[0].sprout_fsid,cozo_id:$sid,attached:true},
@@ -381,4 +389,32 @@ jq -e --arg sid "$SESSION_ID" --arg name "$NATIVE_NAME" --arg status "$expected_
 ' >/dev/null <<<"$native" || die 'guest power-state readback failed'
 if [[ $NO_START == true ]]; then start_on_boot=false; else start_on_boot=true; fi
 "$ROOT_HELPER" seed-enable-boot "$NATIVE_NAME" "$start_on_boot" >/dev/null 2>/dev/null || die 'boot completion publication failed; inspect retained receipts'
-printf 'Fresh physical root and current-schema binding verified for existing key identity %s; container %s is %s.\n' "$SESSION_ID" "$NATIVE_NAME" "$expected_status"
+# This script still admits only the configured chatbot session. The flag
+# chooses that identity's group. Containers are not new grant keys.
+CHATBOT_PRINCIPAL=1262e982-14c1-44d4-0771-7ce74213211b
+GRANTS_FILE=${OP_CAPABILITY_GRANTS:-/etc/opdbus/capability-grants.json}
+[[ -f $GRANTS_FILE && ! -L $GRANTS_FILE ]] || die 'capability grant document is absent'
+python3 - "$GRANTS_FILE" "$CHATBOT_PRINCIPAL" "$PRINCIPAL_GROUP" <<'PY'
+import json, os, sys, tempfile
+path, principal, group = sys.argv[1:]
+with open(path) as handle:
+    document = json.load(handle)
+entry = document.get(principal)
+if not isinstance(entry, dict):
+    entry = {}
+entry["groups"] = [group]
+entry.setdefault("capabilities", [])
+document[principal] = entry
+fd, temporary = tempfile.mkstemp(prefix=".capability-grants.", dir=os.path.dirname(path) or ".")
+try:
+    with os.fdopen(fd, "w") as handle:
+        json.dump(document, handle, indent=2)
+        handle.write("\n")
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, path)
+finally:
+    if os.path.exists(temporary):
+        os.remove(temporary)
+PY
+printf 'Fresh physical root and current-schema binding verified for existing key identity %s; container %s is %s; principal group %s.\n' \
+    "$SESSION_ID" "$NATIVE_NAME" "$expected_status" "$PRINCIPAL_GROUP"

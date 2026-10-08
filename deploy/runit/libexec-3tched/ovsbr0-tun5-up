@@ -42,6 +42,9 @@ if [ "$cur" = "$BRIDGE" ]; then
     exit 0
 fi
 
+# add-port stamps BRIDGE_MTU. The tunnel keeps the MTU it had when it appeared.
+tun_mtu=$(cat "/sys/class/net/$TUN_PORT/mtu")
 "$OVSDB_PORT" add-port "$BRIDGE" "$TUN_PORT"
+"$OVSDB_PORT" set-mtu "$TUN_PORT" "$tun_mtu"
 ip link set dev "$TUN_PORT" up 2>/dev/null || true
-echo "ovsbr0-tun5: attached $TUN_PORT to $BRIDGE"
+echo "ovsbr0-tun5: attached $TUN_PORT to $BRIDGE (mtu $tun_mtu)"

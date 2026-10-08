@@ -51,40 +51,28 @@ async fn owner_scope_siblings_and_job_revisions_survive_transitions() {
         state.generation_jobs["two"].status,
         GenerationStatus::Running
     );
-    assert!(
-        service
-            .recover(
-                &super::GenerationOwner::new("principal-b".into(), "session-a".into()).unwrap()
-            )
-            .await
-            .unwrap()
-            .is_none()
-    );
-    assert!(
-        service
-            .recover(
-                &super::GenerationOwner::new("principal-a".into(), "session-b".into()).unwrap()
-            )
-            .await
-            .unwrap()
-            .is_none()
-    );
-    assert!(
-        !serde_json::to_string(&state)
-            .unwrap()
-            .contains(&input().prompt)
-    );
+    assert!(service
+        .recover(&super::GenerationOwner::new("principal-b".into(), "session-a".into()).unwrap())
+        .await
+        .unwrap()
+        .is_none());
+    assert!(service
+        .recover(&super::GenerationOwner::new("principal-a".into(), "session-b".into()).unwrap())
+        .await
+        .unwrap()
+        .is_none());
+    assert!(!serde_json::to_string(&state)
+        .unwrap()
+        .contains(&input().prompt));
     let raw = service
         .documents
         .read(&owner.document_id())
         .await
         .unwrap()
         .unwrap();
-    assert!(
-        !serde_json::to_string(&raw.document)
-            .unwrap()
-            .contains(&input().prompt)
-    );
+    assert!(!serde_json::to_string(&raw.document)
+        .unwrap()
+        .contains(&input().prompt));
 }
 
 #[tokio::test]
@@ -106,12 +94,10 @@ async fn stale_cancel_active_delete_and_bounds_leave_the_durable_row_unchanged()
         .unwrap();
     assert_eq!(current.revision, created.generation_revision);
     service.running(&owner, "job").await.unwrap();
-    assert!(
-        service
-            .append(&owner, "job", "x".repeat(MAX_CHUNK_BYTES + 1))
-            .await
-            .is_err()
-    );
+    assert!(service
+        .append(&owner, "job", "x".repeat(MAX_CHUNK_BYTES + 1))
+        .await
+        .is_err());
     let cancelled = service.request_cancel(&owner, "job", 2).await.unwrap();
     assert_eq!(
         cancelled.generation_jobs["job"].status,
@@ -199,21 +185,17 @@ fn selectors_are_reused_but_storage_domains_and_inputs_stay_separate() {
     assert_ne!(a.selector(), b.selector());
     assert!(a.document_id().starts_with("tched_generation:v1:"));
     for agent_alias in ["", "../another", "different/session", "bad name"] {
-        assert!(
-            StartGenerationInput {
-                agent_alias: agent_alias.into(),
-                prompt: "hello".into()
-            }
-            .validate()
-            .is_err()
-        );
+        assert!(StartGenerationInput {
+            agent_alias: agent_alias.into(),
+            prompt: "hello".into()
+        }
+        .validate()
+        .is_err());
     }
-    assert!(
-        serde_json::from_value::<StartGenerationInput>(
-            serde_json::json!({"agent_alias":"a","prompt":"x","session_id":"victim"})
-        )
-        .is_err()
-    );
+    assert!(serde_json::from_value::<StartGenerationInput>(
+        serde_json::json!({"agent_alias":"a","prompt":"x","session_id":"victim"})
+    )
+    .is_err());
 }
 
 #[tokio::test]
@@ -286,12 +268,10 @@ async fn completion_cannot_replace_the_committed_incremental_text() {
         .append(&owner, "job", "actual".into())
         .await
         .unwrap();
-    assert!(
-        service
-            .complete(&owner, "job", "fabricated".into(), None, None)
-            .await
-            .is_err()
-    );
+    assert!(service
+        .complete(&owner, "job", "fabricated".into(), None, None)
+        .await
+        .is_err());
     assert_eq!(
         service
             .documents
@@ -367,12 +347,10 @@ async fn invalid_batches_and_cancelled_jobs_leave_the_durable_revision_unchanged
         vec!["x".into(); MAX_BATCH_FRAGMENTS + 1],
     ] {
         assert!(prior.preflight_append_batch("job", &fragments).is_err());
-        assert!(
-            service
-                .append_batch(&owner, "job", fragments)
-                .await
-                .is_err()
-        );
+        assert!(service
+            .append_batch(&owner, "job", fragments)
+            .await
+            .is_err());
     }
     assert_eq!(
         service
@@ -390,21 +368,17 @@ async fn invalid_batches_and_cancelled_jobs_leave_the_durable_revision_unchanged
         .get_mut("job")
         .unwrap()
         .committed_chunks = MAX_FRAMES - 1;
-    assert!(
-        frame_limited
-            .preflight_append_batch("job", &["one".into(), "two".into()])
-            .is_err()
-    );
+    assert!(frame_limited
+        .preflight_append_batch("job", &["one".into(), "two".into()])
+        .is_err());
     let cancelled = service
         .request_cancel(&owner, "job", prior.generation_jobs["job"].revision)
         .await
         .unwrap();
-    assert!(
-        service
-            .append_batch(&owner, "job", vec!["queued-before-cancel".into()])
-            .await
-            .is_err()
-    );
+    assert!(service
+        .append_batch(&owner, "job", vec!["queued-before-cancel".into()])
+        .await
+        .is_err());
     assert_eq!(
         service
             .documents

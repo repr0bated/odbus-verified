@@ -1,0 +1,4 @@
+interface:
+  display_name: "FUSE"
+  short_description: "Build and debug libfuse filesystems"
+  default_prompt: "Use the official libfuse workflow to build, run, and troubleshoot a FUSE filesystem."

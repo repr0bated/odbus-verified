@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
+use std::process::Command;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -9,6 +10,7 @@ use std::time::{Duration, UNIX_EPOCH};
 
 use crate::dispatch::{self, CallReceipt, LungsError};
 use crate::namespace::{MountIdentity, Namespace, Node, NodeKind, ProjectionTarget};
+use crate::zeroclaw_surface::ZeroclawSurface;
 use crate::store::{ObjectStore, StageConflict};
 use fuser::{
     FileAttr, FileType, Filesystem, KernelConfig, ReplyAttr, ReplyData, ReplyDirectory, ReplyEmpty,
@@ -198,6 +200,13 @@ impl TypedFuse {
             jobs: Arc::new(Budget::default()),
             target_guards: HashMap::new(),
         })
+    }
+    pub fn graft_zeroclaw(
+        &mut self,
+        surface: ZeroclawSurface,
+    ) -> anyhow::Result<()> {
+        self.namespace.graft_zeroclaw(surface)?;
+        Ok(())
     }
     pub fn with_catalog_dir(mut self, catalog: PathBuf) -> anyhow::Result<Self> {
         self.namespace.declare_catalog_dir(&catalog)?;
@@ -399,6 +408,7 @@ impl TypedFuse {
         let store = self.store.clone();
         let target = self.namespace.target.clone();
         let lungs = self.lungs.clone();
+        let zeroclaw = self.namespace.zeroclaw_surface.clone();
         let budget = self.budget.clone();
         let failure_state = state.clone();
         let failure_budget = budget.clone();
@@ -408,7 +418,15 @@ impl TypedFuse {
             .spawn(move || {
                 let _permit = permit;
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    execute(&store, &target, lungs.as_ref(), &node, bytes, &budget)
+                    execute(
+                        &store,
+                        &target,
+                        lungs.as_ref(),
+                        zeroclaw.as_ref(),
+                        &node,
+                        bytes,
+                        &budget,
+                    )
                 }))
                 .unwrap_or_else(|_| {
                     Execution::Call(Err((
@@ -459,11 +477,53 @@ fn execute(
     store: &ObjectStore,
     target: &ProjectionTarget,
     lungs: Option<&Lungs>,
+    zeroclaw: Option<&ZeroclawSurface>,
     node: &Node,
     bytes: Buffer,
     budget: &Arc<Budget>,
 ) -> Execution {
     if let NodeKind::CallFile { plugin_id, method } = &node.kind {
+        if plugin_id == "zeroclaw" {
+            let payload = bytes.bytes.clone();
+            drop(bytes);
+            return Execution::Call(match run_zeroclaw_call(method, &payload, zeroclaw) {
+                Ok(envelope) => Buffer::load(budget, || crate::store::render_document(&envelope))
+                    .map_err(|errno| {
+                        (
+                            errno,
+                            diagnostic(
+                                budget,
+                                node,
+                                "outcome_unknown",
+                                "receipt could not be retained",
+                                None,
+                            ),
+                        )
+                    }),
+                Err(error) => {
+                    if let Some(envelope) = error.receipt() {
+                        Err((
+                            error.errno(),
+                            Buffer::load(budget, || crate::store::render_document(envelope))
+                                .unwrap_or_else(|_| {
+                                    diagnostic(
+                                        budget,
+                                        node,
+                                        error.stage(),
+                                        &error.to_string(),
+                                        None,
+                                    )
+                                }),
+                        ))
+                    } else {
+                        Err((
+                            error.errno(),
+                            diagnostic(budget, node, error.stage(), &error.to_string(), None),
+                        ))
+                    }
+                }
+            });
+        }
         let outcome = run_lungs_call(store, target, lungs, plugin_id, method, &bytes.bytes);
         drop(bytes);
         return Execution::Call(match outcome {
@@ -579,6 +639,112 @@ fn diagnostic(
         "plugin": plugin, "method": method, "stage": stage, "error": text, "operation_id": operation_id
     }))).unwrap_or_else(|_| Buffer::empty(budget))
 }
+
+fn zeroclaw_binary_path() -> PathBuf {
+    std::env::var_os("THREETCHED_FS_ZEROCLAW_BIN")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/usr/bin/zeroclaw"))
+}
+
+fn run_zeroclaw_call(
+    command: &str,
+    bytes: &[u8],
+    surface: Option<&ZeroclawSurface>,
+) -> Result<Value, ZeroclawCallError> {
+    let surface = surface.ok_or_else(|| {
+        ZeroclawCallError::Contract("zeroclaw surface is not attached".into())
+    })?;
+    let arguments: Value =
+        serde_json::from_slice(bytes).map_err(|error| ZeroclawCallError::Json(error.to_string()))?;
+    if !arguments.is_object() {
+        return Err(ZeroclawCallError::Arguments(
+            "arguments must be a JSON object".into(),
+        ));
+    }
+    let schema = surface
+        .input_schema(command)
+        .map_err(|error| ZeroclawCallError::Arguments(error.to_string()))?;
+    jsonschema::Validator::new(&schema)
+        .map_err(|error| ZeroclawCallError::Arguments(format!("argument schema: {error}")))?
+        .validate(&arguments)
+        .map_err(|error| ZeroclawCallError::Arguments(error.to_string()))?;
+    let mut process = Command::new(zeroclaw_binary_path());
+    process.arg(command);
+    let Value::Object(arguments) = arguments else {
+        return Err(ZeroclawCallError::Arguments(
+            "arguments must be a JSON object".into(),
+        ));
+    };
+    for (key, value) in arguments {
+        let flag = format!("--{}", key.replace('_', "-"));
+        match value {
+            Value::Bool(true) => {
+                process.arg(flag);
+            }
+            Value::Bool(false) => {}
+            Value::String(text) => {
+                process.arg(flag);
+                process.arg(text);
+            }
+            _ => {}
+        }
+    }
+    let output = process
+        .output()
+        .map_err(|error| ZeroclawCallError::Transport(error.to_string()))?;
+    let envelope = serde_json::json!({
+        "stdout": String::from_utf8_lossy(&output.stdout),
+        "stderr": String::from_utf8_lossy(&output.stderr),
+        "exit": output.status.code().unwrap_or(-1),
+    });
+    if output.status.success() {
+        Ok(envelope)
+    } else {
+        Err(ZeroclawCallError::Exec(envelope))
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+enum ZeroclawCallError {
+    #[error("arguments are not a JSON value: {0}")]
+    Json(String),
+    #[error("arguments failed validation: {0}")]
+    Arguments(String),
+    #[error("zeroclaw surface unavailable: {0}")]
+    Contract(String),
+    #[error("zeroclaw exec failed to start: {0}")]
+    Transport(String),
+    #[error("zeroclaw exited with a nonzero status")]
+    Exec(Value),
+}
+
+impl ZeroclawCallError {
+    fn stage(&self) -> &'static str {
+        match self {
+            Self::Json(_) => "parse",
+            Self::Arguments(_) => "validate",
+            Self::Contract(_) => "contract",
+            Self::Transport(_) => "transport",
+            Self::Exec(_) => "exec",
+        }
+    }
+
+    fn errno(&self) -> i32 {
+        match self {
+            Self::Json(_) | Self::Arguments(_) => EINVAL,
+            Self::Contract(_) => libc::EPROTO,
+            Self::Transport(_) | Self::Exec(_) => EIO,
+        }
+    }
+
+    fn receipt(&self) -> Option<&Value> {
+        match self {
+            Self::Exec(envelope) => Some(envelope),
+            _ => None,
+        }
+    }
+}
+
 fn run_lungs_call(
     store: &ObjectStore,
     target: &ProjectionTarget,
@@ -1151,6 +1317,7 @@ mod tests {
                 &fs.store,
                 &fs.namespace.target,
                 fs.lungs.as_ref(),
+                fs.namespace.zeroclaw_surface.as_ref(),
                 &node,
                 bytes,
                 &fs.budget,

@@ -4,16 +4,14 @@
 //! projection in tmpfs. Validation happens before every projection so wildcard
 //! and legacy footprint authority can never be published accidentally.
 
-use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use op_grpc_bridge::mcp_policy::{parse_audience_policy, parse_toolset_manifest};
-use serde_json::Value;
 
 const DEFAULT_SOURCE: &str = "/etc/opdbus/capability-grants.json";
 const DEFAULT_TARGET: &str = "/dev/shm/opdbus/capability-grants.json";
@@ -26,51 +24,9 @@ enum ReconcileState {
     Materialized,
 }
 
-fn prohibited_identity_key(key: &str) -> bool {
-    key == "*" || (key.len() == 64 && key.as_bytes().iter().all(|byte| byte.is_ascii_hexdigit()))
-}
-
 fn validate_document(bytes: &[u8]) -> Result<()> {
-    let document: Value = serde_json::from_slice(bytes).context("grant document is not JSON")?;
-    let entries = document
-        .as_object()
-        .context("grant document must be a JSON object keyed by principal_id")?;
-
-    for (principal_id, entry) in entries {
-        if principal_id.is_empty() {
-            bail!("grant document contains an empty principal_id");
-        }
-        if prohibited_identity_key(principal_id) {
-            bail!("prohibited wildcard or legacy footprint grant key: {principal_id}");
-        }
-        let entry = entry
-            .as_object()
-            .with_context(|| format!("grant entry for {principal_id} must be an object"))?;
-        let capabilities = entry
-            .get("capabilities")
-            .and_then(Value::as_array)
-            .with_context(|| {
-                format!("grant entry for {principal_id} must own a capabilities array")
-            })?;
-        let mut unique = HashSet::with_capacity(capabilities.len());
-        for capability in capabilities {
-            let capability = capability.as_str().with_context(|| {
-                format!("grant entry for {principal_id} contains a non-string capability")
-            })?;
-            if capability.trim().is_empty() {
-                bail!("grant entry for {principal_id} contains an empty capability");
-            }
-            if !unique.insert(capability) {
-                bail!("grant entry for {principal_id} repeats capability {capability}");
-            }
-        }
-        if let Some(alias) = entry.get("display_alias")
-            && !alias.is_string()
-        {
-            bail!("display_alias for {principal_id} must be a string");
-        }
-    }
-    Ok(())
+    op_grpc_bridge::interceptor::validate_grant_document(bytes)
+        .map_err(|error| anyhow::anyhow!(error))
 }
 
 fn atomic_write(path: &Path, bytes: &[u8], mode: u32) -> Result<()> {
@@ -301,18 +257,35 @@ mod tests {
     }
 
     #[test]
+    fn accepts_group_membership() {
+        validate_document(
+            br#"{
+                "$GUEST": {"capabilities": ["cap.data.cozo.system-graph.read@v1"]},
+                "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
+                    "groups": ["$GUEST"],
+                    "capabilities": ["cognitive_mcp.read"]
+                }
+            }"#,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn rejects_unknown_group() {
+        assert!(validate_document(br#"{"$NOPE":{"capabilities":[]}}"#).is_err());
+    }
+
+    #[test]
     fn rejects_wildcard_and_legacy_footprint_keys() {
         assert!(validate_document(br#"{"*":{"capabilities":[]}}"#).is_err());
-        assert!(
-            validate_document(
-                br#"{
+        assert!(validate_document(
+            br#"{
                 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef": {
                     "capabilities": []
                 }
             }"#
-            )
-            .is_err()
-        );
+        )
+        .is_err());
     }
 
     #[test]

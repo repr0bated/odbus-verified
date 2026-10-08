@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::ffi::OsString;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -35,6 +35,10 @@ pub enum FileSource {
     MethodInput { plugin_id: String, method: String },
     MethodOutput { plugin_id: String, method: String },
     MethodMetadata { plugin_id: String, method: String },
+    ZeroclawSchema,
+    ZeroclawInput { command: String },
+    ZeroclawOutput { command: String },
+    ZeroclawMetadata { command: String },
 }
 
 #[derive(Debug, Clone)]
@@ -62,6 +66,7 @@ pub struct Namespace {
     pub live_generation: Option<u64>,
     pub declared_catalog_dir: std::path::PathBuf,
     pub source_schema_hashes: BTreeMap<String, String>,
+    pub zeroclaw_surface: Option<crate::zeroclaw_surface::ZeroclawSurface>,
 }
 
 #[derive(Debug, Clone)]
@@ -392,7 +397,33 @@ impl Namespace {
         fresh.instance_uuid = self.instance_uuid.clone();
         fresh.local_call_owner_uid = self.local_call_owner_uid;
         fresh.allowed_operator_uid = self.allowed_operator_uid;
+        if let Some(surface) = self.zeroclaw_surface.clone() {
+            fresh.graft_zeroclaw(surface)?;
+        }
         Ok(fresh)
+    }
+
+    /// Add the `zeroclaw` tree beside the sealed catalog objects.
+    /// The bytes come from a captured binary surface, not from a plugin blob.
+    pub fn graft_zeroclaw(
+        &mut self,
+        surface: crate::zeroclaw_surface::ZeroclawSurface,
+    ) -> Result<()> {
+        let plugins = *self
+            .children
+            .get(&ROOT_INO)
+            .and_then(|children| children.get(&OsString::from("plugins")))
+            .context("plugins directory is missing")?;
+        let operations = *self
+            .children
+            .get(&ROOT_INO)
+            .and_then(|children| children.get(&OsString::from("operations")))
+            .context("operations directory is missing")?;
+        let lungs = self.lungs;
+        let mut builder = NamespaceBuilder::rehydrate(self.clone());
+        builder.attach_zeroclaw(plugins, operations, surface, lungs)?;
+        *self = builder.finish();
+        Ok(())
     }
 
     /// Refresh discovery for an addressed live data subtree only. The index
@@ -614,6 +645,34 @@ impl Namespace {
                     .get(method)
                     .context("method absent from pinned schema")?,
             )?,
+            FileSource::ZeroclawSchema => {
+                let surface = self
+                    .zeroclaw_surface
+                    .as_ref()
+                    .context("zeroclaw surface is not attached")?;
+                return Ok(surface.schema_bytes().to_vec());
+            }
+            FileSource::ZeroclawInput { command } => {
+                let surface = self
+                    .zeroclaw_surface
+                    .as_ref()
+                    .context("zeroclaw surface is not attached")?;
+                surface.input_schema(command)?
+            }
+            FileSource::ZeroclawOutput { command } => {
+                let surface = self
+                    .zeroclaw_surface
+                    .as_ref()
+                    .context("zeroclaw surface is not attached")?;
+                surface.output_schema(command)?
+            }
+            FileSource::ZeroclawMetadata { command } => {
+                let surface = self
+                    .zeroclaw_surface
+                    .as_ref()
+                    .context("zeroclaw surface is not attached")?;
+                surface.metadata(command)?
+            }
         };
         crate::store::render_document(&value)
     }
@@ -666,6 +725,19 @@ struct NamespaceBuilder {
 
 #[allow(clippy::too_many_arguments)]
 impl NamespaceBuilder {
+    fn rehydrate(namespace: Namespace) -> Self {
+        let paths = namespace
+            .nodes
+            .values()
+            .map(|node| (node.path.clone(), node.ino))
+            .collect();
+        Self {
+            namespace,
+            paths,
+            object_hashes: BTreeMap::new(),
+        }
+    }
+
     fn new(target: ProjectionTarget, state_dir: Option<std::path::PathBuf>, lungs: bool) -> Self {
         let root = Node {
             ino: ROOT_INO,
@@ -690,10 +762,86 @@ impl NamespaceBuilder {
                 live_generation: None,
                 declared_catalog_dir: std::path::PathBuf::from(crate::source::DEFAULT_CATALOG_DIR),
                 source_schema_hashes: BTreeMap::new(),
+                zeroclaw_surface: None,
             },
             paths: HashMap::from([("/".to_string(), ROOT_INO)]),
             object_hashes: BTreeMap::new(),
         }
+    }
+
+    /// Materialize the `zeroclaw` plugin tree from a captured binary surface.
+    pub fn attach_zeroclaw(
+        &mut self,
+        plugins_parent: u64,
+        operations_parent: u64,
+        surface: crate::zeroclaw_surface::ZeroclawSurface,
+        lungs: bool,
+    ) -> Result<()> {
+        self.namespace.zeroclaw_surface = Some(surface);
+        let commands: Vec<String> = self
+            .namespace
+            .zeroclaw_surface
+            .as_ref()
+            .context("zeroclaw surface missing after attach")?
+            .commands()
+            .map(|command| command.to_owned())
+            .collect();
+        let plugin_id = "zeroclaw";
+        let plugin_name = encode_component(plugin_id);
+        let plugin_dir = self.add_dir(plugins_parent, &plugin_name)?;
+        self.add_file(plugin_dir, "schema.json", FileSource::ZeroclawSchema, None)?;
+        let methods_dir = self.add_dir(plugin_dir, "operations")?;
+        let root_methods_dir = self.add_dir(operations_parent, &plugin_name)?;
+        for command in commands {
+            let encoded = encode_component(&command);
+            let method_dir = self.add_dir(methods_dir, &encoded)?;
+            self.add_file(
+                method_dir,
+                "input.schema.json",
+                FileSource::ZeroclawInput {
+                    command: command.clone(),
+                },
+                None,
+            )?;
+            self.add_file(
+                method_dir,
+                "output.schema.json",
+                FileSource::ZeroclawOutput {
+                    command: command.clone(),
+                },
+                None,
+            )?;
+            self.add_file(
+                method_dir,
+                "metadata.json",
+                FileSource::ZeroclawMetadata {
+                    command: command.clone(),
+                },
+                None,
+            )?;
+            if lungs {
+                self.add_lungs_files(method_dir, plugin_id, &command)?;
+            }
+            self.add_symlink(
+                root_methods_dir,
+                &encoded,
+                format!("../../plugins/{plugin_name}/operations/{encoded}"),
+            )?;
+        }
+        Ok(())
+    }
+
+    #[cfg(test)]
+    pub fn build_with_zeroclaw_surface(
+        view_id: String,
+        surface: crate::zeroclaw_surface::ZeroclawSurface,
+        lungs: bool,
+    ) -> Result<Namespace> {
+        let mut builder = NamespaceBuilder::new(ProjectionTarget::View(view_id), None, lungs);
+        let plugins = builder.add_dir(ROOT_INO, "plugins")?;
+        let operations = builder.add_dir(ROOT_INO, "operations")?;
+        builder.attach_zeroclaw(plugins, operations, surface, lungs)?;
+        Ok(builder.namespace)
     }
 
     fn add_root_metadata(
@@ -1162,12 +1310,10 @@ mod tests {
             )
             .unwrap();
         namespace.declare_local_owner(1000, Some(0));
-        assert!(
-            namespace
-                .children(inode_for_path("/plugins/demo/data"))
-                .unwrap()
-                .is_empty()
-        );
+        assert!(namespace
+            .children(inode_for_path("/plugins/demo/data"))
+            .unwrap()
+            .is_empty());
         let publish = |items: Value| {
             let bytes =
                 serde_json::to_vec(&serde_json::json!({"items":items,"private":"secret"})).unwrap();
@@ -1179,26 +1325,20 @@ mod tests {
         publish(serde_json::json!([1, 2]));
         let _ = namespace.refresh_for_inode(&store, inode_for_path("/plugins/demo/data"));
         assert!(namespace.unavailable_plugins.is_empty());
-        assert!(
-            namespace
-                .nodes
-                .values()
-                .any(|node| node.path == "/plugins/demo/data/items/00000001")
-        );
+        assert!(namespace
+            .nodes
+            .values()
+            .any(|node| node.path == "/plugins/demo/data/items/00000001"));
         publish(serde_json::json!({"shown":true}));
         let _ = namespace.refresh_for_inode(&store, inode_for_path("/plugins/demo/data"));
-        assert!(
-            namespace
-                .nodes
-                .values()
-                .any(|node| node.path == "/plugins/demo/data/items/shown")
-        );
-        assert!(
-            !namespace
-                .nodes
-                .values()
-                .any(|node| node.path == "/plugins/demo/data/items/00000001")
-        );
+        assert!(namespace
+            .nodes
+            .values()
+            .any(|node| node.path == "/plugins/demo/data/items/shown"));
+        assert!(!namespace
+            .nodes
+            .values()
+            .any(|node| node.path == "/plugins/demo/data/items/00000001"));
         std::fs::write(
             state.join(".manifest.json"),
             b"{\"generation\":3,\"publishing\":true}",
@@ -1206,12 +1346,10 @@ mod tests {
         .unwrap();
         let _ = namespace.refresh_for_inode(&store, inode_for_path("/plugins/demo/data"));
         assert!(namespace.unavailable_plugins.contains("demo"));
-        assert!(
-            !namespace
-                .nodes
-                .values()
-                .any(|node| node.path.starts_with("/plugins/demo/data/items"))
-        );
+        assert!(!namespace
+            .nodes
+            .values()
+            .any(|node| node.path.starts_with("/plugins/demo/data/items")));
         assert_eq!(namespace.mount_identity, MountIdentity::GuestKernel);
         assert_eq!(namespace.local_call_owner_uid, Some(1000));
         assert_eq!(namespace.allowed_operator_uid, Some(0));
@@ -1232,11 +1370,9 @@ mod tests {
         std::fs::write(state.join(".manifest.json"), b"invalid manifest").unwrap();
         let plugin = inode_for_path("/plugins/demo");
         namespace.refresh_for_inode(&store, plugin).unwrap();
-        assert!(
-            namespace
-                .lookup(plugin, std::ffi::OsStr::new("schema.json"))
-                .is_some()
-        );
+        assert!(namespace
+            .lookup(plugin, std::ffi::OsStr::new("schema.json"))
+            .is_some());
         let data = inode_for_path("/plugins/demo/data");
         assert!(namespace.refresh_for_inode(&store, data).is_err());
         assert!(namespace.children(data).unwrap().is_empty());
@@ -1275,6 +1411,53 @@ mod tests {
         view.objects
             .insert("unrelated".into(), "other-object-hash".into());
         assert!(metadata(&view).get("invocation").is_none());
+    }
+
+    #[test]
+    fn zeroclaw_attach_materializes_plugin_tree_from_fixture() {
+        use crate::source::SourceSnapshot;
+        use crate::zeroclaw_surface::ZeroclawSurface;
+
+        let dir = tempfile::tempdir().unwrap();
+        let store = ObjectStore::open(dir.path().join("store")).unwrap();
+        let snapshot = SourceSnapshot {
+            catalog_hash: "zeroclaw-fixture".into(),
+            catalog_generation: 1,
+            objects: BTreeMap::new(),
+        };
+        let view = store.capture_snapshot(snapshot, false).unwrap();
+        let binary = crate::zeroclaw_surface::test_fixture_binary(dir.path());
+        let surface = ZeroclawSurface::capture(&binary).unwrap();
+        let namespace =
+            NamespaceBuilder::build_with_zeroclaw_surface(view.view_id, surface, true).unwrap();
+
+        let schema_node = namespace
+            .nodes
+            .values()
+            .find(|node| node.path == "/plugins/zeroclaw/schema.json")
+            .unwrap();
+        let schema_bytes = namespace.file_bytes(&store, schema_node).unwrap();
+        assert_eq!(
+            schema_bytes,
+            br#"{"type":"object","title":"fixture-config"}"#
+        );
+
+        for leaf in ["call", "input.schema.json", "metadata.json"] {
+            let path = format!("/plugins/zeroclaw/operations/self-test/{leaf}");
+            assert!(
+                namespace.nodes.values().any(|node| node.path == path),
+                "missing {path}"
+            );
+        }
+        let metadata_node = namespace
+            .nodes
+            .values()
+            .find(|node| node.path == "/plugins/zeroclaw/operations/self-test/metadata.json")
+            .unwrap();
+        let metadata =
+            serde_json::from_slice::<Value>(&namespace.file_bytes(&store, metadata_node).unwrap())
+                .unwrap();
+        assert_eq!(metadata["name"], "self-test");
     }
 
     #[test]

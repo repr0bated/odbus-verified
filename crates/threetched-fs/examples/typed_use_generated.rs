@@ -4,6 +4,7 @@
 #[path="/srv/git/odbus-verified/crates/threetched-fs/src/model.rs"] mod model;
 #[path="/srv/git/odbus-verified/crates/threetched-fs/src/mounted.rs"] mod mounted;
 #[path="/srv/git/odbus-verified/crates/threetched-fs/src/namespace.rs"] mod namespace;
+#[path="/srv/git/odbus-verified/crates/threetched-fs/src/zeroclaw_surface.rs"] mod zeroclaw_surface;
 #[path="/srv/git/odbus-verified/crates/threetched-fs/src/source.rs"] mod source;
 #[path="/srv/git/odbus-verified/crates/threetched-fs/src/store.rs"] mod store;
 #[path="/srv/git/odbus-verified/crates/threetched-fs/src/typed_bindings.rs"] mod typed_bindings;

@@ -19,7 +19,7 @@ and revalidate affected source; the artifacts do not refresh themselves.
 
 ### Repeat the learning pass
 
-1. Read `AGENTS.md`, all four mandatory skills, and recent relevant `SIGNALS.md`
+1. Read `AGENTS.md`, all nine mandatory skills, and recent relevant `SIGNALS.md`
    rows. Record owner corrections as constraints. **Source that violates an
    explicit invariant is a defect; do not rewrite the invariant to match it.**
    In particular, the plugin IS the schema and its sealed blob IS the plugin;

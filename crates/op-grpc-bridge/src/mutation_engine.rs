@@ -4116,7 +4116,31 @@ impl MutationEngine {
             }
             "qdrant" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                op_plugins::state_plugins::qdrant::dispatch_qdrant_method(method, &args).await?
+                let dispatch_result =
+                    op_plugins::state_plugins::qdrant::dispatch_qdrant_method(method, &args)
+                        .await?;
+                // Same gap as snowball: this plugin is dispatched only through
+                // the typed interface here, which never commits to the SHM
+                // projection on its own.
+                match op_plugins::state_plugins::qdrant::current_state().await {
+                    Ok(state) => {
+                        if let Err(error) = self
+                            .publish_plugin_projection_state(
+                                "qdrant",
+                                simd_json::serde::to_owned_value(state)?,
+                                ChangeType::PropertySet,
+                                true,
+                            )
+                            .await
+                        {
+                            tracing::warn!(%error, "qdrant state read but projection publish failed");
+                        }
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "qdrant method completed but current state could not be read for projection")
+                    }
+                }
+                dispatch_result
             }
             "cozo" => {
                 let args = serde_json::to_value(&parsed_value)?;
@@ -4900,6 +4924,13 @@ impl MutationEngine {
                 "verify_chain" => {
                     dispatch_snowball_verify_chain(&self.event_chain, &parsed_value).await?
                 }
+                "get_projector_stats" => {
+                    let stats = match self.vector_projector.get() {
+                        Some(projector) => projector.stats().await,
+                        None => crate::chain_vector_projector::ProjectorStats::default(),
+                    };
+                    serde_json::to_value(&stats)?
+                }
                 "create_snapshot" | "get_current_state" | "get_snapshot" | "get_stats"
                 | "list_snapshots" | "rollback" | "set_retention" => {
                     let sink = self
@@ -4909,9 +4940,32 @@ impl MutationEngine {
                     let methods = self.snowball_methods.get_or_init(|| async {
                         op_plugins::state_plugins::snowball_methods::SnowballMethods::from_shared(sink.streaming_snowball())
                     }).await;
-                    methods
+                    let dispatch_result = methods
                         .dispatch(method, &serde_json::to_value(&parsed_value)?)
-                        .await?
+                        .await?;
+                    // This plugin never gets a mutate()-path special case (it's
+                    // dispatched here, through the typed interface, which does
+                    // not otherwise commit to the SHM projection), so it would
+                    // never appear as observed-runtime state without this.
+                    match op_plugins::state_plugins::snowball_plugin::current_state().await {
+                        Ok(state) => {
+                            if let Err(error) = self
+                                .publish_plugin_projection_state(
+                                    "snowball",
+                                    simd_json::serde::to_owned_value(state)?,
+                                    ChangeType::PropertySet,
+                                    true,
+                                )
+                                .await
+                            {
+                                tracing::warn!(%error, "snowball state read but projection publish failed");
+                            }
+                        }
+                        Err(error) => {
+                            tracing::warn!(%error, "snowball method completed but current state could not be read for projection")
+                        }
+                    }
+                    dispatch_result
                 }
                 _ => anyhow::bail!(
                     "unsupported plugin method '{}.{}': no canonical backend dispatch",

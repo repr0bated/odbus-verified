@@ -4,14 +4,14 @@
 //! separately selected Qdrant executable through `OP_QDRANT_NATIVE_BIN`; the
 //! test never consults the host Qdrant configuration or persistent storage.
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 use tokio::process::{Child, Command};
 
-use super::{QdrantHttpClient, dispatch_qdrant_method_with_client};
+use super::{dispatch_qdrant_method_with_client, QdrantHttpClient};
 
 const COLLECTION: &str = "native_dispatch_coverage";
 
@@ -296,13 +296,11 @@ async fn native_qdrant_round_trips_all_declared_methods() -> Result<()> {
             serde_json::json!({"collection_name": COLLECTION}),
         )
         .await?;
-        assert!(
-            snapshots["snapshots"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|name| name.as_str() == Some(snapshot_name))
-        );
+        assert!(snapshots["snapshots"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|name| name.as_str() == Some(snapshot_name)));
 
         // Read the actual provider description independently without changing
         // the canonical list_snapshots contract, which returns snapshot names.

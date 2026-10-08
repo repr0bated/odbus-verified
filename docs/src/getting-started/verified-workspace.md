@@ -48,7 +48,7 @@ scripts/export-verified-source.sh /srv/git/odbus /srv/git/odbus-verified
 The exporter selects package roots from Cargo metadata, includes their current
 untracked source and fixtures, and copies the required root files plus `src/`,
 `examples/`, `deploy/`, `docs/`, `scripts/`, `.cargo/`, and `vendor/` when present.
-It includes `AGENTS.md` and the four mandatory skill files. It rejects an
+It includes `AGENTS.md` and the nine mandatory skill trees. It rejects an
 existing destination, missing Cargo target sources, dangling symlinks, and
 symlinks that resolve outside the source checkout. It excludes inactive crates,
 the retired Waypipe and standalone adapter crates, build output, caches, selected historical directories,

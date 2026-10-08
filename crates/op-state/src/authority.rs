@@ -1,5 +1,5 @@
 //! Network-manager authority through the runit D-Bus lifecycle gate.
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use zbus::{Connection, Proxy};
 
 pub struct NetworkAuthority;
@@ -11,9 +11,9 @@ impl NetworkAuthority {
     async fn proxy(connection: &Connection) -> Result<Proxy<'_>> {
         Ok(Proxy::new(
             connection,
-            "org.opdbus.v1.Runit.Systemctl",
-            "/org/opdbus/v1/plugins/runit/systemctl",
-            "org.opdbus.v1.Runit.Systemctl",
+            "org.opdbus.v1.plugins.runit",
+            "/org/opdbus/v1/plugins/runit",
+            "org.opdbus.v1.plugins.runit",
         )
         .await?)
     }

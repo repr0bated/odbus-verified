@@ -408,6 +408,60 @@ pub async fn dispatch_qdrant_method(
     dispatch_qdrant_method_with_client(&client, method, args).await
 }
 
+/// Read the real, current Qdrant state (root info + every collection's full
+/// detail) for publication into the SHM projection. Used by the bridge's
+/// typed dispatch, which has no other way to observe this plugin's live
+/// state — the per-method responses above are each a narrow slice, not the
+/// plugin's full state.
+pub async fn current_state() -> Result<QdrantState> {
+    let client = QdrantHttpClient::new()?;
+    let root = client
+        .request(reqwest::Method::GET, "", None, false)
+        .await?;
+    let list = client
+        .request(reqwest::Method::GET, "/collections", None, false)
+        .await?;
+    let names = list["result"]["collections"]
+        .as_array()
+        .context("Qdrant collections result is not an array")?
+        .iter()
+        .map(|v| {
+            v["name"]
+                .as_str()
+                .map(str::to_string)
+                .context("Qdrant collection item omitted name")
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    let mut collections = Vec::with_capacity(names.len());
+    for name in &names {
+        let segment = QdrantHttpClient::collection_segment(name)?;
+        let detail = client
+            .request(
+                reqwest::Method::GET,
+                &format!("/collections/{segment}"),
+                None,
+                false,
+            )
+            .await?;
+        let mut info: QdrantCollectionInfo = serde_json::from_value(detail["result"].clone())
+            .with_context(|| format!("decode collection info for '{name}'"))?;
+        info.name = name.clone();
+        collections.push(info);
+    }
+
+    Ok(QdrantState {
+        version: root["version"].as_str().unwrap_or_default().to_string(),
+        title: root["title"].as_str().unwrap_or_default().to_string(),
+        commit: root["commit"].as_str().unwrap_or_default().to_string(),
+        http_endpoint: QdrantPlugin::http_endpoint(),
+        grpc_endpoint: QdrantPlugin::grpc_endpoint(),
+        collections,
+        cluster_status: None,
+        telemetry: None,
+    })
+}
+
 async fn dispatch_qdrant_method_with_client(
     client: &QdrantHttpClient,
     method: &str,

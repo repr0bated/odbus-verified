@@ -125,7 +125,7 @@ case "$family" in
             "$prompt" </dev/null > "$request_dir/runner.log" 2>&1
         ;;
     grok)
-        "$runner" --print --model "$model" --workspace "$cargo_cwd" \
+        "$runner" --print --trust --model "$model" --workspace "$cargo_cwd" \
             "$prompt" </dev/null > "$request_dir/runner.log" 2>&1
         ;;
     claude)

@@ -1,24 +1,18 @@
-use anyhow::{ensure, Context, Result};
+use crate::voyage::VoyageClient;
+use anyhow::{Context, Result};
 use op_state_store::{FieldType, PluginSchema};
 use qdrant_client::qdrant::{
     Condition, DeletePointsBuilder, Filter, PointStruct, QueryPointsBuilder, RetrievedPoint,
     ScoredPoint, ScrollPointsBuilder, UpsertPointsBuilder,
 };
 use qdrant_client::{Payload, Qdrant};
-use reqwest::Client;
 use serde::Serialize;
-use serde_json::Value;
-use std::path::{Path, PathBuf};
 
 const DEFAULT_QDRANT_URL: &str = "http://127.0.0.1:6334";
 const DEFAULT_COLLECTION_NAME: &str = "ctl_plane_reasoning_episodes";
 const DEFAULT_USER_MEMORY_COLLECTION: &str = "user_memory";
 const DEFAULT_BLOB_VECTORS_COLLECTION: &str = "blob_vectors";
 const DEFAULT_TRACE_LIMIT: u32 = 5;
-const DEFAULT_VOYAGE_API_URL: &str = "https://api.voyageai.com/v1/embeddings";
-const DEFAULT_VOYAGE_MONGODB_API_URL: &str = "https://ai.mongodb.com/v1/embeddings";
-const DEFAULT_VOYAGE_QUERY_MODEL: &str = "voyage-4";
-const DEFAULT_VOYAGE_OUTPUT_DIMENSION: u32 = 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SessionTraceContext {
@@ -47,7 +41,7 @@ impl QdrantSemanticShuttle {
             .unwrap_or_else(|_| DEFAULT_USER_MEMORY_COLLECTION.into());
         let blob_vectors_collection = std::env::var("COGNITIVE_MCP_BLOB_VECTORS_COLLECTION")
             .unwrap_or_else(|_| DEFAULT_BLOB_VECTORS_COLLECTION.into());
-        let voyage_client = VoyageClient::from_env()?;
+        let voyage_client = VoyageClient::new()?;
 
         Self::new_with_clients(
             &qdrant_url,
@@ -169,7 +163,7 @@ impl QdrantSemanticShuttle {
 
         let embedding = self
             .voyage_client
-            .embed_query(&schema_query_text)
+            .embed(&schema_query_text, Some("query"))
             .await
             .context("failed to embed active shared-memory schema with Voyage")?;
 
@@ -198,7 +192,7 @@ impl QdrantSemanticShuttle {
             mutation_index = trace.mutation_index,
             schema_name = %extract_schema_title(&schema_query_text),
             matches = response.result.len(),
-            model = %self.voyage_client.model,
+            model = %self.voyage_client.model(),
             "Accountability Loop fetched semantic matches from the shared-memory schema projection"
         );
 
@@ -209,12 +203,12 @@ impl QdrantSemanticShuttle {
 
     /// Embed text as a query vector (for semantic search)
     pub async fn embed_query_text(&self, text: &str) -> Result<Vec<f32>> {
-        self.voyage_client.embed_query(text).await
+        self.voyage_client.embed(text, Some("query")).await
     }
 
     /// Embed text as a document vector (for storage in Qdrant)
     pub async fn embed_document(&self, text: &str) -> Result<Vec<f32>> {
-        self.voyage_client.embed_document(text).await
+        self.voyage_client.embed(text, Some("document")).await
     }
 
     /// Upsert a memory entry into the user_memory collection
@@ -411,129 +405,6 @@ impl QdrantSemanticShuttle {
     }
 }
 
-struct VoyageClient {
-    client: Client,
-    api_url: String,
-    api_key: String,
-    model: String,
-    output_dimension: u32,
-}
-
-impl VoyageClient {
-    fn from_env() -> Result<Self> {
-        let api_key = std::env::var("COGNITIVE_MCP_VOYAGE_API_KEY")
-            .or_else(|_| std::env::var("VOYAGE_API_KEY"))
-            .or_else(|_| std::env::var("VOYAGE_API_KEY_RUST"))
-            .or_else(|_| voyage_key_from_file().ok_or(std::env::VarError::NotPresent))
-            .context(
-                "missing Voyage API key: set COGNITIVE_MCP_VOYAGE_API_KEY, VOYAGE_API_KEY, \
-                 VOYAGE_API_KEY_RUST, or COGNITIVE_MCP_VOYAGE_KEY_FILE",
-            )?;
-        let api_url = std::env::var("COGNITIVE_MCP_VOYAGE_API_URL")
-            .unwrap_or_else(|_| voyage_url_for_key(&api_key).into());
-        let model = std::env::var("COGNITIVE_MCP_VOYAGE_QUERY_MODEL")
-            .unwrap_or_else(|_| DEFAULT_VOYAGE_QUERY_MODEL.into());
-        let output_dimension = std::env::var("COGNITIVE_MCP_VOYAGE_OUTPUT_DIMENSION")
-            .ok()
-            .and_then(|value| value.parse::<u32>().ok())
-            .unwrap_or(DEFAULT_VOYAGE_OUTPUT_DIMENSION);
-
-        Ok(Self {
-            // Memory operations hold their consistency guard while embedding.
-            // A stalled provider must not retain that guard indefinitely.
-            client: Client::builder()
-                .connect_timeout(std::time::Duration::from_secs(5))
-                .timeout(std::time::Duration::from_secs(30))
-                .build()
-                .context("failed to construct bounded Voyage HTTP client")?,
-            api_url,
-            api_key,
-            model,
-            output_dimension,
-        })
-    }
-
-    async fn embed_query(&self, input: &str) -> Result<Vec<f32>> {
-        self.embed(input, "query").await
-    }
-
-    async fn embed_document(&self, input: &str) -> Result<Vec<f32>> {
-        self.embed(input, "document").await
-    }
-
-    async fn embed(&self, input: &str, input_type: &str) -> Result<Vec<f32>> {
-        let body = VoyageEmbeddingRequest {
-            input,
-            model: &self.model,
-            input_type,
-            truncation: true,
-            output_dimension: self.output_dimension,
-            output_dtype: "float",
-        };
-
-        let response = self
-            .client
-            .post(&self.api_url)
-            .bearer_auth(&self.api_key)
-            .json(&body)
-            .send()
-            .await
-            .with_context(|| format!("failed to call Voyage embeddings API at {}", self.api_url))?
-            .error_for_status()
-            .context("Voyage embeddings API returned an error status")?;
-
-        let response_json = response
-            .json::<Value>()
-            .await
-            .context("failed to decode Voyage embeddings response")?;
-
-        extract_embedding(&response_json)
-    }
-}
-
-fn voyage_key_from_file() -> Option<String> {
-    let path = std::env::var("COGNITIVE_MCP_VOYAGE_KEY_FILE")
-        .ok()
-        .map(PathBuf::from)
-        .or_else(|| {
-            std::env::var_os("HOME").map(|home| Path::new(&home).join(".ssh/mongo-voyage"))
-        })?;
-
-    let contents = std::fs::read_to_string(&path).ok()?;
-    let key = contents
-        .lines()
-        .map(str::trim)
-        .find(|line| {
-            !line.is_empty()
-                && !line.starts_with('#')
-                && !line.starts_with("mdb_sa_id_")
-                && !line.starts_with("mdb_sa_sk_")
-                && (line.starts_with("al-") || line.starts_with("pa-"))
-        })?
-        .to_string();
-
-    tracing::info!(path = %path.display(), "Loaded Voyage API key from file");
-    Some(key)
-}
-
-fn voyage_url_for_key(key: &str) -> &'static str {
-    if key.trim().starts_with("al-") {
-        DEFAULT_VOYAGE_MONGODB_API_URL
-    } else {
-        DEFAULT_VOYAGE_API_URL
-    }
-}
-
-#[derive(Serialize)]
-struct VoyageEmbeddingRequest<'a> {
-    input: &'a str,
-    model: &'a str,
-    input_type: &'a str,
-    truncation: bool,
-    output_dimension: u32,
-    output_dtype: &'a str,
-}
-
 fn read_plugin_schema() -> Result<PluginSchema> {
     // The sealed blob IS the plugin: the active session schema is read from
     // the plugin's own blob in the SHM catalog. `OP_ACTIVE_SCHEMA_PLUGIN`
@@ -692,43 +563,10 @@ fn extract_schema_title(schema_query_text: &str) -> &str {
         .unwrap_or("unknown")
 }
 
-fn extract_embedding(response_json: &Value) -> Result<Vec<f32>> {
-    let Some(embedding_values) = response_json
-        .get("data")
-        .and_then(Value::as_array)
-        .and_then(|entries| entries.first())
-        .and_then(|entry| entry.get("embedding"))
-        .and_then(Value::as_array)
-        .or_else(|| {
-            response_json
-                .get("embeddings")
-                .and_then(Value::as_array)
-                .and_then(|entries| entries.first())
-                .and_then(Value::as_array)
-        })
-    else {
-        return Err(anyhow::anyhow!(
-            "Voyage embeddings response did not contain a usable embedding"
-        ));
-    };
-
-    let mut embedding = Vec::with_capacity(embedding_values.len());
-    for value in embedding_values {
-        let number = value
-            .as_f64()
-            .context("Voyage embedding contained a non-numeric value")?;
-        embedding.push(number as f32);
-    }
-
-    ensure!(!embedding.is_empty(), "Voyage embedding response was empty");
-    Ok(embedding)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use op_state_store::{Constraint, FieldSchema, ReadOnlyCondition};
-    use serde_json::json;
     use std::collections::HashMap;
 
     #[test]
@@ -743,28 +581,6 @@ mod tests {
             plugin_id_to_uuid("antigravity"),
             "different plugin ids must not collide"
         );
-    }
-
-    #[test]
-    fn should_extract_embedding_from_openai_style_data_payload() {
-        let embedding = extract_embedding(&json!({
-            "data": [{
-                "embedding": [0.25, -0.5, 1.5]
-            }]
-        }))
-        .unwrap();
-
-        assert_eq!(embedding, vec![0.25, -0.5, 1.5]);
-    }
-
-    #[test]
-    fn should_extract_embedding_from_embeddings_array_payload() {
-        let embedding = extract_embedding(&json!({
-            "embeddings": [[0.1, 0.2, 0.3]]
-        }))
-        .unwrap();
-
-        assert_eq!(embedding, vec![0.1, 0.2, 0.3]);
     }
 
     #[test]

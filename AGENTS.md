@@ -4,14 +4,19 @@ This file provides guidance to the AI agent when working with code in this repos
 
 ## Mandatory skill preload — every agent and model
 
-At the start of every session, before any analysis, planning, edits, or subagent work, read these four files completely:
+At the start of every session, before any analysis, planning, edits, or subagent work, read these nine files completely:
 
 - `.agents/skills/grpc-expert/SKILL.md`
 - `.agents/skills/grpc-protocol-expert/SKILL.md`
 - `.agents/skills/json-render/SKILL.md`
 - `.agents/skills/ovs-db-analysis/SKILL.md`
+- `.agents/skills/kernel-fuse-diagnosis/SKILL.md`
+- `.agents/skills/fuse/SKILL.md`
+- `.agents/skills/btrfs/SKILL.md`
+- `.agents/skills/rust-memory-optimization/SKILL.md`
+- `.agents/skills/memory-safety-patterns/SKILL.md`
 
-Mandatory even when the task does not mention these domains. Every subagent and model handoff must repeat the preload for its own session — a parent's preload does not count for a child. For OP-DBUS PluginSchema, generated plugin services, reflection, and seal/freeze/hot work, `grpc-expert` takes precedence over the generic `grpc-protocol-expert`; use the generic skill for protocol, channel, TLS, streaming, and observability concerns.
+Mandatory even when the task does not mention these domains. Every subagent and model handoff must repeat the preload for its own session — a parent's preload does not count for a child. For OP-DBUS PluginSchema, generated plugin services, reflection, and seal/freeze/hot work, `grpc-expert` takes precedence over the generic `grpc-protocol-expert`; use the generic skill for protocol, channel, TLS, streaming, and observability concerns. For a live 3tchedFS mount failure, EIO, hang, or kernel FUSE diagnosis, `kernel-fuse-diagnosis` takes precedence over the generic `fuse` skill; use `fuse` for libfuse userspace API, callbacks, and mount debugging. Use `btrfs` for the designed cache subvolumes, snapshots, and send/receive. For the mount's 256-slot table, byte budget, `Drop` charges, arenas, and Rust allocation, `rust-memory-optimization` takes precedence over the general `memory-safety-patterns` skill; use `memory-safety-patterns` for cross-language ownership, RAII, and resource lifetime.
 
 The container is the identity. 3tchedFS is its lungs: the local, typed
 filesystem interface projected from the sealed blobs and live SHM state.

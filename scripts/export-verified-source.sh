@@ -70,9 +70,16 @@ copy_one() {
 for rel in Cargo.toml Cargo.lock rust-toolchain.toml rustfmt.toml clippy.toml build.rs .gitignore AGENTS.md README.md LICENSE LICENSE-APACHE LICENSE-MIT SIGNALS.md WISHLIST.md; do
     [ -e "$source_dir/$rel" ] && copy_one "$rel"
 done
-for rel in .agents/skills/grpc-expert/SKILL.md .agents/skills/grpc-protocol-expert/SKILL.md \
-           .agents/skills/json-render/SKILL.md .agents/skills/ovs-db-analysis/SKILL.md; do
-    copy_one "$rel"
+for skill in grpc-expert grpc-protocol-expert json-render ovs-db-analysis \
+             kernel-fuse-diagnosis fuse btrfs rust-memory-optimization \
+             memory-safety-patterns; do
+    copy_one ".agents/skills/$skill/SKILL.md"
+    [ -d "$source_dir/.agents/skills/$skill" ] || { echo "selected input missing: .agents/skills/$skill" >&2; exit 1; }
+    while IFS= read -r -d '' src; do
+        rel=${src#"$source_dir/"}
+        [ "$rel" = ".agents/skills/$skill/SKILL.md" ] && continue
+        copy_one "$rel"
+    done < <(find "$source_dir/.agents/skills/$skill" \( -type f -o -type l \) ! -name SKILL.md -print0)
 done
 
 declare -A seen=()

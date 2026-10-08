@@ -148,7 +148,7 @@ printf 'lungs:%s\n' "$tool" >> "$EVENT_LOG"
    jq -e --arg key "$KEY" --arg digest "$digest" \
     '.params.arguments=={wireguard_pubkey:$key,plan_sha256:$digest}' >/dev/null <<<"$line" || exit 99
    jq -e --arg sid "$SID" --arg key "$KEY" --arg name "$NATIVE_NAME" '
-    (keys|sort)==(["version","session_id","wireguard_pubkey","expected_revision","expected_revision_operation_id",
+    (keys|sort)==(["version","session_id","wireguard_pubkey","principal_group","expected_revision","expected_revision_operation_id",
      "binding","seed_device","seed_fsid","seed_generation","leaf_inode","leaf_size","members","persist_inode",
      "native_root","pool_name","pool_source","instance_etag","instance","previous_instance_etag","previous_instance"]|sort)
     and .version==(if env.DELETED=="1" then 3 else 2 end) and .session_id==$sid and .wireguard_pubkey==$key and .expected_revision==7
@@ -226,6 +226,13 @@ reset_fixture() {
  export NATIVE_NAME=${NATIVE_NAME_OVERRIDE:-3tchedChatbot}
  export OP_IDENTITY_SEED_STATE="$T/state" OP_IDENTITY_PROVISION_RECEIPTS="$T/receipts"
  export OP_IDENTITY_PROVISION_PLAN_ROOT="$T/plans" OP_IDENTITY_SEED_DEVICE="$T/seed"
+ export OP_CAPABILITY_GRANTS="$T/grants.json"
+ jq -n --arg principal 1262e982-14c1-44d4-0771-7ce74213211b '{
+  "$ROOT": {"capabilities": ["chat_response.respond"]},
+  "$SUPERADMIN": {"capabilities": ["human_principal.write"]},
+  ($principal): {"display_alias":"control-plane-chatbot","capabilities":["chat_response.respond"]}
+ }' > "$T/grants.json"
+ chmod 600 "$T/grants.json"
  : > "$EVENT_LOG"
  jq -cn --arg sid "${MOUNT_SESSION_OVERRIDE:-$OPERATOR}" --arg hash "${MOUNT_CATALOG_OVERRIDE:-fixture-catalog}" \
   '{session_id:$sid,source_catalog_hash:$hash}' > "$T/lungs/.3tchedfs.json"
@@ -240,7 +247,8 @@ reset_fixture() {
 }
 run_flow() {
  local -a args=(owner --session-id "${SESSION_ID_OVERRIDE:-$SID}" --pubkey "$KEY"
-  --operator-session "$OPERATOR" --leaf-path "$T/leaf/new.img")
+  --operator-session "$OPERATOR" --leaf-path "$T/leaf/new.img"
+  --principal-group "${PRINCIPAL_GROUP_OVERRIDE:-\$ROOT}")
  [[ -z ${NATIVE_NAME_OVERRIDE:-} ]] || args+=(--container-name "$NATIVE_NAME")
  "$PROVISIONER" "${args[@]}" "$@"
 }
@@ -252,7 +260,22 @@ expect_failure() {
  [[ ! -e "$T/boot-policy" ]] || fail 'failed operation enabled boot'
 }
 reset_fixture
+if "$PROVISIONER" owner --session-id "$SID" --pubkey "$KEY" --operator-session "$OPERATOR" \
+    --leaf-path "$T/leaf/new.img" > "$T/output" 2>&1; then fail 'missing principal group was accepted'; fi
+grep -q -- '--principal-group is required' "$T/output" || fail 'missing principal group was not explained'
+assert_no 'lungs:'
+reset_fixture
+export PRINCIPAL_GROUP_OVERRIDE='$NOPE'
+if run_flow --no-start > "$T/output" 2>&1; then fail 'unknown principal group was accepted'; fi
+grep -q 'unknown principal group' "$T/output" || fail 'unknown principal group was not explained'
+unset PRINCIPAL_GROUP_OVERRIDE
+assert_no 'lungs:'
+reset_fixture
 run_flow --no-start > "$T/output" 2>&1
+jq -e '.principal_group=="$ROOT"' "$T/plans/$SID.json" >/dev/null || fail 'plan omitted principal group'
+jq -e --arg principal 1262e982-14c1-44d4-0771-7ce74213211b \
+  '.[$principal].groups==["$ROOT"] and (.[$principal].capabilities|index("chat_response.respond")!=null)' \
+  "$T/grants.json" >/dev/null || fail 'chatbot was not joined to $ROOT'
 assert_no 'incus:start'
 grep -qx host-folders "$EVENT_LOG" || fail 'host folders not attached'
 jq -e '.btrfs_device.attached==true and .btrfs_device.cozo_id==env.SID and .interface=="" and .peer_ip==null and .mutation_index==0 and .active==false' "$T/current.json" >/dev/null

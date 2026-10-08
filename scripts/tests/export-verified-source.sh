@@ -24,7 +24,7 @@ cat > "$src/.gitignore" <<'EOF'
 !vendor/tched-router/source.tar.gz
 !vendor/3tched-json-render-ui/source.tar.gz
 EOF
-for skill in grpc-expert grpc-protocol-expert json-render ovs-db-analysis; do
+for skill in grpc-expert grpc-protocol-expert json-render ovs-db-analysis kernel-fuse-diagnosis fuse btrfs rust-memory-optimization memory-safety-patterns; do
     mkdir -p "$src/.agents/skills/$skill"
     printf 'skill\n' > "$src/.agents/skills/$skill/SKILL.md"
 done
@@ -56,6 +56,11 @@ test -f "$success/deploy/service.env.example"
 test -f "$success/scripts/fixtures/provider-config.sh"
 test ! -e "$success/scripts/antigravity-full-setup.md"
 test -f "$success/.gitignore"
+test -f "$success/.agents/skills/kernel-fuse-diagnosis/SKILL.md"
+test -f "$success/.agents/skills/fuse/SKILL.md"
+test -f "$success/.agents/skills/btrfs/SKILL.md"
+test -f "$success/.agents/skills/rust-memory-optimization/SKILL.md"
+test -f "$success/.agents/skills/memory-safety-patterns/SKILL.md"
 test -f "$success/vendor/tched-router/source.tar.gz"
 test -f "$success/vendor/3tched-json-render-ui/source.tar.gz"
 (

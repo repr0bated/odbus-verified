@@ -87,9 +87,9 @@ pub const EXHOOK_TARGET: &str = "https://127.0.0.1:9000";
 
 const API_KEY_FILE: &str = "/etc/opdbus/secrets/emqx-api-key";
 const API_SECRET_FILE: &str = "/etc/opdbus/secrets/emqx-api-secret";
-const RUNIT_BUS_NAME: &str = "org.opdbus.v1.Runit.Systemctl";
-const RUNIT_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/runit/systemctl";
-const RUNIT_INTERFACE: &str = "org.opdbus.v1.Runit.Systemctl";
+const RUNIT_BUS_NAME: &str = "org.opdbus.v1.plugins.runit";
+const RUNIT_OBJECT_PATH: &str = "/org/opdbus/v1/plugins/runit";
+const RUNIT_INTERFACE: &str = "org.opdbus.v1.plugins.runit";
 const API_RESPONSE_LIMIT: usize = 1024 * 1024;
 
 /// HookSpec names advertised by the bridge. Configuration accepts exactly this
@@ -1534,12 +1534,10 @@ mod tests {
     #[test]
     fn declared_endpoints_are_local_or_fabric_and_mcp_gateway_is_absent() {
         let state = EmqxState::declared();
-        assert!(
-            state
-                .listeners
-                .iter()
-                .all(|listener| local_endpoint(&listener.bind))
-        );
+        assert!(state
+            .listeners
+            .iter()
+            .all(|listener| local_endpoint(&listener.bind)));
         assert!(local_endpoint(&state.exhook.target));
         assert!(
             !local_endpoint("0.0.0.0:8083"),
@@ -1667,11 +1665,9 @@ mod tests {
             assert!(properties.get(field).is_some(), "missing {field}");
         }
         assert!(payload_json.get("required").is_some());
-        assert!(
-            !serde_json::to_string(&payload_json)
-                .unwrap()
-                .contains("payload")
-        );
+        assert!(!serde_json::to_string(&payload_json)
+            .unwrap()
+            .contains("payload"));
     }
 
     #[test]
