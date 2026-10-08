@@ -33,7 +33,8 @@ wait_dep unified-execution
 wait_dep op-runit-systemctl
 wait_dep op-session-bus
 wait_dep ovsdb-server
-wait_dep ovsbr0-tun5
+wait_dep op-warp-ssh-host
+wait_dep op-warp-ssh-routes
 wait_dep tched-router
 # Identity storage restoration is owned independently by identity-roots. The
 # bridge opens its listeners even when that storage is unavailable; identity

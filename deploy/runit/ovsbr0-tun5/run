@@ -13,8 +13,8 @@ wait_dep() {
     done
 }
 
-wait_dep ovs-vswitchd
-wait_dep ovsbr0-uplink
+wait_dep op-warp-ssh-host
+wait_dep op-warp-ssh-routes
 /usr/local/libexec/3tched/ovsbr0-tun5-up
 install -d -m 0755 /run/opdbus/runit-ready
 touch /run/opdbus/runit-ready/ovsbr0-tun5

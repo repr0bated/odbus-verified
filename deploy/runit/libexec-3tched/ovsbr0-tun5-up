@@ -1,6 +1,7 @@
 #!/bin/sh
-# Attach the SSH-TUN netdev to ovsbr0 after the tunnel endpoint exists.
-# OVSDB is authoritative; this persists the port in /etc/openvswitch/conf.db.
+# SSH-TUN readiness for the door aliases (10.0.0.2 / 10.0.0.4 on tun5).
+# OD-104: tun5 is the MASQUE→SSH inner netdev; it must stay a plain L3 TUN.
+# Enslaving it in ovsbr0 regressed delivery to op-web / op-grpc-bridge.
 set -eu
 export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-}"
 set -a
@@ -8,43 +9,52 @@ set -a
 [ -r /etc/op-dbus/warp-ssh.env ] && . /etc/op-dbus/warp-ssh.env
 set +a
 
-BRIDGE="${BRIDGE:-ovsbr0}"
 TUN_PORT="${OVS_TUN_PORT:-tun5}"
 TRANSPORT="${OVS_TUN_TRANSPORT_SERVICE:-op-warp-ssh-host}"
-OVSDB_PORT="${OVSDB_PORT_HELPER:-/usr/local/libexec/3tched/ovsdb-port}"
+ROUTES="${OP_WARP_SSH_ROUTES_SERVICE:-op-warp-ssh-routes}"
 
 sv start "$TRANSPORT" >/dev/null 2>&1 || true
+sv start "$ROUTES" >/dev/null 2>&1 || true
 
 i=0
 until [ -d "/sys/class/net/$TUN_PORT" ]; do
     i=$((i + 1))
     [ "$i" -ge 120 ] && {
-        echo "ovsbr0-tun5: $TUN_PORT did not appear after 120s (transport=$TRANSPORT)" >&2
+        echo "warp-ssh-tun-ready: $TUN_PORT did not appear after 120s (transport=$TRANSPORT)" >&2
         exit 1
     }
     sv start "$TRANSPORT" >/dev/null 2>&1 || true
     sleep 1
 done
 
+if command -v ovs-vsctl >/dev/null 2>&1; then
+    br=$(ovs-vsctl port-to-br "$TUN_PORT" 2>/dev/null) || br=
+    if [ -n "$br" ]; then
+        echo "warp-ssh-tun-ready: removing regressed $TUN_PORT from OVS bridge $br" >&2
+        ovs-vsctl --if-exists del-port "$br" "$TUN_PORT"
+    fi
+fi
+
+alias=$(cat "/sys/class/net/$TUN_PORT/ifalias" 2>/dev/null || true)
+[ "$alias" = "op-warp-ssh" ] || {
+    echo "warp-ssh-tun-ready: $TUN_PORT alias is '$alias', expected op-warp-ssh" >&2
+    exit 1
+}
+
+ip -4 -o addr show dev "$TUN_PORT" | grep -q 'inet 10\.0\.0\.2/32' || {
+    echo "warp-ssh-tun-ready: 10.0.0.2 is not on $TUN_PORT" >&2
+    exit 1
+}
+
 i=0
-until [ -d "/sys/class/net/$BRIDGE" ]; do
+until /usr/local/libexec/op-warp-ssh/routing.sh check >/dev/null 2>&1; do
     i=$((i + 1))
-    [ "$i" -ge 60 ] && {
-        echo "ovsbr0-tun5: bridge $BRIDGE missing after 60s" >&2
+    [ "$i" -ge 30 ] && {
+        echo "warp-ssh-tun-ready: host policy routes (table 28051) not ready after 30s" >&2
         exit 1
     }
+    sv start "$ROUTES" >/dev/null 2>&1 || true
     sleep 1
 done
 
-cur=$("$OVSDB_PORT" port-to-br "$TUN_PORT" 2>/dev/null) || cur=
-if [ "$cur" = "$BRIDGE" ]; then
-    echo "ovsbr0-tun5: $TUN_PORT already on $BRIDGE"
-    exit 0
-fi
-
-# add-port stamps BRIDGE_MTU. The tunnel keeps the MTU it had when it appeared.
-tun_mtu=$(cat "/sys/class/net/$TUN_PORT/mtu")
-"$OVSDB_PORT" add-port "$BRIDGE" "$TUN_PORT"
-"$OVSDB_PORT" set-mtu "$TUN_PORT" "$tun_mtu"
-ip link set dev "$TUN_PORT" up 2>/dev/null || true
-echo "ovsbr0-tun5: attached $TUN_PORT to $BRIDGE (mtu $tun_mtu)"
+echo "warp-ssh-tun-ready: $TUN_PORT owns door aliases; not attached to ovsbr0"
