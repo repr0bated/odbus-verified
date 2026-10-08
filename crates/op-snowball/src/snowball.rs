@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use nix::fcntl::{Flock, FlockArg};
 use std::collections::{BinaryHeap, HashSet};
 use std::fs::{File as StdFile, OpenOptions as StdOpenOptions};
-use std::io::Write as _;
+use std::io::{BufRead, Write as _};
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::fs::OpenOptionsExt;
@@ -277,16 +277,18 @@ impl StreamingSnowball {
             .await?
             .unwrap_or_else(RetentionPolicy::from_env);
         let writer = SnowballWriter::spawn("snowball-reader".to_string(), None)?;
+        let state_subvol = base_path.join("state");
+        let writer_lock_path = base_path.join(".writer.lock");
 
         Ok(Self {
             base_path,
             timing_subvol,
             vector_subvol,
-            state_subvol: base_path.join("state"),
+            state_subvol,
             snapshot_interval: SnapshotInterval::from_env(),
             retention_policy: Arc::new(RwLock::new(retention_policy)),
             snapshot_lock: Arc::new(Mutex::new(())),
-            writer_lock_path: base_path.join(".writer.lock"),
+            writer_lock_path,
             last_snapshot_time: Arc::new(RwLock::new(Instant::now())),
             block_counter: Arc::new(RwLock::new(resumed_from)),
             writer,
@@ -766,13 +768,17 @@ impl StreamingSnowball {
             std::fs::create_dir(&dump_dir)?;
             btrfs_snapshot_readonly(&timing_source, &dump_dir.join("timing"))?;
             btrfs_snapshot_readonly(&vectors_source, &dump_dir.join("vectors"))?;
+            let (previous_timing_parent, previous_vectors_parent) = match previous {
+                Some((timing, vectors)) => (Some(timing), Some(vectors)),
+                None => (None, None),
+            };
             Ok(PreparedDumpSnapshots {
                 dumps_dir,
                 dump_name,
                 dump_dir,
                 counter,
-                previous_timing_parent: previous.map(|(timing, _)| timing),
-                previous_vectors_parent: previous.map(|(_, vectors)| vectors),
+                previous_timing_parent,
+                previous_vectors_parent,
             })
         })
         .await
@@ -1910,7 +1916,8 @@ fn next_dump_counter_sync(dumps_dir: &Path) -> Result<u64> {
     let mut max_counter = 0_u64;
     if dumps_dir.is_dir() {
         for entry in std::fs::read_dir(dumps_dir)? {
-            let name = entry?.file_name().to_string_lossy();
+            let os_name = entry?.file_name();
+            let name = os_name.to_string_lossy();
             if let Some(counter) = parse_dump_set_counter(&name) {
                 max_counter = max_counter.max(counter);
             }
@@ -1926,9 +1933,10 @@ fn previous_dump_member_paths(dumps_dir: &Path) -> Result<Option<(PathBuf, PathB
     if dumps_dir.is_dir() {
         for entry in std::fs::read_dir(dumps_dir)? {
             let entry = entry?;
-            let name = entry.file_name().to_string_lossy();
+            let os_name = entry.file_name();
+            let name = os_name.to_string_lossy();
             if let Some(counter) = parse_dump_set_counter(&name) {
-                latest = Some(latest.map_or(counter, |current| current.max(counter)));
+                latest = Some(latest.map_or(counter, |current: u64| current.max(counter)));
             }
         }
     }
@@ -1955,7 +1963,8 @@ fn remove_older_local_dumps(dumps_dir: &Path, keep_name: &str) -> Result<()> {
     }
     for entry in std::fs::read_dir(dumps_dir)? {
         let entry = entry?;
-        let name = entry.file_name().to_string_lossy();
+        let os_name = entry.file_name();
+        let name = os_name.to_string_lossy();
         if parse_dump_set_counter(&name).is_none() || name == keep_name {
             continue;
         }
@@ -2061,7 +2070,7 @@ async fn remote_ssh_command(
         .kill_on_drop(true)
         .spawn()
         .context("start SSH command for vector dump")?;
-    let stderr = child.stderr.take().context("SSH stderr missing")?;
+    let mut stderr = child.stderr.take().context("SSH stderr missing")?;
     let completed = tokio::time::timeout(timeout, async move {
         let status = child.wait().await?;
         let mut buffer = Vec::new();
@@ -2115,7 +2124,8 @@ pub(crate) fn local_dump_keep_set(dumps_dir: &Path, keep_counter: u64) -> Result
     let mut remaining = Vec::new();
     if dumps_dir.is_dir() {
         for entry in std::fs::read_dir(dumps_dir)? {
-            let name = entry?.file_name().to_string_lossy();
+            let os_name = entry?.file_name();
+            let name = os_name.to_string_lossy();
             if parse_dump_set_counter(&name).is_some() {
                 remaining.push(name.to_string());
             }
@@ -2134,7 +2144,7 @@ async fn update_received_roots_file(
 ) -> Result<()> {
     dump_validate_absolute_path(Path::new(new_root))?;
     let mut roots = read_received_roots(path)?;
-    if roots.last().as_deref() != Some(new_root) {
+    if roots.last().map(String::as_str) != Some(new_root) {
         roots.push(new_root.to_owned());
     }
     let current = roots.last().cloned().unwrap_or_else(|| new_root.to_owned());

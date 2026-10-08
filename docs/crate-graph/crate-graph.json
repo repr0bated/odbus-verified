@@ -865,7 +865,7 @@
         "bins": [],
         "has_lib": true,
         "rs_files": 8,
-        "loc": 5247,
+        "loc": 5257,
         "tests": 63,
         "unsafe_refs": 11,
         "todo": 4,
@@ -2054,8 +2054,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-08T23:06:53Z",
-        "commit": "f23dcb7b2326acf8871782e0408ada77b1c09c02",
+        "generated_at": "2026-10-08T23:09:02Z",
+        "commit": "4ce8d019b881488875fb07170949524e371e0474",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -9549,7 +9549,7 @@
       "props": {
         "crate": "op-snowball",
         "kind": "src",
-        "loc": 3371
+        "loc": 3381
       }
     },
     {
