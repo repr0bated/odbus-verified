@@ -26,7 +26,7 @@ release for rollback; retire only explicitly identified obsolete releases.
 
 ## Prepare
 
-Build the native glibc workspace, prepare its mail and pinned UI/native
+Build the native glibc workspace, prepare its pinned UI and native
 artifacts, and explicitly seal/persist with the freshly built `opblob` and
 the service's schema-shaping environment. Preserve the previous catalogs and
 review additions/removals before a live reseal. `build-golden.sh` accepts

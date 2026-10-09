@@ -46,8 +46,6 @@ else
     PROJECT_ROOT=${OP_DBUS_ROOT:-$(pwd)}
 fi
 RELEASE_DIR="$PROJECT_ROOT/target/release"
-MAIL_ARTIFACT_NAME=mail-3tched-x86_64-linux-gnu-bundle.tar
-MAIL_ARTIFACT_PATH="$PROJECT_ROOT/target/container-artifacts/$MAIL_ARTIFACT_NAME"
 GRANTS_SOURCE="$SCRIPT_DIR/../security/capability-grants.json"
 ELEVATION_PAM_SOURCE="$SCRIPT_DIR/../pam/op-dbus-elevate"
 MCP_AUDIENCE_POLICY_SOURCE="$SCRIPT_DIR/../config/mcp-audience-policy.json"
@@ -230,24 +228,6 @@ printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/threetched-fs" ||
 [ -x "$RELEASE_DIR/opblob" ] || die "release is missing opblob"
 [ -x "$RELEASE_DIR/system_graph_inventory" ] ||
     die "release is missing system_graph_inventory; rebuild the workspace"
-[ -x "$RELEASE_DIR/op-mail-admin" ] || die "build op-mail-admin before preparing the release"
-[ -f "$MAIL_ARTIFACT_PATH" ] || die "missing mail bundle; run deploy/mail-3tched/build-container-artifact.sh after the release build"
-tar -tf "$MAIL_ARTIFACT_PATH" | awk '
-    /^\// || /(^|\/)\.\.($|\/)/ { bad = 1 }
-    END { exit bad ? 1 : 0 }
-' || die "mail bundle contains an unsafe path"
-tar -tvf "$MAIL_ARTIFACT_PATH" | awk 'substr($1,1,1) !~ /[-d]/ { bad=1 } END { exit bad ? 1 : 0 }' ||
-    die "mail bundle must contain only regular files and directories"
-for required in MANIFEST apply-rootfs.sh rootfs/usr/local/bin/op-mail-admin rootfs/usr/local/lib/op-mail-admin/op-mail-admin.bin rootfs/usr/local/lib/op-mail-admin/ld-linux-x86-64.so.2 rootfs/etc/init.d/op-mail-admin rootfs/etc/postfix/opdbus-main.cf rootfs/etc/postfix/opdbus-domains rootfs/etc/dovecot/opdbus.conf; do
-    tar -tf "$MAIL_ARTIFACT_PATH" | grep -qx "$required" || die "mail bundle is missing $required"
-done
-for declaration in 'rust-target: x86_64-unknown-linux-gnu' 'elf-runtime: private-glibc-loader-bundle'; do
-    tar -xOf "$MAIL_ARTIFACT_PATH" MANIFEST | grep -Fqx "$declaration" ||
-        die "mail bundle does not declare $declaration"
-done
-[ "$(tar -xOf "$MAIL_ARTIFACT_PATH" rootfs/usr/local/lib/op-mail-admin/op-mail-admin.bin | sha256sum | cut -d' ' -f1)" = "$(sha256sum "$RELEASE_DIR/op-mail-admin" | cut -d' ' -f1)" ] ||
-    die "mail bundle does not contain the current release binary"
-MAIL_ARTIFACT_SHA256=$(sha256sum "$MAIL_ARTIFACT_PATH" | cut -d' ' -f1)
 [ -x "$TCHED_ROUTER_NATIVE_BIN" ] ||
     die "missing tched_router native binary; run vendor/tched-router/build-native.sh --cache-dir /var/cache/op-dbus-build/tched-router --output-dir target/native-artifacts/tched-router"
 [ -f "$TCHED_ROUTER_NATIVE_MANIFEST" ] ||
@@ -574,9 +554,10 @@ build_golden() {
     run install -Dm644 "$UI_ASSET_MANIFEST" \
         "$GOLDEN_DIR/usr/share/op-dbus/ui-manifests/3tched-ui.json"
     ok "staged pinned 3tched UI assets and provenance manifest"
-    # Offline rootfs preparation consumes this archive before snapshot/send.
-    # Never install the GNU daemon directly into the running Alpine container.
-    run install -Dm644 "$MAIL_ARTIFACT_PATH" "$GOLDEN_DIR/opt/op-dbus/container-artifacts/$MAIL_ARTIFACT_NAME"
+    # Mail runs as an external service. A reused golden tree must not keep
+    # the on-host glibc mail bundle.
+    mail_artifact="$GOLDEN_DIR/opt/op-dbus/container-artifacts/mail-3tched-x86_64-linux-gnu-bundle.tar"
+    [ ! -e "$mail_artifact" ] || run rm -- "$mail_artifact"
 
     # The sealed blob is the plugin. Stage exactly the persisted committed
     # catalog, with the manifest copied last, so first boot does not regenerate
@@ -764,8 +745,6 @@ build_golden() {
             printf 'source: %s\n' "$PROJECT_ROOT"
             printf 'init: runit (sv)\n'
             printf 'binaries: %s\n' "$BIN_COUNT"
-            printf 'mail-artifact: %s\n' "$MAIL_ARTIFACT_NAME"
-            printf 'mail-sha256: %s\n' "$MAIL_ARTIFACT_SHA256"
             printf 'tched-router-native-sha256: %s\n' "$TCHED_ROUTER_NATIVE_SHA256"
             printf 'tched-router-manifest-sha256: %s\n' "$TCHED_ROUTER_MANIFEST_SHA256"
             printf 'tched-router-bootstrap-config-sha256: %s\n' "$TCHED_ROUTER_BOOTSTRAP_CONFIG_SHA256"

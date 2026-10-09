@@ -622,7 +622,7 @@
         ],
         "has_lib": true,
         "rs_files": 189,
-        "loc": 116950,
+        "loc": 116958,
         "tests": 900,
         "unsafe_refs": 242,
         "todo": 177,
@@ -792,7 +792,7 @@
         ],
         "has_lib": true,
         "rs_files": 15,
-        "loc": 5063,
+        "loc": 5074,
         "tests": 18,
         "unsafe_refs": 1,
         "todo": 0,
@@ -810,12 +810,12 @@
           "opblob"
         ],
         "has_lib": true,
-        "rs_files": 153,
-        "loc": 135146,
-        "tests": 581,
+        "rs_files": 155,
+        "loc": 135958,
+        "tests": 583,
         "unsafe_refs": 17,
         "todo": 1,
-        "unwrap_expect": 1393
+        "unwrap_expect": 1401
       }
     },
     {
@@ -933,9 +933,9 @@
           "opdbus"
         ],
         "has_lib": true,
-        "rs_files": 59,
-        "loc": 14146,
-        "tests": 71,
+        "rs_files": 60,
+        "loc": 14516,
+        "tests": 73,
         "unsafe_refs": 1,
         "todo": 6,
         "unwrap_expect": 114
@@ -986,11 +986,11 @@
         ],
         "has_lib": false,
         "rs_files": 20,
-        "loc": 135422,
-        "tests": 100,
-        "unsafe_refs": 8,
+        "loc": 135769,
+        "tests": 102,
+        "unsafe_refs": 13,
         "todo": 0,
-        "unwrap_expect": 509
+        "unwrap_expect": 519
       }
     },
     {
@@ -2054,8 +2054,8 @@
       "id": "meta:crate-graph",
       "label": "meta",
       "props": {
-        "generated_at": "2026-10-08T23:12:36Z",
-        "commit": "3d94199f7a6ba325289ed86bb52cba7065677cdc",
+        "generated_at": "2026-10-09T01:18:33Z",
+        "commit": "e46dad8c40ab9f36235ce8765be9d89da67cf8f0",
         "worktree_dirty": true,
         "generator": "scripts/crate-graph.sh",
         "relations": [
@@ -6021,7 +6021,7 @@
       "props": {
         "crate": "op-grpc-bridge",
         "kind": "src",
-        "loc": 7756
+        "loc": 7764
       }
     },
     {
@@ -7857,7 +7857,7 @@
       "props": {
         "crate": "op-plugin-lint",
         "kind": "src",
-        "loc": 547
+        "loc": 558
       }
     },
     {
@@ -8181,7 +8181,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 403
+        "loc": 407
       }
     },
     {
@@ -8802,7 +8802,7 @@
       "props": {
         "crate": "op-plugins",
         "kind": "src",
-        "loc": 165
+        "loc": 167
       }
     },
     {
@@ -9199,6 +9199,24 @@
         "crate": "op-plugins",
         "kind": "src",
         "loc": 213
+      }
+    },
+    {
+      "id": "mod:crates/op-plugins/src/state_plugins/tched_router_paths.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-plugins",
+        "kind": "src",
+        "loc": 31
+      }
+    },
+    {
+      "id": "mod:crates/op-plugins/src/state_plugins/tched_skills.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-plugins",
+        "kind": "src",
+        "loc": 775
       }
     },
     {
@@ -10467,7 +10485,16 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 356
+        "loc": 362
+      }
+    },
+    {
+      "id": "mod:crates/op-web/src/routes/threetched_fs.rs",
+      "label": "module",
+      "props": {
+        "crate": "op-web",
+        "kind": "src",
+        "loc": 344
       }
     },
     {
@@ -10503,7 +10530,7 @@
       "props": {
         "crate": "op-web",
         "kind": "src",
-        "loc": 80
+        "loc": 100
       }
     },
     {
@@ -10800,7 +10827,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 1874
+        "loc": 2020
       }
     },
     {
@@ -10836,7 +10863,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 1108
+        "loc": 1290
       }
     },
     {
@@ -10890,7 +10917,7 @@
       "props": {
         "crate": "threetched-fs",
         "kind": "src",
-        "loc": 533
+        "loc": 552
       }
     },
     {
@@ -11491,6 +11518,16 @@
         "line": 3006,
         "declared": true,
         "dbus_path": "/org/opdbus/v1/plugins/tched_router"
+      }
+    },
+    {
+      "id": "plugin:tched_skills",
+      "label": "plugin",
+      "props": {
+        "file": "crates/op-plugins/src/state_plugins/tched_skills.rs",
+        "line": 724,
+        "declared": true,
+        "dbus_path": "/org/opdbus/v1/plugins/tched_skills"
       }
     },
     {
@@ -23001,6 +23038,18 @@
     {
       "src": "crate:op-plugins",
       "rel": "contains",
+      "dst": "mod:crates/op-plugins/src/state_plugins/tched_router_paths.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "contains",
+      "dst": "mod:crates/op-plugins/src/state_plugins/tched_skills.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "contains",
       "dst": "mod:crates/op-plugins/src/state_plugins/threetched_fs.rs",
       "props": {}
     },
@@ -23144,6 +23193,14 @@
       "src": "crate:op-plugins",
       "rel": "depends_on",
       "dst": "crate:op-network",
+      "props": {
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "depends_on",
+      "dst": "crate:op-plugin-lint",
       "props": {
         "optional": false
       }
@@ -23542,6 +23599,12 @@
       "src": "crate:op-plugins",
       "rel": "registers_plugin",
       "dst": "plugin:tched_router",
+      "props": {}
+    },
+    {
+      "src": "crate:op-plugins",
+      "rel": "registers_plugin",
+      "dst": "plugin:tched_skills",
       "props": {}
     },
     {
@@ -25921,6 +25984,12 @@
     {
       "src": "crate:op-web",
       "rel": "contains",
+      "dst": "mod:crates/op-web/src/routes/threetched_fs.rs",
+      "props": {}
+    },
+    {
+      "src": "crate:op-web",
+      "rel": "contains",
       "dst": "mod:crates/op-web/src/sse.rs",
       "props": {}
     },
@@ -26364,6 +26433,16 @@
       "dst": "ext:tempfile",
       "props": {
         "kind": "dev",
+        "req": "^3",
+        "optional": false
+      }
+    },
+    {
+      "src": "crate:op-web",
+      "rel": "uses_ext",
+      "dst": "ext:tempfile",
+      "props": {
+        "kind": "normal",
         "req": "^3",
         "optional": false
       }
@@ -27231,7 +27310,7 @@
       "rel": "uses_ext",
       "dst": "ext:tempfile",
       "props": {
-        "kind": "dev",
+        "kind": "normal",
         "req": "^3",
         "optional": false
       }
@@ -30065,7 +30144,7 @@
       "rel": "imports",
       "dst": "crate:op-plugins",
       "props": {
-        "refs": 139
+        "refs": 141
       }
     },
     {
@@ -34064,6 +34143,44 @@
       "src": "mod:crates/op-plugins/src/state_plugins/tched_router_legacy_methods_tests.rs",
       "rel": "imports",
       "dst": "crate:op-cozo-store",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/tched_skills.rs",
+      "rel": "defines_plugin",
+      "dst": "plugin:tched_skills",
+      "props": {}
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/tched_skills.rs",
+      "rel": "imports",
+      "dst": "crate:op-blob",
+      "props": {
+        "refs": 2
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/tched_skills.rs",
+      "rel": "imports",
+      "dst": "crate:op-plugin-lint",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/tched_skills.rs",
+      "rel": "imports",
+      "dst": "crate:op-state",
+      "props": {
+        "refs": 1
+      }
+    },
+    {
+      "src": "mod:crates/op-plugins/src/state_plugins/tched_skills.rs",
+      "rel": "imports",
+      "dst": "crate:op-state-store",
       "props": {
         "refs": 1
       }
