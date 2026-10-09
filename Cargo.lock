@@ -4855,6 +4855,7 @@ dependencies = [
  "op-cozo-store",
  "op-dbus-model",
  "op-network",
+ "op-plugin-lint",
  "op-snowball",
  "op-state",
  "op-state-store",

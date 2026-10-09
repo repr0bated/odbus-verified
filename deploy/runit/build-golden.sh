@@ -594,6 +594,10 @@ build_golden() {
         "$GOLDEN_DIR/libexec/3tched/provision-workspace-subscriber"
     run install -Dm755 "$SCRIPT_DIR/../workspace-image/prepare-lungs-client.sh" \
         "$GOLDEN_DIR/libexec/3tched/prepare-lungs-client"
+    run install -Dm644 "$SCRIPT_DIR/../workspace-image/3tchedfs.service" \
+        "$GOLDEN_DIR/libexec/3tched/3tchedfs.service"
+    run install -Dm755 "$SCRIPT_DIR/../workspace-image/3tchedfs-mount-preflight" \
+        "$GOLDEN_DIR/libexec/3tched/3tchedfs-mount-preflight"
     # Synchronization code belongs to the received release, while its corpus
     # and resumable upload receipts remain in the existing user's data tree.
     for helper in notebook-sync notebook-sources-sync-up notebook-sources-upload \

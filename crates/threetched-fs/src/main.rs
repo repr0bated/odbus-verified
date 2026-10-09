@@ -629,17 +629,6 @@ async fn main() -> Result<()> {
                 filesystem = filesystem.with_call_owner_uid(uid)?;
             }
             filesystem = filesystem.with_catalog_dir(catalog)?;
-            let zeroclaw_bin = std::env::var_os("THREETCHED_FS_ZEROCLAW_BIN")
-                .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from("/usr/bin/zeroclaw"));
-            let surface = crate::zeroclaw_surface::ZeroclawSurface::capture(&zeroclaw_bin)
-                .with_context(|| {
-                    format!(
-                        "zeroclaw surface from {}",
-                        zeroclaw_bin.display()
-                    )
-                })?;
-            filesystem.graft_zeroclaw(surface)?;
             let mut options = vec![
                 MountOption::FSName("3tchedFS".to_string()),
                 MountOption::Subtype("3tchedFS".to_string()),

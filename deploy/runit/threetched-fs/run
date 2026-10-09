@@ -26,7 +26,7 @@ install -d -m 0755 "$mountpoint"
 # establish authorization or fabricate a successful operation receipt.
 "$THREETCHED" --store "$store" capture --schema-only --catalog "$catalog" --state "$state" >/dev/null
 owner_file=/etc/op-dbus/human-lungs-call-owner-uid
-owner_uid=0
+owner_uid=1001
 if [ -r "$owner_file" ]; then
     owner_uid=$(tr -d '[:space:]' <"$owner_file")
     case "$owner_uid" in

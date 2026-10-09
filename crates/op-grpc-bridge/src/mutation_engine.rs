@@ -206,6 +206,7 @@ fn audit_method_arguments(
             | "wgcf"
             | "antigravity"
             | "antigravity_chat"
+            | "tched_skills"
     ) || (plugin_id == "xray" && matches!(method, "add_user" | "add_inbound"))
         || (plugin_id == "tched_router"
             && (matches!(
@@ -4275,6 +4276,58 @@ impl MutationEngine {
                 )
                 .await?;
                 output
+            }
+            "tched_skills" => {
+                // Skills and router methods operate on the same native service
+                // and config directory. Serialize them through the router's
+                // operation guard, then recheck the pinned seal and caller's
+                // current session/grant after any queue wait.
+                let _operation =
+                    crate::tched_router_runtime::TchedRouterRuntimeClient::selection_guard()
+                        .await;
+                let caller = crate::tched_router_admission::RouterCaller {
+                    actor: actor_id.to_owned(),
+                    capability: capability_id.map(str::to_owned),
+                    session: session_id.map(str::to_owned),
+                    genesis: session_genesis.map(str::to_owned),
+                };
+                let pinned = crate::tched_router_admission::readmit_call(
+                    self,
+                    &admitted_schema,
+                    "tched_skills",
+                    method,
+                    &caller,
+                )
+                .await?;
+                if let Some(proof) = &bound_oracle {
+                    crate::interceptor::revalidate_bound_oracle(
+                        self,
+                        proof,
+                        actor_id,
+                        session_id,
+                        session_genesis,
+                        true,
+                    )
+                    .await?;
+                }
+                let args = serde_json::to_value(&parsed_value)?;
+                let sealed_source = pinned.schema.example.as_ref()
+                    .context("sealed tched_skills source descriptor missing")?;
+                let sealed_source: op_plugins::state_plugins::tched_skills::SkillsState =
+                    serde_json::from_value(serde_json::to_value(sealed_source)?)?;
+                let result = op_plugins::state_plugins::tched_skills::dispatch(
+                    method,
+                    &args,
+                    &sealed_source,
+                )
+                .await?;
+                let declaration = pinned.schema.methods.get(method)
+                    .context("pinned tched_skills method is absent")?;
+                crate::method_contract_admission::validate_admitted_output(
+                    declaration,
+                    &result,
+                )?;
+                result
             }
             "procfs" => {
                 let _observation = self.lock_host_observation().await;

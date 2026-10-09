@@ -14,8 +14,6 @@ use op_state_store::{CapabilityDecl, MethodDecl, PluginSchema, SideEffect};
 use serde_json::{Map, Value};
 use simd_json::OwnedValue;
 
-const BINARY: &str = "/usr/bin/zeroclaw";
-const CONFIG_DIR: &str = "/etc/threetched";
 const NAMESPACE: &str = "model_routes";
 /// Path commands from `zeroclaw config --help`. The help text is the array.
 const PATH_COMMANDS: &[&str] = &["get", "set", "init", "list", "patch"];
@@ -39,11 +37,13 @@ fn captured() -> Option<&'static CapturedNamespace> {
 }
 
 fn capture() -> Result<CapturedNamespace> {
-    let schema_text = run(&[BINARY, "config", "schema"])?;
+    let binary = super::tched_router_paths::binary()?;
+    let binary = binary.to_str().context("non-UTF8 tched-router binary path")?;
+    let schema_text = run(&[binary, "config", "schema"])?;
     let document: Value = serde_json::from_str(&schema_text)
         .context("zeroclaw config schema is not JSON")?;
     let section = filter_namespace(&document, NAMESPACE)?;
-    let help = run(&[BINARY, "config", "--help"])?;
+    let help = run(&[binary, "config", "--help"])?;
     let commands = filter_command_words(&help, PATH_COMMANDS);
     if commands.is_empty() {
         bail!("zeroclaw config --help listed no path commands");
@@ -263,9 +263,10 @@ fn call_namespace(method: &str, json_args: &str) -> Result<serde_json::Value> {
         serde_json::from_str(json_args).context("namespace method arguments are not an object")?
     };
     let help = matches!(args.get("help"), Some(Value::Bool(true)));
+    let config_dir = super::tched_router_paths::config_dir()?;
     let mut argv = vec![
         "--config-dir".to_string(),
-        CONFIG_DIR.to_string(),
+        config_dir.to_str().context("non-UTF8 tched-router config path")?.to_string(),
         "config".to_string(),
         method.to_string(),
     ];
@@ -305,7 +306,7 @@ fn call_namespace(method: &str, json_args: &str) -> Result<serde_json::Value> {
             }
         }
     }
-    let mut command = Command::new(BINARY);
+    let mut command = Command::new(super::tched_router_paths::binary()?);
     command.args(&argv);
     if method == "patch" && !help {
         let operations = args
@@ -379,7 +380,10 @@ mod tests {
 
     #[test]
     fn get_help_runs_the_installed_binary() {
-        if !std::path::Path::new(BINARY).is_file() {
+        let Ok(binary) = super::super::tched_router_paths::binary() else {
+            return;
+        };
+        if !binary.is_file() {
             return;
         }
         let outcome = dispatch("get", r#"{"help":true}"#).expect("get is a namespace method");

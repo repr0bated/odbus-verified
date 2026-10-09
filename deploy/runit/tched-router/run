@@ -6,7 +6,7 @@ set -eu
 # Session selectors are operator input, never credentials or model arguments.
 filesystem_marker=/etc/op-dbus/native-filesystem.enabled
 filesystem_session_file=/etc/op-dbus/human-lungs-session
-filesystem_root=/run/mount/3tchedFS-native
+filesystem_root=/run/mount/3tchedFS
 filesystem_root_receipt=/etc/op-dbus/native-filesystem.allowed-root-owned
 filesystem_enabled=false
 protected_filesystem_file() {

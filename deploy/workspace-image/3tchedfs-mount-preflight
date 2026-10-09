@@ -1,0 +1,22 @@
+#!/bin/sh
+# The guest owns exactly one 3tchedFS mount; a host disk at this path is drift.
+set -eu
+[ "$(id -u)" = 0 ] || exit 1
+[ -c /dev/fuse ] || exit 1
+[ -S /run/opdbus/lungs/lungs.sock ] || exit 1
+[ -f /usr/share/op-dbus/lungs-catalog/.manifest.json ] || exit 1
+[ -d /usr/share/op-dbus/lungs-view/objects ] || exit 1
+[ -d /usr/share/op-dbus/lungs-empty-state ] || exit 1
+for path in /run /run/mount /run/mount/3tchedFS; do
+    if [ -e "$path" ] || [ -L "$path" ]; then
+        [ -d "$path" ] && [ ! -L "$path" ] || exit 1
+    else
+        mkdir -m 0755 -- "$path"
+    fi
+    [ "$(stat -c '%u:%g:%a' -- "$path")" = 0:0:755 ] || exit 1
+done
+[ -z "$(findmnt -rn -M /run/mount/3tchedFS -o FSTYPE)" ] || {
+    echo '3tchedFS mountpoint is already occupied' >&2
+    exit 1
+}
+[ -z "$(find /run/mount/3tchedFS -mindepth 1 -maxdepth 1 -print -quit)" ] || exit 1

@@ -13,7 +13,7 @@ export OP_DBUS_ROOT=/opt/op-dbus/current/share/op-dbus/notebook-sync
 export OPDBUS_NOTEBOOK_PROJECT_ROOT=/srv/git/odbus-verified
 export NOTEBOOKLM_SOURCES_DIR=/home/jeremy/.notebooklm-sources
 export OPDBUS_NOTEBOOK_SYNC_MODE=per-model
-export OPDBUS_NOTEBOOK_FS_ROOT=/run/mount/3tchedFS-native
+export OPDBUS_NOTEBOOK_FS_ROOT=/run/mount/3tchedFS
 INTERVAL=${NOTEBOOK_SYNC_INTERVAL_SEC:-300}
 case "$INTERVAL" in ''|*[!0-9]*) exit 78 ;; esac
 [ "$INTERVAL" -ge 30 ] && [ "$INTERVAL" -le 86400 ] || exit 78
@@ -31,7 +31,7 @@ rm -f "$ready"
 # publishes no legacy runit-ready flag, and dependency observation must not
 # start a service that the operator deliberately left down.
 sv -w 90 check /etc/runit/sv/op-grpc-bridge || exit 1
-sv -w 90 check /etc/runit/sv/threetched-fs-native || exit 1
+sv -w 90 check /etc/runit/sv/threetched-fs || exit 1
 
 sync_pid=
 stop_cycle() {

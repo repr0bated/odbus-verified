@@ -1145,6 +1145,16 @@ seed_write_hostname() {
     mv -T -- "$hostname_tmp" "$guest/etc/hostname"
     sync -f "$guest/etc/hostname"
 }
+# Raw leaf for a future provisioning run. seed_create does not call this.
+# The live create path still uses truncate. Do not switch that call until
+# the new provisioning entry is the one that runs.
+seed_leaf_image_qemu() {
+    leaf=$1
+    leaf_size=$2
+    command -v qemu-img >/dev/null 2>&1 || seed_fail "qemu-img is required to create a leaf"
+    qemu-img create -f raw "$leaf" "$leaf_size" >/dev/null || seed_fail "qemu-img failed to create the leaf"
+    chmod 600 "$leaf"
+}
 seed_create() {
     seed_shared_lock
     seed_session=$1 leaf=$2 leaf_size=$3

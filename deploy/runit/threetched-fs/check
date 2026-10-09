@@ -1,4 +1,5 @@
 #!/bin/sh
 # Mount readiness is independent of the operation backend's availability.
 [ "$(findmnt -rn -M /run/mount/3tchedFS -o FSTYPE)" = fuse.3tchedFS ] || exit 1
+jq -e '.mount_identity.kind == "host_session" and .local_call_owner_uid == 1001 and .workspace_id == null' /run/mount/3tchedFS/.3tchedfs.json >/dev/null || exit 1
 test -f /run/mount/3tchedFS/plugins/identity_sled/operations/get_identity/call || exit 1

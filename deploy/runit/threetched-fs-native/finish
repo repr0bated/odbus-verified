@@ -1,5 +1,0 @@
-#!/bin/sh
-# The admitted daemon owns its --auto-unmount lifecycle. A refused startup
-# must never unmount an existing/foreign filesystem occupying this path.
-rm -f /run/opdbus/runit-ready/threetched-fs-native
-exit 0
