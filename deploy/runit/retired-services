@@ -64,3 +64,17 @@ incus-ct-assistant
 ovsbr0-addr
 # Replaced by the decoy-originated SSH TUN carried inside MASQUE (OD-104).
 gre-decoy
+
+# 2026-10 bridge rebuild: op-ovsbr0-setup --seed-only (run from
+# ovs-vswitchd/run) replaces the whole seed+uplink+addr chain in one atomic
+# step; ovsbr0-cutover replaces the IP-cutover+alias tail. Only the OVS-side
+# plumbing is retired here — tun5 must still never be enslaved into ovsbr0
+# (that was the actual OD-104 regression). op-warp-ssh-host/-routes, the
+# decoy-originated WARP/MASQUE SSH tunnel itself, and wgcf are NOT retired:
+# the design goal is that every external observer sees nothing but ordinary
+# WARP traffic to the decoy, including admin SSH. They stay live, just
+# disconnected from the bridge.
+ovsbr0-uplink
+ovsbr0-eth0
+ovsbr0-svc-addr
+ovsbr0-tun5

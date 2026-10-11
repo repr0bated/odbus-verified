@@ -1,0 +1,80 @@
+#!/bin/sh
+# ovsbr0-cutover — finish what op-ovsbr0-setup (run from ovs-vswitchd/run)
+# started: move the public IP/route from eth0 onto pub0, and apply the
+# bridge's own service alias (MQTT). This is the ONLY thing left to do after
+# the atomic bridge/uplink/pub0 seed — no tun port, no "3tched" port, no
+# OpenFlow address (reserved, inert — see network.conf).
+#
+# Replaces the old ovsbr0-uplink / ovsbr0-eth0 / ovsbr0-svc-addr / ovsbr0-tun5
+# four-service chain. The IP-move logic below is lifted from the proven
+# ovsbr0-eth0-up cutover (same ip-batch, same partial-failure handling);
+# this service only runs it, it doesn't re-enslave anything — that already
+# happened in OVSDB before vswitchd started.
+set -eu
+export PATH="/usr/local/bin:/usr/bin:/usr/sbin:${PATH:-}"
+set -a; [ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf; set +a
+
+BRIDGE="${BRIDGE:-ovsbr0}"
+PUB="${PUBLIC_PORT:-pub0}"
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i + 1))
+        [ "$i" -ge 120 ] && { echo "dependency $1 not ready after 120s" >&2; exit 1; }
+        sleep 1
+    done
+}
+wait_dep ovs-vswitchd
+wait_dep uplink-dhcp
+
+[ -d "/sys/class/net/$BRIDGE" ] || { echo "ovsbr0-cutover: $BRIDGE missing — seed failed" >&2; exit 1; }
+[ -d "/sys/class/net/$PUB" ] || { echo "ovsbr0-cutover: $PUB missing — seed failed" >&2; exit 1; }
+
+# --- 1. IP/route cutover: eth0 -> pub0 --------------------------------------
+if ip -4 -o addr show dev "$PUB" scope global | grep -q .; then
+    echo "ovsbr0-cutover: $PUB already addressed — nothing to move"
+else
+    ADDRS=""
+    GW=""
+    SNAPSHOT=/run/opdbus/uplink-migration.env
+    # shellcheck disable=SC1090
+    [ -r "$SNAPSHOT" ] && . "$SNAPSHOT" && ADDRS="${UPLINK_ADDRS:-}" && GW="${UPLINK_GW:-}"
+    [ -n "$ADDRS" ] || ADDRS="${PUBLIC_ADDR:-}"
+    [ -n "$GW" ] || GW="${PUBLIC_GW:-}"
+    [ -n "$ADDRS" ] || { echo "ovsbr0-cutover: no address to migrate — refusing" >&2; exit 1; }
+    echo "ovsbr0-cutover: migrating $ADDRS (gw ${GW:-none}) onto $PUB"
+
+    BATCH="$(mktemp /run/ovsbr0-cutover.XXXXXX)"
+    trap 'rm -f "$BATCH" "$BATCH.adds"' EXIT
+    {
+        echo "link set dev $PUB up"
+        for a in $ADDRS; do
+            echo "addr del $a dev ${UPLINK_PHYS:-eth0}"
+            echo "addr add $a dev $PUB"
+        done
+        [ -n "$GW" ] && echo "route replace default via $GW dev $PUB onlink"
+    } >"$BATCH"
+
+    if ! ip -batch "$BATCH" 2>/dev/null; then
+        echo "ovsbr0-cutover: batch failed (uplink likely already stripped by OVS) — applying adds only" >&2
+        grep -v '^addr del ' "$BATCH" >"$BATCH.adds"
+        ip -batch "$BATCH.adds"
+    fi
+    echo "ovsbr0-cutover: $ADDRS on $PUB, default via ${GW:-none}"
+fi
+
+# --- 2. Bridge's own service alias (MQTT). No OpenFlow — reserved, inert. --
+ip link set dev "$BRIDGE" up
+for pair in ${BRIDGE_SVC_ADDRS:-}; do
+    addr="${pair%@*}"
+    dev="${pair#*@}"
+    [ -n "$addr" ] || continue
+    ip -4 addr show dev "$dev" | grep -qw "${addr%%/*}" || ip addr add "$addr" dev "$dev"
+    echo "ovsbr0-cutover: $addr on $dev"
+done
+
+install -d -m 0755 /run/opdbus/runit-ready
+touch /run/opdbus/runit-ready/ovsbr0-cutover
+exec pause

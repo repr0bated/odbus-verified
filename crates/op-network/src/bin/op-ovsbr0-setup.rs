@@ -4,8 +4,9 @@
 //! unixctl socket to stop the daemon cleanly.  No ovs-vsctl/ovsdb-client shell
 //! commands are used.  `ovs-dpctl del-dp` is used only while vswitchd is down
 //! to clear stale kernel datapath state.
-//! The SSH/MASQUE interface `tun5` is always included as a system port;
-//! its creation and addresses remain owned by the tunnel service.
+//! The bridge carries no tunnel/tun ports of any kind — SSH/WARP-style access
+//! to the host is handled entirely outside OVS (reverse SSH to the decoy),
+//! and must never be seeded onto this bridge.
 //!
 //! Environment variables:
 //!   BRIDGE         OVS bridge name          (default: ovsbr0)
@@ -651,10 +652,11 @@ async fn main() -> Result<()> {
         None => info!("bridge {} not found in OVSDB", cfg.bridge),
     }
 
-    // The SSH/MASQUE tunnel and optional physical uplink ride in the same
-    // create transact as system ports — see create_bridge_system.
-    let mut seed_ports: Vec<&str> = vec!["tun5"];
-    if !cfg.uplink.is_empty() && cfg.uplink != "tun5" {
+    // The optional physical uplink rides in the same create transact as the
+    // bridge — see create_bridge_system. No tunnel ports are ever seeded here;
+    // SSH/WARP-style access to the host lives entirely outside OVS.
+    let mut seed_ports: Vec<&str> = Vec::new();
+    if !cfg.uplink.is_empty() {
         seed_ports.push(cfg.uplink.as_str());
     }
     let shared_mac = resolve_shared_mac(&cfg);

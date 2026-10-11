@@ -13,6 +13,9 @@ unified-execution
 # lungs after incusd, then honor each explicit boot-completion start policy.
 identity-roots
 
-# Bridge boot: enslave tun5 after ovsbr0-uplink. The service is supervised
-# from runsvdir, so a golden apply starts it on every boot.
-ovsbr0-tun5
+# Bridge boot (2026-10 rebuild): op-ovsbr0-setup --seed-only now runs inside
+# ovs-vswitchd/run itself, atomically. This is just the IP/route cutover +
+# bridge service-alias step that has to happen after vswitchd is up. The
+# service is supervised from runsvdir, so a golden apply starts it on every
+# boot.
+ovsbr0-cutover
