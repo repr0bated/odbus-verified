@@ -771,6 +771,12 @@ impl MutationEngine {
                 "configured control-plane chatbot principal_id does not match its WireGuard key"
             );
         }
+        if crate::identity_sled_dispatch::configured_identity_awaits_provision(self, &session_id)
+            .await?
+        {
+            tracing::info!(%session_id, "configured chatbot awaits explicit container provisioning");
+            return Ok(None);
+        }
         match crate::human_principal_dispatch::resolve_key_for_assertion(wireguard_pubkey).await {
             Ok(Some(record)) if record.revoked_at != 0 => {
                 anyhow::bail!("configured control-plane chatbot identity is revoked")
@@ -853,6 +859,12 @@ impl MutationEngine {
             && expected.trim() != principal_id
         {
             anyhow::bail!("configured local human principal_id does not match its WireGuard key");
+        }
+        if crate::identity_sled_dispatch::configured_identity_awaits_provision(self, &session_id)
+            .await?
+        {
+            tracing::info!(%session_id, "configured local human awaits explicit identity provisioning");
+            return Ok(None);
         }
         match crate::human_principal_dispatch::resolve_key_for_assertion(wireguard_pubkey).await {
             Ok(Some(record)) if record.revoked_at != 0 => {

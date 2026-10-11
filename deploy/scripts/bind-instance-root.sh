@@ -15,7 +15,7 @@ flock -n 9 || fail 'instance preparation active'
 jq -e '.phase=="filesystems-prepared" and .filesystem_prepared==true' "$disk" >/dev/null || fail 'filesystems not prepared'
 jq -e '.phase=="container-defined" and .identity_registered==false and .root_bound==false' "$receipt" >/dev/null || fail 'existing root intent requires manual reconciliation'
 root=$pool/.mounts/$name/root
-native=/var/lib/incus/storage-pools/identity-roots/containers/$name/rootfs
+container_root=/var/lib/incus/storage-pools/identity-roots/containers/$name/rootfs
 sid=b0c777e3-0955-cd8b-3d01-ca12998cae28
 image=$pool/$name.img
 [[ $(findmnt -rn -M "$pool" -o FSROOT) == /@3tched-leaf-pool &&
@@ -34,8 +34,8 @@ jq -e --arg sid "$sid" '.status=="Stopped" and .config["user.opdbus.session_id"]
 idmap=$(jq -er '.config["volatile.idmap.current"]' <<<"$instance")
 jq -e 'length==2 and all(.[]; .Hostid==1000000 and .Nsid==0 and .Maprange==1000000000) and
     any(.[]; .Isuid==true and .Isgid==false) and any(.[]; .Isgid==true and .Isuid==false)' <<<"$idmap" >/dev/null || fail 'unsupported container idmap'
-[[ ! -L $native && -d $native && $(realpath -e "$native") == "$native" &&
-   -z $(findmnt -rn -M "$native") && ! -L $root/@/etc/fstab && -f $root/@/etc/fstab &&
+[[ ! -L $container_root && -d $container_root && $(realpath -e "$container_root") == "$container_root" &&
+   -z $(findmnt -rn -M "$container_root") && ! -L $root/@/etc/fstab && -f $root/@/etc/fstab &&
    ! -L $root/@/etc/hostname && -f $root/@/etc/hostname ]] || fail 'unexpected root mount or guest configuration'
 for member in memory rules shared skills soul user; do
     [[ -d $root/@/agent/$member && ! -L $root/@/agent/$member &&
@@ -43,7 +43,7 @@ for member in memory rules shared skills soul user; do
     btrfs subvolume show "$root/@agent_$member" >/dev/null
 done
 # Keep the Incus empty-root scaffolding underneath the bind; never delete it.
-[[ ! -e $pool/.provisioning/$name.before-root.json ]] || fail 'retained native backup requires reconciliation'
+[[ ! -e $pool/.provisioning/$name.before-root.json ]] || fail 'retained container backup requires reconciliation'
 printf '%s\n' "$instance" > "$pool/.provisioning/$name.before-root.json"
 cp -a "$root/@/etc/fstab" "$pool/.provisioning/$name.fstab.before"
 jq '.phase="root-bind-intent"' "$receipt" > "$receipt.new"
@@ -59,20 +59,20 @@ if jq -e '.devices|has("fuse")' <<<"$instance" >/dev/null; then
 else
     incus config device add "$name" fuse unix-char source=/dev/fuse path=/dev/fuse
 fi
-mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@" "$native"
+mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@" "$container_root"
 for member in memory rules shared skills soul user; do
-    mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@agent_$member" "$native/agent/$member"
-    case "$member" in shared|soul) mount -o remount,bind,ro "$native/agent/$member" ;; esac
+    mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@agent_$member" "$container_root/agent/$member"
+    case "$member" in shared|soul) mount -o remount,bind,ro "$container_root/agent/$member" ;; esac
 done
-mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@agent_user/persist" "$native/opt/run-mounts/persist"
+mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@agent_user/persist" "$container_root/opt/run-mounts/persist"
 printf '%s\n' '# Container root and agent subvolumes are mounted by the external identity mount owner.' \
     '# Do not mount the physical seed or host boot partitions inside this container.' > "$root/@/etc/fstab"
 printf '%s\n' "$sid" > "$root/@/etc/hostname"
 incus config set "$name" "volatile.last_state.idmap=$idmap"
 sync -f "$root"
 instance=$(incus query "/1.0/instances/$name")
-jq --arg root "$native" --argjson instance "$instance" \
-   '.phase="root-bound"|.root_bound=true|.native_root=$root|.instance=$instance|
+jq --arg root "$container_root" --argjson instance "$instance" \
+   '.phase="root-bound"|.root_bound=true|.threetched_root=$root|.instance=$instance|
     .guest_fuse_configured=true|.guest_fuse_mounted=false|.host_fuse_mirrored=false' "$receipt" > "$receipt.new"
 sync -f "$receipt.new"
 mv -T "$receipt.new" "$receipt"

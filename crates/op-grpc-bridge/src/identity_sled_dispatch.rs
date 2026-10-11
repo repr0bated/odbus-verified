@@ -1597,6 +1597,20 @@ pub(crate) async fn chatbot_awaits_explicit_reprovision(engine: &MutationEngine,
         && revision.operation_id.starts_with(&format!("delete-provision-{session_id}-")))
 }
 
+/// Startup must leave an absent identity to explicit provisioning, while
+/// keeping the existing authenticated maintenance surface available.
+pub(crate) async fn configured_identity_awaits_provision(
+    engine: &MutationEngine,
+    session_id: &str,
+) -> anyhow::Result<bool> {
+    let revision = load_revision(engine.identity_sled_store()?, session_id).await?;
+    if revision.record.is_none() {
+        anyhow::ensure!(revision.genesis.is_none(), "configured identity has genesis without a record");
+        return Ok(true);
+    }
+    Ok(false)
+}
+
 /// Bring up the control-plane chatbot container named by
 /// `OP_CONTROL_PLANE_CHATBOT_SESSION_ID`. Human containers start at login.
 pub(crate) async fn start_service_identity_containers(
