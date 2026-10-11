@@ -627,6 +627,8 @@ build_golden() {
         "$GOLDEN_DIR/libexec/3tched/prepare-instance-disk"
     run install -Dm755 "$SCRIPT_DIR/../scripts/sync-instance-upgrade.sh" \
         "$GOLDEN_DIR/libexec/3tched/sync-instance-upgrade"
+    run install -Dm755 "$SCRIPT_DIR/../scripts/prepare-chatbot-adoption.sh" \
+        "$GOLDEN_DIR/libexec/3tched/prepare-chatbot-adoption"
     run install -Dm755 "$SCRIPT_DIR/../scripts/bind-instance-root.sh" \
         "$GOLDEN_DIR/libexec/3tched/bind-instance-root"
     run install -Dm755 "$SCRIPT_DIR/../workspace-image/prepare-lungs-client.sh" \

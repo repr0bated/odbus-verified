@@ -6,6 +6,7 @@
 #   sudo ./provision-workspace-subscriber.sh --prepare-container 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --pair-upgrade 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --bind-root 3tchedChatbot
+#   sudo ./provision-workspace-subscriber.sh --prepare-adoption 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --sync-upgrade 3tchedChatbot
 #     [--root-gib 20 --upgrade-gib 40]   # prepare-disk only
 # Creates /var/lib/3tched-leaf-pool/NAME.img: raw GPT root + upgrade.
@@ -121,6 +122,14 @@ prepare_chatbot_container() (
     printf 'Stopped container defined; root binding and identity adoption remain pending.\n'
 )
 case $1 in
+    --prepare-adoption)
+        shift
+        script_dir=$(dirname -- "$(realpath -e -- "${BASH_SOURCE[0]}")")
+        adoption_helper=$script_dir/prepare-chatbot-adoption.sh
+        [[ -x $adoption_helper ]] || adoption_helper=$script_dir/prepare-chatbot-adoption
+        [[ -x $adoption_helper ]] || die 'adoption plan helper missing'
+        exec "$adoption_helper" "$@"
+        ;;
     --bind-root)
         shift
         script_dir=$(dirname -- "$(realpath -e -- "${BASH_SOURCE[0]}")")
