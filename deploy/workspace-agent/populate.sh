@@ -32,7 +32,9 @@ for member in memory rules shared skills soul user; do
     find "$base/@agent_$member" -type f -exec chmod 0644 {} +
     diff -qr "$assets/$member" "$base/@agent_$member"
 done
-chmod 0700 "$base/@agent_memory" "$base/@agent_user"
+chmod 0700 "$base/@agent_memory" "$base/@agent_rules" "$base/@agent_user"
+chmod 0700 "$base/@agent_rules/rules" "$base/@agent_user/user"
+chmod 0600 "$base/@agent_rules/rules/rules.md" "$base/@agent_user/user/user.md"
 install -d -m 0700 "$base/@agent_user/identity"
 for method in memory_store memory_recall memory_retrieve memory_query memory_delete memory_list_namespaces memory_semantic_query; do
     ln -s "/run/mount/3tchedFS/plugins/cognitive_mcp/operations/$method" "$base/@agent_memory/$method"
@@ -43,7 +45,9 @@ ln -s user/USER.md "$base/@/agent/USER.md"
 ln -s memory/MEMORY.md "$base/@/agent/MEMORY.md"
 ln -s /run/mount/3tchedFS/plugins/cognitive_mcp "$base/@agent_shared/cognitive-mcp"
 ln -s /run/mount/3tchedFS/plugins/agent_config "$base/@agent_shared/agent-config"
+ln -s /run/mount/3tchedFS/plugins/tched_plugins "$base/@agent_shared/threetched-plugins"
 ln -s /run/mount/3tchedFS/plugins/tched_router "$base/@agent_skills/runtime"
+ln -s /run/mount/3tchedFS/plugins/tched_skills "$base/@agent_skills/skills"
 install -d -m 0755 "$base/@/etc/3tched"
 for member in skills rules user shared; do
     ln -s "/etc/3tched/$member" "$base/@agent_$member/host"

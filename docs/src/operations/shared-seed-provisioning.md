@@ -1,5 +1,47 @@
 # Shared physical seed and private leaves
 
+## Manual provisioning checkpoint: partitioned instance disk
+
+The October 11 manual workflow uses a sparse QEMU raw image under
+`/var/lib/3tched-leaf-pool`, mounted from `@3tched-leaf-pool` on the host's
+main Btrfs pool. This subvolume isolates the storage path, but shares that
+pool's capacity. The shared seed remains the separate sealed 20 GiB partition;
+no instance identity or Cozo binding is written into it.
+
+The completed image preparation step is available through the provisioner:
+
+```sh
+sudo ./deploy/scripts/provision-workspace-subscriber.sh --prepare-disk 3tchedChatbot
+sudo ./deploy/scripts/provision-workspace-subscriber.sh --inspect-disk 3tchedChatbot
+```
+
+Preparation creates a 60 GiB sparse raw image with GPT: 20 GiB root and the
+remaining approximately 40 GiB upgrade partition. `--root-gib` and
+`--upgrade-gib` select capacities on a new image. The upgrade remainder is
+slightly smaller than its requested capacity because GPT and alignment consume
+space. The image and a private preparation receipt live in the leaf pool;
+the receipt pins the image inode and both partition identities. An interrupted
+creation retains its intent and image instead of retrying or cleaning them up.
+`inspect` does not register or adopt an existing image.
+
+This phase performs no filesystem formatting, Btrfs device-add, seed transport,
+Incus creation, identity registration or startup. It has no identity/backend
+preflight dependency. Those later steps remain subject to the owner's manual
+script comparison. The existing identity mode described below expects an
+unpartitioned leaf and must not be used with this new partitioned image.
+
+The seed has the seven sibling subvolumes and guest systemd FUSE service.
+`@agent_rules/rules/rules.md` and `@agent_user/user/user.md` are initial
+per-instance documents: their content is changed in each private writable leaf,
+not in the sealed seed. Shared owner links expose cognitive memory, skills,
+routing and plugins without granting authority or starting those features.
+
+## Earlier unpartitioned-leaf integration
+
+The following describes the earlier helper contract. Its device paths,
+host-owned FUSE attachment and early backend gates are not the new manual
+partitioned-disk workflow and still require reconciliation before automation.
+
 Identity provisioning uses one immutable Btrfs seed on the physical partition
 currently named `/dev/sdb2`. Each container has its own writable leaf. A leaf
 stores that container's changes; it does not contain a copied root filesystem.
@@ -31,7 +73,8 @@ created through the sprout, so those writes belong to the leaf. Persistence is
 an ordinary mode-0700 directory at `@agent_user/persist`, bound to the guest's
 `/opt/run-mounts/persist`. Provisioning creates no subvolumes at all: only the
 seven inherited members are used. Agent soul,
-rules and shared subvolumes remain protected in the guest view.
+and shared subvolumes remain protected in the guest view. Rules and user
+preferences are instance-specific and writable in each private leaf.
 
 Storage receipts identify this layout as `shared-partition-siblings-v2` and
 pin its inherited subvolume identities plus the persistence directory's inode,

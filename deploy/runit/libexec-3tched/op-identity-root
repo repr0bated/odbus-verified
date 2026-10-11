@@ -1078,7 +1078,7 @@ seed_verify_layout() {
     [ "$(printf '%s\n' "$actual_pins" | jq -cS .)" = "$(jq -cS '.members' "$seed_dir/state.json")" ] || seed_fail "shared sibling IDs or UUIDs changed"
     [ "$(seed_persist_pin | jq -cS .)" = "$(jq -cS '.persist' "$seed_dir/state.json")" ] || seed_fail "private persistence directory or parent identity changed"
     for sibling in @ @agent_memory @agent_rules @agent_shared @agent_skills @agent_soul @agent_user; do
-        case "$sibling" in @agent_rules|@agent_shared|@agent_soul) readonly=true ;; *) readonly=false ;; esac
+        case "$sibling" in @agent_shared|@agent_soul) readonly=true ;; *) readonly=false ;; esac
         [ "$(btrfs property get -ts "$seed_dir/volume/$sibling" ro)" = "ro=$readonly" ] || seed_fail "sibling protection changed: $sibling"
     done
 }
@@ -1118,7 +1118,7 @@ seed_mount_guest() {
         mount --bind "$guest" "$native_root"
     fi
     for member in memory rules shared skills soul user; do
-        case "$member" in rules|shared|soul) readonly=true ;; *) readonly=false ;; esac
+        case "$member" in shared|soul) readonly=true ;; *) readonly=false ;; esac
         seed_bind_member "$seed_dir/volume/@agent_$member" "$native_root/agent/$member" "$readonly"
     done
     seed_bind_member "$seed_dir/volume/@agent_user/persist" "$native_root/opt/run-mounts/persist" false
@@ -1225,10 +1225,10 @@ seed_create() {
     mkdir -m 700 -- "$persist_dir"
     persist_pin=$(seed_persist_pin)
     seed_write --argjson pin "$persist_pin" '.persist=$pin'
-    for member in rules shared soul; do
+    for member in shared soul; do
         btrfs property set -ts "$seed_dir/volume/@agent_$member" ro true
     done
-    for member in memory skills user; do
+    for member in memory rules skills user; do
         btrfs property set -ts "$seed_dir/volume/@agent_$member" ro false
     done
     seed_write_hostname

@@ -230,7 +230,7 @@ layout_json() {
        members:[
          {subvolume:"@",mountpoint:"/",guest_mode:"rw"},
          {subvolume:"@agent_memory",mountpoint:"/agent/memory",guest_mode:"rw"},
-         {subvolume:"@agent_rules",mountpoint:"/agent/rules",guest_mode:"ro"},
+         {subvolume:"@agent_rules",mountpoint:"/agent/rules",guest_mode:"rw"},
          {subvolume:"@agent_shared",mountpoint:"/agent/shared",guest_mode:"ro"},
          {subvolume:"@agent_skills",mountpoint:"/agent/skills",guest_mode:"rw"},
          {subvolume:"@agent_soul",mountpoint:"/agent/soul",guest_mode:"ro"},

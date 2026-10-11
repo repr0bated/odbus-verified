@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 # Provision a fresh shared root for the EXISTING configured chatbot key.
+# Completed manual storage stage (no identity/backend preflight):
+#   sudo ./provision-workspace-subscriber.sh --prepare-disk 3tchedChatbot
+#   sudo ./provision-workspace-subscriber.sh --inspect-disk 3tchedChatbot
+#     [--root-gib 20 --upgrade-gib 40]   # prepare-disk only
+# Creates /var/lib/3tched-leaf-pool/NAME.img: raw GPT root + upgrade.
+# This stage ends before formatting, seed attachment, Incus creation or Cozo
+# registration. Existing identity mode below remains the older unpartitioned
+# leaf workflow; do not pass a partitioned image to that mode.
 # Usage:
 #   sudo ./provision-workspace-subscriber.sh LABEL --session-id UUID --pubkey B64 \
 #     --operator-session UUID --leaf-path ABSOLUTE_PATH --principal-group '$ROOT' \
@@ -40,6 +48,18 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "missing command: $1"; }
 usage() { sed -n '2,20p' "$0"; }
 if [[ $# == 0 || ${1:-} == -h || ${1:-} == --help ]]; then usage; exit 0; fi
+case $1 in
+    --prepare-disk|--inspect-disk)
+        disk_action=create
+        [[ $1 != --inspect-disk ]] || disk_action=inspect
+        shift
+        script_dir=$(dirname -- "$(realpath -e -- "${BASH_SOURCE[0]}")")
+        disk_helper=$script_dir/prepare-instance-disk.sh
+        [[ -x $disk_helper ]] || disk_helper=$script_dir/prepare-instance-disk
+        [[ -x $disk_helper ]] || die 'disk preparation helper is missing'
+        exec "$disk_helper" "$disk_action" "$@"
+        ;;
+esac
 SYSTEM_MODE=false SYSTEM_NAME="" ROLE=""
 if [[ $1 == --system ]]; then
     SYSTEM_MODE=true; shift; SYSTEM_NAME=${1:?container name required}; shift
