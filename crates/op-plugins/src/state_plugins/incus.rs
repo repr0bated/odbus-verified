@@ -307,7 +307,7 @@ impl IncusPlugin {
     ) -> Result<(String, &'static str)> {
         let (_, body) = Self::identity_session_power_request(session_id, state)?;
         if instance_name != session_id
-            && !(instance_name == "Chatbot3tched"
+            && !(instance_name == "3tchedChatbot"
                 && session_id == "b0c777e3-0955-cd8b-3d01-ca12998cae28")
         {
             anyhow::bail!("native identity power target is not canonical or the pinned chatbot");
@@ -1325,21 +1325,22 @@ mod tests {
         let sid = "b0c777e3-0955-cd8b-3d01-ca12998cae28";
         let (path, body) = IncusPlugin::bound_identity_session_power_request(
             sid,
-            "Chatbot3tched",
+            "3tchedChatbot",
             IdentitySessionPowerState::Running,
         )
         .unwrap();
-        assert_eq!(path, "/1.0/instances/Chatbot3tched/state");
+        assert_eq!(path, "/1.0/instances/3tchedChatbot/state");
         assert_eq!(body, r#"{"action":"start"}"#);
         let (_, body) = IncusPlugin::bound_identity_session_power_request(
             sid,
-            "Chatbot3tched",
+            "3tchedChatbot",
             IdentitySessionPowerState::Stopped,
         )
         .unwrap();
         assert_eq!(body, r#"{"action":"stop"}"#);
         for (session, name) in [
-            ("00000000-0000-4000-8000-000000000001", "Chatbot3tched"),
+            ("00000000-0000-4000-8000-000000000001", "3tchedChatbot"),
+            (sid, "Chatbot3tched"),
             (sid, "another-container"),
             (sid, "../../host?project=default"),
         ] {

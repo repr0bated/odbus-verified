@@ -111,6 +111,10 @@ prepare_chatbot_container() (
         --config security.syscalls.deny_default=true --config "security.syscalls.deny=$deny_policy" \
         --config "user.opdbus.session_id=$sid" --config "user.opdbus.wireguard_public_key=$public_key" \
         --config user.display_name=control-plane-chatbot --config "raw.lxc=lxc.uts.name = $sid" </dev/null
+    # Preserve the shared profile. Its historical initial.mode key is absent
+    # from the sealed disk-device contract and /run already exists as 0755.
+    incus config device override "$1" runtime-run
+    incus config device unset "$1" runtime-run initial.mode
     instance=$(incus query "/1.0/instances/$1")
     jq -e --arg name "$1" --arg sid "$sid" '.name==$name and .status=="Stopped" and
         .config["user.opdbus.session_id"]==$sid' <<<"$instance" >/dev/null || die 'stopped definition readback differs'
