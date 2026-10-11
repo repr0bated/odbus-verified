@@ -206,7 +206,9 @@ fn member_identity(file: &File, pin: &MemberPin, readonly: bool) -> Result<()> {
         "read inherited subvolume identity");
     ensure!(u64::from_ne_bytes(bytes[..8].try_into()?) == pin.id
         && bytes[296..312] == *uuid::Uuid::parse_str(&pin.uuid)?.as_bytes()
-        && (u64::from_ne_bytes(bytes[288..296].try_into()?) & 2 != 0) == readonly,
+        // GET_SUBVOL_INFO exposes BTRFS_ROOT_SUBVOL_RDONLY (bit 0),
+        // unlike SUBVOL_GETFLAGS' BTRFS_SUBVOL_RDONLY (bit 1).
+        && (u64::from_ne_bytes(bytes[288..296].try_into()?) & 1 != 0) == readonly,
         "inherited subvolume ID/UUID/protection changed");
     Ok(())
 }

@@ -53,7 +53,10 @@ for member in @ @agent_memory @agent_rules @agent_shared @agent_skills @agent_so
     uuid=$(awk '$1=="UUID:" {print $2}' <<<"$show")
     members=$(jq -cn --argjson members "$members" --arg name "$member" --argjson id "$id" --arg uuid "$uuid" '$members+{($name):{id:$id,uuid:$uuid}}')
 done
-seed=$(realpath -e "$(jq -er .seed_device "$disk")")
+# The same seed UUID is exposed by both the physical partition and RO loop.
+# Resolve the unique physical partition, rather than udev's current UUID alias.
+seed=$(lsblk -J -o PATH,TYPE,UUID | jq -er --arg uuid "$(jq -er .seed_fsid "$disk")" \
+    '[..|objects|select(.uuid==$uuid and .type=="part")|.path]|select(length==1)|.[0]')
 generation=$(btrfs inspect-internal dump-super "$seed" | awk '$1=="generation" {print $2; exit}')
 image=$(jq -er .image "$disk")
 jq -n --arg sid "$sid" --arg key "$key" --arg seed "$seed" --arg etag "$etag" \
@@ -76,8 +79,12 @@ jq -n --arg sid "$sid" --arg key "$key" --arg seed "$seed" --arg etag "$etag" \
       upgrade_fsid:$d.upgrade_fsid,host_upgrade_fsid:"5a88e7cd-9701-40a7-8301-ef076761886c"}}
 ' > "$work/plan.json"
 [[ $(stat -c %s "$work/plan.json") -le 32768 ]] || fail 'plan exceeds owner bound'
-# Exclusive publication; any concurrent or retained plan is an error.
-ln "$work/plan.json" "$plans/$sid.json"
+# Stage on the plan directory's filesystem before exclusive publication.
+plan_tmp=$(mktemp "$plans/.$sid.XXXXXX")
+cat "$work/plan.json" > "$plan_tmp"
+sync -f "$plan_tmp"
+ln "$plan_tmp" "$plans/$sid.json"
+rm -- "$plan_tmp"
 sync -f "$plans/$sid.json"
 sync -f "$plans"
 digest=$(sha256sum "$plans/$sid.json"); digest=${digest%% *}

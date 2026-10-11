@@ -172,8 +172,8 @@ pub(super) fn verify_overlay(
     let published_info = subvolume_info(&published)?;
     let received_info = subvolume_info(&received)?;
     let host_info = subvolume_info(&host)?;
-    ensure!(u64::from_ne_bytes(received_info[288..296].try_into()?) & 2 != 0
-        && u64::from_ne_bytes(host_info[288..296].try_into()?) & 2 != 0
+    ensure!(u64::from_ne_bytes(received_info[288..296].try_into()?) & 1 != 0
+        && u64::from_ne_bytes(host_info[288..296].try_into()?) & 1 != 0
         && published_info[312..328] == received_info[296..312]
         && received_info[328..344] == host_info[296..312], "incremental upgrade baseline ancestry differs");
     Ok(vec![view, seed_layer, upgrade, partition, parent, published, upgrade_layer, pair, received, host])
