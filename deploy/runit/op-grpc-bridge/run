@@ -43,13 +43,14 @@ wait_dep dbus
 wait_dep unified-execution
 wait_dep op-runit-systemctl
 wait_dep op-session-bus
+wait_dep identity-roots
 wait_dep ovsdb-server
 wait_dep op-warp-ssh-host
 wait_dep op-warp-ssh-routes
 wait_dep tched-router
 # Identity storage restoration is owned independently by identity-roots. The
-# bridge opens its listeners even when that storage is unavailable; identity
-# operations verify mounted roots and defer when a required root is absent.
+# bridge waits for the storage owner's readiness before restoring active
+# service identities. The storage owner never depends on this bridge.
 # Qdrant is optional here. The bridge initializes its semantic shuttle
 # best-effort and must still open :8090 for D-Bus and gRPC when vector search
 # is unavailable.

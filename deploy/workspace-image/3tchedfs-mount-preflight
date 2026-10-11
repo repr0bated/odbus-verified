@@ -7,6 +7,15 @@ set -eu
 [ -f /usr/share/op-dbus/lungs-catalog/.manifest.json ] || exit 1
 [ -d /usr/share/op-dbus/lungs-view/objects ] || exit 1
 [ -d /usr/share/op-dbus/lungs-empty-state ] || exit 1
+# Incus's tmpfs starts with 1777 independently of the underlying /run mode.
+# Normalize only the known guest-owned tmpfs; refuse every unexpected shape.
+[ "$(findmnt -rn -M /run -o FSTYPE)" = tmpfs ] || exit 1
+[ "$(stat -c '%u:%g' -- /run)" = 0:0 ] || exit 1
+case "$(stat -c %a -- /run)" in
+    1777) chmod 0755 /run ;;
+    755) ;;
+    *) exit 1 ;;
+esac
 for path in /run /run/mount /run/mount/3tchedFS; do
     if [ -e "$path" ] || [ -L "$path" ]; then
         [ -d "$path" ] && [ ! -L "$path" ] || exit 1

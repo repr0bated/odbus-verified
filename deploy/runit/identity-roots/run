@@ -30,6 +30,12 @@ until incus info >/dev/null 2>&1; do
 done
 
 helper=/usr/local/libexec/3tched/op-identity-root
+gpt=/var/lib/3tched-leaf-pool/.provisioning/3tchedChatbot.boot.json
+if [ -e "$gpt" ] || [ -L "$gpt" ]; then
+    /usr/local/libexec/3tched/restore-chatbot-root || exit 1
+    /usr/local/libexec/3tched/runit-ready-signal identity-roots
+    exec pause
+fi
 physical=${OP_IDENTITY_SEED_STATE:-/var/lib/opdbus-runtime/seed-identities}
 legacy=${IDENTITIES:-/var/lib/opdbus-runtime/identities}
 physical_present=0
