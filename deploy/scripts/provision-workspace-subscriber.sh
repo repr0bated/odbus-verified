@@ -3,10 +3,13 @@
 # Completed manual storage stage (no identity/backend preflight):
 #   sudo ./provision-workspace-subscriber.sh --prepare-disk 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --inspect-disk 3tchedChatbot
+#   sudo ./provision-workspace-subscriber.sh --prepare-container 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --pair-upgrade 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --sync-upgrade 3tchedChatbot
 #     [--root-gib 20 --upgrade-gib 40]   # prepare-disk only
 # Creates /var/lib/3tched-leaf-pool/NAME.img: raw GPT root + upgrade.
+# --prepare-container defines the stopped chatbot and socket profile only;
+# it does not bind the prepared root, adopt the identity or start the guest.
 # This stage ends before formatting, seed attachment, Incus creation or Cozo
 # registration. Existing identity mode below remains the older unpartitioned
 # leaf workflow; do not pass a partitioned image to that mode.
@@ -50,7 +53,78 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "missing command: $1"; }
 usage() { sed -n '2,20p' "$0"; }
 if [[ $# == 0 || ${1:-} == -h || ${1:-} == --help ]]; then usage; exit 0; fi
+prepare_chatbot_container() (
+    # Host preparation only: no identity adoption, root copy, device-add or start.
+    [[ $# == 1 && $1 == 3tchedChatbot ]] || die 'usage: --prepare-container 3tchedChatbot'
+    [[ $(id -u) == 0 ]] || die 'container preparation requires host root'
+    for tool in incus jq findmnt stat flock realpath sync; do need_cmd "$tool"; done
+    incus() { command incus --force-local "$@"; }
+    umask 077
+    pool_root=/var/lib/3tched-leaf-pool
+    receipt=$pool_root/.provisioning/$1.json
+    container_receipt=$pool_root/.provisioning/$1.incus.json
+    [[ $(findmnt -rn -M "$pool_root" -o FSROOT) == /@3tched-leaf-pool &&
+       -f $receipt && ! -L $receipt && ! -e $container_receipt && ! -L $container_receipt ]] ||
+        die 'prepared disk receipt required; existing container intents must be reconciled manually'
+    jq -e --arg name "$1" '.name==$name and .phase=="filesystems-prepared" and
+        .layout=="raw-gpt-root-upgrade-v1" and .filesystem_prepared==true and .identity_registered==false' \
+        "$receipt" >/dev/null || die 'disk is not ready for container definition'
+    image=$(jq -er .image "$receipt")
+    [[ $image == "$pool_root/$1.img" && -f $image && ! -L $image &&
+       $(stat -c %i "$image") == "$(jq -r .image_inode "$receipt")" &&
+       $(stat -c %s "$image") == "$(jq -r .image_bytes "$receipt")" ]] || die 'prepared image changed'
+    exec 9>"$pool_root/.provisioning/$1.lock"
+    flock -n 9 || die 'instance preparation active'
+    instances=$(incus list -f json)
+    jq -e --arg name "$1" 'type=="array" and all(.[]; .name!=$name)' <<<"$instances" >/dev/null ||
+        die 'container already exists; never recreate it'
+    [[ $(findmnt -rn -M /var/lib/incus-storage -o FSROOT) == /@incus ]] || die 'Incus subvolume not mounted'
+    pool_source=/var/lib/incus-storage/identity-roots
+    pools=$(incus storage list -f json)
+    if jq -e 'any(.[]; .name=="identity-roots")' <<<"$pools" >/dev/null; then
+        pool_json=$(incus query /1.0/storage-pools/identity-roots)
+        jq -e --arg source "$pool_source" '.driver=="dir" and .status=="Created" and .config.source==$source' \
+            <<<"$pool_json" >/dev/null || die 'identity-roots pool differs'
+    else
+        [[ ! -e /var/lib/incus/storage-pools/identity-roots &&
+           ! -L /var/lib/incus/storage-pools/identity-roots &&
+           ! -e $pool_source && ! -L $pool_source ]] || die 'retained pool paths require manual reconciliation'
+        mkdir -m 0711 "$pool_source"
+        incus storage create identity-roots dir "source=$pool_source"
+    fi
+    /usr/local/libexec/3tched/op-identity-root seed-profile
+    sid=b0c777e3-0955-cd8b-3d01-ca12998cae28
+    public_key=Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=
+    jq -n --arg name "$1" --arg sid "$sid" --arg source "$pool_source" \
+        '{version:1,phase:"container-create-intent",name:$name,session_id:$sid,pool_source:$source,
+          identity_registered:false,root_bound:false,started:false}' > "$container_receipt"
+    sync -f "$container_receipt"
+    deny_policy=$(printf '%s\n' \
+        'ioctl errno 1 [1,0x4008941a,SCMP_CMP_MASKED_EQ,0xffffffff]' \
+        'ioctl errno 1 [1,0x5000940f,SCMP_CMP_MASKED_EQ,0xffffffff]' \
+        'ioctl errno 1 [1,0x5000943f,SCMP_CMP_MASKED_EQ,0xffffffff]')
+    incus init --empty "$1" --storage identity-roots --profile 3tched-lungs \
+        --config security.privileged=false --config security.nesting=false \
+        --config security.protection.shift=true --config boot.autostart=false \
+        --config security.syscalls.deny_default=true --config "security.syscalls.deny=$deny_policy" \
+        --config "user.opdbus.session_id=$sid" --config "user.opdbus.wireguard_public_key=$public_key" \
+        --config user.display_name=control-plane-chatbot --config "raw.lxc=lxc.uts.name = $sid" </dev/null
+    instance=$(incus query "/1.0/instances/$1")
+    jq -e --arg name "$1" --arg sid "$sid" '.name==$name and .status=="Stopped" and
+        .config["user.opdbus.session_id"]==$sid' <<<"$instance" >/dev/null || die 'stopped definition readback differs'
+    jq --argjson instance "$instance" '.phase="container-defined"|.instance=$instance' \
+        "$container_receipt" > "$container_receipt.new"
+    sync -f "$container_receipt.new"
+    mv -T "$container_receipt.new" "$container_receipt"
+    sync -f "$pool_root/.provisioning"
+    printf 'Stopped container defined; root binding and identity adoption remain pending.\n'
+)
 case $1 in
+    --prepare-container)
+        shift
+        prepare_chatbot_container "$@"
+        exit
+        ;;
     --pair-upgrade|--sync-upgrade|--upgrade-boot)
         upgrade_action=pair
         [[ $1 != --sync-upgrade ]] || upgrade_action=sync
