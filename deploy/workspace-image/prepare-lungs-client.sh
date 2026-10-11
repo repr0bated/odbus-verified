@@ -36,7 +36,7 @@ done
 install -m 0755 "$client" "$guest/usr/local/bin/threetched-fs"
 install -d -m 0755 "$empty" "$store"
 # Only schema/catalog material enters the base; live SHM and SID1 never do.
-"$client" --store "$store" capture --catalog "$catalog" --state "$empty"
+"$client" --store "$store" capture --schema-only --catalog "$catalog" --state "$empty"
 cp -a -- "$catalog" "$guest_catalog"
 find "$store" -type d -exec chmod 0755 {} +
 find "$store" -type f -exec chmod 0644 {} +
