@@ -6,7 +6,7 @@ fail() { printf 'sync-instance-upgrade: %s\n' "$*" >&2; exit 1; }
 action=$1 name=$2
 [[ $(id -u) == 0 ]] || fail 'host root required'
 incus() { command incus --force-local "$@"; }
-for tool in jq btrfs blkid findmnt losetup mount umount flock incus stat realpath blockdev awk find head; do
+for tool in jq btrfs blkid findmnt losetup mount umount flock incus stat realpath blockdev lsblk awk find head; do
     command -v "$tool" >/dev/null || fail "missing $tool"
 done
 umask 077
@@ -35,6 +35,9 @@ container_root=/var/lib/incus/storage-pools/identity-roots/containers/$name/root
 if ! findmnt -rn -M "$root" >/dev/null || ! findmnt -rn -M "$replica" >/dev/null; then
     seed=$(jq -er .seed_device "$receipt")
     [[ $seed == /dev/disk/by-uuid/"$(jq -r .seed_fsid "$receipt")" && -b $seed ]] || fail 'seed unavailable'
+    # UUID aliases can resolve to an already registered RO loop view.
+    seed=$(lsblk -J -o PATH,TYPE,UUID | jq -er --arg uuid "$(jq -er .seed_fsid "$receipt")" \
+        '[..|objects|select(.uuid==$uuid and .type=="part")|.path]|select(length==1)|.[0]') || fail 'physical seed is not unique'
     blockdev --setro "$seed"
     seed_loop=$(losetup -j "$(realpath -e "$seed")" -O NAME --noheadings | head -n 1)
     [[ -n $seed_loop ]] || seed_loop=$(losetup --find --show --read-only "$seed")
