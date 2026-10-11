@@ -1,6 +1,17 @@
 #!/bin/sh
 exec 2>&1
 
+# Explicit root-owned initialization selector; absent during normal boot.
+identity_init=/etc/op-dbus/initialize-local-human
+unset OP_LOCAL_HUMAN_INITIALIZE_SESSION
+if [ -e "$identity_init" ] || [ -L "$identity_init" ]; then
+    [ ! -L "$identity_init" ] && [ -f "$identity_init" ] &&
+        [ "$(stat -c %u:%g:%a "$identity_init")" = 0:0:600 ] &&
+        [ "$(stat -c %s "$identity_init")" -le 37 ] || exit 1
+    OP_LOCAL_HUMAN_INITIALIZE_SESSION=$(cat "$identity_init")
+    export OP_LOCAL_HUMAN_INITIALIZE_SESSION
+fi
+
 # Operator-assigned NextDNS context for this exact WireGuard identity. This is
 # sealed by MutationEngine, never supplied by the browser or inferred from DNS.
 # An explicit [] enables legacy-only minting for a compatibility rollout.

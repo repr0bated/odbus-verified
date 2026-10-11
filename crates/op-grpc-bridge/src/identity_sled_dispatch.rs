@@ -1611,6 +1611,48 @@ pub(crate) async fn configured_identity_awaits_provision(
     Ok(false)
 }
 
+/// Explicit host-human initialization through the identity owner's durable
+/// publication boundary. Never restores history or adopts container storage.
+pub(crate) async fn initialize_configured_human(
+    engine: &MutationEngine,
+    session_id: &str,
+    wireguard_pubkey: &str,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        std::env::var("OP_LOCAL_HUMAN_INITIALIZE_SESSION")?.trim() == session_id
+            && std::env::var("OP_LOCAL_HUMAN_SESSION_ID")?.trim() == session_id
+            && std::env::var("OP_LOCAL_HUMAN_WIREGUARD_PUBKEY")?.trim() == wireguard_pubkey
+            && std::env::var("OP_LOCAL_HUMAN_PRINCIPAL_ID")?.trim()
+                == op_identity::session::derive_principal_id(wireguard_pubkey)
+            && session_id == op_identity::session::derive_session_id(wireguard_pubkey),
+        "initialization requires the explicitly selected configured host human"
+    );
+    let store = engine.identity_sled_store()?;
+    let _guard = store.lifecycle_lock(session_id).await.lock_owned().await;
+    let expected = load_revision(store, session_id).await?;
+    anyhow::ensure!(
+        expected.revision == 0 && expected.operation_id.is_empty()
+            && expected.record.is_none() && expected.genesis.is_none(),
+        "fresh initialization cannot overwrite an identity or deletion tombstone"
+    );
+    let stamp = engine.mint_identity_genesis_stamp(session_id, wireguard_pubkey, 0).await?;
+    let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+        "session_id": session_id, "wireguard_pubkey": wireguard_pubkey,
+        "principal_kind": "human", "active": true, "expires_at": 0,
+        "session_started_at": stamp.arrival_timestamp, "last_seen_at": stamp.arrival_timestamp,
+        "schema_version": RECORD_FORMAT, "genesis": stamp.genesis_hex,
+        "trace_id": stamp.trace_id, "sealed_id": stamp.sealed_id,
+        "arrival_timestamp": stamp.arrival_timestamp,
+        "chain_head_at_arrival": stamp.chain_head_at_arrival,
+        "catalog_hash_at_arrival": stamp.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": stamp.head_timestamp_at_arrival
+    }))?;
+    commit_cas(engine, store, opid("initialize-configured-human"), session_id.to_owned(),
+        expected, Some(sled_to_record(&sled)?), Some(sled_to_genesis(&sled)), ()).await?;
+    tracing::info!(%session_id, "initialized fresh configured host-human identity with existing key");
+    Ok(())
+}
+
 /// Bring up the control-plane chatbot container named by
 /// `OP_CONTROL_PLANE_CHATBOT_SESSION_ID`. Human containers start at login.
 pub(crate) async fn start_service_identity_containers(

@@ -33,6 +33,24 @@ struct MemberPin {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct PartitionPin {
+    partuuid: String,
+    start_sector: u64,
+    sectors: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PartitionedOverlay {
+    disk_guid: String,
+    root_partition: PartitionPin,
+    upgrade_partition: PartitionPin,
+    upgrade_fsid: String,
+    host_upgrade_fsid: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct CleanPlan {
     version: u8,
     session_id: String,
@@ -54,6 +72,8 @@ struct CleanPlan {
     instance: JsonValue,
     previous_instance_etag: String,
     previous_instance: JsonValue,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    partitioned_overlay: Option<PartitionedOverlay>,
 }
 
 fn canonical(path: &str) -> bool {
@@ -85,13 +105,37 @@ impl CleanPlan {
     fn validate(&self) -> Result<()> {
         canonical_key(&self.wireguard_pubkey)?;
         ensure!(
-            matches!(self.version, 2 | 3)
+            matches!(self.version, 2 | 3 | 4)
                 && self.session_id
                     == op_identity::session::derive_session_id(&self.wireguard_pubkey)
                 && control_plane_chatbot_session_id().as_deref() == Some(self.session_id.as_str())
                 && configured_chatbot_key().as_deref() == Some(self.wireguard_pubkey.as_str()),
             "clean adoption is only for the configured chatbot key"
         );
+        if self.version == 4 {
+            let layout = self.partitioned_overlay.as_ref().context("partitioned overlay pins absent")?;
+            let root = &layout.root_partition;
+            let upgrade = &layout.upgrade_partition;
+            ensure!(self.binding.device_path == "/var/lib/3tched-leaf-pool/3tchedChatbot.img"
+                && self.binding.mount_point == "/var/lib/3tched-leaf-pool/.mounts/3tchedChatbot/root"
+                && root.start_sector == 2048 && root.sectors >= 2_097_152
+                && root.start_sector.checked_add(root.sectors) == Some(upgrade.start_sector)
+                && upgrade.sectors >= 2_097_152
+                && upgrade.start_sector.checked_add(upgrade.sectors)
+                    == self.leaf_size.checked_div(512).and_then(|sectors| sectors.checked_sub(2048))
+                && self.leaf_size % 512 == 0,
+                "partition geometry or external mount paths differ");
+            let mut uuids = HashSet::new();
+            for value in [&layout.disk_guid, &root.partuuid, &upgrade.partuuid, &layout.upgrade_fsid,
+                &layout.host_upgrade_fsid, &self.seed_fsid, &self.binding.btrfs_uuid] {
+                ensure!(uuid::Uuid::parse_str(value)?.to_string() == *value && uuids.insert(value),
+                    "partition or filesystem identities are invalid or reused");
+            }
+            ensure!(layout.host_upgrade_fsid == "5a88e7cd-9701-40a7-8301-ef076761886c",
+                "host upgrade identity differs");
+        } else {
+            ensure!(self.partitioned_overlay.is_none(), "legacy plan includes partitioned layout");
+        }
         ensure!(
             self.binding.cozo_id == self.session_id
                 && self.binding.attached
@@ -138,10 +182,13 @@ impl CleanPlan {
         ensure!(
             self.pool_name == "identity-roots"
                 && self.native_root
-                    == format!(
+                    == if self.version == 4 {
+                        format!("{}/containers/{}/rootfs", self.pool_source, CONTROL_PLANE_CHATBOT_CONTAINER)
+                    } else { format!(
                         "/var/lib/incus/storage-pools/{}/containers/{}/rootfs",
                         self.pool_name, CONTROL_PLANE_CHATBOT_CONTAINER
-                    )
+                    ) }
+                && (self.version != 4 || self.pool_source == "/var/lib/incus-storage/identity-roots")
                 && self.instance["name"] == CONTROL_PLANE_CHATBOT_CONTAINER
                 && self.instance["type"] == "container"
                 && self.instance["status"] == "Stopped"
@@ -230,11 +277,19 @@ impl CleanPlan {
                 .as_object()
                 .context("native disks absent")?;
             ensure!(
-                devices.values().all(|d| d["type"] == "disk")
+                devices.iter().all(|(name, d)| d["type"] == "disk"
+                    || (self.version == 4 && name == "fuse"
+                        && *d == serde_json::json!({"type":"unix-char","source":"/dev/fuse","path":"/dev/fuse"})))
                     && devices["root"]["path"] == "/"
                     && devices["root"]["pool"] == self.pool_name,
                 "fresh native requires disk-only devices and pinned root"
             );
+            if self.version == 4 {
+                ensure!(devices.get("fuse") == Some(&serde_json::json!(
+                    {"type":"unix-char","source":"/dev/fuse","path":"/dev/fuse"}))
+                    && !devices.contains_key("3tchedfs") && !devices.contains_key("system-bus"),
+                    "partitioned guest must own its FUSE mount without a host bus bind");
+            }
         }
         Ok(())
     }
@@ -251,6 +306,11 @@ impl CleanPlan {
                 deleted_for_provision(expected),
                 "fresh provision requires the exact explicit deletion tombstone"
             );
+            return Ok(());
+        }
+        if self.version == 4 {
+            ensure!(fresh_for_provision(expected) || deleted_for_provision(expected),
+                "partitioned adoption requires a fresh key or explicit deletion tombstone");
             return Ok(());
         }
         let old = expected
@@ -286,6 +346,11 @@ impl CleanPlan {
         }
         Ok(())
     }
+}
+
+fn fresh_for_provision(expected: &IdentityRevision) -> bool {
+    expected.revision == 0 && expected.operation_id.is_empty()
+        && expected.record.is_none() && expected.genesis.is_none()
 }
 
 fn deleted_for_provision(expected: &IdentityRevision) -> bool {
@@ -459,7 +524,7 @@ pub(super) async fn provision(
     ensure!(
         old.as_ref()
             .is_some_and(|old| old.wireguard_pubkey == input.wireguard_pubkey)
-            || deleted_for_provision(&expected),
+            || deleted_for_provision(&expected) || fresh_for_provision(&expected),
         "clean provision requires the existing key or its explicit deletion tombstone"
     );
     if preflight {

@@ -862,8 +862,12 @@ impl MutationEngine {
         {
             anyhow::bail!("configured local human principal_id does not match its WireGuard key");
         }
-        if crate::identity_sled_dispatch::configured_identity_awaits_provision(self, &session_id)
-            .await?
+        let missing = crate::identity_sled_dispatch::configured_identity_awaits_provision(
+            self, &session_id,
+        ).await?;
+        let initialize = std::env::var("OP_LOCAL_HUMAN_INITIALIZE_SESSION")
+            .is_ok_and(|selected| selected.trim() == session_id);
+        if missing && !initialize
         {
             tracing::info!(%session_id, "configured local human awaits explicit identity provisioning");
             return Ok(None);
@@ -900,6 +904,11 @@ impl MutationEngine {
             Err(error) => {
                 anyhow::bail!("configured local human registry unavailable: {error:?}")
             }
+        }
+        if missing {
+            crate::identity_sled_dispatch::initialize_configured_human(
+                self, &session_id, wireguard_pubkey,
+            ).await?;
         }
         self.mint_and_store_genesis(&session_id, wireguard_pubkey)
             .await?;

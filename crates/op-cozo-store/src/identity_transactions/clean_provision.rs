@@ -84,7 +84,12 @@ pub(super) fn validate(
         && provision.expected.genesis.is_none()
         && provision.expected.operation_id
             == format!("delete-provision-{sid}-{}", provision.expected.revision - 1);
-    if !explicitly_deleted && old.is_none() {
+    let provenance: Value = serde_json::from_str(&provision.provenance_json)?;
+    let fresh_partitioned = provenance["version"] == 4
+        && provenance["partitioned_overlay"].is_object()
+        && provision.expected.revision == 0 && provision.expected.operation_id.is_empty()
+        && old.is_none() && provision.expected.genesis.is_none();
+    if !explicitly_deleted && !fresh_partitioned && old.is_none() {
         return Err(err(
             "clean provision requires an existing key or explicit deletion tombstone",
         ));
@@ -142,13 +147,13 @@ pub(super) fn validate(
     }
     let device: Value = serde_json::from_str(&new.btrfs_device_json)?;
     let instance: Value = serde_json::from_str(&new.instance_json)?;
-    let provenance: Value = serde_json::from_str(&provision.provenance_json)?;
     if device["cozo_id"] != sid
         || device["attached"] != true
         || instance["status"] != "Stopped"
         || instance["type"] != "container"
         || instance["name"] != "3tchedChatbot"
-        || provenance["version"] != if explicitly_deleted { 3 } else { 2 }
+        || !(provenance["version"] == if explicitly_deleted { 3 } else { 2 }
+            || (provenance["version"] == 4 && (fresh_partitioned || explicitly_deleted)))
         || provenance["session_id"] != sid
         || provenance["wireguard_pubkey"] != new.wireguard_pubkey
     {

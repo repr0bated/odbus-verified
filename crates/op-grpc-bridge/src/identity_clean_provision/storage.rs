@@ -1,6 +1,8 @@
 //! Read-only physical-seed membership and mounted guest-subvolume proof.
 //! Kernel ABIs match linux/btrfs.h and linux/loop.h; no mount/device mutation.
 use super::*;
+#[path = "partitioned.rs"]
+mod partitioned;
 use std::path::PathBuf;
 use nix::libc;
 use std::{
@@ -283,14 +285,21 @@ pub(super) fn verify(plan: &CleanPlan) -> Result<StorageGuard> {
         Some(roots[0]["Hostid"].as_u64().filter(|id| *id > 0).context("invalid root idmap")?)
     };
     let native = open_controlled(native_path, true, Some(native_path), mapped_uid.map(|uid| (native_parent, uid)))?;
-    fs_info(&guest, &plan.binding.btrfs_uuid)?; fs_info(&native, &plan.binding.btrfs_uuid)?;
-    ensure!(guest.metadata()?.dev() == native.metadata()?.dev() && guest.metadata()?.ino() == native.metadata()?.ino()
-        && subvolume(&native)? == plan.members["@"].id, "native root differs from inherited @");
+    fs_info(&guest, &plan.binding.btrfs_uuid)?;
+    if plan.version != 4 {
+        fs_info(&native, &plan.binding.btrfs_uuid)?;
+        ensure!(guest.metadata()?.dev() == native.metadata()?.dev() && guest.metadata()?.ino() == native.metadata()?.ino()
+            && subvolume(&native)? == plan.members["@"].id, "native root differs from inherited @");
+    }
     let mut files = vec![seed, leaf, volume, guest, native];
+    if plan.version == 4 {
+        files.extend(partitioned::verify_overlay(plan, &files[1], &leaf_meta, &files[3], &files[4])?);
+    }
     for member in MEMBERS {
         let member_path = volume_path.join(member);
         let source = open_controlled(&member_path, true, Some(&member_path), None)?;
-        let protected = matches!(member, "@agent_rules" | "@agent_shared" | "@agent_soul");
+        let protected = matches!(member, "@agent_shared" | "@agent_soul")
+            || (plan.version != 4 && member == "@agent_rules");
         member_identity(&source, &plan.members[member], protected)?;
         fs_info(&source, &plan.binding.btrfs_uuid)?;
         if member != "@" {
@@ -326,14 +335,24 @@ pub(super) fn verify(plan: &CleanPlan) -> Result<StorageGuard> {
         count += 1;
         let end = device.path.iter().position(|b| *b == 0).context("invalid native member path")?;
         let file = open(Path::new(std::str::from_utf8(&device.path[..end])?), false)?;
-        let mut status: LoopInfo = unsafe { std::mem::zeroed() };
-        // SAFETY: exact asserted LOOP_GET_STATUS64 ABI and held member FD.
-        ensure!(unsafe { libc::ioctl(file.as_raw_fd(), 0x4c05 as libc::c_ulong, &mut status) } == 0, "member is not a pinned loop mapping");
-        if device.fsid == *uuid::Uuid::parse_str(&plan.seed_fsid)?.as_bytes() && loop_matches(&status, &seed_meta, true) {
-            ensure!(!saw_seed, "duplicate shared seed member"); saw_seed = true;
-        } else if device.fsid == *uuid::Uuid::parse_str(&plan.binding.btrfs_uuid)?.as_bytes() && loop_matches(&status, &leaf_meta, false) {
+        if device.fsid == *uuid::Uuid::parse_str(&plan.binding.btrfs_uuid)?.as_bytes() && plan.version == 4 {
+            let layout = plan.partitioned_overlay.as_ref().context("partition pins absent")?;
+            files.push(partitioned::verify_partition(&file, &files[1], &leaf_meta, layout, 1)?);
             ensure!(!saw_leaf, "duplicate writable leaf"); saw_leaf = true;
-        } else { anyhow::bail!("unplanned physical Btrfs member"); }
+        } else {
+            let mut status: LoopInfo = unsafe { std::mem::zeroed() };
+            // SAFETY: exact LOOP_GET_STATUS64 ABI and held member descriptor.
+            ensure!(unsafe { libc::ioctl(file.as_raw_fd(), 0x4c05 as libc::c_ulong, &mut status) } == 0,
+                "member is not a pinned loop mapping");
+            if device.fsid == *uuid::Uuid::parse_str(&plan.seed_fsid)?.as_bytes()
+                && loop_matches(&status, &seed_meta, true) {
+                ensure!(!saw_seed, "duplicate shared seed member"); saw_seed = true;
+            } else if plan.version != 4
+                && device.fsid == *uuid::Uuid::parse_str(&plan.binding.btrfs_uuid)?.as_bytes()
+                && loop_matches(&status, &leaf_meta, false) {
+                ensure!(!saw_leaf, "duplicate writable leaf"); saw_leaf = true;
+            } else { anyhow::bail!("unplanned physical Btrfs member"); }
+        }
         files.push(file);
     }
     ensure!(count == 2 && saw_seed && saw_leaf, "shared seed/leaf ancestry incomplete");
