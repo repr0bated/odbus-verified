@@ -3,6 +3,8 @@
 # Completed manual storage stage (no identity/backend preflight):
 #   sudo ./provision-workspace-subscriber.sh --prepare-disk 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --inspect-disk 3tchedChatbot
+#   sudo ./provision-workspace-subscriber.sh --pair-upgrade 3tchedChatbot
+#   sudo ./provision-workspace-subscriber.sh --sync-upgrade 3tchedChatbot
 #     [--root-gib 20 --upgrade-gib 40]   # prepare-disk only
 # Creates /var/lib/3tched-leaf-pool/NAME.img: raw GPT root + upgrade.
 # This stage ends before formatting, seed attachment, Incus creation or Cozo
@@ -49,6 +51,17 @@ need_cmd() { command -v "$1" >/dev/null 2>&1 || die "missing command: $1"; }
 usage() { sed -n '2,20p' "$0"; }
 if [[ $# == 0 || ${1:-} == -h || ${1:-} == --help ]]; then usage; exit 0; fi
 case $1 in
+    --pair-upgrade|--sync-upgrade|--upgrade-boot)
+        upgrade_action=pair
+        [[ $1 != --sync-upgrade ]] || upgrade_action=sync
+        [[ $1 != --upgrade-boot ]] || upgrade_action=boot
+        shift
+        script_dir=$(dirname -- "$(realpath -e -- "${BASH_SOURCE[0]}")")
+        upgrade_helper=$script_dir/sync-instance-upgrade.sh
+        [[ -x $upgrade_helper ]] || upgrade_helper=$script_dir/sync-instance-upgrade
+        [[ -x $upgrade_helper ]] || die 'upgrade synchronization helper missing'
+        exec "$upgrade_helper" "$upgrade_action" "$@"
+        ;;
     --prepare-disk|--inspect-disk|--prepare-filesystems)
         disk_action=create
         [[ $1 != --inspect-disk ]] || disk_action=inspect

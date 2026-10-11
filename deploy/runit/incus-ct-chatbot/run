@@ -45,6 +45,18 @@ done
 incus config set "$NAME" boot.autostart=false 2>/dev/null || true
 
 if ! incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; then
+    # Only opted-in, explicitly paired storage uses the upgrade lifecycle.
+    # Keep this before start; never replace a running container's OS view.
+    pair=/var/lib/3tched-leaf-pool/.provisioning/$NAME.upgrade.json
+    if [ -e "$pair" ] || [ -L "$pair" ]; then
+        /usr/local/libexec/3tched/sync-instance-upgrade boot "$NAME" || exit 1
+        expected=/var/lib/3tched-leaf-pool/.mounts/$NAME/root-view
+        incus config show "$NAME" --expanded --format json | jq -e --arg source "$expected" \
+            'any(.devices[]; .type=="disk" and .path=="/" and .source==$source)' >/dev/null || {
+            echo "paired container root must use $expected; provisioning incomplete" >&2
+            exit 1
+        }
+    fi
     echo "starting container $NAME"
     if ! incus start "$NAME"; then
         echo "incus start failed for $NAME" >&2

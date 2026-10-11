@@ -42,6 +42,32 @@ Those later steps remain subject to the owner's manual
 script comparison. The existing identity mode described below expects an
 unpartitioned leaf and must not be used with this new partitioned image.
 
+The upgrade lifecycle is host → container only, using Btrfs without Unison:
+
+```sh
+sudo ./deploy/scripts/provision-workspace-subscriber.sh --pair-upgrade 3tchedChatbot
+sudo ./deploy/scripts/provision-workspace-subscriber.sh --sync-upgrade 3tchedChatbot
+```
+
+Pairing sends a read-only snapshot of host upgrade `/dev/sdc3` (`@`) to
+partition 2. Subsequent synchronization sends incrementally from the retained
+common baseline, including deletions. Received baselines stay read-only;
+the published upgrade `@` is a writable clone. Transfer intents and prior
+versions are retained for recovery; interrupted publication is not retried
+automatically. Snapshot retention cleanup is not implemented by this stage.
+
+The chatbot runit startup invokes `boot` for explicitly paired storage before
+starting the container. It restores existing loop/mount attachments, synchronizes,
+then publishes a read-only OS view at `.mounts/NAME/root-view`. The Incus root
+device must be configured to that view during the upcoming container provisioning
+step. This is a read-only bind of the complete upgraded OS, rather than a union
+over old seed files: deleted OS files must not reappear from a lower seed layer.
+Six agent subvolumes are separately bound into `/agent`; their existing writable
+or read-only policies remain in effect. User contents are never sent or received.
+The host upgrade must contain a complete prepared OS before pairing or startup.
+This new image is not yet admitted by the older unpartitioned root-owner lifecycle;
+its identity-root integration remains part of the subsequent provisioning step.
+
 The seed has the seven sibling subvolumes and guest systemd FUSE service.
 `@agent_rules/rules/rules.md` and `@agent_user/user/user.md` are initial
 per-instance documents: their content is changed in each private writable leaf,
