@@ -4,7 +4,7 @@
 //! Target declarations and admission remain owned by each sealed plugin. Mount
 //! identity and live contents remain in the identity's own filesystem namespace.
 
-use anyhow::{bail, ensure, Result};
+use anyhow::{Result, bail, ensure};
 use async_trait::async_trait;
 use op_state::{ApplyResult, Checkpoint, DiffMetadata, PluginCapabilities, StateDiff, StatePlugin};
 use op_state_store::{CapabilityDecl, PluginSchema, SideEffect};
@@ -15,7 +15,7 @@ use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 use super::threetched_fs_contract;
 
 pub const PLUGIN_NAME: &str = "threetched_fs";
-const VERSION: &str = "2.0.6";
+const VERSION: &str = "2.0.7";
 const READ_PROTOCOL: &str = "cap.storage.3tchedfs.protocol.read@v1";
 const READ_CONTRACT: &str = "cap.storage.3tchedfs.contract.read@v1";
 const READ_RECEIPT: &str = "cap.storage.3tchedfs.receipt.read@v1";
@@ -72,7 +72,7 @@ impl schemars::JsonSchema for FilesystemContract {
 
 /// Derive an order-independent exact JSON value schema from the sole authority.
 fn literal_schema(value: &serde_json::Value) -> serde_json::Value {
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     match value {
         Value::Object(fields) => {
             let properties: serde_json::Map<String, Value> = fields
@@ -523,10 +523,12 @@ mod tests {
                 output["contract"][inventory].as_array().unwrap().len()
             );
         }
-        assert!(!contract["bindings"]["classes"]
-            .as_object()
-            .unwrap()
-            .contains_key("Outcome"));
+        assert!(
+            !contract["bindings"]["classes"]
+                .as_object()
+                .unwrap()
+                .contains_key("Outcome")
+        );
     }
 
     #[test]
@@ -547,10 +549,12 @@ mod tests {
         let plugin = ThreeTchedFsPlugin;
         let state = protocol_value().unwrap();
         assert!(plugin.verify_state(&state).await.unwrap());
-        assert!(plugin
-            .calculate_diff(&state, &simd_json::json!({}))
-            .await
-            .is_err());
+        assert!(
+            plugin
+                .calculate_diff(&state, &simd_json::json!({}))
+                .await
+                .is_err()
+        );
         assert!(plugin.create_checkpoint().await.is_err());
     }
 }

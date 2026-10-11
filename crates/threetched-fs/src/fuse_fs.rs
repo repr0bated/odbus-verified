@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
+#[cfg(test)]
 use std::process::Command;
 use std::sync::{
     Arc,
@@ -9,9 +10,13 @@ use std::sync::{
 use std::time::{Duration, UNIX_EPOCH};
 
 use crate::dispatch::{self, CallReceipt, LungsError};
+use crate::fuse_buffers as buffers;
+#[cfg(test)]
+use crate::fuse_process as process;
 use crate::namespace::{MountIdentity, Namespace, Node, NodeKind, ProjectionTarget};
-use crate::zeroclaw_surface::ZeroclawSurface;
 use crate::store::{ObjectStore, StageConflict};
+use crate::threetched_surface::ThreetchedSurface;
+use buffers::{Budget, Buffer, Charge, DOCUMENT_LIMIT, HANDLE_LIMIT, INPUT_LIMIT, TOTAL_LIMIT};
 use fuser::{
     FileAttr, FileType, Filesystem, KernelConfig, ReplyAttr, ReplyData, ReplyDirectory, ReplyEmpty,
     ReplyEntry, ReplyOpen, ReplyWrite, Request, TimeOrNow,
@@ -19,9 +24,6 @@ use fuser::{
 use libc::{EACCES, EAGAIN, EBADF, EBUSY, EINVAL, EIO, EISDIR, ENOENT, EROFS, ESTALE};
 use parking_lot::Mutex;
 use serde_json::Value;
-#[path = "fuse_buffers.rs"]
-mod buffers;
-use buffers::{Budget, Buffer, Charge, DOCUMENT_LIMIT, HANDLE_LIMIT, INPUT_LIMIT, TOTAL_LIMIT};
 
 const TTL: Duration = Duration::ZERO;
 const JOB_LIMIT: usize = 4;
@@ -69,6 +71,9 @@ struct OpenFile {
     running: bool,
     completed: Completion,
     fallback: Option<Buffer>,
+    admission_fallback: Option<Buffer>,
+    /// Pin the captured upstream declaration and executable selection at open.
+    surface: Option<Arc<ThreetchedSurface>>,
     waiters: Vec<PendingReply>,
     _target_guard: Option<TargetGuard>,
     _slot: Charge,
@@ -144,6 +149,7 @@ pub struct TypedFuse {
     slots: Arc<Budget>,
     jobs: Arc<Budget>,
     target_guards: HashMap<(String, String), std::sync::Weak<AtomicBool>>,
+    cancelled: Arc<AtomicBool>,
 }
 impl TypedFuse {
     pub fn new(store: ObjectStore, target: ProjectionTarget) -> anyhow::Result<Self> {
@@ -199,13 +205,12 @@ impl TypedFuse {
             slots: Arc::new(Budget::default()),
             jobs: Arc::new(Budget::default()),
             target_guards: HashMap::new(),
+            cancelled: Arc::new(AtomicBool::new(false)),
         })
     }
-    pub fn graft_zeroclaw(
-        &mut self,
-        surface: ZeroclawSurface,
-    ) -> anyhow::Result<()> {
-        self.namespace.graft_zeroclaw(surface)?;
+    #[cfg(test)]
+    pub fn graft_threetched(&mut self, surface: ThreetchedSurface) -> anyhow::Result<()> {
+        self.namespace.graft_threetched(surface)?;
         Ok(())
     }
     pub fn with_catalog_dir(mut self, catalog: PathBuf) -> anyhow::Result<Self> {
@@ -339,6 +344,21 @@ impl TypedFuse {
         } else {
             None
         };
+        let admission_fallback = if let NodeKind::CallFile { plugin_id, method } = &node.kind {
+            Some(Buffer::load_limited(&self.budget, 512, || {
+                crate::store::render_document(
+                    &serde_json::json!({"plugin":plugin_id,"method":method,"stage":"admission","error":"operation was not dispatched; reopen explicitly to make a new attempt"}),
+                )
+            })?)
+        } else {
+            None
+        };
+        let surface = match &node.kind {
+            NodeKind::CallFile { plugin_id, .. } if plugin_id == "threetched" => {
+                self.namespace.threetched_surface.clone()
+            }
+            _ => None,
+        };
         let fh = self.next_handle();
         self.open_files.insert(
             fh,
@@ -351,6 +371,8 @@ impl TypedFuse {
                 running: false,
                 completed: None,
                 fallback,
+                admission_fallback,
+                surface,
                 waiters: Vec::new(),
                 _target_guard: guard,
                 _slot: slot,
@@ -395,6 +417,15 @@ impl TypedFuse {
         let permit = match self.jobs.take(1, JOB_LIMIT) {
             Ok(permit) => permit,
             Err(_) => {
+                // A rejected fsync is terminal for this descriptor. Closing it
+                // after capacity returns must never dispatch rejected input.
+                handle.dirty = false;
+                handle.bytes = Buffer::empty(&self.budget);
+                let diagnostic = handle
+                    .admission_fallback
+                    .take()
+                    .unwrap_or_else(|| Buffer::empty(&self.budget));
+                handle.completed = Some(Err((EBUSY, diagnostic)));
                 reply.error(EBUSY);
                 return;
             }
@@ -404,11 +435,12 @@ impl TypedFuse {
         handle.running = true;
         handle.dirty = false;
         handle.waiters.push(reply);
+        let threetched = handle.surface.clone();
         drop(handle);
         let store = self.store.clone();
         let target = self.namespace.target.clone();
         let lungs = self.lungs.clone();
-        let zeroclaw = self.namespace.zeroclaw_surface.clone();
+        let cancelled = self.cancelled.clone();
         let budget = self.budget.clone();
         let failure_state = state.clone();
         let failure_budget = budget.clone();
@@ -422,10 +454,11 @@ impl TypedFuse {
                         &store,
                         &target,
                         lungs.as_ref(),
-                        zeroclaw.as_ref(),
+                        threetched.as_deref(),
                         &node,
                         bytes,
                         &budget,
+                        &cancelled,
                     )
                 }))
                 .unwrap_or_else(|_| {
@@ -445,18 +478,23 @@ impl TypedFuse {
         if spawned.is_err() {
             complete(
                 &failure_state,
-                Execution::Call(Err((
-                    EIO,
+                Execution::Rejected(
+                    EBUSY,
                     diagnostic(
                         &failure_budget,
                         &failure_node,
-                        "transport",
+                        "admission",
                         "worker could not start",
                         None,
                     ),
-                ))),
+                ),
             );
         }
+    }
+}
+impl Drop for TypedFuse {
+    fn drop(&mut self) {
+        self.cancelled.store(true, Ordering::Release);
     }
 }
 fn node_writable(node: &Node) -> bool {
@@ -471,58 +509,41 @@ fn reply_result(reply: PendingReply, result: Result<(), i32>) {
 
 enum Execution {
     Call(Result<Buffer, (i32, Buffer)>),
+    Rejected(i32, Buffer),
     Workspace(Result<(Buffer, String), i32>),
 }
+#[allow(clippy::too_many_arguments)]
 fn execute(
     store: &ObjectStore,
     target: &ProjectionTarget,
     lungs: Option<&Lungs>,
-    zeroclaw: Option<&ZeroclawSurface>,
+    _threetched: Option<&ThreetchedSurface>,
     node: &Node,
     bytes: Buffer,
     budget: &Arc<Budget>,
+    _cancelled: &AtomicBool,
 ) -> Execution {
     if let NodeKind::CallFile { plugin_id, method } = &node.kind {
-        if plugin_id == "zeroclaw" {
-            let payload = bytes.bytes.clone();
-            drop(bytes);
-            return Execution::Call(match run_zeroclaw_call(method, &payload, zeroclaw) {
-                Ok(envelope) => Buffer::load(budget, || crate::store::render_document(&envelope))
-                    .map_err(|errno| {
-                        (
-                            errno,
-                            diagnostic(
-                                budget,
-                                node,
-                                "outcome_unknown",
-                                "receipt could not be retained",
-                                None,
-                            ),
-                        )
-                    }),
-                Err(error) => {
-                    if let Some(envelope) = error.receipt() {
-                        Err((
-                            error.errno(),
-                            Buffer::load(budget, || crate::store::render_document(envelope))
-                                .unwrap_or_else(|_| {
-                                    diagnostic(
-                                        budget,
-                                        node,
-                                        error.stage(),
-                                        &error.to_string(),
-                                        None,
-                                    )
-                                }),
-                        ))
-                    } else {
-                        Err((
-                            error.errno(),
-                            diagnostic(budget, node, error.stage(), &error.to_string(), None),
-                        ))
+        // Binary execution here exists only for isolated lifecycle fixtures.
+        // Production always uses the identity-bound sealed backend route below.
+        #[cfg(test)]
+        if plugin_id == "threetched" && _threetched.is_some() {
+            // Keep accepted input charged until execution and serialization
+            // finish, including after RELEASE removes the table entry.
+            return Execution::Call(
+                match run_threetched_call(method, &bytes.bytes, _threetched, budget, _cancelled) {
+                    Ok((true, envelope)) => Ok(envelope),
+                    Ok((false, envelope)) => Err((EIO, envelope)),
+                    Err(error) => {
+                        let bytes =
+                            diagnostic(budget, node, error.stage(), &error.to_string(), None);
+                        if error.stage() == "admission" {
+                            return Execution::Rejected(error.errno(), bytes);
+                        }
+                        Err((error.errno(), bytes))
                     }
-                }
-            });
+                },
+            );
         }
         let outcome = run_lungs_call(store, target, lungs, plugin_id, method, &bytes.bytes);
         drop(bytes);
@@ -580,6 +601,16 @@ fn complete(state: &Arc<Mutex<OpenFile>>, result: Execution) {
     let mut handle = state.lock();
     handle.running = false;
     let status = match result {
+        Execution::Rejected(errno, mut bytes) => {
+            if bytes.bytes.is_empty() {
+                bytes = handle
+                    .admission_fallback
+                    .take()
+                    .unwrap_or_else(|| Buffer::empty(&handle.bytes.charge_budget()));
+            }
+            handle.completed = Some(Err((errno, bytes)));
+            Err(errno)
+        }
         Execution::Call(mut result) => {
             if let Err((_, bytes)) = &mut result
                 && bytes.bytes.is_empty()
@@ -606,6 +637,7 @@ fn complete(state: &Arc<Mutex<OpenFile>>, result: Execution) {
             Err(errno)
         }
     };
+    handle.admission_fallback = None;
     let waiters = std::mem::take(&mut handle.waiters);
     drop(handle);
     for reply in waiters {
@@ -640,92 +672,82 @@ fn diagnostic(
     }))).unwrap_or_else(|_| Buffer::empty(budget))
 }
 
-fn zeroclaw_binary_path() -> PathBuf {
-    std::env::var_os("THREETCHED_FS_ZEROCLAW_BIN")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("/usr/bin/zeroclaw"))
-}
-
-fn run_zeroclaw_call(
+#[cfg(test)]
+fn run_threetched_call(
     command: &str,
     bytes: &[u8],
-    surface: Option<&ZeroclawSurface>,
-) -> Result<Value, ZeroclawCallError> {
+    surface: Option<&ThreetchedSurface>,
+    budget: &Arc<Budget>,
+    cancelled: &AtomicBool,
+) -> Result<(bool, Buffer), ThreetchedCallError> {
     let surface = surface.ok_or_else(|| {
-        ZeroclawCallError::Contract("zeroclaw surface is not attached".into())
+        ThreetchedCallError::Contract("threetched surface is not attached".into())
     })?;
-    let arguments: Value =
-        serde_json::from_slice(bytes).map_err(|error| ZeroclawCallError::Json(error.to_string()))?;
+    let arguments: Value = serde_json::from_slice(bytes)
+        .map_err(|error| ThreetchedCallError::Json(error.to_string()))?;
     if !arguments.is_object() {
-        return Err(ZeroclawCallError::Arguments(
+        return Err(ThreetchedCallError::Arguments(
             "arguments must be a JSON object".into(),
         ));
     }
     let schema = surface
         .input_schema(command)
-        .map_err(|error| ZeroclawCallError::Arguments(error.to_string()))?;
+        .map_err(|error| ThreetchedCallError::Arguments(error.to_string()))?;
     jsonschema::Validator::new(&schema)
-        .map_err(|error| ZeroclawCallError::Arguments(format!("argument schema: {error}")))?
+        .map_err(|error| ThreetchedCallError::Arguments(format!("argument schema: {error}")))?
         .validate(&arguments)
-        .map_err(|error| ZeroclawCallError::Arguments(error.to_string()))?;
-    let mut process = Command::new(zeroclaw_binary_path());
-    process.arg(command);
-    let Value::Object(arguments) = arguments else {
-        return Err(ZeroclawCallError::Arguments(
-            "arguments must be a JSON object".into(),
-        ));
+        .map_err(|error| ThreetchedCallError::Arguments(error.to_string()))?;
+    let argv = surface
+        .arguments(command, &arguments)
+        .map_err(|error| ThreetchedCallError::Arguments(error.to_string()))?;
+    let mut process = Command::new(surface.binary_path());
+    process.args(argv);
+    let output = process::run(&mut process, budget, cancelled, process::Limits::default())
+        .map_err(ThreetchedCallError::Process)?;
+    #[derive(serde::Serialize)]
+    struct Envelope<'a> {
+        stdout: &'a str,
+        stderr: &'a str,
+        exit: i32,
+    }
+    // Borrow the charged output buffers during serialization. Invalid UTF-8
+    // is terminal; lossy conversion could allocate another uncharged document.
+    let envelope = Envelope {
+        stdout: std::str::from_utf8(&output.stdout.bytes)
+            .map_err(|_| ThreetchedCallError::Outcome("stdout is not UTF-8"))?,
+        stderr: std::str::from_utf8(&output.stderr.bytes)
+            .map_err(|_| ThreetchedCallError::Outcome("stderr is not UTF-8"))?,
+        exit: output.status.code().unwrap_or(-1),
     };
-    for (key, value) in arguments {
-        let flag = format!("--{}", key.replace('_', "-"));
-        match value {
-            Value::Bool(true) => {
-                process.arg(flag);
-            }
-            Value::Bool(false) => {}
-            Value::String(text) => {
-                process.arg(flag);
-                process.arg(text);
-            }
-            _ => {}
-        }
-    }
-    let output = process
-        .output()
-        .map_err(|error| ZeroclawCallError::Transport(error.to_string()))?;
-    let envelope = serde_json::json!({
-        "stdout": String::from_utf8_lossy(&output.stdout),
-        "stderr": String::from_utf8_lossy(&output.stderr),
-        "exit": output.status.code().unwrap_or(-1),
-    });
-    if output.status.success() {
-        Ok(envelope)
-    } else {
-        Err(ZeroclawCallError::Exec(envelope))
-    }
+    let bytes = Buffer::serialize(budget, &envelope)
+        .map_err(|_| ThreetchedCallError::Outcome("receipt could not be retained"))?;
+    Ok((output.status.success(), bytes))
 }
 
+#[cfg(test)]
 #[derive(Debug, thiserror::Error)]
-enum ZeroclawCallError {
+enum ThreetchedCallError {
     #[error("arguments are not a JSON value: {0}")]
     Json(String),
     #[error("arguments failed validation: {0}")]
     Arguments(String),
-    #[error("zeroclaw surface unavailable: {0}")]
+    #[error("threetched surface unavailable: {0}")]
     Contract(String),
-    #[error("zeroclaw exec failed to start: {0}")]
-    Transport(String),
-    #[error("zeroclaw exited with a nonzero status")]
-    Exec(Value),
+    #[error("{0}")]
+    Process(process::Error),
+    #[error("{0}; do not retry automatically")]
+    Outcome(&'static str),
 }
 
-impl ZeroclawCallError {
+#[cfg(test)]
+impl ThreetchedCallError {
     fn stage(&self) -> &'static str {
         match self {
             Self::Json(_) => "parse",
             Self::Arguments(_) => "validate",
             Self::Contract(_) => "contract",
-            Self::Transport(_) => "transport",
-            Self::Exec(_) => "exec",
+            Self::Process(error) => error.stage(),
+            Self::Outcome(_) => "outcome_unknown",
         }
     }
 
@@ -733,14 +755,8 @@ impl ZeroclawCallError {
         match self {
             Self::Json(_) | Self::Arguments(_) => EINVAL,
             Self::Contract(_) => libc::EPROTO,
-            Self::Transport(_) | Self::Exec(_) => EIO,
-        }
-    }
-
-    fn receipt(&self) -> Option<&Value> {
-        match self {
-            Self::Exec(envelope) => Some(envelope),
-            _ => None,
+            Self::Process(error) => error.errno(),
+            Self::Outcome(_) => EIO,
         }
     }
 }
@@ -797,6 +813,9 @@ fn run_lungs_call(
 }
 
 impl Filesystem for TypedFuse {
+    fn destroy(&mut self) {
+        self.cancelled.store(true, Ordering::Release);
+    }
     fn init(&mut self, _request: &Request<'_>, config: &mut KernelConfig) -> Result<(), i32> {
         config
             .add_capabilities(fuser::consts::FUSE_ATOMIC_O_TRUNC)
@@ -1208,6 +1227,10 @@ mod tests {
     }
 
     fn lungs_fixture_with(lungs: Lungs) -> (tempfile::TempDir, TypedFuse) {
+        lungs_fixture_plugin(lungs, "demo")
+    }
+
+    fn lungs_fixture_plugin(lungs: Lungs, plugin: &str) -> (tempfile::TempDir, TypedFuse) {
         let directory = tempdir().unwrap();
         let state = directory.path().join("state");
         std::fs::create_dir_all(&state).unwrap();
@@ -1229,10 +1252,10 @@ mod tests {
             subid: "mut.demo.record@v1".into(),
         };
         let object = TypedObjectBlob::new(
-            "demo".into(),
+            plugin.into(),
             "a".repeat(64),
             PluginSchema {
-                name: "demo".into(),
+                name: plugin.into(),
                 category: String::new(),
                 version: "1".into(),
                 description: String::new(),
@@ -1258,7 +1281,7 @@ mod tests {
                 SourceSnapshot {
                     catalog_hash: "catalog".into(),
                     catalog_generation: 1,
-                    objects: BTreeMap::from([("demo".into(), object)]),
+                    objects: BTreeMap::from([(plugin.into(), object)]),
                 },
                 true,
             )
@@ -1308,6 +1331,7 @@ mod tests {
         }
         let bytes = std::mem::replace(&mut handle.bytes, Buffer::empty(&fs.budget));
         let node = handle.node.clone();
+        let surface = handle.surface.clone();
         handle.dirty = false;
         handle.running = true;
         drop(handle);
@@ -1317,10 +1341,11 @@ mod tests {
                 &fs.store,
                 &fs.namespace.target,
                 fs.lungs.as_ref(),
-                fs.namespace.zeroclaw_surface.as_ref(),
+                surface.as_deref(),
                 &node,
                 bytes,
                 &fs.budget,
+                &fs.cancelled,
             ),
         );
         let handle = state.lock();
@@ -1787,6 +1812,47 @@ mod tests {
         assert_eq!(run_staged(&mut fs, fh), Err(EACCES));
         server.join().unwrap();
     }
+
+    #[test]
+    fn sealed_threetched_call_without_fixture_surface_requires_lungs_admission() {
+        let directory = tempdir().unwrap();
+        let socket = directory.path().join("sealed-lungs.sock");
+        let listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let server = std::thread::spawn(move || {
+            let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+            runtime.block_on(async move {
+                let listener = tokio::net::UnixListener::from_std(listener).unwrap();
+                let (stream, _) = listener.accept().await.unwrap();
+                let connection = zbus::connection::Builder::unix_stream(stream)
+                    .server(zbus::Guid::generate()).unwrap().p2p()
+                    .auth_mechanism(zbus::connection::AuthMechanism::Anonymous)
+                    .serve_at("/org/opdbus/v1/lungs", FixtureLungs {
+                        bound: Arc::new(Mutex::new(None)), refuse: true,
+                    }).unwrap().build().await.unwrap();
+                connection.closed().await;
+            });
+        });
+        let (_fixture, mut fs) = lungs_fixture_plugin(Lungs::Socket {
+            path: socket, session: "named-session".into(),
+        }, "threetched");
+        assert!(fs.namespace.threetched_surface.is_none());
+        let ino = fs.namespace.nodes.values()
+            .find(|node| node.path == "/plugins/threetched/operations/record_event/call")
+            .unwrap().ino;
+        let fh = fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap();
+        {
+            let mut handle = fs.open_files[&fh].lock();
+            let bytes = br#"{"event":"arrival"}"#;
+            handle.bytes.resize(bytes.len(), INPUT_LIMIT).unwrap();
+            handle.bytes.bytes.copy_from_slice(bytes);
+            handle.dirty = true;
+        }
+        assert_eq!(run_staged(&mut fs, fh), Err(EACCES));
+        assert_eq!(handle_json(&fs, fh)["stage"], "register");
+        assert_eq!(run_staged(&mut fs, fh), Err(EACCES));
+        server.join().unwrap();
+    }
     #[test]
     fn fresh_opens_follow_commits_without_invalidating_old_handle() {
         let (directory, workspace, _) = workspace_fixture();
@@ -1847,9 +1913,376 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "explicit disposable kernel FUSE check; requires root and /dev/fuse"]
+    fn upstream_kernel_nonroot_handle_lifecycle() {
+        use std::os::unix::{fs::PermissionsExt, process::CommandExt};
+        assert_eq!(unsafe { libc::geteuid() }, 0, "run explicitly as root");
+        let (directory, mut fs) = lungs_fixture("/nonexistent".into());
+        let binary = crate::threetched_surface::test_fixture_binary(directory.path());
+        fs.graft_threetched(ThreetchedSurface::capture(&binary).unwrap())
+            .unwrap();
+        let slots = fs.slots.clone();
+        let budget = fs.budget.clone();
+        let jobs = fs.jobs.clone();
+        let mountpoint = directory.path().join("mount");
+        std::fs::create_dir(&mountpoint).unwrap();
+        std::fs::set_permissions(directory.path(), std::fs::Permissions::from_mode(0o755)).unwrap();
+        let session = fuser::spawn_mount2(
+            fs,
+            &mountpoint,
+            &[
+                fuser::MountOption::FSName("threetched-inode-fixture".into()),
+                fuser::MountOption::AllowOther,
+                fuser::MountOption::DefaultPermissions,
+                fuser::MountOption::NoDev,
+                fuser::MountOption::NoSuid,
+                fuser::MountOption::NoExec,
+            ],
+        )
+        .unwrap();
+        let status = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "fuse_fs::tests::upstream_kernel_probe",
+                "--ignored",
+                "--nocapture",
+            ])
+            .env("THREETCHED_INODE_TEST_MOUNT", &mountpoint)
+            .uid(1001)
+            .gid(1001)
+            .status()
+            .unwrap();
+        drop(session);
+        assert!(status.success());
+        // Session teardown drops all remaining namespace handles and charges.
+        drop(slots.take(HANDLE_LIMIT, HANDLE_LIMIT).unwrap());
+        drop(budget.take(TOTAL_LIMIT, TOTAL_LIMIT).unwrap());
+        drop(jobs.take(JOB_LIMIT, JOB_LIMIT).unwrap());
+    }
+
+    #[test]
+    #[ignore = "child probe of upstream_kernel_nonroot_handle_lifecycle"]
+    fn upstream_kernel_probe() {
+        use std::os::unix::fs::MetadataExt;
+        assert_eq!(unsafe { libc::geteuid() }, 1001);
+        let mount = PathBuf::from(std::env::var_os("THREETCHED_INODE_TEST_MOUNT").unwrap());
+        let directory = mount.join("plugins/threetched/operations/self-test");
+        let schema = directory.join("input.schema.json");
+        let ino = std::fs::metadata(&schema).unwrap().ino();
+        for _ in 0..512 {
+            let names: Vec<_> = std::fs::read_dir(&directory)
+                .unwrap()
+                .map(|entry| entry.unwrap().file_name())
+                .collect();
+            assert!(names.contains(&OsString::from("call")));
+            assert_eq!(std::fs::metadata(&schema).unwrap().ino(), ino);
+            serde_json::from_slice::<Value>(&std::fs::read(&schema).unwrap()).unwrap();
+        }
+        for _ in 0..4 {
+            let handles: Vec<_> = (0..HANDLE_LIMIT)
+                .map(|_| std::fs::File::open(&schema).unwrap())
+                .collect();
+            assert_eq!(
+                std::fs::File::open(&schema).unwrap_err().raw_os_error(),
+                Some(libc::ENOMEM)
+            );
+            drop(handles);
+            // RELEASE may follow close asynchronously in the kernel.
+            let deadline = std::time::Instant::now() + Duration::from_secs(2);
+            loop {
+                match std::fs::read(&schema) {
+                    Ok(_) => break,
+                    Err(error)
+                        if error.raw_os_error() == Some(libc::ENOMEM)
+                            && std::time::Instant::now() < deadline =>
+                    {
+                        std::thread::sleep(Duration::from_millis(10));
+                    }
+                    Err(error) => panic!("handle slots did not drain: {error}"),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn upstream_open_pins_surface_and_kernel_release_drains_exact_limit() {
+        let (directory, mut fs) = lungs_fixture("/nonexistent".into());
+        let binary = crate::threetched_surface::test_fixture_binary(directory.path());
+        fs.graft_threetched(ThreetchedSurface::capture(&binary).unwrap())
+            .unwrap();
+        fs = fs.with_call_owner_uid(unsafe { libc::getuid() }).unwrap();
+        let path = "/plugins/threetched/operations/self-test/call";
+        let ino = fs
+            .namespace
+            .nodes
+            .values()
+            .find(|node| node.path == path)
+            .unwrap()
+            .ino;
+        let surface = fs.namespace.threetched_surface.clone().unwrap();
+        for _ in 0..3 {
+            let mut handles = Vec::new();
+            for _ in 0..HANDLE_LIMIT {
+                handles.push(fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap());
+            }
+            assert_eq!(fs.open_handle(ino, libc::O_RDWR, fs.uid), Err(libc::ENOMEM));
+            fs.refresh_namespace().unwrap();
+            assert_eq!(fs.namespace.nodes[&ino].path, path);
+            for fh in handles {
+                assert!(Arc::ptr_eq(
+                    fs.open_files[&fh].lock().surface.as_ref().unwrap(),
+                    &surface
+                ));
+                let (sender, receiver) = std::sync::mpsc::channel();
+                fs.submit(ino, fh, 0, PendingReply::Test(sender), true);
+                assert_eq!(receiver.recv_timeout(Duration::from_secs(2)).unwrap(), 0);
+            }
+            drop(fs.slots.take(HANDLE_LIMIT, HANDLE_LIMIT).unwrap());
+            drop(fs.budget.take(TOTAL_LIMIT, TOTAL_LIMIT).unwrap());
+        }
+    }
+
+    #[test]
+    fn upstream_rejected_fsync_stays_terminal_under_job_and_byte_exhaustion() {
+        let (directory, mut fs) = lungs_fixture("/nonexistent".into());
+        let binary = crate::threetched_surface::test_fixture_binary(directory.path());
+        fs.graft_threetched(ThreetchedSurface::capture(&binary).unwrap())
+            .unwrap();
+        let ino = fs
+            .namespace
+            .nodes
+            .values()
+            .find(|node| node.path == "/plugins/threetched/operations/self-test/call")
+            .unwrap()
+            .ino;
+        let fh = fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap();
+        {
+            let mut handle = fs.open_files[&fh].lock();
+            handle.bytes.resize(2, INPUT_LIMIT).unwrap();
+            handle.bytes.bytes.copy_from_slice(b"{}");
+            handle.dirty = true;
+        }
+        let jobs = fs.jobs.take(JOB_LIMIT, JOB_LIMIT).unwrap();
+        // Leave no space for a freshly allocated diagnostic.
+        let mut held = Vec::new();
+        for amount in [DOCUMENT_LIMIT, 8192, 1] {
+            while let Ok(charge) = fs.budget.take(amount, TOTAL_LIMIT) {
+                held.push(charge);
+            }
+        }
+        let (sender, receiver) = std::sync::mpsc::channel();
+        fs.submit(ino, fh, fs.uid, PendingReply::Test(sender), false);
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(2)).unwrap(),
+            EBUSY
+        );
+        assert_eq!(handle_json(&fs, fh)["stage"], "admission");
+        assert!(handle_json(&fs, fh)["operation_id"].is_null());
+        drop((jobs, held));
+        let (sender, receiver) = std::sync::mpsc::channel();
+        fs.submit(ino, fh, 0, PendingReply::Test(sender), true);
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(2)).unwrap(),
+            EBUSY
+        );
+        assert!(fs.open_files.is_empty());
+        drop(fs.slots.take(HANDLE_LIMIT, HANDLE_LIMIT).unwrap());
+        drop(fs.budget.take(TOTAL_LIMIT, TOTAL_LIMIT).unwrap());
+        drop(fs.jobs.take(JOB_LIMIT, JOB_LIMIT).unwrap());
+    }
+
+    #[test]
+    fn upstream_cancelled_before_spawn_keeps_admission_when_diagnostics_cannot_allocate() {
+        let (directory, mut fs) = lungs_fixture("/nonexistent".into());
+        let binary = crate::threetched_surface::test_fixture_binary(directory.path());
+        fs.graft_threetched(ThreetchedSurface::capture(&binary).unwrap())
+            .unwrap();
+        let ino = fs
+            .namespace
+            .nodes
+            .values()
+            .find(|node| node.path == "/plugins/threetched/operations/self-test/call")
+            .unwrap()
+            .ino;
+        let fh = fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap();
+        {
+            let mut handle = fs.open_files[&fh].lock();
+            handle.bytes.resize(2, INPUT_LIMIT).unwrap();
+            handle.bytes.bytes.copy_from_slice(b"{}");
+            handle.dirty = true;
+        }
+        let mut held = Vec::new();
+        for amount in [DOCUMENT_LIMIT, 8192, 1] {
+            while let Ok(charge) = fs.budget.take(amount, TOTAL_LIMIT) {
+                held.push(charge);
+            }
+        }
+        fs.cancelled.store(true, Ordering::Release);
+        assert_eq!(run_staged(&mut fs, fh), Err(EBUSY));
+        assert_eq!(handle_json(&fs, fh)["stage"], "admission");
+        drop(held);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        fs.submit(ino, fh, 0, PendingReply::Test(sender), true);
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(2)).unwrap(),
+            EBUSY
+        );
+        drop(fs.budget.take(TOTAL_LIMIT, TOTAL_LIMIT).unwrap());
+    }
+
+    #[test]
+    fn upstream_discovered_method_executes_exact_flags_and_positionals() {
+        use std::os::unix::fs::PermissionsExt;
+        let (directory, mut fs) = lungs_fixture("/nonexistent".into());
+        let binary = directory.path().join("discovered-cli");
+        std::fs::write(
+            &binary,
+            r#"#!/bin/sh
+case "$*" in
+  '--version') printf 'fixture 1\n' ;;
+  'config schema') printf '{"type":"object"}\n' ;;
+  '--help')
+    cat <<'EOF'
+Usage: fixture <COMMAND>
+
+Commands:
+  widgets  Widget operations
+EOF
+    ;;
+  'widgets --help')
+    cat <<'EOF'
+Usage: fixture widgets <COMMAND>
+
+Commands:
+  publish  Publish one widget
+EOF
+    ;;
+  'widgets publish --help')
+    cat <<'EOF'
+Usage: fixture widgets publish [OPTIONS] <NAME>
+
+Arguments:
+  <NAME>  Widget name
+
+Options:
+      --format <FORMAT>  Wire format [possible values: json, yaml]
+  -v, --verbose          Verbose output
+  -h, --help             Print help
+EOF
+    ;;
+  *) printf '%s\n' "$@" ;;
+esac
+"#,
+        )
+        .unwrap();
+        std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o755)).unwrap();
+        fs.graft_threetched(ThreetchedSurface::capture(&binary).unwrap())
+            .unwrap();
+        let ino = fs
+            .namespace
+            .nodes
+            .values()
+            .find(|node| node.path == "/plugins/threetched/operations/widgets.publish/call")
+            .expect("discovered leaf becomes a method")
+            .ino;
+        let fh = fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap();
+        let input = br#"{"--format":["json"],"--verbose":true,"arguments":["sample"]}"#;
+        {
+            let mut handle = fs.open_files[&fh].lock();
+            handle.bytes.resize(input.len(), INPUT_LIMIT).unwrap();
+            handle.bytes.bytes.copy_from_slice(input);
+            handle.dirty = true;
+        }
+        assert_eq!(run_staged(&mut fs, fh), Ok(()));
+        assert_eq!(
+            handle_json(&fs, fh)["stdout"],
+            "widgets\npublish\n--format\njson\n--verbose\n--\nsample\n"
+        );
+        let surface = fs.namespace.threetched_surface.as_ref().unwrap();
+        let invalid = run_threetched_call(
+            "widgets.publish",
+            br#"{"--invented":true,"arguments":["sample"]}"#,
+            Some(surface),
+            &fs.budget,
+            &fs.cancelled,
+        );
+        assert!(matches!(invalid, Err(ThreetchedCallError::Arguments(_))));
+    }
+
+    #[test]
+    fn upstream_exec_uses_captured_binary_and_retains_same_descriptor_receipt() {
+        let (directory, mut fs) = lungs_fixture("/nonexistent".into());
+        let binary = crate::threetched_surface::test_fixture_binary(directory.path());
+        fs.graft_threetched(ThreetchedSurface::capture(&binary).unwrap())
+            .unwrap();
+        let ino = fs
+            .namespace
+            .nodes
+            .values()
+            .find(|node| node.path == "/plugins/threetched/operations/self-test/call")
+            .unwrap()
+            .ino;
+        let fh = fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap();
+        {
+            let mut handle = fs.open_files[&fh].lock();
+            handle.bytes.resize(2, INPUT_LIMIT).unwrap();
+            handle.bytes.bytes.copy_from_slice(b"{}");
+            handle.dirty = true;
+        }
+        // Discovery can change while this descriptor retains its original surface.
+        fs.namespace.threetched_surface = None;
+        let (sender, receiver) = std::sync::mpsc::channel();
+        fs.submit(ino, fh, fs.uid, PendingReply::Test(sender), false);
+        assert_eq!(receiver.recv_timeout(Duration::from_secs(3)).unwrap(), 0);
+        assert_eq!(handle_json(&fs, fh)["stdout"], "ok\n");
+        assert_eq!(handle_json(&fs, fh)["exit"], 0);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        fs.submit(ino, fh, 0, PendingReply::Test(sender), true);
+        assert_eq!(receiver.recv_timeout(Duration::from_secs(2)).unwrap(), 0);
+    }
+
+    #[test]
+    fn workspace_rejected_fsync_cannot_commit_on_release() {
+        let (_directory, mut fs, ino) = workspace_fixture();
+        let fh = fs.open_handle(ino, libc::O_RDWR, fs.uid).unwrap();
+        let before = fs
+            .node_bytes(&fs.open_files[&fh].lock().node)
+            .unwrap()
+            .bytes;
+        {
+            let mut handle = fs.open_files[&fh].lock();
+            handle.bytes.resize(2, DOCUMENT_LIMIT).unwrap();
+            handle.bytes.bytes.copy_from_slice(b"99");
+            handle.dirty = true;
+        }
+        let jobs = fs.jobs.take(JOB_LIMIT, JOB_LIMIT).unwrap();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        fs.submit(ino, fh, fs.uid, PendingReply::Test(sender), false);
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(2)).unwrap(),
+            EBUSY
+        );
+        drop(jobs);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        fs.submit(ino, fh, 0, PendingReply::Test(sender), true);
+        assert_eq!(
+            receiver.recv_timeout(Duration::from_secs(2)).unwrap(),
+            EBUSY
+        );
+        fs.refresh_namespace().unwrap();
+        assert_eq!(
+            fs.node_bytes(fs.namespace.node(ino).unwrap())
+                .unwrap()
+                .bytes,
+            before
+        );
+        drop(fs.budget.take(TOTAL_LIMIT, TOTAL_LIMIT).unwrap());
+    }
+
+    #[test]
     fn kernel_release_reclaims_nonroot_handles_without_weakening_io_checks() {
         let (_directory, mut fs) = lungs_fixture(PathBuf::from("/nonexistent"));
-        let ino = method_node(&fs, "args.json").ino;
+        let ino = method_node(&fs, "input.schema.json").ino;
         let owner = 1001;
         for _ in 0..HANDLE_LIMIT * 2 {
             let fh = fs.open_handle(ino, libc::O_RDONLY, owner).unwrap();

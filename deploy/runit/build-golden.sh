@@ -12,8 +12,8 @@
 #   golden/                      the deployable subvolume
 #     bin/                       release binaries
 #     sbin/                      control scripts + systemd compat layer
-#     usr/bin/zeroclaw           pinned tched_router native dependency
-#     usr/share/op-dbus/         native and UI provenance manifests
+#     usr/bin/threetched           pinned threetched dependency
+#     usr/share/op-dbus/         threetched and UI provenance manifests
 #     usr/local/share/op-dbus/dashboard/  pinned production UI assets at root
 #     sv/<service>/run           runit service definitions
 #     etc/                       environment defaults, pacman hooks
@@ -64,16 +64,17 @@ EXECUTION_PYTHON_PREPARE="$SCRIPT_DIR/prepare-execution-python.sh"
 NLM_CLI_ROOT=/opt/opdbus
 TCHED_ROUTER_SOURCE_PIN="$PROJECT_ROOT/vendor/tched-router/source.pin"
 TCHED_ROUTER_VENDORED_SOURCE="$PROJECT_ROOT/vendor/tched-router/source.tar.gz"
-TCHED_ROUTER_ARTIFACT_DIR="$PROJECT_ROOT/target/native-artifacts/tched-router"
-TCHED_ROUTER_NATIVE_BIN="$TCHED_ROUTER_ARTIFACT_DIR/zeroclaw"
-TCHED_ROUTER_NATIVE_MANIFEST="$TCHED_ROUTER_ARTIFACT_DIR/manifest.json"
-TCHED_ROUTER_LAG_PATCH="$PROJECT_ROOT/vendor/tched-router/patches/0001-close-native-event-stream-on-lag.patch"
+TCHED_ROUTER_ARTIFACT_DIR="$PROJECT_ROOT/target/threetched-artifacts/tched-router"
+THREETCHED_BIN="$TCHED_ROUTER_ARTIFACT_DIR/threetched"
+THREETCHED_MANIFEST="$TCHED_ROUTER_ARTIFACT_DIR/manifest.json"
+TCHED_ROUTER_LAG_PATCH="$PROJECT_ROOT/vendor/tched-router/patches/0001-close-threetched-event-stream-on-lag.patch"
 TCHED_ROUTER_GENERATION_PATCH="$PROJECT_ROOT/vendor/tched-router/patches/0002-stateless-provider-generation.patch"
+TCHED_ROUTER_BRANDING_PATCH="$PROJECT_ROOT/vendor/tched-router/patches/0003-threetched-branding.patch"
 TCHED_ROUTER_PATCH_INVENTORY="$PROJECT_ROOT/vendor/tched-router/patch-inventory"
 TCHED_ROUTER_BASE_MANIFEST="$PROJECT_ROOT/vendor/tched-router/base-sha256sums"
-TCHED_ROUTER_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/zeroclaw-runtime.toml"
+TCHED_ROUTER_BOOTSTRAP_CONFIG="$SCRIPT_DIR/../config/threetched-runtime.toml"
 MODEL_PROVIDERS_SOURCE="$SCRIPT_DIR/../config/model-providers.toml"
-TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/zeroclaw-skills/default"
+TCHED_ROUTER_BOOTSTRAP_SKILLS="$SCRIPT_DIR/../config/threetched-skills/default"
 AGENT_BUNDLE_SOURCE="$SCRIPT_DIR/../config/agents"
 UI_SOURCE_DIR="$PROJECT_ROOT/vendor/3tched-json-render-ui"
 UI_SOURCE_PIN="$UI_SOURCE_DIR/source.pin"
@@ -181,7 +182,7 @@ NOTEBOOKLM_MCP_ARTIFACT_PATH="$MCP_PROVIDER_ARTIFACT_CACHE_DIR/$NOTEBOOKLM_MCP_A
 NOTEBOOKLM_MCP_INSTALL_NAME="nlm-cli-$NOTEBOOKLM_MCP_VERSION-$NOTEBOOKLM_MCP_SHA256"
 
 [ -r "$TCHED_ROUTER_SOURCE_PIN" ] ||
-    die "missing tched_router native source pin: $TCHED_ROUTER_SOURCE_PIN"
+    die "missing threetched source pin: $TCHED_ROUTER_SOURCE_PIN"
 # shellcheck disable=SC1090 -- release-owned, fixed-key declaration validated below.
 . "$TCHED_ROUTER_SOURCE_PIN"
 case "${UPSTREAM_TAG:-}" in v[0-9]*.[0-9]*.[0-9]*) ;; *) die "invalid tched_router UPSTREAM_TAG" ;; esac
@@ -228,15 +229,16 @@ printf '%s\n' "$BINARIES" | grep -Fxq "$RELEASE_DIR/threetched-fs" ||
 [ -x "$RELEASE_DIR/opblob" ] || die "release is missing opblob"
 [ -x "$RELEASE_DIR/system_graph_inventory" ] ||
     die "release is missing system_graph_inventory; rebuild the workspace"
-[ -x "$TCHED_ROUTER_NATIVE_BIN" ] ||
-    die "missing tched_router native binary; run vendor/tched-router/build-native.sh --cache-dir /var/cache/op-dbus-build/tched-router --output-dir target/native-artifacts/tched-router"
-[ -f "$TCHED_ROUTER_NATIVE_MANIFEST" ] ||
-    die "missing tched_router native provenance manifest: $TCHED_ROUTER_NATIVE_MANIFEST"
-TCHED_ROUTER_NATIVE_SHA256=$(sha256sum "$TCHED_ROUTER_NATIVE_BIN" | cut -d' ' -f1)
-TCHED_ROUTER_MANIFEST_SHA256=$(sha256sum "$TCHED_ROUTER_NATIVE_MANIFEST" | cut -d' ' -f1)
-TCHED_ROUTER_NATIVE_BYTES=$(wc -c < "$TCHED_ROUTER_NATIVE_BIN" | tr -d ' ')
+[ -x "$THREETCHED_BIN" ] ||
+    die "missing threetched binary; run vendor/tched-router/build-threetched.sh --cache-dir /var/cache/op-dbus-build/tched-router --output-dir target/threetched-artifacts/tched-router"
+[ -f "$THREETCHED_MANIFEST" ] ||
+    die "missing threetched provenance manifest: $THREETCHED_MANIFEST"
+THREETCHED_SHA256=$(sha256sum "$THREETCHED_BIN" | cut -d' ' -f1)
+TCHED_ROUTER_MANIFEST_SHA256=$(sha256sum "$THREETCHED_MANIFEST" | cut -d' ' -f1)
+THREETCHED_BYTES=$(wc -c < "$THREETCHED_BIN" | tr -d ' ')
 TCHED_ROUTER_LAG_PATCH_SHA256=$(sha256sum "$TCHED_ROUTER_LAG_PATCH" | cut -d' ' -f1)
 TCHED_ROUTER_GENERATION_PATCH_SHA256=$(sha256sum "$TCHED_ROUTER_GENERATION_PATCH" | cut -d' ' -f1)
+TCHED_ROUTER_BRANDING_PATCH_SHA256=$(sha256sum "$TCHED_ROUTER_BRANDING_PATCH" | cut -d' ' -f1)
 TCHED_ROUTER_PATCH_INVENTORY_SHA256=$(sha256sum "$TCHED_ROUTER_PATCH_INVENTORY" | cut -d' ' -f1)
 TCHED_ROUTER_BASE_MANIFEST_SHA256=$(sha256sum "$TCHED_ROUTER_BASE_MANIFEST" | cut -d' ' -f1)
 jq -e \
@@ -245,33 +247,35 @@ jq -e \
     --arg commit "$UPSTREAM_COMMIT" \
     --arg source_sha "$SOURCE_ARCHIVE_SHA256" \
     --arg vendored_source_gzip_sha "$VENDORED_SOURCE_GZIP_SHA256" \
-    --arg binary_sha "$TCHED_ROUTER_NATIVE_SHA256" \
-    --argjson binary_bytes "$TCHED_ROUTER_NATIVE_BYTES" \
+    --arg binary_sha "$THREETCHED_SHA256" \
+    --argjson binary_bytes "$THREETCHED_BYTES" \
     --arg lag_patch_sha "$TCHED_ROUTER_LAG_PATCH_SHA256" \
     --arg generation_patch_sha "$TCHED_ROUTER_GENERATION_PATCH_SHA256" \
+    --arg branding_patch_sha "$TCHED_ROUTER_BRANDING_PATCH_SHA256" \
     --arg inventory_sha "$TCHED_ROUTER_PATCH_INVENTORY_SHA256" \
     --arg base_manifest_sha "$TCHED_ROUTER_BASE_MANIFEST_SHA256" \
-    '.format == "opdbus.tched-router-native.v1" and
+    '.format == "opdbus.threetched.v1" and
      .upstream.url == $url and
      .upstream.tag == $tag and
      .upstream.commit == $commit and
      .upstream.source_archive_sha256 == $source_sha and
      .upstream.vendored_source_gzip_sha256 == $vendored_source_gzip_sha and
-     .artifact.name == "zeroclaw" and
+     .artifact.name == "threetched" and
      .artifact.sha256 == $binary_sha and
      .artifact.bytes == $binary_bytes and
      (.artifact.rust_target | type == "string" and length > 0) and
      .patches.lagged_sse_sha256 == $lag_patch_sha and
      .patches.stateless_generation_sha256 == $generation_patch_sha and
+     .patches.branding_sha256 == $branding_patch_sha and
      .patches.inventory_sha256 == $inventory_sha and
      .patches.base_manifest_sha256 == $base_manifest_sha and
      (.patches.patched_cargo_lock_sha256 | type == "string" and test("^[0-9a-f]{64}$"))' \
-    "$TCHED_ROUTER_NATIVE_MANIFEST" >/dev/null ||
-    die "tched_router native provenance does not match its pinned source and binary"
-[ "$("$TCHED_ROUTER_NATIVE_BIN" --version)" = "zeroclaw ${UPSTREAM_TAG#v}" ] ||
-    die "tched_router native candidate reports an unexpected version"
-strings "$TCHED_ROUTER_NATIVE_BIN" | grep -Fq 'tched_router.generation.v1' ||
-    die "tched_router native candidate lacks the patched generation protocol"
+    "$THREETCHED_MANIFEST" >/dev/null ||
+    die "threetched provenance does not match its pinned source and binary"
+[ "$("$THREETCHED_BIN" --version)" = "threetched ${UPSTREAM_TAG#v}" ] ||
+    die "threetched candidate reports an unexpected version"
+strings "$THREETCHED_BIN" | grep -Fq 'tched_router.generation.v1' ||
+    die "threetched candidate lacks the patched generation protocol"
 [ -f "$TCHED_ROUTER_BOOTSTRAP_CONFIG" ] ||
     die "missing tched_router bootstrap configuration: $TCHED_ROUTER_BOOTSTRAP_CONFIG"
 [ -d "$TCHED_ROUTER_BOOTSTRAP_SKILLS" ] ||
@@ -392,6 +396,8 @@ jq -e '
         (.value | type == "string" and test("^[0-9a-f]{64}$")))
 ' "$PERSISTED_CATALOG_DIR/.manifest.json" >/dev/null ||
     die "persisted sealed catalog manifest is invalid"
+jq -e '.plugins.threetched | type == "string"' "$PERSISTED_CATALOG_DIR/.manifest.json" >/dev/null ||
+    die "persisted sealed catalog is missing threetched; seal its selected capture inputs with opblob first"
 CATALOG_GENERATION=$(jq -r '.generation' "$PERSISTED_CATALOG_DIR/.manifest.json")
 CATALOG_HASH=$(jq -r '.catalog_hash' "$PERSISTED_CATALOG_DIR/.manifest.json")
 CATALOG_MANIFEST_SHA256=$(sha256sum "$PERSISTED_CATALOG_DIR/.manifest.json" | cut -d' ' -f1)
@@ -410,7 +416,32 @@ jq -r '.plugins | to_entries[] | [.key, .value] | @tsv' \
             die "persisted sealed catalog blob plugin id does not match its manifest: $blob"
         [ "$(printf '%s\n' "$inspected" | awk '$1 == "schema" && $2 == "sha256" { print $3; exit }')" = "$schema_hash" ] ||
             die "persisted sealed catalog blob schema hash does not match its manifest: $blob"
+        if [ "$plugin_id" = threetched ]; then
+            printf '%s\n' "$inspected" | awk '$1 == "method" {found=1} END {exit found ? 0 : 1}' ||
+                die "sealed threetched blob has no method inventory"
+            printf '%s\n' "$inspected" | awk '$1 == "descriptor" && /services=\["/ {found=1} END {exit found ? 0 : 1}' ||
+                die "sealed threetched blob has no method service descriptor"
+        fi
     done
+# Use the existing schema projection to inspect the sealed plugin example.
+# This only reads the supplied catalog into a disposable declaration-only view;
+# opblob remains the sole sealer and the backing binary is never recaptured here.
+(
+    threetched_validation=$(mktemp -d "${TMPDIR:-/tmp}/threetched-release-catalog.XXXXXX") || exit 1
+    trap 'rm -rf -- "$threetched_validation"' EXIT HUP INT TERM
+    mkdir "$threetched_validation/state" || exit 1
+    "$RELEASE_DIR/threetched-fs" --store "$threetched_validation/store" capture --schema-only \
+        --catalog "$PERSISTED_CATALOG_DIR" --state "$threetched_validation/state" >/dev/null || exit 1
+    "$RELEASE_DIR/threetched-fs" --store "$threetched_validation/store" inspect --plugin threetched |
+        jq -e --arg binary_sha "$THREETCHED_SHA256" --arg manifest_sha "$TCHED_ROUTER_MANIFEST_SHA256" '
+            .plugin_id == "threetched" and .schema.name == "threetched" and
+            (.schema.methods | type == "object" and length > 0) and
+            .schema.example.binary == "/usr/bin/threetched" and
+            .schema.example.manifest == "/usr/share/op-dbus/threetched-manifests/tched-router.json" and
+            .schema.example.binary_sha256 == $binary_sha and
+            .schema.example.manifest_sha256 == $manifest_sha
+        ' >/dev/null
+) || die "sealed threetched capture provenance does not match the prepared release binary and manifest"
 [ -f "$EMQX_ARTIFACT_PATH" ] || die "missing pinned EMQX artifact: $EMQX_ARTIFACT_PATH"
 [ "$(sha256sum "$EMQX_ARTIFACT_PATH" | cut -d' ' -f1)" = "$EMQX_SHA256" ] ||
     die "EMQX artifact digest does not match deploy/config/emqx.version"
@@ -530,14 +561,14 @@ build_golden() {
         run install -Dm755 "$bin" "$GOLDEN_DIR/bin/$(basename "$bin")"
     done
     ok "staged $BIN_COUNT binaries into golden/bin"
-    # The upstream-named binary is the native implementation behind the
+    # The threetched binary supplies the implementation behind the
     # tched_router plugin. Its runit definition verifies this separately
     # staged provenance manifest before exec.
-    run install -Dm755 "$TCHED_ROUTER_NATIVE_BIN" \
-        "$GOLDEN_DIR/usr/bin/zeroclaw"
-    run install -Dm644 "$TCHED_ROUTER_NATIVE_MANIFEST" \
-        "$GOLDEN_DIR/usr/share/op-dbus/native-manifests/tched-router.json"
-    ok "staged pinned tched_router native binary and provenance manifest"
+    run install -Dm755 "$THREETCHED_BIN" \
+        "$GOLDEN_DIR/usr/bin/threetched"
+    run install -Dm644 "$THREETCHED_MANIFEST" \
+        "$GOLDEN_DIR/usr/share/op-dbus/threetched-manifests/tched-router.json"
+    ok "staged pinned threetched binary and provenance manifest"
     # OpenCode is a provider list entry. A reused golden tree must not keep
     # the retired local server binary or its runtime contract.
     [ ! -e "$GOLDEN_DIR/usr/bin/opencode" ] || run rm -- "$GOLDEN_DIR/usr/bin/opencode"
@@ -612,6 +643,17 @@ build_golden() {
             "$GOLDEN_DIR/share/op-dbus/notebook-sync/scripts/$helper"
     done
     ok "staged control scripts into golden/sbin"
+
+    # MASQUE transport helpers are release inputs too. Credentials and the
+    # independent transport selector remain outside application activation.
+    for helper in endpoint connect routing admission guard namespace remainder decoy-egress; do
+        run install -Dm755 "$SCRIPT_DIR/../decoy-warp-ssh/$helper.sh" \
+            "$GOLDEN_DIR/libexec/op-warp-ssh/$helper.sh"
+    done
+    for transport_input in host.json decoy.json host-admission.nft decoy-admission.nft ssh-host.conf.example README.md; do
+        run install -Dm644 "$SCRIPT_DIR/../decoy-warp-ssh/$transport_input" \
+            "$GOLDEN_DIR/share/op-dbus/warp-ssh/$transport_input"
+    done
 
     # Standalone EMQX is part of the release artifact and is never copied from
     # a running Netmaker container. Reused golden trees are accepted only when
@@ -709,14 +751,14 @@ build_golden() {
             "$GOLDEN_DIR/etc/opdbus/$declaration"
     done
     run install -Dm644 "$TCHED_ROUTER_BOOTSTRAP_CONFIG" \
-        "$GOLDEN_DIR/etc/op-dbus/zeroclaw-runtime.toml"
+        "$GOLDEN_DIR/etc/op-dbus/threetched-runtime.toml"
     run install -Dm644 "$ELEVATION_PAM_SOURCE" \
         "$GOLDEN_DIR/etc/pam.d/op-dbus-elevate"
     # model_registry's provider list: root-owned and not writable by others,
     # or the bridge refuses it.
     run install -Dm644 "$MODEL_PROVIDERS_SOURCE" \
         "$GOLDEN_DIR/etc/op-dbus/model-providers.toml"
-    golden_tched_router_skills="$GOLDEN_DIR/etc/op-dbus/zeroclaw-skills/default"
+    golden_tched_router_skills="$GOLDEN_DIR/etc/op-dbus/threetched-skills/default"
     [ ! -e "$golden_tched_router_skills" ] || run rm -r -- "$golden_tched_router_skills"
     run install -d -m 0755 "$golden_tched_router_skills"
     run cp -a "$TCHED_ROUTER_BOOTSTRAP_SKILLS/." "$golden_tched_router_skills/"
@@ -755,7 +797,7 @@ build_golden() {
             printf 'source: %s\n' "$PROJECT_ROOT"
             printf 'init: runit (sv)\n'
             printf 'binaries: %s\n' "$BIN_COUNT"
-            printf 'tched-router-native-sha256: %s\n' "$TCHED_ROUTER_NATIVE_SHA256"
+            printf 'threetched-sha256: %s\n' "$THREETCHED_SHA256"
             printf 'tched-router-manifest-sha256: %s\n' "$TCHED_ROUTER_MANIFEST_SHA256"
             printf 'tched-router-bootstrap-config-sha256: %s\n' "$TCHED_ROUTER_BOOTSTRAP_CONFIG_SHA256"
             printf 'tched-router-bootstrap-skills-sha256: %s\n' "$TCHED_ROUTER_BOOTSTRAP_SKILLS_SHA256"

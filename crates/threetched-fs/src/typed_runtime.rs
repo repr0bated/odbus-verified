@@ -1667,6 +1667,7 @@ fn terminal_diagnostic(value: serde_json::Value) -> NodeError {
             FsCondition::PermissionDenied
         }
         DiagnosticStage::Transport => FsCondition::BackendUnavailable,
+        DiagnosticStage::Admission => FsCondition::Busy,
         DiagnosticStage::Contract => FsCondition::InvalidValue,
         DiagnosticStage::Limits => FsCondition::TooLarge,
         DiagnosticStage::Handle => FsCondition::InvalidHandle,
@@ -1921,6 +1922,7 @@ mod tests {
             ("register", FsCondition::PermissionDenied),
             ("call", FsCondition::PermissionDenied),
             ("transport", FsCondition::BackendUnavailable),
+            ("admission", FsCondition::Busy),
         ] {
             let document = serde_json::json!({"plugin":"demo","method":"Read","stage":stage,"error":"original error"});
             let NodeError::Terminal {
@@ -1939,6 +1941,27 @@ mod tests {
             terminal_diagnostic(serde_json::json!({"error":"unknown"})),
             NodeError::Ambiguous(_)
         ));
+    }
+    #[test]
+    fn admission_diagnostic_is_definite_busy_without_operation_identity() {
+        let document = serde_json::json!({
+            "plugin": "demo", "method": "Read", "stage": "admission",
+            "error": "operation capacity unavailable; reopen for an explicit new attempt",
+            "operation_id": null
+        });
+        let NodeError::Terminal {
+            condition,
+            diagnostic,
+            raw,
+        } = terminal_diagnostic(document.clone())
+        else {
+            panic!("expected terminal admission diagnostic");
+        };
+        assert_eq!(condition, FsCondition::Busy);
+        assert_eq!(diagnostic.stage, DiagnosticStage::Admission);
+        assert!(diagnostic.operation_id.is_none());
+        assert_eq!(raw.into_json().unwrap(), document);
+        assert_eq!(io_condition(Some(libc::EBUSY)), FsCondition::Busy);
     }
     #[test]
     fn nested_json_bound_rejects_before_serialization_or_submission() {

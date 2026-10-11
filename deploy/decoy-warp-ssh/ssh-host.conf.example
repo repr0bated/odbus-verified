@@ -30,6 +30,8 @@ ClientAliveCountMax 3
 LoginGraceTime 20
 MaxAuthTries 3
 LogLevel VERBOSE
-# Root-owned authorized_keys: restrict,tunnel="REMOTE_TUN_ID" ssh-ed25519 ...
+# Root-owned authorized_keys (restrict also denies TUN on current OpenSSH):
+# no-agent-forwarding,no-port-forwarding,no-pty,no-user-rc,no-X11-forwarding,tunnel="REMOTE_TUN_ID" ssh-ed25519 ...
+# MaxSessions 0 above denies shell/subsystem sessions; only the pinned TUN is allowed.
 # Precreate tunREMOTE_TUN_ID owned by the dedicated user. No session shell,
 # sudo, or CAP_NET_ADMIN is required by that user. No DisableForwarding yes.

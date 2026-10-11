@@ -66,7 +66,7 @@ User corrections can invalidate a map even without a code change.
 
 For binary-backed plugins, check the plugin contract and upstream provenance;
 do not create a second authoritative schema store. For `tched_router`, the
-upstream executable's name is `zeroclaw`; the framework/plugin/scaffolding uses
+patched executable's name is `threetched`; the framework/plugin/scaffolding uses
 `tched_router`. Keep the control-plane chatbot, retired Waypipe and the
 model-agnostic routing role distinct from historical package names.
 
@@ -119,10 +119,12 @@ establish the snapshot's required contents. Credentials and minted SID1 values
 are provisioned runtime state and do not become source files.
 
 For the tched_router backing binary, retain the complete
-`vendor/tched-router/` pin, patch set, manifests and `build-native.sh`. The
-helper emits `target/native-artifacts/tched-router/{zeroclaw,manifest.json}`
+`vendor/tched-router/` pin, patch set, manifests and `build-threetched.sh`. The
+helper emits `target/threetched-artifacts/tched-router/{threetched,manifest.json}`
 without installing it. Golden preparation validates and stages those files,
 the runtime bootstrap configuration and the default skill bundle. A clean
+release keeps the validated binary manifest at
+`/usr/share/op-dbus/threetched-manifests/tched-router.json`. A clean
 source checkout still needs either the exact pinned source/cache/archive or
 network access to fetch it; the built binary is not checked into source.
 

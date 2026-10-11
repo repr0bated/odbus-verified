@@ -1,4 +1,4 @@
-//! Typed OP-DBUS skills surface of the running tched-router ZeroClaw binary.
+//! Typed OP-DBUS skills surface of the running tched-router threetched binary.
 //! The sealed CLI and bundle schema come from that binary.
 
 use std::collections::BTreeSet;
@@ -43,7 +43,7 @@ pub struct SkillsState {
     pub command_group: String,
     /// Exact parsed CLI subtree supplied by the native binary at seal time.
     pub cli_surface: Value,
-    /// Verbatim skill bundle configuration subtree from `zeroclaw config schema`.
+    /// Verbatim skill bundle configuration subtree from `threetched config schema`.
     pub bundle_config_schema: Value,
 }
 
@@ -59,7 +59,7 @@ fn captured() -> Result<&'static CapturedSkills> {
         .map_err(|error| anyhow::anyhow!("{error}"))
 }
 
-fn sha256_file(path: &Path) -> Result<String> {
+pub(crate) fn sha256_file(path: &Path) -> Result<String> {
     let mut file = File::open(path).with_context(|| format!("open {}", path.display()))?;
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 64 * 1024];
@@ -91,7 +91,7 @@ const CLI_METHODS: &[(&str, &[&str], &[&str])] = &[
 fn node<'a>(surface: &'a BinarySurface, path: &[&str]) -> Result<&'a CliNode> {
     surface.nodes.iter()
         .find(|node| node.path.iter().map(String::as_str).eq(path.iter().copied()))
-        .with_context(|| format!("ZeroClaw binary has no command {}", path.join(" ")))
+        .with_context(|| format!("threetched binary has no command {}", path.join(" ")))
 }
 
 fn observed_commands(node: &CliNode) -> BTreeSet<&str> {
@@ -99,27 +99,28 @@ fn observed_commands(node: &CliNode) -> BTreeSet<&str> {
 }
 
 fn capture() -> Result<CapturedSkills> {
-    let binary = super::tched_router_paths::binary()?;
+    let runtime_binary = super::tched_router_paths::binary()?;
     let config_dir = super::tched_router_paths::config_dir()?;
-    let manifest: Value = serde_json::from_reader(File::open(super::tched_router_paths::manifest()?)?)?;
+    let (capture_binary, capture_manifest) = super::tched_router_paths::capture_paths()?;
+    let manifest: Value = serde_json::from_reader(File::open(capture_manifest)?)?;
     let manifest_hash = manifest.pointer("/artifact/sha256").and_then(Value::as_str)
         .context("tched-router manifest has no artifact sha256")?;
-    let binary_hash = sha256_file(&binary)?;
-    ensure!(binary_hash == manifest_hash, "ZeroClaw binary does not match the tched-router manifest");
+    let binary_hash = sha256_file(&capture_binary)?;
+    ensure!(binary_hash == manifest_hash, "threetched binary does not match the tched-router manifest");
     let surface = introspect_binary_subtree(
-        &binary,
+        &capture_binary,
         &["skills".into()],
         &BinaryIntrospectOpts { max_depth: 2, ssh: None },
     )?;
     ensure!(
         observed_commands(node(&surface, &["skills"])?)
             == BTreeSet::from(["list", "add", "edit", "bundle", "audit", "install", "remove", "test"]),
-        "ZeroClaw skills command set changed; update the typed adapter before sealing"
+        "threetched skills command set changed; update the typed adapter before sealing"
     );
     ensure!(
         observed_commands(node(&surface, &["skills", "bundle"])?)
             == BTreeSet::from(["list", "add", "remove", "rename", "show"]),
-        "ZeroClaw skills bundle command set changed; update the typed adapter before sealing"
+        "threetched skills bundle command set changed; update the typed adapter before sealing"
     );
     for (method, path, specific_flags) in CLI_METHODS {
         let command = node(&surface, path)?;
@@ -128,21 +129,27 @@ fn capture() -> Result<CapturedSkills> {
             .filter(|flag| !["--config-dir", "--log-level", "--verbose", "--help"].contains(flag))
             .collect();
         let expected: BTreeSet<&str> = specific_flags.iter().copied().collect();
-        ensure!(observed == expected, "ZeroClaw CLI flags changed for {method}: observed {observed:?}, expected {expected:?}");
+        ensure!(observed == expected, "threetched CLI flags changed for {method}: observed {observed:?}, expected {expected:?}");
     }
-    let config_schema_output = StdCommand::new(&binary).args(["config", "schema"])
-        .output().context("capture ZeroClaw config schema")?;
-    ensure!(config_schema_output.status.success(), "ZeroClaw config schema failed");
+    let config_schema_output = StdCommand::new(&capture_binary).args(["config", "schema"])
+        .output().context("capture threetched config schema")?;
+    ensure!(config_schema_output.status.success(), "threetched config schema failed");
     let config_schema: Value = serde_json::from_slice(&config_schema_output.stdout)
-        .context("ZeroClaw config schema was not JSON")?;
+        .context("threetched config schema was not JSON")?;
     let bundle_config_schema =
         super::binary_namespace::filter_namespace(&config_schema, "skill_bundles")?;
+    // The candidate path is a build-time selector only. Seal the runtime path
+    // so this descriptor remains valid after the binary is staged in a release.
     let state = SkillsState {
-        binary: binary.to_str().context("non-UTF8 tched-router binary path")?.into(),
+        binary: runtime_binary.to_str().context("non-UTF8 tched-router binary path")?.into(),
         config_dir: config_dir.to_str().context("non-UTF8 tched-router config path")?.into(),
         binary_sha256: binary_hash,
         command_group: "skills".into(),
-        cli_surface: serde_json::to_value(surface)?,
+        cli_surface: {
+            let mut surface = surface;
+            surface.binary = runtime_binary.to_str().context("non-UTF8 tched-router binary path")?.into();
+            serde_json::to_value(surface)?
+        },
         bundle_config_schema,
     };
     Ok(CapturedSkills { state })
@@ -263,7 +270,7 @@ impl StatePlugin for TchedSkillsPlugin {
     ) -> Result<StateDiff> {
         ensure!(
             current == desired && *desired == state_value()?,
-            "ZeroClaw skills descriptor is immutable"
+            "threetched skills descriptor is immutable"
         );
         Ok(StateDiff {
             plugin: PLUGIN_NAME.into(),
@@ -278,7 +285,7 @@ impl StatePlugin for TchedSkillsPlugin {
     async fn apply_state(&self, diff: &StateDiff) -> Result<ApplyResult> {
         ensure!(
             diff.plugin == PLUGIN_NAME && diff.actions.is_empty(),
-            "ZeroClaw skills descriptor is immutable"
+            "threetched skills descriptor is immutable"
         );
         Ok(ApplyResult {
             success: true,
@@ -291,10 +298,10 @@ impl StatePlugin for TchedSkillsPlugin {
         Ok(*desired == state_value()?)
     }
     async fn create_checkpoint(&self) -> Result<Checkpoint> {
-        bail!("ZeroClaw skills has no mutable plugin-state checkpoints")
+        bail!("threetched skills has no mutable plugin-state checkpoints")
     }
     async fn rollback(&self, _: &Checkpoint) -> Result<()> {
-        bail!("ZeroClaw skills has no mutable plugin-state checkpoints")
+        bail!("threetched skills has no mutable plugin-state checkpoints")
     }
     fn capabilities(&self) -> PluginCapabilities {
         PluginCapabilities {
@@ -311,18 +318,18 @@ pub fn state_value() -> Result<OwnedValue> {
 }
 
 pub fn tched_skills_schema() -> PluginSchema {
-    let captured = captured().expect("installed ZeroClaw skills contract must be captured before sealing");
+    let captured = captured().expect("installed threetched skills contract must be captured before sealing");
     let root =
         serde_json::to_value(schemars::schema_for!(SkillsState)).expect("skills state schema");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         PLUGIN_NAME,
         VERSION,
-        "Typed commands backed by the installed ZeroClaw skills binary",
+        "Typed commands backed by the installed threetched skills binary",
         &root,
     );
     schema.category = "software".into();
     schema.display_name = Some("Tched Skills".into());
-    schema.tags = vec!["zeroclaw".into(), "skills".into(), "binary".into()];
+    schema.tags = vec!["threetched".into(), "skills".into(), "binary".into()];
     schema.immutable_paths = vec![
         "/binary".into(),
         "/config_dir".into(),
@@ -331,7 +338,9 @@ pub fn tched_skills_schema() -> PluginSchema {
         "/cli_surface".into(),
         "/bundle_config_schema".into(),
     ];
-    schema.public_state.paths = schema.immutable_paths.clone();
+    // Publish closed metadata fields; opaque discovery evidence is sealed in example.
+    schema.public_state.paths = ["binary", "config_dir", "binary_sha256", "command_group"]
+        .map(|name| format!("/{name}")).into();
     let state = simd_json::serde::to_owned_value(&captured.state).expect("skills state serializes");
     super::schemars_adapter::apply_state_defaults(&mut schema, &state);
     schema.example = Some(state);
@@ -452,16 +461,16 @@ pub fn tched_skills_schema() -> PluginSchema {
         "every binary-backed skills command needs exactly one sealed method"
     );
     for (id, description) in [
-        (READ, "Read installed ZeroClaw skills and audit metadata."),
+        (READ, "Read installed threetched skills and audit metadata."),
         (
             WRITE,
-            "Create, remove, or rename installed ZeroClaw skills and bundles.",
+            "Create, remove, or rename installed threetched skills and bundles.",
         ),
         (
             INSTALL,
-            "Install skill code from a URL or local source through ZeroClaw.",
+            "Install skill code from a URL or local source through threetched.",
         ),
-        (EXECUTE, "Run skill TEST.sh scripts through ZeroClaw."),
+        (EXECUTE, "Run skill TEST.sh scripts through threetched."),
     ] {
         schema.capabilities.insert(
             id.into(),
@@ -621,7 +630,7 @@ fn arguments(method: &str, value: &Value) -> Result<Vec<String>> {
                 token(&input.to)?,
             ]);
         }
-        _ => bail!("unknown ZeroClaw skills method: {method}"),
+        _ => bail!("unknown threetched skills method: {method}"),
     }
     Ok(argv)
 }
@@ -631,12 +640,12 @@ async fn read_limited<R: tokio::io::AsyncRead + Unpin>(reader: R) -> Result<Vec<
     reader.take(MAX_OUTPUT + 1).read_to_end(&mut bytes).await?;
     ensure!(
         bytes.len() as u64 <= MAX_OUTPUT,
-        "ZeroClaw skills output exceeded 128 KiB"
+        "threetched command output exceeded 128 KiB"
     );
     Ok(bytes)
 }
 
-async fn run(
+pub(crate) async fn run(
     binary: &Path,
     config_dir: &Path,
     argv: &[String],
@@ -661,7 +670,7 @@ async fn run(
         .env("HOME", config_dir.join("home"))
         .env("USER", "jeremy")
         .env("PATH", "/usr/local/bin:/usr/bin:/bin")
-        .env("ZEROCLAW_CONFIG_DIR", config_dir)
+        .env("THREETCHED_CONFIG_DIR", config_dir)
         .stdin(if contents.is_some() { Stdio::piped() } else { Stdio::null() })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -669,9 +678,9 @@ async fn run(
     if contents.is_some() {
         command.env("EDITOR", "/usr/bin/tee").env("VISUAL", "/usr/bin/tee");
     }
-    let mut child = command.spawn().context("start installed ZeroClaw binary")?;
-    let stdout = child.stdout.take().context("missing skills stdout")?;
-    let stderr = child.stderr.take().context("missing skills stderr")?;
+    let mut child = command.spawn().context("start installed threetched binary")?;
+    let stdout = child.stdout.take().context("missing threetched stdout")?;
+    let stderr = child.stderr.take().context("missing threetched stderr")?;
     let stdin = child.stdin.take();
     let result = tokio::time::timeout(DEADLINE, async {
         let (stdout, stderr, status, ()) =
@@ -686,13 +695,13 @@ async fn run(
         Ok::<_, anyhow::Error>((stdout, stderr, status))
     })
     .await
-    .context("ZeroClaw skills command timed out")??;
+    .context("threetched command timed out")??;
     let (stdout, stderr, status) = result;
-    let output = String::from_utf8(stdout).context("ZeroClaw skills stdout is not UTF-8")?;
+    let output = String::from_utf8(stdout).context("threetched stdout is not UTF-8")?;
     let diagnostic = String::from_utf8_lossy(&stderr);
     ensure!(
         status.success(),
-        "ZeroClaw skills command failed: {}",
+        "threetched command failed: {}",
         diagnostic.trim()
     );
     Ok(SkillsOutput { text: output })
@@ -707,7 +716,7 @@ pub async fn dispatch(method: &str, value: &Value, sealed_source: &SkillsState) 
         binary == Path::new(&sealed_source.binary)
             && config_dir == Path::new(&sealed_source.config_dir)
             && current_hash == sealed_source.binary_sha256,
-        "ZeroClaw skills binary or router paths changed since seal; reseal before calling methods"
+        "threetched skills binary or router paths changed since seal; reseal before calling methods"
     );
     let argv = arguments(method, value)?;
     let contents = if method == "edit_skill" {

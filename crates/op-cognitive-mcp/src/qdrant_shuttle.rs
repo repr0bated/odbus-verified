@@ -572,12 +572,12 @@ mod tests {
     #[test]
     fn plugin_id_to_uuid_is_stable() {
         assert_eq!(
-            plugin_id_to_uuid("zeroclaw"),
-            plugin_id_to_uuid("zeroclaw"),
+            plugin_id_to_uuid("threetched"),
+            plugin_id_to_uuid("threetched"),
             "same plugin id must produce the same UUID every time"
         );
         assert_ne!(
-            plugin_id_to_uuid("zeroclaw"),
+            plugin_id_to_uuid("threetched"),
             plugin_id_to_uuid("antigravity"),
             "different plugin ids must not collide"
         );

@@ -451,6 +451,7 @@ pub enum DiagnosticStage {
     Register,
     Call,
     Transport,
+    Admission,
     OutcomeUnknown,
     Contract,
     Commit,

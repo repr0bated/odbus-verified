@@ -17,7 +17,7 @@ wait_dep() {
 }
 
 wait_dep incusd
-wait_dep ovsbr0-svc-addr
+wait_dep ovsbr0-cutover
 
 NAME=xray
 START_PID=

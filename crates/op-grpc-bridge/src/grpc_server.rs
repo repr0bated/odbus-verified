@@ -10,7 +10,7 @@ use async_stream::stream;
 use chrono::{DateTime, Utc};
 use op_cognitive_mcp::QdrantSemanticShuttle;
 use prost::Message;
-use prost_reflect::{DescriptorPool, DynamicMessage, SerializeOptions};
+use prost_reflect::{DescriptorPool, DynamicMessage, ReflectMessage, SerializeOptions};
 use prost_types::{Struct as ProstStruct, Timestamp as ProstTimestamp, Value as ProstValue};
 use serde::de::DeserializeSeed;
 use serde_json::Value as JsonValue;
@@ -179,6 +179,111 @@ pub(crate) fn enforce_bridge_capability_with_schema(
 }
 
 #[allow(clippy::result_large_err)] // Preserve tonic status at the RPC boundary.
+fn normalize_generated_arguments(
+    schema: &JsonValue,
+    method_name: &str,
+    descriptor: &prost_reflect::MessageDescriptor,
+    args: &mut JsonValue,
+) -> Result<(), Status> {
+    let contract = schema
+        .get("methods")
+        .and_then(|methods| methods.get(method_name))
+        .and_then(|method| method.get("args"))
+        .ok_or_else(|| Status::failed_precondition("sealed method input schema is unavailable"))?;
+    op_blob::descriptor::validate_json_schema_field_aliases(contract)
+        .map_err(Status::failed_precondition)?;
+    normalize_message_keys(contract, contract, descriptor, args, 0)
+}
+
+#[allow(clippy::result_large_err)] // Preserve tonic status at the RPC boundary.
+fn normalize_message_keys<'a>(
+    root: &'a JsonValue,
+    contract: &'a JsonValue,
+    descriptor: &prost_reflect::MessageDescriptor,
+    args: &mut JsonValue,
+    depth: usize,
+) -> Result<(), Status> {
+    if depth > 128 {
+        return Err(Status::invalid_argument("request nesting exceeds alias mapping limit"));
+    }
+    // Resolve only the local pointers and single alternatives represented by
+    // the sealed descriptor builder. Structured Value/Struct payloads retain
+    // their authored JSON keys and need no protobuf field-name translation.
+    let Some(contract) = descriptor_schema_node(root, contract) else {
+        return Ok(());
+    };
+    let Some(properties) = contract.get("properties").and_then(JsonValue::as_object) else {
+        return Ok(());
+    };
+    let Some(object) = args.as_object_mut() else {
+        return Ok(());
+    };
+    for field in descriptor.fields() {
+        let Some((original, property)) = properties
+            .iter()
+            .find(|(name, _)| op_blob::descriptor::proto_field_name(name) == field.name())
+        else {
+            continue;
+        };
+        if original != field.name() && field.json_name() != original {
+            return Err(Status::failed_precondition(
+                "request descriptor lost an authored JSON property name",
+            ));
+        }
+        let Some(mut value) = object.remove(field.name()) else {
+            continue;
+        };
+        if let prost_reflect::Kind::Message(message) = field.kind()
+            && !message.full_name().starts_with("google.protobuf.")
+        {
+            let property = descriptor_schema_node(root, property).unwrap_or(property);
+            if field.is_map() {
+                if let Some(values) = value.as_object_mut()
+                    && let Some(value_schema) = property.get("additionalProperties")
+                    && let prost_reflect::Kind::Message(value_message) = message.map_entry_value_field().kind()
+                {
+                    for value in values.values_mut() {
+                        normalize_message_keys(root, value_schema, &value_message, value, depth + 1)?;
+                    }
+                }
+            } else if field.is_list() {
+                if let Some(values) = value.as_array_mut()
+                    && let Some(item_schema) = property.get("items")
+                {
+                    for value in values {
+                        normalize_message_keys(root, item_schema, &message, value, depth + 1)?;
+                    }
+                }
+            } else {
+                normalize_message_keys(root, property, &message, &mut value, depth + 1)?;
+            }
+        }
+        if object.insert(original.clone(), value).is_some() {
+            return Err(Status::invalid_argument("request contains duplicate property aliases"));
+        }
+    }
+    Ok(())
+}
+
+fn descriptor_schema_node<'a>(root: &'a JsonValue, mut node: &'a JsonValue) -> Option<&'a JsonValue> {
+    for _ in 0..64 {
+        if let Some(reference) = node.get("$ref").and_then(JsonValue::as_str) {
+            node = root.pointer(reference.strip_prefix('#')?)?;
+        } else if let Some(alternatives) = node
+            .get("anyOf")
+            .or_else(|| node.get("oneOf"))
+            .and_then(JsonValue::as_array)
+            .filter(|values| values.len() == 1)
+        {
+            node = &alternatives[0];
+        } else {
+            return Some(node);
+        }
+    }
+    None
+}
+
+#[allow(clippy::result_large_err)] // Preserve tonic status at the RPC boundary.
 fn validate_generated_arguments(
     schema: &JsonValue,
     method_name: &str,
@@ -210,6 +315,56 @@ fn validate_generated_arguments(
 #[cfg(test)]
 mod generated_argument_tests {
     use super::*;
+
+    #[test]
+    fn cli_flag_aliases_return_to_sealed_keys_before_validation() {
+        let contract = serde_json::json!({"type":"object","additionalProperties":false,
+            "required":["--config-dir","-f","listen_port"],"properties":{
+                "--config-dir":{"type":"string"},
+                "-f":{"type":"boolean"},
+                "listen_port":{"type":"integer"}
+            }});
+        let mut plugin = op_blob::schema::PluginSchema::builder("threetched").build();
+        plugin.methods.insert("configure".into(), op_blob::schema::MethodDecl {
+            name: "configure".into(),
+            args: contract,
+            returns: Some(serde_json::json!({"type":"object"})),
+            side_effect: op_blob::schema::SideEffect::Read,
+            idempotent: true,
+            required_capability: None,
+            subid: "obs.threetched.configure@v1".into(),
+        });
+        let sealed = serde_json::to_value(&plugin).unwrap();
+        let (bytes, methods) = op_blob::descriptor::descriptor_set_for_plugin("threetched", &plugin);
+        let pool = DescriptorPool::decode(bytes.as_slice()).unwrap();
+        let input = pool.get_message_by_name(&methods[0].input_full).unwrap();
+        let mut deserializer = serde_json::Deserializer::from_str(
+            r#"{"--config-dir":"/isolated/config","-f":true,"listenPort":443}"#,
+        );
+        let message = input.clone().deserialize(&mut deserializer).unwrap();
+        let mut encoded = Vec::new();
+        message.serialize_with_options(
+            &mut serde_json::Serializer::new(&mut encoded),
+            &SerializeOptions::new().use_proto_field_name(true).stringify_64_bit_integers(false),
+        ).unwrap();
+        let mut args: JsonValue = serde_json::from_slice(&encoded).unwrap();
+        assert!(args.get("__config_dir").is_some());
+        normalize_generated_arguments(&sealed, "configure", &input, &mut args).unwrap();
+        validate_generated_arguments(&sealed, "configure", &mut args).unwrap();
+        assert_eq!(args, serde_json::json!({
+            "--config-dir":"/isolated/config","-f":true,"listen_port":443
+        }));
+
+        let mut duplicate = serde_json::json!({"__config_dir":"a","--config-dir":"b"});
+        assert_eq!(normalize_generated_arguments(&sealed, "configure", &input, &mut duplicate)
+            .unwrap_err().code(), tonic::Code::InvalidArgument);
+        let ambiguous = serde_json::json!({"methods":{"configure":{"args":{
+            "type":"object","properties":{"--flag":{"type":"boolean"},"__flag":{"type":"boolean"}}
+        }}}});
+        let mut args = serde_json::json!({"__flag":true});
+        assert_eq!(normalize_generated_arguments(&ambiguous, "configure", &input, &mut args)
+            .unwrap_err().code(), tonic::Code::FailedPrecondition);
+    }
 
     #[test]
     fn typed_requests_obey_sealed_constraints_and_unit_contracts() {
@@ -880,6 +1035,12 @@ impl OperationGrpcServer {
             ))
         })?;
 
+        normalize_generated_arguments(
+            sealed_schema,
+            method_name,
+            &request_dynamic.descriptor(),
+            &mut args_value,
+        )?;
         validate_generated_arguments(sealed_schema, method_name, &mut args_value)?;
         json_args = serde_json::to_string(&args_value)
             .map_err(|error| Status::internal(error.to_string()))?;

@@ -898,6 +898,8 @@ fn usage_example(
     );
     for name in [
         "dispatch",
+        "fuse_buffers",
+        "fuse_process",
         "model",
         "mounted",
         "namespace",
@@ -913,6 +915,15 @@ fn usage_example(
             literal(path.to_str().context("source path is not UTF-8")?)
         )?;
     }
+    writeln!(
+        example,
+        "#[path={}] mod threetched_surface;",
+        literal(
+            root.join("src/threetched-surface.rs")
+                .to_str()
+                .context("surface source path is not UTF-8")?
+        )
+    )?;
     writeln!(
         example,
         "#[path={}] mod plugins;",
@@ -1247,6 +1258,11 @@ mod tests {
         assert!(example.contains("Plugin::bind"));
         assert!(example.contains("f_get_5fprotocol"));
         assert!(example.contains("f_get_5freceipt"));
+        assert!(example.contains("mod fuse_buffers;"));
+        assert!(example.contains("mod fuse_process;"));
+        assert!(example.contains("mod threetched_surface;"));
+        assert!(example.contains("threetched-surface.rs"));
+        assert!(!example.contains("mod fuse_fs;"));
         assert!(!example.contains("read_to_end"));
         assert!(!example.contains("serde_json::from"));
         assert!(!example.contains("operations/"));

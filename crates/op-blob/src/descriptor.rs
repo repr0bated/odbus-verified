@@ -179,6 +179,7 @@ struct MessageDef {
 
 struct FieldDef {
     name: String,
+    json_name: Option<String>,
     number: u64,
     repeated: bool,
     proto_type: u64,
@@ -247,12 +248,17 @@ fn build_message<'a>(
         // numbering) is name-sorted and deterministic.
         let mut properties = props.iter().collect::<Vec<_>>();
         properties.sort_by(|left, right| left.0.cmp(right.0));
+        validate_proto_field_aliases(properties.iter().map(|(name, _)| name.as_str()))
+            .expect("JSON Schema properties have ambiguous protobuf field aliases");
+        let proto_names: std::collections::BTreeSet<_> =
+            props.keys().map(|name| proto_field_name(name)).collect();
         for (i, (fname, fnode)) in properties.into_iter().enumerate() {
             let number = (i + 1) as u64;
-            let kind = field_kind(fnode, fname, &mut nested, context, &ancestors);
+            let proto_name = proto_field_name(fname);
+            let kind = field_kind(fnode, &proto_name, &mut nested, context, &ancestors);
             let oneof_index = if !kind.repeated && kind.proto_type != T_MESSAGE {
-                let mut name = format!("_{fname}");
-                while props.contains_key(&name) || oneofs.contains(&name) {
+                let mut name = format!("_{proto_name}");
+                while proto_names.contains(&name) || oneofs.contains(&name) {
                     name.insert(0, '_');
                 }
                 let index = oneofs.len() as u64;
@@ -262,7 +268,8 @@ fn build_message<'a>(
                 None
             };
             fields.push(FieldDef {
-                name: fname.clone(),
+                json_name: (proto_name != *fname).then(|| fname.clone()),
+                name: proto_name,
                 number,
                 repeated: kind.repeated,
                 proto_type: kind.proto_type,
@@ -404,6 +411,7 @@ fn map_kind<'a>(
         fields: vec![
             FieldDef {
                 name: "key".into(),
+                json_name: None,
                 number: 1,
                 repeated: false,
                 proto_type: T_STRING,
@@ -412,6 +420,7 @@ fn map_kind<'a>(
             },
             FieldDef {
                 name: "value".into(),
+                json_name: None,
                 number: 2,
                 repeated: false,
                 proto_type: value_kind.proto_type,
@@ -475,7 +484,11 @@ fn encode_message(def: &MessageDef) -> Vec<u8> {
             // Relative reference resolves against the enclosing scope.
             put_str(&mut fd, 6, t);
         }
-        put_str(&mut fd, 10, &json_name(&f.name));
+        put_str(
+            &mut fd,
+            10,
+            &f.json_name.clone().unwrap_or_else(|| json_name(&f.name)),
+        );
         if let Some(index) = f.oneof_index {
             put_varint_field(&mut fd, 9, index);
             put_varint_field(&mut fd, 17, 1); // proto3_optional
@@ -543,6 +556,71 @@ fn json_name(snake: &str) -> String {
         }
     }
     out
+}
+
+/// Legal protobuf spelling for an authored JSON property. Existing legal
+/// identifiers remain unchanged; the exact JSON key belongs in json_name.
+pub fn proto_field_name(value: &str) -> String {
+    let mut name: String = value
+        .chars()
+        .map(|ch| if ch.is_ascii_alphanumeric() || ch == '_' { ch } else { '_' })
+        .collect();
+    if name.is_empty() {
+        name.push_str("field");
+    } else if name.as_bytes()[0].is_ascii_digit() {
+        name.insert(0, '_');
+    }
+    name
+}
+
+/// Reject properties whose protobuf or protobuf-JSON aliases overlap. This
+/// fallible gate lets schema authors reject ambiguity before sealing a blob.
+pub fn validate_proto_field_aliases<'a>(
+    names: impl IntoIterator<Item = &'a str>,
+) -> Result<(), String> {
+    let mut aliases = std::collections::BTreeMap::<String, &'a str>::new();
+    for original in names {
+        let proto = proto_field_name(original);
+        let json = if proto == original { json_name(original) } else { original.to_owned() };
+        for alias in [proto, json] {
+            if let Some(previous) = aliases.insert(alias.clone(), original)
+                && previous != original
+            {
+                return Err(format!(
+                    "JSON properties {previous:?} and {original:?} share protobuf alias {alias:?}"
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Validate authored properties throughout a JSON Schema without changing its
+/// keys or field order. References retain their original schema authority.
+pub fn validate_json_schema_field_aliases(schema: &JVal) -> Result<(), String> {
+    fn visit(node: &JVal, depth: usize) -> Result<(), String> {
+        if depth > 128 {
+            return Err("JSON Schema alias validation exceeds nesting limit".into());
+        }
+        match node {
+            JVal::Object(object) => {
+                if let Some(properties) = object.get("properties").and_then(JVal::as_object) {
+                    validate_proto_field_aliases(properties.keys().map(String::as_str))?;
+                }
+                for value in object.values() {
+                    visit(value, depth + 1)?;
+                }
+            }
+            JVal::Array(array) => {
+                for value in array {
+                    visit(value, depth + 1)?;
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+    visit(schema, 0)
 }
 
 pub fn pascal_case(s: &str) -> String {
@@ -720,6 +798,7 @@ impl<'a> Reader<'a> {
 mod tests {
     use super::*;
     use crate::adapter::{AckOutput, method_decl_from_schemars_with_output};
+    use serde::de::DeserializeSeed;
     use crate::schema::SideEffect;
     use serde::{Deserialize, Serialize};
 
@@ -787,6 +866,57 @@ mod tests {
         let blob = crate::blob::blobify(&schema);
         assert_eq!(blob.manifest.methods[0].schema_name, "resolve_hostname");
         assert_eq!(blob.manifest.methods[0].grpc_name, "ResolveHostname");
+    }
+
+    #[test]
+    fn cli_flag_fields_round_trip_with_exact_json_names_and_existing_numbers() {
+        let mut decl = method_decl_from_schemars_with_output::<SetDeviceInput, AckOutput>(
+            "configure",
+            SideEffect::Read,
+            true,
+            "threetched.read",
+            "obs.threetched.configure@v1",
+        );
+        decl.args = serde_json::json!({"type":"object","additionalProperties":false,
+            "properties":{
+                "--config-dir":{"type":"string"},
+                "-f":{"type":"boolean"},
+                "listen_port":{"type":"integer"}
+            }});
+        let mut schema = PluginSchema::builder("threetched").build();
+        schema.methods.insert("configure".into(), decl);
+        let (bytes, methods) = descriptor_set_for_plugin("threetched", &schema);
+        let pool = prost_reflect::DescriptorPool::decode(bytes.as_slice()).unwrap();
+        let input = pool.get_message_by_name(&methods[0].input_full).unwrap();
+        let flag = input.get_field_by_name("__config_dir").unwrap();
+        assert_eq!(flag.json_name(), "--config-dir");
+        assert_eq!(flag.number(), 1);
+        let short = input.get_field_by_name("_f").unwrap();
+        assert_eq!(short.json_name(), "-f");
+        assert_eq!(short.number(), 2);
+        let existing = input.get_field_by_name("listen_port").unwrap();
+        assert_eq!(existing.json_name(), "listenPort");
+        assert_eq!(existing.number(), 3);
+        let mut json = serde_json::Deserializer::from_str(
+            r#"{"--config-dir":"/isolated/config","-f":true,"listenPort":443}"#,
+        );
+        let message = input.deserialize(&mut json).unwrap();
+        let output = serde_json::to_value(message).unwrap();
+        assert_eq!(output["--config-dir"], "/isolated/config");
+        assert_eq!(output["-f"], true);
+        assert_eq!(output["listenPort"], "443");
+    }
+
+    #[test]
+    fn ambiguous_proto_or_json_property_aliases_are_rejected() {
+        assert!(validate_proto_field_aliases(["--flag", "__flag"]).is_err());
+        assert!(validate_proto_field_aliases(["foo_bar", "fooBar"]).is_err());
+        assert!(validate_proto_field_aliases(["--flag", "-f", "snake_case"]).is_ok());
+        assert!(validate_json_schema_field_aliases(&serde_json::json!({
+            "type":"object","properties":{"nested":{"type":"object","properties":{
+                "--flag":{"type":"string"},"__flag":{"type":"string"}
+            }}}
+        })).is_err());
     }
 
     #[test]

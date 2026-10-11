@@ -47,9 +47,9 @@ pub struct LlmTransport {
     #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router-transport.grpc-target@v1"))]
     pub grpc_target: String,
     /// Incus / WireGuard container target for xray routing. Kept as a
-    /// published-schema field for backward compatibility, but zeroclaw's LLM
+    /// published-schema field for backward compatibility, but threetched's LLM
     /// transport now runs on the host (xray through its runit-managed service and
-    /// the gRPC-bridge via `op-grpc-bridge-zeroclaw`); there is no per-service
+    /// the gRPC-bridge via `op-grpc-bridge`); there is no per-service
     /// incus container. Defaults to the `"host"` sentinel.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "mut.service.3tched-router-transport.incus-container@v1"))]
@@ -1216,9 +1216,9 @@ impl TchedRouterPlugin {
                     },
                 ],
                 config_schema: ConfigSchema {
-                    source: "zeroclaw config schema".to_string(),
+                    source: "threetched config schema".to_string(),
                     schema_crate: "schemars".to_string(),
-                    native_type: format!("zeroclaw config schema v{}", tched_router_binary_version()),
+                    native_type: format!("threetched config schema v{}", tched_router_binary_version()),
                     status: "available_via_cli_or_gateway".to_string(),
                     ..Default::default()
                 },
@@ -3030,8 +3030,8 @@ mod official_schema_tests {
             .expect("imported contract has $defs");
         assert!(
             sections.len() >= 32,
-            "imported contract has only {} sections — import `zeroclaw config schema` \
-             through gen_tched_router_config_surface before rebuilding",
+            "imported contract has only {} sections — import `threetched config schema` \
+             into tched_router_contract.rs's UPSTREAM IMPORT block before rebuilding",
             sections.len()
         );
         assert!(

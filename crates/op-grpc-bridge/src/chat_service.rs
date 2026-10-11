@@ -2,11 +2,11 @@
 //!
 //! Implements the `op_chat.chat.ChatService` trait from `chat.proto`.
 //! Served on the op-grpc-bridge alongside StateSync, PluginService, etc.
-//! so zeroclaw-gui discovers it via a single reflection endpoint.
+//! for discovery through a single reflection endpoint.
 #![allow(dead_code)] // many items are infrastructure for upcoming chat features
 //!
 //! Architecture:
-//! - zeroclaw owns provider/model routing (OD-28) — SendRequest carries them.
+//! - threetched owns provider/model routing (OD-28) — SendRequest carries them.
 //! - gemma_brain routes to the selected model and applies compliance tags.
 //! - The chatbot is a DELEGATOR — forced tool calling is mandatory; even user
 //!   responses are emitted as tool calls (respond_to_user).
@@ -174,7 +174,7 @@ fn names_contain(names: &[String], candidate: &str) -> bool {
 
 fn provider_type_for(state: &TchedRouterState, provider_id: &str) -> anyhow::Result<ProviderType> {
     let names = provider_names(state, provider_id)
-        .ok_or_else(|| anyhow!("provider '{provider_id}' is not declared by ZeroClaw"))?;
+        .ok_or_else(|| anyhow!("provider '{provider_id}' is not declared by threetched"))?;
     names
         .iter()
         .find_map(|name| ProviderType::from_str(name).ok())
@@ -203,7 +203,7 @@ fn resolve_declared_route(
     };
 
     let provider_aliases = provider_names(state, provider_request)
-        .ok_or_else(|| anyhow!("provider '{provider_request}' is not declared by ZeroClaw"))?;
+        .ok_or_else(|| anyhow!("provider '{provider_request}' is not declared by threetched"))?;
 
     let provider_matches =
         |route: &&op_plugins::state_plugins::common::llm_projection::ModelRoute| {
@@ -308,7 +308,7 @@ async fn execute_chat(
 
 /// Execute the schema-declared `tched_router.Chat` method after the mutation
 /// engine has recorded the call. Provider/model selection remains owned by
-/// the projected ZeroClaw schema; `ChatManager` only performs the resolved
+/// the projected threetched schema; `ChatManager` only performs the resolved
 /// upstream call.
 pub(crate) async fn dispatch_schema_chat(
     chat_manager: &ChatManager,

@@ -10,7 +10,7 @@ changes are implied.
 ## Contract ownership
 
 The plugin **IS** the schema; the sealed blob **IS** the plugin. The autonomous
-`zeroclaw` executable backs the odBus `tched_router` integration. Assistant is
+`threetched` executable backs the odBus `tched_router` integration. Assistant is
 the singleton control-plane chatbot, and routing is model agnostic.
 
 [`tched_router_contract.rs`](../../../crates/op-plugins/src/state_plugins/tched_router_contract.rs)
@@ -19,21 +19,18 @@ The complete document and all 81 derived section contracts were preserved during
 consolidation. No repository `schemas/` directory remains. References in the
 historical inventory describe removed files, not current inputs.
 
-[`gen_tched_router_config_surface.rs`](../../../crates/op-plugins/src/bin/gen_tched_router_config_surface.rs)
-derives 89 configuration methods: 81 upstream sections, six local sections,
-`GetConfig` and `PatchConfig`. Default regeneration reads the plugin contract.
-An upstream upgrade is an explicit import, for example:
+The per-section generator and its generated methods were retired on October 4
+in commit `77871e5`. The current configuration surface uses the uniform
+`GetConfig` and `PatchConfig` methods. The old generator is not an active Cargo
+target and must not be restored as an upgrade step.
 
-```sh
-cargo run -p op-plugins --bin gen_tched_router_config_surface -- \
-  --import-json /tmp/upstream-config.json --version 0.8.4
-cargo fmt --all
-```
-
-The temporary input is the output of the intended binary's `config schema`
-command. It is not retained as a second authority. Imports reject truncated
-contracts and unresolved section references. Generated section schemas, method
-schemas, descriptors and sealed blobs derive from this plugin-owned value.
+For an upstream upgrade, capture the verified `threetched` binary's
+`config schema` output, validate the complete JSON and its local references,
+and record the binary digest and version. Replace only the `BEGIN UPSTREAM
+IMPORT` / `END UPSTREAM IMPORT` block in `tched_router_contract.rs`, including
+its version, while preserving the helpers below it. Temporary capture files are
+evidence, not a second contract authority. Section schemas, method schemas,
+descriptors and sealed blobs derive from the plugin-owned document.
 
 [`tched_router.rs`](../../../crates/op-plugins/src/state_plugins/tched_router.rs)
 assembles the configuration surface with the remaining typed plugin methods and

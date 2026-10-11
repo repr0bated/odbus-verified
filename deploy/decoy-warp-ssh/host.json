@@ -1,6 +1,7 @@
 {
   "role": "host",
   "tun_id": 5,
+  "interface_name": "masque-ssh",
   "mtu": 1280,
   "local_address": "192.168.254.1",
   "peer_address": "192.168.254.2",

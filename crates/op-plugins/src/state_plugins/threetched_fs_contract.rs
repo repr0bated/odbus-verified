@@ -7,7 +7,7 @@
 
 use serde_json::Value;
 
-pub const SCHEMA_VERSION: &str = "2.0.6";
+pub const SCHEMA_VERSION: &str = "2.0.7";
 pub const SOURCE_COMMIT: &str = "ed02a783fa9ae99c174544c585106e116ce2c6b1";
 
 pub fn schema_version() -> &'static str {
@@ -1036,6 +1036,7 @@ const CONTRACT: &str = r########"
             "register",
             "call",
             "transport",
+            "admission",
             "outcome_unknown",
             "contract",
             "commit",
@@ -1607,7 +1608,7 @@ const CONTRACT: &str = r########"
         "path": "crates/op-plugins/src/state_plugins/tched_router.rs"
       },
       {
-        "sha256": "b2fc25d21703d07b2a7640fa49c09d155d64f55054a94b1b450a4183d2f02ef8",
+        "sha256": "2a589f41be52a20b8bf839381bcb4c5d6bf8e663c9429da758b8e11887c3843b",
         "path": "crates/op-plugins/src/state_plugins/threetched_fs.rs"
       },
       {
@@ -1643,7 +1644,7 @@ const CONTRACT: &str = r########"
         "path": "crates/threetched-fs/examples/typed_generate.rs"
       },
       {
-        "sha256": "d7f2d0c0360b0304755bc434132ad5f94cf79a99c833ec4a91fbf2a22236aadd",
+        "sha256": "ff2aa10a4ce51b368fdd254a69eb589a0196fdf5fa0358d6498ff0bddb53a456",
         "path": "crates/threetched-fs/examples/typed_specialize.rs"
       },
       {
@@ -1651,15 +1652,23 @@ const CONTRACT: &str = r########"
         "path": "crates/threetched-fs/src/dispatch.rs"
       },
       {
-        "sha256": "a0edfd2ac2ff0b5b99387917ccdf6fa72fed9b9adeaf2d5a39681efba169f369",
+        "sha256": "62509bff1b0b99839fc05bcb524c6ac4d4054c08de000450a14b83580bb8c187",
         "path": "crates/threetched-fs/src/fuse_buffers.rs"
       },
       {
-        "sha256": "8dee0d77af3de669cf3a34282b051b0fb4a4d23059a70b4a1fa722f4086f099e",
+        "sha256": "5b38308b3b687caa017e4f4350d575132bdbc83aeae5088f36d1dc9ce06312e2",
         "path": "crates/threetched-fs/src/fuse_fs.rs"
       },
       {
-        "sha256": "d4cd88eae9735a6de23582a909b4e1c9101120b356926b8a78252e74e4542b0c",
+        "sha256": "a695702addbf084dca518265b8c5e7c54ffdf369cb66b08199d148cb7c6f6926",
+        "path": "crates/threetched-fs/src/fuse_process.rs"
+      },
+      {
+        "sha256": "7b018ef12791707bcd1b6fb926e1c453b7ce569af037dfbd3e38cb039a2bf759",
+        "path": "crates/threetched-fs/src/lib.rs"
+      },
+      {
+        "sha256": "68cb9d882d0ea0df90331bc2576fe7ddcf022ada249975c28020e0e26b854e24",
         "path": "crates/threetched-fs/src/main.rs"
       },
       {
@@ -1675,7 +1684,7 @@ const CONTRACT: &str = r########"
         "path": "crates/threetched-fs/src/mounted.rs"
       },
       {
-        "sha256": "a6de2fdd90ad11b5106cce9bd7150f46ab0f83715754ac73781c252498b90a77",
+        "sha256": "4c778b04ad597208f21a6d2403e3b7631fac2bad38d23cfab1181cb01e7a7cd3",
         "path": "crates/threetched-fs/src/namespace.rs"
       },
       {
@@ -1687,29 +1696,33 @@ const CONTRACT: &str = r########"
         "path": "crates/threetched-fs/src/store.rs"
       },
       {
-        "sha256": "8fe9e13560cb345b35b46c0ba62d1466579da0dabc7c2ea1e22cc78449725f89",
+        "sha256": "027d2d834d871b7801e2a8c007fbc638447ed6a36d7443ea43904fa4737b7989",
         "path": "crates/threetched-fs/src/typed_runtime.rs"
+      },
+      {
+        "sha256": "5ff3fe01ebf662c97f711fbb78ac4963ba14843ea4f1bb39168c4e5fd52aa375",
+        "path": "crates/threetched-fs/src/threetched-surface.rs"
       },
       {
         "sha256": "bf120b2884a97302bee15e5b7c143840ecdc9a4492828f242d5d82316aa41d05",
         "path": "deploy/config/container-socket-contract.schema.json"
       },
       {
-        "sha256": "0732c7bdce1cad547c5a7bc757724a238bb95fa73ca754bd99719bbfcdf26f2c",
+        "sha256": "452da1ecc40282b904c3a13a7c303e35f5c319726970d92b3ef766775e1caab9",
         "path": "deploy/runit/threetched-fs/run"
       }
     ],
     "source_hash_algorithm": "SHA-256",
     "assembly_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
-    "schema_version": "2.0.6",
+    "schema_version": "2.0.7",
     "source_commit": "ed02a783fa9ae99c174544c585106e116ce2c6b1",
-    "derivation": "fs-core-20261005 working-tree source. source_commit identifies the unchanged checkout baseline; source_files pins current authored implementation. Generated review exports are outputs, not authorities.",
+    "derivation": "Incremental revision of the fs-core-20261005 audit. source_commit retains that audit baseline; reviewed filesystem source hashes were updated for threetched-inode-20261011 and threetched-source-authority-20261011 on baseline 2e0e714. Unrelated pins and historical citations remain pending reconciliation as described in latest_source_refresh. Generated review exports are outputs, not authorities.",
     "pin_exclusions": [
       "Plugin-owned embedded contract excludes itself to avoid a self-hash cycle; its canonical sealed document supplies exact identity.",
       "Derived docs and typed_bindings.rs are outputs and excluded from source input pins."
     ],
-    "citation_policy": "Current source refs remapped through stable Rust function/type anchors after scoped formatting. verification.historical/authority.import/runtime_observations preserve prior revision citations and are historical only.",
-    "latest_source_refresh": "2.0.6: source provenance refresh for verified external WireGuard MCP origin sessions, existing live principal grants, canonical private D-Bus dispatch and fixed native agent UI proxy. Native SID1 and container credential paths retain their existing requirements. Active no-manual-recovery Chat behavior is preserved. Source candidate; build and deployment evidence is recorded separately."
+    "citation_policy": "Existing source references derive from the prior audit and require reconciliation after this incremental lifecycle update. verification.historical/authority.import/runtime_observations preserve prior revision citations and are historical only. Do not treat in-bounds citations as fresh semantic verification.",
+    "latest_source_refresh": "2.0.7: inode/handle admission, bounded child lifecycle and sealed threetched integration source (threetched-production-graft-20261011 on 9778c32). Shared binary discovery supplies exact CLI paths, flags and literal-token contracts to the threetched plugin; opblob is the sole sealer. Production FUSE projects the sealed catalog and uses canonical capability admission and receipts. Local graft execution is test-only. Reviewed filesystem and mount-launcher pins were refreshed; unrelated backend pins and historical citations still require full provenance reconciliation. Build, tests, sealing and activation of this integration are pending under the owner build hold; authored source is not runtime proof. See HANDOFF."
   },
   "convention": [
     {
@@ -2667,6 +2680,7 @@ const CONTRACT: &str = r########"
         "Register": null,
         "Call": null,
         "Transport": null,
+        "Admission": null,
         "OutcomeUnknown": null,
         "Contract": null,
         "Commit": null,
@@ -5593,7 +5607,7 @@ const CONTRACT: &str = r########"
       {
         "id": "terminal-receipt-no-retry",
         "steps": [
-          "A local successful write only stages input. fsync/flush/release must produce canonical validated terminal receipt; backend or publication uncertainty remains unknown. Recover proof/status through declared get_receipt, never automatic replay or private result export."
+          "A local successful write only stages input. A terminal admission diagnostic rejects before dispatch and has no backend effect or operation ID; later flush/fsync/release cannot retry rejected input. Reopening is an explicit new attempt, never an automatic replay. An admitted operation must produce a canonical validated terminal receipt; backend or publication uncertainty remains unknown. Recover proof/status through declared get_receipt, never automatic replay or private result export."
         ],
         "status": "implemented-source-unverified",
         "source_refs": [
@@ -7019,7 +7033,7 @@ const CONTRACT: &str = r########"
       "status": "implemented",
       "platform": "Linux GNU (also compiled elsewhere if crate supported)",
       "rust_signature": "fn flush(&mut self, request: &Request<'_>, ino: u64, fh: u64, _lock_owner: u64, reply: ReplyEmpty)",
-      "behavior": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then EBUSY. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+      "behavior": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
       "source_refs": [
         "crates/threetched-fs/src/fuse_fs.rs:853-862"
       ],
@@ -8544,7 +8558,7 @@ const CONTRACT: &str = r########"
         },
         "flush": {
           "operation_ref": "#/fuse_operations/flush",
-          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then EBUSY. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
           "partial_io": "not applicable",
           "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
           "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
@@ -9115,7 +9129,7 @@ const CONTRACT: &str = r########"
         },
         "flush": {
           "operation_ref": "#/fuse_operations/flush",
-          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then EBUSY. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
           "partial_io": "not applicable",
           "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
           "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
@@ -9686,7 +9700,7 @@ const CONTRACT: &str = r########"
         },
         "flush": {
           "operation_ref": "#/fuse_operations/flush",
-          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then EBUSY. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
           "partial_io": "not applicable",
           "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
           "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
@@ -10257,7 +10271,7 @@ const CONTRACT: &str = r########"
         },
         "flush": {
           "operation_ref": "#/fuse_operations/flush",
-          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then EBUSY. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
           "partial_io": "not applicable",
           "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
           "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
@@ -10828,7 +10842,7 @@ const CONTRACT: &str = r########"
         },
         "flush": {
           "operation_ref": "#/fuse_operations/flush",
-          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then EBUSY. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
           "partial_io": "not applicable",
           "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
           "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
@@ -11399,7 +11413,7 @@ const CONTRACT: &str = r########"
         },
         "flush": {
           "operation_ref": "#/fuse_operations/flush",
-          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then EBUSY. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
           "partial_io": "not applicable",
           "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
           "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
@@ -11970,7 +11984,7 @@ const CONTRACT: &str = r########"
         },
         "flush": {
           "operation_ref": "#/fuse_operations/flush",
-          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then EBUSY. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
           "partial_io": "not applicable",
           "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
           "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
@@ -12541,7 +12555,7 @@ const CONTRACT: &str = r########"
         },
         "flush": {
           "operation_ref": "#/fuse_operations/flush",
-          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then EBUSY. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
+          "outcome": "Asynchronous bounded submission. One execution per dirty call; concurrent flush/fsync share up to32 waiters. Terminal status reused; four global jobs then terminal admission EBUSY before dispatch. The rejected descriptor cannot retry on flush, fsync or release; reopening is an explicit new attempt. Workspace expected-object CAS may ESTALE; invalid candidate EINVAL. No backend latency bound.",
           "partial_io": "not applicable",
           "atomicity": "One descriptor submission; workspace CAS or durable method envelope; no multi-owner atomic rollback proof",
           "blocking": "Callback enqueues owned bounded asynchronous job; reply after terminal status, no source latency bound",
@@ -14625,10 +14639,12 @@ const CONTRACT: &str = r########"
       "register": "EACCES",
       "call": "EACCES",
       "transport": "EIO",
+      "admission": "EBUSY",
       "outcome_unknown": "EIO",
       "contract": "EPROTO (binding condition InvalidValue; errno is diagnostic)"
     },
     "diagnostic_limit": "error UTF-8 text bounded4096bytes; total serialized diagnostic8192bytes; preallocated fallback retains target attribution",
+    "admission_semantics": "Admission is a terminal rejection before dispatch, with no backend effect or operation ID. The descriptor cannot dispatch rejected input on later flush, fsync or release. Reopening and staging input is an explicit new attempt; clients never retry automatically. It is distinct from outcome_unknown after an operation may have started.",
     "not_a_full_backend_error_taxonomy": true,
     "sources": [
       "crates/threetched-fs/src/dispatch.rs:81-105",
@@ -15045,7 +15061,7 @@ const CONTRACT: &str = r########"
       },
       "EBUSY": {
         "condition": "Busy",
-        "source_condition": "Concurrent workspace writer or async job/reply waiter capacity",
+        "source_condition": "Concurrent workspace writer or async job/reply waiter capacity; terminal admission diagnostic means rejected before dispatch, with no automatic retry",
         "source_refs": [
           "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
           "crates/threetched-fs/src/fuse_fs.rs:60-92",
@@ -16023,7 +16039,7 @@ const CONTRACT: &str = r########"
   },
   "plugin_surface": {
     "plugin_id": "threetched_fs",
-    "version": "2.0.2",
+    "version": "2.0.7",
     "methods": [
       {
         "name": "get_protocol",

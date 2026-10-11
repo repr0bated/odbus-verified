@@ -39,12 +39,65 @@ live state.
 - Schema validation before every staged write.
 - Enforcement of read-only fields, immutable paths, and immutable plugins.
 - Stable path-derived FUSE inode numbers.
+- File and directory handles share a 256-slot ceiling; kernel cleanup uses the
+  exact handle and inode, while I/O retains opener UID checks. An operation
+  rejected before dispatch remains terminal on that descriptor, including close.
 - Atomic store publication with locking, `fsync`, and rename.
 - Plugin operations dispatched only through `org.opdbus.v1.PluginV1.Call`.
 - Explicit confirmation required for non-read operations.
 
 The default store is `/dev/shm/3tchedfs`, so it is intentionally ephemeral
 across reboot. Pass `--store <path>` to use another location.
+
+The binary-backed `threetched` plugin uses the shared discovery implementation
+in `threetched-surface.rs`. Its methods and capture evidence enter the plugin's
+`PluginSchema`; `opblob` seals that contract. Production mounts project it from
+the catalog through the ordinary namespace builder. No extra mount argument,
+mount-time command discovery or separately written schema file is needed.
+The `threetched_fs` plugin continues to describe the filesystem protocol itself.
+
+Calls use the identity-bound lungs connection, canonical method admission,
+exact per-command capabilities and the existing operation receipt. Queued calls
+recheck the caller and pinned seal under the shared threetched runtime guard.
+The backend verifies the installed binary and manifest against sealed digests,
+uses the service's sealed config directory, clears inherited environment and
+runs as the existing threetched service account. Declaring a capability grants
+nothing. Help text supplies no side-effect policy, so discovered commands are
+conservatively declared as mutations and non-idempotent.
+
+Input, output and receipt buffers retain their ownership charges until dropped.
+Child execution has a 600-second deadline and a combined 16 MiB stdout/stderr
+limit; cancellation terminates and reaps the child process group. Timeout,
+cancellation or output loss must not trigger automatic retries. Direct local
+FUSE execution is retained only in isolated lifecycle test fixtures. These are
+source guarantees awaiting the owner's build and activation, not a live receipt.
+
+The upstream CLI projection discovers commands recursively from the selected
+binary's `--help`. Each callable command path becomes a method: for example,
+`widgets publish` becomes `widgets.publish`. The sealed discovery descriptor retains each command's actual
+argv prefix and help declaration. A fresh capture discovers added or removed
+commands and flags without maintaining a threetched command table in Rust.
+The binary's `config schema` remains a separate configuration document; it is
+not substituted for the arguments of the `config` command.
+
+Inputs use the exact discovered flag spelling. Presence switches use booleans;
+value-taking flags carry literal CLI tokens, and `arguments` carries positional
+tokens in their declared order. Discovery records only constraints that the help
+actually declares. It does not guess integer, path, duration or other semantic
+types from a flag name or placeholder. threetched remains responsible for
+validation that its help does not expose. Unknown flags and unsupported help
+syntax fail explicitly. Discovery subprocesses have deadlines and output limits.
+
+This is the advertised CLI surface. Installed threetched plugins extend its runtime
+registries rather than its CLI command tree. Their package `manifest.toml`, WASM
+payloads and optional `skills/` files are separate runtime inputs; a WASM tool's
+parameter schema comes from its component exports. CLI help and configuration
+schema do not supply that tool schema. Upstream installation can also provide
+`web/dist` and the `zerocode` companion app. The threetched build recipe here stages
+the core binary, while golden preparation separately records bootstrap config
+and default skills. It does not establish a complete upstream installation or
+an inventory of the identity's installed extensions. Those files and their
+upstream loaders must be accounted for before claiming that broader surface.
 
 ## Build
 
@@ -55,8 +108,8 @@ Requirements:
 - A current stable Rust toolchain
 
 ```sh
-cd /srv/3tchedFS
-cargo build --release
+cd /srv/git/odbus-verified
+CARGO_CALLER_FAMILY=gpt CXXFLAGS="-include cstdint" cargo build --workspace --release
 ```
 
 The executable is `target/release/threetched-fs`.
@@ -279,3 +332,132 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-targets --all-features
 ```
+
+## Add a threetched feature from the binary
+
+This procedure applies to a CLI feature advertised by the selected binary.
+The discovery adapter supplies declarations; **opblob seals the methods**.
+Commands below describe the next authorized preparation run. They have not
+been run for this integration while the owner's build hold is in effect.
+
+1. **Make the feature exist upstream.** If the selected threetched binary already
+   advertises the command and its flags in `--help`, no method table or argument
+   struct needs adding here. If it does not, implement or obtain it in the
+   pinned upstream source first. Update `vendor/tched-router/source.pin`, the
+   source archive, reviewed patches and their digests together when changing
+   that upstream input. A runtime WASM extension with only exported tool schemas
+   is a different surface; its tools cannot be inferred from CLI help.
+
+2. **Build the pinned threetched candidate.** From the repository root, have the
+   assigned Cargo worker run the existing recipe on the GNU host toolchain:
+
+   ```sh
+   vendor/tched-router/build-threetched.sh \
+     --cache-dir /var/cache/op-dbus-build/tched-router \
+     --output-dir target/threetched-artifacts/tched-router
+   ```
+
+   The result is `threetched` plus `manifest.json`. The helper verifies source
+   and patch provenance and checks the binary; it does not install or activate
+   it. Inspect the actual new command's `--help` and `config schema`. If the
+   configuration contract changed, replace the sole UPSTREAM IMPORT block in
+   `tched_router_contract.rs` with the verified binary output and record its
+   provenance. That configuration document does not define CLI flag types.
+
+3. **Select capture inputs separately from installed paths.** Use the same
+   environment for workspace build and sealing, so compiled compatibility
+   evidence and the sealed declarations agree:
+
+   ```sh
+   export THREETCHED_CAPTURE_BIN="$PWD/target/threetched-artifacts/tched-router/threetched"
+   export THREETCHED_CAPTURE_MANIFEST="$PWD/target/threetched-artifacts/tched-router/manifest.json"
+   export THREETCHED_BIN=/usr/bin/threetched
+   export THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/tched-router.json
+   export TCHED_ROUTER_CONFIG_DIR=/var/lib/tched-router
+   export COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334
+   ```
+
+   Both capture selectors are required together and must be absolute. They
+   select preparation artifacts. The installed paths and service context are
+   recorded in the contract; runtime dispatch never uses the capture selectors.
+
+4. **Build the workspace and review discovery.** After the owner permits the
+   build, the assigned worker runs from the repository root:
+
+   ```sh
+   CARGO_CALLER_FAMILY=gpt CXXFLAGS="-include cstdint" cargo build --workspace --release
+   ```
+
+   Use the host's `x86_64-unknown-linux-gnu` toolchain. The shared parser walks
+   the binary's help tree and derives exact command paths, flag spellings,
+   literal-token arguments and explicitly advertised constraints. Unsupported
+   syntax, ambiguous names or conflicting transport field names stop
+   preparation. Fix discovery against real help evidence; do not invent a
+   handwritten argument schema. Each method gets a deterministic exact
+   capability, and no grants are added by discovery or sealing.
+
+5. **Seal an isolated release catalog with the freshly built opblob.** Choose a
+   new preparation directory while retaining the prior catalog for comparison:
+
+   ```sh
+   threetched_release_catalog=$(mktemp -d /var/tmp/threetched-catalog.XXXXXX)
+   target/release/opblob seal-plugins "$threetched_release_catalog"
+   target/release/opblob catalog "$threetched_release_catalog"
+   ```
+
+   Keep the environment from step 3, including the service's other schema-shaping
+   settings. This seals the workspace's full plugin set. Review additions,
+   removals, method declarations and capability changes before release. Using
+   `seal-shm` instead targets the live SHM catalog; use that only during an
+   explicitly authorized catalog update, followed by `opblob persist`.
+
+6. **Inspect the sealed feature through the existing projection.** This reads
+   the prepared catalog and creates a disposable schema-only view:
+
+   ```sh
+   threetched_review=$(mktemp -d /var/tmp/threetched-review.XXXXXX)
+   mkdir "$threetched_review/state"
+   target/release/threetched-fs --store "$threetched_review/store" capture \
+     --schema-only --catalog "$threetched_release_catalog" --state "$threetched_review/state"
+   target/release/threetched-fs --store "$threetched_review/store" inspect \
+     --plugin threetched > "$threetched_review/threetched.json"
+   jq '.schema.methods | keys' "$threetched_review/threetched.json"
+   ```
+
+   For the chosen method, inspect `.schema.methods[method]` for exact inputs,
+   output, capability and mutation policy. Its captured help and argv are under
+   `.schema.example.surface.commands[method]`; its binary and manifest digests
+   are in `.schema.example`. Command paths become dotted IDs, for example
+   `widgets publish` becomes `widgets.publish`. That is an illustration, not
+   an assumed installed command. A flag value uses literal tokens such as
+   `{"--label":["release"]}` only when that exact flag is advertised. Use the
+   sealed declaration to construct the real input.
+
+7. **Prepare and activate the reviewed release.** Set
+   `OP_PERSISTED_CATALOG_SOURCE` to the isolated catalog when running the
+   existing golden preparation. Golden now verifies that the sealed threetched
+   descriptor matches the candidate binary and manifest. Transfer the prepared
+   read-only filesystem snapshot with btrfs send/receive and follow
+   [local release activation](../../docs/src/getting-started/local-release-activation.md).
+   Golden preparation does not seal, deploy, activate or restart services.
+   Review or grant only the chosen method's declared capability through the
+   existing identity policy process when authorized; discovery is not a grant.
+
+8. **Verify through the identity's mounted namespace.** Confirm
+   `plugins/threetched/schema.json` lists the method, then read its
+   `operations/<encoded-method>/input.schema.json`, `output.schema.json` and
+   `metadata.json`. The corresponding `call` file must exist. Use
+   `threetched-fs describe --mount <mount> --expected-session <session> --plugin threetched`
+   to discover the current surface. Invoke the selected method through that
+   same mount using `threetched-fs call threetched <method> --mount <mount>
+   --expected-session <session> --args-file <arguments.json> --confirm-side-effects`.
+   Verify its terminal operation receipt and the authoritative resulting state.
+   Also verify denial with an ungranted test identity and rejection of unknown
+   flags in a disposable fixture. A successful build, mount, or local write is
+   not proof of successful feature execution. Do not automatically retry an
+   unknown outcome; use the declared receipt-recovery operation.
+
+For an upgrade, repeat candidate capture, workspace build, sealing and release
+review. New or removed advertised commands and flags are discovered again from
+that binary. Rebuilding alone does not replace a sealed catalog, and restarting
+the bridge does not reseal it.

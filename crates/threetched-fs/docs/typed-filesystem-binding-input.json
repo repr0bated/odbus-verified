@@ -902,6 +902,7 @@
         "Register": null,
         "Call": null,
         "Transport": null,
+        "Admission": null,
         "OutcomeUnknown": null,
         "Contract": null,
         "Commit": null,
@@ -2246,7 +2247,7 @@
       },
       "EBUSY": {
         "condition": "Busy",
-        "source_condition": "Concurrent workspace writer or async job/reply waiter capacity",
+        "source_condition": "Concurrent workspace writer or async job/reply waiter capacity; terminal admission diagnostic means rejected before dispatch, with no automatic retry",
         "source_refs": [
           "crates/threetched-fs/src/typed_runtime.rs:1636-1651",
           "crates/threetched-fs/src/fuse_fs.rs:60-92",

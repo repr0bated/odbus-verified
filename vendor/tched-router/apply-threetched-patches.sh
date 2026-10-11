@@ -3,7 +3,8 @@ set -eu
 
 package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 source_dir=${1:?usage: $0 SOURCE-DIR}
-pin=a56c345d51dd8ab562e9351e0d4ab83f6a741db9
+. "$package_dir/source.pin"
+pin=$UPSTREAM_COMMIT
 
 fail() { echo "tched-router patch preflight: $*" >&2; exit 2; }
 
@@ -22,5 +23,6 @@ for path in $(sed -n '/^# New files/,$ {/^#/d;p;}' "$package_dir/patch-inventory
     test ! -e "$source_dir/$path" && test ! -L "$source_dir/$path" || fail "new path already exists: $path"
 done
 
-patch --batch --fuzz=0 -d "$source_dir" -p1 < "$package_dir/patches/0001-close-native-event-stream-on-lag.patch"
+patch --batch --fuzz=0 -d "$source_dir" -p1 < "$package_dir/patches/0001-close-threetched-event-stream-on-lag.patch"
 patch --batch --fuzz=0 -d "$source_dir" -p1 < "$package_dir/patches/0002-stateless-provider-generation.patch"
+patch --batch --fuzz=0 -d "$source_dir" -p1 < "$package_dir/patches/0003-threetched-branding.patch"

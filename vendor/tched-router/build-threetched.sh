@@ -5,7 +5,7 @@ package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$package_dir/source.pin"
 source_pin_sha256=$(sha256sum "$package_dir/source.pin" | awk '{print $1}')
 
-output_dir=target/native-artifacts/tched-router
+output_dir=target/threetched-artifacts/tched-router
 cache_dir=
 source_dir=
 source_archive=
@@ -13,11 +13,11 @@ verify_source_only=0
 
 usage() {
     cat >&2 <<'EOF'
-usage: build-native.sh --cache-dir DIR [--output-dir DIR]
-       build-native.sh --cache-dir DIR --source-dir CLEAN-GIT-DIR [--output-dir DIR]
-       build-native.sh --cache-dir DIR --source-archive PINNED-TAR [--output-dir DIR]
+usage: build-threetched.sh --cache-dir DIR [--output-dir DIR]
+       build-threetched.sh --cache-dir DIR --source-dir CLEAN-GIT-DIR [--output-dir DIR]
+       build-threetched.sh --cache-dir DIR --source-archive PINNED-TAR [--output-dir DIR]
 
-Builds the pinned, patched tched-router native dependency. It writes only the
+Builds the pinned, patched tched-router threetched dependency. It writes only the
 cache, Cargo target directory and output directory; it never installs a binary.
 With no explicit source option it prefers the checked-in source.tar.gz, then a
 verified cache entry, and only then the exact upstream tag. --verify-source-only
@@ -45,7 +45,7 @@ done
 }
 for command_name in awk cargo git grep gzip install jq patch rustc sha256sum strings tar; do
     command -v "$command_name" >/dev/null 2>&1 || {
-        echo "missing native build command: $command_name" >&2
+        echo "missing threetched build command: $command_name" >&2
         exit 127
     }
 done
@@ -55,14 +55,15 @@ verify_package_file() {
     expected=$2
     actual=$(sha256sum "$path" | awk '{print $1}')
     [ "$actual" = "$expected" ] || {
-        echo "native patch-package digest mismatch: $path" >&2
+        echo "threetched patch-package digest mismatch: $path" >&2
         exit 2
     }
 }
 verify_build_inputs() {
     verify_package_file "$package_dir/source.pin" "$source_pin_sha256"
-    verify_package_file "$package_dir/patches/0001-close-native-event-stream-on-lag.patch" "$PATCH_LAGGED_SSE_SHA256"
+    verify_package_file "$package_dir/patches/0001-close-threetched-event-stream-on-lag.patch" "$PATCH_LAGGED_SSE_SHA256"
     verify_package_file "$package_dir/patches/0002-stateless-provider-generation.patch" "$PATCH_STATELESS_GENERATION_SHA256"
+    verify_package_file "$package_dir/patches/0003-threetched-branding.patch" "$PATCH_BRANDING_SHA256"
     verify_package_file "$package_dir/patch-inventory" "$PATCH_INVENTORY_SHA256"
     verify_package_file "$package_dir/base-sha256sums" "$BASE_MANIFEST_SHA256"
 }
@@ -75,7 +76,7 @@ case "$output_dir" in /*) ;; *) output_dir=$(pwd)/$output_dir ;; esac
 mkdir -p -- "$cache_dir" "$output_dir"
 cache_archive="$cache_dir/zeroclaw-${UPSTREAM_TAG}-${UPSTREAM_COMMIT}.tar"
 cargo_target_dir="$cache_dir/cargo-target-${UPSTREAM_COMMIT}"
-work_dir=$(mktemp -d "${TMPDIR:-/tmp}/tched-router-native.XXXXXX")
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/tched-router-threetched.XXXXXX")
 cleanup() { status=$?; rm -rf -- "$work_dir"; exit "$status"; }
 trap cleanup EXIT
 trap 'exit 130' HUP INT TERM
@@ -95,7 +96,7 @@ if [ -n "$source_dir" ]; then
         exit 2
     }
     [ -z "$(git -C "$source_dir" status --porcelain --untracked-files=all)" ] || {
-        echo "--source-dir is dirty; refusing an unreproducible native input" >&2
+        echo "--source-dir is dirty; refusing an unreproducible threetched input" >&2
         exit 2
     }
     actual_commit=$(git -C "$source_dir" rev-parse HEAD)
@@ -140,25 +141,42 @@ fi
 source_root="$work_dir/source"
 mkdir -p -- "$source_root"
 tar -xf "$cache_archive" -C "$source_root"
-"$package_dir/apply-native-patches.sh" "$source_root"
+"$package_dir/apply-threetched-patches.sh" "$source_root"
 verify_build_inputs
 
 export CARGO_TARGET_DIR="$cargo_target_dir"
-(cd "$source_root" && cargo build --locked --release --bin zeroclaw)
+(cd "$source_root" && cargo build --locked --release --bin threetched --features plugins-wasm-cranelift)
 # A shared checkout may change during a long compile. Never label an older
 # materialized source tree with the newly edited patch package's provenance.
 verify_build_inputs
-candidate_binary="$cargo_target_dir/release/zeroclaw"
+candidate_binary="$cargo_target_dir/release/threetched"
 [ -x "$candidate_binary" ] || {
-    echo "native build did not produce zeroclaw" >&2
+    echo "threetched build did not produce threetched" >&2
     exit 2
 }
-"$candidate_binary" --version | grep -Fx "zeroclaw 0.8.4" >/dev/null || {
-    echo "native candidate reports an unexpected version" >&2
+"$candidate_binary" plugin --help >/dev/null
+"$candidate_binary" --version | grep -Fx "threetched ${UPSTREAM_TAG#v}" >/dev/null || {
+    echo "threetched candidate reports an unexpected version" >&2
+    exit 2
+}
+# threetched schema discovery must not initialize, migrate or decrypt an instance.
+# Use a fresh explicit selector and a cleared environment so this preparation
+# probe cannot observe inherited credentials or select a live installation.
+introspection_dir="$work_dir/introspection"
+mkdir -p -- "$introspection_dir"
+env -i PATH="$PATH" THREETCHED_CONFIG_DIR="$introspection_dir" \
+    LANGUAGE=en LC_ALL=C LANG=C NO_COLOR=1 \
+    "$candidate_binary" config schema > "$work_dir/config-schema.json"
+jq -e 'type == "object"' "$work_dir/config-schema.json" >/dev/null || {
+    echo "threetched config schema did not emit a JSON object" >&2
+    exit 2
+}
+[ -z "$(find "$introspection_dir" -mindepth 1 -print -quit)" ] || {
+    echo "threetched config schema mutated the isolated runtime installation" >&2
     exit 2
 }
 strings "$candidate_binary" | grep -F "tched_router.generation.v1" >/dev/null || {
-    echo "native candidate lacks the patched generation protocol" >&2
+    echo "threetched candidate lacks the patched generation protocol" >&2
     exit 2
 }
 
@@ -166,6 +184,7 @@ binary_sha256=$(sha256sum "$candidate_binary" | awk '{print $1}')
 binary_bytes=$(wc -c < "$candidate_binary" | tr -d ' ')
 patch_one_sha256=$PATCH_LAGGED_SSE_SHA256
 patch_two_sha256=$PATCH_STATELESS_GENERATION_SHA256
+branding_sha256=$PATCH_BRANDING_SHA256
 patch_inventory_sha256=$PATCH_INVENTORY_SHA256
 base_manifest_sha256=$BASE_MANIFEST_SHA256
 patched_lock_sha256=$(sha256sum "$source_root/Cargo.lock" | awk '{print $1}')
@@ -173,11 +192,11 @@ rust_target=$(rustc -vV | sed -n 's/^host: //p')
 rust_version=$(rustc --version)
 cargo_version=$(cargo --version)
 
-artifact_tmp="$output_dir/zeroclaw.new"
+artifact_tmp="$output_dir/threetched.new"
 manifest_tmp="$output_dir/manifest.json.new"
 install -m 0755 "$candidate_binary" "$artifact_tmp"
 jq -n \
-    --arg format "opdbus.tched-router-native.v1" \
+    --arg format "opdbus.threetched.v1" \
     --arg upstream_url "$UPSTREAM_URL" \
     --arg upstream_tag "$UPSTREAM_TAG" \
     --arg upstream_commit "$UPSTREAM_COMMIT" \
@@ -185,6 +204,7 @@ jq -n \
     --arg vendored_source_gzip_sha256 "$VENDORED_SOURCE_GZIP_SHA256" \
     --arg patch_one_sha256 "$patch_one_sha256" \
     --arg patch_two_sha256 "$patch_two_sha256" \
+    --arg branding_sha256 "$branding_sha256" \
     --arg patch_inventory_sha256 "$patch_inventory_sha256" \
     --arg base_manifest_sha256 "$base_manifest_sha256" \
     --arg patched_lock_sha256 "$patched_lock_sha256" \
@@ -193,8 +213,8 @@ jq -n \
     --arg rust_target "$rust_target" \
     --arg rust_version "$rust_version" \
     --arg cargo_version "$cargo_version" \
-    '{format:$format,upstream:{url:$upstream_url,tag:$upstream_tag,commit:$upstream_commit,source_archive_sha256:$source_archive_sha256,vendored_source_gzip_sha256:$vendored_source_gzip_sha256},patches:{lagged_sse_sha256:$patch_one_sha256,stateless_generation_sha256:$patch_two_sha256,inventory_sha256:$patch_inventory_sha256,base_manifest_sha256:$base_manifest_sha256,patched_cargo_lock_sha256:$patched_lock_sha256},artifact:{name:"zeroclaw",sha256:$binary_sha256,bytes:$binary_bytes,rust_target:$rust_target},toolchain:{rustc:$rust_version,cargo:$cargo_version}}' \
+    '{format:$format,upstream:{url:$upstream_url,tag:$upstream_tag,commit:$upstream_commit,source_archive_sha256:$source_archive_sha256,vendored_source_gzip_sha256:$vendored_source_gzip_sha256},patches:{lagged_sse_sha256:$patch_one_sha256,stateless_generation_sha256:$patch_two_sha256,branding_sha256:$branding_sha256,inventory_sha256:$patch_inventory_sha256,base_manifest_sha256:$base_manifest_sha256,patched_cargo_lock_sha256:$patched_lock_sha256},artifact:{name:"threetched",sha256:$binary_sha256,bytes:$binary_bytes,rust_target:$rust_target},toolchain:{rustc:$rust_version,cargo:$cargo_version}}' \
     > "$manifest_tmp"
-mv -f -- "$artifact_tmp" "$output_dir/zeroclaw"
+mv -f -- "$artifact_tmp" "$output_dir/threetched"
 mv -f -- "$manifest_tmp" "$output_dir/manifest.json"
-sha256sum "$output_dir/zeroclaw" "$output_dir/manifest.json"
+sha256sum "$output_dir/threetched" "$output_dir/manifest.json"

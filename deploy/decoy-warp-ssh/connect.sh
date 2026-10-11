@@ -14,6 +14,7 @@ jq -e '
  def ipv4: type == "string" and (split(".") | length == 4 and all(.[]; test("^(0|[1-9][0-9]{0,2})$") and (tonumber <= 255)));
  def tunid: type == "number" and floor == . and . >= 0 and . <= 255;
  .role == "decoy" and (.tun_id | tunid) and (.remote_tun_id | tunid) and
+ ((.interface_name // ("tun" + (.tun_id | tostring))) | type == "string" and test("^[a-zA-Z0-9_-]{1,15}$")) and
  (.ssh_host | ipv4) and
  (.ssh_port | type == "number" and floor == . and . >= 1 and . <= 65535) and
  (.ssh_user | type == "string" and test("^[a-z_][a-z0-9_-]*$")) and
@@ -34,8 +35,10 @@ caller=$(id -u)
 [ "$caller" = 0 ] || [ "$caller" = "$owner" ] || fail 'preflight must run as service owner or dedicated tunnel user'
 [ -f "$key_file" ] && [ -r "$key_file" ] || fail 'private key unavailable'
 [ -s "$known_hosts_file" ] && [ -r "$known_hosts_file" ] || fail 'pinned host trust unavailable'
-ip_json -j -d link show dev "tun$tun_id" | jq -e --arg user "$ssh_user" --arg uid "$owner" '
+device=$(jq -r '.interface_name // ("tun" + (.tun_id | tostring))' "$config")
+ip_json -j -d link show dev "tun$tun_id" | jq -e --arg device "$device" --arg user "$ssh_user" --arg uid "$owner" '
  length == 1 and .[0].ifalias == "op-warp-ssh" and
+ .[0].ifname == $device and
  .[0].linkinfo.info_kind == "tun" and
  (.[0].linkinfo.info_data | .type == "tun" and .persist == true and .pi == false and
  ((.user | tostring) == $user or (.user | tostring) == $uid))

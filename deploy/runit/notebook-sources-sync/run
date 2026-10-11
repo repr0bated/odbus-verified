@@ -3,7 +3,7 @@
 set -eu
 exec 2>&1
 session_file=/etc/op-dbus/human-lungs-session
-marker=/etc/op-dbus/native-filesystem.enabled
+marker=/etc/op-dbus/threetched-filesystem.enabled
 status_dir=/run/opdbus/notebook-sync
 ready=/run/opdbus/runit-ready/notebook-sources-sync
 export HOME=/home/jeremy
@@ -27,7 +27,7 @@ protected_file() {
 protected_file "$marker" && [ "$(cat "$marker")" = true ] || exit 78
 install -d -o root -g root -m 0755 "$status_dir" /run/opdbus/runit-ready
 rm -f "$ready"
-# Observe the supervised service's actual check contract. The native mount
+# Observe the supervised service's actual check contract. The threetched mount
 # publishes no legacy runit-ready flag, and dependency observation must not
 # start a service that the operator deliberately left down.
 sv -w 90 check /etc/runit/sv/op-grpc-bridge || exit 1

@@ -70,7 +70,7 @@ gre-decoy
 # step; ovsbr0-cutover replaces the IP-cutover+alias tail. Only the OVS-side
 # plumbing is retired here — tun5 must still never be enslaved into ovsbr0
 # (that was the actual OD-104 regression). op-warp-ssh-host/-routes, the
-# decoy-originated WARP/MASQUE SSH tunnel itself, and wgcf are NOT retired:
+# decoy-originated WARP/MASQUE SSH tunnel itself are NOT retired:
 # the design goal is that every external observer sees nothing but ordinary
 # WARP traffic to the decoy, including admin SSH. They stay live, just
 # disconnected from the bridge.
@@ -78,3 +78,8 @@ ovsbr0-uplink
 ovsbr0-eth0
 ovsbr0-svc-addr
 ovsbr0-tun5
+
+# Host only: WireGuard/WARP wgcf belongs on the decoy. Its marked-traffic
+# policy is separate from MASQUE and is not altered by host retirement.
+wgcf
+strongswan

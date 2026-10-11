@@ -9,7 +9,7 @@ wait_dep() {
         sleep 1
     done
 }
-wait_dep ovsbr0-svc-addr
+wait_dep ovsbr0-cutover
 set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
 [ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf

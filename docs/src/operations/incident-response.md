@@ -1,5 +1,19 @@
 # Incident Response
 
+> **2026-10-11 correction — read the recovered VPS entry at the top of
+> [the shared HANDOFF](../../../HANDOFF.md#start-here--recovered-vps-handoff-2026-10-11)
+> before acting on the historical note below.** Its "root cause confirmed"
+> statement exceeds the evidence. The checkout, selected received release and
+> live runit definitions differ: corrected WARP source was not rebuilt into
+> the active snapshot, and the consolidated OVS cutover is not installed live.
+> WireGuard belongs on the decoy, not this host; the wording below that host
+> `wgcf` "must stay live" is wrong. Host-release send/receive did complete;
+> replacement identity-seed transfer did not. Only `core-seed.img` inspection
+> was evidenced, not `router-core-seed.img`. Absence of a root crontab/named
+> service does not establish that maintenance is unscheduled everywhere.
+> Preserve the original note below as history, not verified present state.
+> The owner's subsequent reboot report is not a completed persistence audit.
+
 ## 2026-10 btrfs fiasco recovery — seed/upgrade partition rebuild
 
 Live handoff for the in-progress recovery from the severe btrfs fiasco

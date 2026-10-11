@@ -26,11 +26,22 @@ release for rollback; retire only explicitly identified obsolete releases.
 
 ## Prepare
 
-Build the native glibc workspace, prepare its pinned UI and native
+Build the native glibc workspace, prepare its pinned UI and threetched
 artifacts, and explicitly seal/persist with the freshly built `opblob` and
 the service's schema-shaping environment. Preserve the previous catalogs and
 review additions/removals before a live reseal. `build-golden.sh` accepts
 `OP_PERSISTED_CATALOG_SOURCE` for isolated release preparation.
+
+Before the workspace build and sealing, select the prepared threetched binary
+with the paired absolute `THREETCHED_CAPTURE_BIN` and
+`THREETCHED_CAPTURE_MANIFEST` paths. Keep those selectors identical across both
+steps; without them discovery uses the installed binary, which may belong to
+the previous release. The runtime selectors remain `/usr/bin/threetched` and
+`/usr/share/op-dbus/threetched-manifests/tched-router.json`. Follow the
+[binary feature preparation procedure](../../../crates/threetched-fs/README.md#add-a-threetched-feature-from-the-binary)
+for the exact environment, isolated `opblob seal-plugins` invocation, catalog
+review and mounted verification. Golden preparation rejects mismatched sealed
+binary or manifest digests.
 
 After extracting deterministic UI assets into the prepared tree, set
 `dashboard/index.html` to the preparation timestamp before taking the read-only
@@ -46,12 +57,12 @@ container files from becoming release inputs. Do not move nested subvolumes
 or the golden subvolume itself. The intentionally staged `bin/nlm` wrapper
 is additional to the Cargo binaries and must remain.
 
-Resolve target secrets and the native router before activating the bridge.
-The `tched-router` service uses the pinned `/usr/bin/zeroclaw` executable,
+Resolve target secrets and the threetched router before activating the bridge.
+The `tched-router` service uses the pinned `/usr/bin/threetched` executable,
 loopback port 8084 and private mutable configuration. Its authenticated
 generation credential must be issued by that same gateway and persisted
-with its corresponding native token hash. A token from a temporary gateway
-is not valid for the production gateway. This native backend provisioning
+with its corresponding threetched token hash. A token from a temporary gateway
+is not valid for the production gateway. This threetched backend provisioning
 does not introduce OP-DBUS UI pairing.
 
 Task elevation uses the static PAM service file `deploy/pam/op-dbus-elevate`,
@@ -63,12 +74,12 @@ in force, and the resulting one-use authorization ticket is bound to that
 principal, session, plugin, method and arguments. The workflow has no
 per-principal Unix-user map prerequisite.
 
-Control Plane inherits its provider from the native `control_plane` agent.
+Control Plane inherits its provider from the threetched `control_plane` agent.
 Set the public service variable `TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER`
-in the prepared service environment to an existing native `family.alias`
+in the prepared service environment to an existing threetched `family.alias`
 profile, for example `openai.control_plane`, `anthropic.control_plane`, or
 `opencode.go_control_plane` (the default, OpenCode Go). The referenced profile owns
-the model and credentials and must already be configured through the native
+the model and credentials and must already be configured through the threetched
 configuration owner; the variable contains no credential. Startup rejects an
 unknown profile before changing the current role. Control Plane does not
 require OpenCode inventory or a fixed model list. The UI reads the same
@@ -80,18 +91,18 @@ independent. Named chatbot roles retain the `chatbot_500` runtime
 profile regardless of provider selection.
 
 The provider list uses `provider_id` as its stable Cozo key (legacy `id`
-input remains accepted). Do not rename stored providers to native router
+input remains accepted). Do not rename stored providers to threetched router
 families. Registry model records carry a separate `native_provider_id`, an
 exact ordinary-selection `family.alias`; the picker keeps the Cozo key and
-sends the native binding only when applying that exact catalog model.
+sends the threetched binding only when applying that exact catalog model.
 `native_profile_overrides` maps a model's recorded alternative wire profile
 to an explicitly provisioned ordinary profile. An unmapped alternative has
-no native binding. Control Plane continues to use its separate
+no threetched binding. Control Plane continues to use its separate
 `control_plane_profile` and protected mutation. Binding metadata does not
-prove that a profile exists in the running native configuration: reconcile
+prove that a profile exists in the running threetched configuration: reconcile
 its endpoint and key ownership before activation. The checked-in ordinary
 bindings currently cover the Go and Cheaper Inference bootstrap profiles;
-other provider bindings still require verified native provisioning.
+other provider bindings still require verified threetched provisioning.
 
 `inference_url_prefix` records the expected HTTPS origin and API path
 namespace in the same provider metadata. Go uses
@@ -218,13 +229,14 @@ them into place.
 | Received path | Host path |
 |---|---|
 | `bin/<name>` | `/usr/local/bin/<name>` for the explicit release binary inventory and `nlm` |
-| `usr/bin/zeroclaw` | `/usr/bin/zeroclaw` |
-| `usr/share/op-dbus/{native,ui}-manifests/<file>` | Same absolute host path |
+| `usr/bin/threetched` | `/usr/bin/threetched` |
+| `usr/share/op-dbus/threetched-manifests/tched-router.json` | `/usr/share/op-dbus/threetched-manifests/tched-router.json` |
+| `usr/share/op-dbus/ui-manifests/<file>` | Same absolute host path |
 | `usr/share/op-dbus/agents` | `/usr/share/op-dbus/agents` (initial shared agent bundle) |
 | `libexec/3tched/<helper>` | `/usr/local/libexec/3tched/<helper>` for activated service dependencies |
 | `sv/<service>/{run,check,finish,log/run}` | Corresponding files in `/etc/runit/sv/<service>` |
 | `etc/opdbus/{capability-grants,mcp-audience-policy,mcp-toolsets}.json` | Corresponding protected policy files in `/etc/opdbus` |
-| `etc/op-dbus/zeroclaw-runtime.toml` and skill bundle | Corresponding bootstrap files in `/etc/op-dbus` |
+| `etc/op-dbus/threetched-runtime.toml` and skill bundle | Corresponding bootstrap files in `/etc/op-dbus` |
 | `etc/pam.d/op-dbus-elevate` | `/etc/pam.d/op-dbus-elevate` |
 | `etc/emqx/{emqx.conf,base.hocon,acl.conf}` | Corresponding files in `/etc/emqx` |
 | `usr/local/share/op-dbus/dashboard/{index.html,assets}` | Same host paths; preserve other dashboard mounts |
@@ -233,7 +245,7 @@ them into place.
 Keep runit service directories and their `supervise/` and log-supervision
 state writable. Never symlink the whole service directory into a read-only
 release. Keep `/etc/op-dbus` and `/etc/emqx` writable: secrets, issued TLS
-files, native gateway pairing state and runtime configuration are not
+files, threetched gateway pairing state and runtime configuration are not
 overwritten by a directory-level switch. Keep identity, Cozo, Qdrant,
 Snowball, replay and broker data in their existing durable locations.
 
@@ -251,7 +263,7 @@ catalog> /var/lib/opdbus/plugin-blobs`, then `opblob stage-shm`. Startup
 consumes that catalog and must never reseal or restore old private SHM state.
 Bring up `opdbus-grants` and the bridge before EMQX and op-web, checking their
 readiness with `sudo sv check`. Deliberately restart only changed services:
-the native router when its configuration changes, grants materialization,
+the threetched router when its configuration changes, grants materialization,
 the bridge, EMQX, and op-web. Preserve existing runlevel symlinks, adding only
 the explicitly enabled application service when absent. Do not restart or
 activate staged network, OVS, uplink, DHCP, session-bus, Xray or container
@@ -371,7 +383,7 @@ For subsequent releases, atomically restore `current` to the previous
 compatible received release, restore its persisted catalog and stage it into SHM, then
 restart the same application services. For the first migration, restore the
 original paths from the activation receipt instead. Restore any deliberately
-changed native router config/token pair together. Runtime data is never
+changed threetched router config/token pair together. Runtime data is never
 rolled back as part of binary/config rollback.
 
 After successful receive and activation, the temporary source snapshot may

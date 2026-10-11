@@ -1521,7 +1521,11 @@ mod tests {
         let server = IdentityMcp::from_mount(namespace, Surface::Full).unwrap();
         assert_eq!(server.catalog().tools.len(), 1);
         assert_eq!(server.toolsets()[0].id, "demo");
-        assert!(server.catalog().objects["demo"].source_schema_hash.is_none());
+        assert!(
+            server.catalog().objects["demo"]
+                .source_schema_hash
+                .is_none()
+        );
         assert_eq!(
             server.read("3tched://plugins/demo/schema").unwrap()["name"],
             "demo"

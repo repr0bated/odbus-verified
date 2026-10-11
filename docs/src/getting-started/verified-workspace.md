@@ -78,14 +78,14 @@ archive and provenance manifest. Golden preparation validates and stages
 consults the external checkout, invokes its rsync deployment script or changes
 live dashboard files.
 
-The tched_router native source pin, base hashes, patches and build helper are
+The tched_router threetched source pin, base hashes, patches and build helper are
 included under `vendor/tched-router/`.
 Build its reviewable candidate and manifest without installing it:
 
 ```bash
-vendor/tched-router/build-native.sh \
+vendor/tched-router/build-threetched.sh \
   --cache-dir /var/cache/op-dbus-build/tched-router \
-  --output-dir target/native-artifacts/tched-router
+  --output-dir target/threetched-artifacts/tched-router
 ```
 
 The helper defaults to the checked-in, digest-pinned `gzip -n` source archive,
@@ -96,14 +96,35 @@ if the vendored archive is absent does it reuse a verified cache or fetch the
 exact tag. It rejects dirty/wrong source, base-file drift,
 patch fuzz, lockfile drift, an unexpected binary version and absence of the
 versioned stateless-generation protocol. Output is
-`target/native-artifacts/tched-router/{zeroclaw,manifest.json}`; the helper
-never installs `/usr/bin/zeroclaw` or changes a service. Cargo registry/cache,
+`target/threetched-artifacts/tched-router/{threetched,manifest.json}`; the helper
+never installs `/usr/bin/threetched` or changes a service. Cargo registry/cache,
 system packages and host services remain separately provisioned inputs.
+Golden preparation stages the validated manifest at
+`/usr/share/op-dbus/threetched-manifests/tched-router.json`.
+
+Select that candidate for both the workspace build and subsequent sealing,
+from the repository root:
+
+```bash
+export THREETCHED_CAPTURE_BIN="$PWD/target/threetched-artifacts/tched-router/threetched"
+export THREETCHED_CAPTURE_MANIFEST="$PWD/target/threetched-artifacts/tched-router/manifest.json"
+export THREETCHED_BIN=/usr/bin/threetched
+export THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/tched-router.json
+export TCHED_ROUTER_CONFIG_DIR=/var/lib/tched-router
+```
+
+The paired capture selectors must be absolute; runtime paths describe the
+eventual installed release. Preserve the service's other schema-shaping
+environment as well. See the
+[threetched feature procedure](../../../crates/threetched-fs/README.md#add-a-threetched-feature-from-the-binary)
+for sealing an isolated catalog with the newly built `opblob`. Building alone
+does not reseal methods. Golden preparation checks that the sealed discovery
+digests match the candidate artifacts.
 
 Runtime generation also requires operator provisioning outside source control:
-pair one client in the native gateway, write that raw token only to
+pair one client in the threetched gateway, write that raw token only to
 `/etc/op-dbus/secrets/tched-router-runtime-token` as root with mode `0400` or
-`0600`, and retain only the gateway-managed token hash in native configuration.
+`0600`, and retain only the gateway-managed token hash in threetched configuration.
 The bridge runit service reads this protected file and connects to the pinned
 loopback endpoint `http://127.0.0.1:8084`; no token is minted by repository
 scripts.

@@ -3,14 +3,14 @@ set -eu
 
 package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$package_dir/source.pin"
-test_root=$(mktemp -d "${TMPDIR:-/tmp}/tched-router-native-test.XXXXXX")
+test_root=$(mktemp -d "${TMPDIR:-/tmp}/tched-router-threetched-test.XXXXXX")
 cleanup() { status=$?; rm -rf -- "$test_root"; exit "$status"; }
 trap cleanup EXIT
 trap 'exit 130' HUP INT TERM
 
 mkdir -p "$test_root/cache"
 printf '%s\n' 'not the pinned source archive' > "$test_root/invalid.tar"
-if "$package_dir/build-native.sh" \
+if "$package_dir/build-threetched.sh" \
     --cache-dir "$test_root/cache" \
     --source-archive "$test_root/invalid.tar" \
     --output-dir "$test_root/output" \
@@ -22,8 +22,8 @@ grep -F "source archive digest mismatch" "$test_root/archive.out" >/dev/null || 
     echo "invalid cached source archive failed for the wrong reason" >&2
     exit 1
 }
-[ ! -e "$test_root/output/zeroclaw" ] || {
-    echo "invalid source produced a native artifact" >&2
+[ ! -e "$test_root/output/threetched" ] || {
+    echo "invalid source produced a threetched artifact" >&2
     exit 1
 }
 
@@ -31,7 +31,7 @@ grep -F "source archive digest mismatch" "$test_root/archive.out" >/dev/null || 
 # checked-in archive replaces it with the exact deterministic upstream tar.
 printf '%s\n' 'corrupt cache' \
     > "$test_root/cache/zeroclaw-${UPSTREAM_TAG}-${UPSTREAM_COMMIT}.tar"
-"$package_dir/build-native.sh" \
+"$package_dir/build-threetched.sh" \
     --cache-dir "$test_root/cache" \
     --output-dir "$test_root/output" \
     --verify-source-only > "$test_root/vendored.out"
@@ -51,7 +51,7 @@ while IFS= read -r path; do
     mkdir -p "$wrong_base/$(dirname "$path")"
     : > "$wrong_base/$path"
 done
-if "$package_dir/apply-native-patches.sh" "$wrong_base" \
+if "$package_dir/apply-threetched-patches.sh" "$wrong_base" \
     >"$test_root/base.out" 2>&1; then
     echo "wrong pinned base was accepted" >&2
     exit 1
@@ -75,4 +75,4 @@ for path in \
     }
 done
 
-printf '%s\n' "native patch-package rejection tests passed"
+printf '%s\n' "threetched patch-package rejection tests passed"

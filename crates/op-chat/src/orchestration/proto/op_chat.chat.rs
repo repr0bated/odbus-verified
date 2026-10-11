@@ -10,10 +10,10 @@ pub struct SendRequest {
     pub ui_messages: ::prost::alloc::vec::Vec<u8>,
     #[prost(string, optional, tag = "3")]
     pub persona_id: ::core::option::Option<::prost::alloc::string::String>,
-    /// zeroclaw-selected provider (OD-28)
+    /// threetched-selected provider (OD-28)
     #[prost(string, tag = "4")]
     pub provider: ::prost::alloc::string::String,
-    /// zeroclaw-selected model (OD-28)
+    /// threetched-selected model (OD-28)
     #[prost(string, tag = "5")]
     pub model: ::prost::alloc::string::String,
     /// Resume from last known cursor on reconnect

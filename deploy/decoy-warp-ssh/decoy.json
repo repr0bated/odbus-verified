@@ -1,6 +1,7 @@
 {
   "role": "decoy",
   "tun_id": 5,
+  "interface_name": "masque-ssh",
   "remote_tun_id": 5,
   "mtu": 1280,
   "local_address": "192.168.254.2",
@@ -106,7 +107,7 @@
       },
       {
         "prefix": "192.168.254.0/30",
-        "dev": "tun5"
+        "dev": "masque-ssh"
       },
       {
         "prefix": "162.159.198.2/32",

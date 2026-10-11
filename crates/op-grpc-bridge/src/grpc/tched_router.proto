@@ -1,6 +1,6 @@
-// ZeroClaw gRPC schema host contract.
+// threetched gRPC schema host contract.
 // This proto only defines the service envelope. The actual PluginSchema payload
-// is serialized JSON from `zeroclaw_schema()` in `op-plugins` — never hand-edited
+// is serialized JSON from `tched_router_schema()` in `op-plugins` — never hand-edited
 // structs here.
 syntax = "proto3";
 package tched_router;
@@ -17,7 +17,7 @@ message GetSchemaRequest {}
 message WatchSchemaRequest {}
 
 message SchemaResponse {
-  // Canonical PluginSchema JSON serialized by `zeroclaw_schema()`.
+  // Canonical PluginSchema JSON serialized by `tched_router_schema()`.
   string schema_json = 1;
 
   // Accountability trace identifier.

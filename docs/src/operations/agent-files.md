@@ -36,7 +36,7 @@ subvolumes: snapshot and send every required member explicitly for transport.
 `AGENTS.md` SHA-256 is
 `feed8ca7b302eb44a9f270b59ae884cb3c662b148447c94c520b7a0047c40a48`.
 It matches `deploy/config/agents/workspace/rules/AGENTS.md`. Existing skills
-were copied unchanged from `deploy/config/zeroclaw-skills/default`: `plugin-schema`,
+were copied unchanged from `deploy/config/threetched-skills/default`: `plugin-schema`,
 `mutation-dispatch`, `ovs-network-triage`, and `qdrant-collections`. All four
 copies match their source. No hook or script was activated.
 

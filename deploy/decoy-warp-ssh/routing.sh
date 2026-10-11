@@ -29,6 +29,7 @@ jq -e '
       (.[1] | test("^([1-9]|[12][0-9]|3[0-2])$")));
   (.role == "host" or .role == "decoy") and
   (.tun_id | type == "number" and . == floor and . >= 0 and . <= 255) and
+  ((.interface_name // ("tun" + (.tun_id | tostring))) | type == "string" and test("^[a-zA-Z0-9_-]{1,15}$")) and
   (.mtu | type == "number" and . == floor and . >= 1280 and . <= 1500) and
   (.local_address | ipv4) and (.peer_address | ipv4) and
   .local_address != .peer_address and
@@ -38,7 +39,7 @@ jq -e '
   (.rule_priority | type == "number" and . == floor and . > 0) and
   (.rule_priority + (.routes | length) < 32766)
 ' "$config" >/dev/null || die 'incomplete or invalid route configuration'
-tun=tun$(jq -r .tun_id "$config")
+tun=$(jq -r '.interface_name // ("tun" + (.tun_id | tostring))' "$config")
 peer=$(jq -r .peer_address "$config")
 local_address=$(jq -r .local_address "$config")
 table=$(jq -r .policy_table "$config")
@@ -100,7 +101,7 @@ case "$action" in
     rollback) rollback ;;
     activate)
         if [ -f "$manifest" ]; then
-            projection='{role,tun_id,mtu,local_address,peer_address,policy_table,rule_priority,routes}'
+            projection='{role,tun_id,interface_name,mtu,local_address,peer_address,policy_table,rule_priority,routes}'
             cmp -s <(jq -S "$projection" "$config") <(jq -S "$projection" "$manifest") || die 'routing configuration changed while active'
             check
             exit 0

@@ -24,6 +24,22 @@ impl Budget {
         })
     }
 }
+
+#[cfg(test)]
+mod serialization_tests {
+    use super::*;
+
+    #[test]
+    fn serialization_keeps_document_newline_and_releases_charge_on_expansion_limit() {
+        let budget = Arc::new(Budget::default());
+        let output = Buffer::serialize(&budget, &serde_json::json!({"value":true})).unwrap();
+        assert_eq!(output.bytes, b"{\n  \"value\": true\n}\n");
+        drop(output);
+        let escaped = "\0".repeat(DOCUMENT_LIMIT / 4);
+        assert!(matches!(Buffer::serialize(&budget, &escaped), Err(EFBIG)));
+        assert!(budget.take(TOTAL_LIMIT, TOTAL_LIMIT).is_ok());
+    }
+}
 pub(super) struct Charge {
     budget: Arc<Budget>,
     amount: usize,
@@ -54,6 +70,38 @@ pub(super) struct Buffer {
     charge: Charge,
 }
 impl Buffer {
+    /// Charge each allocation before the bounded serializer grows its buffer.
+    pub(super) fn serialize(
+        budget: &Arc<Budget>,
+        value: &impl serde::Serialize,
+    ) -> Result<Self, i32> {
+        struct Writer {
+            buffer: Buffer,
+            errno: Option<i32>,
+        }
+        impl std::io::Write for Writer {
+            fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+                let previous = self.buffer.bytes.len();
+                let result = previous.checked_add(bytes.len())
+                    .ok_or(EFBIG)
+                    .and_then(|size| self.buffer.resize(size, DOCUMENT_LIMIT));
+                if let Err(errno) = result {
+                    self.errno = Some(errno);
+                    return Err(std::io::Error::from_raw_os_error(errno));
+                }
+                self.buffer.bytes[previous..].copy_from_slice(bytes);
+                Ok(bytes.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> { Ok(()) }
+        }
+        let mut writer = Writer { buffer: Self::empty(budget), errno: None };
+        serde_json::to_writer_pretty(&mut writer, value)
+            .map_err(|_| writer.errno.unwrap_or(libc::EIO))?;
+        std::io::Write::write_all(&mut writer, b"\n")
+            .map_err(|_| writer.errno.unwrap_or(libc::EIO))?;
+        Ok(writer.buffer)
+    }
+    pub(super) fn into_parts(self) -> (Vec<u8>, Charge) { (self.bytes, self.charge) }
     pub(super) fn empty(budget: &Arc<Budget>) -> Self {
         Self {
             bytes: Vec::new(),

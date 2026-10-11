@@ -16,6 +16,9 @@ set -a; [ -r /etc/op-dbus/network.conf ] && . /etc/op-dbus/network.conf; set +a
 
 BRIDGE="${BRIDGE:-ovsbr0}"
 PUB="${PUBLIC_PORT:-pub0}"
+PHYS="${UPLINK_PHYS:-eth0}"
+READY=/run/opdbus/runit-ready/ovsbr0-cutover
+rm -f "$READY"
 
 wait_dep() {
     sv start "$1" >/dev/null 2>&1 || true
@@ -31,6 +34,16 @@ wait_dep uplink-dhcp
 
 [ -d "/sys/class/net/$BRIDGE" ] || { echo "ovsbr0-cutover: $BRIDGE missing — seed failed" >&2; exit 1; }
 [ -d "/sys/class/net/$PUB" ] || { echo "ovsbr0-cutover: $PUB missing — seed failed" >&2; exit 1; }
+
+# A provider may admit only the physical NIC's MAC. Interface.mac, not
+# Interface.other_config.hwaddr, must reach the kernel before IP migration.
+expected_mac=$(cat "/sys/class/net/$PHYS/address")
+i=0
+until [ "$(cat "/sys/class/net/$PUB/address")" = "$expected_mac" ]; do
+    i=$((i + 1))
+    [ "$i" -lt 15 ] || { echo "ovsbr0-cutover: $PUB MAC differs from $PHYS; refusing migration" >&2; exit 1; }
+    sleep 1
+done
 
 # --- 1. IP/route cutover: eth0 -> pub0 --------------------------------------
 if ip -4 -o addr show dev "$PUB" scope global | grep -q .; then
@@ -76,5 +89,5 @@ for pair in ${BRIDGE_SVC_ADDRS:-}; do
 done
 
 install -d -m 0755 /run/opdbus/runit-ready
-touch /run/opdbus/runit-ready/ovsbr0-cutover
+touch "$READY"
 exec pause

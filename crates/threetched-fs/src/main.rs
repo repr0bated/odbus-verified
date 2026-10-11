@@ -1,12 +1,19 @@
 mod dispatch;
+mod fuse_buffers;
 mod fuse_fs;
+#[cfg(test)]
+mod fuse_process;
 mod mcp;
 mod model;
 mod mounted;
 mod namespace;
 mod source;
 mod store;
-mod zeroclaw_surface;
+#[cfg(test)]
+#[path = "threetched-surface.rs"]
+mod threetched_surface;
+#[cfg(not(test))]
+use threetched_fs::threetched_surface;
 
 use std::fs;
 use std::io::Read;

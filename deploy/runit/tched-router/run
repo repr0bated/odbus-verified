@@ -4,10 +4,10 @@ set -eu
 
 # This root-controlled opt-in is deliberately absent from default releases.
 # Session selectors are operator input, never credentials or model arguments.
-filesystem_marker=/etc/op-dbus/native-filesystem.enabled
+filesystem_marker=/etc/op-dbus/threetched-filesystem.enabled
 filesystem_session_file=/etc/op-dbus/human-lungs-session
 filesystem_root=/run/mount/3tchedFS
-filesystem_root_receipt=/etc/op-dbus/native-filesystem.allowed-root-owned
+filesystem_root_receipt=/etc/op-dbus/threetched-filesystem.allowed-root-owned
 filesystem_enabled=false
 protected_filesystem_file() {
     [ -f "$1" ] && [ ! -L "$1" ] || return 1
@@ -48,12 +48,12 @@ if [ "${TCHED_ROUTER_SANITIZED:-}" != 1 ]; then
     set +a
     exec env -i TCHED_ROUTER_SANITIZED=1 PATH=/usr/local/bin:/usr/bin:/bin \
         TCHED_ROUTER_CONFIG_DIR="${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}" \
-        TCHED_ROUTER_BOOTSTRAP_CONFIG="${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/zeroclaw-runtime.toml}" \
-        TCHED_ROUTER_BOOTSTRAP_SKILLS="${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/zeroclaw-skills/default}" \
+        TCHED_ROUTER_BOOTSTRAP_CONFIG="${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/threetched-runtime.toml}" \
+        TCHED_ROUTER_BOOTSTRAP_SKILLS="${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/threetched-skills/default}" \
         TCHED_ROUTER_OPENCODE_KEY_FILE="${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}" \
         TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE="${TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaper-inference-api-key}" \
-        TCHED_ROUTER_NATIVE_BIN="${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}" \
-        TCHED_ROUTER_NATIVE_MANIFEST="${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}" \
+        THREETCHED_BIN="${THREETCHED_BIN:-/usr/bin/threetched}" \
+        THREETCHED_MANIFEST="${THREETCHED_MANIFEST:-/usr/share/op-dbus/threetched-manifests/tched-router.json}" \
         TCHED_ROUTER_HOST="${TCHED_ROUTER_HOST:-127.0.0.1}" \
         TCHED_ROUTER_PORT="${TCHED_ROUTER_PORT:-8084}" \
         TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER="${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}" \
@@ -63,12 +63,12 @@ if [ "${TCHED_ROUTER_SANITIZED:-}" != 1 ]; then
 fi
 
 CONFIG_DIR=${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}
-BOOTSTRAP_CONFIG=${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/zeroclaw-runtime.toml}
-BOOTSTRAP_SKILLS=${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/zeroclaw-skills/default}
+BOOTSTRAP_CONFIG=${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/threetched-runtime.toml}
+BOOTSTRAP_SKILLS=${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/threetched-skills/default}
 OPENCODE_GO_KEY_FILE=${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}
 CHEAPER_INFERENCE_KEY_FILE=${TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaper-inference-api-key}
-NATIVE_BIN=${TCHED_ROUTER_NATIVE_BIN:-/usr/bin/zeroclaw}
-NATIVE_MANIFEST=${TCHED_ROUTER_NATIVE_MANIFEST:-/usr/share/op-dbus/native-manifests/tched-router.json}
+THREETCHED_BIN=${THREETCHED_BIN:-/usr/bin/threetched}
+THREETCHED_MANIFEST=${THREETCHED_MANIFEST:-/usr/share/op-dbus/threetched-manifests/tched-router.json}
 HOST=${TCHED_ROUTER_HOST:-127.0.0.1}
 PORT=${TCHED_ROUTER_PORT:-8084}
 CONTROL_PLANE_MODEL_PROVIDER=${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}
@@ -78,15 +78,19 @@ printf '%s' "$CONTROL_PLANE_MODEL_PROVIDER" |
     exit 78
 }
 
-[ -x "$NATIVE_BIN" ] || { echo "pinned tched_router native binary is missing" >&2; exit 78; }
-[ -f "$NATIVE_MANIFEST" ] || { echo "tched_router native provenance manifest is missing" >&2; exit 78; }
-manifest_format=$(jq -er '.format' "$NATIVE_MANIFEST")
-manifest_commit=$(jq -er '.upstream.commit' "$NATIVE_MANIFEST")
-manifest_binary_sha256=$(jq -er '.artifact.sha256' "$NATIVE_MANIFEST")
-[ "$manifest_format" = opdbus.tched-router-native.v1 ] || { echo "unsupported tched_router provenance" >&2; exit 78; }
-[ "$manifest_commit" = a56c345d51dd8ab562e9351e0d4ab83f6a741db9 ] || { echo "wrong tched_router upstream commit" >&2; exit 78; }
-[ "$(sha256sum "$NATIVE_BIN" | awk '{print $1}')" = "$manifest_binary_sha256" ] || { echo "tched_router binary/provenance mismatch" >&2; exit 78; }
-[ "$($NATIVE_BIN --version)" = "zeroclaw 0.8.4" ] || { echo "unexpected native version" >&2; exit 78; }
+[ -x "$THREETCHED_BIN" ] || { echo "pinned threetched binary is missing" >&2; exit 78; }
+[ -f "$THREETCHED_MANIFEST" ] || { echo "threetched provenance manifest is missing" >&2; exit 78; }
+manifest_format=$(jq -er '.format' "$THREETCHED_MANIFEST")
+manifest_tag=$(jq -er '.upstream.tag | select(test("^v[0-9]+[.][0-9]+[.][0-9]+([-+][A-Za-z0-9.-]+)?$"))' "$THREETCHED_MANIFEST")
+manifest_binary_sha256=$(jq -er '.artifact.sha256' "$THREETCHED_MANIFEST")
+[ "$manifest_format" = opdbus.threetched.v1 ] || { echo "unsupported tched_router provenance" >&2; exit 78; }
+jq -e '.artifact.name == "threetched" and
+    (.upstream.commit | test("^[0-9a-f]{40}$")) and
+    (.patches.branding_sha256 | test("^[0-9a-f]{64}$"))' "$THREETCHED_MANIFEST" >/dev/null || {
+    echo "invalid threetched artifact provenance" >&2; exit 78;
+}
+[ "$(sha256sum "$THREETCHED_BIN" | awk '{print $1}')" = "$manifest_binary_sha256" ] || { echo "tched_router binary/provenance mismatch" >&2; exit 78; }
+[ "$("$THREETCHED_BIN" --version)" = "threetched ${manifest_tag#v}" ] || { echo "unexpected threetched version" >&2; exit 78; }
 
 install -d -o jeremy -g jeremy -m 0700 "$CONFIG_DIR" "$CONFIG_DIR/home"
 if [ ! -f "$CONFIG_DIR/config.toml" ]; then
@@ -98,33 +102,33 @@ if [ -d "$BOOTSTRAP_SKILLS" ]; then
     chown -R jeremy:jeremy "$CONFIG_DIR/shared/skills/default"
 fi
 
-# Use the native configuration owner for both fresh installs and migration.
-# Observe model presence before init: init itself supplies a native default.
-native_config() {
+# Use the threetched configuration owner for both fresh installs and migration.
+# Observe model presence before init: init itself supplies a threetched default.
+threetched_config() {
     chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
-        PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
-        "$NATIVE_BIN" config "$@" --config-dir "$CONFIG_DIR"
+        PATH=/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
+        "$THREETCHED_BIN" config "$@" --config-dir "$CONFIG_DIR"
 }
 # An external selection must already exist. Check before any startup migration
 # so a misspelled variable cannot replace the role's current provider.
 if [ "$CONTROL_PLANE_MODEL_PROVIDER" != opencode.go_control_plane ]; then
-    native_config get "providers.models.$CONTROL_PLANE_MODEL_PROVIDER.model" --json |
+    threetched_config get "providers.models.$CONTROL_PLANE_MODEL_PROVIDER.model" --json |
         jq -e '.value | strings | test("\\S")' >/dev/null || {
         echo "tched-router: Control Plane model provider is not configured" >&2
         exit 78
     }
 fi
 for risk in control_plane accountability; do
-    native_config init "risk_profiles.$risk" >/dev/null
+    threetched_config init "risk_profiles.$risk" >/dev/null
     jq -n --arg p "/risk_profiles/$risk" '[
       {op:"add",path:($p+"/level"),value:"readonly"},
       {op:"add",path:($p+"/workspace_only"),value:true},
       {op:"add",path:($p+"/require_approval_for_medium_risk"),value:true},
       {op:"add",path:($p+"/block_high_risk_commands"),value:true}
-    ]' | native_config patch - >/dev/null
+    ]' | threetched_config patch - >/dev/null
 done
 
-# The native config owner applies one compare-and-swap of this exact list.
+# The threetched config owner applies one compare-and-swap of this exact list.
 # An ownership receipt distinguishes our addition from a pre-existing root.
 if [ "$filesystem_enabled" = true ] || [ -e "$filesystem_root_receipt" ] || [ -L "$filesystem_root_receipt" ]; then
     [ ! -L /etc/op-dbus ] && [ "$(stat -c '%u %a' /etc/op-dbus)" = '0 755' ] || exit 78
@@ -132,34 +136,34 @@ if [ "$filesystem_enabled" = true ] || [ -e "$filesystem_root_receipt" ] || [ -L
         protected_filesystem_file "$filesystem_root_receipt" || exit 78
         [ "$(cat "$filesystem_root_receipt")" = "$filesystem_root" ] || exit 78
     fi
-    roots=$(native_config get risk_profiles.control_plane.allowed_roots --json | jq -ce '.value | if type == "string" then fromjson else . end | arrays | select(all(.[]; type == "string"))')
+    roots=$(threetched_config get risk_profiles.control_plane.allowed_roots --json | jq -ce '.value | if type == "string" then fromjson else . end | arrays | select(all(.[]; type == "string"))')
     if [ "$filesystem_enabled" = true ]; then
-        [ "$(findmnt -rn -M "$filesystem_root" -o FSTYPE)" = fuse.3tchedFS ] || { echo 'tched-router: native filesystem mount is not ready' >&2; exit 78; }
+        [ "$(findmnt -rn -M "$filesystem_root" -o FSTYPE)" = fuse.3tchedFS ] || { echo 'tched-router: threetched filesystem mount is not ready' >&2; exit 78; }
         jq -e --arg session "$OPDBUS_FILESYSTEM_SESSION" '.mount_identity.kind == "host_session" and .mount_identity.session == $session and .local_call_owner_uid == 1001 and .workspace_id == null' "$filesystem_root/.3tchedfs.json" >/dev/null || exit 78
         if ! printf '%s' "$roots" | jq -e --arg root "$filesystem_root" 'index($root) != null' >/dev/null; then
-            # Record intent before the atomic native patch, so interrupted
+            # Record intent before the atomic threetched patch, so interrupted
             # startup can still roll back only this exact added permission.
-            receipt_tmp=$(mktemp /etc/op-dbus/.native-filesystem-root.XXXXXX)
+            receipt_tmp=$(mktemp /etc/op-dbus/.threetched-filesystem-root.XXXXXX)
             chmod 0600 "$receipt_tmp"
             printf '%s\n' "$filesystem_root" >"$receipt_tmp"
             mv -f "$receipt_tmp" "$filesystem_root_receipt"
             jq -n --argjson roots "$roots" --arg root "$filesystem_root" '[
                 {op:"test",path:"/risk_profiles/control_plane/allowed_roots",value:$roots},
                 {op:"replace",path:"/risk_profiles/control_plane/allowed_roots",value:($roots + [$root])}
-            ]' | native_config patch - >/dev/null
+            ]' | threetched_config patch - >/dev/null
         fi
     elif [ -e "$filesystem_root_receipt" ]; then
         jq -n --argjson roots "$roots" --arg root "$filesystem_root" '[
             {op:"test",path:"/risk_profiles/control_plane/allowed_roots",value:$roots},
             {op:"replace",path:"/risk_profiles/control_plane/allowed_roots",value:($roots | map(select(. != $root)))}
-        ]' | native_config patch - >/dev/null
+        ]' | threetched_config patch - >/dev/null
         rm -f "$filesystem_root_receipt"
     fi
     unset roots receipt_tmp
 fi
 # OpenCode Go, an upstream provider like OpenRouter. Chat-completions and
-# Responses models use the native `opencode` provider at /zen/go/v1;
-# Messages-API models use the native `anthropic` provider, which posts to
+# Responses models use the threetched `opencode` provider at /zen/go/v1;
+# Messages-API models use the threetched `anthropic` provider, which posts to
 # {uri}/v1/messages. A profile's model is set when the profile is created, so
 # an operator's later model choice survives restarts.
 while IFS='|' read -r agent kind model wire risk; do
@@ -172,7 +176,7 @@ while IFS='|' read -r agent kind model wire risk; do
         # config_set on agents.control_plane.model_provider) survives
         # restarts: keep a current OpenCode Go selection unless the service
         # environment names a provider explicitly.
-        current=$(native_config get agents.control_plane.model_provider --json 2>/dev/null |
+        current=$(threetched_config get agents.control_plane.model_provider --json 2>/dev/null |
             jq -r '.value // ""' 2>/dev/null || true)
         case "$current" in
             opencode.go_*|anthropic.go_*|custom.cheaper_inference)
@@ -182,17 +186,17 @@ while IFS='|' read -r agent kind model wire risk; do
                 ;;
         esac
     fi
-    existing=$(native_config get "providers.models.$kind.$profile.model" --json 2>/dev/null || true)
+    existing=$(threetched_config get "providers.models.$kind.$profile.model" --json 2>/dev/null || true)
     created=true
     if printf '%s' "$existing" | jq -e '.value | type == "string" and length > 0' >/dev/null 2>&1; then
         created=false
     fi
-    native_config init "providers.models.$kind.$profile" >/dev/null
+    threetched_config init "providers.models.$kind.$profile" >/dev/null
     # Dashboard is an existing Personal agent: move only its provider to Go,
     # never its skills, memory, risk profile or A2A settings.
     if [ "$agent" != dashboard ]; then
         for section in "agents.$agent" "agents.$agent.a2a" "agents.$agent.memory"; do
-            native_config init "$section" >/dev/null
+            threetched_config init "$section" >/dev/null
         done
     fi
     jq -n --arg p "/providers/models/$kind/$profile" --arg a "/agents/$agent" \
@@ -216,7 +220,7 @@ while IFS='|' read -r agent kind model wire risk; do
        {op:"add",path:($a+"/a2a/published"),value:true},
        {op:"add",path:($a+"/a2a/exposed_skills"),value:["plugin-schema"]},
        {op:"add",path:($a+"/memory/backend"),value:"none"}
-      ] end)' | native_config patch - >/dev/null
+      ] end)' | threetched_config patch - >/dev/null
 done <<'ROUTES'
 dashboard|opencode|glm-5.3-flash|chat_completions|dashboard
 accountability|opencode|glm-5.3-flash|chat_completions|accountability
@@ -231,19 +235,19 @@ ROUTES
 
 # Routes whose models OpenCode Go does not serve stay configured but disabled.
 for agent in cp_route_nemotron_3_ultra cp_route_qwen3_coder_flash cp_route_gpt6_astra; do
-    if native_config get "agents.$agent.enabled" --json >/dev/null 2>&1; then
+    if threetched_config get "agents.$agent.enabled" --json >/dev/null 2>&1; then
         jq -n --arg p "/agents/$agent/enabled" '[{op:"add",path:$p,value:false}]' |
-            native_config patch - >/dev/null
+            threetched_config patch - >/dev/null
     fi
 done
 
 # Named agents use a runtime profile; the historical [agent] limit is inert.
-# The native CLI owns provisioning dynamic profile keys. Its HTTP init endpoint
+# The threetched CLI owns provisioning dynamic profile keys. Its HTTP init endpoint
 # only initializes schema sections and cannot create this map entry.
-native_config init runtime_profiles.chatbot_500 >/dev/null
+threetched_config init runtime_profiles.chatbot_500 >/dev/null
 iteration_patch='[{"op":"replace","path":"/runtime_profiles/chatbot_500/max_tool_iterations","value":500}]'
 for agent in dashboard accountability control_plane cp_route_grok_47 cp_route_deepseek_v41_flash cp_route_glm_53_flash cp_route_qwen38_flash cp_route_gpt6_luna cp_route_claude_fable_51; do
-    current_profile=$(native_config get "agents.$agent.runtime_profile" --json | jq -er '.value | strings')
+    current_profile=$(threetched_config get "agents.$agent.runtime_profile" --json | jq -er '.value | strings')
     case "$current_profile" in
         ''|chatbot_500) ;;
         *) echo "tched-router: unexpected named runtime profile; reconcile before migration" >&2; exit 78 ;;
@@ -253,13 +257,13 @@ for agent in dashboard accountability control_plane cp_route_grok_47 cp_route_de
       {op:"replace",path:$p,value:"chatbot_500"}
     ]')
 done
-printf '%s' "$iteration_patch" | native_config patch - >/dev/null
+printf '%s' "$iteration_patch" | threetched_config patch - >/dev/null
 unset iteration_patch current_profile
 
-# Provision the separate, initially empty CP bundle through the native owner.
+# Provision the separate, initially empty CP bundle through the threetched owner.
 # The admitted config API can then assign servers without sharing Personal's
 # control_plane bundle. Existing bundle contents are preserved by init.
-native_config init mcp_bundles.opdbus_control_plane >/dev/null
+threetched_config init mcp_bundles.opdbus_control_plane >/dev/null
 
 [ -f "$OPENCODE_GO_KEY_FILE" ] || { echo "tched-router: missing OpenCode Go API key" >&2; exit 78; }
 set -- $(stat -Lc '%u %a' "$OPENCODE_GO_KEY_FILE")
@@ -267,7 +271,7 @@ set -- $(stat -Lc '%u %a' "$OPENCODE_GO_KEY_FILE")
     echo "tched-router: OpenCode Go API key must be root-owned with mode 0400 or 0600" >&2
     exit 78
 }
-# The key is raw-file input to native config patch and never an argument.
+# The key is raw-file input to threetched config patch and never an argument.
 jq -n --rawfile key "$OPENCODE_GO_KEY_FILE" '
   ($key | gsub("[\\r\\n]+$"; "")) as $key |
   if ($key | length) == 0 then error("empty OpenCode Go API key")
@@ -279,8 +283,8 @@ jq -n --rawfile key "$OPENCODE_GO_KEY_FILE" '
    ["opencode","cp_route_gpt6_luna"],["anthropic","cp_route_claude_fable_51"]] |
   map({op:"add",path:("/providers/models/" + .[0] + "/go_" + .[1] + "/api_key"),value:$key})' |
     chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
-        PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
-        "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
+        PATH=/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
+        "$THREETCHED_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
 
 # Cheaper Inference: an additional, optional OpenAI-compatible provider.
 # Configured only when its root-owned key exists; the profile's model is set
@@ -292,12 +296,12 @@ if [ -f "$CHEAPER_INFERENCE_KEY_FILE" ]; then
         echo "tched-router: Cheaper Inference key must be root-owned with mode 0400 or 0600" >&2
         exit 78
     }
-    existing=$(native_config get providers.models.custom.cheaper_inference.model --json 2>/dev/null || true)
+    existing=$(threetched_config get providers.models.custom.cheaper_inference.model --json 2>/dev/null || true)
     created=true
     if printf '%s' "$existing" | jq -e '.value | type == "string" and length > 0' >/dev/null 2>&1; then
         created=false
     fi
-    native_config init providers.models.custom.cheaper_inference >/dev/null
+    threetched_config init providers.models.custom.cheaper_inference >/dev/null
     jq -n --rawfile key "$CHEAPER_INFERENCE_KEY_FILE" --argjson created "$created" '
       ($key | gsub("[\\r\\n]+$"; "")) as $key |
       if ($key | length) == 0 then error("empty Cheaper Inference API key")
@@ -311,17 +315,17 @@ if [ -f "$CHEAPER_INFERENCE_KEY_FILE" ]; then
        {op:"add",path:($p+"/api_key"),value:$key}
       ]' |
         chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
-            PATH=/usr/local/bin:/usr/bin:/bin ZEROCLAW_CONFIG_DIR="$CONFIG_DIR" \
-            "$NATIVE_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
+            PATH=/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
+            "$THREETCHED_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
 else
     echo "tched-router: Cheaper Inference key is absent; that provider is not configured" >&2
 fi
 
 export HOME="$CONFIG_DIR/home" USER=jeremy PATH=/usr/local/bin:/usr/bin:/bin
-export ZEROCLAW_CONFIG_DIR="$CONFIG_DIR"
+export THREETCHED_CONFIG_DIR="$CONFIG_DIR"
 # The Sled-authenticated MCP door remains the identity authority. These are
 # public endpoint/CA settings, never reconstructed credentials.
 export OPDBUS_SLED_AUTH_URL OPDBUS_SLED_CA_FILE
 unset TCHED_ROUTER_SANITIZED
 exec chpst -u jeremy:jeremy \
-    "$NATIVE_BIN" daemon --config-dir "$CONFIG_DIR" --host "$HOST" --port "$PORT" --log-level warn
+    "$THREETCHED_BIN" daemon --config-dir "$CONFIG_DIR" --host "$HOST" --port "$PORT" --log-level warn

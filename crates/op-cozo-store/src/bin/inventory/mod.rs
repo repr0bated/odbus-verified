@@ -672,8 +672,8 @@ fn prepared(
     // JSON contents (which could contain future private fields).
     for (document, prefix) in [
         (
-            "usr/share/op-dbus/native-manifests/tched-router.json",
-            "usr/bin/zeroclaw",
+            "usr/share/op-dbus/threetched-manifests/tched-router.json",
+            "usr/bin/threetched",
         ),
         (
             "usr/share/op-dbus/ui-manifests/3tched-ui.json",

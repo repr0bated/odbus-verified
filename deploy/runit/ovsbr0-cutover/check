@@ -1,2 +1,14 @@
 #!/bin/sh
+set -eu
 [ -f /run/opdbus/runit-ready/ovsbr0-cutover ]
+[ ! -r /etc/op-dbus/network.conf ] || . /etc/op-dbus/network.conf
+bridge=${BRIDGE:-ovsbr0}
+pub=${PUBLIC_PORT:-pub0}
+phys=${UPLINK_PHYS:-eth0}
+[ -d "/sys/class/net/$bridge" ]
+[ "$(cat "/sys/class/net/$pub/address")" = "$(cat "/sys/class/net/$phys/address")" ]
+ip -4 -o addr show dev "$pub" | awk '{print $4}' | grep -Fxq "${PUBLIC_ADDR:?}"
+ip -4 route show default dev "$pub" | grep -Fq "via ${PUBLIC_GW:?} "
+for pair in ${BRIDGE_SVC_ADDRS:-}; do
+    ip -4 -o addr show dev "${pair#*@}" | awk '{print $4}' | grep -Fxq "${pair%@*}"
+done

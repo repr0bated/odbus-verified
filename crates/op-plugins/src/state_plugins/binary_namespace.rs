@@ -1,6 +1,6 @@
 //! One filter for every plugin, applied to a binary schema extract before seal.
 //!
-//! The installed `zeroclaw` binary stays the schema source. This module does
+//! The installed `threetched` binary stays the schema source. This module does
 //! not rewrite that binary, and it does not search-replace its text. It keeps
 //! the one named namespace, then turns that namespace's command words into
 //! methods on the plugin that already owns it.
@@ -15,7 +15,7 @@ use serde_json::{Map, Value};
 use simd_json::OwnedValue;
 
 const NAMESPACE: &str = "model_routes";
-/// Path commands from `zeroclaw config --help`. The help text is the array.
+/// Path commands from `threetched config --help`. The help text is the array.
 const PATH_COMMANDS: &[&str] = &["get", "set", "init", "list", "patch"];
 
 struct CapturedNamespace {
@@ -37,16 +37,16 @@ fn captured() -> Option<&'static CapturedNamespace> {
 }
 
 fn capture() -> Result<CapturedNamespace> {
-    let binary = super::tched_router_paths::binary()?;
+    let (binary, _) = super::tched_router_paths::capture_paths()?;
     let binary = binary.to_str().context("non-UTF8 tched-router binary path")?;
     let schema_text = run(&[binary, "config", "schema"])?;
     let document: Value = serde_json::from_str(&schema_text)
-        .context("zeroclaw config schema is not JSON")?;
+        .context("threetched config schema is not JSON")?;
     let section = filter_namespace(&document, NAMESPACE)?;
     let help = run(&[binary, "config", "--help"])?;
     let commands = filter_command_words(&help, PATH_COMMANDS);
     if commands.is_empty() {
-        bail!("zeroclaw config --help listed no path commands");
+        bail!("threetched config --help listed no path commands");
     }
     Ok(CapturedNamespace { section, commands })
 }
@@ -313,15 +313,15 @@ fn call_namespace(method: &str, json_args: &str) -> Result<serde_json::Value> {
             .get("operations")
             .context("patch requires operations")?;
         command.stdin(std::process::Stdio::piped());
-        let mut child = command.spawn().context("failed to start zeroclaw")?;
+        let mut child = command.spawn().context("failed to start threetched")?;
         if let Some(stdin) = child.stdin.as_mut() {
             use std::io::Write;
             stdin.write_all(serde_json::to_string(operations)?.as_bytes())?;
         }
-        let output = child.wait_with_output().context("zeroclaw patch failed")?;
+        let output = child.wait_with_output().context("threetched patch failed")?;
         return Ok(envelope(&output));
     }
-    let output = command.output().context("failed to run zeroclaw")?;
+    let output = command.output().context("failed to run threetched")?;
     Ok(envelope(&output))
 }
 

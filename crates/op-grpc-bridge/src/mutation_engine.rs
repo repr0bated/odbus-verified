@@ -207,6 +207,8 @@ fn audit_method_arguments(
             | "antigravity"
             | "antigravity_chat"
             | "tched_skills"
+            | "tched_plugins"
+            | "threetched"
     ) || (plugin_id == "xray" && matches!(method, "add_user" | "add_inbound"))
         || (plugin_id == "tched_router"
             && (matches!(
@@ -287,7 +289,7 @@ pub struct MutationEngine {
     /// SHM children, keyed by an opaque caller/monitor digest.
     ovsdb_monitor_tasks: Arc<Mutex<HashMap<String, tokio::task::JoinHandle<()>>>>,
     ovsdb_monitor_state: Arc<Mutex<()>>,
-    /// Provider runtime used only after ZeroClaw resolves a schema-declared route.
+    /// Provider runtime used only after threetched resolves a schema-declared route.
     #[allow(dead_code)] // wired for chat dispatch; not yet called from dispatch loop
     chat_manager: Arc<ChatManager>,
     /// Lazily initialized cognitive runtime.  It is owned by the bridge and is
@@ -4289,14 +4291,21 @@ impl MutationEngine {
                 .await?;
                 output
             }
-            "tched_skills" => {
-                // Skills and router methods operate on the same native service
+            "tched_skills" | "tched_plugins" | "threetched" => {
+                let feature_plugin: &'static str = match plugin_id {
+                    "tched_skills" => "tched_skills",
+                    "tched_plugins" => "tched_plugins",
+                    "threetched" => "threetched",
+                    _ => unreachable!("matched threetched-backed plugin"),
+                };
+                // Skills, plugins and router methods operate on the same threetched service
                 // and config directory. Serialize them through the router's
                 // operation guard, then recheck the pinned seal and caller's
                 // current session/grant after any queue wait.
-                let _operation =
+                let operation = Arc::new(
                     crate::tched_router_runtime::TchedRouterRuntimeClient::selection_guard()
-                        .await;
+                        .await,
+                );
                 let caller = crate::tched_router_admission::RouterCaller {
                     actor: actor_id.to_owned(),
                     capability: capability_id.map(str::to_owned),
@@ -4306,7 +4315,7 @@ impl MutationEngine {
                 let pinned = crate::tched_router_admission::readmit_call(
                     self,
                     &admitted_schema,
-                    "tched_skills",
+                    feature_plugin,
                     method,
                     &caller,
                 )
@@ -4324,17 +4333,22 @@ impl MutationEngine {
                 }
                 let args = serde_json::to_value(&parsed_value)?;
                 let sealed_source = pinned.schema.example.as_ref()
-                    .context("sealed tched_skills source descriptor missing")?;
-                let sealed_source: op_plugins::state_plugins::tched_skills::SkillsState =
-                    serde_json::from_value(serde_json::to_value(sealed_source)?)?;
-                let result = op_plugins::state_plugins::tched_skills::dispatch(
-                    method,
-                    &args,
-                    &sealed_source,
-                )
-                .await?;
+                    .context("sealed threetched feature source descriptor missing")?;
+                let source_value = serde_json::to_value(sealed_source)?;
+                let result = if plugin_id == "tched_skills" {
+                    let source = serde_json::from_value(source_value)?;
+                    op_plugins::state_plugins::tched_skills::dispatch(method, &args, &source).await?
+                } else if plugin_id == "tched_plugins" {
+                    let source = serde_json::from_value(source_value)?;
+                    op_plugins::state_plugins::tched_plugins::dispatch(method, &args, &source).await?
+                } else {
+                    let source = serde_json::from_value(source_value)?;
+                    op_plugins::state_plugins::threetched::dispatch(
+                        method, &args, &source, operation.clone(),
+                    ).await?
+                };
                 let declaration = pinned.schema.methods.get(method)
-                    .context("pinned tched_skills method is absent")?;
+                    .context("pinned threetched feature method is absent")?;
                 crate::method_contract_admission::validate_admitted_output(
                     declaration,
                     &result,

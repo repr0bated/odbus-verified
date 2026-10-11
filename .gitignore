@@ -91,6 +91,7 @@ techops/
 # Editor/patch artifacts never belong next to verified source
 *.bak
 *.patch
+!vendor/tched-router/patches/*.patch
 *.backup
 *.copied
 *.stub
@@ -111,3 +112,6 @@ repo.tar
 repo.tar.gz
 blob.bin
 /tar/
+
+# Preserved Cargo output from the release-target mount migration.
+/target.before-release-target-*/

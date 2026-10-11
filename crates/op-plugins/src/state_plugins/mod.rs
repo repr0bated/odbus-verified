@@ -96,6 +96,8 @@ pub mod tched_router_contract;
 pub mod tched_router_legacy_methods;
 pub mod tched_router_paths;
 pub mod tched_skills;
+pub mod tched_plugins;
+pub mod threetched;
 pub mod threetched_fs;
 pub mod threetched_fs_contract;
 pub mod unix_socket;

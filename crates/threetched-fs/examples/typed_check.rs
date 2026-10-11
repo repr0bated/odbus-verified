@@ -3,18 +3,22 @@
 #![allow(dead_code)]
 #[path = "../src/dispatch.rs"]
 mod dispatch;
+#[path = "../src/fuse_buffers.rs"]
+mod fuse_buffers;
+#[path = "../src/fuse_process.rs"]
+mod fuse_process;
 #[path = "../src/model.rs"]
 mod model;
 #[path = "../src/mounted.rs"]
 mod mounted;
 #[path = "../src/namespace.rs"]
 mod namespace;
-#[path = "../src/zeroclaw_surface.rs"]
-mod zeroclaw_surface;
 #[path = "../src/source.rs"]
 mod source;
 #[path = "../src/store.rs"]
 mod store;
+#[path = "../src/threetched-surface.rs"]
+mod threetched_surface;
 #[path = "../src/typed_bindings.rs"]
 mod typed_bindings;
 #[path = "../src/typed_runtime.rs"]

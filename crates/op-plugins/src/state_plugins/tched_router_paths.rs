@@ -1,14 +1,14 @@
-//! The native ZeroClaw service paths shared by tched-router plugin surfaces.
+//! The threetched service paths shared by tched-router plugin surfaces.
 //! Defaults mirror deploy/runit/tched-router/run; service overrides use its
-//! TCHED_ROUTER_* environment names when supplied to the bridge.
+//! THREETCHED_BIN, THREETCHED_MANIFEST and TCHED_ROUTER_CONFIG_DIR variables.
 
 use std::path::PathBuf;
 
 use anyhow::{Result, ensure};
 
-pub const DEFAULT_BINARY: &str = "/usr/bin/zeroclaw";
+pub const DEFAULT_BINARY: &str = "/usr/bin/threetched";
 pub const DEFAULT_CONFIG_DIR: &str = "/var/lib/tched-router";
-pub const DEFAULT_MANIFEST: &str = "/usr/share/op-dbus/native-manifests/tched-router.json";
+pub const DEFAULT_MANIFEST: &str = "/usr/share/op-dbus/threetched-manifests/tched-router.json";
 
 fn absolute_env_path(name: &str, default: &str) -> Result<PathBuf> {
     let path = std::env::var_os(name)
@@ -19,7 +19,7 @@ fn absolute_env_path(name: &str, default: &str) -> Result<PathBuf> {
 }
 
 pub fn binary() -> Result<PathBuf> {
-    absolute_env_path("TCHED_ROUTER_NATIVE_BIN", DEFAULT_BINARY)
+    absolute_env_path("THREETCHED_BIN", DEFAULT_BINARY)
 }
 
 pub fn config_dir() -> Result<PathBuf> {
@@ -27,5 +27,26 @@ pub fn config_dir() -> Result<PathBuf> {
 }
 
 pub fn manifest() -> Result<PathBuf> {
-    absolute_env_path("TCHED_ROUTER_NATIVE_MANIFEST", DEFAULT_MANIFEST)
+    absolute_env_path("THREETCHED_MANIFEST", DEFAULT_MANIFEST)
+}
+
+/// Select the binary and provenance manifest used only to capture the sealed
+/// CLI contract. Runtime dispatch continues to use [`binary`] and [`manifest`].
+/// Build/seal invocations may point these selectors at a not-yet-installed
+/// candidate, but must supply the pair together so provenance cannot drift.
+pub(crate) fn capture_paths() -> Result<(PathBuf, PathBuf)> {
+    match (
+        std::env::var_os("THREETCHED_CAPTURE_BIN"),
+        std::env::var_os("THREETCHED_CAPTURE_MANIFEST"),
+    ) {
+        (None, None) => Ok((binary()?, manifest()?)),
+        (Some(binary), Some(manifest)) => {
+            let binary = PathBuf::from(binary);
+            let manifest = PathBuf::from(manifest);
+            ensure!(binary.is_absolute(), "THREETCHED_CAPTURE_BIN must be an absolute path");
+            ensure!(manifest.is_absolute(), "THREETCHED_CAPTURE_MANIFEST must be an absolute path");
+            Ok((binary, manifest))
+        }
+        _ => anyhow::bail!("THREETCHED_CAPTURE_BIN and THREETCHED_CAPTURE_MANIFEST must be supplied together"),
+    }
 }

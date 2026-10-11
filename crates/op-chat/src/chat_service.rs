@@ -3,7 +3,7 @@
 //! Implements the `op_chat.chat.ChatService` trait from `chat.proto`.
 //!
 //! Architecture:
-//! - zeroclaw owns provider/model routing (OD-28) — SendRequest carries them.
+//! - threetched owns provider/model routing (OD-28) — SendRequest carries them.
 //! - gemma_brain routes to the selected model and applies compliance tags.
 //! - The chatbot is a DELEGATOR — forced tool calling is mandatory; even user
 //!   responses are emitted as tool calls (respond_to_user).

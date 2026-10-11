@@ -6,6 +6,15 @@ capability. Application identities, TLS credentials and existing wgcf keys remai
 
 ## Traffic and address ownership
 
+The prepared configuration names the SSH-through-MASQUE interface
+`masque-ssh`. OpenSSH still attaches using numeric TUN ID 5 through the kernel
+alternative name `tun5`; that alias is an attachment detail, not GRE.
+Existing installations without `interface_name` retain their previous name
+until a deliberate migration updates routes, firewall matches and readiness
+checks together. The endpoint helper refuses to rename an attached carrier.
+The historical deployment evidence below predates this rename and does not
+establish that it has been activated on either node.
+
 The official MASQUE daemon runs in network namespace `op-warp`, with private
 DNS mounts and blocked host DNS-control sockets. This confines the client's
 routing and firewall changes. Root `warp-uplink` (192.168.253.1) supplies the

@@ -42,7 +42,8 @@ on an upstream framework crate.
 
 **Owner clarification, 2026-09-13:** 3tched-router / tched-router is the
 framework/schema/plugin integration, identified as `tched_router` in code. The
-upstream executable keeps the name `zeroclaw`. Its own extracted configuration
+backing executable is named `threetched` following the owner's 2026-10-11
+correction; upstream repository and license attribution remain intact. Its extracted configuration
 schema must feed the single plugin contract; the system uses the plugin with binary
 backing. Assistant is the **control-plane chatbot**, not an assistant container.
 The historical Gemma routing role is intended to be **model agnostic**. Waypipe
@@ -50,7 +51,7 @@ is retired; its crate, Cargo target and protocol are absent.
 
 ```mermaid
 flowchart LR
-    binary["zeroclaw executable"] -->|"explicit upgrade import"| plugin["tched_router schema: single source"]
+    binary["threetched executable"] -->|"explicit upgrade import"| plugin["tched_router schema: single source"]
     plugin -->|seal| blob["Blob IS the plugin"]
     blob --> surface["Authenticated plugin surface"]
     chatbot["Control-plane chatbot"] --> surface
@@ -64,16 +65,15 @@ the single-contract path below:
 | Step | Source evidence |
 |---|---|
 | Historical capture: pre-repair evidence | The `schemas/` tree and file includes were removed; Git history and the explicitly historical baseline retain the prior evidence. |
-| Current contract import | [`tched_router_contract.rs`](../../../crates/op-plugins/src/state_plugins/tched_router_contract.rs) imports the upstream contract once; 81 derived section schemas and 89 configuration methods are generated from that plugin-owned value. |
-| Explicit generator boundary | [`gen_tched_router_config_surface.rs`](../../../crates/op-plugins/src/bin/gen_tched_router_config_surface.rs) regenerates derived Rust and accepts an explicit upstream import; it does not perform a runtime schema lookup. |
-| Native release input | [`vendor/tched-router/source.pin`](../../../vendor/tched-router/source.pin) and [`build-native.sh`](../../../vendor/tched-router/build-native.sh) bind the upstream archive/commit and patches to a candidate binary plus provenance manifest without installing it. Golden preparation validates and stages both. |
+| Current contract import | [`tched_router_contract.rs`](../../../crates/op-plugins/src/state_plugins/tched_router_contract.rs) holds the upstream contract once; router accessors and section schemas derive from that plugin-owned value. |
+| Explicit import boundary | Validate the verified threetched binary's `config schema` output and local references, then replace only the contract's `UPSTREAM IMPORT` block and version. Record binary provenance and preserve the helpers. The per-section generator was retired on October 4; there is no active generator binary. |
+| threetched release input | [`vendor/tched-router/source.pin`](../../../vendor/tched-router/source.pin) and [`build-threetched.sh`](../../../vendor/tched-router/build-threetched.sh) bind the upstream archive/commit and patches to a candidate binary plus provenance manifest without installing it. Golden preparation validates and stages both, with provenance at `/usr/share/op-dbus/threetched-manifests/tched-router.json`. |
 | Assemble the plugin | [`tched_router.rs`](../../../crates/op-plugins/src/state_plugins/tched_router.rs), `tched_router_schema_from_state` (line 1597), config method registration (line 1839), and `dispatch_tched_router_method`. |
-| Execute through backing runtime | [`mutation_engine.rs`](../../../crates/op-grpc-bridge/src/mutation_engine.rs) sends router operations through [`TchedRouterRuntimeClient`](../../../crates/op-grpc-bridge/src/tched_router_runtime.rs). Selection writes and verifies upstream configuration before publishing projection changes. The runit owner verifies the staged native manifest, commit, binary digest and version before executing `/usr/bin/zeroclaw`. |
+| Execute through backing runtime | [`mutation_engine.rs`](../../../crates/op-grpc-bridge/src/mutation_engine.rs) sends router operations through [`TchedRouterRuntimeClient`](../../../crates/op-grpc-bridge/src/tched_router_runtime.rs). Selection writes and verifies upstream configuration before publishing projection changes. The runit owner verifies the staged threetched manifest, commit, binary digest and version before executing `/usr/bin/threetched`. |
 
-The imported contract records binary version 0.8.4. Consolidation preserved the
-contract and all 81 derived section documents. Generator and final root gates
-must establish current source equivalence; this map does not prove live catalog
-or running binary parity.
+The imported contract records binary version 0.8.4. Contract validation and
+binary provenance must establish current source equivalence; this map does not
+prove live catalog or running binary parity.
 
 ## Schema, discovery and execution
 

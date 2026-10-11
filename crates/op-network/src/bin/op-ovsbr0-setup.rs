@@ -487,7 +487,8 @@ async fn purge_by_name(client: &mut Client, name: &str) -> Result<()> {
 /// never a second transaction on the create path.
 ///
 /// `mac` (the uplink's real MAC) is pinned on `public_port`'s Interface row
-/// via other_config.hwaddr.  The Bridge row NEVER carries hwaddr: the bridge
+/// via Interface.mac. Interface.other_config.hwaddr is ignored by OVS.
+/// The Bridge row NEVER carries hwaddr: the bridge
 /// device must keep a random MAC, because the public IP lives on
 /// `public_port`, and the provider filters on the uplink MAC — if the bridge
 /// device held that MAC and the IP later moved, inbound would blackhole.
@@ -527,7 +528,7 @@ async fn create_bridge_system(
         json!({
             "name": public_port,
             "type": "internal",
-            "other_config": ["map", [["hwaddr", mac]]]
+            "mac": mac
         }),
     );
     port_refs.push(txn.insert(
