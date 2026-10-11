@@ -137,6 +137,7 @@ id = "salad"
 native_provider_id = "custom.salad_personal"
 inference_url_prefix = "https://ai.salad.cloud/v1"
 name = "Salad AI"
+control_plane = { profile = "custom.salad_control_plane" }
 models_url = "https://ai.salad.cloud/v1/models"
 format = "openai"
 auth = "bearer"

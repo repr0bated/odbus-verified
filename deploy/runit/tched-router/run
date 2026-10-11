@@ -321,6 +321,7 @@ else
     echo "tched-router: Cheaper Inference key is absent; that provider is not configured" >&2
 fi
 
+/usr/local/libexec/3tched/prepare-salad-control-plane "$CONFIG_DIR" "$THREETCHED_BIN"
 export HOME="$CONFIG_DIR/home" USER=jeremy PATH=/usr/local/bin:/usr/bin:/bin
 export THREETCHED_CONFIG_DIR="$CONFIG_DIR"
 # The Sled-authenticated MCP door remains the identity authority. These are
