@@ -596,6 +596,8 @@ build_golden() {
         "$GOLDEN_DIR/libexec/3tched/prepare-instance-disk"
     run install -Dm755 "$SCRIPT_DIR/../scripts/sync-instance-upgrade.sh" \
         "$GOLDEN_DIR/libexec/3tched/sync-instance-upgrade"
+    run install -Dm755 "$SCRIPT_DIR/../scripts/bind-instance-root.sh" \
+        "$GOLDEN_DIR/libexec/3tched/bind-instance-root"
     run install -Dm755 "$SCRIPT_DIR/../workspace-image/prepare-lungs-client.sh" \
         "$GOLDEN_DIR/libexec/3tched/prepare-lungs-client"
     run install -Dm644 "$SCRIPT_DIR/../workspace-image/3tchedfs.service" \

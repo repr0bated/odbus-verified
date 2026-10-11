@@ -4,6 +4,7 @@
 #   sudo ./provision-workspace-subscriber.sh --prepare-disk 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --inspect-disk 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --prepare-container 3tchedChatbot
+#   sudo ./provision-workspace-subscriber.sh --bind-root 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --pair-upgrade 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --sync-upgrade 3tchedChatbot
 #     [--root-gib 20 --upgrade-gib 40]   # prepare-disk only
@@ -120,6 +121,14 @@ prepare_chatbot_container() (
     printf 'Stopped container defined; root binding and identity adoption remain pending.\n'
 )
 case $1 in
+    --bind-root)
+        shift
+        script_dir=$(dirname -- "$(realpath -e -- "${BASH_SOURCE[0]}")")
+        bind_helper=$script_dir/bind-instance-root.sh
+        [[ -x $bind_helper ]] || bind_helper=$script_dir/bind-instance-root
+        [[ -x $bind_helper ]] || die 'root binding helper missing'
+        exec "$bind_helper" "$@"
+        ;;
     --prepare-container)
         shift
         prepare_chatbot_container "$@"
