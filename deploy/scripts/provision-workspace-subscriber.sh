@@ -49,9 +49,10 @@ need_cmd() { command -v "$1" >/dev/null 2>&1 || die "missing command: $1"; }
 usage() { sed -n '2,20p' "$0"; }
 if [[ $# == 0 || ${1:-} == -h || ${1:-} == --help ]]; then usage; exit 0; fi
 case $1 in
-    --prepare-disk|--inspect-disk)
+    --prepare-disk|--inspect-disk|--prepare-filesystems)
         disk_action=create
         [[ $1 != --inspect-disk ]] || disk_action=inspect
+        [[ $1 != --prepare-filesystems ]] || disk_action=prepare
         shift
         script_dir=$(dirname -- "$(realpath -e -- "${BASH_SOURCE[0]}")")
         disk_helper=$script_dir/prepare-instance-disk.sh

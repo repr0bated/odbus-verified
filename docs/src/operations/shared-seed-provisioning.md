@@ -13,6 +13,8 @@ The completed image preparation step is available through the provisioner:
 ```sh
 sudo ./deploy/scripts/provision-workspace-subscriber.sh --prepare-disk 3tchedChatbot
 sudo ./deploy/scripts/provision-workspace-subscriber.sh --inspect-disk 3tchedChatbot
+sudo ./deploy/scripts/provision-workspace-subscriber.sh --prepare-filesystems 3tchedChatbot \
+  --seed-device /dev/disk/by-uuid/3415d575-7224-4484-9e0d-06854ac5f032
 ```
 
 Preparation creates a 60 GiB sparse raw image with GPT: 20 GiB root and the
@@ -24,9 +26,19 @@ the receipt pins the image inode and both partition identities. An interrupted
 creation retains its intent and image instead of retrying or cleaning them up.
 `inspect` does not register or adopt an existing image.
 
-This phase performs no filesystem formatting, Btrfs device-add, seed transport,
-Incus creation, identity registration or startup. It has no identity/backend
-preflight dependency. Those later steps remain subject to the owner's manual
+The filesystem stage attaches a read-only loop view of the sealed seed and adds
+the blank root partition once as its writable leaf. It inherits the seven seed
+subvolumes; it does not copy the root or create replacement agent subvolumes.
+Only the upgrade partition is formatted, with one `@` subvolume. Shared and soul
+are read-only in the leaf; memory, rules, skills and user are writable. Private
+persistence directories are ordinary directories. Both mounts stay attached for
+the next manual step. The receipt records loops, mounts and fresh filesystem
+UUIDs. Interrupted intents require investigation, and prepared receipts cannot
+repeat device-add or formatting. Never modify the seed after leaves depend on it.
+
+Neither stage performs seed transport, Incus creation, identity registration or
+startup. They have no identity/backend preflight dependency.
+Those later steps remain subject to the owner's manual
 script comparison. The existing identity mode described below expects an
 unpartitioned leaf and must not be used with this new partitioned image.
 
