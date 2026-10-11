@@ -50,21 +50,26 @@ sudo ./deploy/scripts/provision-workspace-subscriber.sh --sync-upgrade 3tchedCha
 ```
 
 Pairing sends a read-only snapshot of host upgrade `/dev/sdc3` (`@`) to
-partition 2. Subsequent synchronization sends incrementally from the retained
-common baseline, including deletions. Received baselines stay read-only;
+partition 2 during provisioning, including when the first upgrade is empty.
+Subsequent synchronization sends incrementally from the retained
+common baseline, including deletions within the upgrade tree. Received baselines stay read-only;
 the published upgrade `@` is a writable clone. Transfer intents and prior
 versions are retained for recovery; interrupted publication is not retried
 automatically. Snapshot retention cleanup is not implemented by this stage.
 
 The chatbot runit startup invokes `boot` for explicitly paired storage before
 starting the container. It restores existing loop/mount attachments, synchronizes,
-then publishes a read-only OS view at `.mounts/NAME/root-view`. The Incus root
-device must be configured to that view during the upcoming container provisioning
-step. This is a read-only bind of the complete upgraded OS, rather than a union
-over old seed files: deleted OS files must not reappear from a lower seed layer.
+then publishes a read-only OverlayFS OS view at `.mounts/NAME/root-view`.
+The upgrade layer takes precedence over the seed-root layer; an empty upgrade
+uses the installed seed. Patches removing seed files must include OverlayFS
+whiteouts: deleting a file from the upgrade tree alone reveals its seed copy.
+The Btrfs layers receive the container UID mapping before mounting OverlayFS,
+because this kernel rejects mapping the merged overlay. The view is bound at
+the Incus-managed `identity-roots` rootfs, preserving its pool definition.
 Six agent subvolumes are separately bound into `/agent`; their existing writable
-or read-only policies remain in effect. User contents are never sent or received.
-The host upgrade must contain a complete prepared OS before pairing or startup.
+or read-only policies remain in effect, with private persistence bound separately.
+User contents are never sent or received. Synchronization detaches stopped OS
+views before rotating a lower layer; it never changes Btrfs membership.
 This new image is not yet admitted by the older unpartitioned root-owner lifecycle;
 its identity-root integration remains part of the subsequent provisioning step.
 

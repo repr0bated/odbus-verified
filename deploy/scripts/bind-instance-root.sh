@@ -15,6 +15,10 @@ flock -n 9 || fail 'instance preparation active'
 jq -e '.phase=="filesystems-prepared" and .filesystem_prepared==true' "$disk" >/dev/null || fail 'filesystems not prepared'
 jq -e '.phase=="container-defined" and .identity_registered==false and .root_bound==false' "$receipt" >/dev/null || fail 'existing root intent requires manual reconciliation'
 root=$pool/.mounts/$name/root
+replica=$pool/.mounts/$name/upgrade
+view=$pool/.mounts/$name/root-view
+seed_layer=$pool/.mounts/$name/seed-layer
+upgrade_layer=$pool/.mounts/$name/upgrade-layer
 container_root=/var/lib/incus/storage-pools/identity-roots/containers/$name/rootfs
 sid=b0c777e3-0955-cd8b-3d01-ca12998cae28
 image=$pool/$name.img
@@ -27,6 +31,16 @@ image=$pool/$name.img
    $(findmnt -rn -M "$root" -o FSROOT) == / ]] || fail 'prepared root/image pins differ'
 root_source=$(findmnt -rn -M "$root" -o SOURCE)
 [[ $(blkid -p -s UUID -o value "$root_source") == "$(jq -r .root_fsid "$disk")" ]] || fail 'wrong sprout filesystem'
+pair=$pool/.provisioning/$name.upgrade.json
+[[ -f $pair && ! -L $pair ]] || fail 'upgrade pair must be established during provisioning'
+jq -e --arg replica "$(jq -r .upgrade_fsid "$disk")" '.phase=="paired" and
+    .host_fsid=="5a88e7cd-9701-40a7-8301-ef076761886c" and .replica_fsid==$replica and
+    .direction=="host-to-container"' "$pair" >/dev/null || fail 'upgrade pair differs'
+[[ $(findmnt -rn -M "$replica" -o FSTYPE) == btrfs &&
+   $(findmnt -rn -M "$replica" -o FSROOT) == / ]] || fail 'upgrade filesystem not mounted'
+for layer in "$view" "$seed_layer" "$upgrade_layer"; do
+    [[ ! -L $layer && -z $(findmnt -rn -M "$layer") ]] || fail 'retained OS view requires reconciliation'
+done
 instance=$(incus query "/1.0/instances/$name")
 jq -e --arg sid "$sid" '.status=="Stopped" and .config["user.opdbus.session_id"]==$sid and
    .config["security.privileged"]=="false" and .config["security.protection.shift"]=="true" and
@@ -59,20 +73,25 @@ if jq -e '.devices|has("fuse")' <<<"$instance" >/dev/null; then
 else
     incus config device add "$name" fuse unix-char source=/dev/fuse path=/dev/fuse
 fi
-mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@" "$container_root"
-for member in memory rules shared skills soul user; do
-    mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@agent_$member" "$container_root/agent/$member"
-    case "$member" in shared|soul) mount -o remount,bind,ro "$container_root/agent/$member" ;; esac
-done
-mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@agent_user/persist" "$container_root/opt/run-mounts/persist"
 printf '%s\n' '# Container root and agent subvolumes are mounted by the external identity mount owner.' \
     '# Do not mount the physical seed or host boot partitions inside this container.' > "$root/@/etc/fstab"
 printf '%s\n' "$sid" > "$root/@/etc/hostname"
 incus config set "$name" "volatile.last_state.idmap=$idmap"
 sync -f "$root"
+mkdir -p "$view" "$seed_layer" "$upgrade_layer"
+mount --bind -o ro,X-mount.idmap=b:0:1000000:1000000000 "$root/@" "$seed_layer"
+mount --bind -o ro,X-mount.idmap=b:0:1000000:1000000000 "$replica/@" "$upgrade_layer"
+mount -t overlay overlay -o "ro,lowerdir=$upgrade_layer:$seed_layer" "$view"
+mount --bind "$view" "$container_root"
+for member in memory rules shared skills soul user; do
+    mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@agent_$member" "$container_root/agent/$member"
+    case "$member" in shared|soul) mount -o remount,bind,ro "$container_root/agent/$member" ;; esac
+done
+mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@agent_user/persist" "$container_root/opt/run-mounts/persist"
 instance=$(incus query "/1.0/instances/$name")
-jq --arg root "$container_root" --argjson instance "$instance" \
+jq --arg root "$container_root" --arg view "$view" --argjson instance "$instance" \
    '.phase="root-bound"|.root_bound=true|.threetched_root=$root|.instance=$instance|
+    .root_view=$view|.root_view_readonly=true|.upgrade_paired=true|
     .guest_fuse_configured=true|.guest_fuse_mounted=false|.host_fuse_mirrored=false' "$receipt" > "$receipt.new"
 sync -f "$receipt.new"
 mv -T "$receipt.new" "$receipt"

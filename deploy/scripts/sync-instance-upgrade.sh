@@ -5,6 +5,7 @@ fail() { printf 'sync-instance-upgrade: %s\n' "$*" >&2; exit 1; }
 [[ $# == 2 && $1 =~ ^(pair|sync|boot)$ && $2 =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$ ]] || fail 'usage: sync-instance-upgrade pair|sync|boot NAME'
 action=$1 name=$2
 [[ $(id -u) == 0 ]] || fail 'host root required'
+incus() { command incus --force-local "$@"; }
 for tool in jq btrfs blkid findmnt losetup mount umount flock incus stat realpath blockdev awk find head; do
     command -v "$tool" >/dev/null || fail "missing $tool"
 done
@@ -26,6 +27,9 @@ instances=$(incus list -f json)
 root=$pool/.mounts/$name/root
 replica=$pool/.mounts/$name/upgrade
 view=$pool/.mounts/$name/root-view
+seed_layer=$pool/.mounts/$name/seed-layer
+upgrade_layer=$pool/.mounts/$name/upgrade-layer
+container_root=/var/lib/incus/storage-pools/identity-roots/containers/$name/rootfs
 [[ $(jq -r .root_mount "$receipt") == "$root" && $(jq -r .upgrade_mount "$receipt") == "$replica" ]] || fail 'mount pins differ'
 # Remount existing members after reboot, never add/remove a member or format.
 if ! findmnt -rn -M "$root" >/dev/null || ! findmnt -rn -M "$replica" >/dev/null; then
@@ -58,10 +62,8 @@ findmnt -rn -M "$host" >/dev/null || mount -o rw,subvolid=5 "/dev/disk/by-uuid/$
 assert_fs "$host" "$host_uuid"
 btrfs subvolume show "$host/@" >/dev/null
 [[ -z $(btrfs subvolume list -o "$host/@") ]] || fail 'nested OS subvolumes require explicit transport'
-[[ -e $host/@/usr/sbin/init || -L $host/@/usr/sbin/init || -e $host/@/sbin/init || -L $host/@/sbin/init ]] || fail 'host upgrade must contain a complete OS'
-for member in memory rules shared skills soul user; do
-    [[ -d $host/@/agent/$member && ! -L $host/@/agent/$member ]] || fail "host upgrade missing /agent/$member"
-done
+# The pair starts empty. The read-only overlay falls through to the existing
+# seed-root view until a patch supplies a replacement or an OverlayFS whiteout.
 state=$pool/.provisioning/$name.upgrade.json
 [[ ! -L $state ]] || fail 'unsafe pair receipt'
 source_snapshots=$host/.upgrade-sync/$name
@@ -78,13 +80,30 @@ else
     jq -e --arg host "$host_uuid" --arg replica "$(jq -r .upgrade_fsid "$receipt")" \
         '.phase=="paired" and .host_fsid==$host and .replica_fsid==$replica and .direction=="host-to-container"' "$state" >/dev/null || fail 'incomplete or different pairing; inspect before recovery'
 fi
-# Never change a lower tree under a mounted OverlayFS view.
-if findmnt -rn -M "$view" >/dev/null; then
+# Never change a lower tree under a mounted OverlayFS view. The stopped
+# container's bind holds another reference, so detach that view first too.
+detach_agent_mounts() {
+    local target=$1 member
     for member in user soul skills shared rules memory; do
-        if findmnt -rn -M "$view/agent/$member" >/dev/null; then umount "$view/agent/$member"; fi
+        if findmnt -rn -M "$target/agent/$member" >/dev/null; then umount "$target/agent/$member"; fi
     done
+    if findmnt -rn -M "$target/opt/run-mounts/persist" >/dev/null; then umount "$target/opt/run-mounts/persist"; fi
+}
+if findmnt -rn -M "$container_root" >/dev/null; then
+    [[ $(findmnt -rn -M "$container_root" -o FSTYPE) == overlay &&
+       $(findmnt -rn -M "$container_root" -o FS-OPTIONS) == *"lowerdir=$upgrade_layer:$seed_layer"* ]] || fail 'unexpected container root mount; reconcile manually'
+    detach_agent_mounts "$container_root"
+    umount "$container_root"
+fi
+if findmnt -rn -M "$view" >/dev/null; then
+    [[ $(findmnt -rn -M "$view" -o FSTYPE) == overlay &&
+       $(findmnt -rn -M "$view" -o FS-OPTIONS) == *"lowerdir=$upgrade_layer:$seed_layer"* ]] || fail 'unexpected root view mount'
+    detach_agent_mounts "$view"
     umount "$view"
 fi
+for layer in "$upgrade_layer" "$seed_layer"; do
+    if findmnt -rn -M "$layer" >/dev/null; then umount "$layer"; fi
+done
 generation=$(date -u +%Y%m%dT%H%M%S)-$$
 parent=$(jq -r '.generation // empty' "$state")
 jq --arg next "$generation" '.phase="send-intent"|.next_generation=$next' "$state" > "$state.new"
@@ -111,14 +130,31 @@ jq --arg generation "$generation" '.phase="paired"|.generation=$generation|del(.
 mv -T "$state.new" "$state"
 sync -f "$pool/.provisioning"
 if [[ $action == boot ]]; then
-    # Complete upgrade @ replaces the seed OS rather than merging lower trees:
-    # deleted upgrade files must not reappear from the old seed.
-    mkdir -p "$view"
-    mount --bind "$replica/@" "$view"
-    mount -o remount,bind,ro "$view"
+    # Both OS layers are read-only in the guest. The upgrade partition itself
+    # remains writable for receive/rotation; user siblings are separate binds.
+    # Patches deleting seed files must carry whiteouts in the upgrade layer.
+    instance=$(incus query "/1.0/instances/$name")
+    jq -e '.status=="Stopped" and .config["security.privileged"]=="false" and
+        .config["security.protection.shift"]=="true" and .devices.root.pool=="identity-roots"' \
+        <<<"$instance" >/dev/null || fail 'stopped identity container required for boot mounts'
+    idmap=$(jq -er '.config["volatile.idmap.current"]' <<<"$instance")
+    jq -e 'length==2 and all(.[]; .Hostid==1000000 and .Nsid==0 and .Maprange==1000000000) and
+        any(.[]; .Isuid==true and .Isgid==false) and any(.[]; .Isgid==true and .Isuid==false)' \
+        <<<"$idmap" >/dev/null || fail 'unsupported identity idmap'
+    [[ -d $container_root && ! -L $container_root &&
+       $(realpath -e "$container_root") == "$container_root" ]] || fail 'unsafe Incus root path'
+    mkdir -p "$view" "$seed_layer" "$upgrade_layer"
+    # This kernel cannot idmap an OverlayFS mount. Map its Btrfs lowers first.
+    mount --bind -o ro,X-mount.idmap=b:0:1000000:1000000000 "$root/@" "$seed_layer"
+    mount --bind -o ro,X-mount.idmap=b:0:1000000:1000000000 "$replica/@" "$upgrade_layer"
+    mount -t overlay overlay -o "ro,lowerdir=$upgrade_layer:$seed_layer" "$view"
     for member in memory rules shared skills soul user; do
         [[ -d $view/agent/$member && ! -L $view/agent/$member ]] || fail "upgrade missing /agent/$member"
-        mount --bind "$root/@agent_$member" "$view/agent/$member"
+        mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@agent_$member" "$view/agent/$member"
+        case "$member" in shared|soul) mount -o remount,bind,ro "$view/agent/$member" ;; esac
     done
+    mount --bind -o X-mount.idmap=b:0:1000000:1000000000 "$root/@agent_user/persist" "$view/opt/run-mounts/persist"
+    mount --rbind "$view" "$container_root"
+    incus config set "$name" "volatile.last_state.idmap=$idmap"
 fi
 printf 'Upgrade synchronized host -> %s; user data excluded.\n' "$name"

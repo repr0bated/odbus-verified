@@ -4,8 +4,8 @@
 #   sudo ./provision-workspace-subscriber.sh --prepare-disk 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --inspect-disk 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --prepare-container 3tchedChatbot
-#   sudo ./provision-workspace-subscriber.sh --bind-root 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --pair-upgrade 3tchedChatbot
+#   sudo ./provision-workspace-subscriber.sh --bind-root 3tchedChatbot
 #   sudo ./provision-workspace-subscriber.sh --sync-upgrade 3tchedChatbot
 #     [--root-gib 20 --upgrade-gib 40]   # prepare-disk only
 # Creates /var/lib/3tched-leaf-pool/NAME.img: raw GPT root + upgrade.

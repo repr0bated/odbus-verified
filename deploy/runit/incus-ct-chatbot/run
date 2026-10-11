@@ -50,10 +50,12 @@ if ! incus list -f csv -c ns 2>/dev/null | grep -q "^${NAME},RUNNING$"; then
     pair=/var/lib/3tched-leaf-pool/.provisioning/$NAME.upgrade.json
     if [ -e "$pair" ] || [ -L "$pair" ]; then
         /usr/local/libexec/3tched/sync-instance-upgrade boot "$NAME" || exit 1
-        expected=/var/lib/3tched-leaf-pool/.mounts/$NAME/root-view
-        incus config show "$NAME" --expanded --format json | jq -e --arg source "$expected" \
-            'any(.devices[]; .type=="disk" and .path=="/" and .source==$source)' >/dev/null || {
-            echo "paired container root must use $expected; provisioning incomplete" >&2
+        expected=/var/lib/incus/storage-pools/identity-roots/containers/$NAME/rootfs
+        incus config show "$NAME" --expanded --format json | jq -e \
+            '.devices.root.type=="disk" and .devices.root.path=="/" and .devices.root.pool=="identity-roots"' >/dev/null &&
+            [ "$(findmnt -rn -M "$expected" -o FSTYPE)" = overlay ] &&
+            findmnt -rn -M "$expected" -o OPTIONS | grep -Eq '(^|,)ro(,|$)' || {
+            echo "paired container needs its read-only overlay mounted at $expected; provisioning incomplete" >&2
             exit 1
         }
     fi
