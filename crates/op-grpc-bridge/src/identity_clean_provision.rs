@@ -182,12 +182,10 @@ impl CleanPlan {
         ensure!(
             self.pool_name == "identity-roots"
                 && self.native_root
-                    == if self.version == 4 {
-                        format!("{}/containers/{}/rootfs", self.pool_source, CONTROL_PLANE_CHATBOT_CONTAINER)
-                    } else { format!(
+                    == format!(
                         "/var/lib/incus/storage-pools/{}/containers/{}/rootfs",
                         self.pool_name, CONTROL_PLANE_CHATBOT_CONTAINER
-                    ) }
+                    )
                 && (self.version != 4 || self.pool_source == "/var/lib/incus-storage/identity-roots")
                 && self.instance["name"] == CONTROL_PLANE_CHATBOT_CONTAINER
                 && self.instance["type"] == "container"
