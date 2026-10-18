@@ -8,6 +8,8 @@
 
 #[path = "identity_publication.rs"]
 mod identity_publication;
+#[path = "method_receipt_audit.rs"]
+mod method_receipt_audit;
 #[path = "owned_method_task.rs"]
 mod owned_method_task;
 
@@ -22,9 +24,6 @@ mod antigravity_canonical_tests;
 #[path = "mail_canonical_tests.rs"]
 mod mail_canonical_tests;
 #[cfg(test)]
-#[path = "mongodb_native_tests.rs"]
-mod mongodb_native_tests;
-#[cfg(test)]
 #[path = "obfuscation_canonical_tests.rs"]
 mod obfuscation_canonical_tests;
 
@@ -38,11 +37,8 @@ use tokio::sync::{Mutex, OnceCell, RwLock, Semaphore, broadcast};
 use zbus::zvariant::OwnedValue as ZOwnedValue;
 use zbus::{Connection, Proxy};
 
-use op_cognitive_mcp::CognitiveMcpServer;
+use op_cognitive::CognitiveServer;
 use op_llm::chat::ChatManager;
-use op_mcp::external_client::{
-    AuthMethod, ExternalMcpClient, ExternalMcpConfig, ExternalMcpTransport,
-};
 use op_network::rovs_proxy::OvsdbDbusClient;
 use op_plugins::state_plugins::snowball_plugin::{
     AuditEventRecord, QueryEventsInput, QueryEventsOutput, VerifyChainInput, VerifyChainOutput,
@@ -55,8 +51,6 @@ use op_state_store::{ChainEvent, Decision, EventChain, OperationType};
 /// `snowball_plugin::DEFAULT_BASE_PATH` so both read the same chain.
 const DEFAULT_SNOWBALL_PATH: &str = "/var/lib/opdbus/snowball";
 const DEFAULT_CACHE_PATH: &str = "/var/lib/opdbus/cache";
-const DEFAULT_MONGODB_MCP_URL: &str = "http://127.0.0.1:3102/mcp";
-const DEFAULT_MCP_PROVIDER_CALL_TIMEOUT_SECS: u64 = 30;
 
 fn completed_effect_time(
     started_at: chrono::DateTime<chrono::Utc>,
@@ -86,152 +80,6 @@ mod completed_effect_time_tests {
             ),
             chrono::DateTime::<chrono::Utc>::MAX_UTC
         );
-    }
-}
-
-/// Reconnecting client for a runit-supervised loopback MCP provider.
-/// Provider startup and browser/database authentication are deliberately not
-/// part of the bridge process or the HOT request path.
-struct SupervisedMcpProvider {
-    name: String,
-    url: String,
-    client: Mutex<Option<ExternalMcpClient>>,
-}
-
-/// The MongoDB plugin schema uses Rust snake_case names while the pinned MCP
-/// provider advertises hyphenated upstream tool names. Keep this owner mapping
-/// in one place so normal dispatch and native coverage exercise the same route.
-async fn dispatch_mongodb_mcp_owner(
-    provider: &SupervisedMcpProvider,
-    method: &str,
-    arguments: serde_json::Value,
-) -> anyhow::Result<serde_json::Value> {
-    let upstream_name = method.replace('_', "-");
-    provider.call_tool(&upstream_name, arguments).await
-}
-
-impl SupervisedMcpProvider {
-    fn new(name: &str, url: String) -> Self {
-        Self {
-            name: name.to_string(),
-            url,
-            client: Mutex::new(None),
-        }
-    }
-
-    fn new_client(&self) -> ExternalMcpClient {
-        ExternalMcpClient::new(ExternalMcpConfig {
-            name: self.name.clone(),
-            command: String::new(),
-            args: vec![],
-            transport: ExternalMcpTransport::StreamableHttp,
-            url: Some(self.url.clone()),
-            env: HashMap::new(),
-            api_key: None,
-            api_key_env: "API_KEY".to_string(),
-            auth_method: AuthMethod::None,
-            headers: HashMap::new(),
-        })
-    }
-
-    fn call_timeout(&self, _upstream_name: &str) -> std::time::Duration {
-        let seconds = std::env::var("OP_MCP_PROVIDER_CALL_TIMEOUT_SECS")
-            .ok()
-            .and_then(|value| value.parse::<u64>().ok())
-            .filter(|seconds| (1..=300).contains(seconds))
-            .unwrap_or(DEFAULT_MCP_PROVIDER_CALL_TIMEOUT_SECS);
-        std::time::Duration::from_secs(seconds)
-    }
-
-    async fn discard_client(&self, client: &mut Option<ExternalMcpClient>) {
-        if let Some(mut client) = client.take() {
-            match tokio::time::timeout(std::time::Duration::from_secs(2), client.stop()).await {
-                Ok(Ok(())) => {}
-                Ok(Err(error)) => tracing::warn!(
-                    provider = %self.name,
-                    %error,
-                    "could not close supervised MCP session cleanly"
-                ),
-                Err(_) => tracing::warn!(
-                    provider = %self.name,
-                    "timed out closing supervised MCP session"
-                ),
-            }
-        }
-    }
-
-    async fn call_tool(
-        &self,
-        upstream_name: &str,
-        arguments: serde_json::Value,
-    ) -> anyhow::Result<serde_json::Value> {
-        let mut guard = self.client.lock().await;
-        if guard.is_none() {
-            let mut client = self.new_client();
-            if let Err(error) = client.start().await {
-                let mut failed_client = Some(client);
-                self.discard_client(&mut failed_client).await;
-                return Err(anyhow::anyhow!(
-                    "provider_unavailable: {}: {error}",
-                    self.name
-                ));
-            }
-            *guard = Some(client);
-        }
-
-        let advertised = guard
-            .as_ref()
-            .expect("provider client initialized")
-            .get_tools()
-            .await
-            .iter()
-            .any(|tool| {
-                tool.name
-                    .strip_prefix(&format!("{}:", self.name))
-                    .is_some_and(|name| name == upstream_name)
-            });
-        if !advertised {
-            anyhow::bail!(
-                "provider_tool_unavailable: {} does not advertise '{}'",
-                self.name,
-                upstream_name
-            );
-        }
-
-        let mut bytes = serde_json::to_vec(&arguments)?;
-        let input = simd_json::to_owned_value(&mut bytes)?;
-        let call = guard
-            .as_mut()
-            .expect("provider client initialized")
-            .call_tool(upstream_name, input);
-        let call_timeout = self.call_timeout(upstream_name);
-        match tokio::time::timeout(call_timeout, call).await {
-            Ok(Ok(value)) => serde_json::to_value(value).map_err(Into::into),
-            Ok(Err(error)) => {
-                tracing::warn!(
-                    provider = %self.name,
-                    %error,
-                    "supervised MCP session failed; closing without replay"
-                );
-                self.discard_client(&mut guard).await;
-                Err(anyhow::anyhow!(
-                    "provider_unavailable: {}: {error}",
-                    self.name
-                ))
-            }
-            Err(_) => {
-                tracing::warn!(
-                    provider = %self.name,
-                    timeout_seconds = call_timeout.as_secs(),
-                    "supervised MCP call timed out; closing without replay"
-                );
-                self.discard_client(&mut guard).await;
-                Err(anyhow::anyhow!(
-                    "provider_unavailable: {}: call timed out",
-                    self.name
-                ))
-            }
-        }
     }
 }
 
@@ -287,14 +135,62 @@ struct AdmittedMethodCall {
     admitted_schema: op_state_store::PluginSchema,
     generation_origin: Option<crate::generation_admission::GenerationOrigin>,
     facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+    bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
     change: StateChange,
+    routing_admission: Option<crate::routing_dispatch::RoutingAdmission>,
 }
 
-fn audit_method_arguments(plugin_id: &str, method: &str, json_args: &str) -> String {
+fn ensure_own_route_context_unchanged(
+    before: &op_plugins::state_plugins::project::ResolvedChatContext,
+    after: &op_plugins::state_plugins::project::ResolvedChatContext,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        serde_json::to_value(before)? == serde_json::to_value(after)?,
+        "own route caller context changed during observation"
+    );
+    Ok(())
+}
+
+fn require_bound_oracle_grant(actor: &str, capability: Option<&str>) -> anyhow::Result<()> {
+    let capability = capability.context("bound oracle method requires its declared capability")?;
+    anyhow::ensure!(
+        crate::interceptor::load_capability_grants(actor).contains(capability),
+        "bound oracle method capability is no longer granted"
+    );
+    Ok(())
+}
+
+fn audit_method_arguments(
+    plugin_id: &str,
+    method: &str,
+    json_args: &str,
+    args_schema: Option<&serde_json::Value>,
+) -> String {
+    if plugin_id == "elevation" && method == "authorize_task" {
+        // Even a digest of this request would let audit readers test password
+        // guesses offline. Retain event attribution and the action result,
+        // but neither the password nor any password-derived request hash.
+        return serde_json::json!({ "arguments_redacted": true }).to_string();
+    }
+    // OD-91: when the sealed method args schema is available, drop `x-secret`
+    // and replace `x-opdbus-private` leaves with blake3 digests. Fall back to
+    // the plugin allowlist when the schema has no private markers (or is absent).
+    if let Some(schema) = args_schema
+        && let Ok(value) = serde_json::from_str::<serde_json::Value>(json_args)
+    {
+        let digested =
+            op_state_store::schema_projection::commit_with_private_digests(schema, &value);
+        let digested_str = digested.to_string();
+        let value_str = value.to_string();
+        if digested_str != value_str {
+            return digested_str;
+        }
+    }
     let private = matches!(
         plugin_id,
         "project"
-            | "cognitive_mcp"
+            | "cognitive"
+            | "workflows"
             | "persona"
             | "memory"
             | "cozo"
@@ -304,12 +200,18 @@ fn audit_method_arguments(plugin_id: &str, method: &str, json_args: &str) -> Str
             | "web_ui"
             | "ctl_plane_chatbot"
             | "chat_response"
+            | "elevation"
             | "mail_server"
             | "wireguard"
             | "wg_opdbus"
             | "wgcf"
             | "antigravity"
             | "antigravity_chat"
+            | "tched_skills"
+            | "tched_plugins"
+            | "threetched"
+            | "routing_decision"
+            | "schema_tag_registry"
     ) || (plugin_id == "xray" && matches!(method, "add_user" | "add_inbound"))
         || (plugin_id == "tched_router"
             && (matches!(
@@ -320,7 +222,9 @@ fn audit_method_arguments(plugin_id: &str, method: &str, json_args: &str) -> Str
         || (plugin_id == "embedding_model" && method == "embed")
         || (plugin_id == "mcp" && method == "configure_server")
         || (plugin_id == "gemma_brain"
-            && crate::ui_workspace_dispatch::is_ui_workspace_method(method));
+            && crate::ui_workspace_dispatch::is_ui_workspace_method(method))
+        || (plugin_id == "json_render"
+            && crate::json_render_gallery_dispatch::is_gallery_method(method));
     if private {
         serde_json::json!({
             "arguments_redacted": true,
@@ -371,8 +275,14 @@ pub struct MutationEngine {
     /// optimized form also mirrors footprints into the NUMA-aware Btrfs cache;
     /// cache initialization is best-effort and never gates the timing trail.
     /// Empty until [`MutationEngine::init_audit_durability`] runs; a missing
-    /// sink degrades to RAM-only recording rather than failing dispatches.
+    /// sink prevents admitted methods from executing; legacy non-method audit
+    /// paths retain their existing best-effort persistence behavior.
     audit_sink: Arc<OnceCell<AuditSink>>,
+    /// An uncertain durable append forbids further method effects until restart
+    /// replays the actual timing trail. No speculative chain-head recovery.
+    method_audit_uncertain: Arc<std::sync::atomic::AtomicBool>,
+    method_journal_documents:
+        Arc<OnceCell<Arc<op_plugins::state_plugins::runtime_documents::RuntimeDocuments>>>,
     /// Vectorize on mutation (OD-64): woken after every audit write.
     vector_projector: Arc<OnceCell<crate::chain_vector_projector::ChainVectorProjector>>,
 
@@ -382,17 +292,25 @@ pub struct MutationEngine {
     /// SHM children, keyed by an opaque caller/monitor digest.
     ovsdb_monitor_tasks: Arc<Mutex<HashMap<String, tokio::task::JoinHandle<()>>>>,
     ovsdb_monitor_state: Arc<Mutex<()>>,
-    /// Provider runtime used only after ZeroClaw resolves a schema-declared route.
+    /// Provider runtime used only after threetched resolves a schema-declared route.
     #[allow(dead_code)] // wired for chat dispatch; not yet called from dispatch loop
     chat_manager: Arc<ChatManager>,
     /// Lazily initialized cognitive runtime.  It is owned by the bridge and is
     /// reached only after a call has entered PluginService/MutationEngine; it
     /// never opens a second listener or becomes a parallel control plane.
-    cognitive_mcp: Arc<OnceCell<Arc<CognitiveMcpServer>>>,
+    cognitive: Arc<OnceCell<Arc<CognitiveServer>>>,
     /// Knowledge pushes produced by the context engine, waiting to be
     /// consumed by the next chatbot turn or `specialist` call of that session.
     knowledge_inbox: crate::knowledge_inbox::KnowledgeInbox,
     chatbot_episode_cozo: Arc<OnceCell<Arc<op_cozo_store::CozoGraphShuttle>>>,
+    /// The control plane's json_render UI gallery and active catalog owner:
+    /// one system database, read and written only through grants.
+    ui_gallery_cozo: Arc<OnceCell<Arc<op_cozo_store::CozoGraphShuttle>>>,
+    /// The system-wide model registry: providers' refresh status and the
+    /// models each one lists, one system database behind grants.
+    model_registry_cozo: Arc<OnceCell<Arc<op_cozo_store::CozoGraphShuttle>>>,
+    /// One-time sudo elevation tickets for protected tasks.
+    task_elevation: Arc<crate::task_elevation::TaskElevation>,
     /// Private memory methods share one writer lock and the existing Cozo
     /// handle; request context determines their principal/session namespace.
     memory_methods: Arc<OnceCell<op_plugins::state_plugins::memory_methods::MemoryMethods>>,
@@ -402,6 +320,8 @@ pub struct MutationEngine {
     /// One process-shared durable/private publication owner. It has no global
     /// state cache or broadcast path.
     ui_workspace: Arc<OnceCell<Arc<crate::ui_workspace_dispatch::UiWorkspacePublisher>>>,
+    /// Private routing registry and principal/session-scoped shadow decisions.
+    routing_store: Arc<OnceCell<crate::routing_store::RoutingStore>>,
     chatbot_episodes: Arc<OnceCell<Arc<crate::chatbot_episode_state::EpisodePublisher>>>,
     /// Private principal-scoped chat_response conversations: their dedicated
     /// Cozo owner, private SHM publisher, and the bridge's turn registry.
@@ -420,6 +340,8 @@ pub struct MutationEngine {
     obfuscation_methods: Arc<OnceCell<Arc<crate::obfuscation_methods::ObfuscationMethods>>>,
     obfuscation_projection: Arc<Mutex<()>>,
     openflow_projection: Arc<Mutex<()>>,
+    /// One retained system-bus owner for controller final-admission callbacks.
+    openflow_permit_authority: Arc<OnceCell<crate::openflow_permit::OpenFlowPermitAuthority>>,
     /// Isolated tests may supply a peer D-Bus connection to the canonical
     /// OpenFlow owner. Production leaves this empty and uses the system bus.
     openflow_method_connection: Arc<OnceCell<Connection>>,
@@ -430,9 +352,6 @@ pub struct MutationEngine {
     antigravity_projection: Arc<Mutex<()>>,
     mail_projection: Arc<Mutex<()>>,
     decoy_network_projection: Arc<Mutex<()>>,
-    /// WARM provider client. Connects only after an admitted typed call;
-    /// it does not participate in HOT discovery or execution.
-    mongodb_mcp: Arc<SupervisedMcpProvider>,
     /// Verified session identities, keyed by session_id. Projection of the
     /// session records for the mutation path — not a second store.
     sessions: Arc<RwLock<HashMap<String, SessionContext>>>,
@@ -627,16 +546,46 @@ fn restored_runtime_projection(
     Ok(simd_json::serde::to_owned_value(projected)?)
 }
 
-fn json_render_methods_from_schema(
-    schema: op_state_store::PluginSchema,
-    documents: Arc<op_plugins::state_plugins::runtime_documents::RuntimeDocuments>,
-) -> anyhow::Result<op_plugins::state_plugins::json_render::methods::JsonRenderMethods> {
-    let defaults = op_plugins::projection_seed_state_from_schema(&schema);
-    let snapshot = serde_json::from_value(serde_json::to_value(defaults)?)
-        .context("invalid json_render state defaults in admitted plugin")?;
-    op_plugins::state_plugins::json_render::methods::JsonRenderMethods::new(
-        snapshot, schema, documents,
-    )
+impl MutationEngine {
+    /// OD-93: fold durable active-catalog names into the observable json_render
+    /// projection without depending on gallery dispatch internals.
+    async fn enrich_json_render_catalog(
+        &self,
+        mut state: op_plugins::state_plugins::json_render::JsonRenderState,
+    ) -> op_plugins::state_plugins::json_render::JsonRenderState {
+        let Ok(gallery) = self.ui_gallery_cozo().await else {
+            return state;
+        };
+        match gallery.list_ui_catalog(None, 64, false) {
+            Ok(page) => {
+                state.catalog_revision = page.revision;
+                state.active_catalog_entry_names =
+                    page.entries.into_iter().map(|entry| entry.name).collect();
+            }
+            Err(error) => {
+                tracing::debug!(
+                    error = %error,
+                    "json_render active catalog projection skipped"
+                );
+            }
+        }
+        state
+    }
+
+    async fn json_render_methods_enriched(
+        &self,
+        schema: op_state_store::PluginSchema,
+        documents: Arc<op_plugins::state_plugins::runtime_documents::RuntimeDocuments>,
+    ) -> anyhow::Result<op_plugins::state_plugins::json_render::methods::JsonRenderMethods> {
+        let defaults = op_plugins::projection_seed_state_from_schema(&schema);
+        let snapshot: op_plugins::state_plugins::json_render::JsonRenderState =
+            serde_json::from_value(serde_json::to_value(defaults)?)
+                .context("invalid json_render state defaults in admitted plugin")?;
+        let snapshot = self.enrich_json_render_catalog(snapshot).await;
+        op_plugins::state_plugins::json_render::methods::JsonRenderMethods::new(
+            snapshot, schema, documents,
+        )
+    }
 }
 
 pub(crate) fn public_plugin_value(
@@ -831,6 +780,12 @@ impl MutationEngine {
                 "configured control-plane chatbot principal_id does not match its WireGuard key"
             );
         }
+        if crate::identity_sled_dispatch::configured_identity_awaits_provision(self, &session_id)
+            .await?
+        {
+            tracing::info!(%session_id, "configured chatbot awaits explicit container provisioning");
+            return Ok(None);
+        }
         match crate::human_principal_dispatch::resolve_key_for_assertion(wireguard_pubkey).await {
             Ok(Some(record)) if record.revoked_at != 0 => {
                 anyhow::bail!("configured control-plane chatbot identity is revoked")
@@ -864,6 +819,12 @@ impl MutationEngine {
             Err(error) => {
                 anyhow::bail!("configured control-plane chatbot registry unavailable: {error:?}")
             }
+        }
+        if crate::identity_sled_dispatch::chatbot_awaits_explicit_reprovision(self, &session_id)
+            .await?
+        {
+            tracing::info!(%session_id, "configured chatbot record was explicitly deleted; awaiting provisioning");
+            return Ok(None);
         }
         self.mint_and_store_genesis(&session_id, wireguard_pubkey)
             .await?;
@@ -908,6 +869,16 @@ impl MutationEngine {
         {
             anyhow::bail!("configured local human principal_id does not match its WireGuard key");
         }
+        let missing = crate::identity_sled_dispatch::configured_identity_awaits_provision(
+            self, &session_id,
+        ).await?;
+        let initialize = std::env::var("OP_LOCAL_HUMAN_INITIALIZE_SESSION")
+            .is_ok_and(|selected| selected.trim() == session_id);
+        if missing && !initialize
+        {
+            tracing::info!(%session_id, "configured local human awaits explicit identity provisioning");
+            return Ok(None);
+        }
         match crate::human_principal_dispatch::resolve_key_for_assertion(wireguard_pubkey).await {
             Ok(Some(record)) if record.revoked_at != 0 => {
                 anyhow::bail!("configured local human identity is revoked")
@@ -941,6 +912,11 @@ impl MutationEngine {
                 anyhow::bail!("configured local human registry unavailable: {error:?}")
             }
         }
+        if missing {
+            crate::identity_sled_dispatch::initialize_configured_human(
+                self, &session_id, wireguard_pubkey,
+            ).await?;
+        }
         self.mint_and_store_genesis(&session_id, wireguard_pubkey)
             .await?;
         crate::identity_sled_dispatch::set_session_actor_class(self, &session_id, "human").await?;
@@ -968,9 +944,15 @@ impl MutationEngine {
         if actor_id.is_empty() || actor_id == ANONYMOUS_ACTOR {
             return None;
         }
+        if let Some(context) = crate::external_mcp_session::scoped_context(actor_id) {
+            return Some(context);
+        }
         let record = crate::identity_sled_dispatch::session_record_for_actor(self, actor_id)
             .await
-            .ok()??;
+            .ok()?;
+        let Some(record) = record else {
+            return crate::external_mcp_session::context_for_actor(self, actor_id).await;
+        };
         let genesis_hex = record.genesis.clone().filter(|g| !g.is_empty())?;
         let context = SessionContext {
             genesis_hex,
@@ -1006,6 +988,17 @@ impl MutationEngine {
                 None
             }
         }
+    }
+
+    /// External human transport admission must not count as a container login.
+    pub(crate) async fn register_external_mcp_context(&self, context: SessionContext) {
+        self.sessions.write().await.insert(context.session_id.clone(), context);
+    }
+
+    pub(crate) async fn external_mcp_chain_head(&self) -> (String, i64) {
+        let chain = self.event_chain.read().await;
+        (chain.last_hash().to_string(),
+         chain.events().last().map(|event| event.timestamp.timestamp()).unwrap_or(0))
     }
 
     pub async fn register_session_context(&self, context: SessionContext) {
@@ -1053,6 +1046,11 @@ impl MutationEngine {
         if session_id.is_empty() {
             anyhow::bail!("session genesis requires a session_id");
         }
+        anyhow::ensure!(
+            !crate::identity_sled_dispatch::chatbot_awaits_explicit_reprovision(self, session_id)
+                .await?,
+            "explicitly deleted identity requires supported provisioning before minting"
+        );
         let existing_record =
             crate::identity_sled_dispatch::stored_session(self, session_id).await?;
         if let Some(existing) = existing_record
@@ -1132,7 +1130,7 @@ impl MutationEngine {
         let args = serde_json::json!({ "session_id": session_id }).to_string();
         let event = {
             let mut chain = self.event_chain.write().await;
-            chain
+            let event = chain
                 .record_method_call(
                     session_id.to_string(),
                     "identity_sled".to_string(),
@@ -1140,9 +1138,12 @@ impl MutationEngine {
                     Some("identity_sled.write".to_string()),
                     &args,
                 )
-                .clone()
+                .clone();
+            // Serialize timing persistence with every chain append, including
+            // observations interleaved with an admitted method's two proofs.
+            self.persist_audit_event(&event).await;
+            event
         };
-        self.persist_audit_event(&event).await;
         let _ = self.chain_tx.send(event);
     }
 
@@ -1167,19 +1168,25 @@ impl MutationEngine {
             signal_bus: Arc::new(OnceCell::new()),
             dbus_call_limiter: Arc::new(Semaphore::new(32)),
             audit_sink: Arc::new(OnceCell::new()),
+            method_audit_uncertain: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            method_journal_documents: Arc::new(OnceCell::new()),
             ovsdb,
             ovsdb_monitor_tasks: Arc::new(Mutex::new(HashMap::new())),
             ovsdb_monitor_state: Arc::new(Mutex::new(())),
             chat_manager: Arc::new(ChatManager::new()),
-            cognitive_mcp: Arc::new(OnceCell::new()),
+            cognitive: Arc::new(OnceCell::new()),
             knowledge_inbox: crate::knowledge_inbox::KnowledgeInbox::default(),
             vector_projector: Arc::new(OnceCell::new()),
             chatbot_episode_cozo: Arc::new(OnceCell::new()),
+            ui_gallery_cozo: Arc::new(OnceCell::new()),
+            model_registry_cozo: Arc::new(OnceCell::new()),
+            task_elevation: Arc::new(crate::task_elevation::TaskElevation::default()),
             memory_methods: Arc::new(OnceCell::new()),
             sess_decl_methods: Arc::new(OnceCell::new()),
             notebook_queries: Arc::new(crate::notebooklm_queries::NotebookQueries::default()),
             snowball_methods: Arc::new(OnceCell::new()),
             ui_workspace: Arc::new(OnceCell::new()),
+            routing_store: Arc::new(OnceCell::new()),
             chatbot_episodes: Arc::new(OnceCell::new()),
             chat_response_cozo: Arc::new(OnceCell::new()),
             chat_responses: Arc::new(OnceCell::new()),
@@ -1193,6 +1200,7 @@ impl MutationEngine {
             obfuscation_methods: Arc::new(OnceCell::new()),
             obfuscation_projection: Arc::new(Mutex::new(())),
             openflow_projection: Arc::new(Mutex::new(())),
+            openflow_permit_authority: Arc::new(OnceCell::new()),
             openflow_method_connection: Arc::new(OnceCell::new()),
             mcp_policy_owner: Arc::new(OnceCell::new()),
             antigravity_documents: Arc::new(OnceCell::new()),
@@ -1200,11 +1208,6 @@ impl MutationEngine {
             antigravity_projection: Arc::new(Mutex::new(())),
             mail_projection: Arc::new(Mutex::new(())),
             decoy_network_projection: Arc::new(Mutex::new(())),
-            mongodb_mcp: Arc::new(SupervisedMcpProvider::new(
-                "mongodb",
-                std::env::var("OP_MONGODB_MCP_URL")
-                    .unwrap_or_else(|_| DEFAULT_MONGODB_MCP_URL.to_string()),
-            )),
             sessions: Arc::new(RwLock::new(HashMap::new())),
             principal_logins: Arc::new(RwLock::new(HashMap::new())),
         }
@@ -1272,14 +1275,24 @@ impl MutationEngine {
                     !path.is_empty() && path != ":memory:" && path != "memory",
                     "chatbot episode store requires a durable path"
                 );
-                let general = self.cognitive_mcp.get().map(|server| server.cozo_shuttle());
+                let general = self.cognitive.get().map(|server| server.cozo_shuttle());
+                let conversations = std::env::var("CHAT_RESPONSE_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/chat-responses.db".to_string());
+                let conversation_store = self.chat_response_cozo.get().cloned();
                 tokio::task::spawn_blocking(move || {
                     crate::chatbot_episode_state::require_distinct_database_paths(&path)?;
+                    crate::chatbot_episode_state::distinct_databases(
+                        std::path::Path::new(&path),
+                        std::path::Path::new(&conversations),
+                    )?;
                     let store = op_cozo_store::CozoGraphShuttle::new_persistent_private(
                         std::path::PathBuf::from(path),
                     )?;
                     if let Some(general) = general {
                         store.ensure_distinct_from(&general)?;
+                    }
+                    if let Some(conversations) = conversation_store {
+                        store.ensure_distinct_from(&conversations)?;
                     }
                     store.initialize_chatbot_episode_store()?;
                     Ok::<_, anyhow::Error>(Arc::new(store))
@@ -1291,17 +1304,172 @@ impl MutationEngine {
             .cloned()
     }
 
+    /// The json_render UI gallery owner. Its database is distinct from the
+    /// generic cognitive database and the chatbot's episode database.
+    pub(crate) async fn ui_gallery_cozo(
+        &self,
+    ) -> anyhow::Result<Arc<op_cozo_store::CozoGraphShuttle>> {
+        self.ui_gallery_cozo
+            .get_or_try_init(|| async {
+                let path = std::env::var("UI_GALLERY_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/ui-gallery.db".to_string());
+                anyhow::ensure!(
+                    !path.is_empty() && path != ":memory:" && path != "memory",
+                    "ui gallery store requires a durable path"
+                );
+                let episodes = std::env::var("CTL_PLANE_CHATBOT_EPISODE_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/chatbot-episodes.db".to_string());
+                let conversations = std::env::var("CHAT_RESPONSE_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/chat-responses.db".to_string());
+                let general = self.cognitive.get().map(|server| server.cozo_shuttle());
+                let episode_store = self.chatbot_episode_cozo.get().cloned();
+                let conversation_store = self.chat_response_cozo.get().cloned();
+                tokio::task::spawn_blocking(move || {
+                    crate::chatbot_episode_state::require_distinct_database_paths(&path)?;
+                    crate::chatbot_episode_state::distinct_databases(
+                        std::path::Path::new(&path),
+                        std::path::Path::new(&episodes),
+                    )?;
+                    crate::chatbot_episode_state::distinct_databases(
+                        std::path::Path::new(&path),
+                        std::path::Path::new(&conversations),
+                    )?;
+                    let store = op_cozo_store::CozoGraphShuttle::new_persistent_private(
+                        std::path::PathBuf::from(path),
+                    )?;
+                    if let Some(general) = general {
+                        store.ensure_distinct_from(&general)?;
+                    }
+                    if let Some(episodes) = episode_store {
+                        store.ensure_distinct_from(&episodes)?;
+                    }
+                    if let Some(conversations) = conversation_store {
+                        store.ensure_distinct_from(&conversations)?;
+                    }
+                    store.initialize_ui_gallery_store()?;
+                    Ok::<_, anyhow::Error>(Arc::new(store))
+                })
+                .await
+                .context("ui gallery store initialization worker failed")?
+            })
+            .await
+            .cloned()
+    }
+
+    /// The model registry owner. Its database is distinct from the generic
+    /// cognitive database, the chatbot's episodes and the UI gallery.
+    pub(crate) async fn model_registry_cozo(
+        &self,
+    ) -> anyhow::Result<Arc<op_cozo_store::CozoGraphShuttle>> {
+        self.model_registry_cozo
+            .get_or_try_init(|| async {
+                let path = std::env::var("MODEL_REGISTRY_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/model-registry.db".to_string());
+                anyhow::ensure!(
+                    !path.is_empty() && path != ":memory:" && path != "memory",
+                    "model registry store requires a durable path"
+                );
+                let episodes = std::env::var("CTL_PLANE_CHATBOT_EPISODE_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/chatbot-episodes.db".to_string());
+                let gallery = std::env::var("UI_GALLERY_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/ui-gallery.db".to_string());
+                let conversations = std::env::var("CHAT_RESPONSE_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/chat-responses.db".to_string());
+                let others: Vec<Arc<op_cozo_store::CozoGraphShuttle>> = self
+                    .cognitive
+                    .get()
+                    .map(|server| server.cozo_shuttle())
+                    .into_iter()
+                    .chain(self.chatbot_episode_cozo.get().cloned())
+                    .chain(self.ui_gallery_cozo.get().cloned())
+                    .chain(self.chat_response_cozo.get().cloned())
+                    .collect();
+                tokio::task::spawn_blocking(move || {
+                    crate::chatbot_episode_state::require_distinct_database_paths(&path)?;
+                    for other in [&episodes, &gallery, &conversations] {
+                        crate::chatbot_episode_state::distinct_databases(
+                            std::path::Path::new(&path),
+                            std::path::Path::new(other),
+                        )?;
+                    }
+                    let store = op_cozo_store::CozoGraphShuttle::new_persistent_private(
+                        std::path::PathBuf::from(path),
+                    )?;
+                    for other in &others {
+                        store.ensure_distinct_from(other)?;
+                    }
+                    store.initialize_model_registry_store()?;
+                    Ok::<_, anyhow::Error>(Arc::new(store))
+                })
+                .await
+                .context("model registry store initialization worker failed")?
+            })
+            .await
+            .cloned()
+    }
+
+    pub fn configure_model_registry_store(
+        &self,
+        store: Arc<op_cozo_store::CozoGraphShuttle>,
+    ) -> anyhow::Result<()> {
+        store.initialize_model_registry_store()?;
+        self.model_registry_cozo
+            .set(store)
+            .map_err(|_| anyhow::anyhow!("model registry Cozo owner is already configured"))
+    }
+
+    pub(crate) fn task_elevation(&self) -> &Arc<crate::task_elevation::TaskElevation> {
+        &self.task_elevation
+    }
+
+    pub fn configure_ui_gallery_store(
+        &self,
+        store: Arc<op_cozo_store::CozoGraphShuttle>,
+    ) -> anyhow::Result<()> {
+        if let Some(general) = self.cognitive.get() {
+            store.ensure_distinct_from(&general.cozo_shuttle())?;
+        }
+        if let Some(episodes) = self.chatbot_episode_cozo.get() {
+            store.ensure_distinct_from(episodes)?;
+        }
+        if let Some(conversations) = self.chat_response_cozo.get() {
+            store.ensure_distinct_from(conversations)?;
+        }
+        store.initialize_ui_gallery_store()?;
+        self.ui_gallery_cozo
+            .set(store)
+            .map_err(|_| anyhow::anyhow!("ui gallery Cozo owner is already configured"))
+    }
+
     pub fn configure_chatbot_episode_store(
         &self,
         store: Arc<op_cozo_store::CozoGraphShuttle>,
     ) -> anyhow::Result<()> {
-        if let Some(general) = self.cognitive_mcp.get() {
+        if let Some(general) = self.cognitive.get() {
             store.ensure_distinct_from(&general.cozo_shuttle())?;
+        }
+        if let Some(conversations) = self.chat_response_cozo.get() {
+            store.ensure_distinct_from(conversations)?;
         }
         store.initialize_chatbot_episode_store()?;
         self.chatbot_episode_cozo
             .set(store)
             .map_err(|_| anyhow::anyhow!("chatbot episode Cozo owner is already configured"))
+    }
+
+    pub(crate) fn configure_routing_store(
+        &self,
+        documents: Arc<op_plugins::state_plugins::runtime_documents::RuntimeDocuments>,
+        root: op_core::projection_shm::PrivateProjectionDirectory,
+        catalog: std::path::PathBuf,
+        resources: Arc<crate::routing_resources::RoutingResources>,
+    ) -> anyhow::Result<()> {
+        self.routing_store.set(crate::routing_store::RoutingStore::new(documents, root, catalog, resources))
+            .map_err(|_| anyhow::anyhow!("routing store is already configured"))
+    }
+
+    pub(crate) fn routing_store(&self) -> anyhow::Result<&crate::routing_store::RoutingStore> {
+        self.routing_store.get().context("routing store is not configured")
     }
 
     pub fn configure_chat_response_projection(
@@ -1325,8 +1493,9 @@ impl MutationEngine {
     }
 
     /// The private chat_response Cozo owner. Its database must be distinct
-    /// from the generic cognitive database and from the chatbot's own
-    /// episode database: conversations belong to the humans who asked.
+    /// from the generic cognitive database, the chatbot's episode database,
+    /// the UI gallery and the model registry: conversations belong to the
+    /// humans who asked.
     pub(crate) async fn chat_response_cozo(
         &self,
     ) -> anyhow::Result<Arc<op_cozo_store::CozoGraphShuttle>> {
@@ -1340,22 +1509,35 @@ impl MutationEngine {
                 );
                 let episodes = std::env::var("CTL_PLANE_CHATBOT_EPISODE_DB_PATH")
                     .unwrap_or_else(|_| "/var/lib/op-dbus/chatbot-episodes.db".to_string());
-                let general = self.cognitive_mcp.get().map(|server| server.cozo_shuttle());
-                let episode_store = self.chatbot_episode_cozo.get().cloned();
+                let gallery = std::env::var("UI_GALLERY_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/ui-gallery.db".to_string());
+                let registry = std::env::var("MODEL_REGISTRY_DB_PATH")
+                    .unwrap_or_else(|_| "/var/lib/op-dbus/model-registry.db".to_string());
+                let general = self.cognitive.get().map(|server| server.cozo_shuttle());
+                let others: Vec<Arc<op_cozo_store::CozoGraphShuttle>> = self
+                    .chatbot_episode_cozo
+                    .get()
+                    .cloned()
+                    .into_iter()
+                    .chain(self.ui_gallery_cozo.get().cloned())
+                    .chain(self.model_registry_cozo.get().cloned())
+                    .collect();
                 tokio::task::spawn_blocking(move || {
                     crate::chatbot_episode_state::require_distinct_database_paths(&path)?;
-                    crate::chatbot_episode_state::distinct_databases(
-                        std::path::Path::new(&path),
-                        std::path::Path::new(&episodes),
-                    )?;
+                    for other in [&episodes, &gallery, &registry] {
+                        crate::chatbot_episode_state::distinct_databases(
+                            std::path::Path::new(&path),
+                            std::path::Path::new(other),
+                        )?;
+                    }
                     let store = op_cozo_store::CozoGraphShuttle::new_persistent_private(
                         std::path::PathBuf::from(path),
                     )?;
                     if let Some(general) = general {
                         store.ensure_distinct_from(&general)?;
                     }
-                    if let Some(episodes) = episode_store {
-                        store.ensure_distinct_from(&episodes)?;
+                    for other in &others {
+                        store.ensure_distinct_from(other)?;
                     }
                     store.initialize_chat_response_store()?;
                     Ok::<_, anyhow::Error>(Arc::new(store))
@@ -1371,11 +1553,17 @@ impl MutationEngine {
         &self,
         store: Arc<op_cozo_store::CozoGraphShuttle>,
     ) -> anyhow::Result<()> {
-        if let Some(general) = self.cognitive_mcp.get() {
+        if let Some(general) = self.cognitive.get() {
             store.ensure_distinct_from(&general.cozo_shuttle())?;
         }
         if let Some(episodes) = self.chatbot_episode_cozo.get() {
             store.ensure_distinct_from(episodes)?;
+        }
+        if let Some(gallery) = self.ui_gallery_cozo.get() {
+            store.ensure_distinct_from(gallery)?;
+        }
+        if let Some(registry) = self.model_registry_cozo.get() {
+            store.ensure_distinct_from(registry)?;
         }
         store.initialize_chat_response_store()?;
         self.chat_response_cozo
@@ -1391,10 +1579,10 @@ impl MutationEngine {
     /// conversations, then open the following turn for the agent principal
     /// that may answer it. Both sides land in the same conversation chain:
     /// the response's `prev_turn_hash` is the human turn's hash. Internal
-    /// bridge API: the door's chat operation calls it (OD-90 stage 2), with
-    /// its own admitted chat request as `request`; no transport or model can
-    /// mint a turn.
-    #[allow(dead_code)] // stage 2 (door chat operation) is the production caller
+    /// bridge API: the door's chat operation calls it, with its own admitted
+    /// chat request as `request`; no transport or model can mint a turn.
+    /// The answer is a `chat_response` write on the responder identity's
+    /// 3tchedFS mount.
     pub(crate) async fn open_chat_turn(
         &self,
         owner: crate::chat_response_turns::TurnOwner,
@@ -1441,6 +1629,17 @@ impl MutationEngine {
             head.turn_count + 1,
             responder_principal_id,
         )?;
+
+        // Notify the responder that a turn awaits their response (best-effort,
+        // off the commit path). The responder can also poll list_pending_for_responder.
+        {
+            let wake = crate::responder_wake::chat_turn_wake(&pending, Some(&message));
+            let responder = responder_principal_id.to_string();
+            tokio::spawn(async move {
+                crate::responder_wake::publish_responder_wake(wake, &responder).await;
+            });
+        }
+
         let human = match crate::chat_response_dispatch::commit_human_turn(
             self,
             &owner,
@@ -1450,21 +1649,85 @@ impl MutationEngine {
         )
         .await
         {
-            Ok(human) if human.turn_index + 1 == pending.turn_index => human,
+            Ok(human) if human.turn_index + 1 == pending.turn_index() => human,
             Ok(human) => {
-                self.chat_turns.cancel(&pending.turn_id);
+                self.chat_turns.cancel(pending.turn_id());
                 anyhow::bail!(
                     "human message landed at turn {} but the answer was reserved at {}",
                     human.turn_index,
-                    pending.turn_index
+                    pending.turn_index()
                 );
             }
             Err(error) => {
-                self.chat_turns.cancel(&pending.turn_id);
+                self.chat_turns.cancel(pending.turn_id());
                 return Err(error);
             }
         };
         Ok((human, pending))
+    }
+
+    /// When this Chat names a conversation the asking human already started,
+    /// record their message and open the answer turn for the control-plane
+    /// chatbot. The reply stays that identity's `respond_to_user`,
+    /// `request_clarification` or `cannot_perform` write. A correlation label
+    /// that is not one of their conversations leaves this chat unchanged.
+    async fn attach_chat_conversation_turn(
+        &self,
+        scope: &op_cozo_store::EpisodeScope,
+        conversation_id: Option<&str>,
+        message: &str,
+        request: crate::chat_response_dispatch::RequestEvent,
+    ) -> anyhow::Result<()> {
+        if self.chat_responses.get().is_none() {
+            return Ok(());
+        }
+        let Some(conversation_id) = conversation_id else {
+            return Ok(());
+        };
+        if op_plugins::state_plugins::chat_response_methods::validate_uuid(
+            "conversation_id",
+            conversation_id,
+        )
+        .is_err()
+        {
+            return Ok(());
+        }
+        let store = self.chat_response_cozo().await?;
+        let principal = scope.principal_id.clone();
+        let conversation = conversation_id.to_string();
+        let exists = tokio::task::spawn_blocking(move || {
+            store.get_chat_conversation(&principal, &conversation)
+        })
+        .await
+        .context("chat_response conversation lookup worker failed")??
+        .is_some();
+        if !exists {
+            return Ok(());
+        }
+        let responder = std::env::var("OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID")
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+            .context(
+                "this conversation's answer turn needs OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID",
+            )?;
+        anyhow::ensure!(
+            !message.is_empty(),
+            "a conversation turn requires the human message"
+        );
+        self.open_chat_turn(
+            crate::chat_response_turns::TurnOwner {
+                principal_id: scope.principal_id.clone(),
+                session_id: scope.session_id.clone(),
+                session_genesis: scope.session_genesis.clone(),
+            },
+            conversation_id,
+            message.to_string(),
+            request,
+            &responder,
+        )
+        .await?;
+        Ok(())
     }
 
     /// Admit and commit an episode in one step. The chat path admits before
@@ -1672,16 +1935,27 @@ impl MutationEngine {
         .await
     }
 
-    pub(crate) async fn cognitive_mcp(&self) -> anyhow::Result<&Arc<CognitiveMcpServer>> {
-        self.cognitive_mcp
+    /// Explicit ephemeral owner for isolated transport tests; production keeps
+    /// its mandatory durable Cozo/vector initialization.
+    #[cfg(test)]
+    pub(crate) fn configure_cognitive_runtime_fixture(
+        &self, runtime: Arc<CognitiveServer>,
+    ) -> anyhow::Result<()> {
+        self.cognitive
+            .set(runtime)
+            .map_err(|_| anyhow::anyhow!("cognitive fixture owner already configured"))
+    }
+
+    pub(crate) async fn cognitive(&self) -> anyhow::Result<&Arc<CognitiveServer>> {
+        self.cognitive
             .get_or_try_init(|| async {
-                let path = std::env::var("COGNITIVE_MCP_DB_PATH")
+                let path = std::env::var("COGNITIVE_DB_PATH")
                     .unwrap_or_else(|_| "/var/lib/op-dbus/cognitive-memory.db".to_string());
                 crate::chatbot_episode_state::require_distinct_database_paths(
                     &std::env::var("CTL_PLANE_CHATBOT_EPISODE_DB_PATH")
                         .unwrap_or_else(|_| "/var/lib/op-dbus/chatbot-episodes.db".to_string()),
                 )?;
-                let server = CognitiveMcpServer::new_durable(&path)
+                let server = CognitiveServer::new_durable(&path)
                     .await
                     .map_err(|error| {
                         anyhow::anyhow!("durable cognitive runtime unavailable: {error}")
@@ -1942,12 +2216,14 @@ impl MutationEngine {
     ///
     /// Runs inline on the dispatch path (NFR-4: not deferred to a background
     /// task). A write failure is logged and swallowed — the event is already in
-    /// the in-memory chain, and losing durability must not fail the caller's
-    /// method call.
+    /// the in-memory chain. A failure blocks subsequent method completion
+    /// proofs until restart/replay; observations keep their existing API.
     ///
     /// OSCAL subid: `evt.service.event-chain.persist@v1`
     async fn persist_audit_event(&self, event: &ChainEvent) {
         let Some(sink) = self.audit_sink.get() else {
+            self.method_audit_uncertain
+                .store(true, std::sync::atomic::Ordering::Release);
             return;
         };
         match sink.add_footprint(event_to_footprint(event)).await {
@@ -1957,6 +2233,8 @@ impl MutationEngine {
                 }
             }
             Err(error) => {
+                self.method_audit_uncertain
+                    .store(true, std::sync::atomic::Ordering::Release);
                 tracing::warn!(
                     %error,
                     event_id = event.event_id,
@@ -2136,11 +2414,12 @@ impl MutationEngine {
                 };
                 if let Some(row) = store.read(plugin_id).await? {
                     let state = if plugin_id == "json_render" {
-                        simd_json::serde::to_owned_value(
-                            json_render_methods_from_schema(schema.clone(), store.clone())?
-                                .projection_state()
-                                .await?,
-                        )?
+                        let projected = self
+                            .json_render_methods_enriched(schema.clone(), store.clone())
+                            .await?
+                            .projection_state()
+                            .await?;
+                        simd_json::serde::to_owned_value(projected)?
                     } else {
                         restored_runtime_projection(plugin_id, &row)?
                     };
@@ -2193,6 +2472,26 @@ impl MutationEngine {
             .await
             .cloned()
             .map_err(|e| anyhow::anyhow!(e))
+    }
+
+    async fn openflow_permit_authority(
+        &self,
+    ) -> anyhow::Result<&crate::openflow_permit::OpenFlowPermitAuthority> {
+        self.openflow_permit_authority
+            .get_or_try_init(|| async {
+                tokio::time::timeout(
+                    std::time::Duration::from_secs(10),
+                    async {
+                        crate::openflow_permit::OpenFlowPermitAuthority::new(
+                            self.dbus_connection().await?,
+                        )
+                        .await
+                    },
+                )
+                .await
+                .context("OpenFlow admission authority initialization timed out")?
+            })
+            .await
     }
 
     /// Get or create the session bus connection (for projection tree introspection)
@@ -2672,12 +2971,12 @@ impl MutationEngine {
             }
             // Hash covers the identity and capability fields set above.
             event.event_hash = event.compute_hash();
-            chain.append(event).clone()
+            let event = chain.append(event).clone();
+            // Keep persistence ordered with the chain head. Otherwise a
+            // method proof could overtake a not-yet-durable state event.
+            self.persist_audit_event(&event).await;
+            event
         };
-
-        // Durability: mirror the event into the timing_subvol so it survives a
-        // restart. Inline with the change, never deferred.
-        self.persist_audit_event(&event).await;
         let _ = self.chain_tx.send(event.clone());
 
         let change = StateChange {
@@ -2992,7 +3291,10 @@ impl MutationEngine {
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
 
-        if let Some(session) = session_to_advance {
+        if let Some(session) = session_to_advance
+            && (session.sealed_id_digest.is_some()
+                || crate::external_mcp_session::lookup(&session.session_id).await?.is_none())
+        {
             crate::identity_sled_dispatch::advance_mutation_index(
                 self,
                 &session.session_id,
@@ -3100,6 +3402,35 @@ impl MutationEngine {
         )
     }
 
+    /// Caller-chosen correlation only; identity and grants still come solely
+    /// from the receiver. Reusing an admitted ID cannot execute another effect.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn dispatch_method_call_with_operation_id<'a>(
+        &'a self,
+        plugin_id: &'a str,
+        method: &'a str,
+        json_args: &'a str,
+        capability_id: Option<&'a str>,
+        actor_id: &'a str,
+        session_id: Option<&'a str>,
+        session_genesis: Option<&'a str>,
+        operation_id: &'a str,
+    ) -> futures::future::BoxFuture<'a, anyhow::Result<serde_json::Value>> {
+        self.dispatch_method_call_with_origins(
+            plugin_id,
+            method,
+            json_args,
+            capability_id,
+            actor_id,
+            session_id,
+            session_genesis,
+            None,
+            None,
+            None,
+            Some(operation_id),
+        )
+    }
+
     /// Internal facade evidence is supplied only by the admitted LLM wrapper.
     /// It conveys no grant and does not bypass the same canonical admission.
     #[allow(clippy::too_many_arguments)]
@@ -3123,6 +3454,8 @@ impl MutationEngine {
             session_id,
             session_genesis,
             generation_origin,
+            None,
+            None,
             None,
         )
     }
@@ -3149,6 +3482,37 @@ impl MutationEngine {
             session_genesis,
             None,
             Some(origin),
+            None,
+            None,
+        )
+    }
+
+    /// Only the receiver can supply this typed proof; plugin arguments never
+    /// select an actor or manufacture transport attribution.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn dispatch_method_call_with_bound_oracle<'a>(
+        &'a self,
+        plugin_id: &'a str,
+        method: &'a str,
+        json_args: &'a str,
+        capability_id: Option<&'a str>,
+        actor_id: &'a str,
+        session_id: Option<&'a str>,
+        session_genesis: Option<&'a str>,
+        proof: Option<crate::oracle_assertion::BoundOracleProof>,
+    ) -> futures::future::BoxFuture<'a, anyhow::Result<serde_json::Value>> {
+        self.dispatch_method_call_with_origins(
+            plugin_id,
+            method,
+            json_args,
+            capability_id,
+            actor_id,
+            session_id,
+            session_genesis,
+            None,
+            None,
+            proof,
+            None,
         )
     }
 
@@ -3164,10 +3528,35 @@ impl MutationEngine {
         session_genesis: Option<&'a str>,
         generation_origin: Option<crate::generation_admission::GenerationOrigin>,
         facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+        bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
+        operation_id: Option<&'a str>,
     ) -> futures::future::BoxFuture<'a, anyhow::Result<serde_json::Value>> {
         // Explicit Send erasure breaks recursive facade/property dispatch's
         // future-type cycle while preserving all pre-task admission below.
         Box::pin(async move {
+            if let Some(operation_id) = operation_id {
+                let parsed = uuid::Uuid::parse_str(operation_id)?;
+                anyhow::ensure!(
+                    parsed.to_string() == operation_id,
+                    "noncanonical operation id"
+                );
+            }
+            anyhow::ensure!(
+                json_args.len() <= op_state_store::method_receipt::MAX_METHOD_ARGUMENT_BYTES,
+                "method arguments exceed 1 MiB"
+            );
+            if let Some(proof) = &bound_oracle {
+                crate::interceptor::revalidate_bound_oracle(
+                    self,
+                    proof,
+                    actor_id,
+                    session_id,
+                    session_genesis,
+                    true,
+                )
+                .await?;
+                require_bound_oracle_grant(actor_id, capability_id)?;
+            }
             if let Some(origin) = &facade_origin {
                 origin.validate_target(plugin_id, method)?;
             }
@@ -3179,6 +3568,13 @@ impl MutationEngine {
                     "dispatch error: method explicitly triggered failure"
                 ));
             }
+
+            // Routing owners consume bounded queue/byte/audit capacity before
+            // an untrusted JSON buffer is copied or parsed. Keep both the
+            // sealed method pin and reservation in the owned call task.
+            let early_routing = crate::routing_dispatch::reserve_before_parse(
+                self, plugin_id, method, capability_id, actor_id, session_id, session_genesis,
+            ).await?;
 
             // Parse the verbatim json_args string. If parsing fails, propagate
             // the error — the bridge converts it to fdo::Error::Failed.
@@ -3192,9 +3588,67 @@ impl MutationEngine {
                 anyhow::bail!("sealed_id is MutationEngine-authored and cannot be supplied");
             }
 
+            // Admit the sealed method before notarizing arguments so OD-91 can
+            // digest `x-opdbus-private` fields from the method's args schema.
+            let (declaration, admitted_schema, routing_admission) = match early_routing {
+                Some((schema, admission)) => {
+                    let declaration = schema.methods.get(method).cloned()
+                        .context("routing method is absent from admitted schema")?;
+                    // Reconstitute the existing pair shape while keeping the
+                    // reservation available for transfer to AdmittedMethodCall.
+                    (declaration, schema, Some(admission))
+                }
+                None => {
+                    let (declaration, schema) = crate::method_contract_admission::admit_compiled_invocation(
+                        plugin_id, method, capability_id,
+                    )?;
+                    (declaration, schema, None)
+                }
+            };
+            anyhow::ensure!(declaration.returns.is_some(), "missing_result_contract");
+            let return_contract = serde_json::to_value(
+                declaration
+                    .returns
+                    .as_ref()
+                    .expect("checked result contract"),
+            )?;
+            jsonschema::validator_for(&return_contract)
+                .context("invalid admitted result contract")?;
+            let mut canonical_args = serde_json::to_value(&parsed_value)?;
+            crate::method_contract_admission::validate_admitted_arguments(
+                &declaration,
+                &canonical_args,
+            )?;
+            // Keep the exact admitted arguments used to issue a one-use
+            // elevation. Consumption belongs to the owned task, after all
+            // cancellable admission awaits and capacity acquisition.
+            let elevation_arguments = canonical_args.clone();
+            crate::schema_integer_arguments::normalize_declared_integers(
+                &serde_json::to_value(&declaration.args)?,
+                &mut canonical_args,
+            )?;
+            let json_args = serde_json::to_string(&canonical_args)?;
+            let parsed_value = simd_json::serde::to_owned_value(canonical_args.clone())?;
+            let args_schema: serde_json::Value = serde_json::to_value(&declaration.args)?;
+
+            // Compliance graph deny rules (no-op when the cognitive Cozo store
+            // is absent or has no Deny rows).
+            if let Ok(mcp) = self.cognitive().await {
+                let verdict = mcp.cozo_shuttle().evaluate_mutation(plugin_id, method);
+                if !verdict.allow {
+                    anyhow::bail!(
+                        "compliance policy denied {}.{}: {}",
+                        plugin_id,
+                        method,
+                        verdict.reason
+                    );
+                }
+            }
+
             // Tenant data must not leak through the global chain/change streams.
-            // Notarize a digest, while dispatch still receives the original input.
-            let audit_json = audit_method_arguments(plugin_id, method, json_args);
+            // Notarize digests / redaction, while dispatch still receives originals.
+            let audit_json =
+                audit_method_arguments(plugin_id, method, &json_args, Some(&args_schema));
             // Commitment to the authoring SID1 for the audit record: from the
             // anchored session when the caller named one, else from the actor's
             // own sled. Resolved before the chain lock is taken.
@@ -3212,39 +3666,13 @@ impl MutationEngine {
                 serde_json::Value,
             >(&audit_json)?)?;
 
-            // Record the immutable event with the full accountability surface.
-            // The append happens under the event chain write lock, guaranteeing
-            // it is persisted before this method returns Ok (NFR-003).
-            let event_summary = {
-                let mut chain = self.event_chain.write().await;
-                let event = chain.record_method_call_with_identity(
-                    actor_id.to_string(),
-                    session_id.map(str::to_string),
-                    session_genesis.map(str::to_string),
-                    method_sealed_id_digest,
-                    plugin_id.to_string(),
-                    method.to_string(),
-                    capability_id.map(|s| s.to_string()),
-                    &audit_json,
-                );
-                (
-                    event.event_id,
-                    event.event_hash.clone(),
-                    event.timestamp,
-                    event.clone(),
-                )
-            };
-
-            // Durability: write the event to the timing_subvol before returning, so
-            // the audit trail survives a restart (FR-6). A failure here is logged
-            // and does not fail the dispatch (NFR-4).
-            self.persist_audit_event(&event_summary.3).await;
-            let _ = self.chain_tx.send(event_summary.3.clone());
-
-            // Broadcast the method-call change to gRPC subscribers.
+            // The owner task encloses persistence too: dropping the caller while
+            // the durable writer runs cannot leave a committed, untracked attempt.
             let change = StateChange {
-                change_id: uuid::Uuid::new_v4().to_string(),
-                event_id: event_summary.0,
+                change_id: operation_id
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+                event_id: 0,
                 plugin_id: plugin_id.to_string(),
                 object_path: format!("/org/opdbus/v1/plugins/{}", plugin_id),
                 change_type: ChangeType::MethodCall,
@@ -3252,31 +3680,11 @@ impl MutationEngine {
                 old_value: None,
                 new_value: audit_value,
                 tags_touched: vec![],
-                event_hash: event_summary.1.clone(),
-                timestamp: event_summary.2,
+                event_hash: String::new(),
+                timestamp: chrono::Utc::now(),
                 actor_id: actor_id.to_string(),
                 source: ChangeSource::DBus,
             };
-            let _ = self.change_tx.send(change.clone());
-
-            // Dispatch to appropriate backend based on plugin_id
-            let (declaration, admitted_schema) =
-                crate::method_contract_admission::admit_compiled_invocation(
-                    plugin_id,
-                    method,
-                    capability_id,
-                )?;
-            let mut canonical_args = serde_json::to_value(&parsed_value)?;
-            crate::method_contract_admission::validate_admitted_arguments(
-                &declaration,
-                &canonical_args,
-            )?;
-            crate::schema_integer_arguments::normalize_declared_integers(
-                &serde_json::to_value(&declaration.args)?,
-                &mut canonical_args,
-            )?;
-            let json_args = serde_json::to_string(&canonical_args)?;
-            let parsed_value = simd_json::serde::to_owned_value(canonical_args)?;
             let operation = owned_method_task::OperationMetadata {
                 operation_id: change.change_id.clone(),
                 event_id: change.event_id,
@@ -3295,14 +3703,37 @@ impl MutationEngine {
                 admitted_schema,
                 generation_origin,
                 facade_origin,
+                bound_oracle,
                 change,
+                routing_admission,
             };
             let engine = self.clone();
+            let permit = self
+                .dbus_call_limiter
+                .clone()
+                .try_acquire_owned()
+                .map_err(|_| anyhow::anyhow!("admitted_method_capacity_exhausted"))?;
             // Transport identity/grants precede engine entry; compiled contract and
             // input admission above precede this spawn. Backend-specific identity
             // checks and independently admitted nested target calls stay intact.
             owned_method_task::spawn(operation, async move {
-                engine.dispatch_admitted_method(call).await
+                let _permit = permit;
+                engine.task_elevation.consume(
+                    &call.actor_id,
+                    call.session_id.as_deref(),
+                    &call.plugin_id,
+                    &call.method,
+                    &elevation_arguments,
+                )?;
+                drop(elevation_arguments);
+                let scoped_actor = call.actor_id.clone();
+                let scoped_session = call.session_id.clone();
+                let scoped_genesis = call.session_genesis.clone();
+                crate::external_mcp_session::with_authoring_scope(
+                    &engine, &scoped_actor, scoped_session.as_deref(), scoped_genesis.as_deref(),
+                    // Keep the large audit future out of task-local wrapper frames.
+                    Box::pin(engine.audit_and_dispatch_admitted(call, method_sealed_id_digest)),
+                ).await?
             })
             .await
             .map_err(|_| anyhow::anyhow!("admitted_method_owner_failed"))?
@@ -3325,7 +3756,9 @@ impl MutationEngine {
             admitted_schema,
             generation_origin,
             facade_origin,
+            bound_oracle,
             change,
+            routing_admission,
         } = call;
         let plugin_id = plugin_id.as_str();
         let method = method.as_str();
@@ -3334,7 +3767,34 @@ impl MutationEngine {
         let actor_id = actor_id.as_str();
         let session_id = session_id.as_deref();
         let session_genesis = session_genesis.as_deref();
+        if let Some(proof) = &bound_oracle {
+            crate::interceptor::revalidate_bound_oracle(
+                self,
+                proof,
+                actor_id,
+                session_id,
+                session_genesis,
+                true,
+            )
+            .await?;
+            require_bound_oracle_grant(actor_id, capability_id)?;
+        }
         let mut method_result: serde_json::Value = match plugin_id {
+            "routing_decision" | "schema_tag_registry" => {
+                crate::routing_dispatch::dispatch(
+                    self,
+                    plugin_id,
+                    method,
+                    &serde_json::to_value(&parsed_value)?,
+                    actor_id,
+                    capability_id,
+                    session_id,
+                    session_genesis,
+                    &admitted_schema,
+                    &change.change_id,
+                    routing_admission.context("routing owner reservation missing")?,
+                ).await?
+            }
             "mcp" => {
                 crate::mcp_config_dispatch::dispatch(
                     self,
@@ -3347,19 +3807,81 @@ impl MutationEngine {
                 )
                 .await?
             }
+            "elevation" => {
+                crate::task_elevation::dispatch(
+                    self,
+                    method,
+                    &serde_json::to_value(&parsed_value)?,
+                    actor_id,
+                    session_id,
+                    session_genesis,
+                )
+                .await?
+            }
+            "model_registry" => {
+                crate::model_registry_dispatch::dispatch(
+                    self,
+                    method,
+                    &serde_json::to_value(&parsed_value)?,
+                    actor_id,
+                    session_id,
+                    &admitted_schema,
+                )
+                .await?
+            }
+            "json_render" if crate::json_render_gallery_dispatch::is_gallery_method(method) => {
+                let result = crate::json_render_gallery_dispatch::dispatch(
+                    self,
+                    method,
+                    &serde_json::to_value(&parsed_value)?,
+                    actor_id,
+                    session_id,
+                    session_genesis,
+                    &admitted_schema,
+                )
+                .await?;
+                // Refresh active-catalog names into observable plugin state after
+                // gallery mutations so normal modes can subscribe (OD-93).
+                if let Ok(documents) =
+                    op_plugins::state_plugins::runtime_documents::runtime_documents().await
+                    && let Ok(service) = self
+                        .json_render_methods_enriched(admitted_schema.clone(), documents)
+                        .await
+                {
+                    let enriched = service.projection_state().await?;
+                    if let Err(error) = self
+                        .publish_plugin_projection_state(
+                            plugin_id,
+                            simd_json::serde::to_owned_value(enriched)?,
+                            ChangeType::PropertySet,
+                            true,
+                        )
+                        .await
+                    {
+                        tracing::warn!(
+                            error = %format!("{error:#}"),
+                            "json_render catalog projection refresh failed after gallery method"
+                        );
+                    }
+                }
+                result
+            }
             "json_render" => {
                 static PROJECTION_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
                 let _guard = PROJECTION_LOCK.lock().await;
                 let store =
                     op_plugins::state_plugins::runtime_documents::runtime_documents().await?;
-                let service = json_render_methods_from_schema(admitted_schema, store)?;
+                let service = self
+                    .json_render_methods_enriched(admitted_schema, store)
+                    .await?;
                 let result = service
                     .dispatch(method, &serde_json::to_value(&parsed_value)?)
                     .await?;
                 if method == "set_config" {
+                    let enriched = service.projection_state().await?;
                     self.publish_plugin_projection_state(
                         plugin_id,
-                        simd_json::serde::to_owned_value(service.projection_state().await?)?,
+                        simd_json::serde::to_owned_value(enriched)?,
                         ChangeType::PropertySet,
                         true,
                     ).await.context("json_render policy committed but projection publication failed; retry to reconcile")?;
@@ -3492,8 +4014,13 @@ impl MutationEngine {
             }
             "workflows" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                op_plugins::state_plugins::workflows_plugin::dispatch_workflows_method(
-                    method, &args,
+                crate::workstack_runner::dispatch(
+                    self,
+                    method,
+                    &args,
+                    actor_id,
+                    session_id,
+                    session_genesis,
                 )
                 .await?
             }
@@ -3607,7 +4134,7 @@ impl MutationEngine {
                     }
                     let envelope = self
                         .dispatch_method_call_with_identity(
-                            "cognitive_mcp",
+                            "cognitive",
                             &target.declaration.name,
                             &serde_json::to_string(&arguments)?,
                             Some(required),
@@ -3690,12 +4217,43 @@ impl MutationEngine {
             }
             "qdrant" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                op_plugins::state_plugins::qdrant::dispatch_qdrant_method(method, &args).await?
+                let dispatch_result =
+                    op_plugins::state_plugins::qdrant::dispatch_qdrant_method(method, &args)
+                        .await?;
+                // Same gap as snowball: this plugin is dispatched only through
+                // the typed interface here, which never commits to the SHM
+                // projection on its own.
+                match op_plugins::state_plugins::qdrant::current_state().await {
+                    Ok(state) => {
+                        if let Err(error) = self
+                            .publish_plugin_projection_state(
+                                "qdrant",
+                                simd_json::serde::to_owned_value(state)?,
+                                ChangeType::PropertySet,
+                                true,
+                            )
+                            .await
+                        {
+                            tracing::warn!(%error, "qdrant state read but projection publish failed");
+                        }
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "qdrant method completed but current state could not be read for projection")
+                    }
+                }
+                dispatch_result
             }
             "cozo" => {
                 let args = serde_json::to_value(&parsed_value)?;
-                let store = self.cognitive_mcp().await?.cozo_shuttle();
-                op_plugins::state_plugins::cozo::dispatch_cozo_method(store, method, &args).await?
+                if method == "refresh_system_graph" {
+                    let input: op_plugins::state_plugins::cozo::RefreshSystemGraphInput =
+                        serde_json::from_value(args)?;
+                    serde_json::to_value(self.refresh_system_graph(input.expected_revision).await?)?
+                } else {
+                    let store = self.cognitive().await?.cozo_shuttle();
+                    op_plugins::state_plugins::cozo::dispatch_cozo_method(store, method, &args)
+                        .await?
+                }
             }
             "memory" => {
                 use op_plugins::state_plugins::memory_methods::{
@@ -3711,7 +4269,7 @@ impl MutationEngine {
                 let service = self
                     .memory_methods
                     .get_or_try_init(|| async {
-                        let store = self.cognitive_mcp().await?.cozo_shuttle();
+                        let store = self.cognitive().await?.cozo_shuttle();
                         Ok::<_, anyhow::Error>(MemoryMethods::from_shared(store))
                     })
                     .await?;
@@ -3797,6 +4355,91 @@ impl MutationEngine {
             "software" => {
                 let args = serde_json::to_value(&parsed_value)?;
                 op_plugins::state_plugins::software::dispatch_software_method(method, &args).await?
+            }
+            "threetched_fs" => {
+                let args = serde_json::to_value(&parsed_value)?;
+                let output = if method == "get_receipt" {
+                    let request: op_state_store::method_receipt::GetMethodReceiptInput =
+                        serde_json::from_value(args)?;
+                    serde_json::to_value(
+                        self.recover_method_receipt(&request.operation_id, actor_id, session_id)
+                            .await?,
+                    )?
+                } else {
+                    op_plugins::state_plugins::threetched_fs::dispatch(method, &args)?
+                };
+                self.publish_plugin_projection_state(
+                    plugin_id,
+                    op_plugins::state_plugins::threetched_fs::protocol_value()?,
+                    ChangeType::PropertySet,
+                    true,
+                )
+                .await?;
+                output
+            }
+            "tched_skills" | "tched_plugins" | "threetched" => {
+                let feature_plugin: &'static str = match plugin_id {
+                    "tched_skills" => "tched_skills",
+                    "tched_plugins" => "tched_plugins",
+                    "threetched" => "threetched",
+                    _ => unreachable!("matched threetched-backed plugin"),
+                };
+                // Skills, plugins and router methods operate on the same threetched service
+                // and config directory. Serialize them through the router's
+                // operation guard, then recheck the pinned seal and caller's
+                // current session/grant after any queue wait.
+                let operation = Arc::new(
+                    crate::tched_router_runtime::TchedRouterRuntimeClient::selection_guard()
+                        .await,
+                );
+                let caller = crate::tched_router_admission::RouterCaller {
+                    actor: actor_id.to_owned(),
+                    capability: capability_id.map(str::to_owned),
+                    session: session_id.map(str::to_owned),
+                    genesis: session_genesis.map(str::to_owned),
+                };
+                let pinned = crate::tched_router_admission::readmit_call(
+                    self,
+                    &admitted_schema,
+                    feature_plugin,
+                    method,
+                    &caller,
+                )
+                .await?;
+                if let Some(proof) = &bound_oracle {
+                    crate::interceptor::revalidate_bound_oracle(
+                        self,
+                        proof,
+                        actor_id,
+                        session_id,
+                        session_genesis,
+                        true,
+                    )
+                    .await?;
+                }
+                let args = serde_json::to_value(&parsed_value)?;
+                let sealed_source = pinned.schema.example.as_ref()
+                    .context("sealed threetched feature source descriptor missing")?;
+                let source_value = serde_json::to_value(sealed_source)?;
+                let result = if plugin_id == "tched_skills" {
+                    let source = serde_json::from_value(source_value)?;
+                    op_plugins::state_plugins::tched_skills::dispatch(method, &args, &source).await?
+                } else if plugin_id == "tched_plugins" {
+                    let source = serde_json::from_value(source_value)?;
+                    op_plugins::state_plugins::tched_plugins::dispatch(method, &args, &source).await?
+                } else {
+                    let source = serde_json::from_value(source_value)?;
+                    op_plugins::state_plugins::threetched::dispatch(
+                        method, &args, &source, operation.clone(),
+                    ).await?
+                };
+                let declaration = pinned.schema.methods.get(method)
+                    .context("pinned threetched feature method is absent")?;
+                crate::method_contract_admission::validate_admitted_output(
+                    declaration,
+                    &result,
+                )?;
+                result
             }
             "procfs" => {
                 let _observation = self.lock_host_observation().await;
@@ -4208,8 +4851,34 @@ impl MutationEngine {
                         )
                         .await?
                     } else {
-                        crate::openflow_methods::dispatch_openflow_flow_method(method, &args)
-                            .await?
+                        let engine = self.clone();
+                        let admitted = admitted_schema.clone();
+                        let method = method.to_owned();
+                        let caller = Arc::new(caller);
+                        let final_method = method.clone();
+                        let final_admission: crate::openflow_permit::FinalAdmission =
+                            Arc::new(move || {
+                                let engine = engine.clone();
+                                let admitted = admitted.clone();
+                                let method = final_method.clone();
+                                let caller = caller.clone();
+                                Box::pin(async move {
+                                    // The dispatch worker retains openflow_projection.
+                                    // Do not reacquire that lock in the controller callback.
+                                    crate::tched_router_admission::readmit_call(
+                                        &engine, &admitted, "openflow", &method, &caller,
+                                    )
+                                    .await?;
+                                    Ok(())
+                                })
+                            });
+                        crate::openflow_methods::dispatch_openflow_flow_method_attributed(
+                            self.openflow_permit_authority().await?,
+                            &method,
+                            &args,
+                            final_admission,
+                        )
+                        .await?
                     };
                     let projection = crate::openflow_methods::projection_change(&receipt)?;
                     self.commit_state_update(
@@ -4332,6 +5001,7 @@ impl MutationEngine {
                     session: session_id.map(str::to_owned),
                     genesis: session_genesis.map(str::to_owned),
                 };
+                let owned_bound_oracle = bound_oracle.clone();
                 tokio::spawn(async move {
                     engine
                         .dispatch_tched_router_owned(
@@ -4342,6 +5012,7 @@ impl MutationEngine {
                             change,
                             caller,
                             facade_origin,
+                            owned_bound_oracle,
                         )
                         .await
                 })
@@ -4359,10 +5030,10 @@ impl MutationEngine {
                     );
                 op_plugins::state_plugins::ghostbridge::dispatch_ghostbridge_method(method, &state)?
             }
-            "cognitive_mcp" => {
+            "cognitive" => {
                 let args = serde_json::to_value(&parsed_value)?;
                 let result = self
-                    .dispatch_cognitive_mcp_method(
+                    .dispatch_cognitive_method(
                         crate::specialist::CognitiveCaller {
                             actor_id,
                             session_id,
@@ -4373,29 +5044,14 @@ impl MutationEngine {
                         &admitted_schema,
                     )
                     .await?;
-                if crate::memory_binding::is_memory_method(method)
-                    || matches!(method, "code_search" | "code_context" | "code_index")
-                    || op_plugins::state_plugins::cognitive_agents::method_by_name(method).is_some()
-                    || matches!(
-                        method,
-                        "specialist"
-                            | "rust_pro"
-                            | "python_pro"
-                            | "typescript_pro"
-                            | "sequential_thinking"
-                            | "context_manager"
-                            | "code_review_orchestrator"
-                    )
-                {
-                    let declaration = admitted_schema
-                        .methods
-                        .get(method)
-                        .context("admitted cognitive method is absent")?;
-                    crate::method_contract_admission::validate_admitted_output(
-                        declaration,
-                        &result,
-                    )?;
-                }
+                let declaration = admitted_schema
+                    .methods
+                    .get(method)
+                    .context("admitted cognitive method is absent")?;
+                crate::method_contract_admission::validate_admitted_output(
+                    declaration,
+                    &result,
+                )?;
                 result
             }
             "oscal_subid_registry" => {
@@ -4450,18 +5106,29 @@ impl MutationEngine {
                     .dispatch(&context, method, &serde_json::to_value(&parsed_value)?)
                     .await?
             }
-            "mongodb_mcp" => {
-                let args = serde_json::to_value(&parsed_value)?;
-                dispatch_mongodb_mcp_owner(&self.mongodb_mcp, method, args).await?
-            }
             // The same initialized chain owns both audit persistence and the
             // Snowball data snapshots. Never open an empty replacement store.
             "snowball" => match method {
+                "search_own_events" => {
+                    let input = serde_json::from_value(serde_json::to_value(&parsed_value)?)?;
+                    serde_json::to_value(crate::accountability_search::search(
+                        self,
+                        crate::specialist::CognitiveCaller { actor_id, session_id, session_genesis },
+                        input,
+                    ).await?)?
+                }
                 "query_events" => {
                     dispatch_snowball_query_events(&self.event_chain, &parsed_value).await?
                 }
                 "verify_chain" => {
                     dispatch_snowball_verify_chain(&self.event_chain, &parsed_value).await?
+                }
+                "get_projector_stats" => {
+                    let stats = match self.vector_projector.get() {
+                        Some(projector) => projector.stats().await,
+                        None => crate::chain_vector_projector::ProjectorStats::default(),
+                    };
+                    serde_json::to_value(&stats)?
                 }
                 "create_snapshot" | "get_current_state" | "get_snapshot" | "get_stats"
                 | "list_snapshots" | "rollback" | "set_retention" => {
@@ -4472,9 +5139,32 @@ impl MutationEngine {
                     let methods = self.snowball_methods.get_or_init(|| async {
                         op_plugins::state_plugins::snowball_methods::SnowballMethods::from_shared(sink.streaming_snowball())
                     }).await;
-                    methods
+                    let dispatch_result = methods
                         .dispatch(method, &serde_json::to_value(&parsed_value)?)
-                        .await?
+                        .await?;
+                    // This plugin never gets a mutate()-path special case (it's
+                    // dispatched here, through the typed interface, which does
+                    // not otherwise commit to the SHM projection), so it would
+                    // never appear as observed-runtime state without this.
+                    match op_plugins::state_plugins::snowball_plugin::current_state().await {
+                        Ok(state) => {
+                            if let Err(error) = self
+                                .publish_plugin_projection_state(
+                                    "snowball",
+                                    simd_json::serde::to_owned_value(state)?,
+                                    ChangeType::PropertySet,
+                                    true,
+                                )
+                                .await
+                            {
+                                tracing::warn!(%error, "snowball state read but projection publish failed");
+                            }
+                        }
+                        Err(error) => {
+                            tracing::warn!(%error, "snowball method completed but current state could not be read for projection")
+                        }
+                    }
+                    dispatch_result
                 }
                 _ => anyhow::bail!(
                     "unsupported plugin method '{}.{}': no canonical backend dispatch",
@@ -4512,6 +5202,21 @@ impl MutationEngine {
             }
             redact_identity_method_credentials(method, own_session.as_deref(), &mut method_result);
         }
+        if let Some(proof) = &bound_oracle {
+            crate::interceptor::revalidate_bound_oracle(
+                self,
+                proof,
+                actor_id,
+                session_id,
+                session_genesis,
+                false,
+            )
+            .await?;
+            require_bound_oracle_grant(actor_id, capability_id)?;
+            // The browser transport does not export the target's authored SID1,
+            // even if a future explicit grant permits an administrative read.
+            redact_identity_credentials_json(&mut method_result);
+        }
 
         // Return a JSON result carrying the event accountability proof and the
         // method's domain result. This is the value the bridge serializes and
@@ -4537,10 +5242,22 @@ impl MutationEngine {
         change: StateChange,
         caller: crate::tched_router_admission::RouterCaller,
         facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
+        bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
     ) -> anyhow::Result<serde_json::Value> {
         let guarded =
             crate::tched_router_admission::admit_guarded(self, &admitted_schema, method, &caller)
                 .await?;
+        if let Some(proof) = &bound_oracle {
+            crate::interceptor::revalidate_bound_oracle(
+                self,
+                proof,
+                &caller.actor,
+                caller.session.as_deref(),
+                caller.genesis.as_deref(),
+                true,
+            )
+            .await?;
+        }
         if let Some(origin) = &facade_origin {
             // The native operation guard is retained while rechecking the
             // original facade seal and current caller grant after any queue wait.
@@ -4558,6 +5275,303 @@ impl MutationEngine {
                 .as_deref()
                 .context("verified genesis is required")?,
         )?;
+        if method == "get_own_agent_route" {
+            let _: op_plugins::state_plugins::tched_router::GetOwnAgentRouteInput =
+                serde_json::from_value(parsed_value)?;
+            let session = caller
+                .session
+                .as_deref()
+                .context("verified session is required")?;
+            let grants = crate::interceptor::load_capability_grants(&caller.actor)
+                .into_iter()
+                .collect();
+            let before =
+                crate::project_dispatch::current_chat_context(self, session, &grants).await?;
+            anyhow::ensure!(
+                crate::chat_mode_routing::dedicated_alias(before.mode).is_some(),
+                "current chat mode has no dedicated native route"
+            );
+            let (_, represented) =
+                crate::tched_config_engine::coherent_observation(pinned, &sealed_identity).await?;
+            self.persist_tched_router_config_observation(method, &represented, &pinned.schema_hash)
+                .await?;
+            let committed = self
+                .read_tched_router_config_field("native_config", &pinned.schema_hash)
+                .await?;
+            let output = serde_json::to_value(crate::tched_own_agent_route::project(
+                before.mode,
+                &committed,
+            )?)?;
+            crate::tched_router_admission::readmit_call(
+                self,
+                &admitted_schema,
+                "tched_router",
+                method,
+                &caller,
+            )
+            .await?;
+            let grants = crate::interceptor::load_capability_grants(&caller.actor)
+                .into_iter()
+                .collect();
+            let after =
+                crate::project_dispatch::current_chat_context(self, session, &grants).await?;
+            ensure_own_route_context_unchanged(&before, &after)?;
+            if let Some(proof) = &bound_oracle {
+                crate::interceptor::revalidate_bound_oracle(
+                    self,
+                    proof,
+                    &caller.actor,
+                    caller.session.as_deref(),
+                    caller.genesis.as_deref(),
+                    false,
+                )
+                .await?;
+            }
+            crate::method_contract_admission::validate_admitted_output(
+                admitted_schema
+                    .methods
+                    .get(method)
+                    .context("admitted own route method absent")?,
+                &output,
+            )?;
+            return Ok(output);
+        }
+        if matches!(
+            method,
+            "resolve_catalog_model_binding" | "apply_catalog_model_binding"
+        ) {
+            let applying = method == "apply_catalog_model_binding";
+            let input: op_plugins::state_plugins::tched_router::ResolveCatalogModelBindingInput =
+                serde_json::from_value(parsed_value)?;
+            let context = if applying {
+                let grants = crate::interceptor::load_capability_grants(&caller.actor)
+                    .into_iter()
+                    .collect();
+                let context = crate::project_dispatch::current_chat_context(
+                    self,
+                    caller
+                        .session
+                        .as_deref()
+                        .context("verified session is required")?,
+                    &grants,
+                )
+                .await?;
+                anyhow::ensure!(
+                    crate::chat_mode_routing::dedicated_alias(context.mode).is_none(),
+                    "dedicated agent model changes require their protected operation"
+                );
+                Some(context)
+            } else {
+                None
+            };
+            let target = crate::model_registry_dispatch::catalog_binding_target(
+                self,
+                &input.provider_id,
+                &input.model_id,
+            )
+            .await?;
+            // The catalog lookup may have waited for Cozo. Readmit this exact
+            // reflected read before inspecting the native router configuration.
+            crate::tched_router_admission::readmit_call(
+                self,
+                &admitted_schema,
+                "tched_router",
+                method,
+                &caller,
+            )
+            .await?;
+            if let Some(proof) = &bound_oracle {
+                crate::interceptor::revalidate_bound_oracle(
+                    self,
+                    proof,
+                    &caller.actor,
+                    caller.session.as_deref(),
+                    caller.genesis.as_deref(),
+                    true,
+                )
+                .await?;
+            }
+            if applying && target.ordinary_reference.is_some() {
+                let env = crate::model_registry_dispatch::Environment::from_env();
+                let file = crate::model_registry_dispatch::load_providers(&env)?;
+                if let Some(provider) = file
+                    .providers
+                    .iter()
+                    .find(|provider| provider.id == input.provider_id)
+                {
+                    let secrets = crate::tched_config_engine::pinned_config_secrets(pinned)?;
+                    let runtime =
+                        crate::tched_router_runtime::TchedRouterRuntimeClient::for_agent_alias(
+                            "dashboard",
+                        )
+                        .with_sealed_identity(Some(&sealed_identity));
+                    crate::catalog_ordinary_profile::ensure_ordinary_profile(
+                        &env,
+                        &runtime,
+                        provider,
+                        &target,
+                        &input.model_id,
+                        &secrets,
+                    )
+                    .await?;
+                }
+            }
+            let mut observation = crate::tched_config_engine::observe_catalog_binding(
+                pinned,
+                &sealed_identity,
+                &target,
+            )
+            .await?;
+            let after = crate::model_registry_dispatch::catalog_binding_target(
+                self,
+                &input.provider_id,
+                &input.model_id,
+            )
+            .await?;
+            anyhow::ensure!(
+                target == after,
+                "catalog authority changed during native binding reflection"
+            );
+            let mut represented = serde_json::json!({});
+            if applying {
+                // This method owns only a catalog-verified ordinary selection.
+                // It never forwards to the broad SetSelection/config facade.
+                crate::tched_router_admission::readmit_call(
+                    self,
+                    &admitted_schema,
+                    "tched_router",
+                    method,
+                    &caller,
+                )
+                .await?;
+                let grants = crate::interceptor::load_capability_grants(&caller.actor)
+                    .into_iter()
+                    .collect();
+                let current = crate::project_dispatch::current_chat_context(
+                    self,
+                    caller
+                        .session
+                        .as_deref()
+                        .context("verified session is required")?,
+                    &grants,
+                )
+                .await?;
+                ensure_own_route_context_unchanged(
+                    context.as_ref().context("selection context absent")?,
+                    &current,
+                )?;
+                if let Some(proof) = &bound_oracle {
+                    crate::interceptor::revalidate_bound_oracle(
+                        self,
+                        proof,
+                        &caller.actor,
+                        caller.session.as_deref(),
+                        caller.genesis.as_deref(),
+                        true,
+                    )
+                    .await?;
+                }
+                let expected = observation.binding.clone();
+                let runtime =
+                    crate::tched_router_runtime::TchedRouterRuntimeClient::for_agent_alias(
+                        "dashboard",
+                    )
+                    .with_sealed_identity(Some(&sealed_identity));
+                runtime
+                    .set_selection(&expected.reference, &expected.model)
+                    .await?;
+                let fields = crate::tched_config_engine::coherent_catalog_selection_observation(pinned, &sealed_identity)
+                    .await.context("native catalog selection may have completed but coherent readback failed; reconcile before retry")?;
+                observation = crate::tched_config_engine::observe_catalog_binding(pinned, &sealed_identity, &target)
+                    .await.context("native catalog selection may have completed but binding readback failed; reconcile before retry")?;
+                anyhow::ensure!(
+                    observation.binding == expected
+                        && fields["native_config"] == observation.native_config,
+                    "native catalog selection may have completed but route readback changed; reconcile before retry"
+                );
+                let (family, alias) = expected
+                    .reference
+                    .split_once('.')
+                    .context("resolved native reference is invalid")?;
+                anyhow::ensure!(
+                    fields["native_config"]["agents"]["dashboard"]["model_provider"].as_str()
+                        == Some(expected.reference.as_str())
+                        && fields["native_config"]["providers"]["models"][family][alias]["model"]
+                            .as_str()
+                            == Some(expected.model.as_str()),
+                    "native catalog selection may have completed but exact selection readback differs; reconcile before retry"
+                );
+                represented = fields;
+            }
+            let binding = serde_json::to_value(observation.binding)?;
+            represented["native_config"] = observation.native_config;
+            represented["catalog_model_binding"] = binding.clone();
+            self.persist_tched_router_config_observation(method, &represented, &pinned.schema_hash)
+                .await?;
+            let committed_config = self
+                .read_tched_router_config_field("native_config", &pinned.schema_hash)
+                .await?;
+            let committed = self
+                .read_tched_router_config_field("catalog_model_binding", &pinned.schema_hash)
+                .await?;
+            anyhow::ensure!(
+                committed_config == represented["native_config"] && committed == binding,
+                "native binding observation changed after publication"
+            );
+            let after = crate::model_registry_dispatch::catalog_binding_target(
+                self,
+                &input.provider_id,
+                &input.model_id,
+            )
+            .await?;
+            anyhow::ensure!(
+                target == after,
+                "catalog authority changed after binding publication"
+            );
+            crate::tched_router_admission::readmit_call(
+                self,
+                &admitted_schema,
+                "tched_router",
+                method,
+                &caller,
+            )
+            .await?;
+            if let Some(before) = context {
+                let grants = crate::interceptor::load_capability_grants(&caller.actor)
+                    .into_iter()
+                    .collect();
+                let after = crate::project_dispatch::current_chat_context(
+                    self,
+                    caller
+                        .session
+                        .as_deref()
+                        .context("verified session is required")?,
+                    &grants,
+                )
+                .await?;
+                ensure_own_route_context_unchanged(&before, &after)
+                    .context("native catalog selection may have completed but caller context changed; reconcile before retry")?;
+            }
+            if let Some(proof) = &bound_oracle {
+                crate::interceptor::revalidate_bound_oracle(
+                    self,
+                    proof,
+                    &caller.actor,
+                    caller.session.as_deref(),
+                    caller.genesis.as_deref(),
+                    false,
+                )
+                .await?;
+            }
+            crate::method_contract_admission::validate_admitted_output(
+                admitted_schema
+                    .methods
+                    .get(method)
+                    .context("admitted binding reflection method absent")?,
+                &committed,
+            )?;
+            return Ok(committed);
+        }
         if let Some(result) = crate::tched_config_engine::dispatch(
             self,
             pinned,
@@ -4628,7 +5642,7 @@ impl MutationEngine {
                 self.ctl_plane_chatbot_episode_cozo().await?;
                 Some(
                     self.chatbot_episode_publisher()?
-                        .admit_effect(self, scope.clone())
+                        .admit_chat_effect(self, scope.clone())
                         .await?,
                 )
             } else {
@@ -4646,6 +5660,17 @@ impl MutationEngine {
             };
             let started_at = chrono::Utc::now();
             let started_clock = std::time::Instant::now();
+            self.attach_chat_conversation_turn(
+                &scope,
+                conversation_id.as_deref(),
+                goal_text.as_deref().unwrap_or(""),
+                crate::chat_response_dispatch::RequestEvent {
+                    event_id: change.event_id,
+                    event_hash: change.event_hash.clone(),
+                },
+            )
+            .await
+            .context("human message was not recorded on the conversation")?;
             crate::tched_router_admission::readmit_call(
                 self,
                 &admitted_schema,
@@ -4690,12 +5715,12 @@ impl MutationEngine {
             }
             let provenance = bundle.provenance();
             // The turn itself is session activity for the context engine.
-            if has_memory && let Ok(runtime) = self.cognitive_mcp().await {
+            if has_memory && let Ok(runtime) = self.cognitive().await {
                 runtime
                     .context_engine()
                     .record_activity(
                         &scope.session_id,
-                        op_cognitive_mcp::context_awareness::ActivityType::Query,
+                        op_cognitive::context_awareness::ActivityType::Query,
                         turn_query.clone(),
                         serde_json::json!({ "source": "tched_router.chat", "context": provenance }),
                     )
@@ -4718,11 +5743,7 @@ impl MutationEngine {
                     facade_origin.clone(),
                 )?;
                 crate::control_plane_routing::complete(args, before_prompt, false).await?
-            } else if matches!(
-                route.mode,
-                op_plugins::state_plugins::project::ChatMode::UiRender
-                    | op_plugins::state_plugins::project::ChatMode::Accountability
-            ) {
+            } else {
                 let before_prompt = crate::specialist::generation_admission_with_origin(
                     self,
                     &admitted_schema,
@@ -4739,8 +5760,6 @@ impl MutationEngine {
                     .client
                     .complete_under_guard(args, before_prompt)
                     .await?
-            } else {
-                route.client.chat_under_guard(args).await?
             };
             if let Some(episode_effect) = episode_effect {
                 let mut provenance = provenance;
@@ -4954,7 +5973,7 @@ impl MutationEngine {
         }
     }
 
-    async fn projected_state<T>(&self, plugin_id: &str) -> anyhow::Result<Option<T>>
+    pub(crate) async fn projected_state<T>(&self, plugin_id: &str) -> anyhow::Result<Option<T>>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -5188,6 +6207,7 @@ impl MutationEngine {
             matches!(
                 field,
                 "native_config"
+                    | "catalog_model_binding"
                     | "model_assignments"
                     | "memory_namespaces"
                     | "registration_service"
@@ -5724,7 +6744,7 @@ fn event_to_footprint(event: &ChainEvent) -> PluginFootprint {
 }
 
 /// Flatten a chain event into the plugin-surface record shape.
-fn chain_event_to_record(event: &ChainEvent) -> AuditEventRecord {
+pub(crate) fn chain_event_to_record(event: &ChainEvent) -> AuditEventRecord {
     AuditEventRecord {
         event_id: event.event_id,
         event_hash: event.event_hash.clone(),
@@ -6079,35 +7099,16 @@ mod xray_unavailable_method_tests {
     }
 }
 
-/// Dispatch a `cognitive_mcp` schema method to the cognitive tool registry.
+/// Dispatch a `cognitive` schema method to the cognitive tool registry.
 ///
-/// OSCAL subid: mut.service.cognitive-mcp.dispatch@v1
+/// OSCAL subid: mut.service.cognitive.dispatch@v1
 ///
 /// The runtime is in-process, but this function is reached only after the call has
 /// passed through the canonical `PluginService`/`MutationEngine` method gate.  The
 /// registry is therefore an implementation detail behind D-Bus, not a second
 /// listener or control plane.
 impl MutationEngine {
-    /// Resolve trusted per-tool authority metadata from the live in-process
-    /// registry. MCP callers never provide or override this descriptor.
-    #[allow(dead_code)] // infrastructure for cognitive MCP tool dispatch
-    pub(crate) async fn cognitive_tool_descriptor(
-        &self,
-        tool_name: &str,
-    ) -> anyhow::Result<Option<serde_json::Value>> {
-        let candidate = self
-            .cognitive_mcp()
-            .await?
-            .tool_registry()
-            .get_descriptor(tool_name)
-            .await
-            .map(serde_json::to_value)
-            .transpose()
-            .map_err(anyhow::Error::from)?;
-        Ok(candidate.and_then(project_sealed_cognitive_tool_descriptor))
-    }
-
-    async fn dispatch_cognitive_mcp_method(
+    async fn dispatch_cognitive_method(
         &self,
         caller: crate::specialist::CognitiveCaller<'_>,
         method: &str,
@@ -6115,29 +7116,31 @@ impl MutationEngine {
         admitted_schema: &op_state_store::PluginSchema,
     ) -> anyhow::Result<serde_json::Value> {
         if method == "invoke_tool" {
-            let target = args
+            let requested = args
                 .get("tool_name")
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or_default();
-            if let Some(catalog) =
-                op_plugins::state_plugins::cognitive_agents::method_by_name(target)
-            {
-                let required = catalog
-                    .declaration
+            let mut arguments = args
+                .get("arguments")
+                .cloned()
+                .unwrap_or_else(|| serde_json::json!({}));
+            let target = canonical_generic_cognitive_target(requested, &mut arguments)?;
+            anyhow::ensure!(
+                requested != "cognitive_memory" || admitted_schema.methods.contains_key(target),
+                "generic memory target is absent from the admitted schema"
+            );
+            if let Some(declaration) = admitted_schema.methods.get(target) {
+                let required = declaration
                     .required_capability
                     .as_deref()
-                    .context("agent requires exact capability")?;
+                    .context("target requires exact capability")?;
                 anyhow::ensure!(
                     crate::interceptor::load_capability_grants(caller.actor_id).contains(required),
-                    "generic invocation does not grant the target agent capability"
+                    "generic invocation does not grant the target capability"
                 );
-                let arguments = args
-                    .get("arguments")
-                    .cloned()
-                    .unwrap_or_else(|| serde_json::json!({}));
                 let envelope = self
                     .dispatch_method_call_with_identity(
-                        "cognitive_mcp",
+                        "cognitive",
                         target,
                         &serde_json::to_string(&arguments)?,
                         Some(required),
@@ -6147,7 +7150,7 @@ impl MutationEngine {
                     )
                     .await?;
                 return Ok(
-                    serde_json::json!({"success":true,"tool_name":target,"result":envelope.get("result").unwrap_or(&envelope)}),
+                    serde_json::json!({"success":true,"tool_name":requested,"result":envelope.get("result").unwrap_or(&envelope)}),
                 );
             }
         }
@@ -6187,7 +7190,7 @@ impl MutationEngine {
         // failed on every bridge. Starting the runtime is the health check:
         // it fails exactly when every other cognitive operation would.
         if method == "get_health" {
-            let runtime = self.cognitive_mcp().await?;
+            let runtime = self.cognitive().await?;
             let (remaining, limit) = runtime.quota_manager().status().await;
             return Ok(serde_json::json!({
                 "bridge_owned": true,
@@ -6202,7 +7205,7 @@ impl MutationEngine {
         // `list_tools` is an MCP *protocol* method (`tools/list`), not an entry in the
         // tool registry, so it cannot go through `tools/call`.
         if method == "list_tools" {
-            let runtime = self.cognitive_mcp().await?;
+            let runtime = self.cognitive().await?;
             let descriptors = runtime
                 .tool_registry()
                 .list_descriptors()
@@ -6210,6 +7213,12 @@ impl MutationEngine {
                 .into_iter()
                 .filter_map(|descriptor| serde_json::to_value(descriptor).ok())
                 .filter_map(project_sealed_cognitive_tool_descriptor)
+                .filter_map(|descriptor| {
+                    descriptor
+                        .get("name")
+                        .and_then(|name| name.as_str())
+                        .map(str::to_owned)
+                })
                 .collect::<Vec<_>>();
             return Ok(serde_json::json!({ "tools": descriptors }));
         }
@@ -6255,24 +7264,32 @@ impl MutationEngine {
             .map_err(|error| anyhow::anyhow!("OSCAL subid task failed: {error}"))?;
         }
 
-        // `toolsets` is admitted and audited here exactly once. The bridge
-        // computes the principal/grant-specific projection after this common
-        // MutationEngine boundary; the policy result is never authority.
+        // Admission and the actual policy result share this boundary for every
+        // transport. The stateless selector is never identity/grant authority.
         if method == "toolsets" {
-            return Ok(serde_json::json!({ "admitted": true }));
+            return crate::mcp_frontend::canonical_toolsets_result(self, caller.actor_id, args)
+                .await;
         }
 
         if method == "workflow_query" {
-            return op_plugins::state_plugins::workflows_plugin::dispatch_workflows_method(
+            return crate::workstack_runner::dispatch(
+                self,
                 "query_workflows",
                 args,
+                caller.actor_id,
+                caller.session_id,
+                caller.session_genesis,
             )
             .await;
         }
         if method == "workflow_run" {
-            return op_plugins::state_plugins::workflows_plugin::dispatch_workflows_method(
+            return crate::workstack_runner::dispatch(
+                self,
                 "start_workflow",
                 args,
+                caller.actor_id,
+                caller.session_id,
+                caller.session_genesis,
             )
             .await;
         }
@@ -6313,7 +7330,7 @@ impl MutationEngine {
             None
         };
         let (tool_name, tool_args) = map_schema_method_to_tool(method, &bound_args)?;
-        let runtime = self.cognitive_mcp().await?;
+        let runtime = self.cognitive().await?;
         let input = simd_json::serde::to_owned_value(&tool_args)?;
         let result = runtime.tool_registry().execute(&tool_name, input).await?;
         let mut value = serde_json::to_value(result)?;
@@ -6336,9 +7353,9 @@ impl MutationEngine {
                 .and_then(|v| v.as_bool())
                 .unwrap_or(true);
             let activity = match (success, operation) {
-                (false, "test") => op_cognitive_mcp::context_awareness::ActivityType::TestFailure,
-                (false, _) => op_cognitive_mcp::context_awareness::ActivityType::BuildError,
-                (true, _) => op_cognitive_mcp::context_awareness::ActivityType::ToolCall,
+                (false, "test") => op_cognitive::context_awareness::ActivityType::TestFailure,
+                (false, _) => op_cognitive::context_awareness::ActivityType::BuildError,
+                (true, _) => op_cognitive::context_awareness::ActivityType::ToolCall,
             };
             let data = value
                 .get("data")
@@ -6362,16 +7379,50 @@ impl MutationEngine {
                 )
                 .await;
         }
+        if method == "invoke_tool" {
+            return Ok(serde_json::json!({
+                "success": true,
+                "tool_name": args.get("tool_name").and_then(|name| name.as_str()).unwrap_or_default(),
+                "result": value
+            }));
+        }
         Ok(value)
     }
 }
 
+/// Normalize implementation-only memory operations into admitted public methods.
+fn canonical_generic_cognitive_target<'a>(
+    requested: &'a str,
+    arguments: &mut serde_json::Value,
+) -> anyhow::Result<&'a str> {
+    anyhow::ensure!(
+        requested != "invoke_tool",
+        "recursive generic invocation is forbidden"
+    );
+    if requested != "cognitive_memory" {
+        return Ok(requested);
+    }
+    let operation = arguments
+        .get("operation")
+        .and_then(|v| v.as_str())
+        .context("generic memory invocation requires operation")?;
+    let target = match operation {
+        "store" => "memory_store",
+        "retrieve" => "memory_retrieve",
+        "query" => "memory_query",
+        "semantic_query" => "memory_semantic_query",
+        "delete" => "memory_delete",
+        "list_namespaces" => "memory_list_namespaces",
+        _ => anyhow::bail!("generic memory operation has no admitted public method"),
+    };
+    if let Some(object) = arguments.as_object_mut() {
+        object.remove("operation");
+    }
+    Ok(target)
+}
+
 /// Project a runtime tool candidate through the sealed cognitive PluginSchema.
-///
-/// A tool is callable only when its public name is itself a declared schema
-/// method and its implementation candidates exactly match that method's
-/// capability and OSCAL subid. Dynamic, multiplexed, and implementation-only
-/// tools therefore remain registered for internal use but fail closed at MCP.
+/// Implementation-only tools remain internal unless their exact authority matches.
 fn project_sealed_cognitive_tool_descriptor(
     mut candidate: serde_json::Value,
 ) -> Option<serde_json::Value> {
@@ -6390,7 +7441,7 @@ fn project_sealed_cognitive_tool_descriptor(
             .insert("authority_method".into(), name.into());
         return Some(candidate);
     }
-    let schema = op_plugins::cognitive_mcp_plugin_schema();
+    let schema = op_plugins::cognitive_plugin_schema();
     let method = schema.methods.get(&name)?;
     let sealed_capability = method.required_capability.as_deref()?;
     if candidate_capability != sealed_capability || candidate_subid != method.subid {
@@ -6415,7 +7466,7 @@ fn project_sealed_cognitive_tool_descriptor(
     Some(candidate)
 }
 
-/// Translate a `cognitive_mcp` schema method name into a live tool-registry call.
+/// Translate a `cognitive` schema method name into a live tool-registry call.
 ///
 /// The schema method names do not map one-to-one onto registry tool names: the
 /// registry exposes a single `cognitive_memory` tool selected by an `operation`
@@ -6471,17 +7522,7 @@ fn map_schema_method_to_tool(
         "code_search" => Ok(("code_search".into(), base)),
         "code_index" => Ok(("code_index".into(), base)),
         "code_context" => Ok(("code_context".into(), base)),
-        // Gemini question answering: the tool names the field `question`.
-        "gemini_query" => {
-            let mut v = base.clone();
-            if let Some(obj) = v.as_object_mut()
-                && let Some(q) = obj.remove("query")
-            {
-                obj.insert("question".to_string(), q);
-            }
-            Ok(("ask_question".into(), v))
-        }
-        "register_tool" => Ok(("register_tool".into(), base)),
+        "gemini_query" => Ok(("gemini_query".into(), base)),
         // Generic door: the caller names the tool.
         "invoke_tool" => {
             let tool_name = args
@@ -6501,7 +7542,7 @@ fn map_schema_method_to_tool(
             Ok((tool_name, tool_args))
         }
         other => Err(anyhow::anyhow!(
-            "cognitive_mcp method '{other}' has no tool-registry mapping"
+            "cognitive method '{other}' has no tool-registry mapping"
         )),
     }
 }
@@ -6511,22 +7552,87 @@ mod cognitive_dispatch_tests {
     use super::{map_schema_method_to_tool, project_sealed_cognitive_tool_descriptor};
 
     #[test]
+    fn generic_memory_routes_through_public_methods_and_rejects_unbound_operations() {
+        for (operation, target) in [
+            ("store", "memory_store"),
+            ("delete", "memory_delete"),
+            ("query", "memory_query"),
+            ("semantic_query", "memory_semantic_query"),
+            ("retrieve", "memory_retrieve"),
+            ("list_namespaces", "memory_list_namespaces"),
+        ] {
+            let mut args = serde_json::json!({"operation":operation,"key":"k"});
+            assert_eq!(
+                super::canonical_generic_cognitive_target("cognitive_memory", &mut args).unwrap(),
+                target
+            );
+            assert!(args.get("operation").is_none());
+        }
+        for operation in ["ensure_soul", "stats", "unknown"] {
+            assert!(
+                super::canonical_generic_cognitive_target(
+                    "cognitive_memory",
+                    &mut serde_json::json!({"operation":operation})
+                )
+                .is_err()
+            );
+        }
+        assert!(
+            super::canonical_generic_cognitive_target("invoke_tool", &mut serde_json::json!({}))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn cognitive_discovery_contracts_reject_admission_placeholders_and_descriptor_objects() {
+        let schema = op_plugins::cognitive_plugin_schema();
+        let validate = crate::method_contract_admission::validate_admitted_output;
+        assert!(
+            validate(
+                &schema.methods["toolsets"],
+                &serde_json::json!({"admitted":true})
+            )
+            .is_err()
+        );
+        assert!(
+            validate(
+                &schema.methods["list_tools"],
+                &serde_json::json!({"tools":[{"name":"gemini_query"}]})
+            )
+            .is_err()
+        );
+        validate(
+            &schema.methods["list_tools"],
+            &serde_json::json!({"tools":["gemini_query"]}),
+        )
+        .unwrap();
+        validate(
+            &schema.methods["toolsets"],
+            &serde_json::json!({
+                "operation":"list", "toolset_generation":1, "relist_required":false,
+                "result":{"sets":[]}
+            }),
+        )
+        .unwrap();
+    }
+
+    #[test]
     fn tool_authority_is_projected_only_from_an_exact_sealed_method() {
         let projected = project_sealed_cognitive_tool_descriptor(serde_json::json!({
             "name": "code_search",
-            "required_capability": "cognitive_mcp.read",
+            "required_capability": "cognitive.read",
             "subid": "obs.service.code-rag.search@v1",
             "input_schema": {"type": "object"}
         }))
         .expect("code_search has an exact sealed MethodDecl");
         assert_eq!(projected["authority_method"], "code_search");
-        assert_eq!(projected["required_capability"], "cognitive_mcp.read");
+        assert_eq!(projected["required_capability"], "cognitive.read");
 
         assert!(
             project_sealed_cognitive_tool_descriptor(serde_json::json!({
                 "name": "search_blob_vectors",
-                "required_capability": "cognitive_mcp.read",
-                "subid": "obs.service.cognitive-mcp.blob-vectors.search@v1",
+                "required_capability": "cognitive.read",
+                "subid": "obs.service.cognitive.blob-vectors.search@v1",
                 "input_schema": {"type": "object"}
             }))
             .is_none()
@@ -6534,7 +7640,7 @@ mod cognitive_dispatch_tests {
         assert!(
             project_sealed_cognitive_tool_descriptor(serde_json::json!({
                 "name": "code_index",
-                "required_capability": "cognitive_mcp.read",
+                "required_capability": "cognitive.read",
                 "subid": "mut.service.code-rag.index@v1",
                 "input_schema": {"type": "object"}
             }))
@@ -6664,6 +7770,19 @@ mod private_method_audit_tests {
     use super::audit_method_arguments;
 
     #[test]
+    fn elevation_audit_contains_no_password_verifier() {
+        let first = r#"{"plugin":"tched_router","method":"config_set","args":{"path":"agents.control_plane.model_provider","value":"custom.route"},"password":"first-password"}"#;
+        let second = first.replace("first-password", "different-password");
+        let audit = audit_method_arguments("elevation", "authorize_task", first, None);
+        assert_eq!(
+            audit,
+            audit_method_arguments("elevation", "authorize_task", &second, None)
+        );
+        assert_eq!(audit, r#"{"arguments_redacted":true}"#);
+        assert!(!audit.contains("request_hash"));
+    }
+
+    #[test]
     fn nested_embedding_text_and_mcp_credentials_are_digest_only() {
         for (plugin, method, input) in [
             (
@@ -6677,14 +7796,19 @@ mod private_method_audit_tests {
                 r#"{"operations":[{"value":"private credential"}]}"#,
             ),
             (
-                "cognitive_mcp",
+                "cognitive",
                 "agent_backend_architect_consult",
                 r#"{"question":"private code"}"#,
             ),
             ("persona", "execute", r#"{"query":"private code"}"#),
+            (
+                "workflows",
+                "start_workflow",
+                r#"{"workflow_id":"deploy","params":{"steps":["agent.operation|{private credentials}"]}}"#,
+            ),
             ("tched_router", "Chat", r#"{"message":"private message"}"#),
         ] {
-            let audit = audit_method_arguments(plugin, method, input);
+            let audit = audit_method_arguments(plugin, method, input, None);
             assert!(audit.contains("arguments_redacted"));
             assert!(audit.contains("request_hash"));
             assert!(!audit.contains("private"));
@@ -6694,21 +7818,47 @@ mod private_method_audit_tests {
     #[test]
     fn chatbot_reasoning_arguments_are_digest_only() {
         let private = r#"{"episode":{"reasoning_summary":"never-in-audit","goal_text":"secret"}}"#;
-        let audit = audit_method_arguments("ctl_plane_chatbot", "classify_significance", private);
+        let audit =
+            audit_method_arguments("ctl_plane_chatbot", "classify_significance", private, None);
         assert!(audit.contains("arguments_redacted"));
         assert!(audit.contains("request_hash"));
         assert!(!audit.contains("never-in-audit"));
         assert!(!audit.contains("secret"));
         assert_eq!(
             audit,
-            audit_method_arguments("ctl_plane_chatbot", "set_config", private)
+            audit_method_arguments("ctl_plane_chatbot", "set_config", private, None)
         );
     }
 
     #[test]
     fn ordinary_public_arguments_remain_auditable() {
         let input = r#"{"selector":"public"}"#;
-        assert_eq!(audit_method_arguments("procfs", "get_memory", input), input);
+        assert_eq!(
+            audit_method_arguments("procfs", "get_memory", input, None),
+            input
+        );
+    }
+
+    #[test]
+    fn schema_private_fields_become_blake3_digests_in_audit() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "outcome": {"type": "string"},
+                "goal_text": {"type": "string", "x-opdbus-private": true}
+            }
+        });
+        let input = r#"{"outcome":"ok","goal_text":"secret prompt"}"#;
+        let audit = audit_method_arguments(
+            "ctl_plane_chatbot",
+            "classify_significance",
+            input,
+            Some(&schema),
+        );
+        assert!(audit.contains("\"outcome\":\"ok\""));
+        assert!(audit.contains("blake3:"));
+        assert!(!audit.contains("secret prompt"));
+        assert!(!audit.contains("arguments_redacted"));
     }
 }
 
@@ -6758,5 +7908,48 @@ mod identity_redaction_tests {
         assert!(encoded.contains("session_id"));
         assert!(encoded.contains("keep"));
         assert_eq!(public_plugin_value("another_plugin", &state), state);
+    }
+}
+
+#[cfg(test)]
+mod own_route_context_tests {
+    use super::ensure_own_route_context_unchanged;
+    use op_plugins::state_plugins::project::{ChatMode, ResolvedChatContext};
+
+    fn context() -> ResolvedChatContext {
+        ResolvedChatContext {
+            mode: ChatMode::ControlPlane,
+            session_id: "own-session".into(),
+            project_id: None,
+            memory_namespace: "session/own-session/control_plane".into(),
+            read_only: false,
+            effective_capabilities: ["chat.control_plane".to_owned()].into_iter().collect(),
+            allowed_agents: Default::default(),
+            selected_agent: None,
+        }
+    }
+
+    #[test]
+    fn own_route_context_rechecks_session_mode_and_revoked_context_grants() {
+        let before = context();
+        assert!(ensure_own_route_context_unchanged(&before, &context()).is_ok());
+        let mut after = context();
+        after.mode = ChatMode::Personal;
+        assert!(ensure_own_route_context_unchanged(&before, &after).is_err());
+        let mut after = context();
+        after.session_id = "foreign-session".into();
+        assert!(ensure_own_route_context_unchanged(&before, &after).is_err());
+        let mut after = context();
+        after.effective_capabilities.clear();
+        assert!(ensure_own_route_context_unchanged(&before, &after).is_err());
+    }
+
+    #[test]
+    fn bound_oracle_result_redaction_withholds_authored_credentials_recursively() {
+        let mut result = serde_json::json!({"identity":{"sealed_id":"sid1:private", "session_id":"own"},
+            "nested":[{"sealed_id":"sid1:other"}]});
+        super::redact_identity_credentials_json(&mut result);
+        assert!(!result.to_string().contains("sid1:"));
+        assert_eq!(result["identity"]["session_id"], "own");
     }
 }

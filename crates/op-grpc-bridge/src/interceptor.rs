@@ -17,10 +17,134 @@ use tonic::{Request, Status};
 use crate::mutation_engine::MutationEngine;
 use crate::oracle_assertion::{AssertionRejection, AssertionValidator, HumanPrincipalIdentity};
 
+#[path = "bound_state_subscription.rs"]
+pub(crate) mod state_subscription;
+
 /// gRPC metadata key for the optional oracle identity assertion (OIA1 wire bytes).
 pub const ASSERTION_METADATA_KEY: &str = "x-oracle-identity-assertion-bin";
 /// gRPC metadata key for MutationEngine-authored SID1 (local identity).
 pub const SEALED_ID_METADATA_KEY: &str = op_identity::sealed_id::HTTP_HEADER_NAME;
+pub const IDENTITY_MODE_HEADER: &str = "x-opdbus-identity-mode";
+pub const IDENTITY_SESSION_HEADER: &str = "x-opdbus-identity-session";
+
+/// Captured from the actual HTTP request URI before tonic removes it. This
+/// extension is never reconstructed from client metadata or plugin arguments.
+#[derive(Clone, Debug)]
+pub(crate) struct ReceiverRpcPath(String);
+
+impl ReceiverRpcPath {
+    pub(crate) fn from_http_path(path: &str) -> Self {
+        Self(path.to_owned())
+    }
+    pub(crate) fn is_canonical_method(&self) -> bool {
+        crate::grpc_server::is_canonical_method_path(&self.0)
+    }
+
+    pub(crate) fn is_state_subscription(&self) -> bool {
+        self.0 == "/operation.v1.StateSync/Subscribe"
+    }
+}
+
+/// Validate the assigned target through the same canonical SID1 receiver used
+/// by ordinary clients. The authored credential remains inside the receiver.
+pub(crate) async fn validate_bound_oracle(
+    engine: &MutationEngine,
+    proof: &crate::oracle_assertion::BoundOracleProof,
+    require_unexpired_assertion: bool,
+) -> anyhow::Result<(HumanPrincipalIdentity, String)> {
+    if require_unexpired_assertion {
+        anyhow::ensure!(
+            proof.is_current(chrono::Utc::now().timestamp()),
+            "bound oracle expired"
+        );
+    }
+    let source = crate::human_principal_dispatch::resolve_key_for_assertion(proof.peer_key())
+        .await
+        .map_err(|_| anyhow::anyhow!("bound oracle peer registry unavailable"))?;
+    anyhow::ensure!(
+        source.is_none_or(|record| record.revoked_at == 0),
+        "bound oracle peer revoked"
+    );
+    let binding = proof.binding();
+    let record = crate::identity_sled_dispatch::stored_session(engine, &binding.session_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("assigned identity unavailable"))?;
+    let inline = record
+        .sealed_id
+        .as_deref()
+        .ok_or_else(|| anyhow::anyhow!("assigned authored identity unavailable"))?;
+    let encoded = inline
+        .strip_prefix(op_identity::sealed_id::INLINE_PREFIX)
+        .ok_or_else(|| anyhow::anyhow!("assigned authored identity invalid"))?;
+    let wire = base64::Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, encoded)
+        .map_err(|_| anyhow::anyhow!("assigned authored identity invalid"))?;
+    let claims = crate::identity_sled_dispatch::authenticate_sid1_wire(engine, &wire, "grpc")
+        .await
+        .map_err(|_| anyhow::anyhow!("assigned authored identity rejected"))?;
+    let target =
+        crate::human_principal_dispatch::resolve_key_for_assertion(&claims.wireguard_pubkey)
+            .await
+            .map_err(|_| anyhow::anyhow!("assigned principal registry unavailable"))?
+            .ok_or_else(|| anyhow::anyhow!("assigned principal unavailable"))?;
+    anyhow::ensure!(
+        target.revoked_at == 0
+            && target.principal_id == binding.principal_id
+            && claims.principal_id == binding.principal_id
+            && claims.session_id == binding.session_id,
+        "assigned principal binding rejected"
+    );
+    let digest = crate::mutation_engine::sealed_id_digest(Some(inline))
+        .ok_or_else(|| anyhow::anyhow!("assigned identity commitment unavailable"))?;
+    Ok((
+        HumanPrincipalIdentity {
+            principal_id: claims.principal_id,
+            human_pubkey: claims.wireguard_pubkey,
+            session_id: claims.session_id,
+            expires_at: claims.expires_at,
+            session_genesis: claims.session_genesis,
+        },
+        digest,
+    ))
+}
+
+pub(crate) async fn revalidate_bound_oracle(
+    engine: &MutationEngine,
+    proof: &crate::oracle_assertion::BoundOracleProof,
+    actor: &str,
+    session: Option<&str>,
+    genesis: Option<&str>,
+    require_unexpired_assertion: bool,
+) -> anyhow::Result<()> {
+    let (identity, digest) =
+        validate_bound_oracle(engine, proof, require_unexpired_assertion).await?;
+    anyhow::ensure!(
+        identity.principal_id == actor
+            && session == Some(identity.session_id.as_str())
+            && genesis == Some(identity.session_genesis.as_str())
+            && proof.credential_matches(&digest),
+        "assigned identity changed after admission"
+    );
+    Ok(())
+}
+
+#[allow(clippy::result_large_err)]
+pub(crate) fn mark_bound_oracle_response<T>(
+    response: &mut tonic::Response<T>,
+    proof: Option<&crate::oracle_assertion::BoundOracleProof>,
+) -> Result<(), Status> {
+    if let Some(proof) = proof {
+        response.metadata_mut().insert(
+            IDENTITY_MODE_HEADER,
+            tonic::metadata::MetadataValue::from_static("bound-oracle"),
+        );
+        response.metadata_mut().insert(
+            IDENTITY_SESSION_HEADER,
+            tonic::metadata::MetadataValue::try_from(proof.binding().session_id.as_str())
+                .map_err(|_| Status::internal("assigned identity marker invalid"))?,
+        );
+    }
+    Ok(())
+}
 
 /// Identity extracted by the Ghostbridge interceptor and attached to each
 /// accepted request for bridge-layer authorization.
@@ -345,6 +469,18 @@ fn ghostbridge_interceptor_with_validator(
     validator: &AssertionValidator,
     mut req: Request<()>,
 ) -> Result<Request<()>, Status> {
+    if [
+        IDENTITY_MODE_HEADER,
+        IDENTITY_SESSION_HEADER,
+        "x-opdbus-verified-transport",
+    ]
+    .iter()
+    .any(|header| req.metadata().contains_key(*header))
+    {
+        return Err(Status::unauthenticated(
+            "receiver identity metadata cannot be supplied",
+        ));
+    }
     let assertion = read_assertion_wire(&req)?;
     let sealed = read_sealed_id_wire(&req)?;
     match (assertion.as_deref(), sealed.as_deref()) {
@@ -381,6 +517,64 @@ fn ghostbridge_interceptor_with_validator(
         .map_err(Status::from)?;
     let engine =
         engine_handle().ok_or_else(|| Status::internal("MutationEngine Memory Unreachable"))?;
+    if let Some(mut proof) = pending.bound_oracle().cloned() {
+        let path = req.extensions().get::<ReceiverRpcPath>().ok_or_else(|| {
+            Status::unauthenticated("Assigned browser identity requires a canonical method RPC")
+        })?;
+        if !path.is_canonical_method() && !path.is_state_subscription() {
+            return Err(Status::unauthenticated(
+                "Assigned browser identity requires a canonical method RPC or StateSync Subscribe",
+            ));
+        }
+        let (identity, digest) = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(validate_bound_oracle(
+                engine.as_ref(),
+                &proof,
+                true,
+            ))
+        })
+        .map_err(|_| Status::unauthenticated("Assigned browser identity unavailable"))?;
+        let consumed = validator.consume_pending(pending).map_err(Status::from)?;
+        // AnnaScribe gates the arrival: the key the decoy signed, the key this
+        // receiver consumed and the key sealed in the credential must be one
+        // key. This replaces a `debug_assert_eq!` that compared two of the
+        // three and was compiled out of release builds.
+        let verdict = crate::anna_scribe::verify_arrival(crate::anna_scribe::ArrivalFacts {
+            assertion_peer_key: proof.peer_key(),
+            assertion_principal_id: &proof.binding().principal_id,
+            assertion_session_id: &proof.binding().session_id,
+            consumed_peer_key: &consumed.human_pubkey,
+            credential_peer_key: &identity.human_pubkey,
+            credential_principal_id: &identity.principal_id,
+            credential_session_id: &identity.session_id,
+            credential_digest: &digest,
+        })
+        .map_err(|rejection| {
+            tracing::warn!(
+                verifier = %crate::anna_scribe::ANNA_SCRIBE_PRINCIPAL_ID,
+                peer_key = %proof.peer_key(),
+                %rejection,
+                "AnnaScribe refused an arrival"
+            );
+            Status::unauthenticated("Assigned browser identity rejected")
+        })?;
+        // Bind the proof to the digest the gate accepted, not to one derived
+        // from whatever the request happened to carry.
+        proof.bind_credential(verdict.credential_digest().to_string());
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(engine.register_session_context(
+                crate::mutation_engine::SessionContext {
+                    genesis_hex: identity.session_genesis.clone(),
+                    session_id: identity.session_id.clone(),
+                    wireguard_pubkey: identity.human_pubkey.clone(),
+                    sealed_id_digest: Some(digest),
+                },
+            ))
+        });
+        req.extensions_mut().insert(identity);
+        req.extensions_mut().insert(proof);
+        return Ok(req);
+    }
     let session = tokio::task::block_in_place(|| {
         tokio::runtime::Handle::current().block_on(anchor_verified_human_session(
             engine.as_ref(),
@@ -683,6 +877,195 @@ pub(crate) mod tests {
         shm
     }
 
+    #[tokio::test(flavor = "multi_thread")]
+    async fn browser_binding_selects_authored_target_without_anchor_or_credential_export() {
+        let _cozo = temp_cozo();
+        let (engine, _shm) = sled_engine();
+        let peer = pk(111);
+        let target_key = pk(112);
+        let target_session = op_identity::session::derive_session_id(&target_key);
+        let target_principal = op_identity::session::derive_principal_id(&target_key);
+        let issuer = test_issuer();
+        let validator = AssertionValidator::new(trust_store_for_issuer(&issuer))
+            .with_browser_binding(&peer, &target_principal, &target_session);
+        let signed = fresh_signed(&issuer, &peer, [111; 16]);
+        let pending = validator
+            .validate_pending_with_bootstrap(
+                &signed.to_wire(),
+                Some(source_at(test_ip())),
+                chrono::Utc::now().timestamp(),
+                false,
+            )
+            .unwrap();
+        assert!(
+            validate_bound_oracle(&engine, pending.bound_oracle().unwrap(), true)
+                .await
+                .is_err(),
+            "an assignment cannot synthesize a missing target"
+        );
+        register(&target_key, "assigned-target").await.unwrap();
+        write_identity(&engine, &target_key).await.unwrap();
+        let before = crate::identity_sled_dispatch::stored_session(&engine, &target_session)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(before.principal_kind.as_deref(), Some("human"));
+        set_engine(engine.clone());
+        let mut req = request_with_connect_info(test_ip());
+        req.extensions_mut().insert(ReceiverRpcPath::from_http_path(
+            "/operation.v1.PluginService/CallMethod",
+        ));
+        insert_assertion_metadata(&mut req, &signed.to_wire());
+        let accepted = ghostbridge_interceptor_with_validator(&validator, req).unwrap();
+        let identity = bridge_capability_identity(accepted.extensions()).unwrap();
+        assert_eq!(identity.principal_id, target_principal);
+        assert_eq!(identity.session_id, target_session);
+        assert!(read_sealed_id_wire(&accepted).unwrap().is_none());
+        let proof = accepted
+            .extensions()
+            .get::<crate::oracle_assertion::BoundOracleProof>()
+            .unwrap();
+        let mut response = tonic::Response::new(());
+        mark_bound_oracle_response(&mut response, Some(proof)).unwrap();
+        assert_eq!(
+            response.metadata().get(IDENTITY_MODE_HEADER).unwrap(),
+            "bound-oracle"
+        );
+        assert_eq!(
+            response
+                .metadata()
+                .get(IDENTITY_SESSION_HEADER)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            target_session
+        );
+        assert!(!format!("{:?}", response.metadata()).contains("sid1:"));
+        let after = crate::identity_sled_dispatch::stored_session(&engine, &target_session)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(before).unwrap(),
+            serde_json::to_value(after).unwrap()
+        );
+        let mut expired = proof.clone();
+        expired.expire_for_test();
+        assert!(
+            revalidate_bound_oracle(
+                &engine,
+                &expired,
+                &identity.principal_id,
+                Some(&identity.session_id),
+                Some(&identity.session_genesis),
+                true
+            )
+            .await
+            .is_err()
+        );
+        assert!(
+            revalidate_bound_oracle(
+                &engine,
+                &expired,
+                &identity.principal_id,
+                Some(&identity.session_id),
+                Some(&identity.session_genesis),
+                false
+            )
+            .await
+            .is_ok(),
+            "accepted bounded inference may finish after the admission proof term"
+        );
+        assert!(
+            revalidate_bound_oracle(
+                &engine,
+                proof,
+                &identity.principal_id,
+                Some("different-session"),
+                Some(&identity.session_genesis),
+                false
+            )
+            .await
+            .is_err()
+        );
+        register(&peer, "assigned-source").await.unwrap();
+        crate::human_principal_dispatch::tests::revoke(&peer)
+            .await
+            .unwrap();
+        assert!(
+            revalidate_bound_oracle(
+                &engine,
+                proof,
+                &identity.principal_id,
+                Some(&identity.session_id),
+                Some(&identity.session_genesis),
+                false
+            )
+            .await
+            .is_err(),
+            "source revocation still denies an accepted operation's response"
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn browser_binding_rejects_spoofed_marker_nonmethod_and_revoked_target() {
+        let _cozo = temp_cozo();
+        let (engine, _shm) = sled_engine();
+        let issuer = test_issuer();
+        let peer = pk(113);
+        let key = pk(114);
+        let session = op_identity::session::derive_session_id(&key);
+        let principal = op_identity::session::derive_principal_id(&key);
+        let validator = AssertionValidator::new(trust_store_for_issuer(&issuer))
+            .with_browser_binding(&peer, &principal, &session);
+        for header in [
+            IDENTITY_MODE_HEADER,
+            IDENTITY_SESSION_HEADER,
+            "x-opdbus-verified-transport",
+        ] {
+            let mut req = Request::new(());
+            req.metadata_mut()
+                .insert(header, MetadataValue::from_static("spoof"));
+            assert!(
+                ghostbridge_interceptor_with_validator(&validator, req)
+                    .unwrap_err()
+                    .message()
+                    .contains("cannot be supplied")
+            );
+        }
+        set_engine(engine.clone());
+        let signed = fresh_signed(&issuer, &peer, [113; 16]);
+        let mut req = request_with_connect_info(test_ip());
+        req.extensions_mut().insert(ReceiverRpcPath::from_http_path(
+            "/operation.v1.StateSync/Mutate",
+        ));
+        insert_assertion_metadata(&mut req, &signed.to_wire());
+        assert!(
+            ghostbridge_interceptor_with_validator(&validator, req)
+                .unwrap_err()
+                .message()
+                .contains("canonical method RPC")
+        );
+        register(&key, "revoked-target").await.unwrap();
+        write_identity(&engine, &key).await.unwrap();
+        crate::human_principal_dispatch::tests::revoke(&key)
+            .await
+            .unwrap();
+        let pending = validator
+            .validate_pending_with_bootstrap(
+                &signed.to_wire(),
+                Some(source_at(test_ip())),
+                chrono::Utc::now().timestamp(),
+                false,
+            )
+            .unwrap();
+        assert!(
+            validate_bound_oracle(&engine, pending.bound_oracle().unwrap(), true)
+                .await
+                .is_err()
+        );
+    }
+
     #[test]
     fn test_rejects_missing_genesis_header() {
         let req = Request::new(());
@@ -695,6 +1078,134 @@ pub(crate) mod tests {
                 .message()
                 .contains("Missing Ghostbridge session identity")
         );
+    }
+
+    #[test]
+    fn browser_binding_state_subscription_path_is_exact_and_read_only() {
+        assert!(
+            ReceiverRpcPath::from_http_path("/operation.v1.StateSync/Subscribe")
+                .is_state_subscription()
+        );
+        for path in [
+            "/operation.v1.StateSync/Mutate",
+            "/operation.v1.StateSync/GetState",
+            "/operation.v1.StateSync/BatchMutate",
+            "/operation.v1.StateSync/Subscribe/extra",
+            "/operation.v1.StateSync/subscribe",
+            "/operation.v1.PluginService/SubscribeSignals",
+        ] {
+            assert!(!ReceiverRpcPath::from_http_path(path).is_state_subscription());
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn browser_binding_state_subscription_marks_response_and_stops_on_revocation() {
+        use state_subscription::StateSubscriptionBinding;
+        use tokio_stream::StreamExt;
+
+        for revoke_peer in [true, false] {
+            let _cozo = temp_cozo();
+            let (engine, _shm) = sled_engine();
+            let peer = pk(115);
+            let target = pk(116);
+            let session = op_identity::session::derive_session_id(&target);
+            let principal = op_identity::session::derive_principal_id(&target);
+            register(&peer, "subscription-source").await.unwrap();
+            register(&target, "subscription-target").await.unwrap();
+            write_identity(&engine, &target).await.unwrap();
+            set_engine(engine.clone());
+            let issuer = test_issuer();
+            let validator = AssertionValidator::new(trust_store_for_issuer(&issuer))
+                .with_browser_binding(&peer, &principal, &session);
+            let signed = fresh_signed(&issuer, &peer, [115; 16]);
+            let make_request = || {
+                let mut request = request_with_connect_info(test_ip());
+                request.extensions_mut().insert(ReceiverRpcPath::from_http_path(
+                    "/operation.v1.StateSync/Subscribe",
+                ));
+                insert_assertion_metadata(&mut request, &signed.to_wire());
+                request
+            };
+            let request = ghostbridge_interceptor_with_validator(&validator, make_request())
+                .expect("assigned browser may subscribe through the existing door");
+            assert!(
+                ghostbridge_interceptor_with_validator(&validator, make_request()).is_err(),
+                "the subscription consumed its single-use proof"
+            );
+            let identity = request
+                .extensions()
+                .get::<HumanPrincipalIdentity>()
+                .unwrap()
+                .clone();
+            let binding = StateSubscriptionBinding::new(engine, &request, identity);
+            let response = binding
+                .response(Box::pin(tokio_stream::iter([
+                    Ok(crate::proto::StateChange::default()),
+                    Ok(crate::proto::StateChange::default()),
+                ])))
+                .await
+                .unwrap();
+            assert_eq!(
+                response.metadata().get(IDENTITY_MODE_HEADER).unwrap(),
+                "bound-oracle"
+            );
+            assert_eq!(
+                response
+                    .metadata()
+                    .get(IDENTITY_SESSION_HEADER)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+                session
+            );
+            assert!(!response.metadata().contains_key(SEALED_ID_METADATA_KEY));
+            let mut stream = response.into_inner();
+            assert!(stream.next().await.unwrap().is_ok());
+            crate::human_principal_dispatch::tests::revoke(if revoke_peer { &peer } else { &target })
+                .await
+                .unwrap();
+            let error = stream.next().await.unwrap().unwrap_err();
+            assert_eq!(error.code(), Code::Unauthenticated);
+            assert_eq!(error.message(), "Assigned browser identity changed");
+            assert!(stream.next().await.is_none());
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn browser_binding_state_subscription_expiry_requires_a_fresh_assertion() {
+        let _cozo = temp_cozo();
+        let (engine, _shm) = sled_engine();
+        let peer = pk(117);
+        let target = pk(118);
+        let session = op_identity::session::derive_session_id(&target);
+        let principal = op_identity::session::derive_principal_id(&target);
+        register(&target, "subscription-expiry-target").await.unwrap();
+        write_identity(&engine, &target).await.unwrap();
+        let issuer = test_issuer();
+        let validator = AssertionValidator::new(trust_store_for_issuer(&issuer))
+            .with_browser_binding(&peer, &principal, &session);
+        let signed = fresh_signed(&issuer, &peer, [117; 16]);
+        let pending = validator
+            .validate_pending_with_bootstrap(
+                &signed.to_wire(),
+                Some(source_at(test_ip())),
+                chrono::Utc::now().timestamp(),
+                false,
+            )
+            .unwrap();
+        let mut proof = pending.bound_oracle().unwrap().clone();
+        let (identity, digest) = validate_bound_oracle(&engine, &proof, true).await.unwrap();
+        proof.bind_credential(digest);
+        proof.expire_for_test();
+        let mut request = Request::new(());
+        request.extensions_mut().insert(proof);
+        let error = state_subscription::StateSubscriptionBinding::new(engine, &request, identity)
+            .response(Box::pin(tokio_stream::empty()))
+            .await
+            .err()
+            .expect("expired subscription");
+        assert_eq!(error.code(), Code::Unauthenticated);
+        assert_eq!(error.message(), "Expired");
     }
 
     #[test]
@@ -1214,11 +1725,123 @@ pub(crate) mod tests {
     }
 }
 
+/// Closed grant groups. A principal belongs to zero or more of these and
+/// inherits their capabilities. The names are not caller ids.
+pub const GRANT_GROUPS: &[&str] = &[
+    "$ROOT",
+    "$ADMIN",
+    "$SUPERADMIN",
+    "$EXTERNAL-MCP",
+    "$VENDOR",
+    "$GUEST",
+    "$AGENT-L1",
+    "$AGENT-L2",
+    "$AGENT-L3",
+    "$AGENT-L4",
+];
+
+fn legacy_footprint_key(key: &str) -> bool {
+    key.len() == 64 && key.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn grant_document_rejected(keys: impl Iterator<Item = impl AsRef<str>>) -> bool {
+    keys.into_iter().any(|key| {
+        let key = key.as_ref();
+        key == "*"
+            || legacy_footprint_key(key)
+            || (key.starts_with('$') && !GRANT_GROUPS.contains(&key))
+    })
+}
+
+/// Validate a durable grant document.
+///
+/// Principal entries keep an exact id and a `capabilities` array. Optional
+/// `groups` names must be members of [`GRANT_GROUPS`] and must exist as
+/// entries in the same document. A `*` key, a legacy 64-hex footprint key, or
+/// an unknown `$` name rejects the document.
+pub fn validate_grant_document(bytes: &[u8]) -> Result<(), String> {
+    let document: serde_json::Value =
+        serde_json::from_slice(bytes).map_err(|error| format!("grant document is not JSON: {error}"))?;
+    validated_grant_entries(&document).map(|_| ())
+}
+
+/// Share the complete document contract between publication and every reader.
+/// Runtime expansion must not salvage authority from a document the materializer
+/// would reject, including malformed entries for other principals or groups.
+fn validated_grant_entries(
+    document: &serde_json::Value,
+) -> Result<&serde_json::Map<String, serde_json::Value>, String> {
+    let entries = document
+        .as_object()
+        .ok_or_else(|| "grant document must be a JSON object keyed by principal_id or group".to_string())?;
+    if grant_document_rejected(entries.keys()) {
+        return Err(
+            "prohibited wildcard, legacy footprint, or unknown group key".to_string(),
+        );
+    }
+    for (key, entry) in entries {
+        let entry = entry
+            .as_object()
+            .ok_or_else(|| format!("grant entry for {key} must be an object"))?;
+        let capabilities = entry
+            .get("capabilities")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| format!("grant entry for {key} must own a capabilities array"))?;
+        let mut unique = std::collections::HashSet::with_capacity(capabilities.len());
+        for capability in capabilities {
+            let capability = capability
+                .as_str()
+                .ok_or_else(|| format!("grant entry for {key} contains a non-string capability"))?;
+            if capability.trim().is_empty() {
+                return Err(format!("grant entry for {key} contains an empty capability"));
+            }
+            if !unique.insert(capability) {
+                return Err(format!(
+                    "grant entry for {key} repeats capability {capability}"
+                ));
+            }
+        }
+        if let Some(alias) = entry.get("display_alias")
+            && !alias.is_string()
+        {
+            return Err(format!("display_alias for {key} must be a string"));
+        }
+        if key.starts_with('$') {
+            if entry.contains_key("groups") {
+                return Err(format!("group {key} cannot belong to another group"));
+            }
+            continue;
+        }
+        if key.is_empty() {
+            return Err("grant document contains an empty principal_id".to_string());
+        }
+        if let Some(groups) = entry.get("groups") {
+            let groups = groups
+                .as_array()
+                .ok_or_else(|| format!("groups for {key} must be an array"))?;
+            let mut seen = std::collections::HashSet::with_capacity(groups.len());
+            for group in groups {
+                let group = group
+                    .as_str()
+                    .ok_or_else(|| format!("groups for {key} contains a non-string"))?;
+                if !GRANT_GROUPS.contains(&group) || !entries.contains_key(group) {
+                    return Err(format!("principal {key} references unknown group {group}"));
+                }
+                if !seen.insert(group) {
+                    return Err(format!("principal {key} repeats group {group}"));
+                }
+            }
+        }
+    }
+    Ok(entries)
+}
+
 /// Load the capabilities granted to one registered principal.
 ///
-/// The JSON document is keyed by exact `principal_id` and each value owns a
-/// `capabilities` array. Missing, malformed, or unreadable grant state fails
-/// closed.
+/// The JSON document is keyed by exact `principal_id` plus `$` group entries.
+/// A principal inherits every capability of the groups named in its `groups`
+/// array, then its own `capabilities`. Missing, malformed, or unreadable grant
+/// state fails closed.
 pub fn load_capability_grants(principal_id: &str) -> std::collections::HashSet<String> {
     let path = std::env::var("OP_GRANTS_PATH")
         .unwrap_or_else(|_| "/dev/shm/opdbus/capability-grants.json".to_string());
@@ -1231,34 +1854,54 @@ pub fn load_capability_grants(principal_id: &str) -> std::collections::HashSet<S
     capabilities_for_principal(&document, principal_id)
 }
 
-/// Parse one principal's grants from a fully principal-bound document.
+/// Parse one principal's grants from a document of principals and groups.
 ///
-/// A wildcard or legacy 64-hex footprint key invalidates the entire document.
-/// This prevents a partially migrated authority file from appearing safe merely
-/// because an individual lookup happened to use an exact principal ID.
+/// The complete document must pass the same validation used by the grant
+/// materializer. Looking up a group name returns nothing: groups are not callers.
 pub(crate) fn capabilities_for_principal(
     document: &serde_json::Value,
     principal_id: &str,
 ) -> std::collections::HashSet<String> {
-    if principal_id.is_empty() || principal_id == "*" {
+    if principal_id.is_empty() || principal_id == "*" || principal_id.starts_with('$') {
         return std::collections::HashSet::new();
     }
-    let Some(entries) = document.as_object() else {
+    let Ok(entries) = validated_grant_entries(document) else {
         return std::collections::HashSet::new();
     };
-    if entries.keys().any(|key| {
-        key == "*"
-            || (key.len() == 64 && key.as_bytes().iter().all(|byte| byte.is_ascii_hexdigit()))
-    }) {
+    let Some(entry) = entries.get(principal_id) else {
         return std::collections::HashSet::new();
+    };
+    let mut granted = std::collections::HashSet::new();
+    let Some(own) = entry.get("capabilities").and_then(serde_json::Value::as_array) else {
+        return std::collections::HashSet::new();
+    };
+    granted.extend(own.iter().filter_map(serde_json::Value::as_str).map(str::to_string));
+    let Some(groups) = entry.get("groups") else {
+        return granted;
+    };
+    let Some(groups) = groups.as_array() else {
+        return std::collections::HashSet::new();
+    };
+    for group in groups {
+        let Some(name) = group.as_str() else {
+            return std::collections::HashSet::new();
+        };
+        if !GRANT_GROUPS.contains(&name) {
+            return std::collections::HashSet::new();
+        }
+        let Some(capabilities) = entries
+            .get(name)
+            .and_then(|group_entry| group_entry.get("capabilities"))
+            .and_then(serde_json::Value::as_array)
+        else {
+            return std::collections::HashSet::new();
+        };
+        granted.extend(
+            capabilities
+                .iter()
+                .filter_map(serde_json::Value::as_str)
+                .map(str::to_string),
+        );
     }
-    document
-        .get(principal_id)
-        .and_then(|entry| entry.get("capabilities"))
-        .and_then(serde_json::Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(serde_json::Value::as_str)
-        .map(str::to_string)
-        .collect()
+    granted
 }

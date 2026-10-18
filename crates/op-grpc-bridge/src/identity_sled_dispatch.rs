@@ -31,10 +31,49 @@ use serde_json::Value as JsonValue;
 
 use crate::mutation_engine::{GenesisStamp, MutationEngine};
 
+#[path = "identity_physical_root.rs"]
+mod physical_root;
 #[path = "identity_root_repair.rs"]
 mod root_repair;
 #[path = "identity_seed_provision.rs"]
 mod seed_provision;
+#[path = "identity_clean_provision.rs"]
+mod clean_provision;
+#[path = "identity_delete_provision.rs"]
+mod delete_provision;
+
+pub(crate) struct IdentityRootStartGuard {
+    should_start: bool,
+    _legacy: Option<root_repair::RootStartGuard>,
+    _physical: Option<physical_root::PhysicalRootGuard>,
+    _clean: Option<clean_provision::CleanRootGuard>,
+}
+
+impl From<root_repair::RootStartGuard> for IdentityRootStartGuard {
+    fn from(guard: root_repair::RootStartGuard) -> Self {
+        Self {
+            should_start: guard.should_start,
+            _legacy: Some(guard),
+            _physical: None,
+            _clean: None,
+        }
+    }
+}
+impl From<physical_root::PhysicalRootGuard> for IdentityRootStartGuard {
+    fn from(guard: physical_root::PhysicalRootGuard) -> Self {
+        Self {
+            should_start: guard.should_start,
+            _legacy: None,
+            _physical: Some(guard),
+            _clean: None,
+        }
+    }
+}
+impl From<clean_provision::CleanRootGuard> for IdentityRootStartGuard {
+    fn from(guard: clean_provision::CleanRootGuard) -> Self {
+        Self { should_start: guard.should_start, _legacy: None, _physical: None, _clean: Some(guard) }
+    }
+}
 
 struct VerifiedIdentityActor<'a> {
     actor_id: &'a str,
@@ -121,32 +160,102 @@ impl From<CozoGraphShuttle> for IdentitySledStore {
 pub(crate) trait IdentityContainerLifecycle: Send + Sync {
     async fn start(&self, session_id: &str) -> anyhow::Result<()>;
     async fn stop(&self, session_id: &str) -> anyhow::Result<()>;
+    async fn start_bound(&self, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
+        self.start(&sled.session_id).await
+    }
+    async fn stop_bound(&self, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
+        self.stop(&sled.session_id).await
+    }
 }
 
 #[derive(Clone)]
 struct IncusIdentityContainerLifecycle;
 
+fn native_identity_power_target(sled: &ContainerIdentitySled) -> anyhow::Result<&str> {
+    let instance = sled.instance.as_ref().context("identity has no native instance binding")?;
+    anyhow::ensure!(
+        identity_instance_matches(sled, instance),
+        "native power target does not match the authoritative identity binding"
+    );
+    Ok(&instance.name)
+}
+
+#[cfg(test)]
+mod native_power_target_tests {
+    use super::*;
+
+    #[test]
+    fn native_power_target_requires_the_existing_identity_binding() {
+        let session = "00000000-0000-4000-8000-000000000001";
+        let mut sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+            "session_id": session, "wireguard_pubkey": "fixture-public-key"
+        })).unwrap();
+        assert!(native_identity_power_target(&sled).is_err());
+        sled.instance = Some(IncusInstance {
+            name: session.to_string(),
+            instance_type: "container".to_string(),
+            ..Default::default()
+        });
+        assert_eq!(native_identity_power_target(&sled).unwrap(), session);
+        sled.instance.as_mut().unwrap().name = "another-container".to_string();
+        assert!(native_identity_power_target(&sled).is_err());
+        sled.instance.as_mut().unwrap().name = CONTROL_PLANE_CHATBOT_CONTAINER.to_string();
+        // A name alone never authorizes the singleton service exception.
+        assert!(native_identity_power_target(&sled).is_err());
+    }
+}
+
 #[async_trait]
 impl IdentityContainerLifecycle for IncusIdentityContainerLifecycle {
-    async fn start(&self, session_id: &str) -> anyhow::Result<()> {
-        IncusPlugin::set_identity_session_power_state(
-            session_id,
+    async fn start_bound(&self, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
+        IncusPlugin::set_bound_identity_session_power_state(
+            &sled.session_id,
+            native_identity_power_target(sled)?,
             IdentitySessionPowerState::Running,
         )
         .await
     }
-    async fn stop(&self, session_id: &str) -> anyhow::Result<()> {
-        IncusPlugin::set_identity_session_power_state(
-            session_id,
+    async fn stop_bound(&self, sled: &ContainerIdentitySled) -> anyhow::Result<()> {
+        IncusPlugin::set_bound_identity_session_power_state(
+            &sled.session_id,
+            native_identity_power_target(sled)?,
             IdentitySessionPowerState::Stopped,
         )
         .await
     }
+    async fn start(&self, _session_id: &str) -> anyhow::Result<()> {
+        anyhow::bail!("native identity start requires its validated durable instance binding")
+    }
+    async fn stop(&self, _session_id: &str) -> anyhow::Result<()> {
+        anyhow::bail!("native identity stop requires its validated durable instance binding")
+    }
 }
 
 type SledCacheState = IdentitySledState;
-type BtrfsMountVerifier =
-    Arc<dyn Fn(&std::path::Path, &std::path::Path, &str) -> anyhow::Result<()> + Send + Sync>;
+
+/// Logical attachment of the Cozo-registered identity filesystem.
+/// Both logical transitions only verify external storage. Neither mounts,
+/// unmounts nor changes device membership.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum IdentityStorageAttachment {
+    /// Verify externally mounted storage before marking it logically attached.
+    Attached,
+    /// Verify storage after guest shutdown, leaving its mount and members intact.
+    Detached,
+}
+
+type IdentityStorageVerifier = Arc<
+    dyn Fn(IdentityStorageAttachment, &std::path::Path, &std::path::Path, &str) -> anyhow::Result<()>
+        + Send
+        + Sync,
+>;
+
+fn native_identity_storage_verifier() -> IdentityStorageVerifier {
+    Arc::new(|_effect, device, mount, uuid| {
+        op_network::btrfs::verify_identity_mount(device, mount, uuid)
+            .context("identity storage must already be mounted by the external host provisioner or Incus; the bridge does not mount storage")
+    })
+}
 
 fn parse_json<T: serde::de::DeserializeOwned>(
     label: &str,
@@ -201,12 +310,21 @@ fn record_to_sled(
         head_timestamp_at_arrival: 0,
     };
     if let Some(genesis) = genesis {
-        anyhow::ensure!(
-            genesis.schema_content_hash.is_empty()
-                || genesis.schema_content_hash == SCHEMA_CONTENT_HASH.trim(),
-            "identity schema content hash drift for {}",
-            record.session_id
-        );
+        // A release bump changes the compiled hash before
+        // `refresh_drifted_schema_content_hashes` can rewrite the durable row.
+        // Failing the projection here aborts startup, so the refresh never runs
+        // and the door never binds. Project the existing arrival claims and let
+        // that refresh commit the compiled hash.
+        if !genesis.schema_content_hash.is_empty()
+            && genesis.schema_content_hash != SCHEMA_CONTENT_HASH.trim()
+        {
+            tracing::warn!(
+                session_id = %record.session_id,
+                stored = %genesis.schema_content_hash,
+                expected = %SCHEMA_CONTENT_HASH.trim(),
+                "identity genesis schema_content_hash drifted; projecting the row so startup refresh can commit"
+            );
+        }
         sled.arrival_timestamp = genesis.arrival_timestamp;
         sled.chain_head_at_arrival = genesis.chain_head_at_arrival.clone();
         sled.catalog_hash_at_arrival = genesis.catalog_hash_at_arrival.clone();
@@ -260,6 +378,43 @@ fn sled_to_genesis(sled: &ContainerIdentitySled) -> GenesisInputsRecord {
     }
 }
 
+const CONTROL_PLANE_CHATBOT_CONTAINER: &str = "3tchedChatbot";
+
+fn configured_chatbot_key() -> Option<String> {
+    std::env::var("OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY")
+        .ok()
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+}
+
+fn chatbot_binding_matches(
+    sled: &ContainerIdentitySled,
+    instance: &IncusInstance,
+    configured_session: Option<&str>,
+    configured_key: Option<&str>,
+) -> bool {
+    instance.name == CONTROL_PLANE_CHATBOT_CONTAINER
+        && instance.instance_type == "container"
+        && sled.principal_kind.as_deref() == Some("service")
+        && configured_session == Some(sled.session_id.as_str())
+        && configured_key == Some(sled.wireguard_pubkey.as_str())
+        && op_identity::session::derive_session_id(&sled.wireguard_pubkey) == sled.session_id
+        && instance.config.as_ref().is_some_and(|config| {
+            config.get("user.opdbus.session_id") == Some(&sled.session_id)
+                && config.get("user.opdbus.wireguard_public_key") == Some(&sled.wireguard_pubkey)
+        })
+}
+
+pub(crate) fn identity_instance_matches(sled: &ContainerIdentitySled, instance: &IncusInstance) -> bool {
+    (instance.name == sled.session_id && instance.instance_type == "container")
+        || chatbot_binding_matches(
+            sled,
+            instance,
+            control_plane_chatbot_session_id().as_deref(),
+            configured_chatbot_key().as_deref(),
+        )
+}
+
 fn validate_sled(sled: &ContainerIdentitySled) -> anyhow::Result<()> {
     anyhow::ensure!(!sled.session_id.is_empty(), "identity session id is empty");
     anyhow::ensure!(
@@ -268,7 +423,7 @@ fn validate_sled(sled: &ContainerIdentitySled) -> anyhow::Result<()> {
     );
     if let Some(instance) = &sled.instance {
         anyhow::ensure!(
-            instance.name == sled.session_id && instance.instance_type == "container",
+            identity_instance_matches(sled, instance),
             "identity instance does not match session container"
         );
     }
@@ -602,7 +757,7 @@ pub(crate) async fn authenticate_sid1_wire(
         .map_err(|error| error.to_string())?
         .ok_or_else(|| "sealed identity session was not found".to_string())?;
     if !sled.instance.as_ref().is_some_and(|instance| {
-        instance.name == sled.session_id && instance.instance_type == "container"
+        identity_instance_matches(&sled, instance)
     }) {
         return Err("sealed identity has no matching provisioned container binding".into());
     }
@@ -643,7 +798,7 @@ fn apply_genesis_stamp(
 ) -> anyhow::Result<()> {
     anyhow::ensure!(
         sled.instance.as_ref().is_some_and(|instance| {
-            instance.name == sled.session_id && instance.instance_type == "container"
+            identity_instance_matches(sled, instance)
         }),
         "SID1 minting requires the exact provisioned identity container"
     );
@@ -958,34 +1113,31 @@ async fn commit_sled_update<T: Send + 'static>(
     .await
 }
 
-async fn join_identity_btrfs(sled: &mut ContainerIdentitySled) -> anyhow::Result<()> {
+/// Validate the registered mount before committing a logical attachment change.
+/// Mount preparation belongs to an explicit root owner or the existing UUID
+/// fstab configuration; the generic binding cannot guess a default subvolume.
+async fn apply_identity_btrfs(
+    sled: &mut ContainerIdentitySled,
+    effect: IdentityStorageAttachment,
+    effector: &IdentityStorageVerifier,
+) -> anyhow::Result<()> {
     let Some(device) = sled.btrfs_device.clone() else {
         return Ok(());
     };
-    if device.device_path.is_empty() || device.mount_point.is_empty() {
-        return Ok(());
-    }
+    anyhow::ensure!(
+        !device.device_path.is_empty()
+            && !device.mount_point.is_empty()
+            && !device.btrfs_uuid.is_empty(),
+        "registered identity filesystem binding is incomplete"
+    );
     let path = PathBuf::from(device.device_path);
     let mount = PathBuf::from(device.mount_point);
-    tokio::task::spawn_blocking(move || op_network::btrfs::ensure_device_added(&path, &mount))
-        .await??;
+    let uuid = device.btrfs_uuid;
+    let effector = effector.clone();
+    tokio::task::spawn_blocking(move || effector(effect, &path, &mount, &uuid)).await??;
     if let Some(device) = sled.btrfs_device.as_mut() {
-        device.attached = true;
+        device.attached = matches!(effect, IdentityStorageAttachment::Attached);
     }
-    Ok(())
-}
-
-async fn leave_identity_btrfs(sled: &ContainerIdentitySled) -> anyhow::Result<()> {
-    let Some(device) = sled.btrfs_device.clone() else {
-        return Ok(());
-    };
-    if device.device_path.is_empty() || device.mount_point.is_empty() {
-        return Ok(());
-    }
-    let path = PathBuf::from(device.device_path);
-    let mount = PathBuf::from(device.mount_point);
-    tokio::task::spawn_blocking(move || op_network::btrfs::ensure_device_removed(&path, &mount))
-        .await??;
     Ok(())
 }
 
@@ -993,8 +1145,10 @@ async fn stop_native_identity(
     lifecycle: &dyn IdentityContainerLifecycle,
     session_id: &str,
     sled: &ContainerIdentitySled,
+    effector: &IdentityStorageVerifier,
 ) -> anyhow::Result<()> {
-    if let Err(error) = lifecycle.stop(session_id).await {
+    anyhow::ensure!(sled.session_id == session_id, "native stop session binding mismatch");
+    if let Err(error) = lifecycle.stop_bound(sled).await {
         let detail = format!("{error:#}");
         if !detail.contains("already stopped") && !detail.contains("in Error status") {
             return Err(error);
@@ -1002,10 +1156,54 @@ async fn stop_native_identity(
         tracing::warn!(
             session_id,
             %error,
-            "identity container is already stopped; removing its btrfs device"
+            "identity container is already stopped; verifying its registered mount"
         );
     }
-    leave_identity_btrfs(sled).await
+    apply_identity_btrfs(&mut sled.clone(), IdentityStorageAttachment::Detached, effector)
+        .await
+        .context("native identity stopped but registered mount requires reconciliation")
+}
+
+async fn prepare_identity_root_start(
+    store: &IdentitySledStore,
+    expected: &IdentityRevision,
+    sled: &mut ContainerIdentitySled,
+    effector: &IdentityStorageVerifier,
+) -> anyhow::Result<Option<IdentityRootStartGuard>> {
+    if let Some(guard) = clean_provision::guard_start(store, expected, sled).await? {
+        if let Some(device) = sled.btrfs_device.as_mut() { device.attached = true; }
+        return Ok(Some(guard.into()));
+    }
+    let block_backed = sled
+        .btrfs_device
+        .as_ref()
+        .is_some_and(|device| std::path::Path::new(&device.device_path).starts_with("/dev"));
+    if block_backed {
+        // Physical root guards may require this configured mount to exist.
+        apply_identity_btrfs(sled, IdentityStorageAttachment::Attached, effector).await?;
+    } else if let Some(device) = sled.btrfs_device.as_mut() {
+        // Historical image-root guards require logical attachment while
+        // verifying an externally prepared sprout. This provisional flag
+        // remains local until all storage verification and readback succeed.
+        device.attached = true;
+    }
+    let guard = if sled.instance.is_none() {
+        None
+    } else {
+        match physical_root::guard_start(store, expected, sled).await? {
+            Some(guard) => Some(IdentityRootStartGuard::from(guard)),
+            None => match root_repair::guard_own_root_start(store, expected, sled).await? {
+                Some(guard) => Some(IdentityRootStartGuard::from(guard)),
+                None => seed_provision::guard_start(store, expected, sled)
+                    .await?
+                    .map(IdentityRootStartGuard::from),
+            },
+        }
+    };
+    if !block_backed {
+        apply_identity_btrfs(sled, IdentityStorageAttachment::Attached, effector).await?;
+    }
+    Ok(guard)
 }
 
 async fn set_session_active_owned(
@@ -1014,6 +1212,25 @@ async fn set_session_active_owned(
     lifecycle: Arc<dyn IdentityContainerLifecycle>,
     session_id: String,
     active: bool,
+) -> anyhow::Result<ContainerIdentitySled> {
+    set_session_active_owned_with_verifier(
+        engine,
+        store,
+        lifecycle,
+        session_id,
+        active,
+        native_identity_storage_verifier(),
+    )
+    .await
+}
+
+async fn set_session_active_owned_with_verifier(
+    engine: MutationEngine,
+    store: IdentitySledStore,
+    lifecycle: Arc<dyn IdentityContainerLifecycle>,
+    session_id: String,
+    active: bool,
+    storage_verifier: IdentityStorageVerifier,
 ) -> anyhow::Result<ContainerIdentitySled> {
     let lifecycle_lock = store.lifecycle_lock(&session_id).await;
     let _lifecycle_guard = lifecycle_lock.lock_owned().await;
@@ -1026,27 +1243,27 @@ async fn set_session_active_owned(
     let has_instance = sled.instance.is_some();
     let mut seeded_root_guard = None;
     if active && has_instance {
-        join_identity_btrfs(&mut sled).await?;
-        let seeded = match root_repair::guard_own_root_start(&store, &expected, &sled).await? {
-            Some(guard) => Some(guard),
-            None => seed_provision::guard_start(&store, &expected, &sled).await?,
-        };
-        match seeded {
-            Some(guard) => {
-                anyhow::ensure!(
-                    load_revision(&store, &session_id).await? == expected,
-                    "identity revision changed before seeded native activation"
-                );
-                if guard.should_start {
-                    lifecycle.start(&session_id).await?;
+        {
+            let seeded =
+                prepare_identity_root_start(&store, &expected, &mut sled, &storage_verifier)
+                    .await?;
+            match seeded {
+                Some(guard) => {
+                    anyhow::ensure!(
+                        load_revision(&store, &session_id).await? == expected,
+                        "identity revision changed before seeded native activation"
+                    );
+                    if guard.should_start {
+                        lifecycle.start_bound(&sled).await?;
+                    }
+                    seeded_root_guard = Some(guard);
                 }
-                seeded_root_guard = Some(guard);
+                None if !sled.active => {
+                    preflight_native_identity_effect().await?;
+                    lifecycle.start_bound(&sled).await?;
+                }
+                None => {}
             }
-            None if !sled.active => {
-                preflight_native_identity_effect().await?;
-                lifecycle.start(&session_id).await?;
-            }
-            None => {}
         }
     }
     if !active {
@@ -1057,7 +1274,13 @@ async fn set_session_active_owned(
             // A pending repair fences Cozo mutations, but stopping the native
             // target remains available as the safe operator action.
             preflight_native_identity_effect().await?;
-            stop_native_identity(lifecycle.as_ref(), &session_id, &sled).await?;
+            stop_native_identity(
+                lifecycle.as_ref(),
+                &session_id,
+                &sled,
+                &storage_verifier,
+            )
+            .await?;
             anyhow::bail!(
                 "native identity stopped; incomplete root repair requires reconciliation"
             );
@@ -1075,15 +1298,31 @@ async fn set_session_active_owned(
         .await?;
         if has_instance {
             preflight_native_identity_effect().await?;
-            stop_native_identity(lifecycle.as_ref(), &session_id, &sled).await?;
+            stop_native_identity(
+                lifecycle.as_ref(),
+                &session_id,
+                &sled,
+                &storage_verifier,
+            )
+            .await?;
             let expected = load_revision(&store, &session_id).await?;
             let mut stopped =
                 revision_sled(&expected)?.ok_or_else(|| anyhow::anyhow!("identity disappeared"))?;
-            let root_observed = root_repair::observe_owned_power_effect(
-                &engine, &store, &expected, &stopped, "Stopped",
-            )
-            .await
-            .context("native stop completed but authoritative readback requires reconciliation")?;
+            let clean_observed = clean_provision::observe_power(&engine, &store, &expected, &stopped, "Stopped").await?;
+            let root_observed = if clean_observed.is_some() { clean_observed } else {
+                match physical_root::observe_power(&engine, &store, &expected, &stopped, "Stopped")
+                    .await?
+                {
+                    Some(observed) => Some(observed),
+                    None => root_repair::observe_owned_power_effect(
+                        &engine, &store, &expected, &stopped, "Stopped",
+                    )
+                    .await
+                    .context(
+                        "native stop completed but authoritative readback requires reconciliation",
+                    )?,
+                }
+            };
             let seeded_observed = if root_observed.is_some() {
                 root_observed
             } else {
@@ -1097,6 +1336,8 @@ async fn set_session_active_owned(
                 instance.status = "Stopped".into();
             }
             if let Some(device) = stopped.btrfs_device.as_mut() {
+                // Compatibility: attached records logical session attachment.
+                // Stopping does not unmount storage or alter Btrfs membership.
                 device.attached = false;
             }
             return commit_sled_update(
@@ -1114,12 +1355,20 @@ async fn set_session_active_owned(
     sled.active = true;
     sled.last_seen_at = now();
     if seeded_root_guard.is_some() {
-        let root_observed =
-            root_repair::observe_owned_power_effect(&engine, &store, &expected, &sled, "Running")
+        let clean_observed = clean_provision::observe_power(&engine, &store, &expected, &sled, "Running").await?;
+        let root_observed = if clean_observed.is_some() { clean_observed } else {
+            match physical_root::observe_power(&engine, &store, &expected, &sled, "Running").await?
+            {
+                Some(observed) => Some(observed),
+                None => root_repair::observe_owned_power_effect(
+                    &engine, &store, &expected, &sled, "Running",
+                )
                 .await
                 .context(
                     "native start completed but authoritative readback requires reconciliation",
-                )?;
+                )?,
+            }
+        };
         let observed = if let Some(observed) = root_observed {
             Some(observed)
         } else {
@@ -1172,7 +1421,23 @@ impl IdentityIncusTargetGuard {
     pub(crate) async fn verify_under_host_lock(
         &self,
         method: &str,
-    ) -> anyhow::Result<Option<root_repair::RootStartGuard>> {
+    ) -> anyhow::Result<Option<IdentityRootStartGuard>> {
+        let revision = load_revision(&self.store, &self.session_id).await?;
+        if let Some(sled) = revision_sled(&revision)?
+            && let Some(guard) = clean_provision::guard_start(&self.store, &revision, &sled).await?
+        {
+            anyhow::ensure!(method == "exec_instance", "clean identity storage and lifecycle are identity-owned");
+            return Ok(Some(guard.into()));
+        }
+        if let Some(sled) = revision_sled(&revision)?
+            && let Some(guard) = physical_root::guard_start(&self.store, &revision, &sled).await?
+        {
+            anyhow::ensure!(
+                matches!(method, "exec_instance" | "snapshot_instance"),
+                "physical identity provenance and lifecycle are identity-owned"
+            );
+            return Ok(Some(guard.into()));
+        }
         let cozo = self.store.cozo.clone();
         let session = self.session_id.clone();
         let journal =
@@ -1198,7 +1463,8 @@ impl IdentityIncusTargetGuard {
             return Ok(Some(
                 seed_provision::guard_start(&self.store, &revision, &sled)
                     .await?
-                    .context("completed seed provision provenance disappeared")?,
+                    .context("completed seed provision provenance disappeared")?
+                    .into(),
             ));
         }
         match journal {
@@ -1213,9 +1479,8 @@ impl IdentityIncusTargetGuard {
                 Ok(Some(
                     root_repair::guard_own_root_start(&self.store, &revision, &sled)
                         .await?
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("completed repair provenance disappeared")
-                        })?,
+                        .ok_or_else(|| anyhow::anyhow!("completed repair provenance disappeared"))?
+                        .into(),
                 ))
             }
             Some(_) => {
@@ -1248,8 +1513,8 @@ pub(crate) async fn activate_human_session_on_login(
 pub(crate) const UNATTENDED_HUMAN_CONTAINER_SECS: i64 = 30 * 60;
 
 /// Stop human containers whose interceptor session is gone.
-/// The control-plane chatbot stays up. This stops the container only.
-/// It does not remove the Cozo device or the shared base loop.
+/// The control-plane chatbot stays up. Stop clears logical attachment after
+/// the guest is down; externally owned storage stays mounted.
 /// A stop that times out is left for the next pass.
 pub(crate) async fn park_human_containers_without_login(
     engine: &MutationEngine,
@@ -1326,6 +1591,68 @@ pub(crate) fn control_plane_chatbot_session_id() -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
+pub(crate) async fn chatbot_awaits_explicit_reprovision(engine: &MutationEngine, session_id: &str) -> anyhow::Result<bool> {
+    let revision = load_revision(engine.identity_sled_store()?, session_id).await?;
+    Ok(revision.record.is_none() && revision.genesis.is_none()
+        && revision.operation_id.starts_with(&format!("delete-provision-{session_id}-")))
+}
+
+/// Startup must leave an absent identity to explicit provisioning, while
+/// keeping the existing authenticated maintenance surface available.
+pub(crate) async fn configured_identity_awaits_provision(
+    engine: &MutationEngine,
+    session_id: &str,
+) -> anyhow::Result<bool> {
+    let revision = load_revision(engine.identity_sled_store()?, session_id).await?;
+    if revision.record.is_none() {
+        anyhow::ensure!(revision.genesis.is_none(), "configured identity has genesis without a record");
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+/// Explicit host-human initialization through the identity owner's durable
+/// publication boundary. Never restores history or adopts container storage.
+pub(crate) async fn initialize_configured_human(
+    engine: &MutationEngine,
+    session_id: &str,
+    wireguard_pubkey: &str,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        std::env::var("OP_LOCAL_HUMAN_INITIALIZE_SESSION")?.trim() == session_id
+            && std::env::var("OP_LOCAL_HUMAN_SESSION_ID")?.trim() == session_id
+            && std::env::var("OP_LOCAL_HUMAN_WIREGUARD_PUBKEY")?.trim() == wireguard_pubkey
+            && std::env::var("OP_LOCAL_HUMAN_PRINCIPAL_ID")?.trim()
+                == op_identity::session::derive_principal_id(wireguard_pubkey)
+            && session_id == op_identity::session::derive_session_id(wireguard_pubkey),
+        "initialization requires the explicitly selected configured host human"
+    );
+    let store = engine.identity_sled_store()?;
+    let _guard = store.lifecycle_lock(session_id).await.lock_owned().await;
+    let expected = load_revision(store, session_id).await?;
+    anyhow::ensure!(
+        expected.revision == 0 && expected.operation_id.is_empty()
+            && expected.record.is_none() && expected.genesis.is_none(),
+        "fresh initialization cannot overwrite an identity or deletion tombstone"
+    );
+    let stamp = engine.mint_identity_genesis_stamp(session_id, wireguard_pubkey, 0).await?;
+    let sled: ContainerIdentitySled = serde_json::from_value(serde_json::json!({
+        "session_id": session_id, "wireguard_pubkey": wireguard_pubkey,
+        "principal_kind": "human", "active": true, "expires_at": 0,
+        "session_started_at": stamp.arrival_timestamp, "last_seen_at": stamp.arrival_timestamp,
+        "schema_version": RECORD_FORMAT, "genesis": stamp.genesis_hex,
+        "trace_id": stamp.trace_id, "sealed_id": stamp.sealed_id,
+        "arrival_timestamp": stamp.arrival_timestamp,
+        "chain_head_at_arrival": stamp.chain_head_at_arrival,
+        "catalog_hash_at_arrival": stamp.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": stamp.head_timestamp_at_arrival
+    }))?;
+    commit_cas(engine, store, opid("initialize-configured-human"), session_id.to_owned(),
+        expected, Some(sled_to_record(&sled)?), Some(sled_to_genesis(&sled)), ()).await?;
+    tracing::info!(%session_id, "initialized fresh configured host-human identity with existing key");
+    Ok(())
+}
+
 /// Bring up the control-plane chatbot container named by
 /// `OP_CONTROL_PLANE_CHATBOT_SESSION_ID`. Human containers start at login.
 pub(crate) async fn start_service_identity_containers(
@@ -1334,20 +1661,187 @@ pub(crate) async fn start_service_identity_containers(
     let Some(session_id) = control_plane_chatbot_session_id() else {
         return Ok(0);
     };
+    start_service_identity_container(engine, &session_id).await
+}
+
+async fn start_service_identity_container(
+    engine: &MutationEngine,
+    session_id: &str,
+) -> anyhow::Result<usize> {
     let state = read_private_state().await?;
-    let present = state
+    let configured = state
         .sleds
         .into_iter()
-        .any(|sled| sled.session_id == session_id && sled.instance.is_some());
-    if !present {
+        .find(|sled| sled.session_id == session_id && sled.instance.is_some());
+    let Some(sled) = configured else {
         tracing::warn!(
             %session_id,
             "control-plane chatbot session has no identity container"
         );
         return Ok(0);
+    };
+    // Bootstrap preserves existing power policy while validating/sealing the
+    // identity. Startup must not turn an explicitly parked container into an
+    // activation request. Explicit touch/activation remains unchanged.
+    if !sled.active {
+        tracing::info!(%session_id, "control-plane chatbot remains deliberately parked");
+        return Ok(0);
     }
-    activate_session(engine, &session_id).await?;
-    Ok(1)
+    match activate_session(engine, session_id).await {
+        Ok(_) => Ok(1),
+        Err(error) => {
+            anyhow::bail!(
+                "control-plane chatbot container failed to start: {:#}",
+                error
+            )
+        }
+    }
+}
+
+fn schema_hash_refresh_operation_id(
+    expected: &IdentityRevision,
+    target: &str,
+) -> anyhow::Result<String> {
+    // A durable revision and its operation token uniquely identify the exact
+    // CAS predecessor. Include the target so later releases never reuse the
+    // old session-only token for a different intent. Hash framed values rather
+    // than concatenating strings or exposing private identity fields.
+    let intent = serde_json::to_vec(&(
+        &expected.session_id,
+        expected.revision,
+        &expected.operation_id,
+        target,
+    ))?;
+    Ok(format!(
+        "refresh-schema-hash-v2-{}",
+        blake3::hash(&intent).to_hex()
+    ))
+}
+
+async fn recover_schema_refresh_publication(
+    engine: &MutationEngine,
+    store: &IdentitySledStore,
+    operation_id: String,
+    session_id: &str,
+) {
+    let cozo = store.cozo.clone();
+    let recovered = engine
+        .recover_identity_projection(operation_id, move || {
+            let snapshot = cozo.read_identity_recovery_state(MAX_EVENTS_IN_STATE)?;
+            Ok((
+                Some(state_value(&snapshot)?),
+                DurableResult {
+                    value: (),
+                    replayed: true,
+                },
+            ))
+        })
+        .await;
+    match recovered {
+        Ok(publication) => {
+            if let Err(error) = publication_value(publication) {
+                tracing::warn!(
+                    session_id,
+                    error = %format!("{error:#}"),
+                    "schema_content_hash refresh left its publication pending"
+                );
+            }
+        }
+        Err(error) => {
+            tracing::warn!(
+                session_id,
+                error = %format!("{error:#}"),
+                "schema_content_hash refresh recovery failed"
+            );
+        }
+    }
+}
+
+/// Rewrite drifted `schema_content_hash` on anchored genesis rows to the
+/// compiled `SCHEMA_CONTENT_HASH`. Safe because Cozo allows hash-only refresh
+/// of otherwise-immutable genesis fields.
+pub(crate) async fn refresh_drifted_schema_content_hashes(
+    engine: &MutationEngine,
+) -> anyhow::Result<usize> {
+    let store = engine.identity_sled_store()?.clone();
+    let state = match read_private_state().await {
+        Ok(state) => state,
+        Err(error) => {
+            tracing::warn!(
+                error = %format!("{error:#}"),
+                "skip schema_content_hash refresh; identity SHM not ready"
+            );
+            return Ok(0);
+        }
+    };
+    let mut refreshed = 0usize;
+    for sled in state.sleds {
+        if !sled.is_anchored() {
+            continue;
+        }
+        let lifecycle_lock = store.lifecycle_lock(&sled.session_id).await;
+        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
+        let expected = load_revision(&store, &sled.session_id).await?;
+        let Some(genesis) = expected.genesis.as_ref() else {
+            continue;
+        };
+        if genesis.schema_content_hash == SCHEMA_CONTENT_HASH.trim() {
+            continue;
+        }
+        let operation_id = schema_hash_refresh_operation_id(&expected, SCHEMA_CONTENT_HASH.trim())?;
+        // Refresh only the hash on the exact durable pair. SHM enumerates the
+        // sessions but must never supply a stale replacement record here.
+        let record = expected.record.clone();
+        let mut genesis = genesis.clone();
+        genesis.schema_content_hash = SCHEMA_CONTENT_HASH.trim().to_string();
+        let pending_operation = operation_id.clone();
+        match commit_cas(
+            engine,
+            &store,
+            operation_id,
+            sled.session_id.clone(),
+            expected,
+            record,
+            Some(genesis),
+            (),
+        )
+        .await
+        {
+            Ok(()) => {
+                refreshed += 1;
+                tracing::info!(
+                    session_id = %sled.session_id,
+                    "refreshed identity schema_content_hash to compiled value"
+                );
+            }
+            Err(error) => {
+                // The wrapper hides the callback error. The root cause is a
+                // short store rejection, not the credential bytes.
+                let cause = error
+                    .downcast_ref::<IdentityPublicationPending>()
+                    .map(|pending| pending._private_cause.root_cause().to_string());
+                tracing::warn!(
+                    session_id = %sled.session_id,
+                    error = %format!("{error:#}"),
+                    cause = cause.as_deref().unwrap_or(""),
+                    "schema_content_hash refresh failed"
+                );
+                // A failed refresh still owns the publication marker. Leaving
+                // it set aborts every later startup step, including the door.
+                // Reread the durable rows and publish that exact operation.
+                if cause.is_some() {
+                    recover_schema_refresh_publication(
+                        engine,
+                        &store,
+                        pending_operation,
+                        &sled.session_id,
+                    )
+                    .await;
+                }
+            }
+        }
+    }
+    Ok(refreshed)
 }
 
 pub(crate) async fn activate_session(
@@ -1380,56 +1874,6 @@ pub(crate) async fn deactivate_session(
     task.await?
 }
 
-/// Revoke the durable identity before attempting the physical stop. A stop
-/// failure never restores the old SID1-readable row. The tombstone remains a
-/// valid expected revision for a later explicitly authorized reprovision.
-#[allow(dead_code)]
-pub(crate) async fn tombstone_session(
-    engine: &MutationEngine,
-    store: &IdentitySledStore,
-    operation_id: String,
-    session_id: &str,
-) -> anyhow::Result<()> {
-    let engine = engine.clone();
-    let store = store.clone();
-    let session_id = session_id.to_string();
-    tokio::spawn(async move {
-        let lifecycle_lock = store.lifecycle_lock(&session_id).await;
-        let _lifecycle_guard = lifecycle_lock.lock_owned().await;
-        let expected = load_revision(&store, &session_id).await?;
-        let sled = revision_sled(&expected)?
-            .ok_or_else(|| anyhow::anyhow!("identity session is already absent"))?;
-        let had_instance = sled.instance.is_some();
-        commit_cas(
-            &engine,
-            &store,
-            operation_id,
-            session_id.clone(),
-            expected,
-            None,
-            None,
-            (),
-        )
-        .await?;
-        // The revoked sled's doorbell connection must not outlive the row.
-        // Best effort: the next subscribe would be refused anyway.
-        if let Some(owner_key) = crate::wake_doorbell::owner_key_for_sled(&sled) {
-            let args = serde_json::json!({ "client_id": owner_key });
-            if let Err(error) =
-                op_plugins::state_plugins::emqx::dispatch_emqx_method("kick_client", &args).await
-            {
-                tracing::debug!(%error, "doorbell client not kicked");
-            }
-        }
-        if had_instance {
-            preflight_native_identity_effect().await?;
-            stop_native_identity(&IncusIdentityContainerLifecycle, &session_id, &sled).await?;
-        }
-        Ok(())
-    })
-    .await?
-}
-
 async fn dispatch_identity_sled_method_owned(
     engine: &MutationEngine,
     store: &IdentitySledStore,
@@ -1444,9 +1888,7 @@ async fn dispatch_identity_sled_method_owned(
         method,
         args,
         Arc::new(IncusIdentityContainerLifecycle),
-        Arc::new(|device, mount, uuid| {
-            op_network::btrfs::verify_dedicated_mount(device, mount, uuid)
-        }),
+        native_identity_storage_verifier(),
     )
     .await
 }
@@ -1458,11 +1900,23 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
     method: &str,
     args: &JsonValue,
     lifecycle: Arc<dyn IdentityContainerLifecycle>,
-    btrfs_mount_verifier: BtrfsMountVerifier,
+    storage_verifier: IdentityStorageVerifier,
 ) -> anyhow::Result<JsonValue> {
     match method {
+        "inspect_identity_inventory" => {
+            anyhow::bail!("identity inventory requires the verified maintenance route")
+        }
+        "get_own_identity" => {
+            anyhow::bail!("own identity read requires the verified own-session identity route")
+        }
         "repair_own_root" => {
             anyhow::bail!("root repair requires the verified own-session identity route")
+        }
+        "migrate_own_physical_root" => {
+            anyhow::bail!("physical migration requires the verified human owner route")
+        }
+        "inspect_own_physical_root_migration_preflight" => {
+            anyhow::bail!("physical migration preflight requires the verified human owner route")
         }
         "refresh_credential" => {
             anyhow::ensure!(
@@ -1547,6 +2001,7 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
             let session_id = arg_str(args, "session_id");
             let lifecycle_lock = store.lifecycle_lock(&session_id).await;
             let _session_guard = lifecycle_lock.lock_owned().await;
+            let _observation_guard = engine.lock_host_observation().await;
             let expected = load_revision(store, &session_id).await?;
             let mut sled =
                 revision_sled(&expected)?.ok_or_else(|| anyhow::anyhow!("identity not found"))?;
@@ -1559,13 +2014,11 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
                 !device.device_path.is_empty() && !device.mount_point.is_empty(),
                 "btrfs device path and mount are required"
             );
-            let path = PathBuf::from(&device.device_path);
-            let mount = PathBuf::from(&device.mount_point);
-            let uuid = device.btrfs_uuid.clone();
-            let btrfs_mount_verifier = btrfs_mount_verifier.clone();
-            tokio::task::spawn_blocking(move || btrfs_mount_verifier(&path, &mount, &uuid))
-                .await??;
-            sled.btrfs_device.as_mut().expect("checked").attached = true;
+            // Root owners or the exact UUID fstab entry prepare the mount.
+            // Attachment never starts the guest or adds a Btrfs member.
+            let _root_guard =
+                prepare_identity_root_start(store, &expected, &mut sled, &storage_verifier)
+                    .await?;
             sled.last_seen_at = now();
             sled.mutation_index = sled
                 .mutation_index
@@ -1578,12 +2031,13 @@ async fn dispatch_identity_sled_method_owned_with_fixtures(
         }
         "touch_session" => {
             let session_id = arg_str(args, "session_id");
-            let identity = set_session_active_owned(
+            let identity = set_session_active_owned_with_verifier(
                 engine.clone(),
                 store.clone(),
                 lifecycle,
                 session_id,
                 true,
+                storage_verifier,
             )
             .await?;
             Ok(serde_json::json!({"identity": identity}))
@@ -1707,8 +2161,7 @@ async fn refresh_credential_owned(
     anyhow::ensure!(
         sled.instance
             .as_ref()
-            .is_some_and(|instance| instance.name == sled.session_id
-                && instance.instance_type == "container"),
+            .is_some_and(|instance| identity_instance_matches(&sled, instance)),
         "identity has no matching provisioned container binding"
     );
     anyhow::ensure!(
@@ -1832,6 +2285,65 @@ async fn refresh_credential_owned(
     )
 }
 
+fn require_identity_inventory_capability(
+    grants: &std::collections::HashSet<String>,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        grants.contains("identity_sled.inventory.read"),
+        "identity inventory requires a current exact-principal inventory grant"
+    );
+    Ok(())
+}
+
+const OWN_IDENTITY_READ_CAPABILITY: &str = "cap.identity.sled.self.read@v1";
+
+fn redact_own_identity(identity: ContainerIdentitySled) -> anyhow::Result<JsonValue> {
+    // Arbitrary Incus config, descriptions and device payloads may contain
+    // credentials. Keep only the typed instance lifecycle/storage metadata.
+    let instance = identity.instance.map(|instance| IncusInstance {
+        name: instance.name,
+        status: instance.status,
+        instance_type: instance.instance_type,
+        status_code: instance.status_code,
+        storage_pool: instance.storage_pool,
+        ..IncusInstance::default()
+    });
+    // An explicit allowlist also withholds future credential-bearing record
+    // fields. This remains a projection of the existing typed identity output.
+    Ok(serde_json::json!({"identity": {
+        "session_id": identity.session_id,
+        "wireguard_pubkey": identity.wireguard_pubkey,
+        "principal_kind": identity.principal_kind,
+        "mutation_index": identity.mutation_index,
+        "genesis": identity.genesis,
+        "trace_id": identity.trace_id,
+        "schema_version": identity.schema_version,
+        "btrfs_device": identity.btrfs_device,
+        "instance": instance,
+        "session_started_at": identity.session_started_at,
+        "last_seen_at": identity.last_seen_at,
+        "active": identity.active,
+        "expires_at": identity.expires_at,
+        "arrival_timestamp": identity.arrival_timestamp,
+        "chain_head_at_arrival": identity.chain_head_at_arrival,
+        "catalog_hash_at_arrival": identity.catalog_hash_at_arrival,
+        "head_timestamp_at_arrival": identity.head_timestamp_at_arrival
+    }}))
+}
+
+fn admit_own_identity_read(actor_id: &str) -> anyhow::Result<()> {
+    crate::method_contract_admission::admit_compiled_method(
+        "identity_sled",
+        "get_own_identity",
+        Some(OWN_IDENTITY_READ_CAPABILITY),
+    )?;
+    anyhow::ensure!(
+        crate::interceptor::load_capability_grants(actor_id).contains(OWN_IDENTITY_READ_CAPABILITY),
+        "own identity read requires a current exact-principal self-read grant"
+    );
+    Ok(())
+}
+
 pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
     engine: &MutationEngine,
     method: &str,
@@ -1840,6 +2352,120 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
     session_id: Option<&str>,
     session_genesis: Option<&str>,
 ) -> anyhow::Result<JsonValue> {
+    if method == "delete_provision_record" {
+        let caller_session = session_id.filter(|s| !s.is_empty()).context("deletion requires a verified caller session")?.to_string();
+        let caller_genesis = session_genesis.filter(|s| !s.is_empty()).context("deletion requires a verified caller genesis")?.to_string();
+        let input: delete_provision::DeleteInput = serde_json::from_value(args.clone())?;
+        let seal = seed_provision::capture_method_seal(method)?;
+        let engine = engine.clone();
+        let store = engine.identity_sled_store()?.clone();
+        let actor_id = actor_id.to_string();
+        return tokio::spawn(async move {
+            delete_provision::delete(&engine, &store, VerifiedIdentityActor {
+                actor_id: &actor_id, session_id: &caller_session, genesis: &caller_genesis,
+            }, input, seal).await
+        }).await?;
+    }
+    if method == "get_own_identity" {
+        anyhow::ensure!(
+            args.as_object().is_some_and(|object| object.is_empty()),
+            "get_own_identity accepts no arguments"
+        );
+        let own_session = crate::project_dispatch::verified_session(
+            engine,
+            actor_id,
+            session_id,
+            session_genesis,
+        )
+        .await?;
+        admit_own_identity_read(actor_id)?;
+        let identity = stored_session(engine, &own_session)
+            .await?
+            .context("verified own identity is unavailable")?;
+        anyhow::ensure!(
+            identity.is_anchored()
+                && identity.genesis.as_deref() == session_genesis
+                && op_identity::session::derive_principal_id(&identity.wireguard_pubkey)
+                    == actor_id,
+            "verified own identity binding changed"
+        );
+        // Revalidate after the asynchronous private-state read, including
+        // session expiry, principal revocation and exact current capability.
+        crate::project_dispatch::verified_session(engine, actor_id, session_id, session_genesis)
+            .await?;
+        admit_own_identity_read(actor_id)?;
+        return redact_own_identity(identity);
+    }
+    if matches!(
+        method,
+        "migrate_own_physical_root" | "inspect_own_physical_root_migration_preflight"
+    ) {
+        let preflight = method == "inspect_own_physical_root_migration_preflight";
+        let sid = session_id
+            .filter(|value| !value.is_empty())
+            .context("physical migration requires a verified session")?
+            .to_string();
+        let genesis = session_genesis
+            .filter(|value| !value.is_empty())
+            .context("physical migration requires a verified genesis")?
+            .to_string();
+        let actor = actor_id.to_string();
+        let input = if preflight {
+            anyhow::ensure!(
+                args.as_object().is_some_and(|args| args.is_empty()),
+                "physical migration preflight accepts no arguments"
+            );
+            None
+        } else {
+            Some(serde_json::from_value::<physical_root::MigrationInput>(
+                args.clone(),
+            )?)
+        };
+        let engine = engine.clone();
+        let store = engine.identity_sled_store()?.clone();
+        return tokio::spawn(async move {
+            let caller = VerifiedIdentityActor {
+                actor_id: &actor,
+                session_id: &sid,
+                genesis: &genesis,
+            };
+            match input {
+                Some(input) => physical_root::migrate(&engine, &store, caller, input).await,
+                None => physical_root::preflight(&engine, &store, caller).await,
+            }
+        })
+        .await?;
+    }
+    if method == "inspect_identity_inventory" {
+        anyhow::ensure!(
+            session_id.is_some_and(|value| !value.is_empty())
+                && session_genesis.is_some_and(|value| !value.is_empty()),
+            "identity inventory requires verified anchored session metadata"
+        );
+        crate::method_contract_admission::admit_compiled_method(
+            "identity_sled",
+            "inspect_identity_inventory",
+            Some("identity_sled.inventory.read"),
+        )?;
+        require_identity_inventory_capability(&crate::interceptor::load_capability_grants(
+            actor_id,
+        ))?;
+        let input: op_cozo_store::IdentityInventoryQuery = serde_json::from_value(args.clone())?;
+        let contract = strict_identity_contract()?;
+        let cozo = engine.identity_sled_store()?.cozo.clone();
+        let page =
+            tokio::task::spawn_blocking(move || cozo.inspect_identity_inventory(input)).await??;
+        same_identity_contract(&contract)?;
+        crate::method_contract_admission::admit_compiled_method(
+            "identity_sled",
+            "inspect_identity_inventory",
+            Some("identity_sled.inventory.read"),
+        )?;
+        require_identity_inventory_capability(&crate::interceptor::load_capability_grants(
+            actor_id,
+        ))?;
+        return Ok(serde_json::to_value(page)?);
+    }
     if method == "inspect_own_root_repair_preflight" {
         anyhow::ensure!(
             args.as_object().is_some_and(|object| object.is_empty()),
@@ -1864,15 +2490,20 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
         )
         .await;
     }
-    if method == "provision_container" {
+    if matches!(method, "provision_container" | "inspect_provision_preflight") {
         let caller_session = session_id
             .filter(|value| !value.is_empty())
             .ok_or_else(|| anyhow::anyhow!("seed provision requires a verified actor session"))?;
         let caller_genesis = session_genesis
             .filter(|value| !value.is_empty())
             .ok_or_else(|| anyhow::anyhow!("seed provision requires verified actor genesis"))?;
-        let input: seed_provision::ProvisionInput = serde_json::from_value(args.clone())?;
-        let seal = seed_provision::capture_provision_seal()?;
+        let input: seed_provision::ProvisionInput = if method == "provision_container" {
+            serde_json::from_value(args.clone())?
+        } else {
+            anyhow::ensure!(args.as_object().is_some_and(|object| object.len() == 1 && object.contains_key("wireguard_pubkey")), "invalid provision preflight arguments");
+            seed_provision::ProvisionInput { wireguard_pubkey: arg_str(args, "wireguard_pubkey"), plan_sha256: String::new() }
+        };
+        let seal = if method == "provision_container" { seed_provision::capture_provision_seal()? } else { seed_provision::capture_method_seal(method)? };
         let owned_engine = engine.clone();
         let owned_store = engine.identity_sled_store()?.clone();
         let actor_id = actor_id.to_string();
@@ -1880,8 +2511,14 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
         let caller_genesis = caller_genesis.to_string();
         let operation_id = opid("seed-provision");
         let owned_operation_id = operation_id.clone();
+        let preflight = method == "inspect_provision_preflight";
         return tokio::spawn(async move {
-            seed_provision::provision_container(
+            if !preflight {
+                return seed_provision::provision_container(&owned_engine, &owned_store, VerifiedIdentityActor {
+                    actor_id: &actor_id, session_id: &caller_session, genesis: &caller_genesis,
+                }, input, seal, &owned_operation_id).await;
+            }
+            clean_provision::provision(
                 &owned_engine,
                 &owned_store,
                 VerifiedIdentityActor {
@@ -1892,6 +2529,7 @@ pub(crate) async fn dispatch_identity_sled_method_for_verified_session(
                 input,
                 seal,
                 &owned_operation_id,
+                preflight,
             )
             .await
         })
@@ -2054,9 +2692,187 @@ pub(crate) mod tests {
         }
     }
 
+    #[test]
+    fn schema_hash_refresh_token_binds_exact_predecessor_and_target() {
+        let mut expected = IdentityRevision {
+            session_id: "own-session".into(),
+            revision: 7,
+            operation_id: "previous-operation".into(),
+            record: None,
+            genesis: None,
+        };
+        let token = schema_hash_refresh_operation_id(&expected, "target-a").unwrap();
+        assert_eq!(
+            token,
+            schema_hash_refresh_operation_id(&expected, "target-a").unwrap()
+        );
+        assert_ne!(
+            token,
+            schema_hash_refresh_operation_id(&expected, "target-b").unwrap()
+        );
+        expected.revision += 1;
+        assert_ne!(
+            token,
+            schema_hash_refresh_operation_id(&expected, "target-a").unwrap()
+        );
+        expected.revision -= 1;
+        expected.operation_id = "other-operation".into();
+        assert_ne!(
+            token,
+            schema_hash_refresh_operation_id(&expected, "target-a").unwrap()
+        );
+        expected.operation_id = "previous-operation".into();
+        expected.session_id = "other-session".into();
+        assert_ne!(
+            token,
+            schema_hash_refresh_operation_id(&expected, "target-a").unwrap()
+        );
+        assert!(token.len() <= 128);
+        assert!(
+            token
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn schema_hash_refresh_recovers_legacy_collision_and_preserves_durable_record() {
+        let _refresh_lock = refresh_test_lock().lock().await;
+        let (engine, _shm, identity, _grants_dir, previous, _registry) =
+            refresh_test_fixture(0xb3).await;
+        let store = engine.identity_sled_store().unwrap().clone();
+        let expected = load_revision(&store, &identity.session_id).await.unwrap();
+        let mut old_genesis = expected.genesis.clone().unwrap();
+        old_genesis.schema_content_hash = "previous-release-schema".into();
+        let legacy_token = format!(
+            "refresh-schema-hash-{}",
+            blake3::hash(identity.session_id.as_bytes()).to_hex()
+        );
+        commit_cas(
+            &engine,
+            &store,
+            legacy_token.clone(),
+            identity.session_id.clone(),
+            expected.clone(),
+            expected.record.clone(),
+            Some(old_genesis),
+            (),
+        )
+        .await
+        .unwrap();
+
+        // Reproduce the historical restart: reuse the session-only token for
+        // a changed target. The durable replay guard must still reject it.
+        let before_collision = load_revision(&store, &identity.session_id).await.unwrap();
+        let failure = commit_sled_update(
+            &engine,
+            &store,
+            legacy_token.clone(),
+            before_collision.clone(),
+            identity.clone(),
+            (),
+        )
+        .await
+        .unwrap_err();
+        assert!(failure.is::<IdentityPublicationPending>());
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            before_collision
+        );
+        let state_dir = op_core::projection_shm::shm_state_dir();
+        assert_eq!(
+            op_core::projection_shm::pending_identity_publication_in(&state_dir)
+                .unwrap()
+                .unwrap()
+                .operation_id,
+            legacy_token,
+        );
+        assert!(strict_private_state().is_err());
+        recover_identity_startup_with_store(&engine, &store)
+            .await
+            .unwrap();
+        assert!(
+            op_core::projection_shm::pending_identity_publication_in(&state_dir)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            before_collision
+        );
+
+        // Disposable fixture: advance Cozo without publishing SHM, as a
+        // recoverable durable/publication gap. Refresh must preserve this
+        // authoritative record, including its original credential bytes.
+        let mut record = before_collision.record.clone().unwrap();
+        record.last_seen_at += 17;
+        let durable = store
+            .cozo
+            .apply_identity_intent(
+                &identity.session_id,
+                "schema-refresh-newer-durable-fixture",
+                IdentityIntent::CompareExchange(Box::new(IdentityCompareExchange {
+                    expected: before_collision.clone(),
+                    record: Some(record.clone()),
+                    genesis: before_collision.genesis.clone(),
+                })),
+            )
+            .unwrap()
+            .current;
+        assert_ne!(
+            stored_session(&engine, &identity.session_id)
+                .await
+                .unwrap()
+                .unwrap()
+                .last_seen_at,
+            record.last_seen_at,
+        );
+        assert_eq!(
+            refresh_drifted_schema_content_hashes(&engine)
+                .await
+                .unwrap(),
+            1
+        );
+        let current = load_revision(&store, &identity.session_id).await.unwrap();
+        assert_eq!(current.record, Some(record));
+        let mut target_genesis = durable.genesis.clone().unwrap();
+        target_genesis.schema_content_hash = SCHEMA_CONTENT_HASH.trim().into();
+        assert_eq!(current.genesis, Some(target_genesis));
+        assert_eq!(current.revision, durable.revision + 1);
+        assert_eq!(
+            current.operation_id,
+            schema_hash_refresh_operation_id(&durable, SCHEMA_CONTENT_HASH.trim()).unwrap()
+        );
+        assert_eq!(
+            refresh_drifted_schema_content_hashes(&engine)
+                .await
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            current
+        );
+        assert!(
+            op_core::projection_shm::pending_identity_publication_in(&state_dir)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(
+            stored_session(&engine, &identity.session_id)
+                .await
+                .unwrap()
+                .unwrap()
+                .sealed_id,
+            identity.sealed_id
+        );
+        restore_grants_path(previous);
+    }
+
     #[derive(Default)]
     struct RecordingLifecycle {
         calls: Mutex<Vec<String>>,
+        fail_start: bool,
         fail_stop: bool,
     }
 
@@ -2094,6 +2910,9 @@ pub(crate) mod tests {
                 .lock()
                 .unwrap()
                 .push(format!("start:{session_id}"));
+            if self.fail_start {
+                anyhow::bail!("injected Incus start failure");
+            }
             Ok(())
         }
         async fn stop(&self, session_id: &str) -> anyhow::Result<()> {
@@ -2150,7 +2969,7 @@ pub(crate) mod tests {
     async fn dispatch_with_fixtures(
         engine: &Arc<MutationEngine>,
         lifecycle: Arc<dyn IdentityContainerLifecycle>,
-        btrfs_mount_verifier: BtrfsMountVerifier,
+        storage_verifier: IdentityStorageVerifier,
         method: &str,
         args: JsonValue,
     ) -> anyhow::Result<JsonValue> {
@@ -2162,13 +2981,13 @@ pub(crate) mod tests {
             method,
             &args,
             lifecycle,
-            btrfs_mount_verifier,
+            storage_verifier,
         )
         .await
     }
 
-    fn no_btrfs_mount_verifier() -> BtrfsMountVerifier {
-        Arc::new(|_device, _mount, _uuid| Ok(()))
+    fn no_btrfs_mount_verifier() -> IdentityStorageVerifier {
+        Arc::new(|_effect, _device, _mount, _uuid| Ok(()))
     }
 
     async fn assert_sibling_unchanged(engine: &MutationEngine, expected: &ContainerIdentitySled) {
@@ -2247,6 +3066,16 @@ pub(crate) mod tests {
         expires_at: i64,
         transport_scope: Option<&str>,
     ) -> anyhow::Result<ContainerIdentitySled> {
+        write_identity_fixture(engine, pubkey, expires_at, transport_scope, "human").await
+    }
+
+    async fn write_identity_fixture(
+        engine: &MutationEngine,
+        pubkey: &str,
+        expires_at: i64,
+        transport_scope: Option<&str>,
+        principal_kind: &str,
+    ) -> anyhow::Result<ContainerIdentitySled> {
         let store = engine.identity_sled_store()?;
         let session_id = op_identity::session::derive_session_id(pubkey);
         let expected = load_revision(store, &session_id).await?;
@@ -2265,7 +3094,7 @@ pub(crate) mod tests {
             schema_version: RECORD_FORMAT,
             vector_id: String::new(),
             sealed_id: None,
-            principal_kind: Some("human".into()),
+            principal_kind: Some(principal_kind.into()),
             btrfs_device: None,
             instance: Some(prepare_parked_instance(
                 &session_id,
@@ -2489,6 +3318,178 @@ pub(crate) mod tests {
     fn refresh_test_lock() -> &'static tokio::sync::Mutex<()> {
         static LOCK: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
         LOCK.get_or_init(|| tokio::sync::Mutex::new(()))
+    }
+
+    #[test]
+    fn get_own_identity_redacts_credentials_and_arbitrary_instance_payloads() {
+        let mut identity = record_to_sled(&test_record("own-session"), None).unwrap();
+        identity.sealed_id = Some("SID1_PRIVATE_SENTINEL".into());
+        identity.btrfs_device = Some(
+            serde_json::from_value(serde_json::json!({
+                "device_path": "/dev/sdb2",
+                "mount_point": "/identity/own",
+                "btrfs_uuid": "own-filesystem",
+                "attached": true,
+                "cozo_id": "own-leaf"
+            }))
+            .unwrap(),
+        );
+        identity.instance = Some(
+            serde_json::from_value(serde_json::json!({
+                "name": "own-session", "status": "Running", "type": "container",
+                "status_code": 103, "storage_pool": "identity-pool",
+                "description": "DESCRIPTION_PRIVATE_SENTINEL",
+                "config": {"user.credential": "CONFIG_PRIVATE_SENTINEL"},
+                "expanded_config": {"user.credential": "EXPANDED_PRIVATE_SENTINEL"},
+                "devices": [{"name": "DEVICE_PRIVATE_SENTINEL", "device": {"type": "none"}}],
+                "expanded_devices": [{"name": "EXPANDED_DEVICE_PRIVATE_SENTINEL", "device": {"type": "none"}}]
+            }))
+            .unwrap(),
+        );
+        let result = redact_own_identity(identity).unwrap();
+        assert!(!result.to_string().contains("PRIVATE_SENTINEL"));
+        assert!(result["identity"].get("sealed_id").is_none());
+        assert_eq!(result["identity"]["session_id"], "own-session");
+        assert_eq!(
+            result["identity"]["btrfs_device"]["device_path"],
+            "/dev/sdb2"
+        );
+        assert_eq!(result["identity"]["btrfs_device"]["attached"], true);
+        assert_eq!(result["identity"]["instance"]["status"], "Running");
+        assert_eq!(
+            result["identity"]["instance"]["storage_pool"],
+            "identity-pool"
+        );
+        for private in [
+            "config",
+            "expanded_config",
+            "devices",
+            "expanded_devices",
+            "description",
+        ] {
+            assert!(result["identity"]["instance"].get(private).is_none());
+        }
+        // The redacted result still conforms to the existing typed output.
+        let schema = op_plugins::state_plugins::identity_sled::IdentitySledPlugin::new();
+        let schema = op_state::StatePlugin::schema(&schema).unwrap();
+        let returns =
+            serde_json::to_value(schema.methods["get_own_identity"].returns.as_ref().unwrap())
+                .unwrap();
+        jsonschema::Validator::new(&returns)
+            .unwrap()
+            .validate(&result)
+            .unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn get_own_identity_requires_verified_session_and_prevents_cross_identity_selection() {
+        let _refresh_lock = refresh_test_lock().lock().await;
+        let (engine, _shm, identity, grants_dir, previous, _registry) =
+            refresh_test_fixture(0xa7).await;
+        let actor = op_identity::session::derive_principal_id(&identity.wireguard_pubkey);
+        let grants_path = grants_dir.path().join("capability-grants.json");
+        std::fs::write(
+            &grants_path,
+            serde_json::to_vec(&serde_json::json!({
+                actor.clone(): {"capabilities": [OWN_IDENTITY_READ_CAPABILITY]}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let second = write_second_session(
+            &engine,
+            &identity.wireguard_pubkey,
+            "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        )
+        .await
+        .unwrap();
+        let result = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "get_own_identity",
+            &serde_json::json!({}),
+            &actor,
+            Some(&identity.session_id),
+            identity.genesis.as_deref(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(result["identity"]["session_id"], identity.session_id);
+        assert!(result["identity"].get("sealed_id").is_none());
+        assert!(
+            !result
+                .to_string()
+                .contains(identity.sealed_id.as_deref().unwrap())
+        );
+        for session in [None, Some("")] {
+            let error = dispatch_identity_sled_method_for_verified_session(
+                &engine,
+                "get_own_identity",
+                &serde_json::json!({}),
+                &actor,
+                session,
+                identity.genesis.as_deref(),
+            )
+            .await
+            .unwrap_err();
+            assert!(error.to_string().contains("verified session is required"));
+        }
+        for selector in ["session_id", "trace_id", "host"] {
+            let error = dispatch_identity_sled_method_for_verified_session(
+                &engine,
+                "get_own_identity",
+                &serde_json::json!({selector: second.session_id}),
+                &actor,
+                Some(&identity.session_id),
+                identity.genesis.as_deref(),
+            )
+            .await
+            .unwrap_err();
+            assert!(error.to_string().contains("accepts no arguments"));
+        }
+        for (caller, session, genesis) in [
+            (actor.as_str(), identity.session_id.as_str(), None),
+            (
+                actor.as_str(),
+                second.session_id.as_str(),
+                identity.genesis.as_deref(),
+            ),
+            (
+                "foreign-principal",
+                identity.session_id.as_str(),
+                identity.genesis.as_deref(),
+            ),
+        ] {
+            assert!(
+                dispatch_identity_sled_method_for_verified_session(
+                    &engine,
+                    "get_own_identity",
+                    &serde_json::json!({}),
+                    caller,
+                    Some(session),
+                    genesis,
+                )
+                .await
+                .is_err()
+            );
+        }
+        let error =
+            dispatch_identity_sled_method(&engine, "get_own_identity", &serde_json::json!({}))
+                .await
+                .unwrap_err();
+        assert!(error.to_string().contains("verified own-session"));
+        std::fs::write(&grants_path, b"{}").unwrap();
+        let error = dispatch_identity_sled_method_for_verified_session(
+            &engine,
+            "get_own_identity",
+            &serde_json::json!({}),
+            &actor,
+            Some(&identity.session_id),
+            identity.genesis.as_deref(),
+        )
+        .await
+        .unwrap_err();
+        assert!(error.to_string().contains("self-read grant"));
+        restore_grants_path(previous);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -2857,6 +3858,50 @@ pub(crate) mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn service_startup_preserves_parked_identity_after_bootstrap() {
+        let (engine, _shm) = sled_engine();
+        let identity = write_identity_fixture(&engine, &pk(0xa8), 0, None, "service")
+            .await
+            .unwrap();
+        assert!(!identity.active);
+        assert_eq!(identity.principal_kind.as_deref(), Some("service"));
+        // Exercise the existing-record bootstrap steps without changing env
+        // or invoking any native lifecycle/storage fixture.
+        engine
+            .mint_and_store_genesis(&identity.session_id, &identity.wireguard_pubkey)
+            .await
+            .unwrap();
+        let bootstrapped = set_session_actor_class(&engine, &identity.session_id, "service")
+            .await
+            .unwrap();
+        assert!(!bootstrapped.active);
+        assert_eq!(bootstrapped.sealed_id, identity.sealed_id);
+        let store = engine.identity_sled_store().unwrap();
+        let before = load_revision(store, &identity.session_id).await.unwrap();
+        assert_eq!(
+            start_service_identity_container(&engine, &identity.session_id)
+                .await
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            load_revision(store, &identity.session_id).await.unwrap(),
+            before
+        );
+        let after = stored_session(&engine, &identity.session_id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(!after.active);
+        assert_eq!(after.principal_kind.as_deref(), Some("service"));
+        assert_eq!(
+            serde_json::to_value(after.instance).unwrap(),
+            serde_json::to_value(bootstrapped.instance).unwrap()
+        );
+        assert_eq!(after.genesis, identity.genesis);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn parked_anchored_sled_authenticates_without_treating_active_as_revocation() {
         let (engine, _shm) = sled_engine();
         let identity = write_identity(&engine, &pk(0x71)).await.unwrap();
@@ -2956,6 +4001,316 @@ pub(crate) mod tests {
         );
     }
 
+    async fn identity_with_dedicated_filesystem(
+        engine: &Arc<MutationEngine>,
+        byte: u8,
+    ) -> ContainerIdentitySled {
+        let key = pk(byte);
+        let identity = write_identity(engine, &key).await.unwrap();
+        let result = dispatch_with_fixtures(
+            engine,
+            Arc::new(RecordingLifecycle::default()),
+            no_btrfs_mount_verifier(),
+            "write_identity",
+            serde_json::json!({
+                "wireguard_pubkey":key,
+                "btrfs_device":{
+                    "device_path":"/private/leaf.img",
+                    "mount_point":"/private/root",
+                    "btrfs_uuid":"806e2801-8be0-4b0d-919c-3e319452667b",
+                    "cozo_id":identity.session_id,
+                    "attached":false
+                }
+            }),
+        )
+        .await
+        .unwrap();
+        serde_json::from_value(result["identity"].clone()).unwrap()
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn registered_mount_verified_before_start_and_after_stop() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa1).await;
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let checks = Arc::new(Mutex::new(Vec::new()));
+        let observed = checks.clone();
+        let verifier: IdentityStorageVerifier = Arc::new(move |effect, device, mount, uuid| {
+            observed.lock().unwrap().push((
+                effect,
+                device.to_path_buf(),
+                mount.to_path_buf(),
+                uuid.to_string(),
+            ));
+            Ok(())
+        });
+        let store = engine.identity_sled_store().unwrap().clone();
+        let active = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store.clone(),
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            true,
+            verifier.clone(),
+        )
+        .await
+        .unwrap();
+        assert!(active.btrfs_device.as_ref().unwrap().attached);
+        // An already-running guest is not started again; its UUID and exact
+        // mount are verified again before logical attachment is committed.
+        set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store.clone(),
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            true,
+            verifier.clone(),
+        )
+        .await
+        .unwrap();
+        let parked = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store,
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            false,
+            verifier,
+        )
+        .await
+        .unwrap();
+        assert!(!parked.active);
+        assert_eq!(parked.instance.as_ref().unwrap().status, "Stopped");
+        assert!(!parked.btrfs_device.as_ref().unwrap().attached);
+        assert_eq!(parked.genesis, identity.genesis);
+        assert_eq!(parked.sealed_id, identity.sealed_id);
+        assert_eq!(parked.principal_kind, identity.principal_kind);
+        assert_eq!(
+            parked.btrfs_device.as_ref().unwrap().cozo_id,
+            identity.session_id
+        );
+        let device = (
+            PathBuf::from("/private/leaf.img"),
+            PathBuf::from("/private/root"),
+            "806e2801-8be0-4b0d-919c-3e319452667b".to_string(),
+        );
+        assert_eq!(
+            *checks.lock().unwrap(),
+            vec![
+                (
+                    IdentityStorageAttachment::Attached,
+                    device.0.clone(),
+                    device.1.clone(),
+                    device.2.clone(),
+                ),
+                (
+                    IdentityStorageAttachment::Attached,
+                    device.0.clone(),
+                    device.1.clone(),
+                    device.2.clone(),
+                ),
+                (IdentityStorageAttachment::Detached, device.0, device.1, device.2),
+            ]
+        );
+        assert_eq!(
+            *lifecycle.calls.lock().unwrap(),
+            vec![
+                format!("start:{}", identity.session_id),
+                format!("stop:{}", identity.session_id)
+            ]
+        );
+        assert_sibling_unchanged(&engine, &parked).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn dedicated_filesystem_verification_failure_prevents_guest_start() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa2).await;
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let result = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            engine.identity_sled_store().unwrap().clone(),
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            true,
+            Arc::new(|_, _, _, _| anyhow::bail!("registered mount is absent")),
+        )
+        .await;
+        assert!(result.unwrap_err().to_string().contains("mount is absent"));
+        assert!(lifecycle.calls.lock().unwrap().is_empty());
+        assert_sibling_unchanged(&engine, &identity).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn registered_uuid_mismatch_prevents_guest_start_and_durable_attachment() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa4).await;
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let store = engine.identity_sled_store().unwrap().clone();
+        let revision = load_revision(&store, &identity.session_id).await.unwrap();
+        let result = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store.clone(),
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            true,
+            Arc::new(|effect, _, _, uuid| {
+                assert_eq!(effect, IdentityStorageAttachment::Attached);
+                assert_eq!(uuid, "806e2801-8be0-4b0d-919c-3e319452667b");
+                anyhow::bail!("registered filesystem UUID differs")
+            }),
+        )
+        .await;
+        assert!(result.unwrap_err().to_string().contains("UUID differs"));
+        assert!(lifecycle.calls.lock().unwrap().is_empty());
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            revision
+        );
+        assert_sibling_unchanged(&engine, &identity).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn native_registered_mount_verification_failure_preserves_identity() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa5).await;
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let store = engine.identity_sled_store().unwrap().clone();
+        let revision = load_revision(&store, &identity.session_id).await.unwrap();
+        let result = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store.clone(),
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            true,
+            native_identity_storage_verifier(),
+        )
+        .await;
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("external host provisioner or Incus"),
+            "absent fixture mount must fail without a mount fallback"
+        );
+        assert!(lifecycle.calls.lock().unwrap().is_empty());
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            revision
+        );
+        assert_sibling_unchanged(&engine, &identity).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn failed_registered_mount_attachment_does_not_commit_provisional_flag() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa6).await;
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let store = engine.identity_sled_store().unwrap().clone();
+        let revision = load_revision(&store, &identity.session_id).await.unwrap();
+        let result = dispatch_with_fixtures(
+            &engine,
+            lifecycle.clone(),
+            Arc::new(|_, _, _, _| anyhow::bail!("registered filesystem UUID differs")),
+            "attach_btrfs_device",
+            serde_json::json!({"session_id": identity.session_id}),
+        )
+        .await;
+        assert!(result.unwrap_err().to_string().contains("UUID differs"));
+        assert!(lifecycle.calls.lock().unwrap().is_empty());
+        assert_eq!(
+            load_revision(&store, &identity.session_id).await.unwrap(),
+            revision
+        );
+        assert_sibling_unchanged(&engine, &identity).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn failed_start_preserves_membership_and_durable_binding() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa7).await;
+        let lifecycle = Arc::new(RecordingLifecycle {
+            fail_start: true,
+            ..Default::default()
+        });
+        let checks = Arc::new(Mutex::new(Vec::new()));
+        let observed = checks.clone();
+        let store = engine.identity_sled_store().unwrap().clone();
+        let before = load_revision(&store, &identity.session_id).await.unwrap();
+        let result = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store.clone(),
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            true,
+            Arc::new(move |attachment, _, _, _| {
+                observed.lock().unwrap().push(attachment);
+                Ok(())
+            }),
+        )
+        .await;
+        assert!(result.unwrap_err().to_string().contains("Incus start failure"));
+        assert_eq!(
+            *checks.lock().unwrap(),
+            vec![IdentityStorageAttachment::Attached],
+            "failed start must not run a detach/remove cleanup"
+        );
+        assert_eq!(
+            *lifecycle.calls.lock().unwrap(),
+            vec![format!("start:{}", identity.session_id)]
+        );
+        assert_eq!(load_revision(&store, &identity.session_id).await.unwrap(), before);
+        assert_sibling_unchanged(&engine, &identity).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn dedicated_filesystem_missing_after_stop_requires_reconciliation() {
+        let (engine, _shm) = sled_engine();
+        let identity = identity_with_dedicated_filesystem(&engine, 0xa3).await;
+        let lifecycle = Arc::new(RecordingLifecycle::default());
+        let store = engine.identity_sled_store().unwrap().clone();
+        let active = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store.clone(),
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            true,
+            no_btrfs_mount_verifier(),
+        )
+        .await
+        .unwrap();
+        let result = set_session_active_owned_with_verifier(
+            engine.as_ref().clone(),
+            store,
+            lifecycle.clone(),
+            identity.session_id.clone(),
+            false,
+            Arc::new(|_, _, _, _| anyhow::bail!("mount disappeared")),
+        )
+        .await;
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("requires reconciliation")
+        );
+        let durable = stored_session(&engine, &identity.session_id)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(!durable.active);
+        // No successful post-stop readback was committed as observed state.
+        assert_eq!(durable.instance.as_ref().unwrap().status, "Running");
+        assert_eq!(durable.btrfs_device, active.btrfs_device);
+        assert_eq!(durable.sealed_id, identity.sealed_id);
+        assert_eq!(
+            *lifecycle.calls.lock().unwrap(),
+            vec![
+                format!("start:{}", identity.session_id),
+                format!("stop:{}", identity.session_id)
+            ]
+        );
+    }
+
     #[tokio::test(flavor = "multi_thread")]
     async fn overlapping_activate_then_park_is_serialized_per_session() {
         let (engine, _shm) = sled_engine();
@@ -3034,6 +4389,48 @@ pub(crate) mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
+    async fn identity_inventory_requires_verified_route_and_exact_capability() {
+        let (engine, _shm) = sled_engine();
+        assert!(
+            dispatch_identity_sled_method(
+                &engine,
+                "inspect_identity_inventory",
+                &serde_json::json!({})
+            )
+            .await
+            .is_err()
+        );
+        assert!(
+            dispatch_identity_sled_method_for_verified_session(
+                &engine,
+                "inspect_identity_inventory",
+                &serde_json::json!({}),
+                "owner",
+                None,
+                None
+            )
+            .await
+            .is_err()
+        );
+        for grants in [
+            std::collections::HashSet::new(),
+            std::collections::HashSet::from([
+                "identity_sled.read".into(),
+                "identity_sled.write".into(),
+            ]),
+            std::collections::HashSet::from(["identity_sled.inventory.read.*".into()]),
+        ] {
+            assert!(require_identity_inventory_capability(&grants).is_err());
+        }
+        assert!(
+            require_identity_inventory_capability(&std::collections::HashSet::from([
+                "identity_sled.inventory.read".into()
+            ]))
+            .is_ok()
+        );
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
     async fn unverified_provision_and_legacy_overrides_are_rejected() {
         let (engine, _shm) = sled_engine();
         let key = pk(0x7a);
@@ -3092,7 +4489,8 @@ pub(crate) mod tests {
         assert_eq!(before.genesis, anchored.genesis);
         let calls = Arc::new(Mutex::new(Vec::<(String, String, String)>::new()));
         let observed_calls = calls.clone();
-        let verifier: BtrfsMountVerifier = Arc::new(move |device, mount, uuid| {
+        let verifier: IdentityStorageVerifier = Arc::new(move |effect, device, mount, uuid| {
+            anyhow::ensure!(effect == IdentityStorageAttachment::Attached);
             observed_calls.lock().unwrap().push((
                 device.display().to_string(),
                 mount.display().to_string(),
@@ -3212,6 +4610,7 @@ pub(crate) mod tests {
         .unwrap();
         let failing = Arc::new(RecordingLifecycle {
             calls: Mutex::new(Vec::new()),
+            fail_start: false,
             fail_stop: true,
         });
         let result = set_session_active_owned(
