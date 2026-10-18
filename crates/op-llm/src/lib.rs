@@ -44,6 +44,7 @@ pub mod factory;
 pub mod gcloud_adc;
 pub mod gemini;
 pub mod gemini_cli;
+pub mod graph_turn_reminder;
 pub mod headless_oauth;
 pub mod huggingface;
 pub mod openclaw;

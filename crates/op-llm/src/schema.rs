@@ -1,6 +1,6 @@
 //! Embedded plugin schema (single source of truth).
 //!
-//! The Zeroclaw plugin in `op-plugins` is the **one** schema for LLM providers,
+//! The threetched plugin in `op-plugins` is the **one** schema for LLM providers,
 //! model routes, tools, and the selector contract — the plugin IS the schema.
 //! op-llm does NOT declare a second, divergent schema. It **includes** the
 //! plugin's schema here so the same definition is used in both places: the
