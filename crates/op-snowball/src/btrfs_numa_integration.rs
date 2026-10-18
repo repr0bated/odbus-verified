@@ -23,6 +23,29 @@ use std::time::SystemTime;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
+fn select_writer_cpu(node_cpus: &[u32], allowed: &[u32], requested: Option<u32>) -> Result<u32> {
+    let permitted: Vec<_> = node_cpus
+        .iter()
+        .copied()
+        .filter(|cpu| allowed.contains(cpu))
+        .collect();
+    let fallback = permitted
+        .iter()
+        .copied()
+        .max()
+        .context("chosen NUMA node has no CPUs allowed for this identity")?;
+    match requested {
+        Some(cpu) if permitted.contains(&cpu) => Ok(cpu),
+        Some(cpu) => {
+            warn!(
+                "OPDBUS_SNOWBALL_WRITER_CPU={cpu} is outside the chosen node's allowed CPUs {permitted:?}; using CPU {fallback}"
+            );
+            Ok(fallback)
+        }
+        None => Ok(fallback),
+    }
+}
+
 /// Unified snowball with BTRFS cache and NUMA optimization
 pub struct OptimizedSnowball {
     snowball: Arc<StreamingSnowball>,
@@ -63,31 +86,27 @@ impl OptimizedSnowball {
         // core. The streaming writer is a single thread, so pinning it to a
         // single CPU of the optimal node keeps its L1/L2 working set warm as
         // well as its memory local. `OPDBUS_SNOWBALL_WRITER_CPU` overrides the
-        // core (must belong to the chosen node); by default the highest CPU of
-        // the node is used, leaving CPU 0 to interrupts.
+        // core (must belong to the chosen node and the identity's allowed CPU
+        // mask); by default the highest permitted CPU of the node is used.
         let placement: Option<WriterPlacement> = detected.as_ref().and_then(|topology| {
             let mut optimizer = NumaOptimizer::from_env();
-            let node = optimizer
-                .get_optimal_node()
-                .unwrap_or_else(|| topology.optimal_node());
-            let node_cpus = topology.cpus_for_node(node);
-            if node_cpus.is_empty() {
-                warn!("NUMA node {node} lists no CPUs; snowball writer runs unpinned");
+            // Explicitly disabled placement must remain disabled, rather than
+            // falling back to a node and silently pinning anyway.
+            let node = optimizer.get_optimal_node()?;
+            let node_cpus = optimizer.topology().unwrap_or(topology).cpus_for_node(node);
+            let Some(allowed) = NumaOptimizer::current_cpu_affinity() else {
+                warn!("Cannot read allowed CPUs; snowball writer runs unpinned");
                 return None;
-            }
-            let cpu = match std::env::var("OPDBUS_SNOWBALL_WRITER_CPU")
+            };
+            let requested = std::env::var("OPDBUS_SNOWBALL_WRITER_CPU")
                 .ok()
-                .and_then(|v| v.trim().parse::<u32>().ok())
-            {
-                Some(requested) if node_cpus.contains(&requested) => requested,
-                Some(requested) => {
-                    warn!(
-                        "OPDBUS_SNOWBALL_WRITER_CPU={requested} is not on NUMA node {node} \
-                         (CPUs {node_cpus:?}); using the node's last CPU instead"
-                    );
-                    *node_cpus.iter().max().expect("non-empty")
+                .and_then(|v| v.trim().parse::<u32>().ok());
+            let cpu = match select_writer_cpu(&node_cpus, &allowed, requested) {
+                Ok(cpu) => cpu,
+                Err(error) => {
+                    warn!("NUMA node {node}: {error}; snowball writer runs unpinned");
+                    return None;
                 }
-                None => *node_cpus.iter().max().expect("non-empty"),
             };
             Some(Box::new(move || -> Result<()> {
                 debug!("snowball writer: pinning to CPU {cpu} on NUMA node {node}");
@@ -95,8 +114,9 @@ impl OptimizedSnowball {
                     &[cpu],
                     &format!("snowball writer CPU {cpu}"),
                 )?;
-                NumaOptimizer::apply_memory_policy(&NumaMemoryPolicy::Preferred(node))
-                    .with_context(|| format!("memory policy for NUMA node {node}"))?;
+                if let Err(error) = NumaOptimizer::apply_memory_policy(&NumaMemoryPolicy::Preferred(node)) {
+                    warn!("Snowball writer remains pinned to CPU {cpu}; preferred NUMA memory policy for node {node} failed: {error:#}");
+                }
                 Ok(())
             }) as WriterPlacement)
         });
@@ -323,6 +343,22 @@ impl OptimizedSnowball {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn writer_cpu_respects_allowed_sparse_mask() {
+        assert_eq!(
+            super::select_writer_cpu(&[0, 1, 7, 11], &[1, 7], None).unwrap(),
+            7
+        );
+        assert_eq!(
+            super::select_writer_cpu(&[0, 1, 7, 11], &[1, 7], Some(1)).unwrap(),
+            1
+        );
+        assert_eq!(
+            super::select_writer_cpu(&[0, 1, 7, 11], &[1, 7], Some(11)).unwrap(),
+            7
+        );
+        assert!(super::select_writer_cpu(&[0, 1], &[7], None).is_err());
+    }
     /// The placement hook must run on the writer thread and its pin must
     /// still be in effect when writes execute there — while the caller's
     /// (tokio) thread is left untouched.
@@ -335,7 +371,7 @@ mod tests {
             return; // non-Linux
         };
         let target = *before.first().expect("at least one runnable CPU");
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::snowball::tests::tempdir().unwrap();
         let placement: WriterPlacement =
             Box::new(move || NumaOptimizer::apply_cpu_affinity_to(&[target], "test writer"));
         let snowball = StreamingSnowball::new_with_placement(

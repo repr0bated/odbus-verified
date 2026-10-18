@@ -25,5 +25,6 @@ regex = { workspace = true }
 lazy_static = { workspace = true }
 zbus = { workspace = true }
 serde_json = { workspace = true }
+schemars = { workspace = true }
 reqwest = { workspace = true, features = ["json"] }
 jsonschema = { workspace = true }

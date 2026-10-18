@@ -4,11 +4,17 @@
 //! cache root alone does not contain their data. A committed set therefore has
 //! one read-only snapshot for the root and each category.
 
+use super::managed_process::{self, COMMAND_TIMEOUT};
 use anyhow::{Context, Result};
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
+use std::sync::{
+    Arc, LazyLock,
+    atomic::{AtomicBool, Ordering},
+};
 use tokio::process::Command;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 pub const CACHE_MEMBERS: [&str; 6] = ["root", "embeddings", "blocks", "queries", "diffs", "kv"];
 pub(crate) const COMPLETE_MARKER: &str =
@@ -33,10 +39,11 @@ impl Default for SnapshotConfig {
     }
 }
 
+#[derive(Clone)]
 pub struct SnapshotManager {
     config: SnapshotConfig,
     source_subvol: PathBuf,
-    rotation: tokio::sync::Mutex<()>,
+    rotation: Arc<tokio::sync::Mutex<()>>,
 }
 
 impl SnapshotManager {
@@ -44,7 +51,7 @@ impl SnapshotManager {
         Self {
             config,
             source_subvol,
-            rotation: tokio::sync::Mutex::new(()),
+            rotation: Arc::new(tokio::sync::Mutex::new(())),
         }
     }
 
@@ -80,13 +87,15 @@ impl SnapshotManager {
     }
 
     async fn subvolume_is_readonly(path: &Path) -> Result<bool> {
-        let output = Command::new("btrfs")
-            .args(["property", "get", "-ts"])
-            .arg(path)
-            .arg("ro")
-            .output()
-            .await
-            .context("Failed to inspect Btrfs readonly property")?;
+        let output = managed_process::output(
+            Command::new("btrfs")
+                .args(["property", "get", "-ts"])
+                .arg(path)
+                .arg("ro"),
+            COMMAND_TIMEOUT,
+        )
+        .await
+        .context("Failed to inspect Btrfs readonly property")?;
         anyhow::ensure!(
             output.status.success(),
             "cannot inspect Btrfs subvolume {}: {}",
@@ -167,7 +176,7 @@ impl SnapshotManager {
             .and_then(|name| name.to_str())
             .unwrap_or("");
         anyhow::ensure!(
-            self.set_counter(name).is_some(),
+            self.set_counter(name).is_some() || self.is_transport_name(name),
             "invalid cache snapshot set name"
         );
         let metadata = tokio::fs::symlink_metadata(path).await?;
@@ -178,7 +187,9 @@ impl SnapshotManager {
         let marker = path.join(".complete");
         let marker_metadata = tokio::fs::symlink_metadata(&marker).await?;
         anyhow::ensure!(
-            marker_metadata.is_file() && !marker_metadata.file_type().is_symlink(),
+            marker_metadata.is_file()
+                && !marker_metadata.file_type().is_symlink()
+                && marker_metadata.len() == COMPLETE_MARKER.len() as u64,
             "invalid set completion marker"
         );
         anyhow::ensure!(
@@ -220,16 +231,59 @@ impl SnapshotManager {
                 .join(format!("{}{:06}", self.set_prefix(), counter));
         tokio::fs::create_dir(&set_path).await?;
 
+        self.populate_set(&set_path).await?;
+        self.rotate_snapshots().await?;
+        Ok(set_path)
+    }
+
+    fn is_transport_name(&self, name: &str) -> bool {
+        name.strip_prefix(&format!("{}-transfer-", self.config.prefix))
+            .is_some_and(|suffix| uuid::Uuid::parse_str(suffix).is_ok())
+    }
+
+    /// Temporary transport sets have unique names and never enter manual
+    /// snapshot rotation. Creation remains owned after caller cancellation;
+    /// its result is dropped and cleaned if the caller has gone away.
+    pub(crate) async fn create_transport_snapshot(&self) -> Result<TemporarySet> {
+        self.validate_prefix()?;
+        let permit = transfer_permit().await?;
+        let manager = self.clone();
+        tokio::spawn(async move {
+            manager.validate_layout().await?;
+            std::fs::create_dir_all(&manager.config.snapshot_dir)?;
+            let path = manager.config.snapshot_dir.join(format!(
+                "{}-transfer-{}",
+                manager.config.prefix,
+                uuid::Uuid::new_v4()
+            ));
+            let set = TemporarySet::create(path, permit)?;
+            if let Err(error) = manager.populate_set(set.path()).await {
+                if let Err(cleanup) = set.cleanup().await {
+                    return Err(
+                        error.context(format!("temporary snapshot cleanup failed: {cleanup:#}"))
+                    );
+                }
+                return Err(error);
+            }
+            Ok(set)
+        })
+        .await
+        .context("snapshot creation task failed")?
+    }
+
+    async fn populate_set(&self, set_path: &Path) -> Result<()> {
         for member in CACHE_MEMBERS {
             let source = self.source_for(member);
             let target = set_path.join(member);
-            let output = Command::new("btrfs")
-                .args(["subvolume", "snapshot", "-r"])
-                .arg(&source)
-                .arg(&target)
-                .output()
-                .await
-                .context("Failed to execute Btrfs snapshot command")?;
+            let output = managed_process::output(
+                Command::new("btrfs")
+                    .args(["subvolume", "snapshot", "-r"])
+                    .arg(&source)
+                    .arg(&target),
+                COMMAND_TIMEOUT,
+            )
+            .await
+            .context("Failed to execute Btrfs snapshot command")?;
             anyhow::ensure!(
                 output.status.success(),
                 "failed to snapshot {}: {}",
@@ -239,7 +293,7 @@ impl SnapshotManager {
             Self::ensure_subvolume(&target, true).await?;
         }
 
-        Self::verify_members(&set_path).await?;
+        Self::verify_members(set_path).await?;
         let marker = set_path.join(".complete");
         let mut file = std::fs::OpenOptions::new()
             .write(true)
@@ -248,10 +302,9 @@ impl SnapshotManager {
         use std::io::Write as _;
         file.write_all(COMPLETE_MARKER.as_bytes())?;
         file.sync_all()?;
-        std::fs::File::open(&set_path)?.sync_all()?;
-        self.validate_complete_set(&set_path).await?;
-        self.rotate_snapshots().await?;
-        Ok(set_path)
+        std::fs::File::open(set_path)?.sync_all()?;
+        self.validate_complete_set(set_path).await?;
+        Ok(())
     }
 
     pub async fn list_snapshots(&self) -> Result<Vec<SnapshotInfo>> {
@@ -324,25 +377,29 @@ impl SnapshotManager {
             // An unprivileged owner can delete its Btrfs snapshot only after
             // clearing the read-only property. It is no longer a committed
             // recovery point, and all six members were verified above.
-            let writable = Command::new("btrfs")
-                .args(["property", "set", "-ts"])
-                .arg(&path)
-                .args(["ro", "false"])
-                .output()
-                .await
-                .context("Failed to update Btrfs snapshot property")?;
+            let writable = managed_process::output(
+                Command::new("btrfs")
+                    .args(["property", "set", "-ts"])
+                    .arg(&path)
+                    .args(["ro", "false"]),
+                COMMAND_TIMEOUT,
+            )
+            .await
+            .context("Failed to update Btrfs snapshot property")?;
             anyhow::ensure!(
                 writable.status.success(),
                 "failed to make cache snapshot member writable for deletion {}: {}",
                 path.display(),
                 String::from_utf8_lossy(&writable.stderr)
             );
-            let output = Command::new("btrfs")
-                .args(["subvolume", "delete"])
-                .arg(&path)
-                .output()
-                .await
-                .context("Failed to execute Btrfs subvolume delete")?;
+            let output = managed_process::output(
+                Command::new("btrfs")
+                    .args(["subvolume", "delete"])
+                    .arg(&path),
+                COMMAND_TIMEOUT,
+            )
+            .await
+            .context("Failed to execute Btrfs subvolume delete")?;
             anyhow::ensure!(
                 output.status.success(),
                 "failed to delete cache snapshot member {}: {}",
@@ -374,6 +431,155 @@ impl SnapshotManager {
     }
 }
 
+// Admission happens before creating snapshots or spawning cleanup owners.
+static TRANSFERS: LazyLock<Arc<Semaphore>> = LazyLock::new(|| Arc::new(Semaphore::new(2)));
+
+static CLEANUP_FAILED: AtomicBool = AtomicBool::new(false);
+
+pub(crate) async fn transfer_permit() -> Result<OwnedSemaphorePermit> {
+    let permit = TRANSFERS.clone().acquire_owned().await?;
+    anyhow::ensure!(
+        !CLEANUP_FAILED.load(Ordering::Acquire),
+        "temporary cache cleanup previously failed; inspect logged paths before restarting transport"
+    );
+    Ok(permit)
+}
+
+/// Owns only a directory created by this operation. A committed receive can
+/// relinquish ownership; source snapshots and partial receives are removed.
+pub(crate) struct TemporarySet {
+    path: Option<PathBuf>,
+    permit: Option<OwnedSemaphorePermit>,
+}
+
+impl TemporarySet {
+    pub(crate) fn create(path: PathBuf, permit: OwnedSemaphorePermit) -> Result<Self> {
+        // Synchronous create closes the cancellation gap between mkdir and
+        // registering ownership; existing destinations are never adopted.
+        std::fs::create_dir(&path)?;
+        Ok(Self {
+            path: Some(path),
+            permit: Some(permit),
+        })
+    }
+
+    pub(crate) fn path(&self) -> &Path {
+        self.path.as_deref().expect("live temporary set")
+    }
+
+    pub(crate) fn preserve(mut self) {
+        self.path.take();
+    }
+
+    pub(crate) async fn cleanup(mut self) -> Result<()> {
+        let result = cleanup_owned_set(self.path()).await;
+        if result.is_ok() {
+            self.path.take();
+        }
+        result
+    }
+}
+
+impl Drop for TemporarySet {
+    fn drop(&mut self) {
+        let Some(path) = self.path.take() else {
+            return;
+        };
+        let permit = self.permit.take();
+        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+            runtime.spawn(async move {
+                let _permit = permit;
+                // A cancelled send/receive child was signalled before this
+                // guard drops. Retry briefly if its kernel work is draining.
+                for attempt in 0..3 {
+                    match cleanup_owned_set(&path).await {
+                        Ok(()) => return,
+                        Err(error) if attempt == 2 => { CLEANUP_FAILED.store(true, Ordering::Release); tracing::error!(path = %path.display(), %error, "temporary cache set cleanup failed"); },
+                        Err(_) => tokio::time::sleep(std::time::Duration::from_millis(100)).await,
+                    }
+                }
+            });
+        } else {
+            CLEANUP_FAILED.store(true, Ordering::Release);
+            tracing::error!(path = %path.display(), "runtime stopped before temporary cache set cleanup; recovery required");
+        }
+    }
+}
+
+async fn cleanup_owned_set(path: &Path) -> Result<()> {
+    if !path.try_exists()? {
+        return Ok(());
+    }
+    let metadata = std::fs::symlink_metadata(path)?;
+    anyhow::ensure!(
+        metadata.is_dir() && !metadata.file_type().is_symlink(),
+        "invalid temporary set"
+    );
+    // Never recursively remove arbitrary files or unexpected nested objects.
+    for entry in std::fs::read_dir(path)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        anyhow::ensure!(
+            name == ".complete" || CACHE_MEMBERS.iter().any(|member| name == *member),
+            "unexpected object in temporary cache set: {}",
+            entry.path().display()
+        );
+        anyhow::ensure!(
+            !entry.file_type()?.is_symlink(),
+            "symlink in temporary cache set"
+        );
+    }
+    let marker = path.join(".complete");
+    if marker.try_exists()? {
+        std::fs::remove_file(marker)?;
+    }
+    for member in CACHE_MEMBERS.iter().rev() {
+        let member = path.join(member);
+        if !member.try_exists()? {
+            continue;
+        }
+        SnapshotManager::ensure_subvolume(&member, false).await?;
+        let output = managed_process::output(
+            Command::new("btrfs")
+                .args(["subvolume", "delete"])
+                .arg(&member),
+            COMMAND_TIMEOUT,
+        )
+        .await?;
+        if !output.status.success() {
+            // Owning unprivileged users may need a writable source snapshot.
+            // Received UUID protection is respected; never force-clear it.
+            let writable = managed_process::output(
+                Command::new("btrfs")
+                    .args(["property", "set", "-ts"])
+                    .arg(&member)
+                    .args(["ro", "false"]),
+                COMMAND_TIMEOUT,
+            )
+            .await?;
+            anyhow::ensure!(
+                writable.status.success(),
+                "cannot prepare temporary snapshot deletion: {}",
+                String::from_utf8_lossy(&writable.stderr)
+            );
+            let retry = managed_process::output(
+                Command::new("btrfs")
+                    .args(["subvolume", "delete"])
+                    .arg(&member),
+                COMMAND_TIMEOUT,
+            )
+            .await?;
+            anyhow::ensure!(
+                retry.status.success(),
+                "cannot delete temporary snapshot: {}",
+                String::from_utf8_lossy(&retry.stderr)
+            );
+        }
+    }
+    std::fs::remove_dir(path)?;
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 pub struct SnapshotInfo {
     pub name: String,
@@ -386,6 +592,35 @@ pub struct SnapshotInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn cleanup_refuses_unowned_contents() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::write(root.path().join("unrelated"), "keep").unwrap();
+        assert!(cleanup_owned_set(root.path()).await.is_err());
+        assert_eq!(
+            std::fs::read_to_string(root.path().join("unrelated")).unwrap(),
+            "keep"
+        );
+    }
+
+    #[tokio::test]
+    async fn transport_sets_are_excluded_from_manual_rotation() {
+        let root = tempfile::tempdir().unwrap();
+        let manager = SnapshotManager::new(
+            root.path().join("cache"),
+            SnapshotConfig {
+                snapshot_dir: root.path().into(),
+                ..Default::default()
+            },
+        );
+        let name = format!("SNP-cache-transfer-{}", uuid::Uuid::new_v4());
+        std::fs::create_dir(root.path().join(&name)).unwrap();
+        assert!(manager.is_transport_name(&name));
+        assert!(!manager.is_transport_name("SNP-cache-transfer-../escape"));
+        assert_eq!(manager.next_snapshot_counter().await.unwrap(), 1);
+        assert!(manager.list_snapshots().await.unwrap().is_empty());
+    }
 
     #[test]
     fn original_retention_and_set_naming() {

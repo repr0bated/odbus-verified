@@ -13,6 +13,7 @@ pub mod agent;
 pub mod agent_registry;
 pub mod btrfs_cache;
 pub mod capability_resolver;
+mod managed_process;
 pub mod numa;
 pub mod orchestrator;
 pub mod pattern_tracker;

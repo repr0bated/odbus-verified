@@ -1,4 +1,10 @@
-//! Snapshot retention policies with rolling windows
+//! Stored snapshot-retention fields.
+//!
+//! Prune keeps the newest committed dump, the parent of the next send. That
+//! dump is a snapshot of the live vectors. Timing in the same dump accounts
+//! for a vector that was still being written. The hourly, daily, weekly, and
+//! quarterly counts remain so an existing `retention.json` and the snowball
+//! method still load. They do not keep extra dumps.
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

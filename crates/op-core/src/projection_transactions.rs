@@ -211,11 +211,26 @@ fn read_file(directory: &File, name: &str, maximum: u64, private: bool) -> Resul
         "projection file exceeds its size limit"
     );
     let mut bytes = Vec::new();
-    file.take(maximum + 1).read_to_end(&mut bytes)?;
-    ensure!(
-        bytes.len() as u64 <= maximum,
-        "projection file grew beyond its size limit"
-    );
+    let mut reader = file.take(maximum.saturating_add(1));
+    let mut chunk = [0_u8; 8192];
+    loop {
+        let count = reader.read(&mut chunk)?;
+        if count == 0 {
+            break;
+        }
+        let length = bytes
+            .len()
+            .checked_add(count)
+            .context("projection file length overflow")?;
+        ensure!(
+            length as u64 <= maximum,
+            "projection file grew beyond its size limit"
+        );
+        bytes
+            .try_reserve_exact(count)
+            .context("allocate bounded projection document")?;
+        bytes.extend_from_slice(&chunk[..count]);
+    }
     Ok(Some(bytes))
 }
 
@@ -428,6 +443,16 @@ pub fn read_projection_snapshot_in(
     state_dir: &str,
     plugin_ids: &[String],
 ) -> Result<ProjectionSnapshot> {
+    read_projection_snapshot_bounded_in(state_dir, plugin_ids, u64::MAX)
+}
+
+/// Consistent snapshot with an aggregate byte budget, checked before each read.
+/// An over-budget snapshot fails as a whole; it never looks like missing state.
+pub fn read_projection_snapshot_bounded_in(
+    state_dir: &str,
+    plugin_ids: &[String],
+    maximum_bytes: u64,
+) -> Result<ProjectionSnapshot> {
     for plugin in plugin_ids {
         filename(plugin)?;
     }
@@ -437,12 +462,20 @@ pub fn read_projection_snapshot_in(
             states: BTreeMap::new(),
         });
     };
-    read_locked_snapshot(&locked, plugin_ids)
+    read_locked_snapshot_bounded(&locked, plugin_ids, maximum_bytes)
 }
 
 fn read_locked_snapshot(
     locked: &LockedDirectory,
     plugin_ids: &[String],
+) -> Result<ProjectionSnapshot> {
+    read_locked_snapshot_bounded(locked, plugin_ids, u64::MAX)
+}
+
+fn read_locked_snapshot_bounded(
+    locked: &LockedDirectory,
+    plugin_ids: &[String],
+    maximum_bytes: u64,
 ) -> Result<ProjectionSnapshot> {
     let Some((manifest, _)) = locked.manifest()? else {
         // Uncommitted files beside a missing manifest are not state authority.
@@ -452,11 +485,18 @@ fn read_locked_snapshot(
         });
     };
     let mut states = BTreeMap::new();
+    let mut remaining = maximum_bytes;
     for plugin in plugin_ids {
         manifest.require_available(plugin)?;
-        if let Some(bytes) =
-            read_file(&locked.directory, &filename(plugin)?, MAX_PROJECTION, false)?
-        {
+        if let Some(bytes) = read_file(
+            &locked.directory,
+            &filename(plugin)?,
+            MAX_PROJECTION.min(remaining),
+            false,
+        )? {
+            remaining = remaining
+                .checked_sub(bytes.len() as u64)
+                .context("projection snapshot exceeds aggregate byte budget")?;
             states.insert(plugin.clone(), bytes);
         }
     }
