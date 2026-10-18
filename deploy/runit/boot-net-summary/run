@@ -9,7 +9,7 @@ wait_dep() {
         sleep 1
     done
 }
-wait_dep ovsbr0-eth0
+wait_dep ovsbr0-cutover
 wait_dep op-session-bus
 # The summary reads ports through zcall, so it needs the plugin tree — which is
 # now the last thing to come up. This wait_dep breaks on timeout rather than
