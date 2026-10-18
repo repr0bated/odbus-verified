@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result};
 use futures::TryStreamExt;
-use netlink_packet_route::address::AddressAttribute;
+use netlink_packet_route::address::{AddressAttribute, AddressHeaderFlag, AddressMessage};
 use netlink_packet_route::link::LinkAttribute;
 use netlink_packet_route::route::{RouteAddress, RouteAttribute, RouteMessage};
 use rtnetlink::{IpVersion, new_connection};
@@ -235,9 +235,86 @@ pub async fn add_ipv4_address(ifname: &str, ip: &str, prefix: u8) -> Result<()> 
     Ok(())
 }
 
-/// Delete IPv4 address from interface
-#[allow(dead_code)]
-pub async fn del_ipv4_address(ifname: &str, ip: &str, prefix: u8) -> Result<()> {
+fn local_ipv4_address(message: &AddressMessage) -> Option<Ipv4Addr> {
+    let local = message
+        .attributes
+        .iter()
+        .find_map(|attribute| match attribute {
+            AddressAttribute::Local(address) => Some(*address),
+            _ => None,
+        });
+    let address = local.or_else(|| {
+        message
+            .attributes
+            .iter()
+            .find_map(|attribute| match attribute {
+                AddressAttribute::Address(address) => Some(*address),
+                _ => None,
+            })
+    });
+    match address {
+        Some(std::net::IpAddr::V4(address)) => Some(address),
+        _ => None,
+    }
+}
+
+fn select_ipv4_address_for_delete(
+    addresses: &[AddressMessage],
+    ifindex: u32,
+    address: Ipv4Addr,
+    prefix: u8,
+) -> Result<Option<AddressMessage>> {
+    anyhow::ensure!(prefix <= 32, "IPv4 prefix must be between 0 and 32");
+    let matches: Vec<_> = addresses
+        .iter()
+        .filter(|message| {
+            message.header.index == ifindex
+                && message.header.family == netlink_packet_route::AddressFamily::Inet
+                && message.header.prefix_len == prefix
+                && local_ipv4_address(message) == Some(address)
+        })
+        .collect();
+    anyhow::ensure!(matches.len() <= 1, "IPv4 address selector is ambiguous");
+    let Some(target) = matches.first() else {
+        return Ok(None);
+    };
+    // Linux may also delete same-subnet secondaries when their primary is
+    // removed. Refuse that shape instead of changing promote_secondaries or
+    // recreating addresses outside this exact operation's scope.
+    if !target.header.flags.contains(&AddressHeaderFlag::Secondary) {
+        let mask = u32::MAX.checked_shl(32 - u32::from(prefix)).unwrap_or(0);
+        let network = |message: &AddressMessage| {
+            message
+                .attributes
+                .iter()
+                .find_map(|attribute| match attribute {
+                    AddressAttribute::Address(std::net::IpAddr::V4(address)) => {
+                        Some(u32::from(*address) & mask)
+                    }
+                    _ => None,
+                })
+        };
+        anyhow::ensure!(
+            !addresses.iter().any(|other| {
+                other.header.index == ifindex
+                    && other.header.family == netlink_packet_route::AddressFamily::Inet
+                    && other.header.prefix_len == prefix
+                    && other.header.scope == target.header.scope
+                    && other.header.flags.contains(&AddressHeaderFlag::Secondary)
+                    && network(other).is_some()
+                    && network(other) == network(target)
+            }),
+            "cannot remove primary IPv4 address while same-subnet secondary addresses remain"
+        );
+    }
+    Ok(Some((**target).clone()))
+}
+
+/// Delete exactly one local IPv4 CIDR, preserving unrelated addresses.
+/// Returns false when the address is already absent; a missing interface is an error.
+pub async fn del_ipv4_address(ifname: &str, ip: &str, prefix: u8) -> Result<bool> {
+    let address: Ipv4Addr = ip.parse().context("Invalid IPv4 address")?;
+    anyhow::ensure!(prefix <= 32, "IPv4 prefix must be between 0 and 32");
     let (connection, handle, _) = new_connection()?;
     tokio::spawn(connection);
 
@@ -250,23 +327,18 @@ pub async fn del_ipv4_address(ifname: &str, ip: &str, prefix: u8) -> Result<()> 
 
     let ifindex = link.header.index;
 
-    // Parse IP address
-    let addr: Ipv4Addr = ip.parse().context("Invalid IPv4 address")?;
-
-    // Get addresses filtered by interface, prefix, and address
-    let mut addresses = handle
+    let addresses: Vec<_> = handle
         .address()
         .get()
         .set_link_index_filter(ifindex)
-        .set_prefix_length_filter(prefix)
-        .set_address_filter(std::net::IpAddr::V4(addr))
-        .execute();
-
-    if let Some(addr_msg) = addresses.try_next().await? {
-        handle.address().del(addr_msg).execute().await?;
+        .execute()
+        .try_collect()
+        .await?;
+    if let Some(message) = select_ipv4_address_for_delete(&addresses, ifindex, address, prefix)? {
+        handle.address().del(message).execute().await?;
+        return Ok(true);
     }
-
-    Ok(())
+    Ok(false)
 }
 
 /// Flush all addresses from interface
@@ -899,6 +971,81 @@ pub async fn add_rule(destination: &str, table: u32, priority: Option<u32>) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn ipv4_message(index: u32, local: &str, peer: &str, prefix: u8) -> AddressMessage {
+        let mut message = AddressMessage::default();
+        message.header.index = index;
+        message.header.family = netlink_packet_route::AddressFamily::Inet;
+        message.header.prefix_len = prefix;
+        message
+            .attributes
+            .push(AddressAttribute::Local(local.parse().unwrap()));
+        message
+            .attributes
+            .push(AddressAttribute::Address(peer.parse().unwrap()));
+        message
+    }
+
+    #[test]
+    fn ipv4_delete_selector_matches_local_cidr_and_interface_only() {
+        let target = ipv4_message(7, "192.0.2.1", "192.0.2.254", 24);
+        let other_interface = ipv4_message(8, "192.0.2.1", "192.0.2.1", 24);
+        let other_prefix = ipv4_message(7, "192.0.2.1", "192.0.2.1", 32);
+        let peer_match = ipv4_message(7, "198.51.100.1", "192.0.2.1", 24);
+        let addresses = [target.clone(), other_interface, other_prefix, peer_match];
+        let selected =
+            select_ipv4_address_for_delete(&addresses, 7, "192.0.2.1".parse().unwrap(), 24)
+                .unwrap();
+        assert_eq!(selected, Some(target));
+        assert!(
+            select_ipv4_address_for_delete(&addresses, 7, "203.0.113.1".parse().unwrap(), 24,)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            select_ipv4_address_for_delete(&addresses, 7, "192.0.2.1".parse().unwrap(), 33,)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn ipv4_delete_selector_refuses_ambiguity_and_primary_cascade() {
+        let primary = ipv4_message(7, "192.0.2.1", "192.0.2.1", 24);
+        let duplicate = [primary.clone(), primary.clone()];
+        assert!(
+            select_ipv4_address_for_delete(&duplicate, 7, "192.0.2.1".parse().unwrap(), 24,)
+                .unwrap_err()
+                .to_string()
+                .contains("ambiguous")
+        );
+        let mut secondary = ipv4_message(7, "192.0.2.2", "192.0.2.2", 24);
+        secondary.header.flags.push(AddressHeaderFlag::Secondary);
+        let addresses = [primary.clone(), secondary.clone()];
+        assert!(
+            select_ipv4_address_for_delete(&addresses, 7, "192.0.2.1".parse().unwrap(), 24,)
+                .unwrap_err()
+                .to_string()
+                .contains("secondary")
+        );
+        assert_eq!(
+            select_ipv4_address_for_delete(&addresses, 7, "192.0.2.2".parse().unwrap(), 24,)
+                .unwrap(),
+            Some(secondary)
+        );
+        assert_eq!(
+            select_ipv4_address_for_delete(
+                &[
+                    primary.clone(),
+                    ipv4_message(7, "198.51.100.1", "198.51.100.1", 24)
+                ],
+                7,
+                "192.0.2.1".parse().unwrap(),
+                24,
+            )
+            .unwrap(),
+            Some(primary)
+        );
+    }
 
     #[test]
     fn route_gateway_serializes_typed_ipv4_and_ipv6() {

@@ -4313,7 +4313,7 @@
               "field_type": "string",
               "required": false,
               "description": "gRPC upstream target.",
-              "default": "http://10.200.0.2:50051",
+              "default": "http://127.0.0.1:50051",
               "example": null,
               "constraints": [],
               "read_only": false,
@@ -4325,7 +4325,7 @@
         "description": "Transport layer metadata.",
         "default": {
           "dbus_object": "/org/opdbus/v1/plugins/zeroclaw",
-          "grpc_target": "http://10.200.0.2:50051",
+          "grpc_target": "http://127.0.0.1:50051",
           "incus_container": "host",
           "browser_surface": "gRPC-Web through op-web",
           "rest_aliases": [
@@ -4666,7 +4666,7 @@
       },
       "transport": {
         "dbus_object": "/org/opdbus/v1/plugins/zeroclaw",
-        "grpc_target": "http://10.200.0.2:50051",
+        "grpc_target": "http://127.0.0.1:50051",
         "incus_container": "host",
         "browser_surface": "gRPC-Web through op-web",
         "rest_aliases": [

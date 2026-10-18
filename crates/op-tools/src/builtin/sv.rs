@@ -10,20 +10,20 @@
 //!
 //! OSCAL subid: `mut.service.runit.service-control@v1`
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use simd_json::prelude::*;
-use simd_json::{OwnedValue as Value, json};
+use simd_json::{json, OwnedValue as Value};
 use std::sync::Arc;
-use zbus::{Connection, proxy};
+use zbus::{proxy, Connection};
 
 use crate::{Tool, ToolRegistry};
 
 /// The daemon's real bus name and object path (see `op-runit-systemctl/src/main.rs`).
 #[proxy(
-    interface = "org.opdbus.v1.Runit.Systemctl",
-    default_service = "org.opdbus.v1.Runit.Systemctl",
-    default_path = "/org/opdbus/v1/plugins/runit/systemctl"
+    interface = "org.opdbus.v1.plugins.runit",
+    default_service = "org.opdbus.v1.plugins.runit",
+    default_path = "/org/opdbus/v1/plugins/runit"
 )]
 trait RunitSystemctl {
     async fn start(&self, unit: &str) -> zbus::Result<(bool, String)>;
@@ -49,7 +49,7 @@ fn service_schema(verb: &str) -> Value {
         "properties": {
             "service": {
                 "type": "string",
-                "description": format!("runit service name to {verb} (as under /etc/runit/sv)")
+                "description": format!("runit service name to {verb} (as under {})", op_core::runit::SV_DIR)
             }
         },
         "required": ["service"]
@@ -103,7 +103,7 @@ impl Tool for SvStartServiceTool {
         "sv_start_service"
     }
     fn description(&self) -> &str {
-        "Start a runit service (sv up). Use for host services under /etc/runit/sv."
+        "Start a host runit service (sv up)."
     }
     fn input_schema(&self) -> Value {
         service_schema("start")

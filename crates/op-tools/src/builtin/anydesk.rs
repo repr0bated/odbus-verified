@@ -1,19 +1,19 @@
 //! AnyDesk tools use the runit D-Bus owner for service state and control.
 //! The AnyDesk ID has no admitted projection on this host.
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use simd_json::prelude::*;
-use simd_json::{OwnedValue as Value, json};
+use simd_json::{json, OwnedValue as Value};
 use std::sync::Arc;
-use zbus::{Connection, proxy};
+use zbus::{proxy, Connection};
 
 use crate::{Tool, ToolRegistry};
 
 #[proxy(
-    interface = "org.opdbus.v1.Runit.Systemctl",
-    default_service = "org.opdbus.v1.Runit.Systemctl",
-    default_path = "/org/opdbus/v1/plugins/runit/systemctl"
+    interface = "org.opdbus.v1.plugins.runit",
+    default_service = "org.opdbus.v1.plugins.runit",
+    default_path = "/org/opdbus/v1/plugins/runit"
 )]
 trait RunitSystemctl {
     async fn start(&self, unit: &str) -> zbus::Result<(bool, String)>;

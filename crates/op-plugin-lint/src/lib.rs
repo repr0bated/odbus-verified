@@ -16,8 +16,8 @@ mod subid;
 
 pub use audit::{CoverageInputs, audit_source, audit_source_with_coverage};
 pub use binary::{
-    BinaryIntrospectOpts, BinarySurface, introspect_binary, surface_as_instance_json,
-    surface_to_json,
+    BinaryIntrospectOpts, BinarySurface, CliFlag, CliNode, introspect_binary,
+    introspect_binary_subtree, surface_as_instance_json, surface_to_json,
 };
 pub use emit::{
     CompletePluginDocument, complete_to_json, complete_to_markdown, emit_complete_plugin,

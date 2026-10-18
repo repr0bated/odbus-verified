@@ -103,14 +103,6 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             get(handlers::tched_router::tched_router_schema_handler),
         )
         .route(
-            "/control-plane/models",
-            post(handlers::control_plane_picker::list_models),
-        )
-        .route(
-            "/control-plane/model",
-            post(handlers::control_plane_picker::set_model),
-        )
-        .route(
             "/tched_router/schema",
             get(handlers::tched_router::tched_router_schema_handler),
         )
@@ -331,7 +323,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     // Serve the pinned Lovable dashboard while keeping `/api` and websocket
     // routes on this origin. Client-side routes fall back to index.html.
     let static_dir = std::env::var("OP_WEB_STATIC_DIR")
-        .unwrap_or_else(|_| "/usr/local/share/op-dbus/dashboard".to_string());
+        .unwrap_or_else(|_| "/usr/local/share/op-dbus/dashboard-release".to_string());
     let spa =
         ServeDir::new(&static_dir).fallback(ServeFile::new(format!("{static_dir}/index.html")));
 
