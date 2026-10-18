@@ -1,0 +1,24 @@
+#!/bin/sh
+# Foreground helper: 3tchedfs.service supervises mount(8) and this daemon.
+set -eu
+fail() { printf 'mount.fuse.3tchedFS: %s\n' "$*" >&2; exit 1; }
+[ "$#" = 4 ] && [ "$1" = 3tchedFS ] && [ "$2" = /run/mount/3tchedfs ] && [ "$3" = -o ] ||
+    fail 'expected the /etc/fstab entry for /run/mount/3tchedfs'
+# The client enforces these fixed kernel options; never silently accept others.
+options=$4
+while [ -n "$options" ]; do
+    option=${options%%,*}
+    case "$option" in
+        rw|noauto|nosuid|nodev|noexec|noatime) ;;
+        *) fail "unsupported mount option: $option" ;;
+    esac
+    case "$options" in
+        *,*) options=${options#*,} ;;
+        *) options= ;;
+    esac
+done
+/usr/local/libexec/3tched/3tchedfs-mount-preflight
+exec /usr/local/bin/threetched-fs --store /usr/share/op-dbus/lungs-view mount \
+    --state /usr/share/op-dbus/lungs-empty-state \
+    --catalog /usr/share/op-dbus/lungs-catalog \
+    --lungs-socket /run/3tched-lungs.socket --allow-other --auto-unmount "$2"

@@ -28,7 +28,7 @@ CRATES=(
     # AI/LLM
     "op-llm" "op-chat" "op-ml"
     # MCP
-    "op-mcp" "op-mcp-aggregator" "op-cognitive-mcp"
+    "op-mcp" "op-mcp-aggregator" "op-cognitive"
     # Agent & Workflow
     "op-agents" "op-workflows"
     # API & Gateway

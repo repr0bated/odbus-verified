@@ -10,6 +10,8 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import notebook_sync
 
+SESSION = "414fbc56-03fb-20ab-758a-bcc7a7cbdc0e"
+
 
 def busctl_reply(envelope: object) -> str:
     body = json.dumps(envelope, separators=(",", ":"))
@@ -17,29 +19,13 @@ def busctl_reply(envelope: object) -> str:
 
 
 class NotebookSyncHelpersTest(unittest.TestCase):
-    def test_builds_argv_only_invoke_tool_call(self) -> None:
-        command = notebook_sync.build_plugin_call_command(
-            "invoke_tool",
-            {
-                "tool_name": "add_source_text",
-                "arguments": {"title": "a file.md", "text": "$(not a shell)"},
-            },
-            bus_address="unix:path=/tmp/test-session-bus.sock",
-        )
-
-        self.assertEqual(command[0], "busctl")
-        self.assertEqual(command[1], "--address=unix:path=/tmp/test-session-bus.sock")
-        self.assertEqual(command[3], notebook_sync.BRIDGE_BUS_NAME)
-        self.assertEqual(command[4], notebook_sync.COGNITIVE_OBJECT_PATH)
-        self.assertEqual(command[5], notebook_sync.PLUGIN_INTERFACE)
-        self.assertEqual(command[6:9], ["Call", "ss", "invoke_tool"])
-        self.assertEqual(
-            json.loads(command[9]),
-            {
-                "tool_name": "add_source_text",
-                "arguments": {"title": "a file.md", "text": "$(not a shell)"},
-            },
-        )
+    def test_legacy_transport_cannot_dispatch(self) -> None:
+        with mock.patch.object(notebook_sync.subprocess, "run") as run:
+            with self.assertRaises(notebook_sync.NotebookSyncError):
+                notebook_sync.build_plugin_call_command("invoke_tool", {})
+            with self.assertRaises(notebook_sync.NotebookSyncError):
+                notebook_sync.invoke_tool("add_source_text", {}, timeout=10)
+        run.assert_not_called()
 
     def test_parses_accountability_envelope(self) -> None:
         result = {"content": [{"type": "text", "text": '{"ok":true}'}]}
@@ -142,8 +128,11 @@ class NotebookSyncGroupingTest(unittest.TestCase):
             transcript = home / ".codex/sessions/2026/session.jsonl"
             transcript.parent.mkdir(parents=True)
             transcript.write_text('{"message":"model gpt-5 appeared in text"}\n', encoding="utf-8")
+            repo = Path(temporary) / "repo"
+            repo.mkdir()
+            (repo / "AGENTS.md").write_text("fixture")
             with mock.patch.object(notebook_sync, "SOURCES", Path(temporary) / "empty-sources"):
-                plan = notebook_sync.prepare_groups(state, home=home, repo=Path(temporary) / "repo")
+                plan = notebook_sync.prepare_groups(state, home=home, repo=repo)
             self.assertIn("Unattributed", " ".join(group["title"] for group in plan["groups"].values()))
             self.assertNotIn("gpt-5", " ".join(plan["groups"]))
 
@@ -172,16 +161,21 @@ class NotebookSyncGroupingTest(unittest.TestCase):
             self.assertTrue(all(item["bytes"] <= 8 for item in chunks.chunks))
             self.assertTrue(all(item["words_upper_bound"] <= 2 for item in chunks.chunks))
 
-    def test_grouped_call_keeps_credential_out_of_argv_and_stdin(self) -> None:
-        header = "c2VjcmV0LXNpZA"
-        completed = mock.Mock(returncode=0, stdout=json.dumps({"x-opdbus-sealed-id-bin": header}), stderr="")
-        reply = mock.Mock(returncode=0, stdout=json.dumps({"success": True, "result": {"success": True, "result": {"content": []}}}), stderr="")
-        with mock.patch.object(notebook_sync.subprocess, "run", side_effect=[completed, reply]) as run:
-            notebook_sync.grouped_call("get_health", {}, "session-id")
-        command = run.call_args_list[1].args[0]
-        self.assertTrue(any("${OPDBUS_NOTEBOOK_CALL_SID}" in item for item in command))
-        self.assertNotIn(header, " ".join(command))
-        self.assertNotIn(header, run.call_args_list[1].kwargs["input"])
+    def test_grouped_call_uses_only_bound_mount_and_preserves_receipt(self) -> None:
+        receipt = {"plugin_id": "notebooklm", "method": "source_add", "result": {
+            "success": True, "outcome": "completed", "result": {"source_id": "src-1"}}}
+        reply = mock.Mock(returncode=0, stdout=json.dumps(receipt), stderr="")
+        args = {"source_type": "file", "file_path": "/tmp/frozen.txt"}
+        with mock.patch.dict(notebook_sync.os.environ, {"OPDBUS_NOTEBOOK_FS_ROOT": "/fixture/mount"}), \
+             mock.patch.object(notebook_sync.subprocess, "run", return_value=reply) as run:
+            result = notebook_sync.grouped_call("source_add", args, SESSION)
+        run.assert_called_once()
+        self.assertEqual(run.call_args.args[0], [
+            "/usr/local/bin/threetched-fs", "call", "notebooklm", "source_add",
+            "--mount", "/fixture/mount", "--expected-session", SESSION,
+            "--args", "-", "--confirm-side-effects"])
+        self.assertEqual(json.loads(run.call_args.kwargs["input"]), args)
+        self.assertEqual(result.receipt, receipt)
 
 
 def write_plan_and_state(root: Path, digest: str, source_path: Path, *, old_id: str | None = None) -> None:
@@ -226,7 +220,7 @@ class NotebookSyncRemoteStateTest(unittest.TestCase):
             with mock.patch.object(notebook_sync, "grouped_call", side_effect=[
                 [{"id": "nb-1", "title": "Model A"}], {"sources": [{"id": "src-1", "title": source.name}]}
             ]) as call:
-                counts = notebook_sync.sync_groups(root, "session")
+                counts = notebook_sync.sync_groups(root, SESSION)
             self.assertEqual(counts["skipped"], 1)
             self.assertEqual(call.call_count, 2)
 
@@ -240,13 +234,16 @@ class NotebookSyncRemoteStateTest(unittest.TestCase):
             events = []
             def fake(method, args, session):
                 events.append(method)
+                if method == "notebook_get":
+                    return {"sources": ([{"id": "old-src", "title": "old.txt"}]
+                        if "source_delete" not in events else []) +
+                        ([{"id": "new-src", "title": source.name}] if "source_add" in events else [])}
                 return {"notebook_list": [{"id": "nb-1", "title": "Model A"}],
-                        "notebook_get": {"sources": [{"id": "old-src", "title": "old.txt"}]},
                         "source_add": {"source_id": "new-src"},
                         "source_get_content": {"content": "readable"},
-                        "source_delete": {"success": True}}[method]
+                        "source_delete": {"deleted_source_ids": ["old-src"]}}[method]
             with mock.patch.object(notebook_sync, "grouped_call", side_effect=fake):
-                counts = notebook_sync.sync_groups(root, "session")
+                counts = notebook_sync.sync_groups(root, SESSION)
             self.assertEqual(counts["replaced"], 1)
             self.assertLess(events.index("source_get_content"), events.index("source_delete"))
 
@@ -267,7 +264,7 @@ class NotebookSyncRemoteStateTest(unittest.TestCase):
             with mock.patch.object(notebook_sync, "grouped_call", side_effect=first), \
                  mock.patch.object(notebook_sync.time, "sleep"):
                 with self.assertRaises(notebook_sync.NotebookSyncError):
-                    notebook_sync.sync_groups(root, "session")
+                    notebook_sync.sync_groups(root, SESSION)
             saved = json.loads((root / "remote-state.json").read_text())
             group = saved["groups"]["model-a"]
             self.assertEqual(group["sources"]["model-a__0001"]["source_id"], "old-src")
@@ -276,12 +273,13 @@ class NotebookSyncRemoteStateTest(unittest.TestCase):
             events = []
             def retry(method, args, session):
                 events.append(method)
+                if method == "notebook_get":
+                    return {"sources": ([{"id": "old-src"}] if "source_delete" not in events else []) + [{"id": "new-src"}]}
                 return {"notebook_list": [{"id": "nb-1", "title": "Model A"}],
-                        "notebook_get": {"sources": [{"id": "old-src"}, {"id": "new-src"}]},
                         "source_get_content": {"content": "ready"},
-                        "source_delete": {"success": True}}[method]
+                        "source_delete": {"deleted_source_ids": ["old-src"]}}[method]
             with mock.patch.object(notebook_sync, "grouped_call", side_effect=retry):
-                notebook_sync.sync_groups(root, "session")
+                notebook_sync.sync_groups(root, SESSION)
             self.assertEqual(events.count("source_add"), 0)
             self.assertIn("source_delete", events)
 
@@ -305,7 +303,7 @@ class NotebookSyncRemoteStateTest(unittest.TestCase):
                 }[method]
 
             with mock.patch.object(notebook_sync, "grouped_call", side_effect=fake):
-                counts = notebook_sync.sync_groups(root, "session", defer_processing=True)
+                counts = notebook_sync.sync_groups(root, SESSION, defer_processing=True)
             self.assertEqual(counts["pending"], 1)
             self.assertNotIn("source_delete", events)
             saved = json.loads((root / "remote-state.json").read_text())
@@ -412,7 +410,7 @@ class NotebookSyncRemoteStateTest(unittest.TestCase):
             raise AssertionError(method)
 
         with mock.patch.object(notebook_sync, "grouped_call", side_effect=fake):
-            counts = notebook_sync.sync_groups(root, "session", defer_processing=True)
+            counts = notebook_sync.sync_groups(root, SESSION, defer_processing=True)
         self.assertEqual(counts["pending"], 1)
         self.assertNotIn("source_delete", events)
         remote = json.loads((root / "remote-state.json").read_text())["groups"]["model-a"]
@@ -450,6 +448,215 @@ class NotebookSyncRemoteStateTest(unittest.TestCase):
             }]
             result = notebook_sync.apply_repartitions(chunks, repairs)
             self.assertEqual([item["slot"] for item in result], ["model-a__0001-final", "model-b__0001"])
+
+
+class NotebookSyncRecoveryTest(unittest.TestCase):
+    def fixture(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        source = root / "chunk.txt"
+        source.write_bytes(b"complete frozen raw source\r\n")
+        digest = notebook_sync.hashlib.sha256(source.read_bytes()).hexdigest()
+        write_plan_and_state(root, digest, source, old_id="old-src")
+        return root, source, digest
+
+    def test_absent_legacy_source_does_not_starve_independent_group(self):
+        root, source, digest = self.fixture()
+        state = json.loads((root / "remote-state.json").read_text())
+        pending = {"source_id": "missing-src", "sha256": digest, "path": str(source)}
+        state["groups"]["model-a"]["pending"] = {"model-a__0001": pending}
+        state["groups"]["model-b"] = {"notebook_id": "nb-2", "sources": {
+            "model-b__0001": {"source_id": "verified-src", "sha256": digest, "verified": True}}}
+        notebook_sync.atomic_json(root / "remote-state.json", state)
+        plan = json.loads((root / "plan.json").read_text())
+        plan["groups"]["model-b"] = {"title": "Model B", "inputs": [], "chunks": [
+            {"slot": "model-b__0001", "sha256": digest, "path": str(source)}]}
+        notebook_sync.atomic_json(root / "plan.json", plan)
+        before_plan = (root / "plan.json").read_bytes()
+        attempts = []
+        def fake(method, args, session):
+            attempts.append((method, args))
+            if method == "notebook_list":
+                return [{"id": "nb-1"}, {"id": "nb-2"}]
+            if method == "notebook_get":
+                sid = "old-src" if args["notebook_id"] == "nb-1" else "verified-src"
+                return notebook_sync.MountedPayload(
+                    {"notebook_id": args["notebook_id"], "source_count": 1, "sources": [{"id": sid}]},
+                    {"plugin_id": "notebooklm", "method": method, "result": {
+                        "success": True, "outcome": "completed", "operation_id": SESSION}})
+            raise AssertionError(method)
+        with mock.patch.object(notebook_sync, "grouped_call", side_effect=fake):
+            counts = notebook_sync.sync_groups(root, SESSION, defer_processing=True)
+        self.assertEqual(counts["quarantined"], 1)
+        self.assertEqual(counts["skipped"], 1)
+        self.assertTrue(any(args.get("notebook_id") == "nb-2" for _, args in attempts))
+        self.assertFalse(any(method in {"source_add", "source_delete", "source_get_content"} for method, _ in attempts))
+        saved = json.loads((root / "remote-state.json").read_text())
+        retained = saved["groups"]["model-a"]["pending"]["model-a__0001"]
+        self.assertEqual({key: retained[key] for key in pending}, pending)
+        self.assertTrue(saved["cycle_incomplete"])
+        self.assertTrue(saved["quarantine_only"])
+        self.assertEqual((root / "plan.json").read_bytes(), before_plan)
+
+    def test_absence_requires_complete_unique_attributed_mounted_result(self):
+        receipt = {"plugin_id": "notebooklm", "method": "notebook_get", "result": {
+            "success": True, "outcome": "completed", "operation_id": SESSION}}
+        variants = [
+            {"notebook_id": "nb-1", "source_count": 2, "sources": [{"id": "s"}]},
+            {"notebook_id": "nb-1", "source_count": 2, "sources": [{"id": "s"}, {"id": "s"}]},
+            {"notebook_id": "nb-other", "source_count": 0, "sources": []},
+        ]
+        for result in variants:
+            with self.assertRaises(notebook_sync.NotebookSyncError):
+                notebook_sync.complete_absence_proof(notebook_sync.MountedPayload(result, receipt), "nb-1")
+        with self.assertRaises(notebook_sync.NotebookSyncError):
+            notebook_sync.complete_absence_proof({"notebook_id": "nb-1", "source_count": 0, "sources": []}, "nb-1")
+
+    def test_refresh_preserves_entire_quarantined_plan_and_receipts(self):
+        root, source, digest = self.fixture()
+        frozen = json.loads((root / "plan.json").read_text())["groups"]["model-a"]
+        state = json.loads((root / "remote-state.json").read_text())
+        state.update(cycle_incomplete=True, quarantine_only=True)
+        state["groups"]["model-a"]["pending"] = {"model-a__0001": {
+            "source_id": "missing-src", "sha256": digest, "path": str(source),
+            "blocked_reason": "legacy_source_absent_requires_reconciliation",
+            "absence_proof": {"notebook_id": "nb-1"}}}
+        notebook_sync.atomic_json(root / "remote-state.json", state)
+        before_state = (root / "remote-state.json").read_bytes()
+        home, repo = root / "empty-home", root / "repo"
+        home.mkdir()
+        repo.mkdir()
+        (repo / "AGENTS.md").write_text("new independent capture")
+        with mock.patch.object(notebook_sync, "SOURCES", root / "empty-sources"):
+            with self.assertRaises(notebook_sync.NotebookSyncError):
+                notebook_sync.prepare_groups(root, home=home, repo=repo)
+            plan = notebook_sync.prepare_groups(root, home=home, repo=repo, preserve_unresolved=True)
+        self.assertEqual(plan["groups"]["model-a"], frozen)
+        self.assertGreater(len(plan["groups"]), 1)
+        self.assertEqual((root / "remote-state.json").read_bytes(), before_state)
+        self.assertEqual(source.read_bytes(), b"complete frozen raw source\r\n")
+
+    def test_unknown_upload_is_journaled_once_and_never_retried_on_absence(self):
+        root, source, digest = self.fixture()
+        attempts = []
+        diagnostic = {"operation_id": "00000000-0000-4000-8000-000000000001", "stage": "outcome_unknown"}
+
+        def fake(method, args, session):
+            attempts.append(method)
+            if method == "notebook_list":
+                return [{"id": "nb-1"}]
+            if method == "notebook_get":
+                return {"sources": [{"id": "old-src", "title": "old.txt"}]}
+            if method == "source_add":
+                state = json.loads((root / "remote-state.json").read_text())
+                self.assertEqual(state["groups"]["model-a"]["pending"]["model-a__0001"]["status"], "outcome_unknown")
+                raise notebook_sync.NotebookSyncError("lost receipt", diagnostic)
+            raise AssertionError(method)
+
+        with mock.patch.object(notebook_sync, "grouped_call", side_effect=fake):
+            for _ in range(2):
+                with self.assertRaises(notebook_sync.NotebookSyncError):
+                    notebook_sync.sync_groups(root, SESSION, defer_processing=True)
+        self.assertEqual(attempts.count("source_add"), 1)
+        state = json.loads((root / "remote-state.json").read_text())
+        pending = state["groups"]["model-a"]["pending"]["model-a__0001"]
+        self.assertEqual(pending["diagnostic"], diagnostic)
+        self.assertEqual(pending["sha256"], digest)
+        self.assertNotIn("source_delete", attempts)
+
+    def test_unknown_upload_recovery_requires_exact_content_not_just_title(self):
+        for content in ("wrong content", "complete frozen raw source\r\n"):
+            root, source, digest = self.fixture()
+            state = json.loads((root / "remote-state.json").read_text())
+            # An unresolved legacy/modern upload with no returned source ID.
+            group = state["groups"]["model-a"]
+            group["sources"] = {}
+            group["pending"] = {"model-a__0001": {"sha256": digest, "path": str(source), "status": "outcome_unknown"}}
+            notebook_sync.atomic_json(root / "remote-state.json", state)
+            def fake(method, args, session):
+                return {"notebook_list": [{"id": "nb-1"}],
+                        "notebook_get": {"sources": [{"id": "new-src", "title": source.name}]},
+                        "source_get_content": {"content": content}}[method]
+            with mock.patch.object(notebook_sync, "grouped_call", side_effect=fake) as call:
+                if content == "wrong content":
+                    with self.assertRaises(notebook_sync.NotebookSyncError):
+                        notebook_sync.sync_groups(root, SESSION, defer_processing=True)
+                else:
+                    self.assertEqual(notebook_sync.sync_groups(root, SESSION, defer_processing=True)["pending"], 0)
+            self.assertNotIn("source_add", [entry.args[0] for entry in call.call_args_list])
+            self.assertNotIn("source_delete", [entry.args[0] for entry in call.call_args_list])
+
+    def test_lost_delete_receipt_requires_absence_and_never_reissues(self):
+        root, source, digest = self.fixture()
+        state = json.loads((root / "remote-state.json").read_text())
+        state["groups"]["model-a"]["pending"] = {"model-a__0001": {
+            "source_id": "new-src", "sha256": digest, "path": str(source)}}
+        notebook_sync.atomic_json(root / "remote-state.json", state)
+        absent = False
+        attempts = []
+        def fake(method, args, session):
+            attempts.append(method)
+            if method == "notebook_list":
+                return [{"id": "nb-1"}]
+            if method == "notebook_get":
+                return {"sources": ([{"id": "old-src"}] if not absent else []) + [{"id": "new-src"}]}
+            if method == "source_get_content":
+                return {"content": "processed"}
+            if method == "source_delete":
+                raise notebook_sync.NotebookSyncError("lost delete receipt")
+            raise AssertionError(method)
+        with mock.patch.object(notebook_sync, "grouped_call", side_effect=fake):
+            for _ in range(2):
+                with self.assertRaises(notebook_sync.NotebookSyncError):
+                    notebook_sync.sync_groups(root, SESSION, defer_processing=True)
+            absent = True
+            self.assertEqual(notebook_sync.sync_groups(root, SESSION, defer_processing=True)["pending"], 0)
+        self.assertEqual(attempts.count("source_delete"), 1)
+
+    def test_budget_stops_before_mutation_intent_and_preserves_plan(self):
+        root, source, digest = self.fixture()
+        before = (root / "plan.json").read_bytes()
+        def fake(method, args, session):
+            return {"notebook_list": [{"id": "nb-1"}], "notebook_get": {"sources": []}}[method]
+        with mock.patch.object(notebook_sync, "MAX_CALLS_PER_CYCLE", 2), \
+             mock.patch.object(notebook_sync, "grouped_call", side_effect=fake) as call:
+            self.assertEqual(notebook_sync.sync_groups(root, SESSION, defer_processing=True)["pending"], 1)
+        self.assertEqual(call.call_count, 2)
+        state = json.loads((root / "remote-state.json").read_text())
+        self.assertFalse(state["groups"]["model-a"]["pending"])
+        self.assertTrue(state["cycle_incomplete"])
+        self.assertEqual((root / "plan.json").read_bytes(), before)
+
+    def test_helper_failure_journal_contains_only_typed_locator(self):
+        locator = "00000000-0000-4000-8000-000000000001"
+        diagnostic = {"plugin": "notebooklm", "method": "source_add", "stage": "outcome_unknown",
+                      "operation_id": locator, "error": "SECRET RAW PROVIDER CONTENT"}
+        self.assertEqual(notebook_sync.safe_helper_diagnostic("Error: " + json.dumps(diagnostic), "source_add"),
+                         {"operation_id": locator, "stage": "outcome_unknown"})
+        self.assertEqual(notebook_sync.safe_helper_diagnostic(json.dumps(diagnostic), "source_delete"), {})
+
+    def test_session_mismatch_blocks_all_backend_calls(self):
+        root, source, digest = self.fixture()
+        state = json.loads((root / "remote-state.json").read_text())
+        state["session_id"] = "00000000-0000-4000-8000-000000000001"
+        notebook_sync.atomic_json(root / "remote-state.json", state)
+        with mock.patch.object(notebook_sync, "grouped_call") as call:
+            with self.assertRaises(notebook_sync.NotebookSyncError):
+                notebook_sync.sync_groups(root, SESSION)
+        call.assert_not_called()
+
+    def test_unknown_notebook_creation_is_not_retried_by_title(self):
+        root, source, digest = self.fixture()
+        state = json.loads((root / "remote-state.json").read_text())
+        group = state["groups"]["model-a"]
+        del group["notebook_id"]
+        group["create_intent"] = {"title": "Model A", "status": "outcome_unknown"}
+        notebook_sync.atomic_json(root / "remote-state.json", state)
+        with mock.patch.object(notebook_sync, "grouped_call", return_value=[{"id": "new-nb", "title": "Model A"}]) as call:
+            with self.assertRaises(notebook_sync.NotebookSyncError):
+                notebook_sync.sync_groups(root, SESSION)
+        self.assertEqual([entry.args[0] for entry in call.call_args_list], ["notebook_list"])
 
 
 if __name__ == "__main__":

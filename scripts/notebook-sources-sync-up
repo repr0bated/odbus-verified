@@ -1,69 +1,14 @@
 #!/bin/sh
-# notebook-sources-sync-up — one cycle: export → cleanup → notebook ingest
+# One explicit per-model capture/sync cycle; failure is a failed cycle.
 set -eu
-
-export HOME="${HOME:-/home/jeremy}"
-export USER="${USER:-jeremy}"
-export PATH="${HOME}/.local/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin"
-OP_DBUS_ROOT="${OP_DBUS_ROOT:-/srv/git/odbus-verified}"
-if [ ! -d "$OP_DBUS_ROOT/scripts" ]; then
-    OP_DBUS_ROOT=/home/admin/git/odbus
+SCRIPT_PATH=$(readlink -f -- "$0")
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd -P)
+if [ "${OPDBUS_NOTEBOOK_SYNC_MODE:-}" != per-model ]; then
+    echo 'notebook-sources-sync: OPDBUS_NOTEBOOK_SYNC_MODE=per-model is required' >&2
+    exit 1
 fi
-export OP_DBUS_ROOT
-export NOTEBOOKLM_SOURCES_DIR="${NOTEBOOKLM_SOURCES_DIR:-/home/jeremy/.notebooklm-sources}"
-
-# Load notebook.env safely (supports quoted values)
-if [ -r "${NOTEBOOKLM_SOURCES_DIR}/notebook.env" ]; then
-    set -a
-    # shellcheck disable=SC1090
-    . "${NOTEBOOKLM_SOURCES_DIR}/notebook.env"
-    set +a
-fi
-# Per-model capture reads native logs and raw conversation DB rows directly.
-# Do not run the old formatted-export/archive pipeline in this mode.
-if [ "${OPDBUS_NOTEBOOK_SYNC_MODE:-}" = "per-model" ]; then
-    exec "$OP_DBUS_ROOT/scripts/notebook-sync" ingest
-fi
-if [ -r /etc/op-dbus/environment ]; then
-    # only pull notebook-related keys (avoid clobbering with bad lines)
-    OP_NOTEBOOK_ID=$(grep -E '^OP_NOTEBOOK_ID=' /etc/op-dbus/environment 2>/dev/null | tail -1 | cut -d= -f2- || true)
-    export OP_NOTEBOOK_ID
-fi
-
-log() { echo "notebook-sources-sync: $*"; }
-
-log "export (incremental)"
-EXPORTER="$OP_DBUS_ROOT/scripts/export-llm-sessions-to-notebooklm-sources.py"
-if [ -f "$EXPORTER" ]; then
-    python3 "$EXPORTER" 2>&1 || log "export failed"
-elif [ -x "${HOME}/.local/bin/export-sessions-by-model.py" ]; then
-    python3 "${HOME}/.local/bin/export-sessions-by-model.py" 2>&1 || log "export failed (continuing)"
-else
-    log "export script missing — skip"
-fi
-
-log "cleanup (frozen history + one live feed per LLM)"
-# The repo's cleanup first: an older copy on PATH may still use the append layout.
-if [ -f "$OP_DBUS_ROOT/scripts/notebook-sources-cleanup.py" ]; then
-    python3 "$OP_DBUS_ROOT/scripts/notebook-sources-cleanup.py" --archive-sessions 2>&1 || log "cleanup failed (continuing)"
-elif command -v notebook-sources-cleanup >/dev/null 2>&1; then
-    notebook-sources-cleanup --archive-sessions 2>&1 || log "cleanup failed (continuing)"
-fi
-
-TITLE="${NOTEBOOK_TITLE:-3tched LLM Sessions}"
-# strip quotes if present
-TITLE=$(printf '%s' "$TITLE" | sed "s/^'//;s/'$//")
-export NOTEBOOK_TITLE="$TITLE"
-
-UPLOAD="$OP_DBUS_ROOT/scripts/notebook-sources-upload"
-if ! command -v nlm >/dev/null 2>&1; then
-    log "nlm missing — skip upload"
-elif [ -x "$UPLOAD" ]; then
-    # Replaces changed live feeds, uploads new frozen bundles once, and
-    # retires the current notebook into the tagged series when it fills.
-    "$UPLOAD" 2>&1 || log "upload failed"
-else
-    log "$UPLOAD missing — skip upload"
-fi
-
-log "cycle done"
+: "${NOTEBOOKLM_SOURCES_DIR:?NOTEBOOKLM_SOURCES_DIR is required}"
+: "${OPDBUS_NOTEBOOK_PROJECT_ROOT:?OPDBUS_NOTEBOOK_PROJECT_ROOT is required}"
+: "${OPDBUS_NOTEBOOK_FS_ROOT:?OPDBUS_NOTEBOOK_FS_ROOT is required}"
+: "${OPDBUS_NOTEBOOK_SESSION_ID:?OPDBUS_NOTEBOOK_SESSION_ID is required}"
+exec "$SCRIPT_DIR/notebook-sync" ingest
