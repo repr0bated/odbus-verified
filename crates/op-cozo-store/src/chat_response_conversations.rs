@@ -10,7 +10,7 @@
 
 use super::identity_transactions::commit_checked;
 use super::*;
-use cozo::MultiTransaction;
+use cozo::{MultiTransaction, Num};
 
 const MAX_LIST_LIMIT: usize = 200;
 const MAX_PRINCIPAL_BYTES: usize = 512;
@@ -787,6 +787,30 @@ impl CozoGraphShuttle {
             turns: Vec::new(),
             ..snapshot
         })
+    }
+
+    pub fn count_principal_conversations(
+        &self,
+        principal_id: &str,
+    ) -> std::result::Result<usize, CozoError> {
+        validate_principal(principal_id)?;
+        let _guard = self
+            .episode_transaction
+            .lock()
+            .map_err(|_| error("chat_response owner is poisoned"))?;
+        let tx = self.db.multi_transaction(false);
+        let rows = tx
+            .run_script(
+                "?[cnt] := chat_conversation{principal_id: $principal_id, _}, cnt :=count",
+                principal_params(principal_id),
+            )
+            .map_err(|e| error(&format!("count conversations query failed: {}", e)))?;
+        if let Some(row) = rows.rows.first()
+            && let Some(DataValue::Num(Num::Int(count))) = row.first()
+        {
+            return Ok(*count as usize);
+        }
+        Ok(0)
     }
 
     /// The newest `limit` turns of one conversation, ascending, byte bounded.
