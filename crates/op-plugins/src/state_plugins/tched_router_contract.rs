@@ -1,11 +1,20 @@
 //! The plugin-owned upstream configuration contract for tched_router.
-//! Imported from `zeroclaw config schema`; all section/method schemas derive here.
-//! Upgrade explicitly with gen_tched_router_config_surface --import-json PATH --version VERSION.
+//! Imported from `threetched config schema`; all section/method schemas derive here.
+//! Upgrade explicitly from the verified threetched binary's `config schema` output:
+//! validate it, then replace only the UPSTREAM IMPORT block and version below.
+//! The former per-section generator was retired; this remains the sole contract.
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 use std::sync::OnceLock;
 
 // BEGIN UPSTREAM IMPORT
+// Captured 2026-10-11 from threetched 0.8.4 (plugins-wasm-cranelift).
+// Binary SHA256: 6f02a34dbdb842545c076a29ff0cebcfbae25141d10a8fa4611e3d50471dc61f
+// Raw JSON SHA256: a98561f7b8c9f6a1be529557afc1bf123fee566958363cee211c998a5cb34cef
+// Command: threetched config schema; HOME=/var/lib/tched-router/home,
+// THREETCHED_CONFIG_DIR=/var/lib/tched-router, LC_ALL=C, LANG=C, LANGUAGE=en.
+// This capture predates the final compatibility/terminology patch revision.
+// Source review found no schema changes; final rebuilt-binary parity is pending.
 pub const BINARY_SCHEMA_VERSION: &str = "0.8.4";
 const CONFIG_SCHEMA: &str = r####"{
   "$defs": {
@@ -273,7 +282,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -437,7 +446,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -840,7 +849,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -1004,7 +1013,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -1284,7 +1293,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -1494,7 +1503,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -1658,7 +1667,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -1730,7 +1739,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "log_path": {
           "default": "audit.log",
-          "description": "Path to audit log file (relative to zeroclaw dir)",
+          "description": "Path to audit log file (relative to threetched dir)",
           "type": "string"
         },
         "max_size_mb": {
@@ -1915,7 +1924,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -2093,7 +2102,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "resource": {
@@ -2326,7 +2335,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -2490,7 +2499,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -2661,7 +2670,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -3054,7 +3063,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -3558,7 +3567,7 @@ const CONFIG_SCHEMA: &str = r####"{
       "type": "object"
     },
     "ClaudeCodeRunnerConfig": {
-      "description": "Claude Code task runner configuration (`[claude_code_runner]` section).\n\nSpawns Claude Code in a tmux session with HTTP hooks that POST tool\nexecution events back to ZeroClaw's gateway, updating a Slack message\nin-place with progress plus an SSH handoff link.",
+      "description": "Claude Code task runner configuration (`[claude_code_runner]` section).\n\nSpawns Claude Code in a tmux session with HTTP hooks that POST tool\nexecution events back to threetched's gateway, updating a Slack message\nin-place with progress plus an SSH handoff link.",
       "properties": {
         "enabled": {
           "default": false,
@@ -3790,7 +3799,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -4006,7 +4015,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -4343,7 +4352,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -4797,7 +4806,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -5077,7 +5086,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -5241,7 +5250,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -5405,7 +5414,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -5941,7 +5950,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -6404,7 +6413,7 @@ const CONFIG_SCHEMA: &str = r####"{
           "type": "boolean"
         },
         "state_file": {
-          "default": "/home/jeremy/.zeroclaw/estop-state.json",
+          "default": "/var/lib/tched-router/estop-state.json",
           "description": "File path used to persist estop state.",
           "type": "string"
         }
@@ -6432,7 +6441,7 @@ const CONFIG_SCHEMA: &str = r####"{
       "type": "object"
     },
     "EvalHarnessConfig": {
-      "description": "Configuration for the agent evaluation harness (`[eval]`), surfaced via the\n`zeroclaw eval` command. Distinct from `[agent.eval]`, which is the in-loop\nresponse-quality scorer.",
+      "description": "Configuration for the agent evaluation harness (`[eval]`), surfaced via the\n`threetched eval` command. Distinct from `[agent.eval]`, which is the in-loop\nresponse-quality scorer.",
       "properties": {
         "mode": {
           "default": "replay",
@@ -6576,7 +6585,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -7034,7 +7043,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -7198,7 +7207,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -7304,7 +7313,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "allow_self_upgrade": {
           "default": false,
-          "description": "Allow triggering a self-upgrade (binary swap via `zeroclaw update`) from\nthe dashboard. This is a remote-code-execution-adjacent surface: any\nauthenticated dashboard user could replace the running binary. Keep off\nunless you trust every paired client. (default: false)",
+          "description": "Allow triggering a self-upgrade (binary swap via `threetched update`) from\nthe dashboard. This is a remote-code-execution-adjacent surface: any\nauthenticated dashboard user could replace the running binary. Keep off\nunless you trust every paired client. (default: false)",
           "type": "boolean"
         },
         "check_updates": {
@@ -7624,7 +7633,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -7781,7 +7790,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "oauth_client_id": {
-          "description": "Google OAuth app `client_id`, used when this alias drives ZeroClaw's\nown browser/device-code login flow (`zeroclaw auth login\n--model-provider gemini --profile <alias>`). Operators relying on\nthe upstream `gemini login` tool don't need this; that tool writes\nits own client_id / client_secret into `~/.gemini/oauth_creds.json`.",
+          "description": "Google OAuth app `client_id`, used when this alias drives threetched's\nown browser/device-code login flow (`threetched auth login\n--model-provider gemini --profile <alias>`). Operators relying on\nthe upstream `gemini login` tool don't need this; that tool writes\nits own client_id / client_secret into `~/.gemini/oauth_creds.json`.",
           "type": [
             "string",
             "null"
@@ -7820,7 +7829,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -8115,7 +8124,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -8290,7 +8299,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -8736,7 +8745,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -8871,7 +8880,7 @@ const CONFIG_SCHEMA: &str = r####"{
         "transport": {
           "$ref": "#/$defs/HardwareTransport",
           "default": "None",
-          "description": "How ZeroClaw reaches the hardware: `native` = Linux SBC with direct GPIO access (Raspberry Pi, Orange Pi); `serial` = USB-tethered microcontroller speaking over a TTY; `probe` = SWD/JTAG debug probe driving a target chip via probe-rs; `none` = disabled."
+          "description": "How threetched reaches the hardware: `native` = Linux SBC with direct GPIO access (Raspberry Pi, Orange Pi); `serial` = USB-tethered microcontroller speaking over a TTY; `probe` = SWD/JTAG debug probe driving a target chip via probe-rs; `none` = disabled."
         },
         "workspace_datasheets": {
           "default": false,
@@ -9211,7 +9220,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -9375,7 +9384,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -9539,7 +9548,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -9859,7 +9868,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -10166,7 +10175,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -10341,7 +10350,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -10434,7 +10443,7 @@ const CONFIG_SCHEMA: &str = r####"{
           "type": "boolean"
         },
         "db_path": {
-          "default": "/home/jeremy/.zeroclaw/knowledge.db",
+          "default": "/var/lib/tched-router/knowledge.db",
           "description": "Path to the knowledge graph SQLite database.",
           "type": "string"
         },
@@ -10560,7 +10569,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -10739,7 +10748,7 @@ const CONFIG_SCHEMA: &str = r####"{
       "type": "object"
     },
     "LarkReceiveMode": {
-      "description": "How ZeroClaw receives events from Feishu / Lark.\n\n- `websocket` (default) — persistent WSS long-connection; no public URL required.\n- `webhook` — HTTP callback server; requires a public HTTPS endpoint.",
+      "description": "How threetched receives events from Feishu / Lark.\n\n- `websocket` (default) — persistent WSS long-connection; no public URL required.\n- `webhook` — HTTP callback server; requires a public HTTPS endpoint.",
       "enum": [
         "websocket",
         "webhook"
@@ -10870,7 +10879,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -11007,7 +11016,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         {
           "const": "pairing",
-          "description": "Require a one-time `/bind <code>` handshake before responding (default).\nZeroClaw prints the bind code on startup; send it once to unlock access.",
+          "description": "Require a one-time `/bind <code>` handshake before responding (default).\nthreetched prints the bind code on startup; send it once to unlock access.",
           "type": "string"
         },
         {
@@ -11387,7 +11396,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -11551,7 +11560,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -11715,7 +11724,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -12029,7 +12038,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -12200,7 +12209,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "recovery_key": {
           "default": null,
-          "description": "Optional Matrix recovery key for automatic E2EE key backup restore.\nWhen set, ZeroClaw recovers room keys and cross-signing secrets on startup.",
+          "description": "Optional Matrix recovery key for automatic E2EE key backup restore.\nWhen set, threetched recovers room keys and cross-signing secrets on startup.",
           "type": [
             "string",
             "null"
@@ -12660,12 +12669,12 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "auto_reindex_on_identity_change": {
           "default": false,
-          "description": "Automatically re-embed all memories in the background when a change of embedding provider/model/dimensions is detected at startup (after the stale vectors have been cleared). Costs one embedding API call per memory, so it's off by default — leave it off for large stores and run `zeroclaw memory reindex` explicitly instead.",
+          "description": "Automatically re-embed all memories in the background when a change of embedding provider/model/dimensions is detected at startup (after the stale vectors have been cleared). Costs one embedding API call per memory, so it's off by default — leave it off for large stores and run `threetched memory reindex` explicitly instead.",
           "type": "boolean"
         },
         "auto_save": {
           "default": true,
-          "description": "Auto-save what *you* tell ZeroClaw into memory as conversation history — the agent's own replies are not saved. Turn off if you want memory to only hold things you explicitly record via the memory tool.",
+          "description": "Auto-save what *you* tell threetched into memory as conversation history — the agent's own replies are not saved. Turn off if you want memory to only hold things you explicitly record via the memory tool.",
           "type": "boolean"
         },
         "backend": {
@@ -12790,7 +12799,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "embedding_model": {
           "default": "text-embedding-3-small",
-          "description": "Embedding model identifier — must match a model your chosen embedding model_provider serves (e.g. `text-embedding-3-small` for OpenAI). Changing this invalidates existing embeddings: the change is detected at startup and stale vectors are cleared automatically; run `zeroclaw memory reindex` to re-embed (or set `auto_reindex_on_identity_change`).",
+          "description": "Embedding model identifier — must match a model your chosen embedding model_provider serves (e.g. `text-embedding-3-small` for OpenAI). Changing this invalidates existing embeddings: the change is detected at startup and stale vectors are cleared automatically; run `threetched memory reindex` to re-embed (or set `auto_reindex_on_identity_change`).",
           "type": "string"
         },
         "embedding_provider": {
@@ -13285,7 +13294,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -13449,7 +13458,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -14641,7 +14650,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -14805,7 +14814,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -15091,7 +15100,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -15255,7 +15264,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -15319,7 +15328,7 @@ const CONFIG_SCHEMA: &str = r####"{
     },
     "NevisConfig": {
       "additionalProperties": false,
-      "description": "Nevis IAM integration configuration.\n\nWhen `enabled` is true, ZeroClaw validates incoming requests against a Nevis\nSecurity Suite instance and maps Nevis roles to tool/workspace permissions.",
+      "description": "Nevis IAM integration configuration.\n\nWhen `enabled` is true, threetched validates incoming requests against a Nevis\nSecurity Suite instance and maps Nevis roles to tool/workspace permissions.",
       "properties": {
         "client_id": {
           "default": "",
@@ -15365,7 +15374,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "role_mapping": {
           "default": [],
-          "description": "Nevis role to ZeroClaw permission mappings.",
+          "description": "Nevis role to threetched permission mappings.",
           "items": {
             "$ref": "#/$defs/NevisRoleMappingConfig"
           },
@@ -15388,7 +15397,7 @@ const CONFIG_SCHEMA: &str = r####"{
     },
     "NevisRoleMappingConfig": {
       "additionalProperties": false,
-      "description": "Maps a Nevis role to ZeroClaw tool permissions and workspace access.",
+      "description": "Maps a Nevis role to threetched tool permissions and workspace access.",
       "properties": {
         "nevis_role": {
           "description": "Nevis role name (case-insensitive).",
@@ -15434,7 +15443,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "bot_name": {
           "default": null,
-          "description": "Display name of the bot in Nextcloud Talk (e.g. \"zeroclaw\").\nUsed to filter out the bot's own messages and prevent feedback loops.\nIf not set, defaults to an empty string (no self-message filtering by name).",
+          "description": "Display name of the bot in Nextcloud Talk (e.g. \"threetched\").\nUsed to filter out the bot's own messages and prevent feedback loops.\nIf not set, defaults to an empty string (no self-message filtering by name).",
           "type": [
             "string",
             "null"
@@ -15483,7 +15492,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "webhook_secret": {
           "default": null,
-          "description": "The bot secret Nextcloud installed for this bot. Canonical field.\n\nUsed for BOTH directions: verifying inbound webhook signatures and\nsigning outbound bot-API requests. When it is unset, inbound webhooks\nare rejected and no outbound request is sent (fail closed).\n\nCan also be set via `ZEROCLAW_NEXTCLOUD_TALK_WEBHOOK_SECRET`.",
+          "description": "The bot secret Nextcloud installed for this bot. Canonical field.\n\nUsed for BOTH directions: verifying inbound webhook signatures and\nsigning outbound bot-API requests. When it is unset, inbound webhooks\nare rejected and no outbound request is sent (fail closed).\n\nCan also be set via `THREETCHED_NEXTCLOUD_TALK_WEBHOOK_SECRET`.",
           "type": [
             "string",
             "null"
@@ -15806,7 +15815,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -15970,7 +15979,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -16134,7 +16143,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -16317,7 +16326,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "otel_service_name": {
           "default": null,
-          "description": "Service name reported to the OTel collector. Defaults to \"zeroclaw\".",
+          "description": "Service name reported to the OTel collector. Defaults to \"threetched\".",
           "type": [
             "string",
             "null"
@@ -16457,7 +16466,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -16663,7 +16672,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -17009,7 +17018,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -17217,7 +17226,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -17381,7 +17390,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -17662,7 +17671,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -18039,7 +18048,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -18348,7 +18357,7 @@ const CONFIG_SCHEMA: &str = r####"{
           "type": "integer"
         },
         "plugins_dir": {
-          "default": "/home/jeremy/.zeroclaw/plugins",
+          "default": "/var/lib/tched-router/plugins",
           "description": "Directory where plugins are stored",
           "type": "string"
         },
@@ -18442,7 +18451,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "report_output_dir": {
-          "default": "/home/jeremy/.zeroclaw/project-reports",
+          "default": "/var/lib/tched-router/project-reports",
           "description": "Output directory for generated reports.",
           "type": "string"
         },
@@ -18621,11 +18630,11 @@ const CONFIG_SCHEMA: &str = r####"{
       "type": "object"
     },
     "QdrantStorageConfig": {
-      "description": "Qdrant vector database backend (`[storage.qdrant.<alias>]`).\n\nURL, collection, and API key are typed config values. Use schema-mirror env\noverrides such as `ZEROCLAW_storage__qdrant__<alias>__url=...` for runtime\nenv injection.",
+      "description": "Qdrant vector database backend (`[storage.qdrant.<alias>]`).\n\nURL, collection, and API key are typed config values. Use schema-mirror env\noverrides such as `THREETCHED_storage__qdrant__<alias>__url=...` for runtime\nenv injection.",
       "properties": {
         "api_key": {
           "default": null,
-          "description": "API key for Qdrant Cloud or secured instances.\nUse `ZEROCLAW_storage__qdrant__<alias>__api_key=...` for env injection.",
+          "description": "API key for Qdrant Cloud or secured instances.\nUse `THREETCHED_storage__qdrant__<alias>__api_key=...` for env injection.",
           "type": [
             "string",
             "null"
@@ -18634,12 +18643,12 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "collection": {
           "default": "zeroclaw_memories",
-          "description": "Collection name for storing memories.\nUse `ZEROCLAW_storage__qdrant__<alias>__collection=...` for env injection.",
+          "description": "Collection name for storing memories.\nUse `THREETCHED_storage__qdrant__<alias>__collection=...` for env injection.",
           "type": "string"
         },
         "url": {
           "default": null,
-          "description": "Qdrant server URL (e.g. `\"http://localhost:6333\"`).\nUse `ZEROCLAW_storage__qdrant__<alias>__url=...` for env injection.",
+          "description": "Qdrant server URL (e.g. `\"http://localhost:6333\"`).\nUse `THREETCHED_storage__qdrant__<alias>__url=...` for env injection.",
           "type": [
             "string",
             "null"
@@ -18750,7 +18759,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -18994,7 +19003,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -19209,7 +19218,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -19926,7 +19935,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -20074,7 +20083,7 @@ const CONFIG_SCHEMA: &str = r####"{
           "default": {
             "enabled": false,
             "require_otp_to_resume": true,
-            "state_file": "/home/jeremy/.zeroclaw/estop-state.json"
+            "state_file": "/var/lib/tched-router/estop-state.json"
           },
           "description": "Emergency-stop state machine configuration."
         },
@@ -20128,7 +20137,7 @@ const CONFIG_SCHEMA: &str = r####"{
           "default": {
             "enabled": false,
             "rp_id": "localhost",
-            "rp_name": "ZeroClaw",
+            "rp_name": "threetched",
             "rp_origin": "http://localhost:42617"
           },
           "description": "WebAuthn / FIDO2 hardware key authentication configuration."
@@ -20155,12 +20164,12 @@ const CONFIG_SCHEMA: &str = r####"{
           "type": "string"
         },
         "playbooks_dir": {
-          "default": "/home/jeremy/.zeroclaw/playbooks",
+          "default": "/var/lib/tched-router/playbooks",
           "description": "Directory containing incident response playbook definitions (JSON).",
           "type": "string"
         },
         "report_output_dir": {
-          "default": "/home/jeremy/.zeroclaw/security-reports",
+          "default": "/var/lib/tched-router/security-reports",
           "description": "Directory for generated security reports.",
           "type": "string"
         },
@@ -20282,7 +20291,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -20542,7 +20551,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -20821,7 +20830,7 @@ const CONFIG_SCHEMA: &str = r####"{
       "properties": {
         "app_token": {
           "default": null,
-          "description": "Slack app-level token for Socket Mode (xapp-...). When unset or empty,\nresolved at channel construction from `ZEROCLAW_SLACK_APP_TOKEN`, then\n`SLACK_APP_TOKEN`. `#[serde(default)]` makes omission explicit (an\n`Option` field is already omittable, but this keeps it consistent with\n`bot_token`).",
+          "description": "Slack app-level token for Socket Mode (xapp-...). When unset or empty,\nresolved at channel construction from `THREETCHED_SLACK_APP_TOKEN`, then\n`SLACK_APP_TOKEN`. `#[serde(default)]` makes omission explicit (an\n`Option` field is already omittable, but this keeps it consistent with\n`bot_token`).",
           "type": [
             "string",
             "null"
@@ -20837,7 +20846,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "bot_token": {
           "default": null,
-          "description": "Slack bot OAuth token (xoxb-...). Optional in config: when unset or\nempty it is resolved at channel construction from\n`ZEROCLAW_SLACK_BOT_TOKEN`, then `SLACK_BOT_TOKEN`. `#[serde(default)]`\nso a config that omits it still deserializes - the env fallback then\nsupplies it - instead of failing with `missing field 'bot_token'`.",
+          "description": "Slack bot OAuth token (xoxb-...). Optional in config: when unset or\nempty it is resolved at channel construction from\n`THREETCHED_SLACK_BOT_TOKEN`, then `SLACK_BOT_TOKEN`. `#[serde(default)]`\nso a config that omits it still deserializes - the env fallback then\nsupplies it - instead of failing with `missing field 'bot_token'`.",
           "type": [
             "string",
             "null"
@@ -21302,7 +21311,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -21527,7 +21536,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -21809,7 +21818,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -22100,7 +22109,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -22244,7 +22253,7 @@ const CONFIG_SCHEMA: &str = r####"{
       "properties": {
         "api_key": {
           "default": null,
-          "description": "API key used for transcription requests (Groq transcription provider).\n\nUse the schema-mirror env grammar (`ZEROCLAW_transcription__api_key=...`)\nfor runtime env injection. Legacy `GROQ_API_KEY` constructor fallback was\nremoved in v0.8.0.",
+          "description": "API key used for transcription requests (Groq transcription provider).\n\nUse the schema-mirror env grammar (`THREETCHED_transcription__api_key=...`)\nfor runtime env injection. Legacy `GROQ_API_KEY` constructor fallback was\nremoved in v0.8.0.",
           "type": [
             "string",
             "null"
@@ -22866,7 +22875,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -23030,7 +23039,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -23194,7 +23203,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -23374,7 +23383,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -23572,8 +23581,8 @@ const CONFIG_SCHEMA: &str = r####"{
           "type": "integer"
         },
         "wake_word": {
-          "default": "hey zeroclaw",
-          "description": "Wake word phrase to listen for (case-insensitive substring match).\nDefault: `\"hey zeroclaw\"`.",
+          "default": "hey threetched",
+          "description": "Wake word phrase to listen for (case-insensitive substring match).\nDefault: `\"hey threetched\"`.",
           "type": "string"
         }
       },
@@ -23661,7 +23670,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "state_dir": {
           "default": null,
-          "description": "Directory to persist bot token and sync cursor.\nDefault: `~/.zeroclaw/wechat/`.",
+          "description": "Directory to persist bot token and sync cursor.\nDefault: `~/.threetched/wechat/`.",
           "type": [
             "string",
             "null"
@@ -23794,8 +23803,8 @@ const CONFIG_SCHEMA: &str = r####"{
           "type": "string"
         },
         "rp_name": {
-          "default": "ZeroClaw",
-          "description": "Relying Party display name. Default: \"ZeroClaw\".",
+          "default": "threetched",
+          "description": "Relying Party display name. Default: \"threetched\".",
           "type": "string"
         },
         "rp_origin": {
@@ -24132,7 +24141,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "app_secret": {
           "default": null,
-          "description": "App secret from Meta Business Suite (for webhook signature verification)\nCan also be set via `ZEROCLAW_WHATSAPP_APP_SECRET` environment variable\nOnly used in Cloud API mode",
+          "description": "App secret from Meta Business Suite (for webhook signature verification)\nCan also be set via `THREETCHED_WHATSAPP_APP_SECRET` environment variable\nOnly used in Cloud API mode",
           "type": [
             "string",
             "null"
@@ -24148,7 +24157,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "dm_mention_patterns": {
           "default": [],
-          "description": "Regex patterns for DM mention gating (case-insensitive).\nWhen non-empty, only direct messages matching at least one pattern are\nprocessed; matched fragments are stripped from the forwarded content.\nExample: `[\"@?ZeroClaw\", \"\\\\+?15555550123\"]`",
+          "description": "Regex patterns for DM mention gating (case-insensitive).\nWhen non-empty, only direct messages matching at least one pattern are\nprocessed; matched fragments are stripped from the forwarded content.\nExample: `[\"@?threetched\", \"\\\\+?15555550123\"]`",
           "items": {
             "type": "string"
           },
@@ -24174,7 +24183,7 @@ const CONFIG_SCHEMA: &str = r####"{
         },
         "group_mention_patterns": {
           "default": [],
-          "description": "Regex patterns for group-chat mention gating (case-insensitive).\nWhen non-empty, only group messages matching at least one pattern are\nprocessed; matched fragments are stripped from the forwarded content.\nExample: `[\"@?ZeroClaw\", \"\\\\+?15555550123\"]`",
+          "description": "Regex patterns for group-chat mention gating (case-insensitive).\nWhen non-empty, only group messages matching at least one pattern are\nprocessed; matched fragments are stripped from the forwarded content.\nExample: `[\"@?threetched\", \"\\\\+?15555550123\"]`",
           "items": {
             "type": "string"
           },
@@ -24444,7 +24453,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -24608,7 +24617,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -24783,7 +24792,7 @@ const CONFIG_SCHEMA: &str = r####"{
           ]
         },
         "requires_openai_auth": {
-          "description": "When true, the client pulls credentials from ZeroClaw's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `zeroclaw auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `zeroclaw auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
+          "description": "When true, the client pulls credentials from threetched's stored `openai-codex` auth profile instead of the `api_key` field above. Import an existing Codex CLI login with `threetched auth login --model-provider openai-codex --import ~/.codex/auth.json`, or run `threetched auth login --model-provider openai-codex`. Turn on only for the OpenAI Codex model_provider; leave off for standard API-key model_providers.",
           "type": "boolean"
         },
         "temperature": {
@@ -24847,7 +24856,7 @@ const CONFIG_SCHEMA: &str = r####"{
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "Top-level ZeroClaw configuration, loaded from `config.toml`.\n\nResolution order: `ZEROCLAW_CONFIG_DIR` env → `ZEROCLAW_WORKSPACE` env → `~/.zeroclaw/config.toml`.",
+  "description": "Top-level threetched configuration, loaded from `config.toml`.\n\nResolution order: `THREETCHED_CONFIG_DIR` env → `THREETCHED_WORKSPACE` env → `~/.threetched/config.toml`.",
   "properties": {
     "a2a": {
       "$ref": "#/$defs/A2aServerSection",
@@ -25088,7 +25097,7 @@ const CONFIG_SCHEMA: &str = r####"{
         "mode": "replay",
         "suite_dir": "evals"
       },
-      "description": "Agent evaluation harness (`[eval]`) — surfaced via `zeroclaw eval`.\nDistinct from `[agent.eval]`, which is the in-loop response-quality scorer."
+      "description": "Agent evaluation harness (`[eval]`) — surfaced via `threetched eval`.\nDistinct from `[agent.eval]`, which is the in-loop response-quality scorer."
     },
     "file_download": {
       "$ref": "#/$defs/FileDownloadConfig",
@@ -25277,7 +25286,7 @@ const CONFIG_SCHEMA: &str = r####"{
       "$ref": "#/$defs/KnowledgeConfig",
       "default": {
         "auto_capture": false,
-        "db_path": "/home/jeremy/.zeroclaw/knowledge.db",
+        "db_path": "/var/lib/tched-router/knowledge.db",
         "enabled": false,
         "max_nodes": 100000,
         "suggest_on_query": true
@@ -25633,7 +25642,7 @@ const CONFIG_SCHEMA: &str = r####"{
           "max_table_elements": 100000
         },
         "max_plugins": 50,
-        "plugins_dir": "/home/jeremy/.zeroclaw/plugins",
+        "plugins_dir": "/var/lib/tched-router/plugins",
         "security": {
           "signature_mode": "disabled",
           "trusted_publisher_keys": []
@@ -25649,7 +25658,7 @@ const CONFIG_SCHEMA: &str = r####"{
         "include_git_data": true,
         "include_jira_data": false,
         "jira_base_url": null,
-        "report_output_dir": "/home/jeremy/.zeroclaw/project-reports",
+        "report_output_dir": "/var/lib/tched-router/project-reports",
         "risk_sensitivity": "medium",
         "templates_dir": null
       },
@@ -25768,7 +25777,7 @@ const CONFIG_SCHEMA: &str = r####"{
         "estop": {
           "enabled": false,
           "require_otp_to_resume": true,
-          "state_file": "/home/jeremy/.zeroclaw/estop-state.json"
+          "state_file": "/var/lib/tched-router/estop-state.json"
         },
         "leak_detection": {
           "enabled": true,
@@ -25806,7 +25815,7 @@ const CONFIG_SCHEMA: &str = r####"{
         "webauthn": {
           "enabled": false,
           "rp_id": "localhost",
-          "rp_name": "ZeroClaw",
+          "rp_name": "threetched",
           "rp_origin": "http://localhost:42617"
         }
       },
@@ -25818,8 +25827,8 @@ const CONFIG_SCHEMA: &str = r####"{
         "auto_triage": false,
         "enabled": false,
         "max_auto_severity": "low",
-        "playbooks_dir": "/home/jeremy/.zeroclaw/playbooks",
-        "report_output_dir": "/home/jeremy/.zeroclaw/security-reports",
+        "playbooks_dir": "/var/lib/tched-router/playbooks",
+        "report_output_dir": "/var/lib/tched-router/security-reports",
         "require_approval_for_actions": true,
         "siem_integration": null
       },
@@ -26038,7 +26047,8 @@ const CONFIG_SCHEMA: &str = r####"{
   },
   "title": "Config",
   "type": "object"
-}"####;
+}
+"####;
 // END UPSTREAM IMPORT
 
 pub fn document() -> &'static Value {
