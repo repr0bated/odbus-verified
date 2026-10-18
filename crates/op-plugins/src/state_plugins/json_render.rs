@@ -12,10 +12,16 @@ use simd_json::OwnedValue as Value;
 
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 
+#[path = "json_render_authoring.rs"]
+pub mod authoring;
 #[path = "json_render_canvas_profile.rs"]
 pub mod canvas_profile;
 #[path = "json_render_catalog_v019.rs"]
 mod catalog_v019;
+#[path = "json_render_chat_canvas.rs"]
+pub mod chat_canvas;
+#[path = "json_render_gallery.rs"]
+pub mod gallery;
 #[path = "json_render_methods.rs"]
 pub mod methods;
 #[path = "json_render_runtime_contract.rs"]
@@ -28,7 +34,7 @@ pub mod validation_bounds;
 // =============================================================================
 
 const PLUGIN_NAME: &str = "json_render";
-const PLUGIN_VERSION: &str = "3.0.0";
+const PLUGIN_VERSION: &str = "3.2.0";
 const PLUGIN_CATEGORY: &str = "software";
 const PLUGIN_DESCRIPTION: &str = "json-render catalog projection — schema, specs, catalogs, renderers, actions, validation, and upstream API inventory";
 const PLUGIN_DISPLAY_NAME: &str = "GB.JsonRender";
@@ -39,11 +45,22 @@ const JSON_RENDER_SOURCE_COMMIT: &str = "e2d00faeaabe2871ca18a4594a9ec39a245f9b6
 #[schemars(extend("x-oscal-subid" = "sch.software.plugin.json-render.schema@v2"))]
 #[schemars(extend("x-oscal-category" = "software"))]
 pub struct JsonRenderState {
+    /// Public, versioned UI-authoring instructions and upstream references.
+    /// Immutable schema defaults; never caller state or an execution grant.
+    #[serde(default)]
+    #[schemars(extend("x-oscal-subid" = "src.software.plugin.json-render.ui-authoring@v1"))]
+    pub ui_authoring: authoring::UiAuthoring,
     /// Plugin-owned generated Canvas contract checked against the active UI
     /// source. Distinct from the upstream reference inventory; no deployment claim.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "exp.software.plugin.json-render.canvas-profile@v3"))]
     pub canvas_profile: canvas_profile::CanvasProfile,
+    /// The 3tched chat Canvas contract imported from the UI's own export:
+    /// what chat canvases, gallery candidates and promoted catalog entries
+    /// are composed from. Static compositions only; no deployment claim.
+    #[serde(default)]
+    #[schemars(extend("x-oscal-subid" = "exp.software.plugin.json-render.chat-canvas-profile@v1"))]
+    pub chat_canvas_profile: chat_canvas::ChatCanvasProfile,
     /// Operational status of the catalog projection.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "obs.software.plugin.json-render.status@v2"))]
@@ -88,6 +105,17 @@ pub struct JsonRenderState {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "obs.software.plugin.json-render.directives@v2"))]
     pub directives: Vec<NamedCapability>,
+    /// Durable active-catalog revision from Cozo gallery (OD-93). Zero until
+    /// the bridge projects promoted entries into this state.
+    #[serde(default)]
+    #[schemars(extend("x-oscal-subid" = "obs.software.plugin.json-render.catalog-revision@v1"))]
+    pub catalog_revision: u64,
+    /// Names of promoted active-catalog entries for normal chat composition.
+    #[serde(default)]
+    #[schemars(
+        extend("x-oscal-subid" = "obs.software.plugin.json-render.active-catalog-names@v1")
+    )]
+    pub active_catalog_entry_names: Vec<String>,
 }
 
 /// Source provenance for this plugin's curated json-render model.
@@ -554,7 +582,9 @@ pub struct PromptSurfaceOutput {
 impl Default for JsonRenderState {
     fn default() -> Self {
         Self {
+            ui_authoring: authoring::UiAuthoring::default(),
             canvas_profile: canvas_profile::CanvasProfile::default(),
+            chat_canvas_profile: chat_canvas::ChatCanvasProfile::default(),
             status: "catalog_snapshot".to_string(),
             source: JsonRenderSource::default(),
             config: JsonRenderConfig::default(),
@@ -566,6 +596,8 @@ impl Default for JsonRenderState {
             actions: default_actions(),
             validation_checks: default_validation_checks(),
             directives: default_directives(),
+            catalog_revision: 0,
+            active_catalog_entry_names: Vec::new(),
         }
     }
 }
@@ -674,6 +706,8 @@ pub(crate) fn json_render_schema() -> PluginSchema {
     let state = simd_json::serde::to_owned_value(&JsonRenderState::default())
         .expect("JsonRenderState default serializes");
     super::schemars_adapter::apply_state_defaults(&mut schema, &state);
+    schema.fields.get_mut("ui_authoring")
+        .expect("UI authoring is a declared schema field").read_only = true;
 
     // Add methods
     schema.methods.insert(
@@ -827,6 +861,7 @@ pub(crate) fn json_render_schema() -> PluginSchema {
         ),
     );
 
+    gallery::declare_methods(&mut schema);
     schema.capabilities.insert(
         "json_render.read".to_string(),
         op_state_store::CapabilityDecl {

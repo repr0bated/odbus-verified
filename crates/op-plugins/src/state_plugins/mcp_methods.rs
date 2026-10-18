@@ -6,7 +6,7 @@ use serde_json::Value;
 use crate::state_plugins::tched_router::{
     ConfigPatchInput, ConfigPatchOperation, ConfigPatchOutput,
 };
-use crate::state_plugins::tched_router_config_surface::{ConfigMethodInput, GetMcpConfigOutput};
+use crate::state_plugins::tched_router::{EmptyTchedInput, GetMcpConfigOutput};
 
 pub struct McpMethodPlan {
     pub target_method: &'static str,
@@ -62,7 +62,7 @@ fn patch_path(operation: &ConfigPatchOperation) -> &str {
 pub fn plan_method(method: &str, args: &Value) -> Result<McpMethodPlan> {
     match method {
         "get_config" => {
-            let _: ConfigMethodInput =
+            let _: EmptyTchedInput =
                 serde_json::from_value(args.clone()).context("invalid mcp.get_config arguments")?;
             Ok(McpMethodPlan {
                 target_method: "GetMcpConfig",
