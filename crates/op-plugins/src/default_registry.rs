@@ -34,7 +34,7 @@ use crate::AutoPlugin;
 /// - `factory`: the former account/platform plugin is retired; Factory CLI/SSH
 ///   provider vocabulary remains in `op-llm`, while model routing stays in
 ///   `tched_router`.
-pub const RETIRED_PLUGIN_IDS: &[&str] = &["compact_mcp", "factory", "netmaker"];
+pub const RETIRED_PLUGIN_IDS: &[&str] = &["compact_mcp", "factory", "mongodb_mcp", "netmaker"];
 
 pub fn is_retired_plugin(plugin_id: &str) -> bool {
     RETIRED_PLUGIN_IDS.contains(&plugin_id)

@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::info;
 
-const RUNIT_SERVICE_DIR: &str = "/etc/runit/sv";
-const RUNIT_ACTIVE_DIR: &str = "/etc/runit/runsvdir/default";
+const RUNIT_SERVICE_DIR: &str = op_core::runit::SV_DIR;
+const RUNIT_ACTIVE_DIR: &str = op_core::runit::RUNSVDIR_DEFAULT;
 
 /// Service name - validated on construction
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -286,7 +286,7 @@ impl ServiceDef {
         out
     }
 
-    /// Write and enable the runit definition at `/etc/runit/sv/<name>/run`.
+    /// Write and enable the runit definition at `/etc/sv/<name>/run`.
     ///
     /// Creates the service directory if it does not exist and makes the run
     /// script executable (mode 0o755).

@@ -12,8 +12,6 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
-const MAX_SUBVOLUMES: usize = 5;
-
 macro_rules! path_input {
     ($name:ident) => {
         #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -93,7 +91,8 @@ pub struct ListSubvolumesOutput {
     pub filesystem_uuid: String,
     pub subvolumes: Vec<SubvolumeRecord>,
     pub total: u64,
-    pub maximum_supported: u64,
+    /// Null means no application-level count cap; filesystem/resource constraints still apply.
+    pub maximum_supported: Option<u64>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -204,17 +203,18 @@ pub struct DeviceMutationOutput {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-#[schemars(extend("x-oscal-subid" = "sch.software.plugin.btrfs.schema@v2"))]
+#[schemars(extend("x-oscal-subid" = "sch.software.plugin.btrfs.schema@v3"))]
 #[schemars(extend("x-oscal-category" = "storage"))]
 pub struct BtrfsState {
-    pub maximum_subvolumes: u64,
+    /// Null means no application-level count cap; filesystem/resource constraints still apply.
+    pub maximum_subvolumes: Option<u64>,
     pub deployment_transport: String,
 }
 
 impl Default for BtrfsState {
     fn default() -> Self {
         Self {
-            maximum_subvolumes: MAX_SUBVOLUMES as u64,
+            maximum_subvolumes: None,
             deployment_transport: "btrfs_send_receive".into(),
         }
     }
@@ -568,16 +568,9 @@ fn dispatch_with_backend(
                 .lock()
                 .map_err(|_| anyhow::anyhow!("btrfs mutation lock poisoned"))?;
             backend.filesystem(parent)?;
-            let before = backend.list_subvolumes(parent)?;
-            if before.len() >= MAX_SUBVOLUMES {
-                bail!("subvolume limit {MAX_SUBVOLUMES} reached");
-            }
             backend.create_subvolume(&path)?;
             let info = backend.subvolume_info(&path)?;
             let after = backend.list_subvolumes(parent)?;
-            if after.len() > MAX_SUBVOLUMES {
-                bail!("subvolume was created but an external race exceeded limit {MAX_SUBVOLUMES}");
-            }
             if !after.iter().any(|s| s.id == info.id) {
                 bail!(
                     "subvolume create completed but readback did not contain id {}",
@@ -626,10 +619,6 @@ fn dispatch_with_backend(
                 bail!("snapshot source and destination must be on one filesystem");
             }
             let source = backend.subvolume_info(&src)?;
-            let before = backend.list_subvolumes(parent)?;
-            if before.len() >= MAX_SUBVOLUMES {
-                bail!("subvolume limit {MAX_SUBVOLUMES} reached");
-            }
             backend.snapshot(&src, &dst, i.readonly)?;
             let info = backend.subvolume_info(&dst).context(
                 "snapshot creation returned successfully but postcondition readback failed; snapshot state is indeterminate",
@@ -644,9 +633,6 @@ fn dispatch_with_backend(
             let after = backend
                 .list_subvolumes(parent)
                 .context("snapshot was created but filesystem subvolume-count readback failed")?;
-            if after.len() > MAX_SUBVOLUMES {
-                bail!("snapshot was created but an external race exceeded limit {MAX_SUBVOLUMES}");
-            }
             add_output("snapshotted", &dst, info, after.len())
         }
         "list_subvolumes" => {
@@ -659,7 +645,7 @@ fn dispatch_with_backend(
                 filesystem_uuid: fs.uuid,
                 subvolumes,
                 total,
-                maximum_supported: MAX_SUBVOLUMES as u64,
+                maximum_supported: None,
             })?)
         }
         "scrub_start" => {
@@ -844,7 +830,7 @@ impl StatePlugin for BtrfsPlugin {
         "btrfs"
     }
     fn version(&self) -> &str {
-        "2.0.0"
+        "3.0.0"
     }
     fn schema(&self) -> Option<PluginSchema> {
         Some(btrfs_schema())
@@ -897,7 +883,7 @@ pub(crate) fn btrfs_schema() -> PluginSchema {
     let root = serde_json::to_value(schemars::schema_for!(BtrfsState)).expect("schema serializes");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "btrfs",
-        "2.0.0",
+        "3.0.0",
         "Native Btrfs filesystem operations and send/receive deployment topology",
         &root,
     );
@@ -950,7 +936,7 @@ pub(crate) fn btrfs_schema() -> PluginSchema {
         ListSubvolumesOutput,
         SideEffect::Read,
         "cap.storage.btrfs.subvolume.list@v1",
-        "obs.storage.btrfs.subvolume.list@v2"
+        "obs.storage.btrfs.subvolume.list@v3"
     );
     method!(
         "scrub_start",
@@ -1034,6 +1020,10 @@ mod tests {
         state: Mutex<TestState>,
         effects: AtomicUsize,
         omit_created_readback: bool,
+        hide_created_from_list: bool,
+        fail_list_readback: bool,
+        snapshot_parent_uuid_override: Option<String>,
+        snapshot_readonly_override: Option<bool>,
         fail_lookup: bool,
         idle_balance: bool,
         backend_error: bool,
@@ -1076,10 +1066,23 @@ mod tests {
                 }),
                 effects: AtomicUsize::new(0),
                 omit_created_readback: false,
+                hide_created_from_list: false,
+                fail_list_readback: false,
+                snapshot_parent_uuid_override: None,
+                snapshot_readonly_override: None,
                 fail_lookup: false,
                 idle_balance: false,
                 backend_error: false,
             }
+        }
+
+        fn with_subvolume_count(count: usize) -> Self {
+            assert!(count > 0);
+            let backend = Self::new();
+            backend.state.lock().unwrap().subvolumes.extend(
+                (1..count).map(|i| subvol(1000 + i as u64, &format!("existing-{i}"), None, false)),
+            );
+            backend
         }
 
         fn record(&self) -> Result<()> {
@@ -1092,19 +1095,35 @@ mod tests {
     }
 
     impl BtrfsBackend for TestBackend {
-        fn filesystem(&self, _path: &Path) -> Result<FsIdentity> {
+        fn filesystem(&self, path: &Path) -> Result<FsIdentity> {
             if self.backend_error {
                 bail!("fixture backend failure");
             }
             Ok(FsIdentity {
-                uuid: "fs-uuid".into(),
+                uuid: if path.starts_with("/other") {
+                    "other-fs-uuid"
+                } else {
+                    "fs-uuid"
+                }
+                .into(),
                 generation: 42,
                 node_size: 16_384,
                 sector_size: 4096,
             })
         }
         fn list_subvolumes(&self, _path: &Path) -> Result<Vec<SubvolumeRecord>> {
-            Ok(self.state.lock().unwrap().subvolumes.clone())
+            if self.fail_list_readback && self.effects.load(Ordering::SeqCst) > 0 {
+                bail!("fixture list readback failure");
+            }
+            Ok(self
+                .state
+                .lock()
+                .unwrap()
+                .subvolumes
+                .iter()
+                .filter(|subvolume| !self.hide_created_from_list || subvolume.id != 300)
+                .cloned()
+                .collect())
         }
         fn subvolume_info(&self, path: &Path) -> Result<SubvolumeRecord> {
             let name = path
@@ -1150,6 +1169,9 @@ mod tests {
         }
         fn snapshot(&self, source: &Path, destination: &Path, readonly: bool) -> Result<()> {
             self.record()?;
+            if self.omit_created_readback {
+                return Ok(());
+            }
             let source_uuid = self.subvolume_info(source)?.uuid;
             let name = destination
                 .file_name()
@@ -1159,8 +1181,8 @@ mod tests {
             self.state.lock().unwrap().subvolumes.push(subvol(
                 301,
                 &name,
-                Some(&source_uuid),
-                readonly,
+                Some(self.snapshot_parent_uuid_override.as_deref().unwrap_or(&source_uuid)),
+                self.snapshot_readonly_override.unwrap_or(readonly),
             ));
             Ok(())
         }
@@ -1329,7 +1351,7 @@ mod tests {
                 "list_subvolumes" => {
                     assert_eq!(output["filesystem_uuid"], "fs-uuid");
                     assert_eq!(output["total"], 3);
-                    assert_eq!(output["maximum_supported"], 5);
+                    assert_eq!(output.get("maximum_supported"), Some(&serde_json::Value::Null));
                     let subvolumes = output["subvolumes"].as_array().unwrap();
                     assert_eq!(subvolumes.len(), 3);
                     assert_eq!(subvolumes[0]["name"], "source");
@@ -1431,12 +1453,17 @@ mod tests {
 
     #[test]
     fn invalid_arguments_are_rejected_before_any_effect() {
-        let backend = TestBackend::new();
+        let backend = TestBackend::with_subvolume_count(6);
         for (method, args) in [
             ("create_subvolume", serde_json::json!({"path":"relative"})),
+            ("create_subvolume", serde_json::json!({"path":"/"})),
             (
                 "snapshot",
                 serde_json::json!({"source":"/mnt/source","destination":"/mnt/../snap"}),
+            ),
+            (
+                "snapshot",
+                serde_json::json!({"source":"/mnt/source","destination":"/mnt/source"}),
             ),
             (
                 "device_add",
@@ -1454,19 +1481,136 @@ mod tests {
     }
 
     #[test]
-    fn subvolume_limit_is_based_on_observed_whole_filesystem_count() {
-        let backend = TestBackend::new();
-        backend.state.lock().unwrap().subvolumes = (0..MAX_SUBVOLUMES)
-            .map(|i| subvol(256 + i as u64, &format!("s{i}"), None, false))
-            .collect();
+    fn create_subvolume_accepts_counts_above_the_withdrawn_cap() {
+        for count in [6, 3842] {
+            let backend = TestBackend::with_subvolume_count(count);
+            let output = dispatch_with_backend(
+                &backend,
+                "create_subvolume",
+                &serde_json::json!({"path":"/mnt/new"}),
+            )
+            .unwrap();
+            assert_eq!(output["operation"], "created");
+            assert_eq!(output["total_subvolumes"], (count + 1) as u64);
+            assert_eq!(output["subvolume"]["name"], "new");
+            assert_eq!(backend.effects.load(Ordering::SeqCst), 1);
+            assert_eq!(backend.state.lock().unwrap().subvolumes.len(), count + 1);
+        }
+    }
+
+    #[test]
+    fn snapshot_accepts_counts_above_the_withdrawn_cap() {
+        for count in [6, 3842] {
+            for readonly in [false, true] {
+                let backend = TestBackend::with_subvolume_count(count);
+                let output = dispatch_with_backend(
+                    &backend,
+                    "snapshot",
+                    &serde_json::json!({
+                        "source":"/mnt/source", "destination":"/mnt/snap", "readonly":readonly,
+                    }),
+                )
+                .unwrap();
+                assert_eq!(output["operation"], "snapshotted");
+                assert_eq!(output["total_subvolumes"], (count + 1) as u64);
+                assert_eq!(output["subvolume"]["readonly"], readonly);
+                assert_eq!(
+                    output["subvolume"]["parent_uuid"],
+                    "00000000-0000-0000-0000-000000000256"
+                );
+                assert_eq!(backend.effects.load(Ordering::SeqCst), 1);
+                assert_eq!(backend.state.lock().unwrap().subvolumes.len(), count + 1);
+            }
+        }
+    }
+
+    #[test]
+    fn state_and_list_explicitly_report_no_application_count_cap() {
+        let state = serde_json::to_value(BtrfsState::default()).unwrap();
+        assert_eq!(state.get("maximum_subvolumes"), Some(&serde_json::Value::Null));
+        let backend = TestBackend::with_subvolume_count(3842);
+        let output = dispatch_with_backend(
+            &backend,
+            "list_subvolumes",
+            &serde_json::json!({"path":"/mnt"}),
+        )
+        .unwrap();
+        assert_eq!(output.get("maximum_supported"), Some(&serde_json::Value::Null));
+        assert_eq!(output["total"], 3842);
+        assert_eq!(output["subvolumes"].as_array().unwrap().len(), 3842);
+        assert_eq!(backend.effects.load(Ordering::SeqCst), 0);
+        let typed: ListSubvolumesOutput = serde_json::from_value(output).unwrap();
+        assert_eq!(typed.maximum_supported, None);
+    }
+
+    #[test]
+    fn snapshot_rejects_cross_filesystem_destination_before_effect() {
+        let backend = TestBackend::with_subvolume_count(6);
+        let error = dispatch_with_backend(
+            &backend,
+            "snapshot",
+            &serde_json::json!({"source":"/mnt/source", "destination":"/other/snap"}),
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("must be on one filesystem"));
+        assert_eq!(backend.effects.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn create_still_requires_the_created_subvolume_in_filesystem_readback() {
+        let mut backend = TestBackend::with_subvolume_count(6);
+        backend.hide_created_from_list = true;
         let error = dispatch_with_backend(
             &backend,
             "create_subvolume",
-            &serde_json::json!({"path":"/mnt/one-too-many"}),
+            &serde_json::json!({"path":"/mnt/new"}),
         )
         .unwrap_err();
-        assert!(error.to_string().contains("limit 5"));
-        assert_eq!(backend.effects.load(Ordering::SeqCst), 0);
+        assert!(error.to_string().contains("readback did not contain id 300"));
+        assert_eq!(backend.effects.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn snapshot_still_requires_matching_postcondition_readback() {
+        for failure in ["missing", "parent", "readonly"] {
+            let mut backend = TestBackend::with_subvolume_count(6);
+            match failure {
+                "missing" => backend.omit_created_readback = true,
+                "parent" => backend.snapshot_parent_uuid_override = Some("wrong-parent".into()),
+                "readonly" => backend.snapshot_readonly_override = Some(false),
+                _ => unreachable!(),
+            }
+            let error = dispatch_with_backend(
+                &backend,
+                "snapshot",
+                &serde_json::json!({"source":"/mnt/source", "destination":"/mnt/snap", "readonly":true}),
+            )
+            .unwrap_err();
+            let expected = if failure == "missing" {
+                "postcondition readback failed"
+            } else {
+                "does not match requested source/readonly state"
+            };
+            assert!(error.to_string().contains(expected), "{failure}: {error}");
+            assert_eq!(backend.effects.load(Ordering::SeqCst), 1);
+        }
+    }
+
+    #[test]
+    fn creation_still_requires_filesystem_count_readback_after_effect() {
+        for (method, args) in [
+            ("create_subvolume", serde_json::json!({"path":"/mnt/new"})),
+            (
+                "snapshot",
+                serde_json::json!({"source":"/mnt/source", "destination":"/mnt/snap"}),
+            ),
+        ] {
+            let mut backend = TestBackend::with_subvolume_count(6);
+            backend.fail_list_readback = true;
+            let error = dispatch_with_backend(&backend, method, &args).unwrap_err();
+            assert!(format!("{error:#}").contains("fixture list readback failure"));
+            assert_eq!(backend.effects.load(Ordering::SeqCst), 1);
+        }
     }
 
     #[test]
@@ -1574,6 +1718,12 @@ mod tests {
             "device_remove",
         ]);
         let schema = btrfs_schema();
+        assert_eq!(BtrfsPlugin::new().version(), "3.0.0");
+        assert_eq!(schema.version, "3.0.0");
+        assert_eq!(
+            schema.methods["list_subvolumes"].subid,
+            "obs.storage.btrfs.subvolume.list@v3"
+        );
         let actual = schema
             .methods
             .keys()

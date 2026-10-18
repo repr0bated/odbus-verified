@@ -311,6 +311,13 @@ pub struct DiskDevice {
     pub path: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
+    /// Host-side mount-identity token for `source`: the first 16 hex chars of
+    /// `sha256("dev:ino")` captured by the bridge observer, or `"-"` when the
+    /// path was unstatable. Graph-asserts the mount-not-copy invariant (two
+    /// devices mounting the same object share the token; a copy gets a new
+    /// one) without exposing raw host inode numbers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_identity: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pool: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

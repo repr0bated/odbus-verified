@@ -80,6 +80,33 @@ pub struct DescribeRelationInput {
     pub name: String,
 }
 
+/// Replace one named system inventory; revision zero requires a new namespace.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ReplaceSystemGraphInput {
+    pub snapshot: op_cozo_store::GraphSnapshot,
+    pub expected_revision: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SystemGraphStatusInput {
+    pub namespace: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SystemGraphStatusOutput {
+    pub snapshot: Option<op_cozo_store::GraphSnapshotReceipt>,
+}
+
+/// Refresh only the shared, public topology from committed plugin projections.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RefreshSystemGraphInput {
+    pub expected_revision: u64,
+}
+
 /// CozoDB column definition — mirrors `::columns` system op output.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct CozoColumn {
@@ -194,7 +221,7 @@ impl StatePlugin for CozoPlugin {
     }
 
     fn version(&self) -> &str {
-        "2.0.0"
+        "2.1.0"
     }
 
     fn schema(&self) -> Option<PluginSchema> {
@@ -257,7 +284,7 @@ pub(crate) fn cozo_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "cozo",
-        "2.0.0",
+        "2.1.0",
         "CozoDB relational-graph-vector database — relations, indices, HNSW, triggers, Datalog",
         &root,
     );
@@ -441,6 +468,89 @@ pub(crate) fn cozo_schema() -> PluginSchema {
         },
     );
 
+    use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output as graph_method;
+    use op_cozo_store::{
+        GraphEdgePage, GraphEdgeQuery, GraphNamespacePage, GraphNamespaceQuery, GraphNodePage,
+        GraphNodeQuery, GraphSnapshotReceipt, GraphTraversal, GraphTraversalQuery,
+    };
+    use op_state_store::{CapabilityDecl, SideEffect};
+
+    let graph_methods = [
+        graph_method::<GraphNamespaceQuery, GraphNamespacePage>(
+            "list_system_graphs",
+            SideEffect::Read,
+            true,
+            "cap.data.cozo.system-graph.read@v1",
+            "obs.data.cozo.system-graph.list@v1",
+        ),
+        graph_method::<ReplaceSystemGraphInput, GraphSnapshotReceipt>(
+            "replace_system_graph",
+            SideEffect::Mutation,
+            false,
+            "cap.data.cozo.system-graph.write@v1",
+            "mut.data.cozo.system-graph.replace@v1",
+        ),
+        graph_method::<RefreshSystemGraphInput, GraphSnapshotReceipt>(
+            "refresh_system_graph",
+            SideEffect::Mutation,
+            false,
+            "cap.data.cozo.system-graph.refresh@v1",
+            "mut.data.cozo.system-graph.refresh@v1",
+        ),
+        graph_method::<SystemGraphStatusInput, SystemGraphStatusOutput>(
+            "system_graph_status",
+            SideEffect::Read,
+            true,
+            "cap.data.cozo.system-graph.read@v1",
+            "obs.data.cozo.system-graph.status@v1",
+        ),
+        graph_method::<GraphNodeQuery, GraphNodePage>(
+            "query_system_graph_nodes",
+            SideEffect::Read,
+            true,
+            "cap.data.cozo.system-graph.read@v1",
+            "obs.data.cozo.system-graph.nodes@v1",
+        ),
+        graph_method::<GraphEdgeQuery, GraphEdgePage>(
+            "query_system_graph_edges",
+            SideEffect::Read,
+            true,
+            "cap.data.cozo.system-graph.read@v1",
+            "obs.data.cozo.system-graph.edges@v1",
+        ),
+        graph_method::<GraphTraversalQuery, GraphTraversal>(
+            "traverse_system_graph",
+            SideEffect::Read,
+            true,
+            "cap.data.cozo.system-graph.read@v1",
+            "obs.data.cozo.system-graph.traverse@v1",
+        ),
+    ];
+    for method in graph_methods {
+        schema.methods.insert(method.name.clone(), method);
+    }
+    for (id, description) in [
+        (
+            "cap.data.cozo.system-graph.write@v1",
+            "Replace a named system inventory with revision conflict detection.",
+        ),
+        (
+            "cap.data.cozo.system-graph.refresh@v1",
+            "Refresh shared system topology from committed public plugin state.",
+        ),
+        (
+            "cap.data.cozo.system-graph.read@v1",
+            "Read bounded system graph pages and dependency traversals; no arbitrary queries.",
+        ),
+    ] {
+        schema.capabilities.insert(
+            id.into(),
+            CapabilityDecl {
+                id: id.into(),
+                description: description.into(),
+            },
+        );
+    }
     schema
 }
 

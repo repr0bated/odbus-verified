@@ -1,6 +1,6 @@
 //! Ghostbridge plugin — bridge identity, TLS management, and Ghostrunner surface.
 //!
-//! Ghostbridge is the inward-facing bridge that extends zeroclaw's routing with
+//! Ghostbridge is the inward-facing bridge that extends threetched's routing with
 //! TLS-backed gRPC-Web connectivity, wireguard-pubkey identity, and the
 //! Ghostrunner browser UI surface. It follows the same
 //! `PluginSchema`/`StatePlugin` pattern as every other state plugin — no

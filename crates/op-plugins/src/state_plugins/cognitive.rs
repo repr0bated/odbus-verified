@@ -1,12 +1,12 @@
-//! Cognitive MCP state plugin — GB.CognitiveMcp.
+//! Cognitive state plugin — GB.Cognitive.
 //!
 //! Declares the cognitive tools compiled into `op-grpc-bridge`. The bridge owns
 //! the runtime and publishes its read-only projection to D-Bus under
-//! `/opdbus/v1/plugins/cognitive_mcp`; there is no separately supervised
+//! `/org/opdbus/v1/plugins/cognitive`; there is no separately supervised
 //! cognitive service or plugin-owned listener configuration.
 //!
 //! The canonical schema (every gRPC method, every MCP tool, every
-//! request/response field) lives in the `cognitive_mcp_schema()` function below.
+//! request/response field) lives in the `cognitive_schema()` function below.
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -23,25 +23,25 @@ use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 // PLUGIN ENTRY: identity and typed schema seed
 // =============================================================================
 
-const PLUGIN_NAME: &str = "cognitive_mcp";
-const PLUGIN_VERSION: &str = "3.0.0";
+const PLUGIN_NAME: &str = "cognitive";
+const PLUGIN_VERSION: &str = "4.1.0";
 const PLUGIN_CATEGORY: &str = "service";
-const PLUGIN_DESCRIPTION: &str = "Bridge-owned cognitive MCP tools — memory, code context, and grounded query capabilities compiled into op-grpc-bridge. THE PLUGIN IS THE SCHEMA: every method, tool, property, and field is declared here. Downstream inherits.";
-const PLUGIN_DISPLAY_NAME: &str = "GB.CognitiveMcp";
+const PLUGIN_DESCRIPTION: &str = "Bridge-owned cognitive tools — memory, code context, and grounded query capabilities compiled into op-grpc-bridge. THE PLUGIN IS THE SCHEMA: every method, tool, property, and field is declared here. Downstream inherits.";
+const PLUGIN_DISPLAY_NAME: &str = "GB.Cognitive";
 
 // =============================================================================
 // PLUGIN BODY: D-Bus-backed behavior only
 // =============================================================================
 
-pub struct CognitiveMcpPlugin;
+pub struct CognitivePlugin;
 
-impl CognitiveMcpPlugin {
+impl CognitivePlugin {
     pub fn new() -> Self {
         Self
     }
 }
 
-impl Default for CognitiveMcpPlugin {
+impl Default for CognitivePlugin {
     fn default() -> Self {
         Self::new()
     }
@@ -50,7 +50,7 @@ impl Default for CognitiveMcpPlugin {
 // ── StatePlugin impl ─────────────────────────────────────────────────────────
 
 #[async_trait]
-impl StatePlugin for CognitiveMcpPlugin {
+impl StatePlugin for CognitivePlugin {
     fn name(&self) -> &str {
         PLUGIN_NAME
     }
@@ -59,7 +59,7 @@ impl StatePlugin for CognitiveMcpPlugin {
     }
 
     fn schema(&self) -> Option<PluginSchema> {
-        let mut schema = cognitive_mcp_schema();
+        let mut schema = cognitive_schema();
         super::common::oscal::ensure_category_metadata_fields(&mut schema);
         Some(schema)
     }
@@ -75,7 +75,7 @@ impl StatePlugin for CognitiveMcpPlugin {
     }
 
     fn unavailable_reason(&self) -> String {
-        "cognitive_mcp is compiled into op-grpc-bridge and has no external service dependency"
+        "cognitive is compiled into op-grpc-bridge and has no external service dependency"
             .into()
     }
 
@@ -97,7 +97,7 @@ impl StatePlugin for CognitiveMcpPlugin {
     async fn apply_state(&self, diff: &StateDiff) -> Result<ApplyResult> {
         let errors = (!diff.actions.is_empty())
             .then(|| {
-                "cognitive_mcp state is bridge-owned and read-only; invoke a declared cognitive tool method instead"
+                "cognitive state is bridge-owned and read-only; invoke a declared cognitive tool method instead"
                     .to_string()
             })
             .into_iter()
@@ -115,11 +115,11 @@ impl StatePlugin for CognitiveMcpPlugin {
     }
 
     async fn create_checkpoint(&self) -> Result<Checkpoint> {
-        anyhow::bail!("cognitive_mcp has no plugin-owned mutable state to checkpoint")
+        anyhow::bail!("cognitive has no plugin-owned mutable state to checkpoint")
     }
 
     async fn rollback(&self, _checkpoint: &Checkpoint) -> Result<()> {
-        anyhow::bail!("cognitive_mcp has no plugin-owned mutable state to roll back")
+        anyhow::bail!("cognitive has no plugin-owned mutable state to roll back")
     }
 
     fn capabilities(&self) -> PluginCapabilities {
@@ -132,7 +132,7 @@ impl StatePlugin for CognitiveMcpPlugin {
     }
 }
 
-// ── Schema-derived state for cognitive_mcp ─────────────────────────────────────
+// ── Schema-derived state for cognitive ─────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -663,22 +663,10 @@ pub enum RustProInput {
     },
 }
 
-/// Stable HOT workflow query.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct WorkflowQueryInput {
-    #[schemars(description = "Optional exact workflow id")]
-    pub workflow_id: Option<String>,
-}
-
-/// Stable HOT workflow enqueue request.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct WorkflowRunInput {
-    #[schemars(description = "Exact id of a declared workflow")]
-    pub workflow_id: String,
-    #[serde(default)]
-    #[schemars(description = "Typed workflow parameters")]
-    pub params: Option<serde_json::Value>,
-}
+// HOT aliases derive from the authoritative workflows plugin contract.
+pub use super::workflows_plugin::{
+    QueryWorkflowsInput as WorkflowQueryInput, StartWorkflowInput as WorkflowRunInput,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -802,17 +790,17 @@ pub struct CodeIndexInput {
 /// rejects the `{}` that D-Bus/gRPC callers send for a no-argument method. This
 /// renders as an object schema, so both a bare `{}` and an absent body validate.
 ///
-/// OSCAL subid: sch.software.cognitive-mcp.no-args@v1
+/// OSCAL subid: sch.software.cognitive.no-args@v1
 #[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct NoArgs {}
 
 /// Input for the generic `invoke_tool` method.
 ///
-/// OSCAL subid: sch.software.cognitive-mcp.invoke-tool-input@v1
+/// OSCAL subid: sch.software.cognitive.invoke-tool-input@v1
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct InvokeToolInput {
     #[schemars(
-        description = "Name of the tool to invoke; must exist in the cognitive_mcp ToolRegistry (e.g. cognitive_memory, search_blob_vectors)"
+        description = "Name of the tool to invoke; must exist in the cognitive ToolRegistry (e.g. cognitive_memory, search_blob_vectors)"
     )]
     pub tool_name: String,
     #[serde(default)]
@@ -824,7 +812,7 @@ pub struct InvokeToolInput {
 
 /// Output for the generic `invoke_tool` method.
 ///
-/// OSCAL subid: sch.software.cognitive-mcp.invoke-tool-output@v1
+/// OSCAL subid: sch.software.cognitive.invoke-tool-output@v1
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct InvokeToolOutput {
     pub success: bool,
@@ -849,13 +837,6 @@ pub struct GetHealthOutput {
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ListToolsOutput {
     pub tools: Vec<String>,
-}
-
-/// Output for RegisterTool method
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct RegisterToolOutput {
-    pub success: bool,
-    pub tool_name: String,
 }
 
 /// Output for MemoryStore method
@@ -885,23 +866,9 @@ pub struct MemoryEntrySummary {
     pub updated_at: String,
 }
 
-/// Output for workflow_query. The concrete entries inherit the authoritative
-/// workflow plugin contract.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct WorkflowQueryOutput {
-    pub workflows: Vec<serde_json::Value>,
-    pub count: usize,
-}
-
-/// Output for workflow_run.
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct WorkflowRunOutput {
-    pub accepted: bool,
-    pub execution_id: String,
-    pub workflow_id: String,
-    pub status: String,
-    pub accepted_at: String,
-}
+pub use super::workflows_plugin::{
+    QueryWorkflowsOutput as WorkflowQueryOutput, StartWorkflowOutput as WorkflowRunOutput,
+};
 
 /// Public shape of the local toolset response. Detailed set entries and the
 /// canonical selector are emitted by the bridge after MutationEngine admission.
@@ -1100,34 +1067,34 @@ pub struct GeminiQueryOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-#[schemars(extend("x-oscal-subid" = "sch.software.plugin.cognitive-mcp.schema@v1"))]
+#[schemars(extend("x-oscal-subid" = "sch.software.plugin.cognitive.schema@v1"))]
 #[schemars(extend("x-oscal-category" = "service"))]
-pub struct CognitiveMcpState {
+pub struct CognitiveState {
     #[serde(default = "default_bridge_owned")]
-    #[schemars(description = "True because the cognitive runtime is compiled into and owned by op-grpc-bridge", extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive-mcp.bridge-owned@v1"))]
+    #[schemars(description = "True because the cognitive runtime is compiled into and owned by op-grpc-bridge", extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive.bridge-owned@v1"))]
     pub bridge_owned: bool,
     #[serde(default = "default_execution_model")]
-    #[schemars(description = "Cognitive runtime execution model; always in_process for this plugin", extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive-mcp.execution-model@v1"))]
+    #[schemars(description = "Cognitive runtime execution model; always in_process for this plugin", extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive.execution-model@v1"))]
     pub execution_model: String,
     #[serde(default = "default_auth_status")]
-    #[schemars(description = "Current authentication method", example = example_auth_status(), extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive-mcp.auth-status@v1"))]
+    #[schemars(description = "Current authentication method", example = example_auth_status(), extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive.auth-status@v1"))]
     pub auth_status: AuthStatus,
     #[serde(default = "default_queries_remaining")]
-    #[schemars(description = "Queries remaining in current quota period", extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive-mcp.queries-remaining@v1"))]
+    #[schemars(description = "Queries remaining in current quota period", extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive.queries-remaining@v1"))]
     pub queries_remaining: i64,
     #[serde(default = "default_queries_limit")]
-    #[schemars(description = "Total queries allowed per quota period", extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive-mcp.queries-limit@v1"))]
+    #[schemars(description = "Total queries allowed per quota period", extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive.queries-limit@v1"))]
     pub queries_limit: i64,
     #[serde(default = "default_notebook_count")]
-    #[schemars(description = "Number of notebooks in the library", extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive-mcp.notebook-count@v1"))]
+    #[schemars(description = "Number of notebooks in the library", extend("readOnly" = true), extend("x-oscal-subid" = "obs.software.plugin.cognitive.notebook-count@v1"))]
     pub notebook_count: i64,
-    #[schemars(description = "R12: Gemini fallback query (requires GEMINI_API_KEY)", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive-mcp.gemini-query-request@v1"))]
+    #[schemars(description = "R12: Gemini fallback query (requires GEMINI_API_KEY)", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive.gemini-query-request@v1"))]
     pub gemini_query_request: Option<GeminiQueryRequest>,
-    #[schemars(description = "MCP MemoryTool: key-value memory store with operations store/retrieve/query/delete/list_namespaces/stats", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive-mcp.memory-tool@v1"))]
+    #[schemars(description = "MCP MemoryTool: key-value memory store with operations store/retrieve/query/delete/list_namespaces/stats", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive.memory-tool@v1"))]
     pub memory_tool: Option<MemoryToolInput>,
-    #[schemars(description = "Citation sub-object: text, source, page. Inherited by grounded query responses.", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive-mcp.citation@v1"))]
+    #[schemars(description = "Citation sub-object: text, source, page. Inherited by grounded query responses.", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive.citation@v1"))]
     pub citation: Option<Citation>,
-    #[schemars(description = "SourceInfo sub-object: id, title, source_type, tags, created_at. Inherited by source CRUD responses.", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive-mcp.source-info@v1"))]
+    #[schemars(description = "SourceInfo sub-object: id, title, source_type, tags, created_at. Inherited by source CRUD responses.", extend("readOnly" = true), extend("x-oscal-subid" = "exp.software.plugin.cognitive.source-info@v1"))]
     pub source_info: Option<SourceInfo>,
     #[schemars(description = "CodeSearchTool input: semantic+lexical search over the indexed code corpus.", extend("readOnly" = true), extend("x-oscal-subid" = "obs.service.code-rag.search@v1"))]
     pub code_search: Option<CodeSearchInput>,
@@ -1144,17 +1111,16 @@ pub struct CognitiveMcpState {
 // Handler audit — where each method is actually backed:
 // get_health              → op-grpc-bridge/mutation_engine.rs in-process runtime and quota
 // list_tools              → op-grpc-bridge/mutation_engine.rs in-process ToolRegistry
-// register_tool           → embedded op_cognitive_mcp::cognitive_tools::RegisterToolTool
 //                           (stub — no dynamic tool-registration mechanism exists yet)
-// memory_store            → embedded op_cognitive_mcp::cognitive_tools::MemoryTool::op_store
-// memory_retrieve         → embedded op_cognitive_mcp::cognitive_tools::MemoryTool::op_retrieve
-// memory_query            → embedded op_cognitive_mcp::cognitive_tools::MemoryTool::op_query
-// memory_delete           → embedded op_cognitive_mcp::cognitive_tools::MemoryTool::op_delete
-// memory_list_namespaces  → embedded op_cognitive_mcp::cognitive_tools::MemoryTool::op_list_namespaces
-// code_search             → embedded op_cognitive_mcp::code_tools::CodeSearchTool
-// code_index              → embedded op_cognitive_mcp::code_tools::CodeIndexTool
-// code_context            → embedded op_cognitive_mcp::code_tools::CodeContextTool
-// gemini_query            → embedded op_cognitive_mcp::cognitive_tools::AskQuestionTool
+// memory_store            → embedded op_cognitive::cognitive_tools::MemoryTool::op_store
+// memory_retrieve         → embedded op_cognitive::cognitive_tools::MemoryTool::op_retrieve
+// memory_query            → embedded op_cognitive::cognitive_tools::MemoryTool::op_query
+// memory_delete           → embedded op_cognitive::cognitive_tools::MemoryTool::op_delete
+// memory_list_namespaces  → embedded op_cognitive::cognitive_tools::MemoryTool::op_list_namespaces
+// code_search             → embedded op_cognitive::code_tools::CodeSearchTool
+// code_index              → embedded op_cognitive::code_tools::CodeIndexTool
+// code_context            → embedded op_cognitive::code_tools::CodeContextTool
+// gemini_query            → embedded op_cognitive::cognitive_tools::GeminiQueryTool
 // invoke_tool             → op-grpc-bridge/mutation_engine.rs in-process ToolRegistry
 // memory_recall           → cognitive_memory query operation (HOT facade)
 // workflow_query          → workflows.query_workflows (HOT facade)
@@ -1163,8 +1129,8 @@ pub struct CognitiveMcpState {
 // toolsets                → bridge-local deterministic projection policy (HOT)
 // schema_read             → exact manifest-pinned sealed PluginSchema (HOT)
 // oscal_subids            → cross-blob OSCAL routing-tag index (HOT)
-pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
-    let root = serde_json::to_value(schemars::schema_for!(CognitiveMcpState))
+pub(crate) fn cognitive_schema() -> PluginSchema {
+    let root = serde_json::to_value(schemars::schema_for!(CognitiveState))
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         PLUGIN_NAME,
@@ -1184,8 +1150,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "get_health",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
-            "obs.service.cognitive-mcp.health@v1",
+            "cognitive.read",
+            "obs.service.cognitive.health@v1",
         ),
     );
     schema.methods.insert(
@@ -1194,18 +1160,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "list_tools",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
-            "obs.service.cognitive-mcp.tool.list@v1",
-        ),
-    );
-    schema.methods.insert(
-        "register_tool".to_string(),
-        method_decl_from_schemars_with_output::<(), RegisterToolOutput>(
-            "register_tool",
-            SideEffect::Mutation,
-            false,
-            "cognitive_mcp.invoke",
-            "mut.service.cognitive-mcp.tool.register@v1",
+            "cognitive.read",
+            "obs.service.cognitive.tool.list@v1",
         ),
     );
     schema.methods.insert(
@@ -1214,8 +1170,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "memory_store",
             SideEffect::Mutation,
             false,
-            "cognitive_mcp.memory.write",
-            "mut.service.cognitive-mcp.memory.store@v1",
+            "cognitive.memory.write",
+            "mut.service.cognitive.memory.store@v1",
         ),
     );
     schema.methods.insert(
@@ -1224,8 +1180,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "memory_recall",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
-            "obs.service.cognitive-mcp.memory.recall@v1",
+            "cognitive.read",
+            "obs.service.cognitive.memory.recall@v1",
         ),
     );
     schema.methods.insert(
@@ -1234,8 +1190,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "memory_retrieve",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
-            "obs.service.cognitive-mcp.memory.retrieve@v1",
+            "cognitive.read",
+            "obs.service.cognitive.memory.retrieve@v1",
         ),
     );
     schema.methods.insert(
@@ -1244,8 +1200,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "memory_query",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
-            "obs.service.cognitive-mcp.memory.query@v1",
+            "cognitive.read",
+            "obs.service.cognitive.memory.query@v1",
         ),
     );
     schema.methods.insert(
@@ -1254,8 +1210,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "memory_delete",
             SideEffect::Mutation,
             true,
-            "cognitive_mcp.memory.write",
-            "mut.service.cognitive-mcp.memory.delete@v1",
+            "cognitive.memory.write",
+            "mut.service.cognitive.memory.delete@v1",
         ),
     );
     schema.methods.insert(
@@ -1264,8 +1220,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "memory_list_namespaces",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
-            "obs.service.cognitive-mcp.memory.namespace.list@v1",
+            "cognitive.read",
+            "obs.service.cognitive.memory.namespace.list@v1",
         ),
     );
     schema.methods.insert(
@@ -1274,7 +1230,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "code_search",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
+            "cognitive.read",
             "obs.service.code-rag.search@v1",
         ),
     );
@@ -1284,7 +1240,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "code_index",
             SideEffect::Mutation,
             false,
-            "cognitive_mcp.code.write",
+            "cognitive.code.write",
             "mut.service.code-rag.index@v1",
         ),
     );
@@ -1294,7 +1250,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "code_context",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
+            "cognitive.read",
             "obs.service.code-context.get@v1",
         ),
     );
@@ -1304,7 +1260,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "rust_pro",
             SideEffect::Mutation,
             false,
-            "cognitive_mcp.rust_pro",
+            "cognitive.rust_pro",
             "mut.software.rust-pro.execute@v1",
         ),
     );
@@ -1314,12 +1270,12 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "memory_semantic_query",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
-            "obs.service.cognitive-mcp.memory.semantic-query@v1",
+            "cognitive.read",
+            "obs.service.cognitive.memory.semantic-query@v1",
         ),
     );
     // Hot agents: every one of these has an in-process executor registered as
-    // `agent_<type>_<operation>` by op-cognitive-mcp's agent_tools; the bridge
+    // `agent_<type>_<operation>` by op-cognitive's agent_tools; the bridge
     // maps the method to that tool after validating the operation.
     schema.methods.insert(
         "python_pro".to_string(),
@@ -1327,7 +1283,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "python_pro",
             SideEffect::Mutation,
             false,
-            "cognitive_mcp.python_pro",
+            "cognitive.python_pro",
             "mut.software.python-pro.execute@v1",
         ),
     );
@@ -1337,24 +1293,24 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "typescript_pro",
             SideEffect::Mutation,
             false,
-            "cognitive_mcp.typescript_pro",
+            "cognitive.typescript_pro",
             "mut.software.typescript-pro.execute@v1",
         ),
     );
     for (method, capability, subid) in [
         (
             "sequential_thinking",
-            "cognitive_mcp.sequential_thinking",
+            "cognitive.sequential_thinking",
             "mut.service.sequential-thinking.execute@v1",
         ),
         (
             "context_manager",
-            "cognitive_mcp.context_manager",
+            "cognitive.context_manager",
             "mut.service.context-manager.execute@v1",
         ),
         (
             "code_review_orchestrator",
-            "cognitive_mcp.code_review_orchestrator",
+            "cognitive.code_review_orchestrator",
             "mut.service.code-review-orchestrator.execute@v1",
         ),
     ] {
@@ -1376,8 +1332,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "specialist",
             SideEffect::Read,
             false,
-            "cognitive_mcp.read",
-            "obs.service.cognitive-mcp.specialist.consult@v1",
+            "cognitive.read",
+            "obs.service.cognitive.specialist.consult@v1",
         ),
     );
     schema.methods.insert(
@@ -1387,7 +1343,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             SideEffect::Read,
             true,
             "workflows.read",
-            "obs.service.cognitive-mcp.workflow.query@v1",
+            "obs.service.cognitive.workflow.query@v1",
         ),
     );
     schema.methods.insert(
@@ -1397,7 +1353,7 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             SideEffect::Mutation,
             false,
             "workflows.write",
-            "mut.service.cognitive-mcp.workflow.run@v1",
+            "mut.service.cognitive.workflow.run@v1",
         ),
     );
     schema.methods.insert(
@@ -1406,8 +1362,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "toolsets",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
-            "obs.service.cognitive-mcp.toolset.project@v1",
+            "cognitive.read",
+            "obs.service.cognitive.toolset.project@v1",
         ),
     );
     schema.methods.insert(
@@ -1416,8 +1372,8 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "schema_read",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
-            "obs.service.cognitive-mcp.schema.read@v1",
+            "cognitive.read",
+            "obs.service.cognitive.schema.read@v1",
         ),
     );
     super::cognitive_agents::append_catalog_methods(&mut schema);
@@ -1427,17 +1383,17 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "oscal_subids",
             SideEffect::Read,
             true,
-            "cognitive_mcp.read",
+            "cognitive.read",
             "obs.standard.oscal-subid-registry.subid.list@v1",
         ),
     );
     schema.methods.insert(
         "gemini_query".to_string(),
-        method_decl_from_schemars_with_output::<(), GeminiQueryOutput>(
+        method_decl_from_schemars_with_output::<GeminiQueryRequest, GeminiQueryOutput>(
             "gemini_query",
             SideEffect::Mutation,
             false,
-            "cognitive_mcp.invoke",
+            "cognitive.invoke",
             "mut.service.gemini.query@v1",
         ),
     );
@@ -1450,48 +1406,48 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
             "invoke_tool",
             SideEffect::Mutation,
             false,
-            "cognitive_mcp.invoke",
-            "mut.service.cognitive-mcp.tool.invoke@v1",
+            "cognitive.invoke",
+            "mut.service.cognitive.tool.invoke@v1",
         ),
     );
 
     schema.capabilities.insert(
-        "cognitive_mcp.read".to_string(),
+        "cognitive.read".to_string(),
         op_state_store::CapabilityDecl {
-            id: "cognitive_mcp.read".to_string(),
+            id: "cognitive.read".to_string(),
             description: "Grants bridge-owned cognitive reads: get_health, list_tools, memory_retrieve, memory_query, memory_list_namespaces, code_search, code_context, schema_read, oscal_subids.".to_string(),
         },
     );
     schema.capabilities.insert(
-        "cognitive_mcp.invoke".to_string(),
+        "cognitive.invoke".to_string(),
         op_state_store::CapabilityDecl {
-            id: "cognitive_mcp.invoke".to_string(),
+            id: "cognitive.invoke".to_string(),
             description: "Grants generic bridge-owned invocation; target MCP methods use their own exact capabilities and the generic invoke_tool escape hatch remains excluded from the MCP projection.".to_string(),
         },
     );
     for (id, description) in [
         (
-            "cognitive_mcp.sequential_thinking",
+            "cognitive.sequential_thinking",
             "Grants the sealed sequential_thinking agent facade.",
         ),
         (
-            "cognitive_mcp.context_manager",
+            "cognitive.context_manager",
             "Grants the sealed context_manager agent facade.",
         ),
         (
-            "cognitive_mcp.code_review_orchestrator",
+            "cognitive.code_review_orchestrator",
             "Grants the sealed code_review_orchestrator agent facade.",
         ),
         (
-            "cognitive_mcp.rust_pro",
+            "cognitive.rust_pro",
             "Grants the sealed rust_pro agent facade.",
         ),
         (
-            "cognitive_mcp.python_pro",
+            "cognitive.python_pro",
             "Grants the sealed python_pro agent facade.",
         ),
         (
-            "cognitive_mcp.typescript_pro",
+            "cognitive.typescript_pro",
             "Grants the sealed typescript_pro agent facade.",
         ),
     ] {
@@ -1504,17 +1460,17 @@ pub(crate) fn cognitive_mcp_schema() -> PluginSchema {
         );
     }
     schema.capabilities.insert(
-        "cognitive_mcp.memory.write".to_string(),
+        "cognitive.memory.write".to_string(),
         op_state_store::CapabilityDecl {
-            id: "cognitive_mcp.memory.write".to_string(),
+            id: "cognitive.memory.write".to_string(),
             description: "Grants the sealed HOT memory_store and memory_delete methods."
                 .to_string(),
         },
     );
     schema.capabilities.insert(
-        "cognitive_mcp.code.write".to_string(),
+        "cognitive.code.write".to_string(),
         op_state_store::CapabilityDecl {
-            id: "cognitive_mcp.code.write".to_string(),
+            id: "cognitive.code.write".to_string(),
             description: "Grants the sealed context-aware code_index method.".to_string(),
         },
     );
@@ -1577,7 +1533,7 @@ mod tests {
 
     #[test]
     fn all_subids_are_valid() {
-        let raw = serde_json::to_value(schemars::schema_for!(CognitiveMcpState)).unwrap();
+        let raw = serde_json::to_value(schemars::schema_for!(CognitiveState)).unwrap();
         let mut subids = Vec::new();
         collect_subids(&raw, &mut subids);
         assert!(
@@ -1591,7 +1547,7 @@ mod tests {
 
     #[test]
     fn bridge_owned_plugin_is_available_without_a_service_definition() {
-        let plugin = CognitiveMcpPlugin::new();
+        let plugin = CognitivePlugin::new();
         assert!(plugin.is_available());
         assert!(
             plugin
@@ -1602,9 +1558,11 @@ mod tests {
 
     #[test]
     fn schema_excludes_retired_standalone_service_controls() {
-        let schema = CognitiveMcpPlugin::new()
+        let schema = CognitivePlugin::new()
             .schema()
-            .expect("cognitive_mcp must publish its bridge-owned schema");
+            .expect("cognitive must publish its bridge-owned schema");
+        assert_eq!(schema.name, "cognitive");
+        assert_eq!(schema.display_name.as_deref(), Some("GB.Cognitive"));
 
         for method in ["get_config", "set_config", "restart_service"] {
             assert!(
@@ -1630,7 +1588,6 @@ mod tests {
         let expected_methods = [
             "get_health",
             "list_tools",
-            "register_tool",
             "memory_store",
             "memory_recall",
             "memory_retrieve",
@@ -1659,6 +1616,7 @@ mod tests {
             "specialist",
         ];
         let catalog_methods: Vec<_> = cognitive_agents::catalog_agent_methods().collect();
+        assert!(!schema.methods.contains_key("register_tool"));
         assert_eq!(
             schema.methods.len(),
             expected_methods.len() + catalog_methods.len(),
@@ -1692,7 +1650,7 @@ mod tests {
         let rust_pro = &schema.methods["rust_pro"];
         assert_eq!(
             rust_pro.required_capability.as_deref(),
-            Some("cognitive_mcp.rust_pro")
+            Some("cognitive.rust_pro")
         );
         assert_eq!(rust_pro.side_effect, SideEffect::Mutation);
 
@@ -1700,19 +1658,19 @@ mod tests {
             schema.methods["memory_delete"]
                 .required_capability
                 .as_deref(),
-            Some("cognitive_mcp.memory.write")
+            Some("cognitive.memory.write")
         );
 
         for (method, capability) in [
-            ("sequential_thinking", "cognitive_mcp.sequential_thinking"),
-            ("context_manager", "cognitive_mcp.context_manager"),
+            ("sequential_thinking", "cognitive.sequential_thinking"),
+            ("context_manager", "cognitive.context_manager"),
             (
                 "code_review_orchestrator",
-                "cognitive_mcp.code_review_orchestrator",
+                "cognitive.code_review_orchestrator",
             ),
-            ("rust_pro", "cognitive_mcp.rust_pro"),
-            ("python_pro", "cognitive_mcp.python_pro"),
-            ("typescript_pro", "cognitive_mcp.typescript_pro"),
+            ("rust_pro", "cognitive.rust_pro"),
+            ("python_pro", "cognitive.python_pro"),
+            ("typescript_pro", "cognitive.typescript_pro"),
         ] {
             let declaration = &schema.methods[method];
             assert_eq!(declaration.required_capability.as_deref(), Some(capability));
@@ -1722,11 +1680,11 @@ mod tests {
         let schema_read = &schema.methods["schema_read"];
         assert_eq!(
             schema_read.required_capability.as_deref(),
-            Some("cognitive_mcp.read")
+            Some("cognitive.read")
         );
         assert_eq!(
             schema_read.subid,
-            "obs.service.cognitive-mcp.schema.read@v1"
+            "obs.service.cognitive.schema.read@v1"
         );
 
         let oscal_subids = &schema.methods["oscal_subids"];
@@ -1746,7 +1704,7 @@ mod tests {
 
     #[tokio::test]
     async fn state_plugin_cannot_apply_service_configuration() {
-        let plugin = CognitiveMcpPlugin::new();
+        let plugin = CognitivePlugin::new();
         let diff = plugin
             .calculate_diff(
                 &simd_json::json!({"bridge_owned": true}),
@@ -1781,5 +1739,5 @@ mod tests {
 // Self-registration: the plugin registry discovers this via inventory
 // (single source of registered plugins; no central dispatch list).
 inventory::submit! {
-    crate::default_registry::PluginReg::new(PLUGIN_NAME, |_ctx| std::sync::Arc::new(CognitiveMcpPlugin::new()))
+    crate::default_registry::PluginReg::new(PLUGIN_NAME, |_ctx| std::sync::Arc::new(CognitivePlugin::new()))
 }

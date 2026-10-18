@@ -194,8 +194,12 @@ mod tests {
     #[test]
     fn should_generate_only_canonical_plugin_paths() {
         assert_eq!(
-            PluginRegistry::plugin_dbus_path("cognitive-mcp"),
-            "/org/opdbus/v1/plugins/cognitive_mcp"
+            PluginRegistry::plugin_dbus_path("fixture-name"),
+            "/org/opdbus/v1/plugins/fixture_name"
+        );
+        assert_eq!(
+            PluginRegistry::plugin_dbus_path("cognitive"),
+            "/org/opdbus/v1/plugins/cognitive"
         );
     }
 }
