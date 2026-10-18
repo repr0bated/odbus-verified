@@ -1,0 +1,14 @@
+{
+  "log": {"loglevel": "warning"},
+  "inbounds": [{
+    "tag": "workspace-socks", "listen": "127.0.0.1", "port": 1080,
+    "protocol": "socks", "settings": {"auth": "noauth", "udp": true, "ip": "127.0.0.1"}
+  }],
+  "outbounds": [{
+    "tag": "workspace-carrier", "protocol": "vless",
+    "settings": {"vnext": [{"address": "127.0.0.1", "port": 19443,
+      "users": [{"id": "REPLACE_TRANSPORT_UUID", "encryption": "none"}]}]},
+    "streamSettings": {"network": "tcp", "security": "none"},
+    "mux": {"enabled": false}
+  }]
+}
