@@ -1,0 +1,12 @@
+#!/bin/sh
+exec /usr/bin/node <<'NODE'
+const fs = require('fs');
+const password = fs.readFileSync('/home/jeremy/.config/opdbus-agents/opencode-env/OPENCODE_PASSWORD', 'utf8').trim();
+const url = 'http://127.0.0.1:4096/api/info';
+(async () => {
+  const denied = await fetch(url, { signal: AbortSignal.timeout(3000) });
+  if (denied.status !== 401) throw new Error('OpenCode anonymous access was not denied');
+  const response = await fetch(url, { headers: { Authorization: 'Basic ' + Buffer.from('opencode:' + password).toString('base64') }, signal: AbortSignal.timeout(3000) });
+  if (!response.ok || (await response.json()).version !== '2.0.18') throw new Error('OpenCode readiness failed');
+})().catch(error => { console.error(error.message); process.exitCode = 1; });
+NODE

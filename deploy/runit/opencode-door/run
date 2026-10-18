@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+exec 2>&1
+cd /home/jeremy
+exec /usr/bin/runuser -u jeremy -- /usr/bin/chpst \
+  -e /home/jeremy/.config/opdbus-agents/opencode-env \
+  /opt/op-dbus/current/opt/opdbus/opencode/2.0.18/opencode \
+  serve --hostname 127.0.0.1 --port 4096

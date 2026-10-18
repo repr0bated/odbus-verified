@@ -1,0 +1,58 @@
+#!/bin/sh
+exec 2>&1
+set -eu
+
+# Out-of-band chat responder: subscribes to responder wake topic and
+# answers pending chat turns via the 3tchedFS lungs mount.
+
+wait_dep() {
+    sv start "$1" >/dev/null 2>&1 || true
+    i=0
+    until sv check "$1" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ "$i" -ge 90 ] && { echo "dependency $1 not ready after 90s" >&2; exit 1; }
+        sleep 1
+    done
+}
+
+# Dependencies: the gRPC bridge must be running (owns the turn registry),
+# EMQX must be running (for MQTT wake subscription), and the chatbot's
+# identity roots must be mounted (for 3tchedFS access).
+wait_dep op-grpc-bridge
+wait_dep emqx
+wait_dep identity-roots
+
+set -a
+[ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
+set +a
+
+# The control-plane chatbot's service identity. This responder answers
+# turns designated to this principal.
+RESPONDER_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-1262e982-14c1-44d4-0771-7ce74213211b}"
+
+# The 3tchedFS lungs mount for this chatbot identity.
+LUNGS_MOUNT="${OP_CHAT_RESPONDER_LUNGS_MOUNT:-/opt/run-mounts/3tched}"
+
+# MQTT broker (EMQX on the OVS bridge address).
+MQTT_HOST="${OP_CHAT_RESPONDER_MQTT_HOST:-10.0.0.3}"
+MQTT_PORT="${OP_CHAT_RESPONDER_MQTT_PORT:-1883}"
+
+export RUST_LOG="${OP_CHAT_RESPONDER_LOG:-info,rumqttc=warn}"
+
+# Wait for the lungs mount to be available.
+i=0
+while [ ! -d "$LUNGS_MOUNT/chat_response" ]; do
+    i=$((i+1))
+    if [ "$i" -ge 60 ]; then
+        echo "3tchedFS lungs mount not available at $LUNGS_MOUNT after 60s" >&2
+        exit 1
+    fi
+    sleep 1
+done
+
+args="--principal-id $RESPONDER_PRINCIPAL_ID"
+args="$args --lungs-mount $LUNGS_MOUNT"
+args="$args --mqtt-host $MQTT_HOST"
+args="$args --mqtt-port $MQTT_PORT"
+
+exec /usr/local/bin/op-chat-responder $args

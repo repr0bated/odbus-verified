@@ -1,40 +1,125 @@
 #!/bin/sh
-/usr/local/libexec/3tched/runit-ready-signal notebook-sources-sync
+# op-dbus-release: application
+# Capture locally even when the owned remote sync cannot advance.
+set -eu
 exec 2>&1
-
-/usr/local/libexec/3tched/wait-ready opdbus-rundirs 90 || { echo "dependency opdbus-rundirs not ready after 90s" >&2; exit 1; }
-# Depend on the BRIDGE, never on the standalone op-cognitive-mcp service.
-# cognitive_mcp is reached through the bridge's socket (PluginV1.Call on
-# /org/opdbus/v1/plugins/cognitive_mcp), which is both the single-writer path
-# to CozoDB and the identity gate. Starting op-cognitive-mcp opens the store
-# in-process, racing the bridge for the RocksDB LOCK and bypassing auth.
-# wait-ready never runs `sv start`, so it can no longer resurrect a
-# down-flagged service the way the old wait_dep did.
-/usr/local/libexec/3tched/wait-ready op-grpc-bridge 90 || { echo "dependency op-grpc-bridge not ready after 90s" >&2; exit 1; }
-
+session_file=/etc/op-dbus/human-lungs-session
+# Separate sync consent from the chatbot's filesystem-helper opt-in.
+marker=/etc/op-dbus/notebook-sources-sync.enabled
+status_dir=/run/opdbus/notebook-sync
+ready=/run/opdbus/runit-ready/notebook-sources-sync
 export HOME=/home/jeremy
 export USER=jeremy
-export OP_DBUS_ROOT=/srv/git/odbus-verified
+export PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin
+export OPDBUS_NOTEBOOK_PROJECT_ROOT=/srv/git/odbus-verified
+export OP_DBUS_ROOT=/usr/share/op-dbus/notebook-sync
 export NOTEBOOKLM_SOURCES_DIR=/home/jeremy/.notebooklm-sources
-export PATH="/home/jeremy/.local/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin"
-# 5 minutes default; override with env file if needed
-INTERVAL="${NOTEBOOK_SYNC_INTERVAL_SEC:-300}"
-# The cycle runs from the checkout, like its exporter, cleanup and uploader.
-HELPER="$OP_DBUS_ROOT/scripts/notebook-sources-sync-up"
+export OPDBUS_NOTEBOOK_SYNC_MODE=per-model
+export OPDBUS_NOTEBOOK_FS_ROOT=/run/mount/3tchedFS
+export OPDBUS_NOTEBOOK_HISTORY_ROOTS=/root:/home/jeremy/keep
+# A new, explicit recovery batch does not adopt processed legacy text as proof
+# of an earlier raw upload. The prior sources remain unmanaged and retained.
+export OPDBUS_NOTEBOOK_CAPTURE_EPOCH=20261012-recovery
+INTERVAL=${NOTEBOOK_SYNC_INTERVAL_SEC:-300}
+case "$INTERVAL" in ''|*[!0-9]*) exit 78 ;; esac
+[ "$INTERVAL" -ge 30 ] && [ "$INTERVAL" -le 86400 ] || exit 78
+[ "$(id -u jeremy)" = 1000 ] || exit 78
+[ ! -L /etc/op-dbus ] && [ "$(stat -c '%u %a' /etc/op-dbus)" = '0 755' ] || exit 78
+protected_file() {
+    [ -f "$1" ] && [ ! -L "$1" ] || return 1
+    set -- $(stat -c '%u %a' "$1")
+    [ "$1" = 0 ] && { [ "$2" = 400 ] || [ "$2" = 600 ]; }
+}
+install -d -o root -g root -m 0755 "$status_dir" /run/opdbus/runit-ready
+install -d -o jeremy -g jeremy -m 0700 "$NOTEBOOKLM_SOURCES_DIR" \
+    "$NOTEBOOKLM_SOURCES_DIR/.local-capture" \
+    "$NOTEBOOKLM_SOURCES_DIR/.local-capture/chunks" \
+    "$NOTEBOOKLM_SOURCES_DIR/.grouped-sync" \
+    "$NOTEBOOKLM_SOURCES_DIR/.grouped-sync/chunks"
+rm -f "$ready"
 
-echo "notebook-sources-sync: starting (interval=${INTERVAL}s) as $USER"
-
-if command -v chpst >/dev/null 2>&1 && id jeremy >/dev/null 2>&1; then
-    RUN="chpst -u jeremy:jeremy:secrets"
-else
-    RUN=""
-fi
-
-while true; do
-    if [ -x "$HELPER" ]; then
-        $RUN "$HELPER" || echo "notebook-sources-sync: cycle error"
-    else
-        echo "notebook-sources-sync: missing $HELPER"
+sync_pid=
+stop_cycle() {
+    trap '' TERM INT
+    if [ -n "$sync_pid" ]; then
+        kill -TERM "$sync_pid" 2>/dev/null || true
+        wait "$sync_pid" 2>/dev/null || true
     fi
-    sleep "$INTERVAL"
+    exit 143
+}
+trap stop_cycle TERM INT
+while true; do
+    capture_result=0
+    "$OP_DBUS_ROOT/scripts/notebook-sync" prepare-groups \
+        --state-dir "$NOTEBOOKLM_SOURCES_DIR/.local-capture" \
+        > "$status_dir/capture-summary.json.new" &
+    sync_pid=$!
+    wait "$sync_pid" || capture_result=$?
+    sync_pid=
+    mv -f "$status_dir/capture-summary.json.new" "$status_dir/capture-summary.json"
+    # Local capture is independently useful and must become ready before an
+    # optional remote operation can block, fail admission, or await its mount.
+    jq -n --argjson code "$capture_result" \
+        --argjson finished_at "$(date +%s)" --argjson interval "$INTERVAL" \
+        '{phase:(if $code == 0 then "complete" else "failed" end),exit_code:$code,
+          finished_at:$finished_at,interval_seconds:$interval}' \
+        > "$status_dir/capture-status.json.new"
+    mv -f "$status_dir/capture-status.json.new" "$status_dir/capture-status.json"
+    if [ "$capture_result" = 0 ]; then touch "$ready"; else rm -f "$ready"; fi
+    cycle_result=1
+    phase=blocked
+    reason=local_capture_failed
+    if [ "$capture_result" = 0 ]; then
+        reason=sync_disabled
+        if protected_file "$marker" && [ "$(cat "$marker")" = true ]; then
+            reason=invalid_session
+            if protected_file "$session_file" && [ "$(wc -c <"$session_file")" -le 37 ]; then
+                OPDBUS_NOTEBOOK_SESSION_ID=$(cat "$session_file")
+                export OPDBUS_NOTEBOOK_SESSION_ID
+                reason=mount_binding_unavailable
+                # The service uses the declared operator UID, while each method
+                # retains this mount's bound session and canonical grants.
+                if [ "$(id -u)" = 0 ] &&
+                    [ "$(findmnt -rn -M "$OPDBUS_NOTEBOOK_FS_ROOT" -o FSTYPE)" = fuse.3tchedFS ] &&
+                    jq -e --arg session "$OPDBUS_NOTEBOOK_SESSION_ID" \
+                        '.mount_identity.kind == "host_session" and
+                         .mount_identity.session == $session and .allowed_operator_uid == 0' \
+                        "$OPDBUS_NOTEBOOK_FS_ROOT/.3tchedfs.json" >/dev/null; then
+                    reason=owned_sync_journal_missing
+                    journal=$NOTEBOOKLM_SOURCES_DIR/.grouped-sync/remote-state.json
+                    if [ -f "$journal" ] && jq -e \
+                        '[.groups[].notebook_id? | select(type == "string" and length > 0)] | length > 0' \
+                        "$journal" >/dev/null; then
+                        reason=backend_unavailable
+                        if sv check op-grpc-bridge; then
+                            cycle_result=0
+                            "$OP_DBUS_ROOT/scripts/notebook-sources-sync-up" &
+                            sync_pid=$!
+                            wait "$sync_pid" || cycle_result=$?
+                            sync_pid=
+                            reason=sync_cycle
+                            case "$cycle_result" in
+                                0) phase=complete ;;
+                                2) phase=pending ;;
+                                *) phase=failed ;;
+                            esac
+                        fi
+                    fi
+                fi
+            fi
+        fi
+    fi
+    jq -n --arg phase "$phase" --argjson code "$cycle_result" \
+        --arg reason "$reason" --argjson capture_code "$capture_result" \
+        --argjson finished_at "$(date +%s)" --argjson interval "$INTERVAL" \
+        '{phase:$phase,reason:$reason,exit_code:$code,local_capture_exit_code:$capture_code,
+          finished_at:$finished_at,interval_seconds:$interval}' \
+        > "$status_dir/status.json.new"
+    mv -f "$status_dir/status.json.new" "$status_dir/status.json"
+    printf 'notebook-sources-sync: capture %s; cycle %s (exit %s; %s)\n' \
+        "$capture_result" "$phase" "$cycle_result" "$reason"
+    sleep "$INTERVAL" &
+    sync_pid=$!
+    wait "$sync_pid" || true
+    sync_pid=
 done

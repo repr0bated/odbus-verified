@@ -1,0 +1,9 @@
+#!/bin/sh
+# Readiness proves fresh local capture. Remote synchronization completion and
+# admission failures remain separately reported in notebook-sync/status.json.
+set -eu
+[ -f /run/opdbus/runit-ready/notebook-sources-sync ] || exit 1
+jq -e --argjson now "$(date +%s)" \
+    '.phase == "complete" and .exit_code == 0 and .finished_at <= $now and
+     ($now - .finished_at) <= (2 * .interval_seconds + 300)' \
+    /run/opdbus/notebook-sync/capture-status.json >/dev/null
