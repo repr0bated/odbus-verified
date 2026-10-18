@@ -1,4 +1,5 @@
 #!/bin/sh
+# op-dbus-release: application
 set -eu
 exec 2>&1
 
@@ -10,5 +11,5 @@ until sv check dbus >/dev/null 2>&1; do
 done
 id jeremy >/dev/null 2>&1 || { echo 'unified-execution: jeremy user missing' >&2; exit 78; }
 exec chpst -u jeremy:jeremy env HOME=/home/jeremy USER=jeremy \
-    PATH=/opt/op-dbus/execution-python/bin:/home/jeremy/.cargo/bin:/home/jeremy/.local/bin:/usr/local/bin:/usr/bin:/bin \
-    CXXFLAGS="-include cstdint" /usr/local/bin/dbus-agent --system --unified-execution
+    PATH=/opt/op-dbus/execution-python/bin:/usr/local/libexec/op-dbus/bin:/home/jeremy/.cargo/bin:/home/jeremy/.local/bin:/usr/local/bin:/usr/bin:/bin \
+    CXXFLAGS="-include cstdint" /usr/local/libexec/op-dbus/bin/dbus-agent --system --unified-execution

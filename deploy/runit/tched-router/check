@@ -2,7 +2,7 @@
 set -eu
 CONFIG_DIR="${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}"
 PORT="${TCHED_ROUTER_PORT:-8084}"
-pgrep -u jeremy -f "zeroclaw daemon --config-dir $CONFIG_DIR" >/dev/null 2>&1 || exit 1
+pgrep -u jeremy -f "threetched daemon --config-dir $CONFIG_DIR" >/dev/null 2>&1 || exit 1
 health=$(curl --fail --silent --show-error --max-time 2 "http://127.0.0.1:$PORT/health") || exit 1
 printf '%s' "$health" | jq -e \
     '.require_pairing == true and .status == "ok" and (.runtime != null)' >/dev/null

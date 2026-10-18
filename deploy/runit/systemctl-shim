@@ -15,7 +15,7 @@
 # of /usr/bin, so this shim wins for installers that run under sudo.
 #
 # Preference order for each operation:
-#   1. D-Bus (org.opdbus.v1.Runit.Systemctl) when the daemon is reachable —
+#   1. D-Bus (org.opdbus.v1.plugins.runit) when the daemon is reachable —
 #      keeps service changes on the audited control plane.
 #   2. Direct `sv` / symlink manipulation as the fallback.
 set -eu
@@ -25,9 +25,9 @@ RUNSVDIR_DEFAULT=${RUNSVDIR_DEFAULT:-/etc/runit/runsvdir/default}
 SERVICE_DIR=${SERVICE_DIR:-/run/runit/service}
 CONVERTER=${CONVERTER:-/usr/local/sbin/systemd-unit-to-runit}
 
-DBUS_NAME="org.opdbus.v1.Runit.Systemctl"
-DBUS_PATH="/org/opdbus/v1/plugins/runit/systemctl"
-DBUS_IFACE="org.opdbus.v1.Runit.Systemctl"
+DBUS_NAME="org.opdbus.v1.plugins.runit"
+DBUS_PATH="/org/opdbus/v1/plugins/runit"
+DBUS_IFACE="org.opdbus.v1.plugins.runit"
 # Well-known-name alias only — never used as path or interface.
 DBUS_LEGACY_NAME="org.opdbus.v1.S6.Systemctl"
 

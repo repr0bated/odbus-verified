@@ -1,0 +1,5 @@
+#!/bin/sh
+m=/run/mount/3tchedFS
+fusermount3 -u "$m" 2>/dev/null || umount -l "$m" 2>/dev/null
+rm -f /run/opdbus/runit-ready/threetched-fs
+exit 0
