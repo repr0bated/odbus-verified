@@ -1,0 +1,15 @@
+[Unit]
+Description=Physical egress guard for the decoy's separate WARP paths
+DefaultDependencies=no
+After=local-fs.target
+Before=network-pre.target
+Wants=network-pre.target
+RequiresMountsFor=/opt/op-dbus/releases
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/libexec/op-warp-ssh/decoy-egress.sh firewall
+
+[Install]
+WantedBy=multi-user.target
