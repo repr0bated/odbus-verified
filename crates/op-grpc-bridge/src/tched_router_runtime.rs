@@ -38,6 +38,13 @@ const MAX_GATEWAY_QUERY_VALUE_BYTES: usize = 4096;
 const MAX_GATEWAY_REQUEST_BYTES: usize = MAX_CHAT_REQUEST_BYTES;
 static RUNTIME_SWITCH_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
+#[derive(Debug, thiserror::Error)]
+#[error("tched_router {operation} returned HTTP {status}")]
+pub(crate) struct NativeHttpFailure {
+    pub(crate) operation: String,
+    pub(crate) status: u16,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum GatewayMethod {
     Get,
@@ -94,6 +101,12 @@ struct ConfiguredProvider {
     selected_model: String,
 }
 
+fn matches_provider_selector(selector: &str, observed: &ConfiguredProvider) -> bool {
+    selector.trim().is_empty()
+        || selector.eq_ignore_ascii_case(&observed.family)
+        || selector.eq_ignore_ascii_case(&observed.reference)
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct RuntimeSelection {
     pub(crate) provider: String,
@@ -117,6 +130,12 @@ pub(crate) struct NativeConfigObservation {
     /// Selection and catalog fields observed while that image remained stable.
     pub(crate) represented: Value,
     pub(crate) state: TchedRouterState,
+}
+
+#[derive(Debug)]
+pub(crate) struct CatalogBindingObservation {
+    pub(crate) native_config: Value,
+    pub(crate) binding: op_plugins::state_plugins::tched_router::ResolveCatalogModelBindingOutput,
 }
 
 impl NativeConfigObservation {
@@ -329,10 +348,7 @@ impl TchedRouterRuntimeClient {
             .with_sealed_identity(before_prompt.sealed_identity());
         let prompt = conversation_prompt(&input)?;
         let observed = client.current_provider().await?;
-        if !input.provider.trim().is_empty()
-            && !input.provider.eq_ignore_ascii_case(&observed.family)
-            && !input.provider.eq_ignore_ascii_case(&observed.reference)
-        {
+        if !matches_provider_selector(&input.provider, &observed) {
             return Err(anyhow!(
                 "requested provider '{}' differs from native selection '{}'",
                 input.provider,
@@ -459,11 +475,13 @@ impl TchedRouterRuntimeClient {
             body.extend_from_slice(&chunk);
         }
         if !status.is_success() {
-            let detail = String::from_utf8_lossy(&body);
-            return Err(anyhow!(
-                "tched_router {operation} returned {status}: {}",
-                truncate_error(&detail)
-            ));
+            // A provider error body may echo credentials or private arguments.
+            // Keep only the typed public status and adapter operation.
+            return Err(NativeHttpFailure {
+                operation: operation.to_owned(),
+                status: status.as_u16(),
+            }
+            .into());
         }
         serde_json::from_slice(&body)
             .with_context(|| format!("tched_router {operation} returned invalid JSON"))
@@ -706,9 +724,12 @@ impl TchedRouterRuntimeClient {
                 redact_secret_leaves(value);
             }
         }
+        // Native ListResponse omits this array when empty. Absence means no
+        // drift; a present value must still have the declared array shape.
         let drifted = object
-            .get_mut("drifted")
-            .and_then(Value::as_array_mut)
+            .entry("drifted")
+            .or_insert_with(|| json!([]))
+            .as_array_mut()
             .context("tched_router config list response has no drifted array")?;
         anyhow::ensure!(
             drifted.len() <= MAX_CONFIG_LIST_ENTRIES,
@@ -993,6 +1014,70 @@ impl TchedRouterRuntimeClient {
         Ok(NativeConfigMutation { result, readback })
     }
 
+    /// Create `providers.models.<family>.<alias>` through the native map-key API
+    /// when the pinned contract admits the profile path.
+    pub(crate) async fn init_provider_model_reference(
+        &self,
+        reference: &str,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            crate::tched_catalog_binding::valid_reference(reference),
+            "native provider reference is invalid"
+        );
+        let (family, alias) = reference
+            .split_once('.')
+            .context("native provider reference must be family.alias")?;
+        anyhow::ensure!(
+            valid_config_segment(family) && valid_config_segment(alias),
+            "native provider reference segments are invalid"
+        );
+        let model_path = format!("providers.models.{reference}.model");
+        match secrets.is_secret(&model_path) {
+            Ok(false) => {}
+            Ok(true) => {
+                anyhow::bail!("native provider model path must be public in the pinned contract")
+            }
+            Err(_) => anyhow::bail!(
+                "native provider reference {reference} is absent from the pinned config contract"
+            ),
+        }
+        self.health().await?;
+        let map_path = format!("providers.models.{family}");
+        let receipt: NativeMapKeyResponse = self
+            .send_gateway_json(GatewayJsonRequest {
+                method: GatewayMethod::Post,
+                relative_path: "/api/config/map-key",
+                query: &[("path", map_path.as_str()), ("key", alias)],
+                body: None,
+                operation: "initialize native provider profile",
+                profile: GatewayProfile::Config,
+                mutation: true,
+            })
+            .await
+            .map_err(config_gateway_error)?;
+        anyhow::ensure!(
+            receipt.path == map_path && receipt.key == alias,
+            "native provider profile creation receipt is invalid"
+        );
+        anyhow::ensure!(
+            receipt.warnings.as_ref().is_none_or(Vec::is_empty),
+            "native provider profile creation returned warnings"
+        );
+        let readback = self
+            .read_masked_config(secrets)
+            .await
+            .context("native provider profile creation succeeded but readback failed")?;
+        let configured = readback
+            .pointer(&format!("/providers/models/{family}/{alias}/model"))
+            .is_some();
+        anyhow::ensure!(
+            configured || receipt.created,
+            "native provider profile did not appear in configuration readback"
+        );
+        Ok(())
+    }
+
     pub(crate) async fn migrate_config(
         &self,
         _: &ConfigMigrateInput,
@@ -1065,7 +1150,197 @@ impl TchedRouterRuntimeClient {
                 "list configured providers",
             )
             .await?;
+        anyhow::ensure!(
+            response.entries.len() <= MAX_CONFIG_LIST_ENTRIES,
+            "native provider inventory exceeds bound"
+        );
         parse_configured_providers(response.entries)
+    }
+
+    /// Observe only eligible ordinary profile/model bindings, with independent
+    /// catalog endpoint trust and a stable masked native configuration image.
+    /// The caller retains the final-admitted operation guard and publishes the
+    /// resulting pair before returning a committed field to the caller.
+    pub(crate) async fn observe_catalog_binding(
+        &self,
+        target: &crate::tched_catalog_binding::BindingTarget,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<CatalogBindingObservation> {
+        anyhow::ensure!(
+            self.sealed_identity
+                .as_deref()
+                .is_some_and(|value| !value.is_empty()),
+            "catalog binding requires verified caller identity metadata"
+        );
+        use crate::tched_catalog_binding::{
+            MAX_BINDING_PROFILES, MAX_PROFILE_MODELS, ProfileCandidate,
+        };
+        let before = self
+            .read_masked_config(secrets)
+            .await
+            .map_err(|_| anyhow!("catalog binding native configuration is unavailable"))?;
+        let configured = self
+            .configured_providers()
+            .await
+            .map_err(|_| anyhow!("catalog binding native provider inventory is unavailable"))?;
+        let eligible = binding_profiles(&before, configured, target, self.opencode_only())?;
+        anyhow::ensure!(
+            eligible.len() <= MAX_BINDING_PROFILES,
+            "catalog binding profile inventory exceeds bound"
+        );
+        let mut candidates = Vec::with_capacity(eligible.len());
+        for profile in eligible {
+            let (family, alias) = profile
+                .reference
+                .split_once('.')
+                .context("catalog binding profile reference is invalid")?;
+            let native_profile = before
+                .get("providers")
+                .and_then(|p| p.get("models"))
+                .and_then(|m| m.get(family))
+                .and_then(|f| f.get(alias))
+                .context("catalog binding profile is absent from native observation")?;
+            anyhow::ensure!(
+                native_profile.get("model").and_then(Value::as_str)
+                    == Some(profile.selected_model.as_str())
+                    || target
+                        .ordinary_reference
+                        .as_ref()
+                        .is_some_and(|reference| reference == &profile.reference)
+                        && native_profile.get("model").and_then(Value::as_str)
+                            == Some(target.model_id.as_str()),
+                "catalog binding native profile changed during observation"
+            );
+            let oauth = native_profile
+                .get("requires_openai_auth")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let uri = if oauth {
+                // Subscription profiles are observed (and located by the
+                // binding) without an HTTP endpoint; the codex auth store
+                // owns the origin.
+                native_profile
+                    .get("uri")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string()
+            } else {
+                native_profile
+                    .get("uri")
+                    .and_then(Value::as_str)
+                    .context("catalog binding native endpoint is absent")?
+                    .to_string()
+            };
+            let catalog = self
+                .model_catalog(&profile.reference)
+                .await
+                .map_err(|_| anyhow!("catalog binding native model catalog is unavailable"))?;
+            anyhow::ensure!(
+                catalog.models.len() <= MAX_PROFILE_MODELS,
+                "catalog binding native model catalog exceeds bound"
+            );
+            let mut models = catalog.models;
+            let mut live = catalog.live;
+            // When the catalog names an exact ordinary profile, a configured model match
+            // may bind even if the upstream live inventory is empty or offline.
+            if target
+                .ordinary_reference
+                .as_ref()
+                .is_some_and(|reference| reference == &profile.reference)
+            {
+                let configured_model = native_profile.get("model").and_then(Value::as_str);
+                if configured_model == Some(target.model_id.as_str()) {
+                    if !models.iter().any(|model| model == &target.model_id) {
+                        models.push(target.model_id.clone());
+                    }
+                    if !live {
+                        live = true;
+                    }
+                }
+            }
+            candidates.push(ProfileCandidate {
+                reference: profile.reference,
+                uri,
+                models,
+                live,
+                oauth,
+            });
+        }
+        let after = self
+            .read_masked_config(secrets)
+            .await
+            .map_err(|_| anyhow!("catalog binding native configuration readback is unavailable"))?;
+        anyhow::ensure!(
+            before == after,
+            "catalog binding native configuration changed during observation"
+        );
+        let binding = crate::tched_catalog_binding::select(target, &candidates)?;
+        Ok(CatalogBindingObservation {
+            native_config: after,
+            binding,
+        })
+    }
+
+    /// Native provider inventory for the dashboard lookup: every configured
+    /// `family.alias` profile with its served model, subscription (OAuth)
+    /// class, and door selectability. Values are observed live from the
+    /// runtime; credential values never appear.
+    pub(crate) async fn native_providers_inventory(
+        &self,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<Vec<op_plugins::state_plugins::model_registry::NativeProviderProfile>> {
+        let config = self.read_masked_config(secrets).await?;
+        let configured = self.configured_providers().await?;
+        let private = agent_owned_profiles(&config)?;
+        let mut profiles = Vec::new();
+        for provider in configured {
+            let reference = provider.reference.clone();
+            let (family, alias) = reference.split_once('.').with_context(|| {
+                format!("native provider inventory reference {reference} is invalid")
+            })?;
+            let (family, alias) = (family.to_string(), alias.to_string());
+            let native_profile = config
+                .get("providers")
+                .and_then(|p| p.get("models"))
+                .and_then(|m| m.get(family.as_str()))
+                .and_then(|f| f.get(alias.as_str()))
+                .context("native provider inventory profile is absent")?;
+            let oauth = native_profile
+                .get("requires_openai_auth")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let selectable = !private.contains(&reference)
+                && (!self.opencode_only() || is_door_selectable_reference(&reference));
+            profiles.push(
+                op_plugins::state_plugins::model_registry::NativeProviderProfile {
+                    reference: provider.reference,
+                    family,
+                    model: provider.selected_model,
+                    oauth,
+                    selectable,
+                },
+            );
+        }
+        Ok(profiles)
+    }
+
+    /// Check profile ownership before provisioning or changing its model.
+    /// Final binding observation repeats this check after native effects.
+    pub(crate) async fn guard_ordinary_profile(
+        &self,
+        reference: &str,
+        secrets: &dyn ConfigSecretPolicy,
+    ) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            crate::tched_catalog_binding::valid_reference(reference),
+            "ordinary native profile reference is invalid"
+        );
+        let config = self.read_masked_config(secrets).await?;
+        anyhow::ensure!(
+            !agent_owned_profiles(&config)?.contains(reference),
+            "ordinary native profile is owned by a non-dashboard agent"
+        );
+        Ok(())
     }
 
     fn opencode_only(&self) -> bool {
@@ -1077,7 +1352,7 @@ impl TchedRouterRuntimeClient {
     async fn selectable_providers(&self) -> anyhow::Result<Vec<ConfiguredProvider>> {
         let mut providers = self.configured_providers().await?;
         if self.opencode_only() {
-            providers.retain(is_opencode_route);
+            providers.retain(is_door_selectable_route);
         }
         Ok(providers)
     }
@@ -1518,13 +1793,11 @@ impl TchedRouterRuntimeClient {
         );
         self.health().await?;
         let observed = self.current_provider().await?;
-        if !input.provider.trim().is_empty()
-            && !input.provider.eq_ignore_ascii_case(&observed.family)
-        {
+        if !matches_provider_selector(&input.provider, &observed) {
             return Err(anyhow!(
                 "requested provider '{}' differs from tched_router's selected provider '{}'",
                 input.provider,
-                observed.family
+                observed.reference
             ));
         }
         if !input.model.trim().is_empty()
@@ -2089,18 +2362,72 @@ fn parse_configured_providers(
     Ok(providers.into_values().collect())
 }
 
-fn is_opencode_route(provider: &ConfiguredProvider) -> bool {
-    is_opencode_reference(&provider.reference)
+fn is_door_selectable_route(provider: &ConfiguredProvider) -> bool {
+    is_door_selectable_reference(&provider.reference)
 }
 
-fn is_opencode_reference(reference: &str) -> bool {
+fn agent_owned_profiles(config: &Value) -> anyhow::Result<std::collections::BTreeSet<String>> {
+    let agents = config
+        .get("agents")
+        .and_then(Value::as_object)
+        .context("native provider inventory agent section is absent")?;
+    Ok(agents
+        .iter()
+        .filter(|(alias, _)| alias.as_str() != DEFAULT_AGENT_ALIAS)
+        .filter_map(|(_, agent)| agent.get("model_provider").and_then(Value::as_str))
+        .map(str::to_owned)
+        .collect())
+}
+
+fn binding_profiles(
+    config: &Value,
+    configured: Vec<ConfiguredProvider>,
+    target: &crate::tched_catalog_binding::BindingTarget,
+    opencode_only: bool,
+) -> anyhow::Result<Vec<ConfiguredProvider>> {
+    let mut private = target.excluded_references.clone();
+    private.extend(agent_owned_profiles(config)?);
+    let mut eligible = Vec::new();
+    for provider in configured {
+        anyhow::ensure!(
+            crate::tched_catalog_binding::valid_reference(&provider.reference),
+            "catalog binding native profile reference is invalid"
+        );
+        // The provider's serve family bounds eligibility: a profile outside
+        // the target family is never a binding candidate, so one live model
+        // name listed by an unrelated family cannot create an ambiguous
+        // "unique" match.
+        if !private.contains(&provider.reference)
+            && (!opencode_only || is_door_selectable_route(&provider))
+            && crate::tched_catalog_binding::reference_family(&provider.reference)
+                == Some(target.family.as_str())
+            && target
+                .ordinary_reference
+                .as_ref()
+                .is_none_or(|reference| reference == &provider.reference)
+        {
+            eligible.push(provider);
+        }
+    }
+    Ok(eligible)
+}
+
+/// Upstream provider profiles a door caller may select: OpenCode (the Go
+/// plan's `opencode.go_*` chat/Responses profiles and `anthropic.go_*`
+/// Messages-API profiles, and the older `custom.opencode_*` session
+/// profiles) and Cheaper Inference. Any other configured provider, such as
+/// a hand-made native default, is the router's own and not door-selectable.
+fn is_door_selectable_reference(reference: &str) -> bool {
     reference.starts_with("custom.opencode_")
+        || reference.starts_with("opencode.go_")
+        || reference.starts_with("anthropic.go_")
+        || reference == "custom.cheaper_inference"
 }
 
 /// Whether the door must present `selected_ref` as the router's own default:
 /// the agent's native selection is not a profile the door can select.
 fn is_router_default(selected_ref: &str, opencode_only: bool) -> bool {
-    opencode_only && !is_opencode_reference(selected_ref)
+    opencode_only && !is_door_selectable_reference(selected_ref)
 }
 
 fn publish_providers(
@@ -2113,7 +2440,7 @@ fn publish_providers(
     }
     let mut published = Vec::with_capacity(configured.len());
     for provider in configured {
-        if is_opencode_route(&provider) {
+        if is_door_selectable_route(&provider) {
             published.push(provider);
         } else if provider.reference == selected_ref {
             // The router's own default keeps its real provider family, so the
@@ -2288,6 +2615,198 @@ fn truncate_error(detail: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn binding_target() -> crate::tched_catalog_binding::BindingTarget {
+        crate::tched_catalog_binding::BindingTarget {
+            provider_id: "openai".into(),
+            model_id: "test-model".into(),
+            inference_url_prefix: "https://inference.example/v1".into(),
+            catalog_revision: 7,
+            ordinary_reference: None,
+            excluded_references: Default::default(),
+            family: "openai".into(),
+        }
+    }
+
+    #[test]
+    fn differently_named_agent_keeps_its_profile_private() {
+        let config = json!({"agents": {
+            "salad_chat": {"model_provider": "custom.salad"},
+            "dashboard": {"model_provider": "custom.salad_personal"}
+        }});
+        let private = agent_owned_profiles(&config).unwrap();
+        assert!(private.contains("custom.salad"));
+        assert!(!private.contains("custom.salad_personal"));
+        let mut target = binding_target();
+        target.family = "custom".into();
+        target.ordinary_reference = Some("custom.salad_personal".into());
+        let configured = ["custom.salad", "custom.salad_personal"]
+            .into_iter()
+            .map(|reference| ConfiguredProvider {
+                family: "custom".into(),
+                reference: reference.into(),
+                selected_model: "test-model".into(),
+            })
+            .collect();
+        let eligible = binding_profiles(&config, configured, &target, false).unwrap();
+        assert_eq!(eligible.len(), 1);
+        assert_eq!(eligible[0].reference, "custom.salad_personal");
+    }
+
+    #[test]
+    fn catalog_binding_policy_respects_flag_and_never_overrides_private_exclusion() {
+        let config = json!({"agents":{"dashboard":{"model_provider":"openai.dashboard"}, "control_plane":{"model_provider":"custom.private"}}});
+        let configured = || {
+            vec![
+                ConfiguredProvider {
+                    family: "openai".into(),
+                    reference: "openai.dashboard".into(),
+                    selected_model: "test-model".into(),
+                },
+                ConfiguredProvider {
+                    family: "custom".into(),
+                    reference: "custom.private".into(),
+                    selected_model: "test-model".into(),
+                },
+                ConfiguredProvider {
+                    family: "opencode".into(),
+                    reference: "opencode.go_dashboard".into(),
+                    selected_model: "test-model".into(),
+                },
+            ]
+        };
+        assert_eq!(
+            binding_profiles(&config, configured(), &binding_target(), false)
+                .unwrap()
+                .len(),
+            2
+        );
+        assert_eq!(
+            binding_profiles(&config, configured(), &binding_target(), true)
+                .unwrap()
+                .len(),
+            1
+        );
+        let mut target = binding_target();
+        target.ordinary_reference = Some("custom.private".into());
+        assert!(
+            binding_profiles(&config, configured(), &target, false)
+                .unwrap()
+                .is_empty()
+        );
+        target.ordinary_reference = Some("openai.dashboard".into());
+        assert!(
+            binding_profiles(&config, configured(), &target, true)
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[tokio::test]
+    async fn profile_guard_and_http_errors_preserve_agent_and_secret_boundaries() {
+        use axum::{Json, routing::get};
+        let app = axum::Router::new()
+            .route("/health", get(|| async { Json(json!({"status":"ok"})) }))
+            .route(
+                "/api/config",
+                get(|| async {
+                    Json(json!({"agents":{"salad_chat":{"model_provider":"custom.salad"}}}))
+                }),
+            )
+            .route(
+                "/api/config/catalog/models",
+                get(|| async {
+                    (
+                        axum::http::StatusCode::UNAUTHORIZED,
+                        "PRIVATE_PROVIDER_ERROR_BODY",
+                    )
+                }),
+            );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let client = TchedRouterRuntimeClient::new(endpoint, "dashboard".into(), None);
+        assert!(
+            client
+                .guard_ordinary_profile("custom.salad", &StaticSecretPolicy)
+                .await
+                .is_err()
+        );
+        client
+            .guard_ordinary_profile("custom.salad_personal", &StaticSecretPolicy)
+            .await
+            .unwrap();
+        let error = client
+            .model_catalog("custom.salad_personal")
+            .await
+            .unwrap_err();
+        let http = error.downcast_ref::<NativeHttpFailure>().unwrap();
+        assert_eq!(http.status, 401);
+        assert!(!error.to_string().contains("PRIVATE_PROVIDER_ERROR_BODY"));
+        server.abort();
+    }
+
+    #[tokio::test]
+    async fn catalog_binding_observation_rejects_changed_config_and_masks_secrets() {
+        use axum::{Json, extract::State, routing::get};
+        use std::sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        };
+        #[derive(Clone)]
+        struct StateData {
+            reads: Arc<AtomicUsize>,
+            drift: bool,
+        }
+        async fn config(State(state): State<StateData>) -> Json<Value> {
+            let read = state.reads.fetch_add(1, Ordering::SeqCst);
+            Json(
+                json!({"agents":{"dashboard":{"model_provider":"openai.dashboard"}}, "providers":{"models":{"openai":{"dashboard":{"model":"test-model", "uri":"https://inference.example/v1", "api_key":"SECRET"}}}}, "generation":if state.drift && read > 0 { 2 } else { 1 }}),
+            )
+        }
+        for drift in [false, true] {
+            let reads = Arc::new(AtomicUsize::new(0));
+            let app = axum::Router::new()
+                .route("/health", get(|| async { Json(json!({"status":"ok"})) }))
+                .route("/api/config", get(config))
+                .route("/api/config/list", get(|| async { Json(json!({"entries":[{"path":"providers.models.openai.dashboard.model", "value":"test-model"}]})) }))
+                .route("/api/config/catalog/models", get(|| async { Json(json!({"models":["test-model"], "live":true})) }))
+                .layer(axum::middleware::from_fn(|request: axum::extract::Request, next: axum::middleware::Next| async move {
+                    assert_eq!(request.headers().get("x-opdbus-sealed-id-bin").unwrap(), "fixture-caller-sid1");
+                    next.run(request).await
+                }))
+                .with_state(StateData {reads:reads.clone(), drift});
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let endpoint = format!("http://{}", listener.local_addr().unwrap());
+            let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+            // A private test profile that current policy accepts independently
+            // of ambient routing restrictions; no env variables are changed.
+            let client = TchedRouterRuntimeClient::new(
+                endpoint,
+                "control_plane".into(),
+                Some("test-token".into()),
+            )
+            .with_sealed_identity(Some("fixture-caller-sid1"));
+            let output = client
+                .observe_catalog_binding(&binding_target(), &StaticSecretPolicy)
+                .await;
+            assert_eq!(reads.load(Ordering::SeqCst), 2);
+            if drift {
+                assert!(
+                    output
+                        .unwrap_err()
+                        .to_string()
+                        .contains("changed during observation")
+                );
+            } else {
+                let output = output.unwrap();
+                assert_eq!(output.binding.reference, "openai.dashboard");
+                assert_eq!(output.binding.catalog_revision, 7);
+                assert!(!output.native_config.to_string().contains("SECRET"));
+            }
+            server.abort();
+        }
+    }
     use futures::{SinkExt, StreamExt};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio_tungstenite::{
@@ -2297,6 +2816,22 @@ mod tests {
             handshake::server::{Request, Response},
         },
     };
+
+    #[test]
+    fn chat_selector_accepts_exact_native_reference_without_confusing_catalog_keys() {
+        let selected = provider("opencode", "opencode.go_dashboard", "current-model");
+        for selector in ["", "opencode", "opencode.go_dashboard"] {
+            assert!(matches_provider_selector(selector, &selected));
+        }
+        for selector in [
+            "opencode_go",
+            "opencode.go",
+            "opencode.go_control_plane",
+            "custom.go_dashboard",
+        ] {
+            assert!(!matches_provider_selector(selector, &selected));
+        }
+    }
 
     #[tokio::test]
     async fn a2a_forwards_canonical_sid1_and_requires_native_ack() {
@@ -2625,7 +3160,7 @@ mod tests {
         assert!(
             publish_providers(configured, "ollama.main", true)
                 .iter()
-                .all(is_opencode_route)
+                .all(is_door_selectable_route)
         );
     }
 
@@ -2639,6 +3174,40 @@ mod tests {
         // Without the OpenCode-only door, every provider keeps its models
         // selectable, as before.
         assert!(ensure_router_default_model(&default, "other", false).is_ok());
+    }
+
+    #[test]
+    fn the_door_selects_opencode_go_and_cheaper_inference_profiles() {
+        for reference in [
+            "opencode.go_dashboard",
+            "opencode.go_cp_route_grok_47",
+            "anthropic.go_cp_route_qwen38_flash",
+            "custom.opencode_dashboard",
+            "custom.cheaper_inference",
+        ] {
+            assert!(is_door_selectable_reference(reference), "{reference}");
+            assert!(!is_router_default(reference, true), "{reference}");
+        }
+        for reference in [
+            "opencode.go",
+            "openai.chatgpt",
+            "anthropic.main",
+            "custom.other",
+        ] {
+            assert!(!is_door_selectable_reference(reference), "{reference}");
+        }
+        let configured = vec![
+            provider("opencode", "opencode.go_dashboard", "glm-5.3-flash"),
+            provider("custom", "custom.cheaper_inference", "gpt-5.4-mini"),
+            provider("openai", "openai.chatgpt", "gpt"),
+        ];
+        assert_eq!(
+            publish_providers(configured, "opencode.go_dashboard", true),
+            vec![
+                provider("opencode", "opencode.go_dashboard", "glm-5.3-flash"),
+                provider("custom", "custom.cheaper_inference", "gpt-5.4-mini"),
+            ]
+        );
     }
 
     #[test]
@@ -2909,12 +3478,32 @@ mod tests {
                     role: "assistant".to_string(),
                     content: "second".to_string(),
                 },
+                TchedChatMessage {
+                    role: "user".to_string(),
+                    content: "hi".to_string(),
+                },
             ],
             ..Default::default()
         };
         let prompt = conversation_prompt(&input).unwrap();
-        assert!(
-            prompt.find("[user]\nfirst").unwrap() < prompt.find("[assistant]\nsecond").unwrap()
+        assert_eq!(
+            prompt,
+            "Continue the following ordered conversation. Respond only as the assistant.\n\n[user]\nfirst\n\n[assistant]\nsecond\n\n[user]\nhi\n\n"
+        );
+    }
+
+    #[test]
+    fn raw_chat_message_is_forwarded_unchanged_and_empty_input_is_rejected() {
+        let input = ChatInput {
+            message: "hi".to_string(),
+            ..Default::default()
+        };
+        assert_eq!(conversation_prompt(&input).unwrap(), "hi");
+        assert_eq!(
+            conversation_prompt(&ChatInput::default())
+                .unwrap_err()
+                .to_string(),
+            "tched_router.Chat requires message or messages"
         );
     }
 
@@ -3199,11 +3788,11 @@ mod tests {
         }
         async fn list() -> Json<Value> {
             Json(json!({"entries":[
-            {"path":"gateway.port","category":"Gateway","kind":"integer","type_hint":"u16",
-             "value":"8084","populated":true,"is_secret":false,"enum_variants":[],"tab":"","multiline":false},
-            {"path":"providers.api_key","category":"Providers","kind":"string","type_hint":"Option<String>",
-             "value":"provider-leak","populated":true,"is_secret":true,"enum_variants":[],"tab":"","multiline":false}
-        ],"drifted":[]}))
+                {"path":"gateway.port","category":"Gateway","kind":"integer","type_hint":"u16",
+                 "value":"8084","populated":true,"is_secret":false,"enum_variants":[],"tab":"","multiline":false},
+                {"path":"providers.api_key","category":"Providers","kind":"string","type_hint":"Option<String>",
+                 "value":"provider-leak","populated":true,"is_secret":true,"enum_variants":[],"tab":"","multiline":false}
+            ]}))
         }
         async fn put_prop(
             State(state): State<FixtureState>,
@@ -3270,6 +3859,7 @@ mod tests {
             assert_eq!(full["gateway"]["port"], 8084);
             let list = runtime.read_config_list(None, &policy).await.unwrap();
             assert!(list["entries"][1].get("value").is_none());
+            assert_eq!(list["drifted"], json!([]));
             let secret = runtime
                 .read_config_property("providers.api_key", &policy)
                 .await

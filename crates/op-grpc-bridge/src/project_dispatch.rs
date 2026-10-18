@@ -154,6 +154,11 @@ pub(crate) async fn verified_session(
         .filter(|id| !id.is_empty())
         .ok_or_else(|| anyhow!("verified session is required"))?;
     canonical_id(session)?;
+    if let Some(external) = crate::external_mcp_session::verify_connected_session(
+        engine, actor, session, genesis,
+    ).await? {
+        return Ok(external);
+    }
     let sled = crate::identity_sled_dispatch::stored_session(engine, session)
         .await
         .context("identity credential projection is unavailable")?
@@ -463,7 +468,7 @@ async fn resolve_context(
                 .filter(|cap| {
                     matches!(
                         cap.as_str(),
-                        "chat.context" | "cognitive_mcp.read" | "cognitive_mcp.memory.write"
+                        "chat.context" | "cognitive.read" | "cognitive.memory.write"
                     )
                 })
                 .cloned()
@@ -480,8 +485,8 @@ async fn resolve_context(
                     matches!(
                         cap.as_str(),
                         "chat.context"
-                            | "cognitive_mcp.read"
-                            | "cognitive_mcp.memory.write"
+                            | "cognitive.read"
+                            | "cognitive.memory.write"
                             | "workflows.read"
                             | "workflows.execute"
                     )
@@ -511,8 +516,8 @@ async fn resolve_context(
                     matches!(
                         cap.as_str(),
                         "chat.context"
-                            | "cognitive_mcp.read"
-                            | "cognitive_mcp.memory.write"
+                            | "cognitive.read"
+                            | "cognitive.memory.write"
                             | "notebooklm.read"
                             | "notebooklm.query"
                     )
