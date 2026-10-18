@@ -1,0 +1,6 @@
+# PAM service for op-dbus per-task root-password elevation (elevation.authorize_task).
+# Install as /etc/pam.d/op-dbus-elevate. The bridge runs as root, so pam_unix
+# checks the account's shadow entry directly. Only the password and account
+# validity are checked; no session is opened.
+auth     required  pam_unix.so
+account  required  pam_unix.so

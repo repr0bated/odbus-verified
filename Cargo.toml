@@ -29,7 +29,7 @@ members = [
     "crates/op-identity",
     "crates/op-execution-tracker",
     "crates/op-dynamic-loader",
-    "crates/op-cognitive-mcp",
+    "crates/op-cognitive",
     "crates/op-cozo-store",
     "crates/op-dbus-model",
     "crates/op-grpc-bridge",
@@ -38,8 +38,10 @@ members = [
     "crates/op-runit-systemctl",
     "crates/op-xray-daemon",
     "crates/op-dbus-cli",
+    "crates/op-chat-responder",
     "crates/threetched-fs",
 ]
+exclude = ["crates/op-uds-relay"]
 
 [workspace.package]
 version = "1.0.0"
@@ -230,7 +232,7 @@ op-inspector.workspace = true
 op-web.workspace = true
 op-grpc-bridge.workspace = true
 op-mcp.workspace = true
-op-cognitive-mcp = { path = "crates/op-cognitive-mcp" }
+op-cognitive = { path = "crates/op-cognitive" }
 
 parking_lot = "0.12"
 dashmap = "5.0"
@@ -248,6 +250,7 @@ tonic-reflection = { workspace = true }
 tonic-web = { workspace = true }
 rust-embed = { version = "8.0" }
 mime_guess = "2.0"
+nmrs = "3.5.5"
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -256,6 +259,9 @@ tempfile.workspace = true
 # Vendored: adds OF1.5 packet_type match (OXM 0x8000/44) — upstream rovs-openflow 0.2.0 lacks it.
 # Needed so op-of-controller can install the netmaker L3-port encap flow itself.
 rovs-openflow = { path = "vendor/rovs-openflow" }
+# Vendored same-version fix: compare JSON objects by key, independent of
+# serde_json's insertion order when the workspace enables preserve_order.
+jsonschema = { path = "vendor/jsonschema" }
 
 # ── Build profiles ───────────────────────────────────────────────────────────
 # Added 2026-09-01. There was no [profile.*] section at all, so everything ran

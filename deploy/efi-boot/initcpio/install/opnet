@@ -1,0 +1,55 @@
+#!/bin/bash
+# mkinitcpio install hook: tools that match the OP-DBUS stack
+# (btrfs root, rtnetlink, Open vSwitch, WireGuard) plus a small devops kit.
+
+build() {
+    local bin
+    for bin in \
+        ip ss bridge \
+        wg \
+        tcpdump curl jq socat \
+        dhcpcd \
+        nft \
+        ping \
+        ovsdb-tool ovsdb-server ovs-vswitchd \
+        ovs-vsctl ovs-ofctl ovs-appctl
+    do
+        add_binary "$bin"
+    done
+
+    add_full_dir /usr/lib/dhcpcd
+    add_file /usr/share/openvswitch/vswitch.ovsschema
+    if [[ -f /etc/ssl/certs/ca-certificates.crt ]]; then
+        add_file /etc/ssl/certs/ca-certificates.crt
+    fi
+
+    local here helper
+    here="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+    helper="${here}/../opnet"
+    [[ -f "$helper" ]] || helper=/etc/initcpio/opnet
+    add_file "$helper" /usr/bin/opnet 755
+
+    # add_module ignores the autodetect filter, so these stay in the image
+    # even when the build host has not loaded every one of them.
+    add_module virtio_pci
+    add_module virtio_net
+    add_module virtio_blk
+    add_module btrfs
+    add_module wireguard
+    add_module openvswitch
+    add_module bridge
+    add_module nf_tables
+    add_module nf_conntrack
+
+    add_runscript
+}
+
+help() {
+    cat <<HELPEOF
+Bundles iproute2, WireGuard, Open vSwitch, nft, tcpdump, curl, jq, socat,
+and dhcpcd. Pass opnet on the kernel command line to DHCP the first NIC
+before root is mounted. Otherwise the tools sit idle until the rescue shell.
+HELPEOF
+}
+
+# vim: set ft=sh ts=4 sw=4 et:
