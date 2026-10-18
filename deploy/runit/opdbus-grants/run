@@ -1,4 +1,5 @@
 #!/bin/sh
+# op-dbus-release: application
 exec 2>&1
 # Periodically checks /dev/shm/opdbus/capability-grants.json against the
 # installed durable copy at /etc/opdbus/capability-grants.json and
@@ -8,4 +9,4 @@ exec 2>&1
 # noticed an AccessDenied and manually restarted this service. That exact
 # failure mode is documented in the identity-handoff design, section 7.1.
 install -d -m 0755 /run/opdbus/runit-ready
-exec /usr/local/bin/op-grants-materializer run
+exec /usr/local/libexec/op-dbus/bin/op-grants-materializer run

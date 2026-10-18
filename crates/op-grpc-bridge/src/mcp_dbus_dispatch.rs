@@ -257,7 +257,7 @@ mod tests {
         std::fs::write(
             &grants_path,
             serde_json::to_vec(&serde_json::json!({
-                principal.clone(): {"capabilities": ["cognitive_mcp.read"]}
+                principal.clone(): {"capabilities": ["cognitive.read"]}
             }))
             .unwrap(),
         )

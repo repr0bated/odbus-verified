@@ -60,7 +60,7 @@ inputs support those claims**. Current exposure limits matter:
 
 ## Golden preparation hook
 
-`deploy/runit/build-golden.sh` requires the built `system_graph_inventory`
+`deploy/lib/golden/build-golden.sh` requires the built `system_graph_inventory`
 binary. After staging and writing the release manifest, it generates:
 
 ```text

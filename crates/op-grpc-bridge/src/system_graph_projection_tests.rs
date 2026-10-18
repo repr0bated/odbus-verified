@@ -344,7 +344,7 @@ fn private_memory_and_reserved_episode_qdrant_defaults_do_not_become_graph_facts
         ),
         ("qdrant", Some(json!({"collections":[]}))),
         (
-            "cognitive_mcp",
+            "cognitive",
             Some(
                 json!({"bridge_owned":true,"execution_model":"in_process","memory_tool":{"value":"secret-memory"},"code_search":{"query":"secret-query"}}),
             ),

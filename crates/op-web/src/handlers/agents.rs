@@ -49,7 +49,7 @@ pub async fn list_agents_handler(
 }
 
 /// GET /api/agents/types — the unified execution catalog the sealed
-/// `cognitive_mcp` methods correspond to.
+/// `cognitive` methods correspond to.
 pub async fn list_agent_types_handler(
     Extension(state): Extension<Arc<AppState>>,
 ) -> ResponseJson<Value> {
@@ -88,7 +88,7 @@ pub struct SpawnAgentRequest {
 }
 
 fn agent_capability(agent_type: &str) -> String {
-    format!("cognitive_mcp.agent.{}", sanitize(agent_type))
+    format!("cognitive.agent.{}", sanitize(agent_type))
 }
 
 fn agent_method_name(agent_type: &str, operation: &str) -> String {
@@ -126,7 +126,7 @@ pub async fn spawn_agent_handler(
 
     let outcome = if let Some(steps) = steps {
         call_sealed_method(
-            "cognitive_mcp",
+            "cognitive",
             &agent_method_name(&request.agent_type, operation),
             json!({ "steps": steps, "context": config.get("context").cloned() }),
             &agent_capability(&request.agent_type),
@@ -135,7 +135,7 @@ pub async fn spawn_agent_handler(
         .await
     } else if config.get("arguments").is_some() {
         call_sealed_method(
-            "cognitive_mcp",
+            "cognitive",
             &agent_method_name(&request.agent_type, operation),
             config
                 .get("arguments")
@@ -211,7 +211,7 @@ pub async fn agent_task_handler(
     }
 
     match call_sealed_method(
-        "cognitive_mcp",
+        "cognitive",
         &agent_method_name(&agent_type, &request.operation),
         arguments,
         &agent_capability(&agent_type),
@@ -383,11 +383,11 @@ mod tests {
     fn capability_and_method_names_follow_catalog_normalization() {
         assert_eq!(
             agent_capability("rust-executor"),
-            "cognitive_mcp.agent.rust_executor"
+            "cognitive.agent.rust_executor"
         );
         assert_eq!(
             agent_capability("Sequential-Thinking"),
-            "cognitive_mcp.agent.sequential_thinking"
+            "cognitive.agent.sequential_thinking"
         );
         assert_eq!(
             agent_method_name("Sequential-Thinking", "run-workflow"),

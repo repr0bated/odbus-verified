@@ -5,7 +5,7 @@
 //! this executable never changes its parent's environment or touches live grants.
 #![cfg(target_os = "linux")]
 
-use op_grpc_bridge::interceptor::{load_capability_grants, validate_grant_document};
+use op_grpc_bridge::interceptor::{GRANT_GROUPS, load_capability_grants, validate_grant_document};
 use serde_json::{Value, json};
 use std::{
     collections::HashSet,
@@ -20,7 +20,7 @@ use std::{
 const CHILD_MARKER: &str = "OP_P0_PRINCIPAL_GROUP_LIFECYCLE_CHILD";
 const FIXTURE_PREFIX: &str = "p0-principal-group-lifecycle-";
 const PRINCIPAL: &str = "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff";
-const OWN: &str = "cognitive_mcp.read";
+const OWN: &str = "cognitive.read";
 const INHERITED: &str = "cap.data.cozo.system-graph.read@v1";
 const CHANGED: &str = "cap.fixture.changed.read@v1";
 
@@ -139,13 +139,150 @@ fn open_descriptor_count() -> usize {
 
 fn replace_fixture(path: &Path, document: &Value, expected: &[&str], valid: bool) {
     let bytes = serde_json::to_vec(document).unwrap();
-    assert_eq!(validate_grant_document(&bytes).is_ok(), valid);
+    assert_eq!(
+        validate_grant_document(&bytes).is_ok(),
+        valid,
+        "unexpected validation result for private fixture: {document}"
+    );
     fs::write(path, bytes).unwrap();
     let expected: HashSet<String> = expected.iter().map(|item| (*item).to_owned()).collect();
     for _ in 0..4 {
         assert_eq!(load_capability_grants(PRINCIPAL), expected);
         assert!(load_capability_grants("$GUEST").is_empty());
     }
+}
+
+fn all_named_groups_require_explicit_membership_and_union_without_duplicates(path: &Path) {
+    let expected_groups = HashSet::from([
+        "$ROOT",
+        "$SUPERADMIN",
+        "$ADMIN",
+        "$AGENT-L1",
+        "$AGENT-L2",
+        "$AGENT-L3",
+        "$AGENT-L4",
+        "$EXTERNAL-MCP",
+        "$VENDOR",
+        "$GUEST",
+    ]);
+    assert_eq!(GRANT_GROUPS.iter().copied().collect::<HashSet<_>>(), expected_groups);
+    assert_eq!(GRANT_GROUPS.len(), expected_groups.len());
+    let unique_caps: Vec<String> = (0..GRANT_GROUPS.len())
+        .map(|index| format!("cap.fixture.group.{index}.read@v1"))
+        .collect();
+    let mut document = json!({
+        (PRINCIPAL): {"groups": [], "capabilities": [OWN]},
+        "unassigned": {"capabilities": [OWN]}
+    });
+    for (group, capability) in GRANT_GROUPS.iter().zip(&unique_caps) {
+        document[*group] = json!({"capabilities": [INHERITED, capability]});
+    }
+    replace_fixture(path, &document, &[OWN], true);
+
+    // Every group, including ROOT, is a membership label, never a caller,
+    // wildcard or implicit source of authority for another principal.
+    for (group, capability) in GRANT_GROUPS.iter().zip(&unique_caps) {
+        document[PRINCIPAL]["groups"] = json!([group]);
+        replace_fixture(path, &document, &[OWN, INHERITED, capability.as_str()], true);
+        assert_eq!(load_capability_grants("unassigned"), HashSet::from([OWN.to_owned()]));
+        assert!(load_capability_grants("unknown").is_empty());
+        for group_name in GRANT_GROUPS {
+            assert!(load_capability_grants(group_name).is_empty());
+        }
+    }
+
+    document[PRINCIPAL]["groups"] = json!(GRANT_GROUPS);
+    document[PRINCIPAL]["capabilities"] = json!([OWN, INHERITED]);
+    let mut expected = vec![OWN, INHERITED];
+    expected.extend(unique_caps.iter().map(String::as_str));
+    replace_fixture(path, &document, &expected, true);
+    assert_eq!(load_capability_grants(PRINCIPAL).len(), GRANT_GROUPS.len() + 2);
+
+    // Removing all memberships removes every unique group capability, but
+    // intentionally direct capabilities survive, even when also inherited.
+    document[PRINCIPAL]["groups"] = json!([]);
+    replace_fixture(path, &document, &[OWN, INHERITED], true);
+}
+
+fn malformed_documents_fail_closed_in_both_validation_and_lookup(path: &Path) {
+    let baseline = json!({
+        "$ROOT": {"capabilities": [CHANGED]},
+        "$GUEST": {"capabilities": [INHERITED]},
+        (PRINCIPAL): {"groups": ["$GUEST"], "capabilities": [OWN]},
+        "unrelated": {"capabilities": [CHANGED]}
+    });
+    replace_fixture(path, &baseline, &[OWN, INHERITED], true);
+    let mut cases = Vec::new();
+    for (label, capabilities) in [
+        ("mixed capability types", json!([OWN, 7])),
+        ("empty capability", json!([OWN, ""])),
+        ("whitespace capability", json!([OWN, " \t"])),
+        ("duplicate capability", json!([OWN, OWN])),
+        ("non-array capabilities", json!({"capability": OWN})),
+    ] {
+        for owner in [PRINCIPAL, "$GUEST", "unrelated"] {
+            let mut document = baseline.clone();
+            document[owner]["capabilities"] = capabilities.clone();
+            cases.push((format!("{label} in {owner}"), document));
+        }
+    }
+    for (label, owner, field, value) in [
+        ("nested group", "$GUEST", "groups", json!(["$ROOT"])),
+        ("invalid principal alias", PRINCIPAL, "display_alias", json!(7)),
+        ("invalid group alias", "$GUEST", "display_alias", json!(false)),
+        ("invalid unrelated alias", "unrelated", "display_alias", json!(null)),
+        ("non-array membership", PRINCIPAL, "groups", json!("$GUEST")),
+        ("non-string membership", PRINCIPAL, "groups", json!(["$GUEST", 7])),
+        ("duplicate membership", PRINCIPAL, "groups", json!(["$GUEST", "$GUEST"])),
+        ("missing declared group", PRINCIPAL, "groups", json!(["$ADMIN"])),
+    ] {
+        let mut document = baseline.clone();
+        document[owner][field] = value;
+        cases.push((label.to_owned(), document));
+    }
+    let mut malformed_entry = baseline.clone();
+    malformed_entry["unrelated"] = json!([]);
+    cases.push(("unrelated non-object entry".into(), malformed_entry));
+    let mut missing_capabilities = baseline.clone();
+    missing_capabilities["unrelated"] = json!({"display_alias": "fixture"});
+    cases.push(("unrelated missing capabilities".into(), missing_capabilities));
+
+    for (label, document) in &cases {
+        let bytes = serde_json::to_vec(document).unwrap();
+        assert!(validate_grant_document(&bytes).is_err(), "{label}");
+        replace_fixture(path, document, &[], false);
+        assert!(load_capability_grants("unrelated").is_empty(), "{label}");
+    }
+    // A repaired projection is observed on the next read; rejection must not
+    // leave either stale authority or a sticky denial after valid replacement.
+    replace_fixture(path, &baseline, &[OWN, INHERITED], true);
+}
+
+fn revocation_preserves_only_intentional_direct_exceptions(path: &Path) {
+    let mut document = json!({
+        "$GUEST": {"capabilities": [INHERITED, CHANGED]},
+        (PRINCIPAL): {"groups": ["$GUEST"], "capabilities": [OWN, INHERITED]}
+    });
+    replace_fixture(path, &document, &[OWN, INHERITED, CHANGED], true);
+
+    document[PRINCIPAL]["groups"] = json!([]);
+    replace_fixture(path, &document, &[OWN, INHERITED], true);
+    document[PRINCIPAL]["capabilities"] = json!([OWN]);
+    replace_fixture(path, &document, &[OWN], true);
+
+    document[PRINCIPAL]["groups"] = json!(["$GUEST"]);
+    replace_fixture(path, &document, &[OWN, INHERITED, CHANGED], true);
+    document["$GUEST"]["capabilities"] = json!([CHANGED]);
+    replace_fixture(path, &document, &[OWN, CHANGED], true);
+    document[PRINCIPAL]["capabilities"] = json!([OWN, INHERITED]);
+    replace_fixture(path, &document, &[OWN, INHERITED, CHANGED], true);
+
+    document.as_object_mut().unwrap().remove("$GUEST");
+    replace_fixture(path, &document, &[], false);
+    document[PRINCIPAL]["groups"] = json!([]);
+    replace_fixture(path, &document, &[OWN, INHERITED], true);
+    document.as_object_mut().unwrap().remove(PRINCIPAL);
+    replace_fixture(path, &document, &[], true);
 }
 
 /// Never selected by the normal test suite. The parent above supplies the exact
@@ -195,9 +332,12 @@ fn principal_group_lifecycle_child() {
         &[],
         false,
     );
+    all_named_groups_require_explicit_membership_and_union_without_duplicates(&path);
+    malformed_documents_fail_closed_in_both_validation_and_lookup(&path);
+    revocation_preserves_only_intentional_direct_exceptions(&path);
     let final_fds = open_descriptor_count();
     assert_eq!(final_fds, baseline);
     println!(
-        "512 principal group lifecycle cycles passed fd_baseline={baseline} fd_final={final_fds} cycles=512 lookups=20488"
+        "512 principal group lifecycle cycles passed fd_baseline={baseline} fd_final={final_fds} cycles=512; all ten groups, invalid-document parity and direct-exception revocation cases passed"
     );
 }

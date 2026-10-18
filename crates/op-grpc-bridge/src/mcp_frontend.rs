@@ -514,7 +514,7 @@ impl MutationEngineMcpBackend {
     ) -> anyhow::Result<Value> {
         self.dispatch_plugin(
             caller,
-            "cognitive_mcp",
+            "cognitive",
             method,
             arguments,
             required_capability,
@@ -564,7 +564,7 @@ impl MutationEngineMcpBackend {
     }
 
     fn hot_tool_descriptor(public_name: &str) -> anyhow::Result<Value> {
-        let schema = op_plugins::cognitive_mcp_plugin_schema();
+        let schema = op_plugins::cognitive_plugin_schema();
         method_descriptor(&schema, public_name, public_name)
     }
 
@@ -609,7 +609,7 @@ impl MutationEngineMcpBackend {
                 let Ok((capability, _)) = descriptor_authority(&descriptor, Some(&name)) else {
                     continue;
                 };
-                if capability != "cognitive_mcp.invoke" && grants.contains(capability) {
+                if capability != "cognitive.invoke" && grants.contains(capability) {
                     by_name.insert(name, descriptor);
                 }
             }
@@ -639,7 +639,7 @@ impl MutationEngineMcpBackend {
             .map_err(|_| denied())?;
         let (capability, _) =
             descriptor_authority(&descriptor, Some(name)).map_err(|_| denied())?;
-        if capability == "cognitive_mcp.invoke" {
+        if capability == "cognitive.invoke" {
             return Err(denied());
         }
         authorize_with_grants(&self.current_grants(&caller.principal_id), capability)
@@ -852,7 +852,7 @@ impl MutationEngineMcpBackend {
         authorize_and_validate_tool_call(descriptor, name, &arguments, &grants)?;
         let required_capability = descriptor_authority(descriptor, Some(name))?.0;
         let (plugin_id, method_name) = if HOT_TOOL_NAMES.contains(&name) {
-            ("cognitive_mcp", name)
+            ("cognitive", name)
         } else {
             parse_typed_tool_name(name)?
         };
@@ -880,7 +880,7 @@ impl McpBackend for MutationEngineMcpBackend {
             .policy
             .snapshot()
             .is_singleton_chatbot(&caller.principal_id);
-        self.cognitive_admission(caller, "list_tools", json!({}), "cognitive_mcp.read")
+        self.cognitive_admission(caller, "list_tools", json!({}), "cognitive.read")
             .await?;
         if singleton {
             return Ok(self
@@ -976,7 +976,7 @@ impl McpBackend for MutationEngineMcpBackend {
     }
 
     async fn list_resources(&self, caller: &AuthenticatedCaller) -> anyhow::Result<Vec<Value>> {
-        self.authorize(caller, "cognitive_mcp.read")?;
+        self.authorize(caller, "cognitive.read")?;
         let dir = self.blob_catalog_dir.clone();
         tokio::task::spawn_blocking(move || list_blob_resources(&dir))
             .await
@@ -988,7 +988,7 @@ impl McpBackend for MutationEngineMcpBackend {
         caller: &AuthenticatedCaller,
         uri: &str,
     ) -> anyhow::Result<Value> {
-        self.authorize(caller, "cognitive_mcp.read")?;
+        self.authorize(caller, "cognitive.read")?;
         let dir = self.blob_catalog_dir.clone();
         let uri = uri.to_string();
         tokio::task::spawn_blocking(move || read_blob_resource(&dir, &uri))
@@ -1542,7 +1542,7 @@ fn request_timeout_for(method: &str, params: &Value) -> Duration {
                 | "context_manager"
                 | "code_review_orchestrator"
         ) || name
-            .strip_prefix("plugin.cognitive_mcp.")
+            .strip_prefix("plugin.cognitive.")
             .is_some_and(|method| {
                 op_plugins::state_plugins::cognitive_agents::method_by_name(method).is_some()
             })
@@ -2491,7 +2491,7 @@ fn filter_authorized_tools(tools: Vec<Value>, grants: &HashSet<String>) -> Vec<V
         .into_iter()
         .filter(|tool| {
             descriptor_authority(tool, None).is_ok_and(|(capability, _)| {
-                capability != "cognitive_mcp.invoke" && grants.contains(capability)
+                capability != "cognitive.invoke" && grants.contains(capability)
             })
         })
         .collect()
@@ -2520,7 +2520,7 @@ fn authorize_and_validate_tool_call(
     grants: &HashSet<String>,
 ) -> anyhow::Result<()> {
     let (required_capability, _) = descriptor_authority(descriptor, Some(expected_name))?;
-    if required_capability == "cognitive_mcp.invoke" {
+    if required_capability == "cognitive.invoke" {
         anyhow::bail!(
             "AccessDenied: target tool '{expected_name}' has no independent sealed capability"
         );
@@ -2691,7 +2691,7 @@ mod tests {
         assert_eq!(
             request_timeout_for(
                 "tools/call",
-                &json!({"name": "plugin.cognitive_mcp.agent_python_executor_run", "arguments": {}})
+                &json!({"name": "plugin.cognitive.agent_python_executor_run", "arguments": {}})
             ),
             AGENT_REQUEST_TIMEOUT
         );
@@ -2709,7 +2709,7 @@ mod tests {
         assert_eq!(
             request_timeout_for(
                 "tools/call",
-                &json!({"name": "plugin.cognitive_mcp.agent_invented_run", "arguments": {}})
+                &json!({"name": "plugin.cognitive.agent_invented_run", "arguments": {}})
             ),
             REQUEST_TIMEOUT
         );
@@ -2723,7 +2723,7 @@ mod tests {
                 &json!({
                     "name": "execute_tool",
                     "arguments": {
-                        "tool_name": "plugin.cognitive_mcp.agent_python_executor_run",
+                        "tool_name": "plugin.cognitive.agent_python_executor_run",
                         "arguments": {}
                     }
                 })
@@ -2842,7 +2842,7 @@ mod tests {
         std::fs::write(
             &grants_path,
             serde_json::to_vec(&json!({
-                principal: {"capabilities": ["cognitive_mcp.read"]}
+                principal: {"capabilities": ["cognitive.read"]}
             }))
             .unwrap(),
         )
@@ -2917,7 +2917,7 @@ mod tests {
                     "inputSchema": {"type": "object"}
                 }),
                 json!({
-                    "name": "plugin.cognitive_mcp.code_search",
+                    "name": "plugin.cognitive.code_search",
                     "description": "Search code",
                     "inputSchema": {
                         "type": "object",
@@ -2978,8 +2978,8 @@ mod tests {
             _caller: &AuthenticatedCaller,
         ) -> anyhow::Result<Vec<Value>> {
             Ok(vec![json!({
-                "uri": "blob://cognitive_mcp",
-                "name": "cognitive_mcp schema",
+                "uri": "blob://cognitive",
+                "name": "cognitive schema",
                 "mimeType": "application/json"
             })])
         }
@@ -3298,7 +3298,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             initial_names,
-            vec!["echo", "plugin.cognitive_mcp.code_search"]
+            vec!["echo", "plugin.cognitive.code_search"]
         );
 
         let selected = response_json(
@@ -3347,7 +3347,7 @@ mod tests {
             .iter()
             .filter_map(|tool| tool.get("name").and_then(Value::as_str))
             .collect::<Vec<_>>();
-        assert_eq!(names, vec!["echo", "plugin.cognitive_mcp.code_search"]);
+        assert_eq!(names, vec!["echo", "plugin.cognitive.code_search"]);
 
         let called = response_json(
             session_call(
@@ -3355,10 +3355,10 @@ mod tests {
                 &session_id,
                 "tools/call",
                 json!({
-                    "name": "plugin.cognitive_mcp.code_search",
+                    "name": "plugin.cognitive.code_search",
                     "arguments": {"query": "sealed schema"}
                 }),
-                Some("plugin.cognitive_mcp.code_search"),
+                Some("plugin.cognitive.code_search"),
             )
             .await,
         )
@@ -3423,7 +3423,7 @@ mod tests {
         .await;
         assert_eq!(
             discovered["result"]["structuredContent"]["tools"][0]["name"],
-            "plugin.cognitive_mcp.code_search"
+            "plugin.cognitive.code_search"
         );
         let schema = response_json(
             session_call_at(
@@ -3432,7 +3432,7 @@ mod tests {
                 uri,
                 "ok",
                 "tools/call",
-                json!({"name": "get_tool_schema", "arguments": {"tool_name": "plugin.cognitive_mcp.code_search"}}),
+                json!({"name": "get_tool_schema", "arguments": {"tool_name": "plugin.cognitive.code_search"}}),
                 Some("get_tool_schema"),
             )
             .await,
@@ -3467,7 +3467,7 @@ mod tests {
                 uri,
                 "ok",
                 "tools/call",
-                json!({"name": "execute_tool", "arguments": {"tool_name": "plugin.cognitive_mcp.code_search", "arguments": {"query": "sealed schema"}}}),
+                json!({"name": "execute_tool", "arguments": {"tool_name": "plugin.cognitive.code_search", "arguments": {"query": "sealed schema"}}}),
                 Some("execute_tool"),
             )
             .await,
@@ -3737,13 +3737,13 @@ mod tests {
         let body = response_json(call("resources/list", json!({}), None).await).await;
         assert_eq!(
             body["result"]["resources"][0]["uri"],
-            "blob://cognitive_mcp"
+            "blob://cognitive"
         );
     }
 
     #[tokio::test]
     async fn resources_read_returns_content() {
-        let uri = "blob://cognitive_mcp";
+        let uri = "blob://cognitive";
         let body =
             response_json(call("resources/read", json!({"uri": uri}), Some(uri)).await).await;
         assert_eq!(body["result"]["contents"][0]["uri"], uri);
@@ -3847,7 +3847,7 @@ mod tests {
                     .header("x-test-auth", "ok")
                     .header(MCP_VERSION_HEADER, MCP_PROTOCOL_VERSION)
                     .header(MCP_METHOD_HEADER, "tools/list")
-                    .header(DECLARED_CAPABILITY_HEADER, "cognitive_mcp.invoke")
+                    .header(DECLARED_CAPABILITY_HEADER, "cognitive.invoke")
                     .body(Body::from(
                         json!({"jsonrpc": "2.0", "id": 1, "method": "tools/list"}).to_string(),
                     ))
@@ -3861,12 +3861,12 @@ mod tests {
     #[test]
     fn target_tool_without_authority_metadata_is_fail_closed() {
         let grants = HashSet::from([
-            "cognitive_mcp.invoke".to_string(),
-            "cognitive_mcp.read".to_string(),
+            "cognitive.invoke".to_string(),
+            "cognitive.read".to_string(),
         ]);
         let missing_capability = json!({
             "name": "safe_read",
-            "subid": "obs.service.cognitive-mcp.test.read@v1",
+            "subid": "obs.service.cognitive.test.read@v1",
             "input_schema": {"type": "object"}
         });
         assert!(
@@ -3876,7 +3876,7 @@ mod tests {
 
         let missing_subid = json!({
             "name": "safe_read",
-            "required_capability": "cognitive_mcp.read",
+            "required_capability": "cognitive.read",
             "input_schema": {"type": "object"}
         });
         assert!(
@@ -3889,8 +3889,8 @@ mod tests {
     fn nested_tool_arguments_are_validated_before_dispatch() {
         let descriptor = json!({
             "name": "safe_read",
-            "required_capability": "cognitive_mcp.read",
-            "subid": "obs.service.cognitive-mcp.test.read@v1",
+            "required_capability": "cognitive.read",
+            "subid": "obs.service.cognitive.test.read@v1",
             "input_schema": {
                 "type": "object",
                 "required": ["filter"],
@@ -3904,8 +3904,8 @@ mod tests {
             }
         });
         let grants = HashSet::from([
-            "cognitive_mcp.invoke".to_string(),
-            "cognitive_mcp.read".to_string(),
+            "cognitive.invoke".to_string(),
+            "cognitive.read".to_string(),
         ]);
         assert!(
             authorize_and_validate_tool_call(
@@ -3940,15 +3940,15 @@ mod tests {
     fn target_capability_is_required_in_addition_to_outer_invoke() {
         let descriptor = json!({
             "name": "safe_read",
-            "required_capability": "cognitive_mcp.read",
-            "subid": "obs.service.cognitive-mcp.test.read@v1",
+            "required_capability": "cognitive.read",
+            "subid": "obs.service.cognitive.test.read@v1",
             "input_schema": {"type": "object"}
         });
-        let outer_only = HashSet::from(["cognitive_mcp.invoke".to_string()]);
+        let outer_only = HashSet::from(["cognitive.invoke".to_string()]);
         let error =
             authorize_and_validate_tool_call(&descriptor, "safe_read", &json!({}), &outer_only)
                 .unwrap_err();
-        assert!(error.to_string().contains("cognitive_mcp.read"));
+        assert!(error.to_string().contains("cognitive.read"));
     }
 
     #[test]
@@ -3956,17 +3956,17 @@ mod tests {
         let tools = vec![
             json!({
                 "name": "safe_read",
-                "required_capability": "cognitive_mcp.read",
-                "subid": "obs.service.cognitive-mcp.test.read@v1"
+                "required_capability": "cognitive.read",
+                "subid": "obs.service.cognitive.test.read@v1"
             }),
             json!({
                 "name": "mutate",
-                "required_capability": "cognitive_mcp.invoke",
-                "subid": "mut.service.cognitive-mcp.test.write@v1"
+                "required_capability": "cognitive.invoke",
+                "subid": "mut.service.cognitive.test.write@v1"
             }),
             json!({"name": "missing_descriptor"}),
         ];
-        let grants = HashSet::from(["cognitive_mcp.read".to_string()]);
+        let grants = HashSet::from(["cognitive.read".to_string()]);
         let filtered = filter_authorized_tools(tools, &grants);
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0]["name"], "safe_read");
@@ -3976,11 +3976,11 @@ mod tests {
     fn broad_outer_invoke_is_not_accepted_as_target_authority() {
         let descriptor = json!({
             "name": "code_index",
-            "required_capability": "cognitive_mcp.invoke",
+            "required_capability": "cognitive.invoke",
             "subid": "mut.service.code-rag.index@v1",
             "input_schema": {"type": "object"}
         });
-        let grants = HashSet::from(["cognitive_mcp.invoke".to_string()]);
+        let grants = HashSet::from(["cognitive.invoke".to_string()]);
         let error =
             authorize_and_validate_tool_call(&descriptor, "code_index", &json!({}), &grants)
                 .unwrap_err();
@@ -3994,28 +3994,28 @@ mod tests {
     #[test]
     fn hot_agent_targets_require_their_exact_sealed_capability() {
         let targets = [
-            ("rust_pro", "cognitive_mcp.rust_pro"),
-            ("python_pro", "cognitive_mcp.python_pro"),
-            ("typescript_pro", "cognitive_mcp.typescript_pro"),
-            ("sequential_thinking", "cognitive_mcp.sequential_thinking"),
-            ("context_manager", "cognitive_mcp.context_manager"),
+            ("rust_pro", "cognitive.rust_pro"),
+            ("python_pro", "cognitive.python_pro"),
+            ("typescript_pro", "cognitive.typescript_pro"),
+            ("sequential_thinking", "cognitive.sequential_thinking"),
+            ("context_manager", "cognitive.context_manager"),
             (
                 "code_review_orchestrator",
-                "cognitive_mcp.code_review_orchestrator",
+                "cognitive.code_review_orchestrator",
             ),
         ];
         for (name, capability) in targets {
             let descriptor = json!({
                 "name": name,
                 "required_capability": capability,
-                "subid": format!("mut.service.cognitive-mcp.{name}.execute@v1"),
+                "subid": format!("mut.service.cognitive.{name}.execute@v1"),
                 "input_schema": {"type": "object"}
             });
             let exact = HashSet::from([capability.to_string()]);
             assert!(
                 authorize_and_validate_tool_call(&descriptor, name, &json!({}), &exact).is_ok()
             );
-            let generic = HashSet::from(["cognitive_mcp.invoke".to_string()]);
+            let generic = HashSet::from(["cognitive.invoke".to_string()]);
             let error = authorize_and_validate_tool_call(&descriptor, name, &json!({}), &generic)
                 .unwrap_err();
             assert!(error.to_string().contains(capability));
@@ -4028,7 +4028,7 @@ mod tests {
             "name": "code_search",
             "description": "search",
             "input_schema": {"type": "object"},
-            "required_capability": "cognitive_mcp.read",
+            "required_capability": "cognitive.read",
             "subid": "obs.service.code-rag.search@v1",
             "authority_method": "code_search"
         }));
@@ -4042,8 +4042,8 @@ mod tests {
     fn safe_read_tool_with_both_grants_passes_policy_and_schema() {
         let descriptor = json!({
             "name": "safe_read",
-            "required_capability": "cognitive_mcp.read",
-            "subid": "obs.service.cognitive-mcp.test.read@v1",
+            "required_capability": "cognitive.read",
+            "subid": "obs.service.cognitive.test.read@v1",
             "input_schema": {
                 "type": "object",
                 "required": ["key"],
@@ -4052,10 +4052,10 @@ mod tests {
             }
         });
         let grants = HashSet::from([
-            "cognitive_mcp.invoke".to_string(),
-            "cognitive_mcp.read".to_string(),
+            "cognitive.invoke".to_string(),
+            "cognitive.read".to_string(),
         ]);
-        authorize_with_grants(&grants, "cognitive_mcp.invoke").unwrap();
+        authorize_with_grants(&grants, "cognitive.invoke").unwrap();
         authorize_and_validate_tool_call(
             &descriptor,
             "safe_read",
@@ -4080,8 +4080,8 @@ mod tests {
     #[test]
     fn wildcard_grant_never_authorizes_mcp() {
         let document = json!({
-            "*": {"capabilities": ["cognitive_mcp.read", "cognitive_mcp.invoke"]},
-            "known": {"capabilities": ["cognitive_mcp.read"]}
+            "*": {"capabilities": ["cognitive.read", "cognitive.invoke"]},
+            "known": {"capabilities": ["cognitive.read"]}
         });
         assert!(capabilities_for_principal(&document, "unknown").is_empty());
         assert!(capabilities_for_principal(&document, "known").is_empty());
@@ -4093,14 +4093,14 @@ mod tests {
             "$GUEST": {"capabilities": ["cap.data.cozo.system-graph.read@v1"]},
             "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
                 "groups": ["$GUEST"],
-                "capabilities": ["cognitive_mcp.read"]
+                "capabilities": ["cognitive.read"]
             }
         });
         let granted = capabilities_for_principal(
             &document,
             "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff",
         );
-        assert!(granted.contains("cognitive_mcp.read"));
+        assert!(granted.contains("cognitive.read"));
         assert!(granted.contains("cap.data.cozo.system-graph.read@v1"));
         assert!(capabilities_for_principal(&document, "$GUEST").is_empty());
     }
@@ -4108,9 +4108,9 @@ mod tests {
     #[test]
     fn unknown_group_key_invalidates_entire_grant_document() {
         let document = json!({
-            "$NOPE": {"capabilities": ["cognitive_mcp.read"]},
+            "$NOPE": {"capabilities": ["cognitive.read"]},
             "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
-                "capabilities": ["cognitive_mcp.read"]
+                "capabilities": ["cognitive.read"]
             }
         });
         assert!(
@@ -4143,10 +4143,10 @@ mod tests {
     fn legacy_footprint_key_invalidates_entire_grant_document() {
         let document = json!({
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef": {
-                "capabilities": ["cognitive_mcp.invoke"]
+                "capabilities": ["cognitive.invoke"]
             },
             "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
-                "capabilities": ["cognitive_mcp.read"]
+                "capabilities": ["cognitive.read"]
             }
         });
         assert!(
@@ -4188,13 +4188,13 @@ mod tests {
     #[test]
     fn typed_methods_are_loaded_from_manifest_pinned_sealed_blob() {
         let dir = tempfile::tempdir().unwrap();
-        let expected = op_plugins::cognitive_mcp_plugin_schema();
-        let blob = op_blob::blobify_plugin_schema("cognitive_mcp", expected.clone());
+        let expected = op_plugins::cognitive_plugin_schema();
+        let blob = op_blob::blobify_plugin_schema("cognitive", expected.clone());
         let mut store = op_blob::BlobStore::open(dir.path()).unwrap();
         store.write(&blob).unwrap();
 
-        let restored = read_manifest_pinned_plugin_schema(dir.path(), "cognitive_mcp").unwrap();
-        assert_eq!(restored.name, "cognitive_mcp");
+        let restored = read_manifest_pinned_plugin_schema(dir.path(), "cognitive").unwrap();
+        assert_eq!(restored.name, "cognitive");
         assert_eq!(
             restored.methods["toolsets"].subid,
             expected.methods["toolsets"].subid
@@ -4202,7 +4202,7 @@ mod tests {
         let zero_arg = method_descriptor(
             &restored,
             "memory_list_namespaces",
-            "plugin.cognitive_mcp.memory_list_namespaces",
+            "plugin.cognitive.memory_list_namespaces",
         )
         .unwrap();
         assert_eq!(zero_arg["inputSchema"]["type"], "object");
@@ -4215,7 +4215,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut store = op_blob::BlobStore::open(dir.path()).unwrap();
 
-        let mut snowball = op_plugins::cognitive_mcp_plugin_schema();
+        let mut snowball = op_plugins::cognitive_plugin_schema();
         snowball.name = "snowball".to_string();
         snowball.description = "test snowball schema".to_string();
         snowball.subids.clear();
@@ -4228,7 +4228,7 @@ mod tests {
             .write(&op_blob::blobify_plugin_schema("snowball", snowball))
             .unwrap();
 
-        let mut registry = op_plugins::cognitive_mcp_plugin_schema();
+        let mut registry = op_plugins::cognitive_plugin_schema();
         registry.name = "oscal_subid_registry".to_string();
         registry.description = "test OSCAL registry schema".to_string();
         registry.subids.clear();
@@ -4378,7 +4378,7 @@ mod tests {
         // This shared fixture redirects both the MCP frontend and MutationEngine
         // away from live SHM. Keep it for the entire test lifetime.
         let _shm = crate::human_principal_dispatch::tests::temp_shm_with_schemas(&[
-            op_plugins::cognitive_mcp_plugin_schema(),
+            op_plugins::cognitive_plugin_schema(),
             snowball_schema,
             router_schema.clone(),
             gap_schema,
@@ -4398,7 +4398,7 @@ mod tests {
             .unwrap();
         engine
             .configure_cognitive_runtime_fixture(Arc::new(
-                op_cognitive_mcp::CognitiveMcpServer::new_in_memory()
+                op_cognitive::CognitiveServer::new_in_memory()
                     .await
                     .unwrap(),
             ))
@@ -4412,7 +4412,7 @@ mod tests {
         let grants = Arc::new(std::sync::RwLock::new(HashMap::from([(
             principal.clone(),
             HashSet::from([
-                "cognitive_mcp.read".to_string(),
+                "cognitive.read".to_string(),
                 "snowball.read".to_string(),
                 "snowball_gap.unsealed".to_string(),
                 router_selection_capability,
@@ -4507,7 +4507,7 @@ mod tests {
         );
         assert!(
             !tools.iter().any(|tool| descriptor_authority(tool, None)
-                .is_ok_and(|(capability, _)| capability == "cognitive_mcp.invoke")),
+                .is_ok_and(|(capability, _)| capability == "cognitive.invoke")),
             "generic invocation is never projected"
         );
         let called = backend
@@ -4544,7 +4544,7 @@ mod tests {
         // produces a projection.
         grants.write().unwrap().insert(
             caller.principal_id.clone(),
-            HashSet::from(["cognitive_mcp.read".to_string()]),
+            HashSet::from(["cognitive.read".to_string()]),
         );
         grants
             .write()

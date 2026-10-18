@@ -1,0 +1,32 @@
+#!/bin/sh
+# Restore the public address on pub0 and the service aliases on ovsbr0.
+# The bridge, eth0 uplink, and pub0 MAC already persist in
+# /etc/openvswitch/conf.db. Linux addresses do not.
+set -eu
+
+CONF=${OVSBR0_PERSIST_CONF:-/etc/op-dbus/ovsbr0-persist.conf}
+# shellcheck disable=SC1090
+. "$CONF"
+
+[ -n "${PUB_ADDR:-}" ] && [ -n "${PUB_GW:-}" ] && [ -n "${BRIDGE_ALIASES:-}" ] || {
+    echo "ovsbr0-persist: $CONF is missing PUB_ADDR, PUB_GW, or BRIDGE_ALIASES" >&2
+    exit 1
+}
+
+i=0
+while [ ! -d /sys/class/net/pub0 ] || [ ! -d /sys/class/net/ovsbr0 ]; do
+    i=$((i + 1))
+    if [ "$i" -ge 30 ]; then
+        echo "ovsbr0-persist: pub0 or ovsbr0 did not appear" >&2
+        exit 1
+    fi
+    sleep 1
+done
+
+ip link set pub0 up
+ip link set ovsbr0 up
+ip addr replace "$PUB_ADDR" dev pub0
+ip route replace default via "$PUB_GW" dev pub0 onlink
+for alias in $BRIDGE_ALIASES; do
+    ip addr replace "$alias" dev ovsbr0
+done

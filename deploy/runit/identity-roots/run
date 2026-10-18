@@ -17,7 +17,7 @@ wait_dep() {
     done
 }
 
-wait_dep incusd
+wait_dep incus
 
 i=0
 until incus info >/dev/null 2>&1; do

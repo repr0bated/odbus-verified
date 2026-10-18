@@ -1,4 +1,5 @@
 #!/bin/sh
+# op-dbus-release: application
 exec 2>&1
 set -eu
 
@@ -46,14 +47,14 @@ if [ "${TCHED_ROUTER_SANITIZED:-}" != 1 ]; then
     set -a
     [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
     set +a
-    exec env -i TCHED_ROUTER_SANITIZED=1 PATH=/usr/local/bin:/usr/bin:/bin \
+    exec env -i TCHED_ROUTER_SANITIZED=1 PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin \
         TCHED_ROUTER_CONFIG_DIR="${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}" \
-        TCHED_ROUTER_BOOTSTRAP_CONFIG="${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/threetched-runtime.toml}" \
-        TCHED_ROUTER_BOOTSTRAP_SKILLS="${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/threetched-skills/default}" \
+        TCHED_ROUTER_BOOTSTRAP_CONFIG=/usr/share/op-dbus/etc/op-dbus/threetched-runtime.toml \
+        TCHED_ROUTER_BOOTSTRAP_SKILLS=/usr/share/op-dbus/etc/op-dbus/threetched-skills/default \
         TCHED_ROUTER_OPENCODE_KEY_FILE="${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}" \
         TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE="${TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaper-inference-api-key}" \
-        THREETCHED_BIN="${THREETCHED_BIN:-/usr/bin/threetched}" \
-        THREETCHED_MANIFEST="${THREETCHED_MANIFEST:-/usr/share/op-dbus/threetched-manifests/tched-router.json}" \
+        THREETCHED_BIN=/usr/local/libexec/op-dbus/threetched/threetched \
+        THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/tched-router.json \
         TCHED_ROUTER_HOST="${TCHED_ROUTER_HOST:-127.0.0.1}" \
         TCHED_ROUTER_PORT="${TCHED_ROUTER_PORT:-8084}" \
         TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER="${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}" \
@@ -63,12 +64,12 @@ if [ "${TCHED_ROUTER_SANITIZED:-}" != 1 ]; then
 fi
 
 CONFIG_DIR=${TCHED_ROUTER_CONFIG_DIR:-/var/lib/tched-router}
-BOOTSTRAP_CONFIG=${TCHED_ROUTER_BOOTSTRAP_CONFIG:-/etc/op-dbus/threetched-runtime.toml}
-BOOTSTRAP_SKILLS=${TCHED_ROUTER_BOOTSTRAP_SKILLS:-/etc/op-dbus/threetched-skills/default}
+BOOTSTRAP_CONFIG=/usr/share/op-dbus/etc/op-dbus/threetched-runtime.toml
+BOOTSTRAP_SKILLS=/usr/share/op-dbus/etc/op-dbus/threetched-skills/default
 OPENCODE_GO_KEY_FILE=${TCHED_ROUTER_OPENCODE_KEY_FILE:-/etc/op-dbus/secrets/opencode-api-key}
 CHEAPER_INFERENCE_KEY_FILE=${TCHED_ROUTER_CHEAPER_INFERENCE_KEY_FILE:-/etc/op-dbus/secrets/cheaper-inference-api-key}
-THREETCHED_BIN=${THREETCHED_BIN:-/usr/bin/threetched}
-THREETCHED_MANIFEST=${THREETCHED_MANIFEST:-/usr/share/op-dbus/threetched-manifests/tched-router.json}
+THREETCHED_BIN=/usr/local/libexec/op-dbus/threetched/threetched
+THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/tched-router.json
 HOST=${TCHED_ROUTER_HOST:-127.0.0.1}
 PORT=${TCHED_ROUTER_PORT:-8084}
 CONTROL_PLANE_MODEL_PROVIDER=${TCHED_ROUTER_CONTROL_PLANE_MODEL_PROVIDER:-opencode.go_control_plane}
@@ -106,7 +107,7 @@ fi
 # Observe model presence before init: init itself supplies a threetched default.
 threetched_config() {
     chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
-        PATH=/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
+        PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
         "$THREETCHED_BIN" config "$@" --config-dir "$CONFIG_DIR"
 }
 # An external selection must already exist. Check before any startup migration
@@ -172,28 +173,38 @@ while IFS='|' read -r agent kind model wire risk; do
     agent_provider=$provider
     if [ "$agent" = control_plane ]; then
         agent_provider=$CONTROL_PLANE_MODEL_PROVIDER
-        # A model chosen at run time through the door (tched_router
-        # config_set on agents.control_plane.model_provider) survives
-        # restarts: keep a current OpenCode Go selection unless the service
-        # environment names a provider explicitly.
-        current=$(threetched_config get agents.control_plane.model_provider --json 2>/dev/null |
-            jq -r '.value // ""' 2>/dev/null || true)
-        case "$current" in
-            opencode.go_*|anthropic.go_*|custom.cheaper_inference)
-                if [ "$CONTROL_PLANE_MODEL_PROVIDER" = opencode.go_control_plane ]; then
+    fi
+    # Provision defaults once. Restarting the binary must preserve an
+    # operator's existing Dashboard/Accountability/Control Plane binding.
+    # An explicit non-default service CP selector remains authoritative.
+    case "$agent" in
+        dashboard|accountability|control_plane)
+            if [ "$agent" != control_plane ] || [ "$CONTROL_PLANE_MODEL_PROVIDER" = opencode.go_control_plane ]; then
+                current=$(threetched_config get "agents.$agent.model_provider" --json 2>/dev/null |
+                    jq -r '.value // ""' 2>/dev/null || true)
+                if [ -n "$current" ]; then
+                    printf '%s' "$current" | jq -Re 'test("^[A-Za-z0-9_-]+[.][A-Za-z0-9_-]+$")' >/dev/null || {
+                        echo 'tched-router: existing agent provider binding is invalid' >&2
+                        exit 78
+                    }
+                    threetched_config get "providers.models.$current.model" --json |
+                        jq -e '.value | strings | test("\\S")' >/dev/null || {
+                        echo 'tched-router: existing selected provider is not configured' >&2
+                        exit 78
+                    }
                     agent_provider=$current
                 fi
-                ;;
-        esac
-    fi
+            fi
+            ;;
+    esac
     existing=$(threetched_config get "providers.models.$kind.$profile.model" --json 2>/dev/null || true)
     created=true
     if printf '%s' "$existing" | jq -e '.value | type == "string" and length > 0' >/dev/null 2>&1; then
         created=false
     fi
     threetched_config init "providers.models.$kind.$profile" >/dev/null
-    # Dashboard is an existing Personal agent: move only its provider to Go,
-    # never its skills, memory, risk profile or A2A settings.
+    # Dashboard is an existing Personal agent: preserve its selected provider,
+    # skills, memory, risk profile and A2A settings.
     if [ "$agent" != dashboard ]; then
         for section in "agents.$agent" "agents.$agent.a2a" "agents.$agent.memory"; do
             threetched_config init "$section" >/dev/null
@@ -244,8 +255,10 @@ done
 # Named agents use a runtime profile; the historical [agent] limit is inert.
 # The threetched CLI owns provisioning dynamic profile keys. Its HTTP init endpoint
 # only initializes schema sections and cannot create this map entry.
+# The profile owns max_tool_iterations. Preserve its configured value on restart;
+# fresh installations inherit the budget from the bootstrap configuration.
 threetched_config init runtime_profiles.chatbot_500 >/dev/null
-iteration_patch='[{"op":"replace","path":"/runtime_profiles/chatbot_500/max_tool_iterations","value":500}]'
+iteration_patch='[]'
 for agent in dashboard accountability control_plane cp_route_grok_47 cp_route_deepseek_v41_flash cp_route_glm_53_flash cp_route_qwen38_flash cp_route_gpt6_luna cp_route_claude_fable_51; do
     current_profile=$(threetched_config get "agents.$agent.runtime_profile" --json | jq -er '.value | strings')
     case "$current_profile" in
@@ -283,7 +296,7 @@ jq -n --rawfile key "$OPENCODE_GO_KEY_FILE" '
    ["opencode","cp_route_gpt6_luna"],["anthropic","cp_route_claude_fable_51"]] |
   map({op:"add",path:("/providers/models/" + .[0] + "/go_" + .[1] + "/api_key"),value:$key})' |
     chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
-        PATH=/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
+        PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
         "$THREETCHED_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
 
 # Cheaper Inference: an additional, optional OpenAI-compatible provider.
@@ -315,14 +328,14 @@ if [ -f "$CHEAPER_INFERENCE_KEY_FILE" ]; then
        {op:"add",path:($p+"/api_key"),value:$key}
       ]' |
         chpst -u jeremy:jeremy env HOME="$CONFIG_DIR/home" USER=jeremy \
-            PATH=/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
+            PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin THREETCHED_CONFIG_DIR="$CONFIG_DIR" \
             "$THREETCHED_BIN" config patch --config-dir "$CONFIG_DIR" - >/dev/null
 else
     echo "tched-router: Cheaper Inference key is absent; that provider is not configured" >&2
 fi
 
-/usr/local/libexec/3tched/prepare-salad-control-plane "$CONFIG_DIR" "$THREETCHED_BIN"
-export HOME="$CONFIG_DIR/home" USER=jeremy PATH=/usr/local/bin:/usr/bin:/bin
+/usr/local/libexec/op-dbus/helpers/prepare-salad-control-plane "$CONFIG_DIR"
+export HOME="$CONFIG_DIR/home" USER=jeremy PATH=/usr/local/libexec/op-dbus/bin:/usr/local/bin:/usr/bin:/bin
 export THREETCHED_CONFIG_DIR="$CONFIG_DIR"
 # The Sled-authenticated MCP door remains the identity authority. These are
 # public endpoint/CA settings, never reconstructed credentials.

@@ -18,11 +18,12 @@ OPDBUS_CACHE_MEMORY_POLICY=default
 OPDBUS_NUMA_POLICY=localalloc
 
 # gRPC — consolidated op-grpc-bridge (HTTP/gRPC-Web + native gRPC)
-# Prefer fabric-capable TCP endpoint first-class; loopback stays available via this env
-# override for local-only debug.
-OP_DBUS_GRPC_ADDR=https://10.0.0.3:8090
-GRPC_BIND=0.0.0.0:8090
-TCHED_ROUTER_BIND_ADDR=0.0.0.0:8090
+# The base-network owner provisions the private host address. Both the bridge
+# listener and its HTTP/gRPC-Web clients use the same TLS door; no public or
+# loopback fallback is implied when that address is unavailable.
+OP_DBUS_GRPC_ADDR=https://10.0.0.2:8090
+GRPC_BIND=10.0.0.2:8090
+TCHED_ROUTER_BIND_ADDR=10.0.0.2:8090
 # Host-local native gRPC (op-web, zbusctl)
 TCHED_ROUTER_UNIX_SOCKET=/run/opdbus/grpc.sock
 # Shared fabric for NIC-less containers (bind-mount /run/ghostbridge)

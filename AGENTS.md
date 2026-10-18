@@ -120,9 +120,11 @@ This host runs **runit** as PID 1. Manage services with `sudo sv <command> <serv
 
 Do not edit `/run/runit/service` directly. Do not invoke `runsv`/`runsvdir` by hand. **s6 is legacy**: `service6`, `s6-rc`, `s6-*`, `/run/service` are stale — treat any doc assuming them as historical. Note: `/usr/local/bin/systemctl` on this host is a shim that returns plausible answers — using it masks the deprecation; always use `sv`. Do not use `systemctl` or other foreign service-manager CLIs. Container/app deployment uses D-Bus via `busctl`.
 
-## Xray configuration policy — mandatory
+## Network
 
-**Xray's live config must exist only at `/etc/xray/xray_config.json` inside the container.** Never point Xray at `/dev/shm/xray_config.json`, `/usr/local/etc/xray/config.json`, or any other disk-backed live path. The static bootstrap config is materialized at boot; the future model-generated generator replaces the same file atomically and reloads through D-Bus. Models must not write or reload Xray directly.
+Network topology, Xray policy, decoy/WARP transport and network-critical
+service rules are in `docs/src/operations/network.md`. Read it before any
+network work; it is not needed otherwise.
 
 ## Deployment (btrfs send/receive)
 
@@ -133,7 +135,15 @@ boundary is the snapshot's contents and the send/receive transfer. Existing
 `build-golden.sh` nor `btrfs-layout.sh` defines the current deployment mechanism.
 Never hand-copy binaries onto a running host as a deploy step.
 
-`deploy/runit/build-golden.sh` only populates and validates
+**Owner decision (2026-10-14): `./activate-golden.sh` at the repo root is the one
+command for deploying a new version.** It runs the internal
+`deploy/lib/golden/build-golden.sh` helper, then `op-release-launch release`:
+btrfs send/receive of a golden snapshot into the inactive of two slots, then a
+live read-only overlay swap at `/opt/op-dbus/current` (active + previous only;
+`op-release-launch rollback` undoes it). The 2026-09-13 "no deployment script"
+rule above is superseded for this entry point; the transport is still send/receive.
+
+`deploy/lib/golden/build-golden.sh` only populates and validates
 `/opt/op-dbus/golden` from already built artifacts and an already sealed,
 persisted catalog. Set `OP_PERSISTED_CATALOG_SOURCE` to use an isolated release
 catalog; the script validates and copies it but never reseals it. It does not
@@ -154,8 +164,6 @@ After builds, explicitly run the freshly built `opblob seal-shm`; bridge startup
 
 The commands above describe build/catalog preparation, not deployment. Do not
 infer a live install or restart from a successful build or snapshot preparation.
-Network-critical services (OVS, uplink, DHCP, session bus) require deliberate
-operator action; a learning or inventory pass never restarts them.
 
 **Clean-baseline activation (2026-09-22):** local releases are received under
 `/opt/op-dbus/releases/<release-id>` and selected by the atomic
@@ -184,22 +192,21 @@ but are outside workspace membership; `op-ml` remains disabled for the ort API b
 
 **Rust-first: no new Python.** New automation, probes, and helpers go in Rust (`cargo run --bin <name> -p <crate> -- <args>`, a small binary in the relevant crate, or a `cargo-script`-style one-shot) or in shell + POSIX tools (`jq`, `curl`, `busctl`, `sv`). Do not add new `.py` files to the repo. Pre-existing scripts under `scripts/` (`export-llm-sessions-to-notebooklm-sources.py`, `or-fusion-archive.py`, `notebook-sources-cleanup.py`, etc.) are grandfathered — maintain them in place, don't propagate the pattern.
 
+**Skill runtime tools may be run directly (owner, 2026-10-14).** The tools that back the skills installed by `install_3tched_skills.sh` — `zero`, `bd`/`bv` (beads), `trestle` (Compliance Trestle), and the Hugging Face stack (`hf`, `trl`, `trackio`, `transformers`, `sentence-transformers`, `datasets`) — are installed in the user environment (`~/.local/bin`, uv tools) and agents may invoke them directly, without delegation and despite being Python or third-party tools. This exception covers running those tools; it does not allow adding new `.py` files to the repo or wiring them into op-dbus services.
+
 All cargo commands run from repo root:
 
-Delegate Cargo execution to a subagent using the least-expensive available
-model that preserves accuracy, completeness and care, subject to the owner's
-current session preference. This includes metadata, formatting, checks,
-builds, tests, Clippy and scripts that invoke Cargo. Keep these repository
-instructions model-agnostic; record a temporary model choice in the session
-handoff. The primary agent stays available for
-source review, decisions and user communication.
+**Owner decision (2026-10-17): JEV owns Cargo model selection and worker
+routing.** Do not assign a Cargo-specific model, map caller families to models,
+or wrap Cargo in another LLM dispatcher. Use JEV's existing routing without
+model overrides. The primary agent stays available for source review,
+decisions and user communication; execution workers run the assigned command
+without recursively delegating it.
 
-The ordinary `cargo` command uses the owner's conditional worker routing in
-`scripts/cargo-dispatch.md`. Set `CARGO_CALLER_FAMILY` to `gpt`, `grok`, or
-`claude` for your current model family before invoking it. The assigned worker
-executes the single requested native command with `CARGO_DISPATCHED=1`; do not
-recursively delegate from that execution-worker role. Keep model IDs and
-session-specific selections in the routing configuration and shared handoff.
+One Cargo process at a time: if Cargo, rustc or Clippy is running, do not start
+another. Workspace-wide builds, checks or tests require an explicit workspace
+request. The native target remains `x86_64-unknown-linux-gnu`; do not install
+binaries or restart services as part of a Cargo run.
 
 ```bash
 cargo build --workspace
@@ -215,7 +222,18 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 **Frontend — single Vite app, external repo**:
 
-The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a Vite + React Json Render chat app that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`. The pinned release archive of that checkout is `vendor/3tched-json-render-ui`.
+The production UI is **`/srv/git/3tched.com`** (github.com/repr0bated/3tched.com; not in this repo). It is a SvelteKit + Svelte + Vite chat app using `@json-render/svelte` that talks only to the `:8090` door (one generic `PluginService/CallMethod` over gRPC-Web, exactly one OIA1 or SID1 credential) and that op-web serves as static files from `/usr/local/share/op-dbus/dashboard/` — the dashboard root, `http://<host>:8080/`. The pinned release archive of that checkout is `vendor/3tched-json-render-ui`.
+
+**Owner UI stack rule (2026-10-11):** implement application interfaces only
+with Svelte/SvelteKit, Vite and json-render's Svelte renderer. This applies to
+every user and chat mode, including generated interfaces. Every visible UI
+element must be declared in the active catalog and implemented in its registry.
+Installed skills for other frameworks are reference material only; they do
+not authorize React/JSX/Next.js components,
+another renderer, or framework dependencies in this application. Apply their
+framework-independent guidance only where it fits this stack. The shared
+UI-authoring preflight applies across modes; each caller keeps its existing
+grants. Documentation availability never grants file or operation access.
 
 ```bash
 # Build and deploy at op-web's root (from the UI repo)
@@ -246,9 +264,28 @@ stages only its validated asset archive and provenance manifest.
 
 `feat` / `fix` / `docs` / etc. with scoped `(<crate>)` and `!` for breaking changes (e.g., `feat(op-plugins)!:`, `fix(mcp):`). Convention only — no enforced hook.
 
-## Verify before marking done
+## Verification and testing — manual/on-request
 
-Run `/verify` before reporting work complete. CI won't catch fmt drift, clippy warnings, or test regressions, so the agent must. `/verify` runs `cargo fmt --all -- --check` + `cargo clippy --workspace --all-targets --all-features -- -D warnings` + `cargo test --workspace --all-targets --all-features`.
+**Owner correction, 2026-10-18:** implement → build → deploy. Tests, Clippy,
+formatting checks and `/verify` run only when the owner explicitly requests
+them; do not start them automatically before or after deployment. The owner
+may assign those checks to a downtime agent. This supersedes the earlier
+automatic/deferred verification workflow.
+
+This includes disposable-VM tests and custom smoke fixtures. Do not make their
+execution or repair a pre-installation/deployment gate. Further testing waits
+until after deployment and an explicit owner request.
+
+Perform the build required for the change and deploy only within the authorized
+scope. Keep bounded operation receipts, safety checks and readiness evidence
+separate from a test-suite pass; report built, installed, deployed and tested
+status accurately. Do not repeat unchanged successful checks or turn a missing
+test run into a pass.
+
+When explicitly requested, `/verify` remains `cargo fmt --all -- --check` +
+`cargo clippy --workspace --all-targets --all-features -- -D warnings` +
+`cargo test --workspace --all-targets --all-features`. Workspace commands still
+require an explicit workspace request. CI does not establish these results.
 
 ## Architecture — the load-bearing invariants (read these before touching plugins, state, or identity)
 
@@ -262,9 +299,8 @@ Run `/verify` before reporting work complete. CI won't catch fmt drift, clippy w
 - **Owner-confirmed lifecycle and model roles (2026-09-13, reaffirmed 2026-09-14).** Waypipe is retired: its crate directory, Cargo membership, binary target and protocol are absent; `retired-binaries`/`retired-services` prevent stale build or service artifacts from entering golden. Do not restore it in source exports or release inputs. Assistant is the control-plane chatbot, not an `assistant` container. The historical Gemma routing role is model agnostic; the `op-gemma` crate is retired (2026-09-19: directory, Cargo membership and binary removed, listed in `retired-binaries`) — the `gemma_brain` plugin remains and its role does not constrain the model/provider. Cargo membership and legacy names do not establish active deployments.
 - **Factory role correction (2026-09-14).** The former Factory account/platform plugin is retired from the registry and dispatch. The intended access is CLI/SSH; routing belongs to `tched_router`, and Factory billing requires an actual native binding. Provider names or relabelled direct upstream routes do not prove that binding. A future Missions integration needs its own verified native contract; do not restore the retired REST platform methods from historical fixtures or docs.
 - **Standalone vendor adapters are retired (2026-09-14).** The `op-grpc-adapters` crate directory and its `op.adapters.v1` protocol are absent after Netmaker retirement. Its duplicate mail/MQ services bypassed canonical plugin admission. Do not restore this crate or its old Netmaker clients. The existing bridge `operation.mail.v1` service and retained EMQX plugin are separate surfaces; their presence does not prove every mail or MQTT method is implemented.
-- **Owner-confirmed network topology (2026-09-13).** There is no WireGuard on this server. WireGuard terminates at the decoy; identity is transported by WARP. WireGuard types, plugin declarations, credentials or historical configuration paths in source do not establish a server WireGuard interface or a requirement to install one. Classify those surfaces by their decoy/server role before proposing implementation or retirement. An unwired `wgcf` method is not evidence that the actual WARP identity transport is broken.
 - **Identity minting and metadata (owner reaffirmed 2026-09-13).** The identity subsystem owns minting the identity and its SealedId/SID1 credential blob. This is distinct from an OPBLOB01 plugin blob and does not belong in the plugin catalog. Clients forward the authored credential through the transport's identity metadata; they do not mint or reconstruct it from genesis/trace/key headers. Verify minting, persistence, injection and receiver validation as separate links. Current source assigns session/SID1 creation to MutationEngine with the op-identity format; the existence of an HTTP/MCP helper does not prove every gRPC client injects SID1.
-- **Owner decisions: decoy GRE, TLS and identity injection (2026-09-25).** The owner directed these changes; do not restore the previous layout. The door stays `10.0.0.2:8090`: tonic with the internal `svc0` certificate from the op-dbus local CA. The bridge no longer listens on `127.0.0.1:8090` or `10.0.0.3:8090`, and it no longer serves a second browser certificate. Browser-facing TLS terminates on the decoy at `10.0.0.1`. The decoy mints the sealed identity blob, and WARP delivers it to the 8090 interceptor, which anchors the session and writes the identity metadata (`anchor_verified_human_session` and `insert_identity_metadata` in `crates/op-grpc-bridge/src/interceptor.rs`). The oracle (OIA1) is the decoy's signed proof of the WireGuard peer, because WireGuard exists only on the decoy; the human credential (SID1) is the session identity for that key. The bridge's own client and MutationEngine are the wrong place for session or identity injection. Source and live state do not match this yet (2026-09-25): the interceptor still mints genesis server-side when no session exists (`mint_and_store_genesis` in `anchor_verified_human_session`), the decoy issuer mints only OIA1, and the decoy routes browser traffic for `10.0.0.2` over `gre-host` with no WARP route in either main routing table. The `gre-decoy` tunnel joins decoy and host (`deploy/runit/gre-decoy`): outer `188.68.58.237` ↔ `129.80.64.127`, inner `192.168.255.1/30` plus `10.0.0.2/32`, with `10.0.0.1` and the WireGuard clients `10.0.0.5`–`10.0.0.7` routed via `192.168.255.2`. GRE routing replaces NAT on this path: nftables is the firewall only, never a router, so do not add DNAT, SNAT or masquerade for it. Filter rules such as accepting GRE from the decoy are fine. GRE is not encrypted, so anything crossing it that is not TLS is readable on the path. MQTT stays on `10.0.0.3`, aliased on `ovsbr0` beside the OpenFlow address `10.200.0.1`. Xray runs in its container. op-web's page address is `http://10.0.0.4:8080`: plain HTTP outside the TLS zone, with `10.0.0.4/32` on `gre-decoy` and routed from the decoy over `gre-host`. The decoy issuer (`/etc/systemd/system/op-decoy-issuer.service.d/browser-auth.conf` on the decoy, not in this repo) hands out the IP door `https://10.0.0.2:8090` and allows the `10.0.0.4` and `10.0.0.2` page origins; no domain name points browsers at the decoy. Still open on 2026-09-25: how the decoy-minted oracle reaches the interceptor. The owner's direction is that it travels over GRE; whether it rides inside the relayed request or separately is undecided. Until that lands, the deployed page still fetches OIA1 from `http://10.0.0.1:51888/identity/self`, and the door rejects a request that carries no credential.
+- **Identity injection (owner decision 2026-09-25).** The decoy mints the sealed identity blob; the 8090 interceptor anchors the session and writes the identity metadata (`anchor_verified_human_session` and `insert_identity_metadata` in `crates/op-grpc-bridge/src/interceptor.rs`). The oracle (OIA1) is the decoy's signed peer proof; the human credential (SID1) is the session identity for that key. The bridge's own client and MutationEngine are the wrong place for session or identity injection. Source and live state did not match this on 2026-09-25: the interceptor still mints genesis server-side when no session exists (`mint_and_store_genesis` in `anchor_verified_human_session`), and the decoy issuer mints only OIA1. Transport paths (decoy, WARP, door addresses) are in `docs/src/operations/network.md`.
 - **Btrfs storage and transport (owner correction 2026-09-23).** Deployment remains the prepared snapshot transferred by `btrfs send/receive`. The earlier global five-subvolume limit and instruction to replace Snowball/cache subvolumes with ordinary directories are withdrawn. Preserve the original `operation-dbus-proto` cache/NUMA/timing architecture: Btrfs cache category subvolumes; authoritative timing plus vector/state subvolumes; aligned read-only snapshot sets and send/receive. See the original repo `branding/product-baseline.md` §12 and `crates/op-snowball/{DESIGN,REQUIREMENTS}.md` (R5). Retention is configurable per storage owner, not a global five-subvolume cap. Parent snapshots do not include nested subvolume contents: snapshot and transport every required member explicitly. Never flatten existing subvolumes or delete historical data to satisfy the withdrawn limit. Preserve security, writer-locking, identity and error-handling fixes while correcting storage regressions.
 - **No SQLite — use CozoDB.** CozoDB (`op-cozo-store`) is the embedded database for this project. Do not add new `rusqlite` or other SQLite use. `op-cache/src/btrfs_cache.rs` already uses a Cozo index; current `workstack_cache.rs`, `workflow_cache.rs`, `workflow_tracker.rs`, and `pattern_tracker.rs` still use `rusqlite` and remain migration debt rather than an approved pattern.
 - **RAG pipeline and Voyage-4 models.** Live source file indexing goes through `code_index` (mode='source') into Qdrant collections: `repos_lsp_*_voyage_4_large` and `repos_lsp_*_voyage_4_lite`. Voyage-4 models are interchangeable across their dimension (1024 for all variants); `_large` and `_lite` refer to model size/quality tier, not embedding space. All collections share a single fused retrieval space and can be queried together. Legacy `repos_lsp_*_voyage_code_4` collections and `repomix_rag` collection are retired — do not use them. The standalone `notebooklm-mcp` service is retired; the plugin-owned `notebooklm` contract and bridge provider remain. Owner reaffirmed NotebookLM conversation/tool-history sync on 2026-10-05; use its declared methods through identity-bound 3tchedFS. Do not confuse this corpus sync with the Voyage source-indexing pipeline.
@@ -295,6 +331,9 @@ in one agent's private memory is invisible to the others, so it does not count.
 
 ## Subagent and model selection
 
+Cargo execution follows JEV routing above; the guidance below does not allocate
+Cargo models.
+
 **Owner preference (2026-09-13, model names withdrawn 2026-09-24,
 reaffirmed 2026-09-30): assess task
 difficulty and required reasoning before delegation, and use the cheapest
@@ -304,7 +343,7 @@ would lose accuracy, completeness, or care, use the more capable model. Pick
 from the models the session can actually launch. Do not inherit an expensive
 parent model by default, and do not pin a product or model id in this file.
 Use a low-cost model for lookups, inventory extraction, documentation
-assembly, builds, tests, and routine checks when that model can match the
+assembly and routine non-Cargo checks when that model can match the
 quality of a more capable one. Choose low effort for mechanical work and
 medium effort for bounded reasoning. Escalate when the task's quality needs
 it or a cheaper attempt falls short, and briefly state why.
@@ -316,7 +355,7 @@ work; answer them promptly while delegated work continues. Small immediate
 edits and decisions can remain with the primary when delegation would add
 overhead.
 
-Prefer the **least-expensive subagent whose output matches a more capable model** for builds and tests:
+For non-Cargo delegation, choose the appropriate agent role:
 
 - `Explore` (fast read-only) for locating code, grepping symbols, answering "where is X."
 - `Plan` for architecture and design before writing code.

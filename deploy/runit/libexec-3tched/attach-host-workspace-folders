@@ -17,7 +17,7 @@ safe_host_directory() {
         path=$(dirname -- "$path")
     done
 }
-for directory in /etc/3tched /etc/3tched/skills /etc/3tched/rules /etc/3tched/user /etc/3tched/shared; do
+for directory in /etc/3tched /etc/3tched/skills /etc/3tched/rules /etc/3tched/user /etc/3tched/shared /etc/3tched/soul /etc/3tched/memory; do
     safe_host_directory "$directory"
 done
 expected='{"type":"disk","source":"/etc/3tched","path":"/etc/3tched","readonly":"true","shift":"true"}'

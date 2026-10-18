@@ -1,0 +1,194 @@
+{
+  "format": "3tched-skill-packaging-changes/1",
+  "skill": "ui-authoring",
+  "changes": [
+    {
+      "repository": "https://github.com/vitejs/vite",
+      "commit": "de1111ab0be00879b404e7ed3b2a80e264edddc1",
+      "source_path": "docs/guide/assets.md",
+      "packaged_path": "references/upstream/vite/assets.md",
+      "upstream_sha256": "ea9464ea42d19e99eb61dba2d3ee5f3a826c53fccb61cfcf308ee46aac87db8b",
+      "sha256": "5385dcc409339aef2562a1dad671bd8d962a83570ebb8ef178311c5fbc728f13",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/config/shared-options.md#assetsinclude",
+          "to": "https://vite.dev/config/shared-options.html#assetsinclude",
+          "occurrences": 2
+        },
+        {
+          "from": "/config/build-options.md#build-assetsinlinelimit",
+          "to": "https://vite.dev/config/build-options.html#build-assetsinlinelimit",
+          "occurrences": 1
+        },
+        {
+          "from": "./features.md#web-workers",
+          "to": "https://vite.dev/guide/features.html#web-workers",
+          "occurrences": 1
+        },
+        {
+          "from": "/config/shared-options.md#publicdir",
+          "to": "https://vite.dev/config/shared-options.html#publicdir",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/vitejs/vite",
+      "commit": "de1111ab0be00879b404e7ed3b2a80e264edddc1",
+      "source_path": "docs/guide/env-and-mode.md",
+      "packaged_path": "references/upstream/vite/env-and-mode.md",
+      "upstream_sha256": "945fa3bdeba86b0fff142fb462effeb4ff2f2cb3ecdbe8c08ab32e959a4b1f31",
+      "sha256": "488e76c70d2d4e68f7124cecb599fd169754366b75fbc7e8b67d97af0278489f",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/config/shared-options.md#base",
+          "to": "https://vite.dev/config/shared-options.html#base",
+          "occurrences": 1
+        },
+        {
+          "from": "./ssr.md#conditional-logic",
+          "to": "https://vite.dev/guide/ssr.html#conditional-logic",
+          "occurrences": 1
+        },
+        {
+          "from": "/config/shared-options.html#envprefix",
+          "to": "https://vite.dev/config/shared-options.html#envprefix",
+          "occurrences": 1
+        },
+        {
+          "from": "/config/shared-options.md#envdir",
+          "to": "https://vite.dev/config/shared-options.html#envdir",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/vitejs/vite",
+      "commit": "de1111ab0be00879b404e7ed3b2a80e264edddc1",
+      "source_path": "docs/guide/build.md",
+      "packaged_path": "references/upstream/vite/build.md",
+      "upstream_sha256": "4b0f5c4807d4b4f428536d765d878d6f690047bb928868546e8b282c217dd4cb",
+      "sha256": "db4288cdb9050630ecd1810bdf9836a4c4ff44f995e1de93694e2bdee7fa43f1",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/config/build-options.md#build-target",
+          "to": "https://vite.dev/config/build-options.html#build-target",
+          "occurrences": 1
+        },
+        {
+          "from": "/config/shared-options.md#base",
+          "to": "https://vite.dev/config/shared-options.html#base",
+          "occurrences": 1
+        },
+        {
+          "from": "/config/build-options.md",
+          "to": "https://vite.dev/config/build-options.html",
+          "occurrences": 1
+        },
+        {
+          "from": "/config/build-options.md#build-lib",
+          "to": "https://vite.dev/config/build-options.html#build-lib",
+          "occurrences": 3
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/sveltejs/svelte",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/02-runes/02-$state.md",
+      "packaged_path": "references/upstream/svelte/state.md",
+      "upstream_sha256": "d65f2898c61bd257e9c76a0facb0c09e3d89cceb74282616e93986b9fb723d40",
+      "sha256": "0e99638af4fa02c4e679e852885e693b97ebc87d9c60dbca4bdabe2fbb0f7568",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/playground",
+          "to": "https://svelte.dev/playground",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/sveltejs/svelte",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/02-runes/03-$derived.md",
+      "packaged_path": "references/upstream/svelte/derived.md",
+      "upstream_sha256": "885e5b5df42be4cc554efca5e7b6e15830feeb31464630ed3441d7eb130397ce",
+      "sha256": "32275a78fbc7452243a30bb3001f1d0d79ac9835077b9837eb12bc211006a3ba",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/playground/untitled#H4sIAAAAAAAAE4VU22rjMBD9lUHd3aaQi9PdstS1A3t5XvpQ2Ic4D7I1iUUV2UjjNMX431eS7TRdSosxgjMzZ45mjt0yzffIYibvy0ojFJWqDKCQVBk2ZVup0LJ43TJ6rn2aBxw-FP2o67k9oCKP5dziW3hRaUJNjoYltjCyplWmM1JIIAn3FlL4ZIkTTtYez6jtj4w8WwyXv9GiIXiQxLVs9pfTMR7EuoSLIuLFbX7Z4930bZo_nBrD1bs834tlfvsBz9_SyX6PZXu9XaL4gOWn4sXjeyzftv4ZWfyxubpzxzg6LfD4MrooxELEosKCUPigQCMPKCZh0OtQE1iSxcsmdHuBvCiHZXALLXiN08EL3RRkaJ_kDVGle0HcSD5TPEeVtj67O4Nrg9aiSNtBY5oODJkrL5QsHtN2cgXp6nSJMWzpWWGasdlsGEMbzi5jPr5KFr0Ep7pdeM2-TCelCddIhDxAobi1jqF3cMaC1RKp64bAW9iFAmXGIHfd4wNXDabtOLN53w8W53VvJoZLh7xk4Rr3CoL-UNoLhWHrT1JQGcM17u96oES5K-kc2XOzkzqGCKL5De79OUTyyrg1zgwXsrEx3ESfx4Bz0M5UjVMHB24mw9SuXtXFoN13fYKOM1tyUT3FbvbWmSWCZX2Er-41u5xPoml45svRahl9Wb9aasbINJixDZwcPTbyTLZSUsAvrg_cPuCR7s782_WU8343Y72Qtlb8OYatwuOQvuN13M_hJKNfxann1v1U_B1KZ_D_mzhzhz24fw85CSz2irtN9w9HshBK7AQAAA==",
+          "to": "https://svelte.dev/playground/untitled#H4sIAAAAAAAAE4VU22rjMBD9lUHd3aaQi9PdstS1A3t5XvpQ2Ic4D7I1iUUV2UjjNMX431eS7TRdSosxgjMzZ45mjt0yzffIYibvy0ojFJWqDKCQVBk2ZVup0LJ43TJ6rn2aBxw-FP2o67k9oCKP5dziW3hRaUJNjoYltjCyplWmM1JIIAn3FlL4ZIkTTtYez6jtj4w8WwyXv9GiIXiQxLVs9pfTMR7EuoSLIuLFbX7Z4930bZo_nBrD1bs834tlfvsBz9_SyX6PZXu9XaL4gOWn4sXjeyzftv4ZWfyxubpzxzg6LfD4MrooxELEosKCUPigQCMPKCZh0OtQE1iSxcsmdHuBvCiHZXALLXiN08EL3RRkaJ_kDVGle0HcSD5TPEeVtj67O4Nrg9aiSNtBY5oODJkrL5QsHtN2cgXp6nSJMWzpWWGasdlsGEMbzi5jPr5KFr0Ep7pdeM2-TCelCddIhDxAobi1jqF3cMaC1RKp64bAW9iFAmXGIHfd4wNXDabtOLN53w8W53VvJoZLh7xk4Rr3CoL-UNoLhWHrT1JQGcM17u96oES5K-kc2XOzkzqGCKL5De79OUTyyrg1zgwXsrEx3ESfx4Bz0M5UjVMHB24mw9SuXtXFoN13fYKOM1tyUT3FbvbWmSWCZX2Er-41u5xPoml45svRahl9Wb9aasbINJixDZwcPTbyTLZSUsAvrg_cPuCR7s782_WU8343Y72Qtlb8OYatwuOQvuN13M_hJKNfxann1v1U_B1KZ_D_mzhzhz24fw85CSz2irtN9w9HshBK7AQAAA==",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/sveltejs/svelte",
+      "commit": "636eaaaa6f064b55072e7d192bb76dc9d8c4516e",
+      "source_path": "documentation/docs/06-runtime/03-lifecycle-hooks.md",
+      "packaged_path": "references/upstream/svelte/lifecycle.md",
+      "upstream_sha256": "59613a7b83d1eb3d8a4e65284f8b076bd292d1471c30bb1095086da75173c617",
+      "sha256": "4d3641aef459feae194c47174de0c1b6de3e0629f5f14cf95273701bed40c7ca",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/playground/untitled#H4sIAAAAAAAAE31WXa_bNgz9K6yL1QmWOLlrC-w6H8MeBgwY9tY9NfdBtmlbiywZkpyPBfnvo2zLcZK28AWuRPGI5OGhkEuQc4EmiL9eAskqDOLg97oOZoE9125jDigs0t6oRqfOsjap5rXd7uTO8qpW2sIFEsyVxn_qjFmcAcstar-xPN3DFXKtKgi768IVgQku0ELj3Lgs_kZjWIEGNpAzYXDlHWyJFZI1zJjeh4O5uvl_DY8oUkVeVoFuJKYls-_CGYS25Aboj0EtWNqel0wWoBoLTGZgmdgDS9zW4Uz4NsrswPHoyutN4xInkylstnBxdmIhh8m7xzqmoNE2Wq46n1RJQzEbq4g-JQSl7e-HDx-GdaTy3KD9E3lRWvj5Zu9QX1QN20dj7zyHz8s-1S6lW7Cpz3RnXTcm04hIlfdFuO8p2mQ5-3a06cqjrn559bF_2NHOnRZ5I1PLlXQNyQT-hedMHeUEDyjtdMxsa4n2eIbNhlTwhyRthaOKOmYtniwF6pwt0wXa6MBEg0OibZec27gz_dk3UrZ6hB2LLYoiv521Yd8Gt-foTrfhiCDP0lC9VUUhcDLU49Xe_9943cNvEArHfAjxeBTovvXiNpFynfEDpIIZs9kFbg52QbeNHWZzebz32s7xHco3nJAJl1nshmhz8dYOQJDyZetnbb2gTWe-vEeWlrfpZMavr56ldb29eNt6UXvgwgFbp_WC0tl2RK25rGk6lYz3nUI2lzvBXGHhPZPGWmKUXFNBKqdaW259wl_aHbiqoVIZdpE60Nax6IOujT0LbFFxIVTCxCRR2XloUcYNvSbnGHKBp763jHoj59xiZWJI0Wm0P_m3MSS985xkasn-cFq20xTDy3J5KFcjgUTD69BHdcHIjz431z28IqlxGcPSfdFnrGDZn6gD6lyo45zyHAD-btczf-98nhQxHEvKfeUtOVkSejD3q-9X7JbzjGtsdUxlKdFU8qGsT78uaw848syWMXz85Waq2Gnem4mAn3prweq4q6Y3JEpnqMmnPoFRgmd3ySW0LLRqSKlwYHriCvJvUs2yjMaaoA-XzTXLeGMe45zmhv_XAno3Mj0xF7USuqNvnE9H343QHlq-eAgxpbTPNR9yzUkgLjwSR0NK4wKoxy-jDg-9vy8sUSToakzW-9fX13Em9Q8T6Z26uZhBN36XUYo5q7ggLXBZoub2Ofv7g6GCZfTxe034NCjiudXj7Omla0eTfo7QBPOcYxbE7qG-vl3_B1G-_i_JCAAA",
+          "to": "https://svelte.dev/playground/untitled#H4sIAAAAAAAAE31WXa_bNgz9K6yL1QmWOLlrC-w6H8MeBgwY9tY9NfdBtmlbiywZkpyPBfnvo2zLcZK28AWuRPGI5OGhkEuQc4EmiL9eAskqDOLg97oOZoE9125jDigs0t6oRqfOsjap5rXd7uTO8qpW2sIFEsyVxn_qjFmcAcstar-xPN3DFXKtKgi768IVgQku0ELj3Lgs_kZjWIEGNpAzYXDlHWyJFZI1zJjeh4O5uvl_DY8oUkVeVoFuJKYls-_CGYS25Aboj0EtWNqel0wWoBoLTGZgmdgDS9zW4Uz4NsrswPHoyutN4xInkylstnBxdmIhh8m7xzqmoNE2Wq46n1RJQzEbq4g-JQSl7e-HDx-GdaTy3KD9E3lRWvj5Zu9QX1QN20dj7zyHz8s-1S6lW7Cpz3RnXTcm04hIlfdFuO8p2mQ5-3a06cqjrn559bF_2NHOnRZ5I1PLlXQNyQT-hedMHeUEDyjtdMxsa4n2eIbNhlTwhyRthaOKOmYtniwF6pwt0wXa6MBEg0OibZec27gz_dk3UrZ6hB2LLYoiv521Yd8Gt-foTrfhiCDP0lC9VUUhcDLU49Xe_9943cNvEArHfAjxeBTovvXiNpFynfEDpIIZs9kFbg52QbeNHWZzebz32s7xHco3nJAJl1nshmhz8dYOQJDyZetnbb2gTWe-vEeWlrfpZMavr56ldb29eNt6UXvgwgFbp_WC0tl2RK25rGk6lYz3nUI2lzvBXGHhPZPGWmKUXFNBKqdaW259wl_aHbiqoVIZdpE60Nax6IOujT0LbFFxIVTCxCRR2XloUcYNvSbnGHKBp763jHoj59xiZWJI0Wm0P_m3MSS985xkasn-cFq20xTDy3J5KFcjgUTD69BHdcHIjz431z28IqlxGcPSfdFnrGDZn6gD6lyo45zyHAD-btczf-98nhQxHEvKfeUtOVkSejD3q-9X7JbzjGtsdUxlKdFU8qGsT78uaw848syWMXz85Waq2Gnem4mAn3prweq4q6Y3JEpnqMmnPoFRgmd3ySW0LLRqSKlwYHriCvJvUs2yjMaaoA-XzTXLeGMe45zmhv_XAno3Mj0xF7USuqNvnE9H343QHlq-eAgxpbTPNR9yzUkgLjwSR0NK4wKoxy-jDg-9vy8sUSToakzW-9fX13Em9Q8T6Z26uZhBN36XUYo5q7ggLXBZoub2Ofv7g6GCZfTxe034NCjiudXj7Omla0eTfo7QBPOcYxbE7qG-vl3_B1G-_i_JCAAA",
+          "occurrences": 1
+        },
+        {
+          "from": "/playground/untitled#H4sIAAAAAAAAE31WXa-jNhD9K7PsdknUQJLurtRLPqo-VKrU1327uQ8GBnBjbGSb5KZR_nvHgMlXtyIS9njO-MyZGZRzUHCBJkhez4FkNQZJ8HvTBLPAnhq3MQcUFmlvVKszZ1mbTPPGbndyZ3ndKG3hDJZne7hAoVUNYY8JV-RBPgIt2AprhA18MpZZnIQ50_twuvLHNRrDSjRXj9fwiCJTBLIKdCsxq5j9EM4gtBU3QD8GjWBZd14xWYJqLTCZg2ViDyx1W4cz4dv0hsiB49FRHkyfsCgws3GjcTKZwmYLZ2feWc9o1W8zJQ2Fb62i5JUQRNRHgs-fx3WsisKg_RN5WVn4-WrvUd9VA9tH4-AcwbfFQIpkLWByvWzqSe2sk3kyjUlOec_XPU-3TRaz_75tuvKoi19e3OvipSpamVmupJM2F_gXnnJ1lBM8oLQjHceys8R7PMFms4HwD2lRhzeEe-EsvluSrHe2TJdo4wMTLY48XKwPzm0KGm2r5ajFtRYU4TWOY7-ddWHfxhDP0QkQhnf5PWRnVVkKnIx8fZsOb5dR16nwG4TCCRdCMphWQ7z1_DoOcp3zA2SCGbPZBa5jd0G_TRxmc36Me-mG6A7l60XIlMs8ce2-OXtrDyBItdz6qVjPadObzx-RZdV1nJjx64tXad1sz962njceOHfAzmk9JzrbXqg1lw3NkZL7vgE257t-uMDcO6attSSokpmgFqVMO2U93e_dDlzOUKsc-3t6zNZp6K9cG3sS2KGSUqiUiUmq8tNYoJwbmvpTAoXA96GyjCojI26xNglk6DpwOPm7NdRYp4ia0JL94bTqRiGB5WJxqFY37RGPoz3c6i4jP3rcUA7wmhqNywQW7om_YQ2L4UQdUBdCHSPiOQJ8bFcxHzeK0jKBY0XcV95SkCWlD9t-9eOM3TLKucauiyktJdpaPqT19ddF4wFHntsqgS-_XE01e48GMwnw02AtWZP02QyGVOkcNfk072CU4PkduZSWpVYt9SkcmJ64hPwHpWF5ziVls3wIFmmW89Y83vMeGf5PBxjcyPSkXNy10J18t3x6-a6CDtBq6SGklNKeazFyLahB3PVIGo2UbhOgGi9vKjzW_j6xVFFD17difXx5ebll0vwvkcGpn4sZ9MN3vqFYsJoL6gUuK9TcPrO_PxgzWMRfflSEr2NHPJf6lj1957rRpH8CNMG84JgHidUtXt4u_wK21LXERAgAAA==",
+          "to": "https://svelte.dev/playground/untitled#H4sIAAAAAAAAE31WXa-jNhD9K7PsdknUQJLurtRLPqo-VKrU1327uQ8GBnBjbGSb5KZR_nvHgMlXtyIS9njO-MyZGZRzUHCBJkhez4FkNQZJ8HvTBLPAnhq3MQcUFmlvVKszZ1mbTPPGbndyZ3ndKG3hDJZne7hAoVUNYY8JV-RBPgIt2AprhA18MpZZnIQ50_twuvLHNRrDSjRXj9fwiCJTBLIKdCsxq5j9EM4gtBU3QD8GjWBZd14xWYJqLTCZg2ViDyx1W4cz4dv0hsiB49FRHkyfsCgws3GjcTKZwmYLZ2feWc9o1W8zJQ2Fb62i5JUQRNRHgs-fx3WsisKg_RN5WVn4-WrvUd9VA9tH4-AcwbfFQIpkLWByvWzqSe2sk3kyjUlOec_XPU-3TRaz_75tuvKoi19e3OvipSpamVmupJM2F_gXnnJ1lBM8oLQjHceys8R7PMFms4HwD2lRhzeEe-EsvluSrHe2TJdo4wMTLY48XKwPzm0KGm2r5ajFtRYU4TWOY7-ddWHfxhDP0QkQhnf5PWRnVVkKnIx8fZsOb5dR16nwG4TCCRdCMphWQ7z1_DoOcp3zA2SCGbPZBa5jd0G_TRxmc36Me-mG6A7l60XIlMs8ce2-OXtrDyBItdz6qVjPadObzx-RZdV1nJjx64tXad1sz962njceOHfAzmk9JzrbXqg1lw3NkZL7vgE257t-uMDcO6attSSokpmgFqVMO2U93e_dDlzOUKsc-3t6zNZp6K9cG3sS2KGSUqiUiUmq8tNYoJwbmvpTAoXA96GyjCojI26xNglk6DpwOPm7NdRYp4ia0JL94bTqRiGB5WJxqFY37RGPoz3c6i4jP3rcUA7wmhqNywQW7om_YQ2L4UQdUBdCHSPiOQJ8bFcxHzeK0jKBY0XcV95SkCWlD9t-9eOM3TLKucauiyktJdpaPqT19ddF4wFHntsqgS-_XE01e48GMwnw02AtWZP02QyGVOkcNfk072CU4PkduZSWpVYt9SkcmJ64hPwHpWF5ziVls3wIFmmW89Y83vMeGf5PBxjcyPSkXNy10J18t3x6-a6CDtBq6SGklNKeazFyLahB3PVIGo2UbhOgGi9vKjzW_j6xVFFD17difXx5ebll0vwvkcGpn4sZ9MN3vqFYsJoL6gUuK9TcPrO_PxgzWMRfflSEr2NHPJf6lj1957rRpH8CNMG84JgHidUtXt4u_wK21LXERAgAAA==",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/sveltejs/kit",
+      "commit": "090496890cedbbff15d998695d48cd31e7d698b7",
+      "source_path": "documentation/docs/25-build-and-deploy/50-adapter-static.md",
+      "packaged_path": "references/upstream/kit/adapter-static.md",
+      "upstream_sha256": "302b622eb0b4a7655a8b646f324bc175e84d141aca0ab2b1e5f648e545a15750",
+      "sha256": "9c748af74cf79d1851a0fbddf9430d45d441bf652b935263a390bc04856b7e87",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/docs/cli/sveltekit-adapter",
+          "to": "https://svelte.dev/docs/cli/sveltekit-adapter",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/sveltejs/kit",
+      "commit": "090496890cedbbff15d998695d48cd31e7d698b7",
+      "source_path": "documentation/docs/20-core-concepts/10-routing.md",
+      "packaged_path": "references/upstream/kit/routing.md",
+      "upstream_sha256": "771c563488d5aaad2e307d44d233bf61898e2397bc5bf1b164a9623690a543fa",
+      "sha256": "fb4ea5917b54c956408fde4630e194610139cf3800f89ad360c540a89124f446",
+      "adaptation": "Packaging adaptation: resolve documentation links against verified official published documentation URLs for standalone skill packaging.",
+      "replacements": [
+        {
+          "from": "/blog/zero-config-type-safety",
+          "to": "https://svelte.dev/blog/zero-config-type-safety",
+          "occurrences": 1
+        },
+        {
+          "from": "/tutorial/kit/pages",
+          "to": "https://svelte.dev/tutorial/kit/pages",
+          "occurrences": 1
+        },
+        {
+          "from": "/tutorial/kit/get-handlers",
+          "to": "https://svelte.dev/tutorial/kit/get-handlers",
+          "occurrences": 1
+        }
+      ]
+    }
+  ]
+}

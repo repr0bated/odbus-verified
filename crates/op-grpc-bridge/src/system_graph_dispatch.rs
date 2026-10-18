@@ -19,7 +19,7 @@ const STATE_PLUGINS: &[&str] = &[
     "btrfs",
     "qdrant",
     "mail_server",
-    "cognitive_mcp",
+    "cognitive",
     "memory",
     "embedding_model",
     "oscal_subid_registry",
@@ -106,7 +106,7 @@ impl crate::mutation_engine::MutationEngine {
         &self,
         expected_revision: u64,
     ) -> Result<GraphSnapshotReceipt> {
-        let store = self.cognitive_mcp().await?.cozo_shuttle();
+        let store = self.cognitive().await?.cozo_shuttle();
         let catalog = crate::sealed_schema_reader::blob_catalog_dir_from_env();
         let state = op_core::projection_shm::shm_state_dir();
         tokio::task::spawn_blocking(move || {

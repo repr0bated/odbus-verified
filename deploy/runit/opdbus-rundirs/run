@@ -1,4 +1,8 @@
 #!/bin/sh
+# op-dbus-release: application
+# Release activation persists this catalog; our opblob stage-shm publishes it.
+# This declaration connects the implicit compiled staging input to its owner.
+# op-dbus-consumes: /usr/share/op-dbus/plugin-blobs
 exec 2>&1
 wait_dep() {
     sv start "$1" >/dev/null 2>&1 || true
@@ -9,7 +13,7 @@ wait_dep() {
         sleep 1
     done
 }
-/usr/local/libexec/3tched/opdbus-rundirs-up
+/usr/local/libexec/op-dbus/helpers/opdbus-rundirs-up
 [ ! -L /run/opdbus/lungs ] || { echo "lungs directory must not be a symlink" >&2; exit 1; }
 if [ -e /run/opdbus/lungs ]; then
     [ -d /run/opdbus/lungs ] && [ "$(stat -c '%u:%a' /run/opdbus/lungs)" = 0:755 ] || {

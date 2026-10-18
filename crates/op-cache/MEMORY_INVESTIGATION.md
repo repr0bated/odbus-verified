@@ -46,7 +46,7 @@ are retained under `/var/tmp/opdbus-cache-memory-review/`.
 
 ## The projector allocates for the entire retained history
 
-[project_pending](../op-cognitive-mcp/src/chain_vectors.rs), lines 313–319, calls
+[project_pending](../op-cognitive/src/chain_vectors.rs), lines 313–319, calls
 `self.chain.blocks()` before filtering and taking `limit`.
 [StreamingSnowball::blocks](../op-snowball/src/snowball.rs), lines 529–565,
 reads every timing JSON into an owned `ChainBlockRef`, then sorts the full vector.

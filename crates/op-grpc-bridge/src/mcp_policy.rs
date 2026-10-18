@@ -16,7 +16,7 @@ use op_plugins::state_plugins::mcp::{
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-pub const DEFAULT_AUDIENCE_POLICY_PATH: &str = "/etc/opdbus/mcp-audience-policy.json";
+pub const DEFAULT_AUDIENCE_POLICY_PATH: &str = "/usr/share/op-dbus/etc/opdbus/mcp-audience-policy.json";
 pub const DEFAULT_TOOLSETS_PATH: &str = "/etc/opdbus/mcp-toolsets.json";
 
 pub const COMPACT_TOOL_NAMES: [&str; 4] = [
@@ -568,7 +568,7 @@ mod tests {
             "temperature": "cold",
             "provider": "emqx",
             "requires_provider_health": false,
-            "tools": ["plugin.cognitive_mcp.invoke_tool"]
+            "tools": ["plugin.cognitive.invoke_tool"]
           }]
         }"#;
         assert!(parse_toolset_manifest(generic_set).is_err());
@@ -703,7 +703,7 @@ mod tests {
         assert!(policy.is_hot_tool("rust_pro"));
         assert!(policy.is_hot_tool("schema_read"));
         assert!(policy.is_hot_tool("oscal_subids"));
-        assert!(policy.is_hot_tool("plugin.cognitive_mcp.code_context"));
+        assert!(policy.is_hot_tool("plugin.cognitive.code_context"));
         assert!(policy.is_hot_tool("plugin.notebooklm.notebook_query"));
         assert!(!policy.is_hot_tool("plugin.mongodb_mcp.find"));
     }
@@ -721,7 +721,7 @@ mod tests {
             .flat_map(|set| set.tools.iter())
             .collect();
         for agent in op_plugins::state_plugins::cognitive_agents::catalog_agent_methods() {
-            let name = format!("plugin.cognitive_mcp.{}", agent.declaration.name);
+            let name = format!("plugin.cognitive.{}", agent.declaration.name);
             assert_eq!(
                 all.iter().filter(|tool| tool.as_str() == name).count(),
                 1,

@@ -1,13 +1,40 @@
-# Decoy SSH TUN inside MASQUE
+# Historical SSH TUN inside MASQUE
 
 OD-104 was deployed on 2026-10-04 using the owner's explicit, task-specific
 native operator maintenance approval. This does not widen the mounted wgcf.read
 capability. Application identities, TLS credentials and existing wgcf keys remain.
 
+**Owner correction, 2026-10-17:** the target is the existing decoy wgcf carrier,
+not a second MASQUE carrier. Xray moves externally. The historical procedures
+below are not authorization to recreate MASQUE, GRE or a host WireGuard peer.
+
+## Retained wgcf selected-egress policy
+
+`../decoy/decoy-fabric-egress` restores the existing IPv4 selector at priority41:
+packet mark `0x51820` selects table51820. It requires that table's existing
+`wgcf-ingress` default and refuses a foreign selector or a non-WARP route.
+An unreachable default at metric32766 prevents selected traffic falling through
+to the physical default when the interface disappears. Unmarked management
+traffic and the peer-return route remain unchanged.
+
+`--policy-only` applies just that routing repair, preserving packet-classification
+rules and counters. The default also applies the existing fabric marks and MSS
+clamp. `../decoy/systemd/decoy-fabric-egress.service` invokes this helper instead
+of the Xray-coupled `decoy-egress warp`; it does not start or restart Xray.
+Run `bash deploy/decoy/test-fabric-egress.sh` from the repository root for isolated
+kernel routing, management preservation, idempotency, foreign-selector refusal
+and fail-closed link-loss checks.
+
+This selected-egress repair does not replace the private application carrier:
+the existing classifier exempts10/8, and old private routes may still name the
+SSH TUN. Public-VPS reachability is not proof of access to10.0.0.2:8090. Record
+live policy application separately from receipt-backed persistent deployment.
+
+
 ## Traffic and address ownership
 
-The prepared configuration names the SSH-through-MASQUE interface
-`masque-ssh`. OpenSSH still attaches using numeric TUN ID 5 through the kernel
+The prepared configuration names the interface `rtly-lungs`.
+MASQUE and SSH are the protocols that carry it, not its name. OpenSSH still attaches using numeric TUN ID 5 through the kernel
 alternative name `tun5`; that alias is an attachment detail, not GRE.
 Existing installations without `interface_name` retain their previous name
 until a deliberate migration updates routes, firewall matches and readiness
@@ -23,7 +50,7 @@ traffic. Namespace NAT44/NAT66 applies only at WARP egress; carrier NAT applies
 only to its uplink veth. Private SSH TUN packets retain their source addresses.
 
 - Mark 0x51820 selects existing wgcf-ingress, table 51820.
-- Private host destinations select tun5, table 28051.
+- Private host destinations select rtly-lungs, table 28051.
 - Remaining IPv4/IPv6 select warp-data, table 28053.
 - Exact carrier/bootstrap, local-network and inbound-reply exceptions use table
   28050. The physical egress guard rejects other traffic.
@@ -36,11 +63,13 @@ permits no shell sessions, passwords, root login or ordinary port forwarding.
 SSH protects the inner payload from Cloudflare. The Cloudflare-to-host public
 leg is SSH, while the decoy-to-Cloudflare carrier is MASQUE.
 
-Host tun5 owns 192.168.254.1 plus **10.0.0.2, 10.0.0.4 and 192.168.255.1**.
-Decoy tun5 owns 192.168.254.2 plus 192.168.255.2. Each alias has one interface
-owner. GRE services/interfaces and stale host DNAT for decoy 10.0.0.1 are retired.
-MQTT 10.0.0.3 stays on ovsbr0; duplicate svc0 is retired. The active internal
-10.200.0.2 address remains on 3tched.
+Host `rtly-lungs` is point-to-point `10.0.0.2` peer `192.168.255.2`.
+`10.0.0.2` is tonic. `192.168.255.2` is the SSH address, and that address is REALITY.
+HTTPS is the payload inside this reverse SSH tunnel.
+Decoy `rtly-lungs` is the reverse pair, `192.168.255.2` peer `10.0.0.2`.
+The temporary `192.168.254.1`/`192.168.254.2` pair, page `10.0.0.4`, and `192.168.255.1` are not this link.
+GRE services/interfaces and stale host DNAT for decoy `10.0.0.1` are retired.
+MQTT `10.0.0.3` stays on `ovsbr0`. There is no `svc0` port and no `10.200.0.0/24` fabric.
 
 ## Release and lifecycle
 
@@ -51,7 +80,7 @@ read-only snapshot. Decoy uses a dedicated Btrfs image because its root is ext4.
 No application binary was hand-installed.
 
 Host uses runit `op-warp-ssh-host` and `op-warp-ssh-routes`. Received host run
-inputs select tun5 for door readiness, replace op-web's GRE dependency and stop
+inputs select rtly-lungs for door readiness, replace op-web's GRE dependency and stop
 wgcf from recreating the duplicate door address. Updated OVS configuration owns
 only its retained internal addresses. Subsequent application releases must
 preserve this topology and the separate component selector.

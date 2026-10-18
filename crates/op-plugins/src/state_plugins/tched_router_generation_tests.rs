@@ -16,6 +16,20 @@ fn service() -> GenerationMethods {
     )))
 }
 
+#[test]
+fn assembled_chat_guidance_fits_but_oversize_utf8_prompts_are_rejected() {
+    let mut request = input();
+    // The selected all-skills guide alone exceeded the former 64 KiB bound.
+    request.prompt = "x".repeat(96 * 1024);
+    request.validate().unwrap();
+    request.prompt = "λ".repeat(MAX_PROMPT_BYTES / 2);
+    request.validate().unwrap();
+    request.prompt.push('x');
+    assert!(request.validate().is_err());
+    request.prompt = " \n\t".into();
+    assert!(request.validate().is_err());
+}
+
 #[tokio::test]
 async fn owner_scope_siblings_and_job_revisions_survive_transitions() {
     let service = service();

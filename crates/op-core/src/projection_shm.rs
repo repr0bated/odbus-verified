@@ -275,8 +275,8 @@ mod tests {
     #[test]
     fn projection_file_path_under_canonical_dir() {
         assert_eq!(
-            projection_file_path("cognitive_mcp"),
-            "/dev/shm/opdbus/state/cognitive_mcp.json"
+            projection_file_path("cognitive"),
+            "/dev/shm/opdbus/state/cognitive.json"
         );
     }
 

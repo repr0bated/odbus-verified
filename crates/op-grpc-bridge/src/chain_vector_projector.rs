@@ -23,7 +23,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use op_cognitive_mcp::chain_vectors::{ChainVectorIndex, ProjectionPolicy};
+use op_cognitive::chain_vectors::{ChainVectorIndex, ProjectionPolicy};
 use op_snowball::ChainBlockRef;
 use op_state_store::schema_projection::described_fields;
 use tokio::sync::{Mutex, Notify};
@@ -250,7 +250,7 @@ impl ChainVectorProjector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use op_cognitive_mcp::chain_vectors::embedding_text_under;
+    use op_cognitive::chain_vectors::embedding_text_under;
 
     fn block(plugin: &str, action: &str, input: serde_json::Value) -> ChainBlockRef {
         let data = serde_json::json!({

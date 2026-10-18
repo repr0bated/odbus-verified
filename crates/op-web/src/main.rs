@@ -52,9 +52,10 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .unwrap_or(8080);
-    // Door and page segment addresses on tun5 (comma-separated). Never bind 0.0.0.0.
+    // Tonic address on rtly-lungs. Never bind 0.0.0.0. The old page address
+    // 10.0.0.4 is not an address on this interface.
     let bind_hosts =
-        std::env::var("OP_WEB_BIND_ADDR").unwrap_or_else(|_| "10.0.0.2,10.0.0.4".to_string());
+        std::env::var("OP_WEB_BIND_ADDR").unwrap_or_else(|_| "10.0.0.2".to_string());
     let mut listeners = Vec::new();
     for bind_host in bind_hosts
         .split(',')

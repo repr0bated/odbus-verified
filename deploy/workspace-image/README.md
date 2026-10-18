@@ -10,7 +10,7 @@ The metadata lives at `@/usr/share/op-dbus/image`. `prepare TOP RELEASE_ID
 PROVENANCE_JSON` is intended only for an externally prepared, unsealed base
 mounted read-write at its Btrfs top level. It requires host root, refuses an
 existing metadata target, and does not adopt or delete prior contents. It also
-ensures ordinary root-owned mode-0755 directories at `@/run/mount/3tchedFS`
+ensures ordinary root-owned mode-0755 directories at `@/run/mount/3tchedfs`
 and `@/run/opdbus/lungs`, refusing symlink or non-directory components while
 retaining contents of existing directories. The provenance JSON must contain
 exactly these fields:
@@ -35,13 +35,29 @@ Before metadata preparation, `prepare-lungs-client TOP RECEIVED_RELEASE`
 installs the received `threetched-fs` client and a public schema-only view in
 the already writable offline base. It requires a read-only release under
 `/opt/op-dbus/releases`, refuses existing client/view targets, and never
-captures live SHM or credentials. Host-side FUSE still owns the guest's
-`/run/mount/3tchedFS` attachment. A guest may also serve its MCP clients with:
+captures live SHM or credentials. The guest's enabled `3tchedfs.service` runs
+`mount /run/mount/3tchedfs`, using this `/etc/fstab` entry:
+
+```fstab
+3tchedFS /run/mount/3tchedfs fuse.3tchedFS noauto,rw,nosuid,nodev,noexec,noatime 0 0
+```
+
+`noauto` prevents a competing early-boot mount; the enabled service starts it
+after local filesystems and tmpfiles. `/usr/sbin/mount.fuse.3tchedFS` runs the
+existing preflight and foreground client under service supervision. A manual
+`mount /run/mount/3tchedfs` also stays in the foreground. Unsupported mount
+options are rejected rather than silently ignored. Runtime prerequisites remain
+`/dev/fuse`, the lungs socket, sealed catalog, schema-only view and empty state
+directory. Offline configuration checks do not prove an identity-bound mount
+or a successful boot.
+
+Host agents use a separate projection of the same blobs; no copied schema or
+synchronization layer is required. A guest may also serve its MCP clients with:
 
 ```sh
 threetched-fs --store /usr/share/op-dbus/lungs-view mcp \
   --state /usr/share/op-dbus/lungs-empty-state \
-  --lungs-socket /run/opdbus/lungs/lungs.sock --all
+  --lungs-socket /run/3tched-lungs.socket --all
 ```
 
 Omitting `--lungs-session` selects `BindCurrentContainer`; the bridge derives
@@ -50,6 +66,21 @@ The socket accepts connections with mode `0666` beneath a root-owned `0755`
 directory. Connection permission conveys no plugin authority: binding and
 every operation revalidate the native identity and existing grants. Explicit
 session binding is restricted to root in the bridge's host namespaces.
+
+Incus shares only the host's dedicated `/run/opdbus/lungs` directory, read-only,
+at the same guest path. The installed tmpfiles rule `3tched-lungs.conf` creates
+the guest-local `/run/3tched-lungs.socket` entrypoint pointing to
+`/run/opdbus/lungs/lungs.sock` after `/run` is mounted. The public entrypoint is
+not a second listener. Directory binding keeps socket replacement visible
+after a bridge restart; binding the socket inode alone does not. Never bind
+the host's entire `/run` to provide the public entrypoint.
+
+For a headless seed, keep display-manager packages installed but mask the
+installed display-manager unit and `display-manager.service`, and select
+`multi-user.target` as the default. A network manager's enablement must follow
+the actual selected adapter's dependencies, not a similarly named project's
+documentation. The loopback relay and host internet carrier are separate
+prerequisites; a D-Bus socket alone does not establish internet access.
 
 `verify TOP` is the pre-seal check. It validates the exact seven Btrfs sibling
 names and mount layout, metadata schema and artifact hashes, the complete
@@ -74,12 +105,12 @@ manifest's critical hash inventory is deliberately limited to `/etc/os-release`,
 `/etc/fstab`, the systemd executable, and `/usr/sbin/init`; it excludes
 hostname, machine ID, SSH keys, credentials, agent data, persistence contents,
 and runtime state. `@agent_user/persist` is an ordinary directory, not another
-subvolume. The host-projected `/run/mount/3tchedFS` FUSE mount and per-boot
-private state under `/dev/shm` are explicitly described as external runtime
-mounts and are not seed contents. The `3tched-lungs` Incus profile supplies
-`/run` as tmpfs and mounts the host's dedicated `/run/opdbus/lungs` directory
-read-only at the same guest path. Socket permissions and authentication remain
-the responsibility of the socket service.
+subvolume. The guest-owned `/run/mount/3tchedfs` FUSE mount and per-boot
+private state under `/dev/shm` are runtime mounts, not seed contents. The
+`3tched-lungs` Incus profile supplies `/run` as tmpfs and mounts the host's
+dedicated `/run/opdbus/lungs` directory read-only at the same guest path.
+Socket permissions and per-connection identity authentication remain the
+responsibility of the socket service.
 
 The base should remain unchanged while any sprout depends on it. Seed recovery
 tools and an external copy of the manifest must remain available outside the

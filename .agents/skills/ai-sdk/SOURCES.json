@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/vercel/ai",
+  "commit": "ba05943b69ad070558bb5bc912da99ec66d7d263",
+  "source_path": "skills/use-ai-sdk",
+  "license_status": "Upstream root LICENSE retained unchanged.",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "source_path": "skills/use-ai-sdk/SKILL.md",
+      "sha256": "6bc642319c4ecbf9fbd59cef783b02174d4bd663c010703a6a6b80bda855b32d"
+    },
+    {
+      "path": "LICENSE",
+      "source_path": "LICENSE",
+      "sha256": "b4f9adb7c568904834d0dd6cc98d16c390d21ca32fc17ae7a267715269bd5529"
+    }
+  ]
+}

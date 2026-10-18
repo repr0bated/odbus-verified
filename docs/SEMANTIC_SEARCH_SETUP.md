@@ -46,7 +46,7 @@ Both upsert to **same collection** → unified search.
 
 ## Semantic Search Plugin
 
-**File:** `/srv/git/odbus-verified/crates/op-cognitive-mcp/src/semantic_search.rs`
+**File:** `/srv/git/odbus-verified/crates/op-cognitive/src/semantic_search.rs`
 
 ### Methods
 

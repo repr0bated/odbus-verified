@@ -3302,7 +3302,7 @@
 +use futures_util::stream::BoxStream;
 +use zeroclaw_api::model_provider::ModelInfo;
 +
-+pub const GRAPH_TURN_REMINDER: &str = "System graph: discover cozo.list_system_graphs through identity-bound 3tchedFS; check provenance and coverage; grants apply.";
++pub const GRAPH_TURN_REMINDER: &str = "Answer the user's current request. Tool and catalog descriptions are not observations. Claim live state, health, measurements, or completed actions only when supported by actual relevant tool results; otherwise say they are unverified. Use only tools provided for this request and respect their grants.";
 +
 +fn system_prompt_with_reminder(prompt: Option<&str>) -> String {
 +    let prompt = prompt.unwrap_or_default();
@@ -4274,7 +4274,7 @@
 +    ChatMessage, ChatRequest, StreamError, StreamEvent, StreamOptions, TokenUsage,
 +};
 +
-+pub const MAX_PROMPT_BYTES: usize = 64 * 1024;
++pub const MAX_PROMPT_BYTES: usize = 256 * 1024;
 +pub const MAX_OUTPUT_BYTES: usize = 256 * 1024;
 +const MAX_EVENTS: usize = 4096;
 +

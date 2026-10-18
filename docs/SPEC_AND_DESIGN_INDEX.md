@@ -69,7 +69,7 @@ docs/
 | **op-mcp** | Core MCP protocol implementation | [spec](specs/op-mcp.md) | [design](designs/op-mcp.md) |
 | **op-mcp-proxy** | MCP HTTP proxy server | [spec](specs/op-mcp-proxy.md) | [design](designs/op-mcp-proxy.md) |
 | **op-mcp-aggregator** | Multi-server MCP aggregation | [spec](specs/op-mcp-aggregator.md) | [design](designs/op-mcp-aggregator.md) |
-| **op-cognitive-mcp** | Cognitive processing with MCP | [spec](specs/op-cognitive-mcp.md) | [design](designs/op-cognitive-mcp.md) |
+| **op-cognitive** | Cognitive processing with MCP adapters | [spec](../crates/op-cognitive/SPEC.md) | Embedded runtime; see the [current architecture](src/architecture/overview.md) |
 
 ### Agent & Workflow Layer
 | Crate | Purpose | Spec | Design |

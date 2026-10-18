@@ -1,25 +1,46 @@
 # LLM session export → `/home/jeremy/.notebooklm-sources`
 
-Local exports collect conversations **and tool calls** into model-sorted folders.
-The scheduled NotebookLM sync separately captures raw records and uses the
-identity-bound 3tchedFS namespace. Formatted exports are preserved as explicitly
-labelled fallback history when the original transcript is unavailable.
+The scheduler captures conversations **and tool calls** into local raw files
+grouped by model. Its independent local capture continues when remote sync is
+blocked. The optional formatted exporter remains a separate consumer; its text
+is labelled fallback history when an original transcript is unavailable.
 
 The received `notebook-sources-sync` service selects the existing human session
-and approved `/run/mount/3tchedFS-native` mount explicitly. Its code comes from
-the received release; project documents come from `/srv/git/odbus-verified`, and
-the corpus plus upload journal stay in `~/.notebooklm-sources/.grouped-sync`.
+and `/run/mount/3tchedFS` mount explicitly. It uses the mount's declared operator
+UID 0; canonical method admission retains the bound session and its grants.
+Its code comes from the received service component; project documents come from
+`/srv/git/odbus-verified`. Current local raw files and their source/hash inventory
+are in `~/.notebooklm-sources/.local-capture/{chunks,plan.json}`. The frozen upload
+plan and durable journal remain separately in `.grouped-sync`.
 There is no direct `nlm`, gRPC or unauthenticated D-Bus fallback in sync.
+
+The configured history roots are `/home/jeremy`, `/root`, and
+`/home/jeremy/keep`. Native history patterns and read-only conversation tables
+cover retained and current files. The plan records those roots; pre-recovery
+coverage is limited to the histories that survived. Capture files and plans
+remain private and readable by Jeremy even though the service reads root-owned
+conversation archives.
+
+Remote sync has its own protected `/etc/op-dbus/notebook-sources-sync.enabled`
+flag. It does not use the chatbot's `threetched-filesystem.enabled` opt-in.
+A missing owned upload journal blocks remote writes while local capture keeps
+running. Restoring notebook associations requires explicit operator
+reconciliation; matching titles alone are not automatically adopted. The
+2026-10-12 repair reconnected 62 unique existing collector notebooks from an
+admitted account inventory. Their 913 existing sources remain unmanaged and
+retained. `OPDBUS_NOTEBOOK_CAPTURE_EPOCH=20261012-recovery` identifies the new
+recovery batch, so processed legacy content is not adopted as raw-byte proof.
 
 The client resumes the exact saved plan before capturing later appends. It
 records mutation intent before dispatch and retains receipts; an unknown
 outcome is not permission to repeat an upload or deletion. Old owned sources
 remain until replacements are readable. Exit 0 means the cycle completed,
 2 means processing or bounded work remains, and other exits mean failure.
-The service publishes that distinction in
+The service publishes that distinction, a blocked reason, and the independent
+local-capture result in
 `/run/opdbus/notebook-sync/status.json`; a running process alone is not proof
-of synchronization. Tests are owned by the separate testing agent for the
-2026-10-05 repair; deployment and live synchronization remain pending.
+of synchronization. The current component's deployment and live evidence are
+recorded under `notebook-local-recovery-20261012` in `HANDOFF.md`.
 
 ## Storage reality
 
@@ -69,9 +90,10 @@ Output:
 
 ## Triggers
 
-1. **Prepared sync service:** one cycle after dependencies become ready, then
-   300 seconds after each cycle ends by default. This service is currently
-   stopped pending the combined release; the repaired source is not active.
+1. **Received sync service:** local capture on startup, then 300 seconds after
+   each cycle ends by default. Remote sync advances only with its explicit
+   enable flag, verified mount/session and owned journal. Scheduler sleep is
+   interruptible, and cancellation preserves frozen artifacts and intents.
 2. **Optional CLI/shell exit hook:** `scripts/llm-session-on-exit.sh` supports
    export on exit, but the 2026-10-05 inspection found no matching wiring in
    Jeremy's current `.bashrc` or `.profile`, and no installed

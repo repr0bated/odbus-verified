@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("cargo:rerun-if-env-changed={name}");
     }
     for (capture, runtime, default) in [
-        ("THREETCHED_CAPTURE_BIN", "THREETCHED_BIN", "/usr/bin/threetched"),
+        ("THREETCHED_CAPTURE_BIN", "THREETCHED_BIN", "/usr/local/libexec/op-dbus/threetched/threetched"),
         (
             "THREETCHED_CAPTURE_MANIFEST",
             "THREETCHED_MANIFEST",

@@ -13,7 +13,7 @@ Agent skill selection uses agents.<alias>.skill_bundles and the referenced
 skill_bundles.<alias>.include/exclude settings through that same owner.
 
 Discover current operations through this identity's mounted 3tchedFS namespace
-at /run/mount/3tchedFS. Verify supported paths and method schemas there rather
+at /run/mount/3tchedfs. Verify supported paths and method schemas there rather
 than assuming a copied catalog matches the running service.
 
 Keep shared resources free of personal records, private conversations and secrets.

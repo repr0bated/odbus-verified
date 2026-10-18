@@ -1,19 +1,19 @@
-# Cargo worker routing
+# Cargo routing
 
-The ordinary `cargo` command delegates to a worker:
+JEV owns model selection and worker routing. Cargo has no separate model
+allocation, caller-family mapping or LLM shell dispatcher.
 
-| Caller | Runner | Model |
-|---|---|---|
-| GPT / Codex | Codex CLI | `gpt-6-luna` |
-| Grok | Cursor Agent | `composer-2.5` |
-| Claude | Claude CLI | `haiku` |
+Use the ordinary Cargo executable from the repository root. An assigned
+execution worker runs its command without recursively delegating it. Keep one
+Cargo process at a time and use the native `x86_64-unknown-linux-gnu` target.
+Release builds retain `CXXFLAGS="-include cstdint"`. Workspace-wide commands
+require an explicit workspace request; a Cargo run does not install binaries
+or restart services.
 
-Set `CARGO_CALLER_FAMILY=gpt`, `grok`, or `claude` in the calling agent's environment. This explicit setting takes precedence over optional `CARGO_CALLER_MODEL`, `CURSOR_MODEL`, `GROK_MODEL` and Claude/Grok environment hints. Unmarked shells use GPT/Luna. These hints select a worker; they do not establish an authenticated identity. Cursor does not expose a verified caller-model marker, so select the family explicitly when switching models there.
+The former repository dispatcher, shell alias, PATH shim and routing tests
+have been removed. Existing shells that still inherited the old Cargo function
+can clear it with `unset -f cargo; hash -r`; new shells no longer load it.
 
-`source scripts/cargo-aliases.bash` installs an exported Bash `cargo` function. The user PATH shim also covers shells that do not expand aliases. Normal syntax is unchanged: `cargo build`, `cargo test`, `cargo metadata`, and so on. Commands in this workspace run from its repository root.
+Implement, build, deploy. Clippy, formatting checks and the test suite remain
+deferred until after deployment.
 
-The worker executes one fixed helper with the original argument array. Native Cargo stdout, stderr and exit status return to the caller; model commentary does not pollute JSON output. Requests use private temporary files and a per-workspace dispatch lock. A missing runner or completion receipt fails without executing Cargo locally. `CARGO_DISPATCHED=1` is the worker recursion guard; native Cargo remains at `/usr/bin/cargo`.
-
-Model/runner overrides are `CARGO_MODEL_GPT`, `CARGO_MODEL_GROK`, `CARGO_MODEL_CLAUDE` and the corresponding `CARGO_RUNNER_*` variables. `CARGO_DISPATCH_DRY_RUN=1 cargo check` prints the routing plan without invoking a model or Cargo. No permission-bypass flags are supplied to the runners.
-
-`bash scripts/tests/test-cargo-dispatch.sh` checks all routes, exact argument handling, output/status propagation, missing completion and recursion with fake runners. It never invokes real Cargo or a model. On 2026-10-03 all three actual runners completed `cargo --version` and returned the native version output. This verifies model access and execution routing; it is not a full build validation.

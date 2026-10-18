@@ -9,8 +9,8 @@ use tracing::{info, warn};
 use crate::schema::{ManagerState, ServiceDef, ServiceName, ServiceStatus};
 use crate::store::Store;
 
-const RUNIT_SERVICE_DIR: &str = "/etc/runit/sv";
-const RUNIT_ACTIVE_DIR: &str = "/etc/runit/runsvdir/default";
+const RUNIT_SERVICE_DIR: &str = op_core::runit::SV_DIR;
+const RUNIT_ACTIVE_DIR: &str = op_core::runit::RUNSVDIR_DEFAULT;
 
 fn service_path(base: &str, name: &ServiceName) -> PathBuf {
     Path::new(base).join(name.as_str())

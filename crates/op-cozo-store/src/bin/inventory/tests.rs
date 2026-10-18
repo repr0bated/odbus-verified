@@ -1,13 +1,14 @@
 use super::*;
-use std::os::unix::fs::symlink;
+use std::os::unix::fs::{PermissionsExt, symlink};
 
 fn fixture() -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
     for name in [
         "bin",
         "sv/bridge",
-        "etc/opdbus",
-        "etc/mail",
+        "usr/share/op-dbus/etc/opdbus",
+        "usr/share/op-dbus/etc/op-dbus",
+        "usr/share/op-dbus/assets",
         "usr/share/op-dbus/graphs",
     ] {
         fs::create_dir_all(dir.path().join(name)).unwrap();
@@ -18,20 +19,49 @@ fn fixture() -> tempfile::TempDir {
     )
     .unwrap();
     fs::write(dir.path().join("bin/bridge"), b"binary").unwrap();
-    fs::write(dir.path().join("sv/bridge/run"),"#!/bin/sh\n# wait_dep ignored\nwait_dep dbus\nexport PASSWORD='private-unretained'\nexec /usr/local/bin/bridge --config /etc/mail/main.cf\n").unwrap();
+    fs::set_permissions(dir.path().join("bin/bridge"), fs::Permissions::from_mode(0o755)).unwrap();
     fs::write(
-        dir.path().join("etc/mail/main.cf"),
-        "password = private-unretained\nkey_file = /etc/op-dbus/secrets/mail-key\n",
+        dir.path().join("sv/bridge/run"),
+        "#!/bin/sh\n# op-dbus-release: application\nwait_dep() {\n sv start \"$1\" >/dev/null\n until sv check \"$1\"; do sleep 1; done\n}\nwait_dep dbus\nuntil sv check observed; do sleep 1; done\nsv -w 5 up helper\nexport PASSWORD='private-unretained'\nCONFIG_ROOT=/var/lib/bridge\nBOOTSTRAP=/usr/share/op-dbus/etc/op-dbus/bootstrap.toml\ninstall -m 0644 \"$BOOTSTRAP\" \"$CONFIG_ROOT/config.toml\"\nexec /usr/local/libexec/op-dbus/bin/bridge --config /usr/share/op-dbus/etc/op-dbus/main.conf\n",
     )
     .unwrap();
-    fs::write(dir.path().join("etc/opdbus/enabled-services"), "bridge\n").unwrap();
-    fs::write(dir.path().join("etc/opdbus/retired-services"), "old\n").unwrap();
+    fs::write(
+        dir.path().join("usr/share/op-dbus/etc/op-dbus/main.conf"),
+        "password = private-unretained\nkey_file = /etc/op-dbus/secrets/mail-key\ninclude = current.conf\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.path().join("usr/share/op-dbus/etc/op-dbus/nested.conf"),
+        "assets = /usr/share/op-dbus/assets\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.path().join("usr/share/op-dbus/etc/op-dbus/bootstrap.toml"),
+        "directory = \"shared/data\"\n",
+    )
+    .unwrap();
+    symlink(
+        "nested.conf",
+        dir.path().join("usr/share/op-dbus/etc/op-dbus/current.conf"),
+    )
+    .unwrap();
+    fs::write(dir.path().join("usr/share/op-dbus/assets/data"), b"asset").unwrap();
+    fs::write(
+        dir.path().join("usr/share/op-dbus/etc/opdbus/enabled-services"),
+        "bridge\ndbus\n",
+    )
+    .unwrap();
+    fs::write(
+        dir.path().join("usr/share/op-dbus/etc/opdbus/retired-services"),
+        "old\n",
+    )
+    .unwrap();
     dir
 }
 #[test]
 fn dotted_retired_services_keep_declarations_and_reject_traversal_names() {
     let dir = fixture();
-    let manifest = dir.path().join("etc/opdbus/retired-services");
+    let manifest = dir.path().join("usr/share/op-dbus/etc/opdbus/retired-services");
     let output = dir.path().join(format!("{GRAPH_DIR}/release.json"));
     let names = [
         "netmaker-op-grpc-adapters.retired-netns",
@@ -47,10 +77,10 @@ fn dotted_retired_services_keep_declarations_and_reject_traversal_names() {
             .iter()
             .find(|edge| edge.src == id && edge.relation == "declared_retired")
             .unwrap();
-        assert_eq!(declaration.dst, "file:etc/opdbus/retired-services");
+        assert_eq!(declaration.dst, "file:usr/share/op-dbus/etc/opdbus/retired-services");
         assert_eq!(
             declaration.evidence[0].source,
-            "etc/opdbus/retired-services"
+            "usr/share/op-dbus/etc/opdbus/retired-services"
         );
         assert_eq!(declaration.evidence[0].locator, format!("L{}", index + 1));
     }
@@ -77,6 +107,13 @@ fn dotted_retired_services_keep_declarations_and_reject_traversal_names() {
 fn deterministic_inventory_has_real_artifacts_and_line_evidence_without_values() {
     let dir = fixture();
     let output = dir.path().join(format!("{GRAPH_DIR}/release.json"));
+    let provenance = "usr/share/op-dbus/etc/op-dbus/source-record.json";
+    fs::write(dir.path().join(provenance), serde_json::to_vec(&json!({
+        "repository": "https://example.org/skills",
+        "commit": "a".repeat(40),
+        "source_path": "upstream/skill",
+        "files": [{"path": "main.conf", "source_path": "upstream/skill/main.conf", "sha256": "b".repeat(64)}]
+    })).unwrap()).unwrap();
     let snapshot = prepared(
         dir.path(),
         "release:fixture",
@@ -85,27 +122,51 @@ fn deterministic_inventory_has_real_artifacts_and_line_evidence_without_values()
     )
     .unwrap();
     let encoded = serde_json::to_vec(&snapshot).unwrap();
+    let record = snapshot.nodes.iter().find(|node| node.id == format!("file:{provenance}")).unwrap();
+    assert_eq!(record.attributes["category"], "provenance");
+    assert!(!snapshot.nodes.iter().any(|node| node.id.contains("/upstream/skill")));
     assert!(!String::from_utf8_lossy(&encoded).contains("private-unretained"));
     assert!(
         snapshot
             .nodes
             .iter()
-            .any(|n| n.id == "file:etc/mail/main.cf"
+            .any(|n| n.id == "file:usr/share/op-dbus/etc/op-dbus/main.conf"
                 && n.attributes["sha256"].as_str().unwrap().len() == 64)
     );
     let dep = snapshot
         .edges
         .iter()
-        .find(|e| e.relation == "depends_on")
+        .find(|e| e.relation == "depends_on" && e.dst == "service:dbus")
         .unwrap();
     assert_eq!(dep.dst, "service:dbus");
-    assert_eq!(dep.evidence[0].locator, "L3");
+    assert_eq!(dep.evidence[0].locator, "L7");
     assert!(
         snapshot
             .edges
             .iter()
             .any(|e| e.relation == "runs" && e.dst == "file:bin/bridge")
     );
+    let service = snapshot.nodes.iter().find(|n| n.id == "service:bridge").unwrap();
+    assert_eq!(service.attributes["release_owned"], true);
+    assert_eq!(service.attributes["deps"], json!(["dbus", "helper", "observed"]));
+    assert_eq!(service.attributes["starts"], json!(["dbus", "helper"]));
+    let base = snapshot.nodes.iter().find(|n| n.id == "service:dbus").unwrap();
+    assert_eq!(base.attributes["release_owned"], false);
+    let asset = snapshot.nodes.iter().find(|n| n.id == "file:usr/share/op-dbus/assets/data").unwrap();
+    assert_eq!(asset.attributes["consumers"], json!(["bridge"]));
+    assert_eq!(asset.attributes["release_target"], "/usr/share/op-dbus");
+    let metadata = fs::symlink_metadata(dir.path().join("usr/share/op-dbus/assets/data")).unwrap();
+    assert_eq!(asset.attributes["uid"], metadata.uid());
+    assert_eq!(asset.attributes["gid"], metadata.gid());
+    let link = snapshot.nodes.iter().find(|n| n.id == "file:usr/share/op-dbus/etc/op-dbus/current.conf").unwrap();
+    assert_eq!(link.attributes["target"], "nested.conf");
+    assert_eq!(link.attributes["consumers"], json!(["bridge"]));
+    assert!(snapshot.nodes.iter().any(|node| node.id == "reference:/var/lib/bridge/shared/data"));
+    let target = snapshot.nodes.iter().find(|n| n.id == "target:/usr/local/libexec/op-dbus/bin").unwrap();
+    assert_eq!(target.attributes["source"], "bin");
+    assert_eq!(target.attributes["noexec"], false);
+    let data_target = snapshot.nodes.iter().find(|n| n.id == "target:/usr/share/op-dbus").unwrap();
+    assert_eq!(data_target.attributes["noexec"], true);
     fs::write(&output, b"ignored graph output").unwrap();
     fs::write(
         dir.path().join("MANIFEST"),
@@ -130,6 +191,11 @@ fn deterministic_inventory_has_real_artifacts_and_line_evidence_without_values()
         }
     }
     assert_eq!(first, second);
+    // A provenance-looking file with a runtime include is not exempt.
+    let mut mixed: Value = serde_json::from_slice(&fs::read(dir.path().join(provenance)).unwrap()).unwrap();
+    mixed["include"] = json!("/usr/share/op-dbus/etc/op-dbus/missing.conf");
+    fs::write(dir.path().join(provenance), serde_json::to_vec_pretty(&mixed).unwrap()).unwrap();
+    assert!(prepared(dir.path(), "release:test", "2026-10-18T00:00:00Z", &output).is_err());
 }
 #[test]
 fn external_symlinks_are_not_followed_and_protected_files_are_not_read() {
@@ -155,6 +221,10 @@ fn external_symlinks_are_not_followed_and_protected_files_are_not_read() {
             .nodes
             .iter()
             .any(|n| n.id == "file:outside" && n.attributes["target_status"] == "not_followed")
+    );
+    assert_eq!(
+        graph.nodes.iter().find(|n| n.id == "file:outside").unwrap().attributes["target"],
+        outside.path().to_str().unwrap()
     );
     assert!(!graph.nodes.iter().any(|n| n.id == "file:outside/private"));
     let node = graph
@@ -207,13 +277,30 @@ fn source_conversion_merges_external_requirements_and_rejects_conflicts() {
     assert!(source_graph(&input, "source:workspace", "2026-09-30T00:00:00Z").is_err());
 }
 #[test]
-fn static_paths_skip_dynamic_expansion_and_uris() {
-    assert_eq!(
-        literal_paths(
-            "TOKEN=secret https://name:password@host /etc/config ${X:-/etc/default} /etc/$X /etc/../outside"
-        ),
-        BTreeSet::from(["/etc/config".into(), "/etc/default".into()])
-    );
+fn dynamic_restart_references_fail_without_retaining_secret_values() {
+    let dir = fixture();
+    let output = dir.path().join(format!("{GRAPH_DIR}/release.json"));
+    for command in [
+        "exec \"$UNKNOWN_EXECUTABLE\"",
+        "VALUE=$(printf data) \"$UNKNOWN_EXECUTABLE\"",
+        "sv start \"$UNKNOWN_SERVICE\"",
+        "exec /usr/local/libexec/op-dbus/bin/bridge --config \"$UNKNOWN_CONFIG\"",
+        ". \"$UNKNOWN_INCLUDE\"",
+        "exec /usr/local/libexec/op-dbus/bin/bridge --config \"$(unknown_config)\"",
+        "exec /usr/local/libexec/op-dbus/bin/bridge --config=\"$UNKNOWN_CONFIG\"",
+        "exec /usr/local/libexec/op-dbus/bin/bridge --config \"`unknown_config`\"",
+        "KNOWN=/usr/local/libexec/op-dbus/bin/bridge\nKNOWN=$(unknown_program)\nexec \"$KNOWN\"",
+        "KNOWN=/usr/local/libexec/op-dbus/bin/bridge true\nexec \"$KNOWN\"",
+        "exec /usr/local/libexec/op-dbus/bin/bridge --config \"$(dirname /etc/first; dirname /etc/second)\"",
+        "exec /usr/local/libexec/op-dbus/bin/missing",
+    ] {
+        fs::write(
+            dir.path().join("sv/bridge/run"),
+            format!("#!/bin/sh\n# op-dbus-release: application\n{command}\n"),
+        )
+        .unwrap();
+        assert!(prepared(dir.path(), "release:test", "2026-09-30T00:00:00Z", &output).is_err());
+    }
 }
 
 #[test]
@@ -222,7 +309,7 @@ fn cli_emits_valid_typed_snapshot_with_merged_repeated_evidence() {
     let output = dir.path().join(format!("{GRAPH_DIR}/release.json"));
     fs::write(
         dir.path().join("sv/bridge/run"),
-        "wait_dep dbus\nwait_dep dbus\nexec /usr/local/bin/bridge\nexec /usr/local/bin/bridge\n",
+        "# op-dbus-release: application\nwait_dep dbus\nwait_dep dbus\nexec /usr/local/libexec/op-dbus/bin/bridge\nexec /usr/local/libexec/op-dbus/bin/bridge\n",
     )
     .unwrap();
     run(vec![
@@ -254,7 +341,7 @@ fn cli_emits_valid_typed_snapshot_with_merged_repeated_evidence() {
             .unwrap()
             .evidence[0]
             .locator,
-        "L1,L2"
+        "L2,L3"
     );
     op_cozo_store::system_graph_snapshot_digest(&graph).unwrap();
     run(vec![
@@ -274,7 +361,7 @@ fn cli_emits_valid_typed_snapshot_with_merged_repeated_evidence() {
 #[test]
 fn prepared_catalog_requires_actual_manifest_pinned_blob() {
     let dir = fixture();
-    let path = dir.path().join("var/lib/opdbus/plugin-blobs");
+    let path = dir.path().join("usr/share/op-dbus/plugin-blobs");
     fs::create_dir_all(&path).unwrap();
     let hash = "a".repeat(64);
     fs::write(
@@ -345,6 +432,27 @@ fn exec_arguments_do_not_become_executables() {
         literal_exec_program("exec env SECRET=/usr/bin/sv /usr/local/bin/bridge"),
         None
     );
+    let dir = fixture();
+    fs::write(dir.path().join("bin/wrapper"), r#"#!/bin/sh
+SCRIPT_PATH=$(readlink -f -- "$0")
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd -P)
+manifest=/usr/share/op-dbus/etc/op-dbus/main.conf
+value=$(wc -c <"$manifest")
+: "${BUS_ADDRESS:=unix:path=/run/opdbus/session-bus.sock}"
+SOCKET_PATH="${BUS_ADDRESS#unix:path=}"
+install -d "$(dirname "$SOCKET_PATH")"
+printf 'status: %s\n' \
+    "$UNKNOWN_STATUS"
+exec "$SCRIPT_DIR/bridge" --config "$manifest"
+"#).unwrap();
+    fs::write(dir.path().join("sv/bridge/run"),
+        "#!/bin/sh\n# op-dbus-release: application\nexec /usr/local/libexec/op-dbus/bin/wrapper\n").unwrap();
+    let output = dir.path().join(format!("{GRAPH_DIR}/release.json"));
+    let graph = prepared(dir.path(), "release:test", "2026-10-18T00:00:00Z", &output).unwrap();
+    for path in ["file:bin/bridge", "file:usr/share/op-dbus/etc/op-dbus/main.conf", "reference:/run/opdbus/session-bus.sock"] {
+        assert!(graph.edges.iter().any(|edge| edge.src == "file:bin/wrapper" && edge.dst == path), "{path}");
+    }
+    assert!(!graph.nodes.iter().any(|node| node.id.ends_with(')')));
 }
 
 #[test]
@@ -362,16 +470,102 @@ fn source_receipt_exposes_dirty_and_unknown_source_provenance() {
             graph.provenance.inputs["source_worktree_dirty"],
             if value.is_some() { "true" } else { "unknown" }
         );
-        assert!(
-            graph
-                .provenance
-                .limitations
-                .iter()
-                .any(|s| s.contains(if value.is_some() {
-                    "uncommitted"
-                } else {
-                    "unknown"
-                }))
-        );
     }
+}
+
+#[test]
+fn staged_secret_helper_resolves_function_paths_without_executing_it() {
+    let dir = fixture();
+    fs::create_dir_all(dir.path().join("libexec/3tched")).unwrap();
+    fs::write(
+        dir.path().join("libexec/3tched/emqx-prepare"),
+        include_str!("../../../../../deploy/runit/libexec-3tched/emqx-prepare"),
+    ).unwrap();
+    fs::create_dir_all(dir.path().join("usr/share/op-dbus/emqx-etc")).unwrap();
+    fs::write(dir.path().join("sv/bridge/run"),
+        "#!/bin/sh\n# op-dbus-release: application\n/usr/local/libexec/op-dbus/helpers/emqx-prepare\nexec /usr/local/libexec/op-dbus/bin/bridge\n").unwrap();
+    let output = dir.path().join(format!("{GRAPH_DIR}/release.json"));
+    let graph = prepared(dir.path(), "release:test", "2026-10-17T00:00:00Z", &output).unwrap();
+    for name in ["emqx-dashboard-password", "emqx-mqtt-password", "emqx-api-key", "emqx-api-secret", "emqx-node-cookie"] {
+        assert!(graph.edges.iter().any(|edge|
+            edge.src == "file:libexec/3tched/emqx-prepare"
+                && edge.dst == format!("reference:/etc/opdbus/secrets/{name}")));
+    }
+    let helper = graph.nodes.iter().find(|node| node.id == "file:libexec/3tched/emqx-prepare").unwrap();
+    assert_eq!(helper.attributes["consumers"], json!(["bridge"]));
+}
+
+#[test]
+fn function_paths_are_scoped_and_unknown_calls_still_block() {
+    let dir = fixture();
+    let output = dir.path().join(format!("{GRAPH_DIR}/release.json"));
+    fs::write(dir.path().join("sv/bridge/run"), r#"#!/bin/sh
+# op-dbus-release: application
+CONFIG=/usr/share/op-dbus/etc/op-dbus/main.conf
+launch() {
+    config_path=$1
+    exec /usr/local/libexec/op-dbus/bin/bridge --config "$config_path"
+}
+report() {
+    printf '%s %s\n' "$1" "$2"
+}
+launch "$CONFIG"
+report "providers.models.$MODEL.model" "${TIMEOUT:-90}"
+"#).unwrap();
+    let graph = prepared(dir.path(), "release:test", "2026-10-18T00:00:00Z", &output).unwrap();
+    assert!(graph.edges.iter().any(|edge| edge.src == "service:bridge"
+        && edge.dst == "file:usr/share/op-dbus/etc/op-dbus/main.conf"));
+    for script in [
+        "launch() {\n config_path=$1\n exec /usr/local/libexec/op-dbus/bin/bridge --config \"$config_path\"\n}\nlaunch /usr/share/op-dbus/etc/op-dbus/main.conf\nlaunch \"$UNKNOWN_CONFIG\"\n",
+        "launch() {\n config_path=$1\n}\nlaunch /usr/share/op-dbus/etc/op-dbus/main.conf\nexec \"$config_path\"\n",
+        "launch() {\n config_path=$1\n}\nlaunch /usr/share/op-dbus/etc/op-dbus/missing.conf\n",
+        "launch() {\n config_path=$1\n}\nlaunch /usr/share/op-dbus/etc/op-dbus/main.conf\nlaunch\n",
+        "launch() {\n config_path=$1\n}\nlaunch /usr/share/op-dbus/etc/op-dbus/main.conf\nlaunch relative-unresolved.conf\n",
+        "launch() {\n exec \"$1\"\n}\nlaunch \"$UNKNOWN_PROGRAM\"\n",
+        "launch() {\n . \"$1\"\n}\nlaunch \"$UNKNOWN_INCLUDE\"\n",
+    ] {
+        fs::write(dir.path().join("sv/bridge/run"),
+            format!("#!/bin/sh\n# op-dbus-release: application\n{script}")).unwrap();
+        assert!(prepared(dir.path(), "release:test", "2026-10-17T00:00:00Z", &output).is_err());
+    }
+}
+
+#[test]
+fn catalog_only_transition_keeps_staging_owner_and_cached_consumers() {
+    let dir = fixture();
+    let catalog = dir.path().join(CATALOG_DIR);
+    fs::create_dir_all(&catalog).unwrap();
+    fs::create_dir_all(dir.path().join("sv/rundirs")).unwrap();
+    fs::create_dir_all(dir.path().join("libexec/3tched")).unwrap();
+    fs::write(dir.path().join("bin/opblob"), b"opblob fixture artifact").unwrap();
+    fs::write(dir.path().join("libexec/3tched/opdbus-rundirs-up"),
+        include_str!("../../../../../deploy/runit/libexec-3tched/opdbus-rundirs-up")).unwrap();
+    fs::write(dir.path().join("sv/rundirs/run"),
+        include_str!("../../../../../deploy/runit/opdbus-rundirs/run")).unwrap();
+    fs::write(dir.path().join("sv/bridge/run"),
+        "#!/bin/sh\n# op-dbus-release: application\n# op-dbus-consumes: /usr/share/op-dbus/plugin-blobs\nsv start rundirs\nexec /usr/local/libexec/op-dbus/bin/bridge\n").unwrap();
+    let output = dir.path().join(format!("{GRAPH_DIR}/release.json"));
+    let mut previous_hash = None;
+    for generation in ["a", "b"] {
+        fs::write(catalog.join(".manifest.json"),
+            serde_json::to_vec(&json!({"plugins":{"mail":generation.repeat(64)}})).unwrap()).unwrap();
+        let blob = format!("mail.{}.blob", generation.repeat(16));
+        fs::write(catalog.join(&blob), format!("sealed catalog generation {generation}")).unwrap();
+        let graph = prepared(dir.path(), "release:test", "2026-10-17T00:00:00Z", &output).unwrap();
+        for path in [format!("{CATALOG_DIR}/.manifest.json"), format!("{CATALOG_DIR}/{blob}")] {
+            let node = graph.nodes.iter().find(|node| node.id == format!("file:{path}")).unwrap();
+            assert_eq!(node.attributes["consumers"], json!(["bridge", "rundirs"]));
+        }
+        let bridge = graph.nodes.iter().find(|node| node.id == "service:bridge").unwrap();
+        assert_eq!(bridge.attributes["deps"], json!(["rundirs"]));
+        assert_eq!(bridge.attributes["starts"], json!(["rundirs"]));
+        let manifest = graph.nodes.iter().find(|node| node.id == format!("file:{CATALOG_DIR}/.manifest.json")).unwrap();
+        if let Some(before) = previous_hash.replace(manifest.attributes["sha256"].clone()) {
+            assert_ne!(before, manifest.attributes["sha256"]);
+        }
+        fs::remove_file(catalog.join(blob)).unwrap();
+    }
+    fs::remove_file(catalog.join(".manifest.json")).unwrap();
+    fs::remove_dir(catalog).unwrap();
+    assert!(prepared(dir.path(), "release:test", "2026-10-17T00:00:00Z", &output).is_err());
 }

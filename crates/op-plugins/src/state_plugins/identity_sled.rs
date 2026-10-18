@@ -11,7 +11,7 @@
 //! The session event ledger ("snowball") methods replace the flat
 //! `/dev/shm/snowball_session.log`; every call is already notarized in the
 //! immutable event chain by MutationEngine, and rows persist to the Cozo
-//! `sessions` / `session_memories` relations via the cognitive-mcp store.
+//! `sessions` / `session_memories` relations via the cognitive store.
 
 use anyhow::Result;
 use async_trait::async_trait;

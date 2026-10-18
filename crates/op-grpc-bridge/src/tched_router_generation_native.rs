@@ -15,7 +15,7 @@ use tokio_tungstenite::{
 };
 
 const WS_PROTOCOL: &str = "tched_router.generation.v1";
-const MAX_PROMPT_BYTES: usize = 64 * 1024;
+const MAX_PROMPT_BYTES: usize = 256 * 1024;
 // JSON escaping expands decoded text; bound allocation separately from output.
 const MAX_FRAME_BYTES: usize = 2 * 1024 * 1024;
 const MAX_DELTA_BYTES: usize = 16 * 1024;
@@ -234,7 +234,10 @@ async fn run_native(
         _ = &mut cancel_rx => return Err(NativeGenerationError::Cancelled),
         result = tokio::time::timeout_at(connect_deadline, connect_async_with_config(handshake, Some(config), false)) => {
             result.map_err(|_| NativeGenerationError::Timeout)?
-                .map_err(|_| NativeGenerationError::Transport)?
+                .map_err(|error| {
+                    log_threetched_connection_failure("handshake", &error);
+                    NativeGenerationError::Transport
+                })?
         }
     };
     let selected_protocol = response
@@ -321,9 +324,17 @@ async fn run_native(
             message = socket.next() => message,
         };
         let Some(message) = message else {
+            tracing::warn!(
+                stage = "receive_output",
+                kind = "ended",
+                "threetched generation connection failed"
+            );
             return Err(NativeGenerationError::Transport);
         };
-        let message = message.map_err(|_| NativeGenerationError::Transport)?;
+        let message = message.map_err(|error| {
+            log_threetched_connection_failure("receive_output", &error);
+            NativeGenerationError::Transport
+        })?;
         let text = match message {
             Message::Text(text) => text,
             Message::Binary(bytes) => {
@@ -334,6 +345,11 @@ async fn run_native(
                 continue;
             }
             Message::Close(_) => {
+                tracing::warn!(
+                    stage = "receive_output",
+                    kind = "closed",
+                    "threetched generation connection failed"
+                );
                 return Err(NativeGenerationError::Transport);
             }
             Message::Ping(_) | Message::Pong(_) | Message::Frame(_) => continue,
@@ -435,6 +451,61 @@ async fn run_native(
     }
 }
 
+/// Deliberately excludes peer bodies, headers, URLs and arbitrary error text.
+/// Only exact gateway-owned rejection codes may be retained from an HTTP body.
+#[derive(Debug, PartialEq, Eq)]
+struct ThreetchedConnectionFailure {
+    kind: &'static str,
+    http_status: Option<u16>,
+    gateway_reason: &'static str,
+}
+
+fn log_threetched_connection_failure(
+    stage: &'static str,
+    error: &tokio_tungstenite::tungstenite::Error,
+) {
+    let failure = threetched_connection_failure(error);
+    tracing::warn!(
+        stage,
+        kind = failure.kind,
+        http_status = ?failure.http_status,
+        gateway_reason = failure.gateway_reason,
+        "threetched generation connection failed"
+    );
+}
+
+fn threetched_connection_failure(
+    error: &tokio_tungstenite::tungstenite::Error,
+) -> ThreetchedConnectionFailure {
+    use tokio_tungstenite::tungstenite::Error;
+    let mut failure = ThreetchedConnectionFailure {
+        kind: "other",
+        http_status: None,
+        gateway_reason: "unspecified",
+    };
+    failure.kind = match error {
+        Error::Http(response) => {
+            failure.http_status = Some(response.status().as_u16());
+            failure.gateway_reason = match response.body().as_deref() {
+                Some(b"stateless_generation_not_admitted") => "not_admitted",
+                Some(b"stateless_generation_invalid_session") => "invalid_session",
+                Some(b"stateless_generation_identity_rejected") => "identity_rejected",
+                Some(b"stateless_generation_identity_required") => "identity_required",
+                Some(b"stateless_generation_unavailable") => "generation_unavailable",
+                _ => "unspecified",
+            };
+            "http"
+        }
+        Error::Io(_) => "io",
+        Error::Tls(_) => "tls",
+        Error::Protocol(_) => "protocol",
+        Error::Capacity(_) => "capacity",
+        Error::ConnectionClosed | Error::AlreadyClosed => "closed",
+        _ => "other",
+    };
+    failure
+}
+
 /// Accept only the native protocol's bounded diagnostic vocabulary. Provider
 /// response bodies, URLs, credentials and arbitrary error text never leave
 /// this boundary, including when an older or malformed peer sends them.
@@ -489,7 +560,10 @@ where
     tokio::select! {
         _ = cancel_rx => Err(NativeGenerationError::Cancelled),
         _ = tokio::time::sleep_until(deadline) => Err(NativeGenerationError::Timeout),
-        result = socket.send(Message::Text(text)) => result.map_err(|_| NativeGenerationError::Transport),
+        result = socket.send(Message::Text(text)) => result.map_err(|_| {
+            tracing::warn!(stage = "send_frame", "threetched generation connection failed");
+            NativeGenerationError::Transport
+        }),
     }
 }
 
@@ -504,7 +578,16 @@ where
     tokio::select! {
         _ = cancel_rx => Err(NativeGenerationError::Cancelled),
         _ = tokio::time::sleep_until(deadline) => Err(NativeGenerationError::Timeout),
-        result = socket.next() => result.ok_or(NativeGenerationError::Transport)?.map_err(|_| NativeGenerationError::Transport),
+        result = socket.next() => {
+            let message = result.ok_or_else(|| {
+                tracing::warn!(stage = "receive_ack", kind = "ended", "threetched generation connection failed");
+                NativeGenerationError::Transport
+            })?;
+            message.map_err(|error| {
+                log_threetched_connection_failure("receive_ack", &error);
+                NativeGenerationError::Transport
+            })
+        },
     }
 }
 
@@ -722,6 +805,47 @@ mod tests {
         ) -> Pin<Box<dyn Future<Output = Result<(), NativeGenerationError>> + Send + '_>> {
             Box::pin(async { Ok(()) })
         }
+    }
+
+    #[test]
+    fn handshake_diagnostics_exclude_untrusted_response_data() {
+        for (body, expected_reason) in [
+            (
+                "stateless_generation_identity_rejected",
+                "identity_rejected",
+            ),
+            ("stateless_generation_unavailable", "generation_unavailable"),
+            (
+                "stateless_generation_identity_rejected credential-secret",
+                "unspecified",
+            ),
+            (
+                "private-prompt https://private.example/ credential-secret",
+                "unspecified",
+            ),
+        ] {
+            let response = tokio_tungstenite::tungstenite::http::Response::builder()
+                .status(401)
+                .header("x-private", "credential-secret")
+                .body(Some(body.as_bytes().to_vec()))
+                .unwrap();
+            let failure = threetched_connection_failure(
+                &tokio_tungstenite::tungstenite::Error::Http(response),
+            );
+            assert_eq!(failure.kind, "http");
+            assert_eq!(failure.http_status, Some(401));
+            assert_eq!(failure.gateway_reason, expected_reason);
+            let rendered = format!("{failure:?}");
+            assert!(!rendered.contains("credential-secret"));
+            assert!(!rendered.contains("private-prompt"));
+            assert!(!rendered.contains("private.example"));
+        }
+        let error =
+            tokio_tungstenite::tungstenite::Error::Io(std::io::Error::other("credential-secret"));
+        let failure = threetched_connection_failure(&error);
+        assert_eq!(failure.kind, "io");
+        assert_eq!(failure.http_status, None);
+        assert!(!format!("{failure:?}").contains("credential-secret"));
     }
 
     #[test]

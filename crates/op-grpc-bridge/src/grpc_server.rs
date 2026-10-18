@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 
 use async_stream::stream;
 use chrono::{DateTime, Utc};
-use op_cognitive_mcp::QdrantSemanticShuttle;
+use op_cognitive::QdrantSemanticShuttle;
 use prost::Message;
 use prost_reflect::{DescriptorPool, DynamicMessage, ReflectMessage, SerializeOptions};
 use prost_types::{Struct as ProstStruct, Timestamp as ProstTimestamp, Value as ProstValue};
@@ -1541,20 +1541,25 @@ impl StateSync for OperationGrpcServer {
     ) -> Result<Response<Self::SubscribeStream>, Status> {
         let verified_identity =
             crate::event_chain_access::verified_identity(&self.mutation_engine, &request).await?;
+        let binding = interceptor::state_subscription::StateSubscriptionBinding::new(
+            self.mutation_engine.clone(),
+            &request,
+            verified_identity.clone(),
+        );
         if let Some(selection) = crate::chatbot_episode_stream::EpisodeSelection::from_subscription(
             &request.get_ref().plugin_ids,
             &request.get_ref().path_patterns,
         )
         .map_err(|_| Status::invalid_argument("invalid private chatbot episode selection"))?
         {
-            return crate::chatbot_episode_stream::subscribe(
+            let stream = crate::chatbot_episode_stream::subscribe(
                 self.mutation_engine.clone(),
                 request,
                 verified_identity,
                 selection,
             )
-            .await
-            .map(Response::new);
+            .await?;
+            return binding.response(stream).await;
         }
         if let Some(selection) =
             crate::generation_jobs_selection::GenerationSelection::from_subscription(
@@ -1563,14 +1568,14 @@ impl StateSync for OperationGrpcServer {
             )
             .map_err(|_| Status::invalid_argument("invalid private generation selection"))?
         {
-            return crate::generation_jobs_stream::subscribe(
+            let stream = crate::generation_jobs_stream::subscribe(
                 self.mutation_engine.clone(),
                 request,
                 verified_identity,
                 selection,
             )
-            .await
-            .map(Response::new);
+            .await?;
+            return binding.response(stream).await;
         }
         let private_selection =
             crate::ui_workspace_stream_selection::WorkspaceSelection::from_subscription(
@@ -1579,14 +1584,14 @@ impl StateSync for OperationGrpcServer {
             )
             .map_err(|_| Status::invalid_argument("invalid private workspace selection"))?;
         if let Some(selection) = private_selection {
-            return crate::ui_workspace_stream::subscribe(
+            let stream = crate::ui_workspace_stream::subscribe(
                 self.mutation_engine.clone(),
                 request,
                 verified_identity,
                 selection,
             )
-            .await
-            .map(Response::new);
+            .await?;
+            return binding.response(stream).await;
         }
         let req = request.into_inner();
         info!("gRPC Subscribe: plugins={:?}", req.plugin_ids);
@@ -1697,7 +1702,7 @@ impl StateSync for OperationGrpcServer {
             }
         };
 
-        Ok(Response::new(Box::pin(stream)))
+        binding.response(Box::pin(stream)).await
     }
 
     async fn mutate(
@@ -3094,11 +3099,14 @@ impl OvsdbMirror for OperationGrpcServer {
         } else {
             req.bridge_name
         };
-        let endpoint = if req.endpoint.is_empty() {
-            "tcp:10.200.0.1:6653".to_string()
-        } else {
-            req.endpoint
-        };
+        let endpoint = req.endpoint.trim().to_string();
+        if endpoint.is_empty() {
+            return Ok(Response::new(OvsdbAttachControllerSafeResponse {
+                ok: false,
+                message: "OpenFlow controller address is unset".into(),
+                health: None,
+            }));
+        }
         match op_network::attach_controller_safe(&bridge, &endpoint).await {
             Ok(h) => {
                 let detail_json = serde_json::to_string(&h).unwrap_or_default();
@@ -5200,7 +5208,7 @@ impl PrivacyNetworkService for OperationGrpcServer {
                     management_ip: parsed
                         .get("management_ip")
                         .and_then(|v| v.as_str())
-                        .unwrap_or("10.200.0.1")
+                        .unwrap_or("")
                         .to_string(),
                     xray_config: parsed
                         .get("xray_config")

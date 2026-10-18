@@ -83,12 +83,16 @@ catalog, then prepare them in the golden subvolume:
 
 ```bash
 CXXFLAGS="-include cstdint" cargo build --workspace --release
-sudo env COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334 \
+sudo env COGNITIVE_QDRANT_URL=http://10.200.0.2:6334 \
   target/release/opblob seal-shm
 sudo target/release/opblob persist
-sudo deploy/runit/build-golden.sh --dry-run
-sudo deploy/runit/build-golden.sh
+sudo deploy/lib/golden/build-golden.sh --dry-run   # optional review
+sudo ./activate-golden.sh                          # prepare golden and release it
 ```
+
+`./activate-golden.sh` is the one deploy command: it runs the internal
+`build-golden.sh` helper, then `op-release-launch release` (two-slot overlay at
+`/opt/op-dbus/current`).
 
 `build-golden.sh` stops after staging and validating `/opt/op-dbus/golden`; it
 copies the exact persisted blobs and commit manifest into

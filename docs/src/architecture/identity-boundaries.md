@@ -207,7 +207,7 @@ the noise filter is **the sealed plugin schema that created the data**.
   episodes (chat and agent runs) and knowledge pushes are vectorized on
   commit through the same projector. `memory_store` already upserts
   `user_memory`; with the mandatory shuttle it always does.
-- `CognitiveMcpServer::new_durable` fails closed without Qdrant + a Voyage
+- `CognitiveServer::new_durable` fails closed without Qdrant + a Voyage
   key: cognitive methods report Unavailable until they are reachable.
 - Retrieval from the chain collection is cross-principal at the collection
   level; readers **must** filter by `actor_id`/`sealed_id_digest` payload

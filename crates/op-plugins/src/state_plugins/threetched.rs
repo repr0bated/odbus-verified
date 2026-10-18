@@ -320,9 +320,9 @@ esac
         let surface = ThreetchedSurface::capture_with_config(&binary, directory.path()).unwrap();
         let captured = Captured {
             state: ThreetchedState {
-                binary: "/usr/bin/threetched".into(),
-                manifest: "/usr/share/op-dbus/threetched/manifest.json".into(),
-                config_dir: "/var/lib/tched-router".into(),
+                binary: super::super::tched_router_paths::DEFAULT_BINARY.into(),
+                manifest: super::super::tched_router_paths::DEFAULT_MANIFEST.into(),
+                config_dir: super::super::tched_router_paths::DEFAULT_CONFIG_DIR.into(),
                 binary_sha256: surface.binary_sha256().into(),
                 manifest_sha256: "a".repeat(64),
                 surface: serde_json::to_value(surface.snapshot()).unwrap(),

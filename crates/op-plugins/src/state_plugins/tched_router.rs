@@ -267,10 +267,10 @@ pub struct UserContainerOptions {
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "sch.service.3tched-router-options.user-container.image@v1"))]
     pub image: String,
-    /// Cognitive MCP endpoint used by the user container memory flow.
+    /// Cognitive endpoint used by the user container memory flow.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "exp.service.3tched-router-options.user-container.mcp-endpoint@v1"))]
-    pub cognitive_mcp_endpoint: String,
+    pub cognitive_endpoint: String,
     /// Feature flags declared for the user container flow.
     #[serde(default)]
     #[schemars(extend("x-oscal-subid" = "sch.policy.3tched-router-options.user-container.features@v1"))]
@@ -1661,7 +1661,7 @@ impl TchedRouterPlugin {
                 ],
                 container_id_template: "ws-{username}".to_string(),
                 image: "images:debian/12".to_string(),
-                cognitive_mcp_endpoint: "unix:path=/run/opdbus/session-bus.sock".to_string(),
+                cognitive_endpoint: "unix:path=/run/opdbus/session-bus.sock".to_string(),
                 feature_flags: vec!["ghostbridge".to_string(), "semantic_search".to_string()],
             },
             identity_chain: IdentityOptions {

@@ -322,7 +322,7 @@ mod tests {
         std::fs::write(
             &grants_path,
             serde_json::to_vec(&serde_json::json!({
-                origin.principal_id(): {"capabilities": ["cognitive_mcp.read"]}
+                origin.principal_id(): {"capabilities": ["cognitive.read"]}
             }))
             .unwrap(),
         )

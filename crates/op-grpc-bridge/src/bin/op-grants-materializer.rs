@@ -249,7 +249,7 @@ mod tests {
             br#"{
                 "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
                     "display_alias": "jeremy-laptop",
-                    "capabilities": ["cognitive_mcp.read", "cognitive_mcp.invoke"]
+                    "capabilities": ["cognitive.read", "cognitive.invoke"]
                 }
             }"#,
         )
@@ -263,7 +263,7 @@ mod tests {
                 "$GUEST": {"capabilities": ["cap.data.cozo.system-graph.read@v1"]},
                 "937d6d2b-ecae-ed53-f3a2-d7bd09f544ff": {
                     "groups": ["$GUEST"],
-                    "capabilities": ["cognitive_mcp.read"]
+                    "capabilities": ["cognitive.read"]
                 }
             }"#,
         )

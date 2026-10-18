@@ -85,6 +85,9 @@ techops/
 /sso.txt
 /tenantid.txt
 /token.txt
+# Credential-bearing conversation exports retained locally by owner request
+/docs/notebooklm-sources-2026-10-15.zip
+/evidence/notebooklm-sources-2026-10-15.zip
 # agent/editor scratch backups
 *.bak-*
 

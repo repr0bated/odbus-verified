@@ -9,6 +9,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use zbus::{Connection, Proxy};
+use crate::openflow_permit::{FinalAdmission, OpenFlowPermitAuthority};
 
 const SERVICE: &str = "org.opdbus.v1.plugins.openflow";
 const PATH: &str = "/org/opdbus/v1/plugins/openflow";
@@ -80,26 +81,32 @@ struct CasRequest {
     operation: FlowMutationKind,
 }
 
-pub async fn dispatch_openflow_flow_method(
+/// The original admitted call is retained by `final_admission`; it is checked
+/// once more by the controller's authenticated callback at the effect boundary.
+pub async fn dispatch_openflow_flow_method_attributed(
+    authority: &OpenFlowPermitAuthority,
     method: &str,
     args: &Value,
+    final_admission: FinalAdmission,
 ) -> Result<OpenFlowMethodReceipt> {
-    let connection = tokio::time::timeout(Duration::from_secs(10), Connection::system())
-        .await
-        .context("OpenFlow owner bus connection timed out")?
-        .context("connect to the canonical OpenFlow D-Bus owner")?;
-    tokio::time::timeout(
-        CALL_TIMEOUT,
-        dispatch_openflow_flow_method_on(&connection, method, args),
-    )
-    .await
-    .context("OpenFlow compare/exchange timed out; reconcile the exact member before retrying")?
+    tokio::time::timeout(CALL_TIMEOUT,
+        dispatch_request(authority.connection(), method, args, Some((authority, final_admission))),
+    ).await.context("OpenFlow attributed compare/exchange timed out; outcome requires reconciliation, no automatic retry")?
 }
 
 pub(crate) async fn dispatch_openflow_flow_method_on(
     connection: &Connection,
     method: &str,
     args: &Value,
+) -> Result<OpenFlowMethodReceipt> {
+    dispatch_request(connection, method, args, None).await
+}
+
+async fn dispatch_request(
+    connection: &Connection,
+    method: &str,
+    args: &Value,
+    attributed: Option<(&OpenFlowPermitAuthority, FinalAdmission)>,
 ) -> Result<OpenFlowMethodReceipt> {
     let request = cas_request(method, args)?;
     let desired_json = serde_json::to_string(&request.desired)?;
@@ -109,10 +116,21 @@ pub(crate) async fn dispatch_openflow_flow_method_on(
         .map(serde_json::to_string)
         .transpose()?
         .unwrap_or_default();
-    let proxy = Proxy::new(connection, SERVICE, PATH, INTERFACE)
+    let permit = if let Some((authority, admission)) = attributed {
+        Some(authority.issue(&request.bridge, &desired_json, &expected_json, request.delete, admission).await?)
+    } else { None };
+    // Route to the pinned unique controller owner so a replacement cannot
+    // receive a permit created for its predecessor.
+    let destination = permit.as_ref().map_or(SERVICE, |permit| permit.controller.as_str());
+    let proxy = Proxy::new(connection, destination, PATH, INTERFACE)
         .await
         .context("create OpenFlow controller D-Bus proxy")?;
-    let response: String = proxy
+    let response: String = if let Some(permit) = &permit {
+        proxy.call("CompareExchangeFlowAttributed", &(
+            permit.id.as_str(), request.bridge.as_str(), desired_json.as_str(),
+            expected_json.as_str(), request.delete,
+        )).await.context("OpenFlow attributed compare/exchange failed; no automatic retry")?
+    } else { proxy
         .call(
             "CompareExchangeFlow",
             &(
@@ -123,7 +141,7 @@ pub(crate) async fn dispatch_openflow_flow_method_on(
             ),
         )
         .await
-        .context("OpenFlow native compare/exchange failed")?;
+        .context("OpenFlow native compare/exchange failed")? };
     let native: Value = serde_json::from_str(&response)
         .context("OpenFlow owner returned malformed compare/exchange readback")?;
     ensure!(

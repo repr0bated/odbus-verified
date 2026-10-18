@@ -7,7 +7,7 @@
 //! - gemma_brain routes to the selected model and applies compliance tags.
 //! - The chatbot is a DELEGATOR — forced tool calling is mandatory; even user
 //!   responses are emitted as tool calls (respond_to_user).
-//! - Chat persistence flows through the memory loop → cognitive-mcp.
+//! - Chat persistence flows through the memory loop → cognitive.
 //! - The agent loop is bounded (≥50 steps) and cancellable.
 
 use std::pin::Pin;

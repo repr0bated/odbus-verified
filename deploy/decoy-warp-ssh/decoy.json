@@ -1,11 +1,11 @@
 {
   "role": "decoy",
   "tun_id": 5,
-  "interface_name": "masque-ssh",
+  "interface_name": "rtly-lungs",
   "remote_tun_id": 5,
   "mtu": 1280,
-  "local_address": "192.168.254.2",
-  "peer_address": "192.168.254.1",
+  "local_address": "192.168.255.2",
+  "peer_address": "10.0.0.2",
   "ssh_user": "warp-link",
   "ssh_host": "188.68.58.237",
   "ssh_port": 2223,
@@ -16,14 +16,10 @@
   "rule_priority": 10,
   "remainder_table": 28053,
   "remainder_priority": 200,
-  "aliases": [
-    "192.168.255.2"
-  ],
+  "aliases": [],
   "routes": [
     "10.0.0.2/32",
-    "10.0.0.3/32",
-    "10.0.0.4/32",
-    "192.168.255.1/32"
+    "10.0.0.3/32"
   ],
   "egress": {
     "physical_interface": "enp0s6",
@@ -104,10 +100,6 @@
       {
         "prefix": "169.254.0.0/16",
         "dev": "enp0s6"
-      },
-      {
-        "prefix": "192.168.254.0/30",
-        "dev": "masque-ssh"
       },
       {
         "prefix": "162.159.198.2/32",

@@ -5,8 +5,8 @@ StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-ExecStartPre=/usr/local/libexec/3tched/3tchedfs-mount-preflight
-ExecStart=/usr/local/bin/threetched-fs --store /usr/share/op-dbus/lungs-view mount --state /usr/share/op-dbus/lungs-empty-state --catalog /usr/share/op-dbus/lungs-catalog --lungs-socket /run/opdbus/lungs/lungs.sock --allow-other --auto-unmount /run/mount/3tchedFS
+# mount(8) reads fstab; its helper stays in the foreground under this service.
+ExecStart=/usr/bin/mount /run/mount/3tchedfs
 Restart=on-failure
 RestartSec=5s
 TimeoutStopSec=20s

@@ -64,21 +64,16 @@ OpenCode's connected provider catalog and excludes the `openrouter` provider.
 The live catalog path preserves the configured alias options so the local
 transport marker reaches the factory without entering an upstream request.
 
-Patch 0002 also installs a token-light `System graph:` reminder on every
-in-process inference made through the canonical provider factory. The provider
-wrapper owns this trusted system line; the bridge leaves flattened threetched user
-prompts unchanged. All unary and streaming interfaces reconstruct it at each
-request, including autonomous tool iterations and after context compaction.
-Only the exact leading line in system-role content is deduplicated; arbitrary
-user/tool text cannot suppress or replace it. Configured `messages` overrides
-retain their content and settings while receiving the same reminder in their
-winning serialized messages. System-merge model presets remain respected.
-The reminder performs no graph read and grants no capabilities. It directs
-identity-bound 3tchedFS discovery and provenance/coverage checks. Opaque turns
-inside external CLI providers and IDE model inference are outside this threetched
-guarantee. Activation requires a new provenance-verified threetched build and the
-normal prepared-snapshot release; changing this source does not update the
-running executable.
+Patch 0002 also installs a short evidence-grounding reminder at the provider
+boundary. It tells the model to answer the current request and distinguish
+actual tool results from tool descriptions. It does not name a database,
+request an unrelated discovery operation, or imply tools are available to
+provider-only generation. The earlier unconditional Cozo graph instruction
+was removed because it steered unrelated questions toward the same graph.
+The existing wrapper preserves message roles, provider dispatch, credentials,
+and tool grants across unary and streaming calls. This prompt guidance is
+not proof of retrieval or enforcement of answer correctness. Activation
+requires a new provenance-verified threetched build and received release.
 
 The HTTP contract was checked against OpenCode 1.18.31's generated OpenAPI:
 `GET /provider`, `POST /session`, `POST /session/:id/message`,

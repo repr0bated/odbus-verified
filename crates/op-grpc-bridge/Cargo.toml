@@ -57,7 +57,7 @@ op-identity = { path = "../op-identity" }
 op-network = { path = "../op-network" }
 op-cozo-store = { path = "../op-cozo-store" }
 op-mcp.workspace = true
-op-cognitive-mcp = { path = "../op-cognitive-mcp" }
+op-cognitive = { path = "../op-cognitive" }
 op-agents = { path = "../op-agents" }
 op-llm = { path = "../op-llm" }
 op-xray-daemon = { path = "../op-xray-daemon" }

@@ -468,7 +468,7 @@ async fn resolve_context(
                 .filter(|cap| {
                     matches!(
                         cap.as_str(),
-                        "chat.context" | "cognitive_mcp.read" | "cognitive_mcp.memory.write"
+                        "chat.context" | "cognitive.read" | "cognitive.memory.write"
                     )
                 })
                 .cloned()
@@ -485,8 +485,8 @@ async fn resolve_context(
                     matches!(
                         cap.as_str(),
                         "chat.context"
-                            | "cognitive_mcp.read"
-                            | "cognitive_mcp.memory.write"
+                            | "cognitive.read"
+                            | "cognitive.memory.write"
                             | "workflows.read"
                             | "workflows.execute"
                     )
@@ -516,8 +516,8 @@ async fn resolve_context(
                     matches!(
                         cap.as_str(),
                         "chat.context"
-                            | "cognitive_mcp.read"
-                            | "cognitive_mcp.memory.write"
+                            | "cognitive.read"
+                            | "cognitive.memory.write"
                             | "notebooklm.read"
                             | "notebooklm.query"
                     )

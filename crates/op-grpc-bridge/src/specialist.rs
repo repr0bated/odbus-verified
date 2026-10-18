@@ -1,4 +1,4 @@
-//! `cognitive_mcp.specialist` — a persona assembled per call from the shared
+//! `cognitive.specialist` — a persona assembled per call from the shared
 //! piece pool and answered by the selected router model.
 //!
 //! Owner direction (2026-09-19): static agents are recreated dynamically from
@@ -15,10 +15,10 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use anyhow::Context as _;
 use op_agents::dynamic::{AssembledPersona, PieceLibrary, TaskContext, assemble};
-use op_cognitive_mcp::CognitiveMcpServer;
-use op_cognitive_mcp::context_awareness::ActivityType;
-use op_cognitive_mcp::memory_store::EntryQuery;
-use op_plugins::state_plugins::cognitive_mcp::{
+use op_cognitive::CognitiveServer;
+use op_cognitive::context_awareness::ActivityType;
+use op_cognitive::memory_store::EntryQuery;
+use op_plugins::state_plugins::cognitive::{
     SpecialistInput, SpecialistOutput, SpecialistPersona,
 };
 use op_plugins::state_plugins::tched_router::{ChatInput, TchedChatMessage};
@@ -49,7 +49,7 @@ pub const PIECES_NAMESPACE: &str = "agent_pieces";
 
 /// Prompt budget for the assembled persona (chars, before the question).
 const PERSONA_BUDGET_CHARS: usize = 12_000;
-/// Hot executors a specialist may direct. These are HOT `cognitive_mcp`
+/// Hot executors a specialist may direct. These are HOT `cognitive`
 /// methods the caller can invoke next; the persona is told they exist.
 const EXECUTORS: [&str; 3] = ["rust_pro", "python_pro", "typescript_pro"];
 
@@ -229,7 +229,7 @@ pub async fn consult_catalog_agent(
         agent.operations().contains(&operation),
         "specialist: Persona agent '{agent_type}' does not support operation '{operation}'"
     );
-    let advisor_operation: op_plugins::state_plugins::cognitive_mcp::AdvisorOperation =
+    let advisor_operation: op_plugins::state_plugins::cognitive::AdvisorOperation =
         serde_json::from_value(serde_json::Value::String(operation.to_string()))
             .with_context(|| format!("specialist: invalid advisor operation '{operation}'"))?;
     let question = question.trim();
@@ -290,7 +290,7 @@ async fn consult_input(
     crate::tched_router_admission::readmit_call(
         engine,
         admitted_schema,
-        "cognitive_mcp",
+        "cognitive",
         authority_method,
         &crate::tched_router_admission::RouterCaller {
             actor: caller.actor_id.to_owned(),
@@ -312,7 +312,7 @@ async fn consult_input(
         },
     )
     .await?;
-    let runtime = engine.cognitive_mcp().await?;
+    let runtime = engine.cognitive().await?;
     let scope = caller.scope().to_string();
     // The memory the specialist may draw on is the caller's selected mode.
     let context = route.context.clone();
@@ -410,7 +410,7 @@ async fn consult_input(
         engine,
         admitted_schema,
         caller,
-        "cognitive_mcp",
+        "cognitive",
         authority_method,
     )?;
     let output = if route.mode == op_plugins::state_plugins::project::ChatMode::ControlPlane {
@@ -460,7 +460,7 @@ pub(crate) async fn assemble_for_task(
     engine: &MutationEngine,
     task: &TaskContext,
 ) -> AssembledPersona {
-    if let Ok(runtime) = engine.cognitive_mcp().await {
+    if let Ok(runtime) = engine.cognitive().await {
         refresh_memory_pieces(runtime).await;
     }
     let library = LIBRARY.read().await;
@@ -475,7 +475,7 @@ fn operation_name(input: &SpecialistInput) -> String {
 }
 
 /// Recent session signals from the context engine, as short lines.
-pub(crate) async fn activity_lines(runtime: &CognitiveMcpServer, scope: &str) -> Vec<String> {
+pub(crate) async fn activity_lines(runtime: &CognitiveServer, scope: &str) -> Vec<String> {
     let Some(signals) = runtime.context_engine().get_session_signals(scope).await else {
         return Vec::new();
     };
@@ -511,7 +511,7 @@ pub(crate) async fn activity_lines(runtime: &CognitiveMcpServer, scope: &str) ->
 /// namespace(s) of the selected mode and the shared pieces namespace,
 /// filtered by task terms.
 pub(crate) async fn memory_snippets(
-    runtime: &CognitiveMcpServer,
+    runtime: &CognitiveServer,
     namespaces: &[String],
     task: &TaskContext,
 ) -> Vec<String> {
@@ -561,7 +561,7 @@ pub(crate) async fn memory_snippets(
 }
 
 /// Merge the `agent_pieces` namespace into the shared pool.
-async fn refresh_memory_pieces(runtime: &CognitiveMcpServer) {
+async fn refresh_memory_pieces(runtime: &CognitiveServer) {
     let store = runtime.memory_store();
     let Ok(Some(_)) = store.get_namespace_by_name(PIECES_NAMESPACE).await else {
         return;

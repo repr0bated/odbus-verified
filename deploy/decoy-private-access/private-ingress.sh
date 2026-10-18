@@ -52,7 +52,7 @@ receipt_valid() {
         table:"op_decoy_private_ingress",
         chain:"input",
         priority:-20,
-        interfaces:["lo","tun5","wg-opdbus","wg0"],
+        interfaces:["lo","rtly-lungs","wg-opdbus","wg0"],
         tcp_ports:[22,9443]
       }
     ' "$receipt" >/dev/null 2>&1
@@ -91,7 +91,7 @@ table_exact() {
       ($rules[0].expr | length) == 3 and
       $rules[0].expr[0].match.op == "!=" and
       $rules[0].expr[0].match.left == {meta:{key:"iifname"}} and
-      ($rules[0].expr[0].match.right.set | sort) == ["lo","tun5","wg-opdbus","wg0"] and
+      ($rules[0].expr[0].match.right.set | sort) == ["lo","rtly-lungs","wg-opdbus","wg0"] and
       $rules[0].expr[1].match.op == "==" and
       $rules[0].expr[1].match.left == {payload:{protocol:"tcp",field:"dport"}} and
       ($rules[0].expr[1].match.right.set | sort) == [22,9443] and
@@ -103,7 +103,7 @@ write_receipt() {
     tmp_receipt=$(mktemp "$state/.receipt.XXXXXXXX")
     chmod 0600 "$tmp_receipt"
     cat >"$tmp_receipt" <<'JSON'
-{"format":"op-decoy-private-ingress/v1","family":"inet","table":"op_decoy_private_ingress","chain":"input","priority":-20,"interfaces":["lo","tun5","wg-opdbus","wg0"],"tcp_ports":[22,9443]}
+{"format":"op-decoy-private-ingress/v1","family":"inet","table":"op_decoy_private_ingress","chain":"input","priority":-20,"interfaces":["lo","rtly-lungs","wg-opdbus","wg0"],"tcp_ports":[22,9443]}
 JSON
     mv -- "$tmp_receipt" "$receipt"
     tmp_receipt=
@@ -117,7 +117,7 @@ table inet op_decoy_private_ingress {
   comment "op-decoy-private-ingress-owned"
   chain input {
     type filter hook input priority -20; policy accept;
-    iifname != { "lo", "tun5", "wg-opdbus", "wg0" } tcp dport { 22, 9443 } drop comment "op-decoy-private-ingress-deny"
+    iifname != { "lo", "rtly-lungs", "wg-opdbus", "wg0" } tcp dport { 22, 9443 } drop comment "op-decoy-private-ingress-deny"
   }
 }
 NFT

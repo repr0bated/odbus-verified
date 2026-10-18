@@ -27,7 +27,7 @@ network exists, provisions users, generates key material, and configures packet 
 ## Notes
 
 - Ties into A.N.N.A. Scribe identity notarization and Netmaker WireGuard addressing
-  (see cognitive-mcp gateway at `100.90.37.254`).
+  (historical addressing; current MCP admission uses the authenticated bridge door at `:8090`).
 - Key generation results are sensitive; private keys must never be logged.
 
 ## Gaps / Assumptions

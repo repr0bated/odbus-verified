@@ -14,6 +14,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::common::oscal::validate_subid;
+use super::oscal_field_classification::{
+    ASSESS_CAPABILITY, FieldAssessment, FieldSource, FieldSourcePin, ReviewedFieldRules,
+    assess_sealed,
+};
 use super::oscal_subid_registry::OscalSubidCategory;
 use super::runtime_documents::RuntimeDocuments;
 
@@ -369,6 +373,11 @@ pub struct ExportOutput {
 #[serde(deny_unknown_fields)]
 struct AnnotationDocument {
     annotations: BTreeMap<String, PrivateAnnotation>,
+    // Optional for old documents, deliberately NOT a default/empty authority.
+    // Initialization and review publication need the owner-reviewed release
+    // seed/CAS lifecycle; reads and legacy register must never initialize it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    field_classification: Option<ReviewedFieldRules>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -440,6 +449,49 @@ impl OscalSubidRegistryMethods {
             _ => bail!("unknown oscal_subid_registry method: {method}"),
         };
         Ok(output)
+    }
+
+    /// The bridge supplies source bytes/pins from the same manifest as method
+    /// admission. No caller-provided schema, rules, revision, or classes enter
+    /// this path. Reading is not initialization, including after data loss.
+    pub async fn assess_fields(
+        &self,
+        context: &OscalInvocationContext,
+        source: FieldSourcePin,
+        schema_json: String,
+    ) -> Result<FieldAssessment> {
+        require_context(context, ASSESS_CAPABILITY)?;
+        let FieldSource::Sealed { catalog_hash, .. } = &source.source else {
+            bail!("runtime field assessment requires a sealed source");
+        };
+        let catalog_hash = catalog_hash.clone();
+        self.catalog_pin.verify_current(&catalog_hash)?;
+        let row = self.documents.read(DOCUMENT_ID).await?;
+        let document_revision = row.as_ref().map_or(0, |row| row.revision);
+        let document = parse_annotation_document(row.map(|row| row.document))
+            .map_err(|_| anyhow::anyhow!("OSCAL field authority document is invalid"))?;
+        let assessment = tokio::task::spawn_blocking(move || {
+            assess_sealed(
+                source,
+                &schema_json,
+                document
+                    .field_classification
+                    .as_ref()
+                    .map(|rules| (rules, document_revision)),
+            )
+        })
+        .await??;
+        ensure!(
+            self.documents
+                .read(DOCUMENT_ID)
+                .await?
+                .as_ref()
+                .map_or(0, |row| row.revision)
+                == document_revision,
+            "OSCAL field authority changed during assessment"
+        );
+        self.catalog_pin.verify_current(&catalog_hash)?;
+        Ok(assessment)
     }
 
     pub async fn register(
@@ -1275,6 +1327,88 @@ mod tests {
             .unwrap_err();
         assert!(error.to_string().contains("sealed catalog changed"));
         assert_eq!(pin.0.load(Ordering::SeqCst), 2);
+    }
+
+    fn field_fixture() -> (FieldSourcePin, String) {
+        (
+            FieldSourcePin {
+                plugin_id: "fixture".into(),
+                schema_version: "1.0.0".into(),
+                source: FieldSource::Sealed {
+                    catalog_hash: "a".repeat(64),
+                    schema_hash: "b".repeat(64),
+                },
+            },
+            json!({"name":"fixture","version":"1.0.0","fields":{},"methods":{},"signals":[]})
+                .to_string(),
+        )
+    }
+
+    #[tokio::test]
+    async fn field_assessment_requires_exact_capability_and_never_initializes_authority() {
+        let documents = Arc::new(RuntimeDocuments::new(
+            CozoGraphShuttle::new_in_memory().unwrap(),
+        ));
+        let service = OscalSubidRegistryMethods::from_shared(
+            documents.clone(),
+            Arc::new(Pin(Mutex::new("a".repeat(64)))),
+        );
+        let (source, schema) = field_fixture();
+        assert!(
+            service
+                .assess_fields(&context(READ_CAPABILITY), source.clone(), schema.clone())
+                .await
+                .is_err()
+        );
+        let assessment = service
+            .assess_fields(&context(ASSESS_CAPABILITY), source, schema)
+            .await
+            .unwrap();
+        assert_eq!(
+            assessment.authority,
+            super::super::oscal_field_classification::FieldAuthority::Unavailable
+        );
+        assert!(!assessment.boundary_coverage_complete);
+        assert!(documents.read(DOCUMENT_ID).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn field_assessment_rechecks_catalog_and_rejects_corrupt_authority() {
+        let documents = Arc::new(RuntimeDocuments::new(
+            CozoGraphShuttle::new_in_memory().unwrap(),
+        ));
+        let service = OscalSubidRegistryMethods::from_shared(
+            documents.clone(),
+            Arc::new(ChangesAfterFirstCheck(AtomicUsize::new(0))),
+        );
+        let (source, schema) = field_fixture();
+        assert!(
+            service
+                .assess_fields(&context(ASSESS_CAPABILITY), source.clone(), schema.clone())
+                .await
+                .unwrap_err()
+                .to_string()
+                .contains("sealed catalog changed")
+        );
+        documents
+            .update(DOCUMENT_ID, |_| {
+                Ok(json!({"annotations":{},"field_classification":{"secret":"must-not-appear"}}))
+            })
+            .await
+            .unwrap();
+        let service = OscalSubidRegistryMethods::from_shared(
+            documents,
+            Arc::new(Pin(Mutex::new("a".repeat(64)))),
+        );
+        let error = service
+            .assess_fields(&context(ASSESS_CAPABILITY), source, schema)
+            .await
+            .unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "OSCAL field authority document is invalid"
+        );
+        assert!(!format!("{error:#}").contains("must-not-appear"));
     }
 
     #[test]

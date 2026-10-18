@@ -1352,7 +1352,7 @@ mod tests {
         for i in 0..3 {
             original.record_method_call(
                 "actor".to_string(),
-                "cognitive_mcp".to_string(),
+                "cognitive".to_string(),
                 format!("get_health{i}"),
                 None,
                 "{\"a\":1}",
@@ -1404,9 +1404,9 @@ mod tests {
                 Some("session-7".into()),
                 Some("genesis-7".into()),
                 Some("f00d".repeat(16)),
-                "cognitive_mcp".into(),
+                "cognitive".into(),
                 "memory_store".into(),
-                Some("cognitive_mcp.invoke".into()),
+                Some("cognitive.invoke".into()),
                 r#"{"text":"remember this","password":"do-not-persist"}"#,
             )
             .clone();

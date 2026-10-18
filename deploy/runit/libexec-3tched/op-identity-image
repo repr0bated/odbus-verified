@@ -132,7 +132,7 @@ resolve_guest_path() {
 prepare_mountpoint_dirs() {
     local rel path component
     local -a parts=()
-    for rel in run run/mount run/mount/3tchedFS run/opdbus run/opdbus/lungs; do
+    for rel in run run/mount run/mount/3tchedfs run/opdbus run/opdbus/lungs; do
         path=$GUEST
         IFS=/ read -r -a parts <<< "$rel"
         for component in "${parts[@]}"; do
@@ -240,7 +240,7 @@ layout_json() {
        runtime_mounts:[
          {path:"/run",owner:"incus-profile:3tched-lungs",filesystem:"tmpfs",lifetime:"per-start",seed_storage:false},
          {path:"/run/opdbus/lungs",source:"/run/opdbus/lungs",owner:"incus-profile:3tched-lungs",filesystem:"bind",guest_mode:"ro",lifetime:"per-start",seed_storage:false},
-         {path:"/run/mount/3tchedFS",owner:"host",filesystem:"fuse.3tchedFS",lifetime:"per-start",seed_storage:false},
+         {path:"/run/mount/3tchedfs",owner:"guest:3tchedfs.service",filesystem:"fuse.3tchedFS",lifetime:"per-start",seed_storage:false},
          {path:"/dev/shm/opdbus-physical-lungs/<native-session-uuid>",owner:"host",filesystem:"tmpfs",lifetime:"per-boot",seed_storage:false}
        ]}'
 }

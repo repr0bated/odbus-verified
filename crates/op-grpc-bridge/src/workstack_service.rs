@@ -107,7 +107,7 @@ impl ToolExecutor for BridgeTools {
             let result = self
                 .0
                 .dispatch_method_call_with_identity(
-                    "cognitive_mcp",
+                    "cognitive",
                     &name,
                     &args,
                     catalog.declaration.required_capability.as_deref(),

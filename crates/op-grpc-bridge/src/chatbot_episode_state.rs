@@ -25,7 +25,7 @@ pub(crate) const READ_CAPABILITY: &str = "chatbot.read";
 // The generic Cozo plugin deliberately exposes native queries and archives.
 // Its database must never contain the private episode owner's relations.
 pub(crate) fn require_distinct_database_paths(episode: &str) -> Result<()> {
-    let cognitive = std::env::var("COGNITIVE_MCP_DB_PATH")
+    let cognitive = std::env::var("COGNITIVE_DB_PATH")
         .unwrap_or_else(|_| "/var/lib/op-dbus/cognitive-memory.db".into());
     distinct_databases(
         std::path::Path::new(episode),
@@ -816,14 +816,14 @@ mod tests {
 
         // A knowledge push is the same owned effect: durable row, private
         // document child, owner-key wake — and the episode window is intact.
-        let push = op_cognitive_mcp::context_awareness::KnowledgePush {
+        let push = op_cognitive::context_awareness::KnowledgePush {
             id: "push-1".into(),
             session_id: scope.session_id.clone(),
-            trigger: op_cognitive_mcp::context_awareness::PushTrigger::ErrorAssistance,
+            trigger: op_cognitive::context_awareness::PushTrigger::ErrorAssistance,
             trigger_reason: "repeated build error".into(),
             relevance_score: 0.9,
             timestamp: chrono::Utc::now(),
-            content: op_cognitive_mcp::context_awareness::KnowledgeContent::ToolGuidance {
+            content: op_cognitive::context_awareness::KnowledgeContent::ToolGuidance {
                 tool_name: "rust_pro".into(),
                 usage_tips: vec!["check first".into()],
                 example_usage: serde_json::Value::Null,

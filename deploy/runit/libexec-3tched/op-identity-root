@@ -1,7 +1,7 @@
 #!/bin/sh
 # op-identity-root — bring identities up from their own devices (OD-86).
-# Installed by the release at /usr/local/libexec/3tched/op-identity-root and
-# run at boot by the identity-roots runit service after incusd.
+# Installed by the host storage owner at /usr/local/libexec/3tched/op-identity-root
+# and run at boot by the identity-roots runit service after incus.
 #
 # Legacy commands use identity.img plus overlay roots. Explicit seed-* commands
 # instead use one shared physical SEED partition with a private writable leaf;
@@ -45,7 +45,7 @@
 #   POOL=identity-roots                    Incus dir pool for identity roots
 #   LUNGS_RUN=/run/opdbus-lungs
 #   LUNGS_SOCKET=/run/opdbus/lungs/lungs.sock    the bridge's shared lungs socket
-#   THREETCHED_FS=/usr/local/bin/threetched-fs    the release binary
+#   THREETCHED_FS=/usr/local/libexec/op-dbus/bin/threetched-fs    the host release binary
 #   OP_IDENTITY_IMAGE_HELPER=/usr/local/libexec/3tched/op-identity-image
 set -u
 
@@ -58,7 +58,10 @@ POOL=${POOL:-identity-roots}
 POOL_PATH=/var/lib/incus/storage-pools/$POOL/containers
 LUNGS_RUN=${LUNGS_RUN:-/run/opdbus-lungs}
 LUNGS_SOCKET=${LUNGS_SOCKET:-/run/opdbus/lungs/lungs.sock}
-THREETCHED_FS=${THREETCHED_FS:-/usr/local/bin/threetched-fs}
+# Backing socket inside the dedicated Incus directory bind. Guest tmpfiles
+# exposes it at /run/3tched-lungs.socket; never bind the host's entire /run.
+GUEST_LUNGS_SOCKET=${GUEST_LUNGS_SOCKET:-/run/opdbus/lungs/lungs.sock}
+THREETCHED_FS=${THREETCHED_FS:-/usr/local/libexec/op-dbus/bin/threetched-fs}
 STATE=/dev/shm/opdbus/state
 CATALOG=/dev/shm/opdbus/plugin-blobs
 
@@ -216,31 +219,53 @@ mount_root() {
         -o "lowerdir=$SEEDS_IDMAP,upperdir=$dir/upper,workdir=$dir/work" "$root"
 }
 
-mount_lungs() {
+# Attach the bridge's shared lungs socket to one identity.
+#
+# The socket is the only thing the host puts in place. The identity mounts its
+# own 3tchedFS from inside, through the seed's `3tchedfs.service`, so the view
+# is rendered in the identity's own namespace instead of being a host mount
+# handed across the boundary.
+#
+# One socket serves every identity: a Unix socket's identity is per
+# connection, and the bridge resolves each accepted peer to exactly one
+# running committed container. The guest therefore passes no session argument
+# — it calls BindCurrentContainer() and the kernel names it.
+attach_lungs_socket() {
     session=$1
-    lungs=$LUNGS_RUN/$session
-    mountpoint -q "$lungs" && return 0
-    install -d -m 0700 "$LUNGS_RUN"
-    install -d -m 0755 "$lungs"
-    store=$LUNGS_RUN/.store-$session
-    "$THREETCHED_FS" --store "$store" capture \
-        --catalog "$CATALOG" --state "$STATE" >/dev/null || return 1
-    # The bridge's shared lungs socket, bound to this session per connection;
-    # otherwise the lungs fall back to a SID1 registration on the shared bus.
-    if [ -S "$LUNGS_SOCKET" ]; then
-        set -- --lungs-socket "$LUNGS_SOCKET" --lungs-session "$session"
+    [ -S "$LUNGS_SOCKET" ] || { log "$session: bridge lungs socket absent"; return 1; }
+    # A directory bind, not the socket file: the bridge may recreate the
+    # socket on restart, and a file bind would pin the old inode.
+    socket_dir=$(dirname "$LUNGS_SOCKET")
+    guest_dir=$(dirname "$GUEST_LUNGS_SOCKET")
+    case "$socket_dir:$guest_dir" in
+        /:*|/run:*|*:/|*:/run)
+            log "$session: lungs requires dedicated host and guest socket directories"
+            return 1
+            ;;
+    esac
+    if incus config device get "$session" lungs source >/dev/null 2>&1; then
+        incus config device set "$session" lungs \
+            source="$socket_dir" path="$guest_dir" readonly=true
     else
-        set -- --lungs-credential "$IDENTITIES/$session/device/credential/sid1"
+        incus config device add "$session" lungs disk \
+            source="$socket_dir" path="$guest_dir" readonly=true >/dev/null
     fi
-    setsid "$THREETCHED_FS" --store "$store" mount \
-        --allow-other --auto-unmount --state "$STATE" "$@" \
-        "$lungs" </dev/null >"$LUNGS_RUN/$session.log" 2>&1 &
-    i=0
-    until mountpoint -q "$lungs"; do
-        i=$((i + 1))
-        [ "$i" -ge 20 ] && { log "$session: lungs did not mount"; return 1; }
-        sleep 0.5
-    done
+}
+
+# Remove a retired host-side lungs mount and its Incus disk device.
+#
+# Earlier releases mounted 3tchedFS on the host per session and bound that
+# mount in at /opt/run-mounts/3tched. Identities that were provisioned then
+# still carry the device, so starting one would otherwise keep the host mount
+# alive beside the in-guest one.
+retire_host_lungs_mount() {
+    session=$1
+    if incus config device get "$session" 3tched source >/dev/null 2>&1; then
+        incus config device remove "$session" 3tched >/dev/null 2>&1 ||
+            log "$session: could not remove the retired 3tched disk device"
+    fi
+    mountpoint -q "$LUNGS_RUN/$session" && umount "$LUNGS_RUN/$session"
+    return 0
 }
 
 up_one() {
@@ -252,18 +277,11 @@ up_one() {
     mount_device "$session" || { log "$session: device failed"; return 1; }
     ensure_soul "$session" || log "$session: soul subvolumes failed"
     mount_root "$session" || { log "$session: root overlay failed"; return 1; }
-    if mount_lungs "$session"; then
-        # The identity sees its lungs at /opt/run-mounts/3tched. Writes there
-        # are its calls, so the bind is writable; each file still enforces
-        # what it accepts.
-        if incus config device get "$session" 3tched source >/dev/null 2>&1; then
-            incus config device set "$session" 3tched source="$LUNGS_RUN/$session" readonly=false
-        else
-            incus config device add "$session" 3tched disk \
-                source="$LUNGS_RUN/$session" path=/opt/run-mounts/3tched >/dev/null
-        fi
+    retire_host_lungs_mount "$session"
+    if attach_lungs_socket "$session"; then
+        log "$session: lungs socket attached at $GUEST_LUNGS_SOCKET"
     else
-        log "$session: lungs failed; identity starts without them"
+        log "$session: lungs socket unavailable; identity starts without them"
     fi
     if container_running "$session"; then
         return 0
@@ -1345,9 +1363,12 @@ seed-up|seed-down|seed-check|seed-lungs)
     seed_mode "$command" "$1"
     ;;
 up)
+    [ "$#" -gt 0 ] || set -- $(all_sessions)
+    # An empty inventory needs no lower mount or seed validation. In particular,
+    # application bootstrap must work before the first identity is provisioned.
+    [ "$#" -gt 0 ] || { log "no legacy identity roots to restore"; exit 0; }
     ensure_lower || { log "Raccoon lower layer unavailable"; exit 1; }
     validate_seed_defaults || exit 1
-    [ "$#" -gt 0 ] || set -- $(all_sessions)
     failed=0
     for session in "$@"; do
         up_one "$session" || failed=$((failed + 1))

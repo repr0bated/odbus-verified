@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use simd_json::prelude::*;
 
-use super::cognitive_mcp::SpecialistOutput;
+use super::cognitive::SpecialistOutput;
 use super::plugin_scaffold_helpers::method_decl_from_schemars_with_output;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -201,9 +201,9 @@ fn declaration<Input: JsonSchema, Output: JsonSchema>(
     side: SideEffect,
     idempotent: bool,
 ) -> MethodDecl {
-    let capability = format!("cognitive_mcp.agent.{}", sanitized(agent));
+    let capability = format!("cognitive.agent.{}", sanitized(agent));
     let subid = format!(
-        "{}.service.cognitive-mcp.agent.{}.{}@v1",
+        "{}.service.cognitive.agent.{}.{}@v1",
         if side == SideEffect::Read {
             "obs"
         } else {

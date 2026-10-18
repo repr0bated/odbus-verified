@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use anyhow::{Result, ensure};
 
-pub const DEFAULT_BINARY: &str = "/usr/bin/threetched";
+pub const DEFAULT_BINARY: &str = "/usr/local/libexec/op-dbus/threetched/threetched";
 pub const DEFAULT_CONFIG_DIR: &str = "/var/lib/tched-router";
 pub const DEFAULT_MANIFEST: &str = "/usr/share/op-dbus/threetched-manifests/tched-router.json";
 

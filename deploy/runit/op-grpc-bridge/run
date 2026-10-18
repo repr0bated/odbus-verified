@@ -1,4 +1,8 @@
 #!/bin/sh
+# op-dbus-release: application
+# The controller publishes these shipped bytes to the canonical SHM catalog.
+# SchemaLoader (server.rs GetSchema) caches them until bridge restart/reload.
+# op-dbus-consumes: /usr/share/op-dbus/plugin-blobs
 exec 2>&1
 
 # Explicit root-owned initialization selector; absent during normal boot.
@@ -45,8 +49,6 @@ wait_dep op-runit-systemctl
 wait_dep op-session-bus
 wait_dep identity-roots
 wait_dep ovsdb-server
-wait_dep op-warp-ssh-host
-wait_dep op-warp-ssh-routes
 wait_dep tched-router
 # Identity storage restoration is owned independently by identity-roots. The
 # bridge waits for the storage owner's readiness before restoring active
@@ -58,7 +60,6 @@ wait_dep tched-router
 set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
 [ -r /etc/op-dbus/decoy-network-client.env ] && . /etc/op-dbus/decoy-network-client.env
-[ -r /etc/op-dbus/warp-ssh.env ] && . /etc/op-dbus/warp-ssh.env
 set +a
 
 # A dedicated directory can be mounted through Incus without exposing the
@@ -142,10 +143,19 @@ wait_for_ipv4() {
     done
 }
 
-# Owner selected the SSH-TUN cutover (2026-10-05): the door's address carrier
-# is tun5. The retired "3tched" OVS interface default no longer exists.
-# MQTT stays on ovsbr0; certificate filenames retain their svc0 names.
-wait_for_ipv4 "${OP_GRPC_DOOR_INTERFACE:-tun5}" 10.0.0.2 "${OP_GRPC_3TCHED_WAIT_SECS:-90}"
+# The base-network owner supplies the private host endpoint. Application
+# startup observes that address, not the transport or interface that delivers
+# remote traffic to it. It must never create an interface, route or fallback
+# public listener. Certificate filenames retain their tonic-svc0 names.
+elapsed=0
+until has_local_ipv4 10.0.0.2; do
+    elapsed=$((elapsed + 1))
+    if [ "$elapsed" -ge "${OP_GRPC_3TCHED_WAIT_SECS:-90}" ]; then
+        echo "private host door address 10.0.0.2 is not assigned; base-network owner must provision it" >&2
+        exit 1
+    fi
+    sleep 1
+done
 wait_for_ipv4 ovsbr0 10.0.0.3 "${OP_GRPC_MQTT_WAIT_SECS:-90}"
 
 # `:8090` is tonic on 10.0.0.2, with the internal certificate.
@@ -157,7 +167,7 @@ export TCHED_ROUTER_UNIX_SOCKET="${TCHED_ROUTER_UNIX_SOCKET:-/run/opdbus/grpc.so
 export TCHED_ROUTER_TLS_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE:-/etc/op-dbus/tls/tonic-svc0.crt}"
 export TCHED_ROUTER_TLS_KEY_FILE="${TCHED_ROUTER_TLS_KEY_FILE:-/etc/op-dbus/tls/tonic-svc0.key}"
 unset TCHED_ROUTER_BROWSER_TLS_BIND_ADDR TCHED_ROUTER_BROWSER_TLS_CERT_FILE TCHED_ROUTER_BROWSER_TLS_KEY_FILE
-/usr/local/libexec/3tched/emqx-prepare
+/usr/local/libexec/op-dbus/helpers/emqx-prepare
 export OP_EMQX_EXHOOK_ENABLE=1
 export OP_EMQX_EXHOOK_BIND_ADDR=127.0.0.1:9000
 export OP_EMQX_EXHOOK_SERVER_CERT_FILE="${TCHED_ROUTER_TLS_CERT_FILE}"
@@ -178,13 +188,13 @@ export OP_DBUS_CACHE_DIR="${OP_DBUS_CACHE_DIR:-/var/lib/opdbus/cache}"
 export OPDBUS_CACHE_PLACEMENT="${OPDBUS_CACHE_PLACEMENT:-local}"
 export OPDBUS_CACHE_MEMORY_POLICY="${OPDBUS_CACHE_MEMORY_POLICY:-default}"
 export OPDBUS_NUMA_POLICY="${OPDBUS_NUMA_POLICY:-localalloc}"
-export OP_MCP_AUDIENCE_POLICY_PATH="${OP_MCP_AUDIENCE_POLICY_PATH:-/etc/opdbus/mcp-audience-policy.json}"
+export OP_MCP_AUDIENCE_POLICY_PATH=/usr/share/op-dbus/etc/opdbus/mcp-audience-policy.json
 export OP_MCP_TOOLSETS_PATH="${OP_MCP_TOOLSETS_PATH:-/etc/opdbus/mcp-toolsets.json}"
 export OP_IDENTITY_PROJECTION_GROUP="${OP_IDENTITY_PROJECTION_GROUP:-secrets}"
-# jacob-bd nlm lives at /usr/local/bin/nlm. Never put NOTEBOOKLM_COOKIES in this
+# jacob-bd nlm lives in the release binary target. Never put NOTEBOOKLM_COOKIES in this
 # environment — those vars freeze stale auth over the on-disk profile.
 unset NOTEBOOKLM_COOKIES NOTEBOOKLM_CSRF_TOKEN NOTEBOOKLM_SESSION_ID NOTEBOOKLM_COOKIE
-export OP_NLM_BIN="${OP_NLM_BIN:-/usr/local/bin/nlm}"
+export OP_NLM_BIN=/usr/local/libexec/op-dbus/bin/nlm
 NLM_READY_DIR=/run/opdbus/runit-ready
 install -d -m 0755 "$NLM_READY_DIR"
 if [ -x "$OP_NLM_BIN" ]; then
@@ -197,9 +207,9 @@ fi
 export OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY="${OP_CONTROL_PLANE_CHATBOT_WIREGUARD_PUBKEY:-Env5zPMmM1Zhypu5/DY/yU4PRYW/4AOEq2KZ4OSc+18=}"
 export OP_CONTROL_PLANE_CHATBOT_SESSION_ID="${OP_CONTROL_PLANE_CHATBOT_SESSION_ID:-b0c777e3-0955-cd8b-3d01-ca12998cae28}"
 export OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID="${OP_CONTROL_PLANE_CHATBOT_PRINCIPAL_ID:-1262e982-14c1-44d4-0771-7ce74213211b}"
-# Read the public provider bindings from the selected received release. The
-# final file remains a root-owned regular file for the registry's admission.
-export OP_MODEL_PROVIDERS_PATH="${OP_MODEL_PROVIDERS_PATH:-/opt/op-dbus/current/etc/op-dbus/model-providers.toml}"
+# Provider credential-slot maintenance writes this host-owned configuration.
+# It must not point into the read-only release target.
+export OP_MODEL_PROVIDERS_PATH="${OP_MODEL_PROVIDERS_PATH:-/etc/op-dbus/model-providers.toml}"
 # Owner-selected browser transport peer. The receiver requires a fresh signed
 # Oracle proof from this exact public key before selecting the existing
 # chatbot identity; this is not the chatbot's key or a browser credential.
@@ -211,12 +221,17 @@ export OP_LOCAL_HUMAN_WIREGUARD_PUBKEY="${OP_LOCAL_HUMAN_WIREGUARD_PUBKEY:-0I5FN
 export OP_LOCAL_HUMAN_SESSION_ID="${OP_LOCAL_HUMAN_SESSION_ID:-414fbc56-03fb-20ab-758a-bcc7a7cbdc0e}"
 export OP_LOCAL_HUMAN_PRINCIPAL_ID="${OP_LOCAL_HUMAN_PRINCIPAL_ID:-c9bdf32e-811d-2495-b688-277c9e5c4d36}"
 export OP_LOCAL_HUMAN_DISPLAY_ALIAS="${OP_LOCAL_HUMAN_DISPLAY_ALIAS:-jeremy-wg-f036}"
-# WARP + Xray necessarily replace the decoy's human-WG inner source address.
+# Transport source addresses do not prove the originating human peer.
 # Bind OIA1 to the trusted decoy signature, short lifetime, one-time nonce, and
-# registered human key rather than the legacy Netmaker TCP-source equality.
+# registered human key rather than TCP-source equality.
 export OP_ORACLE_ASSERTION_SOURCE_BINDING="${OP_ORACLE_ASSERTION_SOURCE_BINDING:-trusted-decoy-signature}"
 export RUST_LOG="${GRPC_RUST_LOG:-info}"
-export COGNITIVE_MCP_QDRANT_URL="${COGNITIVE_MCP_QDRANT_URL:-http://10.200.0.2:6334}"
+# Qdrant is reached over TCP through the host loopback proxy. HTTP serves the
+# REST plugin client; gRPC serves the cognitive shuttle. No /var sockets.
+export QDRANT_HTTP_URL="${QDRANT_HTTP_URL:-http://127.0.0.1:6333}"
+export QDRANT_GRPC_URL="${QDRANT_GRPC_URL:-http://127.0.0.1:6334}"
+# Host Qdrant's ovsbr0 alias number is unset. Leave COGNITIVE_MCP_QDRANT_URL
+# unset so the shuttle uses its loopback default, 127.0.0.1:6334.
 # The clean baseline uses source indexed through cognitive_mcp.code_index.
 # Historical bulk collections are retained for recovery; their Gridstore
 # payload reads currently fail, so they must not stall normal context calls.
@@ -274,12 +289,12 @@ umask 0077
 
 case "$OPDBUS_NUMA_POLICY" in
     localalloc)
-        exec numactl --localalloc /usr/local/bin/op-grpc-bridge
+        exec numactl --localalloc /usr/local/libexec/op-dbus/bin/op-grpc-bridge
         ;;
     interleave)
-        exec numactl --interleave=all /usr/local/bin/op-grpc-bridge
+        exec numactl --interleave=all /usr/local/libexec/op-dbus/bin/op-grpc-bridge
         ;;
     default|disabled|none)
-        exec /usr/local/bin/op-grpc-bridge
+        exec /usr/local/libexec/op-dbus/bin/op-grpc-bridge
         ;;
 esac

@@ -4095,7 +4095,7 @@ dependencies = [
  "chrono",
  "futures",
  "hex",
- "op-cognitive-mcp",
+ "op-cognitive",
  "op-core",
  "op-identity",
  "prost 0.13.5",
@@ -4182,7 +4182,7 @@ dependencies = [
  "futures",
  "libc",
  "op-agents",
- "op-cognitive-mcp",
+ "op-cognitive",
  "op-core",
  "op-execution-tracker",
  "op-llm",
@@ -4227,7 +4227,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "op-cognitive-mcp"
+name = "op-cognitive"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4342,7 +4342,7 @@ dependencies = [
  "mime_guess",
  "nmrs",
  "op-cache",
- "op-cognitive-mcp",
+ "op-cognitive",
  "op-core",
  "op-dbus-model",
  "op-execution-tracker",
@@ -4423,9 +4423,12 @@ name = "op-deployment"
 version = "1.0.0"
 dependencies = [
  "anyhow",
+ "btrfs-uapi",
  "chrono",
  "flate2",
+ "libc",
  "log",
+ "op-cozo-store",
  "reqwest 0.11.27",
  "serde",
  "serde_json",
@@ -4522,7 +4525,7 @@ dependencies = [
  "op-agents",
  "op-blob",
  "op-chat",
- "op-cognitive-mcp",
+ "op-cognitive",
  "op-core",
  "op-cozo-store",
  "op-identity",
@@ -4907,6 +4910,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "futures",
+ "op-core",
  "op-identity",
  "op-plugins",
  "prost 0.13.5",

@@ -23,6 +23,7 @@
 
 mod agent_runs;
 mod agent_triggers;
+mod anna_scribe;
 mod antigravity_dispatch;
 mod chain_vector_projector;
 mod chat_response_dispatch;
@@ -46,6 +47,7 @@ pub mod dynamic_codec;
 pub mod dynamic_reflection;
 pub mod emqx_hook_provider;
 mod event_chain_access;
+mod accountability_search;
 pub(crate) mod external_mcp_session;
 mod freedesktop_dispatch;
 mod gemma_brain_dispatch;
@@ -56,6 +58,10 @@ mod generation_jobs_dispatch;
 mod generation_jobs_selection;
 mod generation_jobs_stream;
 mod generation_runtime;
+mod routing_catalog;
+mod routing_dispatch;
+mod routing_resources;
+mod routing_store;
 pub mod grpc_client;
 pub mod grpc_server;
 pub mod grpc_web;
@@ -101,6 +107,7 @@ mod obfuscation_methods;
 #[cfg(test)]
 mod openflow_canonical_tests;
 mod openflow_methods;
+mod openflow_permit;
 mod oscal_dispatch;
 mod ovsdb_observer;
 pub mod per_plugin_reflection;

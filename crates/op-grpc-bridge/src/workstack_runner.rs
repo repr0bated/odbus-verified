@@ -33,7 +33,7 @@ const STEP_TIMEOUT: Duration = Duration::from_secs(120);
 const STEP_NAME_MAX_BYTES: usize = 256;
 const ARGS_MAX_BYTES: usize = 16 * 1024;
 const MAX_STEPS: usize = 32;
-const COGNITIVE_PLUGIN: &str = "cognitive_mcp";
+const COGNITIVE_PLUGIN: &str = "cognitive";
 
 struct Execution {
     record: Mutex<WorkflowExecutionRecord>,

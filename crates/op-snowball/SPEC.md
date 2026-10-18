@@ -45,7 +45,7 @@ snapshotted with a shared aligned counter and replicated through Btrfs send/rece
 - `op-state-store::EventChain` owns canonical event hashing and verification.
 - `op-grpc-bridge::MutationEngine` converts a complete `ChainEvent` into the footprint
   payload and persists it.
-- `op-cognitive-mcp::chain_vectors` embeds semantic payload fields and records exact
+- `op-cognitive::chain_vectors` embeds semantic payload fields and records exact
   hash metadata without rehashing.
 - Identity and grants never consume footprint/hash values.
 

@@ -1,0 +1,22 @@
+{
+  "format": "3tched-skill-packaging-changes/1",
+  "skill": "streamdown",
+  "changes": [
+    {
+      "repository": "https://github.com/vercel/streamdown",
+      "commit": "8edc64857a175720ad549e4d8c3cb1b9b4fca1ca",
+      "source_path": "skills/streamdown/references/features.md",
+      "packaged_path": "references/features.md",
+      "upstream_sha256": "bff9f64bef39b760e1b0207dafd9291d7427cd1cb9bf8702c0a74b15730f201d",
+      "sha256": "983af84de6f9651f990c70b829cee2f9614ed44e35378f1f300a7dc515ec22ab",
+      "adaptation": "Packaging adaptation: describe the streaming incomplete-link placeholder as literal text without a Markdown link target; preserve the placeholder URI and completion meaning.",
+      "replacements": [
+        {
+          "from": "`[text](streamdown:incomplete-link)` or `text`",
+          "to": "`[text]` with placeholder target `streamdown:incomplete-link`, or `text`",
+          "occurrences": 1
+        }
+      ]
+    }
+  ]
+}

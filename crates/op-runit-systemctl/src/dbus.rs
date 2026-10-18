@@ -3,14 +3,14 @@
 //! Implements the `org.opdbus.v1.plugins.runit` interface, mapping
 //! systemctl commands to runit operations for Artix Linux systems.
 //!
-//! ## Runit layout (Artix convention)
+//! ## Canonical host runit layout
 //!
 //! | Path                                  | Meaning                                             |
 //! |----------------------------------------|-----------------------------------------------------|
-//! | `/etc/runit/sv/<service>`             | Service definition (`run`, optional `log/run`)      |
+//! | `/etc/sv/<service>`                   | Service definition (`run`, optional `log/run`)      |
 //! | `/run/runit/service/<service>`        | Symlink into the live/active runlevel (runsvdir scans this) |
 //! | `/etc/runit/runsvdir/default/<service>` | Symlink for boot-persistent enablement of the `default` runlevel |
-//! | `/etc/runit/sv/<service>/down`        | Marker file: service should not auto-start when supervised |
+//! | `/etc/sv/<service>/down`              | Marker file: service should not auto-start when supervised |
 //!
 //! `enable` = symlink into the persistent runlevel directory
 //! (and remove any `down` marker). `disable` = `sv down` + remove both

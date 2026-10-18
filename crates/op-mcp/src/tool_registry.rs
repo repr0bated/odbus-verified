@@ -333,16 +333,16 @@ mod descriptor_tests {
         registry
             .register(test_tool(
                 "safe_read",
-                "cognitive_mcp.read",
-                "obs.service.cognitive-mcp.test.read@v1",
+                "cognitive.read",
+                "obs.service.cognitive.test.read@v1",
             ))
             .await
             .unwrap();
         let error = registry
             .register(test_tool(
                 "safe_read",
-                "cognitive_mcp.invoke",
-                "mut.service.cognitive-mcp.test.replace@v1",
+                "cognitive.invoke",
+                "mut.service.cognitive.test.replace@v1",
             ))
             .await
             .unwrap_err();
@@ -350,7 +350,7 @@ mod descriptor_tests {
         let descriptor = registry.get_descriptor("safe_read").await.unwrap();
         assert_eq!(
             descriptor.required_capability.as_deref(),
-            Some("cognitive_mcp.read")
+            Some("cognitive.read")
         );
     }
 
@@ -361,13 +361,13 @@ mod descriptor_tests {
             .register(test_tool(
                 "missing_capability",
                 "",
-                "obs.service.cognitive-mcp.test.read@v1",
+                "obs.service.cognitive.test.read@v1",
             ))
             .await
             .unwrap();
 
         registry
-            .register(test_tool("missing_subid", "cognitive_mcp.read", ""))
+            .register(test_tool("missing_subid", "cognitive.read", ""))
             .await
             .unwrap();
         assert!(
@@ -395,22 +395,22 @@ mod descriptor_tests {
         registry
             .register(test_tool(
                 "safe_read",
-                "cognitive_mcp.read",
-                "obs.service.cognitive-mcp.test.read@v1",
+                "cognitive.read",
+                "obs.service.cognitive.test.read@v1",
             ))
             .await
             .unwrap();
         let descriptor = registry.get_descriptor("safe_read").await.unwrap();
         assert_eq!(
             descriptor.required_capability.as_deref(),
-            Some("cognitive_mcp.read")
+            Some("cognitive.read")
         );
         let serialized = simd_json::serde::to_owned_value(&descriptor).unwrap();
         assert_eq!(serialized["name"], "safe_read");
-        assert_eq!(serialized["required_capability"], "cognitive_mcp.read");
+        assert_eq!(serialized["required_capability"], "cognitive.read");
         assert_eq!(
             serialized["subid"],
-            "obs.service.cognitive-mcp.test.read@v1"
+            "obs.service.cognitive.test.read@v1"
         );
         assert_eq!(
             registry

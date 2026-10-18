@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/vercel-labs/json-render",
+  "commit": "fc2a696a50a30cb30c878ab1eb65e102487eea0f",
+  "source_path": "skills/core",
+  "license_status": "Upstream root LICENSE retained unchanged.",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "source_path": "skills/core/SKILL.md",
+      "sha256": "d0e8a8a3c419046952d4652240a9ec50bd0349ed673f1e44ad5fbb29d370a452"
+    },
+    {
+      "path": "LICENSE",
+      "source_path": "LICENSE",
+      "sha256": "014bb31e83d5c2e76aea1cc6e82217346ab41362f32cb355ad0f5c10aa0aeaff"
+    }
+  ]
+}

@@ -49,7 +49,7 @@ fn service_schema(verb: &str) -> Value {
         "properties": {
             "service": {
                 "type": "string",
-                "description": format!("runit service name to {verb} (as under /etc/runit/sv)")
+                "description": format!("runit service name to {verb} (as under {})", op_core::runit::SV_DIR)
             }
         },
         "required": ["service"]
@@ -103,7 +103,7 @@ impl Tool for SvStartServiceTool {
         "sv_start_service"
     }
     fn description(&self) -> &str {
-        "Start a runit service (sv up). Use for host services under /etc/runit/sv."
+        "Start a host runit service (sv up)."
     }
     fn input_schema(&self) -> Value {
         service_schema("start")

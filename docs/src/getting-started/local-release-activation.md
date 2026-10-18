@@ -32,6 +32,42 @@ the service's schema-shaping environment. Preserve the previous catalogs and
 review additions/removals before a live reseal. `build-golden.sh` accepts
 `OP_PERSISTED_CATALOG_SOURCE` for isolated release preparation.
 
+Reuse already-built native binaries by setting `OP_RELEASE_DIR` to the complete
+prepared executable directory; the default is `target/release`. Set
+`EMQX_ARTIFACT_CACHE_DIR` and `MCP_PROVIDER_ARTIFACT_CACHE_DIR` when the pinned
+EMQX archive and nlm wheel are cached outside `/var/cache/op-dbus/source-artifacts`.
+These selectors do not rebuild binaries or weaken artifact digest checks.
+The pinned EMQX archive is still digest-verified before extraction. Its unused
+esockd demonstration private key is excluded from the prepared payload;
+configured runtime TLS keys remain outside the release at `/etc/emqx/certs`.
+
+The execution payload requires GNU Python 3.14. When the host default differs,
+`OP_EXECUTION_PYTHON_BUNDLE` may name an existing standalone native runtime
+directory. Preparation copies that runtime into the execution payload, verifies
+its relocated base prefix, and installs the hash-locked tools into that private
+prefix. The received release therefore does not depend on a user-managed
+interpreter under `/home`; the host's default Python is unchanged. Without this
+selector, preparation retains the native-host virtual-environment path.
+The preparation receipt records the runtime binary and preparer digests, so a
+changed interpreter or preparation implementation invalidates reuse.
+
+Golden preparation generates the restart inventory from the prepared bytes.
+Shell assignments are not executable names; quoted substitutions, continuations,
+declared function arguments and attached redirection paths retain their
+dependencies without executing the scripts. Captured-source and versioned
+skill-packaging provenance are classified by their complete JSON structure,
+not by filename. Unknown executable/configuration references, mixed provenance
+and configuration records, and absent release inputs still stop preparation.
+An inventory-helper repair can be built and selected independently; it does
+not require replacing the existing application binaries or their catalog.
+
+When a plugin version changes, rebuild `op-grpc-bridge` from the same plugin
+source as `opblob` and activate that bridge with the matching catalog. The
+bridge compares each sealed plugin version and method declaration with its
+compiled compatibility contract before dispatch. Building only the sealer,
+even for a description-only version change, leaves the old bridge rejecting
+calls. Catalog parity and bridge readiness alone do not verify this boundary.
+
 Before the workspace build and sealing, select the prepared threetched binary
 with the paired absolute `THREETCHED_CAPTURE_BIN` and
 `THREETCHED_CAPTURE_MANIFEST` paths. Keep those selectors identical across both
@@ -88,7 +124,12 @@ protected Control Plane selection changes the selected profile's actual
 model and the dedicated agent reference together; routing metadata is not
 a separate model eligibility list. Personal's provider and model remain
 independent. Named chatbot roles retain the `chatbot_500` runtime
-profile regardless of provider selection.
+profile regardless of provider selection. That identifier is retained for
+compatibility; the tool-call iteration budget is the schema-backed
+`runtime_profiles.chatbot_500.max_tool_iterations` setting. Fresh installations
+default to 2,000 iterations per turn. Change the setting through the existing
+threetched configuration owner; startup preserves the configured value rather
+than resetting it. A budget change grants no additional tools or permissions.
 
 The provider list uses `provider_id` as its stable Cozo key (legacy `id`
 input remains accepted). Do not rename stored providers to threetched router

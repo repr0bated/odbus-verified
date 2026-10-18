@@ -4,7 +4,7 @@ set -euo pipefail
 here=$(cd "$(dirname "$0")/.." && pwd)
 fixture=$(mktemp -d)
 trap 'rm -rf -- "$fixture"' EXIT
-mkdir -p "$fixture/bin" "$fixture/host"/{skills,rules,user,shared}
+mkdir -p "$fixture/bin" "$fixture/host"/{skills,rules,user,shared,soul,memory}
 # Substitute only the fixed directory into a disposable script, leaving the
 # production helper untouched and never examining or modifying live /etc.
 sed "s|/etc/3tched|$fixture/host|g" "$here/../runit/libexec-3tched/attach-host-workspace-folders" > "$fixture/helper"

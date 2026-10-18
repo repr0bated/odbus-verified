@@ -28,8 +28,8 @@ explicit tool discovery and invocation (including streaming tool output).
 
 - Tool schemas are schema-driven; `GetToolSchema` should reflect the underlying
   `PluginSchema` for the target tool.
-- For external clients, the settled gateway is `cognitive-mcp` (`:3003`), not this crate
-  directly. See [`cognitive.proto`](../op-cognitive-mcp/cognitive.proto.md).
+- External MCP clients use `op-grpc-bridge` at `https://<host>:8090/mcp`, not this
+  crate directly. See [`cognitive.proto`](../op-cognitive/cognitive.proto.md).
 
 ## Gaps / Assumptions
 

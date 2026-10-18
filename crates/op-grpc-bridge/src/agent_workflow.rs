@@ -14,7 +14,7 @@ use crate::specialist::CognitiveCaller;
 use op_agents::unified::GLOBAL_REGISTRY;
 use op_plugins::state_plugins::cognitive_agents;
 
-const COGNITIVE_PLUGIN: &str = "cognitive_mcp";
+const COGNITIVE_PLUGIN: &str = "cognitive";
 
 #[derive(Debug, Clone, Serialize)]
 struct StepResult {

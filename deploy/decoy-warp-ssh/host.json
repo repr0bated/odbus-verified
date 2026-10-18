@@ -1,13 +1,16 @@
 {
   "role": "host",
   "tun_id": 5,
-  "interface_name": "masque-ssh",
+  "interface_name": "rtly-lungs",
   "mtu": 1280,
-  "local_address": "192.168.254.1",
-  "peer_address": "192.168.254.2",
+  "local_address": "10.0.0.2",
+  "peer_address": "192.168.255.2",
   "ssh_user": "warp-link",
   "policy_table": 28051,
   "rule_priority": 10,
-  "aliases": ["10.0.0.2", "10.0.0.4", "192.168.255.1"],
-  "routes": ["10.0.0.0/25", "10.0.0.128/25", "192.168.255.2/32"]
+  "aliases": [],
+  "routes": [
+    "10.0.0.0/25",
+    "10.0.0.128/25"
+  ]
 }

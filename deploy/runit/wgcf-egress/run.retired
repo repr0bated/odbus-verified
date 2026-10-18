@@ -1,0 +1,22 @@
+# Retired. wgcf belongs on the decoy. There is no WireGuard on the host.
+#!/bin/sh
+# runit: Cloudflare WARP tunnel for host/CT privacy egress (wgcf-egress).
+#
+# Marked traffic exits via WARP instead of the host public IP:
+#   mark 0x3344xxxx (mask 0xffff0000) -> table 51820 -> wgcf-egress
+# 0x3344 is ASCII "3D", the project tag (cf. OpenFlow cookie prefix 0x33444348
+# = "3DCH"). It was 0x51821 until 2026-08-13 -- deliberately moved out of that
+# range because 0x51820 (this tunnel's WireGuard *underlay* mark) differs by one
+# hex digit, and "51820" is ALSO the table number, in decimal.
+#
+# Table=51820 keeps AllowedIPs out of `main`, so unmarked traffic stays on pub0
+# and this tunnel is fail-closed: if nothing sets the mark, nothing uses WARP.
+#
+# Has its OWN Cloudflare device -- do not share a key with the decoy's
+# wgcf-ingress. One key is ONE peer to Cloudflare, which tracks a single endpoint
+# per peer, so tunnels sharing a key fight over return traffic.
+exec 2>&1
+wg-quick down wgcf-egress 2>/dev/null || true
+wg-quick up wgcf-egress || exit 1
+echo "wgcf-egress: up (WARP egress, mark 0x3344xxxx -> table 51820), supervising"
+exec sleep 2147483647

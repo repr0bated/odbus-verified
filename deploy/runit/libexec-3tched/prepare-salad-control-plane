@@ -3,7 +3,7 @@
 # Catalog selection owns its model after initialization; never touch Personal.
 set -eu
 config=$1
-binary=$2
+binary=/usr/local/libexec/op-dbus/threetched/threetched
 key=/etc/op-dbus/secrets/salad-api-key
 [ -f "$key" ] && [ ! -L "$key" ] || exit 0
 case "$(stat -c %u:%a "$key")" in 0:400|0:600) ;; *) exit 78 ;; esac

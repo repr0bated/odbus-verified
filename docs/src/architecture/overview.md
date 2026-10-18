@@ -163,7 +163,7 @@ mint/persist/inject/validate chain and the repaired built-in gRPC client path.
 - **Durability:** [`identity_sled_dispatch.rs`](../../../crates/op-grpc-bridge/src/identity_sled_dispatch.rs)
   separates cache initialization from `persist_sled_required`, which prevents
   credential creation without durable storage. The bridge cognitive path uses
-  `CognitiveMcpServer::new_durable`. [`op-cozo-store`](../../../crates/op-cozo-store/src/lib.rs)
+  `CognitiveServer::new_durable`. [`op-cozo-store`](../../../crates/op-cozo-store/src/lib.rs)
   supplies the persistent Cozo/RocksDB API. `op-state-store` also defines an
   in-memory implementation; its package name does not imply persistence.
 - **Audit:** [`StreamingSnowball`](../../../crates/op-snowball/src/snowball.rs)
@@ -174,11 +174,11 @@ mint/persist/inject/validate chain and the repaired built-in gRPC client path.
   combines verified sessions, principal grants and project membership. Existing
   OD-46/OD-47 still cover end-to-end execution and private push isolation;
   namespace generation alone does not establish it. In
-  [`context_awareness.rs`](../../../crates/op-cognitive-mcp/src/context_awareness.rs),
+  [`context_awareness.rs`](../../../crates/op-cognitive/src/context_awareness.rs),
   proactive queries still use `namespace_id: None` (lines 824 and 848).
-- **Code retrieval:** [`code_tools.rs`](../../../crates/op-cognitive-mcp/src/code_tools.rs)
+- **Code retrieval:** [`code_tools.rs`](../../../crates/op-cognitive/src/code_tools.rs)
   registers `code_search`, `code_context` and `code_index` against
-  [`RagPipeline`](../../../crates/op-cognitive-mcp/src/rag_pipeline.rs).
+  [`RagPipeline`](../../../crates/op-cognitive/src/rag_pipeline.rs).
   Captured or raw source becomes chunks with paths, symbols, line spans and
   content hashes, embedded through Voyage and stored in Qdrant. This learning
   pass did not ingest source into those services or establish index freshness.

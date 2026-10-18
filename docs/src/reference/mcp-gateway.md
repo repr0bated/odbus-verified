@@ -1,8 +1,13 @@
 # MCP Gateway
 
 The public MCP endpoint is `https://<host>:8090/mcp`, served in-process by
-`op-grpc-bridge`. Cognitive MCP has no separate listener or runit service.
+`op-grpc-bridge`. Cognitive has no separate listener or runit service.
 The singleton control-plane chatbot's compact mode lives in op-web.
+
+The `cognitive` names below describe the replacement source contract. The
+deployment-helper rebuild does not rebuild applications; existing release
+binaries, catalog, grants and runtime settings remain a matched set until an
+authorized application rebuild and coordinated naming cutover.
 
 MCP authenticates the forwarded OIA1 or SID1 credential. Tool discovery and
 execution intersect the caller's exact grants, audience policy, selected
@@ -23,7 +28,7 @@ generation. Select a warm set before invoking its methods. Selection narrows
 authority and never supplies a missing capability.
 
 Agent methods use names such as
-`plugin.cognitive_mcp.agent_code_reviewer_consult`. Their contracts live in
+`plugin.cognitive.agent_code_reviewer_consult`. Their contracts live in
 `crates/op-plugins/src/state_plugins/cognitive_agents.rs`. Advisory methods
 return actual provider completions and provenance. Workflows validate each
 step's arguments and exact grants, dispatch with the original verified

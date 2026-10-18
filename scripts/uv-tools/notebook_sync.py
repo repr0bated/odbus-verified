@@ -313,6 +313,9 @@ def atomic_json(path: Path, value: Any) -> None:
     descriptor, name = tempfile.mkstemp(prefix=".state-", dir=path.parent)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            if os.geteuid() == 0:
+                owner = path.stat() if path.exists() else path.parent.stat()
+                os.fchown(stream.fileno(), owner.st_uid, owner.st_gid)
             json.dump(value, stream, ensure_ascii=False, sort_keys=True, indent=2)
             stream.flush()
             os.fsync(stream.fileno())
@@ -532,6 +535,9 @@ class RawChunks:
     """Bounded lossless UTF-8 packing; concatenating chunks recovers the stream."""
     def __init__(self, directory: Path, key: str, title: str):
         self.directory, self.key, self.title = directory, key, title
+        self.epoch = os.environ.get("OPDBUS_NOTEBOOK_CAPTURE_EPOCH", "")
+        if self.epoch and not re.fullmatch(r"[a-z0-9-]{1,48}", self.epoch):
+            raise NotebookSyncError("capture epoch must be a bounded filename component")
         self.buffer = bytearray()
         self.words = 0
         self.chunks: list[dict[str, Any]] = []
@@ -556,12 +562,16 @@ class RawChunks:
         if not self.buffer:
             return
         digest = hashlib.sha256(self.buffer).hexdigest()
-        slot = f"{self.key}__{len(self.chunks) + 1:04d}"
+        namespace = f"{self.key}__{self.epoch}" if self.epoch else self.key
+        slot = f"{namespace}__{len(self.chunks) + 1:04d}"
         path = self.directory / f"{slot}__{digest[:16]}.txt"
         if not path.exists():
             self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
             with path.open("xb") as stream:
                 os.chmod(path, 0o600)
+                if os.geteuid() == 0:
+                    owner = self.directory.stat()
+                    os.fchown(stream.fileno(), owner.st_uid, owner.st_gid)
                 stream.write(self.buffer)
                 stream.flush()
                 os.fsync(stream.fileno())
@@ -624,6 +634,15 @@ def quarantined_group(group: dict) -> bool:
 
 def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None,
                    *, preserve_unresolved: bool = False) -> dict:
+    # The service names retained/current native history roots explicitly. No
+    # credentials or arbitrary host files are included by these patterns.
+    history_roots = {home.resolve()}
+    for value in os.environ.get("OPDBUS_NOTEBOOK_HISTORY_ROOTS", "").split(":"):
+        if value:
+            root = Path(value)
+            if not root.is_absolute() or not root.is_dir():
+                raise NotebookSyncError("history roots must be existing absolute directories")
+            history_roots.add(root.resolve())
     state_path = state_dir / "remote-state.json"
     frozen_groups = {}
     if state_path.exists():
@@ -676,7 +695,7 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None,
         ".gemini/tmp/**/chats/session-*.jsonl", ".gemini/tmp/**/chats/session-*.json",
         ".gemini/antigravity-cli/brain/**/transcript.jsonl",
     ]
-    native = sorted({path.resolve() for pattern in patterns for path in home.glob(pattern)
+    native = sorted({path.resolve() for root in history_roots for pattern in patterns for path in root.glob(pattern)
                      if path.is_file()})
     captured_names = set()
     for path in native:
@@ -695,8 +714,9 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None,
     # External applications own SQLite; read raw conversation tables only.
     # This is not an odBus state store and does not add a SQLite dependency.
     database_sessions: set[tuple[str, str]] = set()
-    for cli in ("opencode", "kilo"):
-        db = home / f".local/share/{cli}/{cli}.db"
+    databases = {(cli, (root / f".local/share/{cli}/{cli}.db").resolve())
+                 for root in history_roots for cli in ("opencode", "kilo")}
+    for cli, db in sorted(databases):
         if not db.exists():
             continue
         with closing(sqlite3.connect(f"{db.as_uri()}?mode=ro", uri=True)) as connection:
@@ -734,7 +754,8 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None,
     # Antigravity stores protobuf/BLOB fields, not just readable transcripts.
     # Preserve every conversation-table field losslessly; do not guess a model
     # by searching arbitrary binary data. Legacy text stays separately labelled.
-    for db in sorted(home.glob(".gemini/antigravity-cli/conversations/*.db")):
+    for db in sorted({path.resolve() for root in history_roots
+                      for path in root.glob(".gemini/antigravity-cli/conversations/*.db")}):
         target = bucket("Unattributed")
         row_count = 0
         with closing(sqlite3.connect(f"{db.as_uri()}?mode=ro", uri=True)) as connection:
@@ -774,7 +795,9 @@ def prepare_groups(state_dir: Path, home: Path = HOME, repo: Path | None = None,
         key = f"topic-{topic}"
         target = groups.setdefault(key, RawChunks(state_dir / "chunks", key, TOPICS[topic]))
         target.capture(path, "project_document")
-    plan = {"version": 1, "grouping": "per_model_and_project_topic", "gaps": gaps, "groups": {}}
+    plan = {"version": 1, "grouping": "per_model_and_project_topic", "gaps": gaps, "groups": {},
+            "capture_epoch": os.environ.get("OPDBUS_NOTEBOOK_CAPTURE_EPOCH", ""),
+            "history_roots": [str(root) for root in sorted(history_roots)]}
     repairs_path = state_dir / "repartitions.json"
     repairs = json.loads(repairs_path.read_text()) if repairs_path.exists() else {}
     for key, target in sorted(groups.items()):

@@ -2,8 +2,9 @@ locale = "en"
 schema_version = 3
 
 # Named agents read their runtime profile, not the legacy [agent] setting.
+# Keep the existing profile identifier; its configurable budget is below.
 [runtime_profiles.chatbot_500]
-max_tool_iterations = 500
+max_tool_iterations = 2000
 
 [a2a.server]
 enabled = true

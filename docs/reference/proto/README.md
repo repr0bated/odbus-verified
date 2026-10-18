@@ -25,7 +25,7 @@ in the `operation-dbus-proto` workspace (26 files across 8 crates). Vendored pro
 | op-cache | [op_cache.proto](./op-cache/op_cache.proto.md) | `op_cache` | AgentService, OrchestratorService, CacheService, McpService |
 | op-mcp | [mcp.proto](./op-mcp/mcp.proto.md) | `op.mcp.v1` | McpService |
 | op-mcp | [internal_agents.proto](./op-mcp/internal_agents.proto.md) | `op_agents` | AgentLifecycle, AgentExecution, MemoryService, SequentialThinkingService, ContextManagerService, RustProService |
-| op-cognitive-mcp | [cognitive.proto](./op-cognitive-mcp/cognitive.proto.md) | `operation.cognitive.v1` | CognitiveToolService |
+| op-cognitive | [cognitive.proto](./op-cognitive/cognitive.proto.md) | `operation.cognitive.v1` | CognitiveToolService |
 | op-grpc-adapters | [adapters.proto](./op-grpc-adapters/adapters.proto.md) | `op.adapters.v1` | MailService, NetmakerService, MqService |
 | op-services | [services.proto](./op-services/services.proto.md) | `opdbus.services.v1` | ServiceManager |
 | op-assistant-grpc | [agent.proto](./op-assistant-grpc/agent.proto.md) | `assistant.v1` | AgentService |

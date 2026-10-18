@@ -35,13 +35,12 @@ pub const EMQX_LOG_DIR: &str = "/var/log/emqx";
 pub const EMQX_DASHBOARD_URL: &str = "http://127.0.0.1:18083";
 pub const EMQX_API_BASE: &str = "http://127.0.0.1:18083/api/v5";
 pub const EMQX_MQTT_TCP_BIND: &str = "127.0.0.1:1883";
-/// Doorbell listener: MQTT over WSS on the svc0 fabric address (the same
-/// WARP-inner address the `:8090` door binds), TLS from the svc0 material.
+/// Doorbell listener: MQTT over WSS on the EMQX alias of ovsbr0.
 /// Browsers loaded over `https://10.0.0.3:8090` can only open `wss://`.
 pub const EMQX_MQTT_WSS_BIND: &str = "10.0.0.3:8084";
-/// The fabric address shared with the bridge door (`FABRIC_BIND` in the
-/// op-grpc-bridge run script). Listeners may bind loopback or this address.
-pub const FABRIC_SVC0_IP: &str = "10.0.0.3";
+/// EMQX alias on ovsbr0. Listeners may bind loopback or this address.
+/// Tonic `10.0.0.2` belongs on `rtly-lungs`, not on this alias.
+pub const EMQX_ALIAS_IP: &str = "10.0.0.3";
 /// Content-free wake topics. `<owner-key>` is the private-view owner key
 /// (`sha256(principal, session, genesis)`), so the broker never sees an
 /// identity. Payload is `{"seq": <scope revision>}` only.
@@ -676,7 +675,7 @@ fn local_endpoint(value: &str) -> bool {
         .unwrap_or(value);
     address
         .parse::<SocketAddr>()
-        .map(|address| address.ip().is_loopback() || address.ip().to_string() == FABRIC_SVC0_IP)
+        .map(|address| address.ip().is_loopback() || address.ip().to_string() == EMQX_ALIAS_IP)
         .unwrap_or(false)
 }
 

@@ -13,8 +13,8 @@ pub const CHATBOT_SOUL_ID: &str = "assistant";
 
 use anyhow::{Context, Result};
 use chrono::Utc;
-use op_cognitive_mcp::memory_store::{CognitiveMemoryStore, EntryQuery, MemoryEntry};
-use op_cognitive_mcp::qdrant_shuttle::QdrantSemanticShuttle;
+use op_cognitive::memory_store::{CognitiveMemoryStore, EntryQuery, MemoryEntry};
+use op_cognitive::qdrant_shuttle::QdrantSemanticShuttle;
 use op_llm::provider::ChatMessage;
 use regex::Regex;
 use serde_json::{Value, json};

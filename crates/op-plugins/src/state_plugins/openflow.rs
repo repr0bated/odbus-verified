@@ -1522,7 +1522,7 @@ pub struct DelControllerInput {
 pub struct SetControllerInput {
     /// Bridge name
     pub bridge: String,
-    /// Controller endpoint, e.g. `tcp:10.200.0.1:6653`
+    /// Controller endpoint supplied by the caller. No address is assumed.
     pub endpoint: String,
 }
 
@@ -1551,7 +1551,7 @@ pub struct DatapathHealthOutput {
 pub struct AttachControllerSafeInput {
     /// Bridge name
     pub bridge: String,
-    /// Controller endpoint, e.g. `tcp:10.200.0.1:6653`
+    /// Controller endpoint supplied by the caller. No address is assumed.
     pub endpoint: String,
 }
 

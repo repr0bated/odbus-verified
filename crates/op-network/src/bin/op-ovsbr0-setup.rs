@@ -19,8 +19,9 @@
 //!                  (default: pub0) — the uplink's MAC is pinned on THIS
 //!                  port's Interface row, never on the bridge itself
 //!   INTERNAL_PORTS Space-separated extra internal ports seeded with the
-//!                  bridge (default: "svc0 grpc"; svc0 = grpc endpoint,
-//!                  grpc = named spare for the container/grpc link)
+//!                  bridge (default: none). There is no svc0 port and no
+//!                  per-service interface. Service addresses are aliases on
+//!                  ovsbr0 itself.
 //!   SHARED_MAC     PUBLIC_PORT MAC override (default: UPLINK's own MAC when
 //!                  UPLINK is set, so the public port presents the same
 //!                  address upstream as the NIC always did; fa:16:3e:f1:71:d2
@@ -58,7 +59,7 @@ struct Config {
     /// blackholes inbound traffic (the provider filters on this MAC).
     public_port: String,
     /// `INTERNAL_PORTS` env var: space-separated extra internal ports seeded
-    /// alongside the bridge (e.g. "svc0 grpc").
+    /// alongside the bridge. Default is none.
     internal_ports: Vec<String>,
     /// `SHARED_MAC` env var, if explicitly set. When unset and `uplink` is
     /// configured, the public port's MAC is taken from the uplink NIC's real
@@ -79,7 +80,7 @@ impl Config {
             fail_mode: std::env::var("FAIL_MODE").unwrap_or_else(|_| "standalone".into()),
             public_port: std::env::var("PUBLIC_PORT").unwrap_or_else(|_| "pub0".into()),
             internal_ports: std::env::var("INTERNAL_PORTS")
-                .unwrap_or_else(|_| "svc0 grpc".into())
+                .unwrap_or_default()
                 .split_whitespace()
                 .map(|s| s.to_string())
                 .collect(),
@@ -792,7 +793,7 @@ fn print_help() {
             FAIL_MODE    bridge fail mode (default: standalone)\n\
             PUBLIC_PORT  internal port for the public IP (default: pub0; the\n\
                          uplink MAC is pinned here, never on the bridge)\n\
-            INTERNAL_PORTS extra internal ports (default: \"svc0 grpc\")\n\
+            INTERNAL_PORTS extra internal ports (default: none)\n\
             SHARED_MAC   PUBLIC_PORT MAC override (default: UPLINK's own MAC)\n\
             OVSDB_SOCKET OVSDB socket path\n\
             VSWITCHD_SVC runit service name for sv (default: ovs-vswitchd)"

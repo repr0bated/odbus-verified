@@ -1,10 +1,11 @@
 //! OpenFlow 1.5 mTLS controller for ovsbr0
 //!
-//! Listens on OF_CONTROLLER_LISTEN (default 10.200.0.1:6653) for OVS to
+//! Listens on OF_CONTROLLER_LISTEN (default 127.0.0.1:6653) for OVS to
 //! connect, then installs bidirectional flows between the configured port pairs.
+//! The bridge OpenFlow alias number is unset; this default is loopback only.
 //!
 //! Environment variables:
-//!   OF_CONTROLLER_LISTEN   listen address (default: 10.200.0.1:6653)
+//!   OF_CONTROLLER_LISTEN   listen address (default: 127.0.0.1:6653)
 //!   OF_FLOW_PAIRS          comma-separated port pairs, e.g. "grpc-bridge:ovsbr0-sock"
 //!                          defaults to "grpc-bridge:ovsbr0-sock"
 //!   OF_FLOW_PRIORITY       flow priority (default: 100)
@@ -13,26 +14,40 @@
 //!   OF_CONTROLLER_TLS_KEY  PEM controller server private key
 //!
 //! Also exposes `org.opdbus.v1.plugins.openflow` at
-//! `/org/opdbus/v1/plugins/openflow` on the system bus. Mutations are denied
-//! until this bus can verify the bridge caller's principal and grant.
+//! `/org/opdbus/v1/plugins/openflow` on the system bus. Attributed CAS uses a
+//! one-use callback to canonical bridge admission; legacy mutations are denied.
 
 use std::net::SocketAddr;
+use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use op_network::{OpenFlowController, OpenFlowControllerHandle, get_datapath_health};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
-use zbus::interface;
+use zbus::{Connection, Proxy, interface, message::Header};
+
+const ADMISSION_OWNER: &str = "org.opdbus.v1.routing_admission";
+const ADMISSION_PATH: &str = "/org/opdbus/v1/routing_admission";
+const ADMISSION_INTERFACE: &str = "org.opdbus.v1.RoutingAdmissionV1";
+
+async fn require_admission_owner(connection: &Connection, sender: &str) -> Result<()> {
+    let proxy = zbus::fdo::DBusProxy::new(connection).await?;
+    let owner = tokio::time::timeout(Duration::from_secs(5),
+        proxy.get_name_owner(ADMISSION_OWNER.try_into()?)).await??;
+    anyhow::ensure!(owner.as_str() == sender, "OpenFlow sender is not the bridge admission owner");
+    Ok(())
+}
 
 struct OpenFlowDbusService {
     handle: OpenFlowControllerHandle,
 }
 
-/// The bridge admits exact `openflow.write` grants, but these native methods
-/// currently receive only a system-bus sender. A bus name, UID, PID, or
+/// Legacy native methods receive only a system-bus sender. A bus name, UID, PID, or
 /// caller-supplied argument cannot recover the verified principal/session on
 /// the bridge's separate identity-gated session bus. Deny before any OVS sink
-/// until an authenticated bridge-to-owner attribution protocol exists.
+/// through these unattributed entry points. Attributed CAS instead rechecks an
+/// exact operation permit through the fixed trusted bridge service.
 fn deny_unattributed_mutation() -> zbus::fdo::Error {
     zbus::fdo::Error::AccessDenied(
         "OpenFlow mutation requires a verified principal and openflow.write grant".into(),
@@ -41,6 +56,50 @@ fn deny_unattributed_mutation() -> zbus::fdo::Error {
 
 #[interface(name = "org.opdbus.v1.plugins.openflow")]
 impl OpenFlowDbusService {
+    /// The fixed trusted bridge service attests this exact operation once. A
+    /// sender-supplied callback destination is never accepted as an authority.
+    async fn compare_exchange_flow_attributed(
+        &self,
+        permit: String,
+        bridge: String,
+        flow_json: String,
+        expected_json: String,
+        delete: bool,
+        #[zbus(header)] header: Header<'_>,
+        #[zbus(connection)] connection: &Connection,
+    ) -> zbus::fdo::Result<String> {
+        let sender = header.sender().ok_or_else(deny_unattributed_mutation)?.to_string();
+        if permit.len() != 36 || bridge.len() > 15
+            || flow_json.len().saturating_add(expected_json.len()).saturating_add(bridge.len()) > 65_536 {
+            return Err(zbus::fdo::Error::InvalidArgs("OpenFlow attributed CAS exceeds its bounds".into()));
+        }
+        require_admission_owner(connection, &sender).await
+            .map_err(|error| zbus::fdo::Error::AccessDenied(error.to_string()))?;
+        let callback_connection = connection.clone();
+        let callback_bridge = bridge.clone();
+        let callback_flow = flow_json.clone();
+        let callback_expected = expected_json.clone();
+        let admission: op_network::controller::FlowAdmission = Arc::new(move || {
+            let connection = callback_connection.clone();
+            let sender = sender.clone();
+            let permit = permit.clone();
+            let bridge = callback_bridge.clone();
+            let flow = callback_flow.clone();
+            let expected = callback_expected.clone();
+            Box::pin(async move {
+                require_admission_owner(&connection, &sender).await?;
+                let proxy = Proxy::new(&connection, sender.as_str(), ADMISSION_PATH, ADMISSION_INTERFACE).await?;
+                let admitted: bool = tokio::time::timeout(Duration::from_secs(10),
+                    proxy.call("ConsumeFlowPermit", &(permit, bridge, flow, expected, delete))).await??;
+                anyhow::ensure!(admitted, "OpenFlow bridge denied final admission");
+                Ok(())
+            })
+        });
+        self.handle.compare_exchange_flow_attributed(
+            bridge, flow_json, if expected_json.is_empty() { None } else { Some(expected_json) }, delete, admission,
+        ).await.map_err(|error| zbus::fdo::Error::Failed(error.to_string()))
+    }
+
     /// Install an absent entry or replace/remove an exact live entry. Empty
     /// expected_json means absent; native readback is required before success.
     async fn compare_exchange_flow(
@@ -95,7 +154,7 @@ impl OpenFlowDbusService {
         Err(deny_unattributed_mutation())
     }
 
-    /// Set controller after ensuring NORMAL fallback. Endpoint e.g. ssl:10.200.0.1:6653.
+    /// Set controller after ensuring NORMAL fallback. The caller supplies the endpoint.
     async fn set_controller(
         &self,
         _bridge: String,
@@ -186,6 +245,8 @@ async fn main() -> Result<()> {
         handle: dbus_handle,
     };
     let _dbus_conn = zbus::connection::Builder::system()?
+        .allow_name_replacements(false)
+        .replace_existing_names(false)
         .name("org.opdbus.v1.plugins.openflow")?
         .serve_at("/org/opdbus/v1/plugins/openflow", service)?
         .build()

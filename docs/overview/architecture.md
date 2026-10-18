@@ -51,10 +51,10 @@ flowchart TB
     end
 
     subgraph gateway["Gateway + MCP layer"]
-        COGMCP["op-cognitive-mcp :3003<br/>universal external MCP gateway"]
+        COGMCP["op-cognitive<br/>embedded in op-grpc-bridge :8090"]
         MCP["op-mcp<br/>multi-transport MCP server"]
         GW["op-gateway<br/>WireGuard-auth MCP router"]
-        COMPACT["compact-mcp 127.0.0.1:11436<br/>loopback / chatbot only"]
+        COMPACT["compact mode in op-web<br/>singleton chatbot only"]
     end
 
     subgraph agents["Agent + chat layer"]
@@ -98,7 +98,7 @@ The layers, top to bottom:
 | Layer | Purpose | Key crates |
 |---|---|---|
 | Clients | Human and machine consumers | `op-web` (UI) |
-| Gateway / MCP | Auth, transport, tool exposure to external clients | `op-cognitive-mcp`, `op-mcp`, `op-gateway`, `op-mcp-aggregator`, `op-mcp-shim` |
+| Gateway / MCP | Auth, transport, tool exposure to external clients | `op-cognitive`, `op-mcp`, `op-gateway`, `op-mcp-aggregator`, `op-mcp-shim` |
 | Agent / chat | Reasoning, orchestration, tool execution | `op-chat`, `op-cache`, `op-agents`, `op-workflows`, `op-llm` |
 | Bridge | Bidirectional D-Bus ↔ gRPC, schema engine, projection | `op-grpc-bridge`, `op-grpc-adapters`, `op-dbus-mirror`, `op-assistant-grpc` |
 | Schema / plugin core | Source of truth, plugin trait, validation | `op-plugins`, `op-state`, `op-state-store`, `op-projection`, `op-dbus-model` |
@@ -131,8 +131,8 @@ Descriptions are taken from each crate's `Cargo.toml` and current source.
   transport with RPC fallback).
 
 ### Gateway / MCP
-- **op-cognitive-mcp** — Universal external MCP gateway (`:3003`): CozoDB memory
-  store, Qdrant semantic shuttle, code RAG, memory tools.
+- **op-cognitive** — Embedded cognitive runtime in `op-grpc-bridge`: CozoDB memory
+  store, Qdrant semantic shuttle, code RAG and memory tools; no standalone listener.
 - **op-mcp** — Unified MCP protocol server with multiple transports (stdio,
   HTTP/SSE, WebSocket, gRPC) and modes (compact / agents / full).
 - **op-gateway** — MCP gateway with WireGuard authentication and smart routing.
@@ -282,13 +282,12 @@ never in the subid string. Full definition:
 
 ## 8. MCP gateway topology (settled)
 
-- **cognitive-mcp** (`:3003`, Netmaker WireGuard IP `100.90.37.254`) is the
-  universal gateway for **all** external clients (NotebookLM, Droid, Cursor,
-  Codex, Junie, Gemini CLI).
-- **compact-mcp** (`127.0.0.1:11436`) is loopback / chatbot only — never exposed
-  externally.
-- Do not add new shim services, point external clients at `op-assistant-grpc`
-  directly, or expose compact-mcp beyond loopback.
+- **op-grpc-bridge** serves the public MCP endpoint at `https://<host>:8090/mcp`
+  with the cognitive runtime in process. External clients forward their existing
+  OIA1 or SID1 credential; discovery and execution retain exact grants.
+- **Compact mode** lives in op-web for the singleton control-plane chatbot,
+  not in a standalone service or second listener.
+- Do not add shim services or point external clients at `op-assistant-grpc`.
 
 ## 9. Kiro specs (authoritative design records)
 
@@ -303,9 +302,9 @@ design records in the repository:
   published contract, defines migration tiers A/B/C, and the canonical plugin
   pattern.
 - **`voyage-plugin-cognitive-mcp-boundaries`** — enforces the boundary between
-  `op-plugins` (schema/config authority) and `op-cognitive-mcp` (HTTP executor /
+  `op-plugins` (schema/config authority) and `op-cognitive` (embedded executor /
   MCP tool surface). `embedding_model` is the single Voyage config authority;
-  `op-cognitive-mcp` reads its runtime config from the D-Bus projection its
+  `op-cognitive` reads its runtime config from the D-Bus projection its
   plugin owns (`/dev/shm/opdbus/projections/<plugin>`) rather than from env vars.
 
 ## 10. Where to go next

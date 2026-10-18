@@ -29,7 +29,7 @@ members = [
     "crates/op-identity",
     "crates/op-execution-tracker",
     "crates/op-dynamic-loader",
-    "crates/op-cognitive-mcp",
+    "crates/op-cognitive",
     "crates/op-cozo-store",
     "crates/op-dbus-model",
     "crates/op-grpc-bridge",
@@ -41,6 +41,7 @@ members = [
     "crates/op-chat-responder",
     "crates/threetched-fs",
 ]
+exclude = ["crates/op-uds-relay"]
 
 [workspace.package]
 version = "1.0.0"
@@ -231,7 +232,7 @@ op-inspector.workspace = true
 op-web.workspace = true
 op-grpc-bridge.workspace = true
 op-mcp.workspace = true
-op-cognitive-mcp = { path = "crates/op-cognitive-mcp" }
+op-cognitive = { path = "crates/op-cognitive" }
 
 parking_lot = "0.12"
 dashmap = "5.0"

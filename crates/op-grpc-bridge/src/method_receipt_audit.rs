@@ -38,6 +38,10 @@ fn safe_backend_failure_kind(error: &anyhow::Error) -> &'static str {
         let message = cause.to_string();
         for (condition, code) in [
             (
+                "generation prompt is empty or exceeds its bound",
+                "generation_prompt_invalid",
+            ),
+            (
                 "config list response has no drifted array",
                 "native_config_list_missing_drift",
             ),
@@ -210,7 +214,7 @@ async fn journal_documents(
         let path = std::env::var_os("OP_PLUGIN_RUNTIME_COZO_PATH")
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|| "/var/lib/op-dbus/plugin-runtime-cozo".into());
-        let cognitive = std::env::var_os("COGNITIVE_MCP_DB_PATH")
+        let cognitive = std::env::var_os("COGNITIVE_DB_PATH")
             .map(std::path::PathBuf::from)
             .unwrap_or_else(|| "/var/lib/op-dbus/cognitive-memory.db".into());
         crate::chatbot_episode_state::distinct_databases(&path, &cognitive)?;
@@ -739,6 +743,13 @@ impl MutationEngine {
 mod tests {
     use super::*;
     const OPERATION: &str = "00000000-0000-4000-8000-000000000001";
+
+    #[test]
+    fn generation_prompt_bound_has_a_safe_failure_classification() {
+        let error = anyhow::anyhow!("generation prompt is empty or exceeds its bound")
+            .context("private backend context must not be logged");
+        assert_eq!(safe_backend_failure_kind(&error), "generation_prompt_invalid");
+    }
 
     fn document() -> OperationJournal {
         OperationJournal {

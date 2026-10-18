@@ -242,9 +242,9 @@ generated in `op-grpc-bridge/src/plugin_grpc_gen.rs`.
 
 | Service | Bind | Audience |
 |---|---|---|
-| `op-cognitive-mcp` | `:3003` (WireGuard `100.90.37.254`) | Universal external gateway (NotebookLM, Droid, Cursor, Codex, Junie, Gemini CLI). Memory tools, code RAG, gRPC `CognitiveToolService`, auth. |
+| `op-cognitive` (embedded in `op-grpc-bridge`) | `https://<host>:8090/mcp` | Authenticated external MCP door; cognitive memory/code tools and the retained gRPC `CognitiveToolService` contract. No standalone cognitive listener. |
 | `op-mcp` | default `[::1]:50051` | Unified MCP server; transports stdio / HTTP-SSE / WebSocket / gRPC; modes compact / agents / full |
-| `compact-mcp` | `127.0.0.1:11436` | Loopback / chatbot only — never expose externally |
+| Compact mode in op-web | In process | Singleton control-plane chatbot only; no second MCP listener |
 | `op-gateway` | (routed) | WireGuard-authenticated MCP router |
 
 Rules: do not create new shim services, do not point external clients at
@@ -258,8 +258,8 @@ Rules: do not create new shim services, do not point external clients at
 | `[::1]:50051` | op-mcp (default) | McpService (compact/agents/full) | gRPC |
 | `0.0.0.0:50052` | op-chat | Chat MCP server | gRPC |
 | `50051-50060` | op-chat pool | Per-agent connections | gRPC |
-| `:3003` | op-cognitive-mcp | Cognitive gateway (MCP + gRPC) | HTTP/SSE + gRPC |
-| `127.0.0.1:11436` | compact-mcp | Chatbot loopback MCP | HTTP |
+| `:8090` | op-grpc-bridge | Public authenticated MCP door with cognitive in process | HTTPS |
+| in process | op-web | Compact chatbot mode | Internal |
 | system bus | op-dbus-mirror | MirrorV1, ProjectedObjectV1, OvsdbV1, NonNetV1 | D-Bus |
 | system bus | op-state | StateManager, PluginV1 (per plugin) | D-Bus |
 | system bus | op-agents | Agent (per type) | D-Bus |
@@ -291,18 +291,18 @@ arrays, never in the `subid` string; `mut.*` records must carry `actor_id` +
 immutable per subject (`@vN` on material change); uniqueness is enforced in CI.
 Full definition and routing tags: [`../subid-taxonomy.md`](../subid-taxonomy.md).
 
-## 8. Schema config projections (cognitive-mcp boundary)
+## 8. Schema config projections (cognitive boundary)
 
 Per `.kiro/specs/voyage-plugin-cognitive-mcp-boundaries`:
 
 - `embedding_model` is the single Voyage config authority: provider, API-key
-  env precedence (`COGNITIVE_MCP_VOYAGE_API_KEY` → `VOYAGE_API_KEY` →
+  env precedence (`COGNITIVE_VOYAGE_API_KEY` → `VOYAGE_API_KEY` →
   `VOYAGE_API_KEY_RUST`), endpoint URL derivation (public vs `al-` MongoDB
   prefix), active model id, dimensions (default 1024), and the `VoyageModel`
   enum.
 - Consumers read runtime config from the plugin's D-Bus projection at
   `/dev/shm/opdbus/projections/<plugin>` (e.g. `.../embedding_model`,
-  `.../cognitive_mcp`), falling back to env vars only when the projection is
+  `.../cognitive`), falling back to env vars only when the projection is
   absent (bootstrap race).
-- `op-cognitive-mcp` reads projections but never writes them; writing
+- `op-cognitive` reads projections but never writes them; writing
   `/dev/shm/opdbus/projections/*` is `op-grpc-bridge`'s domain.

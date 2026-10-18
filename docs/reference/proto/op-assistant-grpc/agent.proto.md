@@ -26,7 +26,7 @@ Assistant agent management and run execution.
 
 - Shared messages (`Empty`, `Agent`, `Run`, etc.) come from
   [`common.proto`](./common.proto.md).
-- `op-assistant-grpc` is loopback/internal; external clients use `cognitive-mcp`.
+- `op-assistant-grpc` is internal; external MCP clients use the authenticated `op-grpc-bridge` door at `:8090`.
 
 ## Gaps / Assumptions
 

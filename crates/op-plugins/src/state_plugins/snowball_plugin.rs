@@ -191,6 +191,39 @@ pub struct QueryEventsOutput {
     pub total_in_chain: u64,
 }
 
+/// Semantic retrieval restricted to the authenticated caller's current session.
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+#[schemars(extend("x-oscal-subid" = "sch.service.snowball.search-own-events-input@v1"))]
+pub struct SearchOwnEventsInput {
+    /// Natural-language question, bounded to 4000 UTF-8 bytes.
+    pub query: String,
+    /// Maximum results, between 1 and 20; defaults to 10.
+    #[serde(default)]
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[schemars(extend("x-oscal-subid" = "sch.service.snowball.evidence-match@v1"))]
+pub struct EvidenceMatch {
+    /// Similarity is a retrieval ranking, not proof of an explanation.
+    pub score: f32,
+    /// Metadata resolved from the authoritative chain, never the vector payload.
+    pub event: AuditEventRecord,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[schemars(extend("x-oscal-subid" = "sch.service.snowball.search-own-events-output@v1"))]
+pub struct SearchOwnEventsOutput {
+    /// Actual Voyage embedding model used for this query.
+    pub embedding_model: String,
+    pub matches: Vec<EvidenceMatch>,
+    /// Index hits rejected because canonical session/event provenance did not match.
+    pub rejected_hits: u32,
+}
+
+pub const SEARCH_OWN_EVENTS_CAPABILITY: &str = "cap.obs.snowball.events.self.search@v1";
+
 /// Input for `verify_chain` — hash-chain integrity check.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 #[schemars(extend("x-oscal-subid" = "sch.service.snowball.verify-chain-input@v1"))]
@@ -450,7 +483,7 @@ pub(crate) fn snowball_schema() -> PluginSchema {
         .expect("schemars schema serializes to JSON");
     let mut schema = super::schemars_adapter::plugin_schema_from_json(
         "snowball",
-        "2.0.0",
+        "2.1.0",
         "Streaming snowball audit chain — snapshots, DR current-state, retention/interval",
         &root,
     );
@@ -563,6 +596,23 @@ pub(crate) fn snowball_schema() -> PluginSchema {
         ),
     );
 
+    schema.methods.insert(
+        "search_own_events".to_string(),
+        method_decl_from_schemars_with_output::<SearchOwnEventsInput, SearchOwnEventsOutput>(
+            "search_own_events",
+            SideEffect::Read,
+            true,
+            SEARCH_OWN_EVENTS_CAPABILITY,
+            "obs.service.snowball.events.self.search@v1",
+        ),
+    );
+    schema.capabilities.insert(
+        SEARCH_OWN_EVENTS_CAPABILITY.to_string(),
+        op_state_store::CapabilityDecl {
+            id: SEARCH_OWN_EVENTS_CAPABILITY.to_string(),
+            description: "Search canonical audit metadata for the caller's own current session in Accountability mode using Voyage. Does not grant access to other actors or sessions.".to_string(),
+        },
+    );
     schema.capabilities.insert(
         "snowball.read".to_string(),
         op_state_store::CapabilityDecl {

@@ -1,208 +1,42 @@
-# Factory/Droid MCP Configuration Guide
+# Factory / Droid MCP Setup
 
-## Overview
+Factory/Droid is an external MCP client of the bridge-owned cognitive runtime.
+MCP is the protocol; the current source component is `op-cognitive`, with plugin
+ID `cognitive` and canonical tool prefix `plugin.cognitive.`.
 
-This guide configures **Factory/Droid** (the AI agent you're currently using) to connect to the **cognitive-mcp** gateway for enhanced capabilities including memory, RAG, and session management.
+## Connection contract
 
-## Architecture
+Configure Factory's supported MCP client integration for the authenticated
+`https://<host>:8090/mcp` bridge door using the configured host and trusted CA.
+Forward the existing OIA1 or SID1 credential through the supported transport.
+Do not invent client-specific authentication fields, derive credentials from
+an address, or substitute a standalone cognitive listener.
 
-Per AGENTS.md Section 4b:
+The bridge validates identity, exact grants, selected toolset and provider
+readiness. Discovery uses `tools/list`; follow `nextCursor` to the last page.
+Select an available warm toolset before calling its tools and read each tool's
+sealed input/output contract. A client entry or toolset does not grant access.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Factory/Droid (External)                  │
-│                    Your AI Agent Interface                   │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│           cognitive-mcp :3003 (100.90.37.254)              │
-│        ★ UNIVERSAL GATEWAY - ALL external clients          │
-│              Droid ✓ | Cursor ✓ | Codex ✓ | etc.           │
-│  Memory · RAG · Session Mgmt · Quota · Ghostbridge Auth      │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│              compact-mcp :11436 (127.0.0.1)                 │
-│              ✗ Loopback/Chatbot ONLY - NEVER expose         │
-└─────────────────────────────────────────────────────────────┘
-```
+For cognitive operations, use the discovered `plugin.cognitive.*` names and
+matching `cognitive.*` grants. NotebookLM remains a genuine provider/protocol
+integration, not a replacement name for the cognitive component.
 
-## Configuration Files Created
+## Release boundary
 
-### 1. `~/.factory/mcp.json` (ACTIVE)
-Factory's MCP server configuration:
+This is the replacement source contract, not proof of a deployed Factory
+integration. The deployment-helper update does not rebuild applications.
+Existing application binaries, sealed catalog, grants and runtime settings
+must remain matched until the authorized application rebuild and cutover.
+Do not change live grants or services merely to match this guide.
 
-```json
-{
-  "mcpServers": {
-    "cognitive-mcp": {
-      "url": "http://100.90.37.254:3003",
-      "transport": "sse",
-      "enabled": true
-    }
-  }
-}
-```
+There is no standalone cognitive runit service to start and no current
+Factory-specific verifier script supplied by this guide. Operational work
+uses the supported identity-bound surfaces and, only when authorized, runit
+maintenance of `op-grpc-bridge`; never a foreign service-manager shim.
 
-### 2. `~/.factory/settings.json` (UPDATED)
-Factory settings now include MCP configuration:
+## References
 
-```json
-{
-  "enabledPlugins": {
-    "core@factory-plugins": true,
-    "mcp@factory-plugins": true
-  },
-  "mcp": {
-    "enabled": true,
-    "cognitiveMcp": {
-      "url": "http://100.90.37.254:3003",
-      "clientType": "droid"
-    }
-  }
-}
-```
-
-### 3. `deploy/config/factory-mcp.json` (TEMPLATE)
-Project deployment template with full optimization settings.
-
-## Verification
-
-Run the verification script:
-
-```bash
-# Make executable
-chmod +x scripts/verify-factory-cognitive-mcp.sh
-
-# Run verification
-./scripts/verify-factory-cognitive-mcp.sh
-```
-
-Expected output:
-```
-==========================================
-Factory/Droid Cognitive-MCP Verifier
-==========================================
-
-[1/4] Checking WireGuard interface (netmaker)...
-  ✅ WireGuard interface active (IP: 100.90.x.x)
-
-[2/4] Checking cognitive-mcp gateway health...
-  ✅ Cognitive-MCP gateway is reachable
-
-[3/4] Fetching available capabilities...
-  ✅ Found X tools available
-
-[4/4] Checking Factory configuration...
-  ✅ Factory MCP config found: ~/.factory/mcp.json
-  ✅ Cognitive-MCP configured in Factory
-```
-
-## Available Tools
-
-Once connected, Factory/Droid gains access to:
-
-| Tool | Description |
-|------|-------------|
-| `memory/store` | Store context across sessions |
-| `memory/retrieve` | Retrieve stored memories |
-| `memory/query` | Search memory by tags/patterns |
-| `rag/search` | Semantic search via Qdrant |
-| `session/start` | Start a new tracked session |
-| `session/save_context` | Save session checkpoint |
-| `namespace/create` | Create memory namespaces |
-| `namespace/list` | List available namespaces |
-| `quota/status` | Check rate limit status |
-
-## Usage Examples
-
-### Store Project Context
-```
-Hey Droid, store this context in memory:
-Namespace: "project:op-dbus"
-Key: "architecture"
-Value: "Using D-Bus first architecture with cognitive-mcp gateway"
-Tags: ["architecture", "mcp"]
-```
-
-### RAG Search
-```
-Search the knowledge base for:
-"How does the Ghostbridge interceptor work?"
-```
-
-### Session Management
-```
-Start a new session for implementing the feature X.
-Save checkpoint after we complete the database schema.
-```
-
-## Troubleshooting
-
-### Connection Refused
-```bash
-# Check if cognitive-mcp is running
-systemctl status op-cognitive-mcp
-
-# Check if port 3003 is listening
-ss -tlnp | grep 3003
-```
-
-### WireGuard Auth Failure
-```bash
-# Verify WireGuard interface
-wg show netmaker
-
-# Check IP
-ip addr show netmaker
-```
-
-### Factory Not Picking Up Config
-1. Restart Factory/Droid application
-2. Check: `~/.factory/mcp.json` exists
-3. Verify JSON syntax: `jq . ~/.factory/mcp.json`
-
-## Client Optimization
-
-The configuration includes optimization settings for Factory/Droid:
-
-```json
-{
-  "optimization": {
-    "connectionPool": {
-      "maxIdle": 10,
-      "idleTimeoutMs": 90000,
-      "useHttp2": true
-    },
-    "retry": {
-      "maxRetries": 3,
-      "backoffMultiplier": 2.0,
-      "useJitter": true
-    },
-    "cache": {
-      "toolsListTtlSecs": 300
-    }
-  }
-}
-```
-
-This ensures:
-- **Low latency** for interactive use
-- **Connection reuse** for multiple tool calls
-- **Graceful retries** on transient failures
-- **Capability caching** to reduce round-trips
-
-## Compliance
-
-✅ **AGENTS.md Section 4b Compliant:**
-- External client (Factory/Droid) → `:3003` ✓
-- Never uses `127.0.0.1:11436` (loopback only) ✓
-- WireGuard identity for Ghostbridge auth ✓
-
-## See Also
-
-- [COGNITIVE_MCP_CLIENT_GUIDE.md](./COGNITIVE_MCP_CLIENT_GUIDE.md) - Full client optimization guide
-- [AGENTS.md](../AGENTS.md) - Architecture rules and constraints
-- `scripts/verify-factory-cognitive-mcp.sh` - Verification script
+- [Cognitive Client Guide](COGNITIVE_CLIENT_GUIDE.md)
+- [MCP Gateway](src/reference/mcp-gateway.md)
+- [Cognitive protocol](reference/proto/op-cognitive/cognitive.proto.md)
+- [Local release activation](src/getting-started/local-release-activation.md)

@@ -1,7 +1,7 @@
 // Agent-to-agent gRPC speed test.
 //
 // Measures round-trip latency and throughput of live gRPC endpoints on the
-// internal svc0 (10.200.0.2) and WireGuard (100.69.0.254) networks.
+// loopback. The retired svc0 fabric is not a target.
 //
 // Run: cargo test --test grpc_speed_test -p op-grpc-bridge -- --nocapture
 
@@ -162,8 +162,6 @@ async fn grpc_agent_to_agent_speed() {
     let endpoints = [
         ("loopback:50051", "http://127.0.0.1:50051"),
         ("loopback:8090", "http://127.0.0.1:8090"),
-        ("svc0:50051", "http://10.200.0.2:50051"),
-        ("svc0:8090", "http://10.200.0.2:8090"),
         ("wg:8090", "http://100.69.0.254:8090"),
         ("wg:50051", "http://100.69.0.254:50051"),
     ];

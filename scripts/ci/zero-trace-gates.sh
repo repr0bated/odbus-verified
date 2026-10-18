@@ -34,7 +34,7 @@ done
 
 fail_match "retired MCP bind or endpoint" \
     '(:3003|10\.200\.0\.2:50052|100\.90\.37\.254:50052|127\.0\.0\.1:1143[5-8]|localhost:1143[5-8])' \
-    crates/op-cognitive-mcp/src crates/op-mcp/src \
+    crates/op-cognitive/src crates/op-mcp/src \
     deploy/config deploy/mcp deploy/runit deploy/scripts scripts/uv-tools \
     "$@" \
     --glob '!**/*.md' --glob '!**/*.patch' \

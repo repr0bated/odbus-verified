@@ -120,7 +120,7 @@ pub fn project_system_graph(
                             .into(),
                     );
                 }
-                "cognitive_mcp" => graph.extend(
+                "cognitive" => graph.extend(
                     &plugin_id,
                     select(state, &["bridge_owned", "execution_model"]),
                 ),
@@ -773,18 +773,18 @@ impl Projection {
         // These describe current source ownership, never deployment or readiness.
         let declarations = [
             (
-                "cognitive_mcp",
+                "cognitive",
                 "cognitive_runtime",
-                "in-process cognitive MCP",
-                "crates/op-cognitive-mcp/src/server.rs",
+                "in-process cognitive",
+                "crates/op-cognitive/src/server.rs",
                 "reasoning_retrieval",
                 "reasoning and retrieval",
             ),
             (
-                "cognitive_mcp",
+                "cognitive",
                 "reasoning_retrieval",
                 "reasoning and retrieval",
-                "crates/op-cognitive-mcp/src/code_tools.rs",
+                "crates/op-cognitive/src/code_tools.rs",
                 "code_vectorization",
                 "source code indexing and vectorization",
             ),
@@ -805,7 +805,7 @@ impl Projection {
                 "private memory Cozo persistence",
             ),
             (
-                "cognitive_mcp",
+                "cognitive",
                 "compliance_policy",
                 "compliance policy evaluation",
                 "crates/op-cozo-store/src/lib.rs",
@@ -884,24 +884,24 @@ impl Projection {
                 }
             }
         }
-        if plugins.contains_key("cognitive_mcp") && plugins.contains_key("qdrant") {
+        if plugins.contains_key("cognitive") && plugins.contains_key("qdrant") {
             self.edge(
                 &id("subsystem", &["reasoning_retrieval"]),
                 "declares_backend",
                 &id("plugin", &["qdrant"]),
                 declared(
-                    "crates/op-cognitive-mcp/src/code_tools.rs",
+                    "crates/op-cognitive/src/code_tools.rs",
                     "CodeSearchTool/CodeIndexTool",
                 ),
             );
         }
-        if plugins.contains_key("cognitive_mcp") && plugins.contains_key("embedding_model") {
+        if plugins.contains_key("cognitive") && plugins.contains_key("embedding_model") {
             self.edge(
                 &id("subsystem", &["code_vectorization"]),
                 "declares_backend",
                 &id("plugin", &["embedding_model"]),
                 declared(
-                    "crates/op-cognitive-mcp/src/server.rs",
+                    "crates/op-cognitive/src/server.rs",
                     "call-time embedding configuration",
                 ),
             );

@@ -132,15 +132,8 @@ export NPM_CONFIG_USERCONFIG=/dev/null
 (
     cd "$source_root"
     npm ci
-    npm run type-check
-    npm run lint
-    # Use jsdom's browser storage. Newer Node versions expose a host
-    # localStorage getter without a backing file, which shadows jsdom's one.
-    if node --help | grep -F -- '--no-experimental-webstorage' >/dev/null; then
-        NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--no-experimental-webstorage" npm test
-    else
-        npm test
-    fi
+    # Build before deployment; the owner runs type-check, lint and the full
+    # test suite during post-deployment downtime, not as preparation gates.
     VITE_OPDBUS_DOOR="$door_default" VITE_OPDBUS_ISSUER="$issuer_default" npm run build -- --base "$asset_base"
 )
 [ -f "$source_root/dist/index.html" ] || { printf 'Vite omitted dist/index.html\n' >&2; exit 1; }

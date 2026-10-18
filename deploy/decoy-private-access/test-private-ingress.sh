@@ -40,10 +40,10 @@ ip link set lo up
 unshare --net --fork sh -c 'ip link set lo up; exec sleep 600' &
 peer_pid=$!
 for _ in $(seq 1 50); do kill -0 "$peer_pid" 2>/dev/null && break; sleep 0.05; done
-ip link add tun5 type veth peer name private-peer
-ip link set tun5 up
-ip addr add 198.18.5.1/30 dev tun5
-ip -6 addr add fd42:5::1/64 dev tun5 nodad
+ip link add rtly-lungs type veth peer name private-peer
+ip link set rtly-lungs up
+ip addr add 198.18.5.1/30 dev rtly-lungs
+ip -6 addr add fd42:5::1/64 dev rtly-lungs nodad
 ip link set private-peer netns "$peer_pid"
 ip link add enp0s6 type veth peer name public-peer
 ip link set enp0s6 up

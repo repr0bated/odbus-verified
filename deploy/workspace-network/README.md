@@ -112,3 +112,20 @@ route. `nmrs` is a NetworkManager D-Bus binding, and the separately installed
 `sparesparrow/rust-network-mgr` manages interfaces through its control socket;
 neither is the VLESS traffic carrier demonstrated here. Transparent application
 integration remains unresolved and is not claimed by this proposal.
+
+## Relay source recovery (2026-10-16)
+
+The original std-only relay is restored at `crates/op-uds-relay`, excluded from
+the main Cargo workspace so it can be built independently. Its manifest and
+source are unchanged from
+[`operation-dbus-proto` commit `7d881d25adeedace03250515c0e4dc30200698e0`](https://github.com/repr0bated/operation-dbus-proto/tree/7d881d25adeedace03250515c0e4dc30200698e0/crates/op-uds-relay);
+both SHA256 values match `docs/src/architecture/plugin-baseline-files.sha256`.
+The historical manifest's musl comment describes the old deployment; the
+current native build target is `x86_64-unknown-linux-gnu`.
+
+The designated build worker could not execute shell commands, so this recovery
+has no new build, runtime-smoke or deployment result. No relay service was
+enabled. The relay does not depend on regular NetworkManager and is not itself
+an internet gateway. Its historical Unix-listener mode removes an existing
+pathname and makes the socket world-connectable; do not apply old listener
+configuration to the identity-bound shared lungs socket.

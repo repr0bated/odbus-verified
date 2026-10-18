@@ -20,7 +20,9 @@ pub const DELETE_CAPABILITY: &str = "cap.software.tched-router.generation.delete
 pub const RECOVER_CAPABILITY: &str = "cap.software.tched-router.generation.recover@v1";
 pub const MAX_JOBS: usize = 32;
 pub const MAX_ACTIVE_JOBS: usize = 4;
-pub const MAX_PROMPT_BYTES: usize = 64 * 1024;
+// Ordinary Chat also validates its assembled conversation here. Keep room for
+// the sealed authoring guide and history within the threetched transport bound.
+pub const MAX_PROMPT_BYTES: usize = 256 * 1024;
 pub const MAX_OUTPUT_BYTES: usize = 256 * 1024;
 /// Aggregate UTF-8 output retained across this owner's jobs. JSON can expand
 /// one control byte to six bytes; 1 MiB output plus bounded job metadata fits

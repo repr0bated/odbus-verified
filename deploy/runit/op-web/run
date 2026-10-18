@@ -1,5 +1,7 @@
 #!/bin/sh
+# op-dbus-release: application
 exec 2>&1
+rm -f -- /run/opdbus/runit-ready/op-web
 
 wait_dep() {
     sv start "$1" >/dev/null 2>&1 || true
@@ -22,17 +24,15 @@ wait_dep op-grpc-bridge
 
 set -a
 [ -r /etc/op-dbus/environment ] && . /etc/op-dbus/environment
-[ -r /etc/op-dbus/warp-ssh.env ] && . /etc/op-dbus/warp-ssh.env
 set +a
 
-export OP_WEB_BIND_ADDR="${OP_WEB_BIND_ADDR:-10.0.0.2,10.0.0.4}"
+export OP_WEB_BIND_ADDR="${OP_WEB_BIND_ADDR:-10.0.0.2}"
 export PORT="${PORT:-8080}"
-export OP_WEB_STATIC_DIR="${OP_WEB_STATIC_DIR:-/usr/local/share/op-dbus/dashboard}"
+export OP_WEB_STATIC_DIR=/usr/local/share/op-dbus/dashboard-release
 export OP_DBUS_GRPC_ADDR="${OP_DBUS_GRPC_ADDR:-https://10.0.0.2:8090}"
 export OP_DBUS_GRPC_CA_FILE="${OP_DBUS_GRPC_CA_FILE:-/etc/op-dbus/tls/tonic-svc0-ca.crt}"
-# Browser TLS terminates on the decoy. This host serves plain HTTP on 8080.
-# Owner selected the SSH-TUN cutover (2026-10-05); gre-decoy is retired.
-wait_dep "${OP_WEB_TRANSPORT_SERVICE:-op-warp-ssh-host}"
+# Serve the existing private HTTP endpoint. The ready bridge above proves
+# its host-owned TLS door is bound; no decoy or tunnel daemon is a dependency.
 unset OP_WEB_TLS_BIND
 # Live subscribe is tonic-web on lungs (10.0.0.2:8090), not HTTP SSE.
 # OP_WEB_SSE_BRIDGE / OP_WEB_SSE_HYDRATE stay unset (off). Allowlist only
@@ -47,5 +47,5 @@ export RUST_LOG="${RUST_LOG:-op_web=info,info}"
 # script got this far", not "op-web-server is serving". `check` is what closes
 # that gap — it tests the listener, not the token. Do not let anything gate on
 # the token alone.
-/usr/local/libexec/3tched/runit-ready-signal op-web
-exec /usr/local/bin/op-web-server
+/usr/local/libexec/op-dbus/helpers/runit-ready-signal op-web
+exec /usr/local/libexec/op-dbus/bin/op-web-server

@@ -22,9 +22,9 @@ Use the identity's granted 3tchedFS methods when available. Preserve caller
 identity, schema validation and capability checks. A file or skill does not
 grant permission. Keep private information within its identity's scope.
 The container's systemd service mounts its identity's 3tchedFS at
-`/run/mount/3tchedFS`. The host exposes that same mount under `/run/mount`
-for outside agents; this does not select a different identity. Incus supplies
-the lungs socket directory and FUSE device, not the FUSE filesystem mount.
+`/run/mount/3tchedfs` through its fstab entry. Host agents use a separate
+identity-bound projection; the guest path does not select a host identity.
+Incus supplies the lungs socket directory and FUSE device, not the FUSE mount.
 Missing access is a provisioning or admission issue, not permission to use
 another identity. The provisioner supplies the session-ID hostname.
 

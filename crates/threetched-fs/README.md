@@ -109,7 +109,7 @@ Requirements:
 
 ```sh
 cd /srv/git/odbus-verified
-CARGO_CALLER_FAMILY=gpt CXXFLAGS="-include cstdint" cargo build --workspace --release
+CXXFLAGS="-include cstdint" cargo build --workspace --release
 ```
 
 The executable is `target/release/threetched-fs`.
@@ -374,7 +374,7 @@ been run for this integration while the owner's build hold is in effect.
    export THREETCHED_BIN=/usr/bin/threetched
    export THREETCHED_MANIFEST=/usr/share/op-dbus/threetched-manifests/tched-router.json
    export TCHED_ROUTER_CONFIG_DIR=/var/lib/tched-router
-   export COGNITIVE_MCP_QDRANT_URL=http://10.200.0.2:6334
+   export COGNITIVE_QDRANT_URL=http://10.200.0.2:6334
    ```
 
    Both capture selectors are required together and must be absolute. They
@@ -385,7 +385,7 @@ been run for this integration while the owner's build hold is in effect.
    build, the assigned worker runs from the repository root:
 
    ```sh
-   CARGO_CALLER_FAMILY=gpt CXXFLAGS="-include cstdint" cargo build --workspace --release
+   CXXFLAGS="-include cstdint" cargo build --workspace --release
    ```
 
    Use the host's `x86_64-unknown-linux-gnu` toolchain. The shared parser walks
@@ -461,3 +461,18 @@ For an upgrade, repeat candidate capture, workspace build, sealing and release
 review. New or removed advertised commands and flags are discovered again from
 that binary. Rebuilding alone does not replace a sealed catalog, and restarting
 the bridge does not reseal it.
+
+## Catalog-pinned specialization and cognitive naming
+
+`examples/typed_specialize.rs` derives `generated/plugin_types.rs` and
+`docs/typed-specialization-report.json` from a manifest-pinned sealed catalog,
+not from a second schema definition. The checked-in capture records catalog
+generation 1494 and its original names and hashes. It is historical evidence,
+not the replacement cognitive release contract.
+
+After compiling and sealing the cognitive source cutover, regenerate these
+artifacts from that matching catalog before using `examples/typed_use_generated.rs`
+with the replacement release. Do not mechanically rename a captured plugin ID
+while retaining its old schema hash. Runtime filesystem discovery continues to
+derive plugin paths and operation contracts from the selected authoritative
+catalog; this source change does not mutate an existing mounted namespace.

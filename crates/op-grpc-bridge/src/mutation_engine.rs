@@ -37,7 +37,7 @@ use tokio::sync::{Mutex, OnceCell, RwLock, Semaphore, broadcast};
 use zbus::zvariant::OwnedValue as ZOwnedValue;
 use zbus::{Connection, Proxy};
 
-use op_cognitive_mcp::CognitiveMcpServer;
+use op_cognitive::CognitiveServer;
 use op_llm::chat::ChatManager;
 use op_network::rovs_proxy::OvsdbDbusClient;
 use op_plugins::state_plugins::snowball_plugin::{
@@ -137,6 +137,7 @@ struct AdmittedMethodCall {
     facade_origin: Option<crate::tched_router_admission::FacadeOrigin>,
     bound_oracle: Option<crate::oracle_assertion::BoundOracleProof>,
     change: StateChange,
+    routing_admission: Option<crate::routing_dispatch::RoutingAdmission>,
 }
 
 fn ensure_own_route_context_unchanged(
@@ -188,7 +189,7 @@ fn audit_method_arguments(
     let private = matches!(
         plugin_id,
         "project"
-            | "cognitive_mcp"
+            | "cognitive"
             | "workflows"
             | "persona"
             | "memory"
@@ -209,6 +210,8 @@ fn audit_method_arguments(
             | "tched_skills"
             | "tched_plugins"
             | "threetched"
+            | "routing_decision"
+            | "schema_tag_registry"
     ) || (plugin_id == "xray" && matches!(method, "add_user" | "add_inbound"))
         || (plugin_id == "tched_router"
             && (matches!(
@@ -295,7 +298,7 @@ pub struct MutationEngine {
     /// Lazily initialized cognitive runtime.  It is owned by the bridge and is
     /// reached only after a call has entered PluginService/MutationEngine; it
     /// never opens a second listener or becomes a parallel control plane.
-    cognitive_mcp: Arc<OnceCell<Arc<CognitiveMcpServer>>>,
+    cognitive: Arc<OnceCell<Arc<CognitiveServer>>>,
     /// Knowledge pushes produced by the context engine, waiting to be
     /// consumed by the next chatbot turn or `specialist` call of that session.
     knowledge_inbox: crate::knowledge_inbox::KnowledgeInbox,
@@ -317,6 +320,8 @@ pub struct MutationEngine {
     /// One process-shared durable/private publication owner. It has no global
     /// state cache or broadcast path.
     ui_workspace: Arc<OnceCell<Arc<crate::ui_workspace_dispatch::UiWorkspacePublisher>>>,
+    /// Private routing registry and principal/session-scoped shadow decisions.
+    routing_store: Arc<OnceCell<crate::routing_store::RoutingStore>>,
     chatbot_episodes: Arc<OnceCell<Arc<crate::chatbot_episode_state::EpisodePublisher>>>,
     /// Private principal-scoped chat_response conversations: their dedicated
     /// Cozo owner, private SHM publisher, and the bridge's turn registry.
@@ -335,6 +340,8 @@ pub struct MutationEngine {
     obfuscation_methods: Arc<OnceCell<Arc<crate::obfuscation_methods::ObfuscationMethods>>>,
     obfuscation_projection: Arc<Mutex<()>>,
     openflow_projection: Arc<Mutex<()>>,
+    /// One retained system-bus owner for controller final-admission callbacks.
+    openflow_permit_authority: Arc<OnceCell<crate::openflow_permit::OpenFlowPermitAuthority>>,
     /// Isolated tests may supply a peer D-Bus connection to the canonical
     /// OpenFlow owner. Production leaves this empty and uses the system bus.
     openflow_method_connection: Arc<OnceCell<Connection>>,
@@ -1167,7 +1174,7 @@ impl MutationEngine {
             ovsdb_monitor_tasks: Arc::new(Mutex::new(HashMap::new())),
             ovsdb_monitor_state: Arc::new(Mutex::new(())),
             chat_manager: Arc::new(ChatManager::new()),
-            cognitive_mcp: Arc::new(OnceCell::new()),
+            cognitive: Arc::new(OnceCell::new()),
             knowledge_inbox: crate::knowledge_inbox::KnowledgeInbox::default(),
             vector_projector: Arc::new(OnceCell::new()),
             chatbot_episode_cozo: Arc::new(OnceCell::new()),
@@ -1179,6 +1186,7 @@ impl MutationEngine {
             notebook_queries: Arc::new(crate::notebooklm_queries::NotebookQueries::default()),
             snowball_methods: Arc::new(OnceCell::new()),
             ui_workspace: Arc::new(OnceCell::new()),
+            routing_store: Arc::new(OnceCell::new()),
             chatbot_episodes: Arc::new(OnceCell::new()),
             chat_response_cozo: Arc::new(OnceCell::new()),
             chat_responses: Arc::new(OnceCell::new()),
@@ -1192,6 +1200,7 @@ impl MutationEngine {
             obfuscation_methods: Arc::new(OnceCell::new()),
             obfuscation_projection: Arc::new(Mutex::new(())),
             openflow_projection: Arc::new(Mutex::new(())),
+            openflow_permit_authority: Arc::new(OnceCell::new()),
             openflow_method_connection: Arc::new(OnceCell::new()),
             mcp_policy_owner: Arc::new(OnceCell::new()),
             antigravity_documents: Arc::new(OnceCell::new()),
@@ -1266,7 +1275,7 @@ impl MutationEngine {
                     !path.is_empty() && path != ":memory:" && path != "memory",
                     "chatbot episode store requires a durable path"
                 );
-                let general = self.cognitive_mcp.get().map(|server| server.cozo_shuttle());
+                let general = self.cognitive.get().map(|server| server.cozo_shuttle());
                 let conversations = std::env::var("CHAT_RESPONSE_DB_PATH")
                     .unwrap_or_else(|_| "/var/lib/op-dbus/chat-responses.db".to_string());
                 let conversation_store = self.chat_response_cozo.get().cloned();
@@ -1312,7 +1321,7 @@ impl MutationEngine {
                     .unwrap_or_else(|_| "/var/lib/op-dbus/chatbot-episodes.db".to_string());
                 let conversations = std::env::var("CHAT_RESPONSE_DB_PATH")
                     .unwrap_or_else(|_| "/var/lib/op-dbus/chat-responses.db".to_string());
-                let general = self.cognitive_mcp.get().map(|server| server.cozo_shuttle());
+                let general = self.cognitive.get().map(|server| server.cozo_shuttle());
                 let episode_store = self.chatbot_episode_cozo.get().cloned();
                 let conversation_store = self.chat_response_cozo.get().cloned();
                 tokio::task::spawn_blocking(move || {
@@ -1367,7 +1376,7 @@ impl MutationEngine {
                 let conversations = std::env::var("CHAT_RESPONSE_DB_PATH")
                     .unwrap_or_else(|_| "/var/lib/op-dbus/chat-responses.db".to_string());
                 let others: Vec<Arc<op_cozo_store::CozoGraphShuttle>> = self
-                    .cognitive_mcp
+                    .cognitive
                     .get()
                     .map(|server| server.cozo_shuttle())
                     .into_iter()
@@ -1417,7 +1426,7 @@ impl MutationEngine {
         &self,
         store: Arc<op_cozo_store::CozoGraphShuttle>,
     ) -> anyhow::Result<()> {
-        if let Some(general) = self.cognitive_mcp.get() {
+        if let Some(general) = self.cognitive.get() {
             store.ensure_distinct_from(&general.cozo_shuttle())?;
         }
         if let Some(episodes) = self.chatbot_episode_cozo.get() {
@@ -1436,7 +1445,7 @@ impl MutationEngine {
         &self,
         store: Arc<op_cozo_store::CozoGraphShuttle>,
     ) -> anyhow::Result<()> {
-        if let Some(general) = self.cognitive_mcp.get() {
+        if let Some(general) = self.cognitive.get() {
             store.ensure_distinct_from(&general.cozo_shuttle())?;
         }
         if let Some(conversations) = self.chat_response_cozo.get() {
@@ -1446,6 +1455,21 @@ impl MutationEngine {
         self.chatbot_episode_cozo
             .set(store)
             .map_err(|_| anyhow::anyhow!("chatbot episode Cozo owner is already configured"))
+    }
+
+    pub(crate) fn configure_routing_store(
+        &self,
+        documents: Arc<op_plugins::state_plugins::runtime_documents::RuntimeDocuments>,
+        root: op_core::projection_shm::PrivateProjectionDirectory,
+        catalog: std::path::PathBuf,
+        resources: Arc<crate::routing_resources::RoutingResources>,
+    ) -> anyhow::Result<()> {
+        self.routing_store.set(crate::routing_store::RoutingStore::new(documents, root, catalog, resources))
+            .map_err(|_| anyhow::anyhow!("routing store is already configured"))
+    }
+
+    pub(crate) fn routing_store(&self) -> anyhow::Result<&crate::routing_store::RoutingStore> {
+        self.routing_store.get().context("routing store is not configured")
     }
 
     pub fn configure_chat_response_projection(
@@ -1489,7 +1513,7 @@ impl MutationEngine {
                     .unwrap_or_else(|_| "/var/lib/op-dbus/ui-gallery.db".to_string());
                 let registry = std::env::var("MODEL_REGISTRY_DB_PATH")
                     .unwrap_or_else(|_| "/var/lib/op-dbus/model-registry.db".to_string());
-                let general = self.cognitive_mcp.get().map(|server| server.cozo_shuttle());
+                let general = self.cognitive.get().map(|server| server.cozo_shuttle());
                 let others: Vec<Arc<op_cozo_store::CozoGraphShuttle>> = self
                     .chatbot_episode_cozo
                     .get()
@@ -1529,7 +1553,7 @@ impl MutationEngine {
         &self,
         store: Arc<op_cozo_store::CozoGraphShuttle>,
     ) -> anyhow::Result<()> {
-        if let Some(general) = self.cognitive_mcp.get() {
+        if let Some(general) = self.cognitive.get() {
             store.ensure_distinct_from(&general.cozo_shuttle())?;
         }
         if let Some(episodes) = self.chatbot_episode_cozo.get() {
@@ -1915,23 +1939,23 @@ impl MutationEngine {
     /// its mandatory durable Cozo/vector initialization.
     #[cfg(test)]
     pub(crate) fn configure_cognitive_runtime_fixture(
-        &self, runtime: Arc<CognitiveMcpServer>,
+        &self, runtime: Arc<CognitiveServer>,
     ) -> anyhow::Result<()> {
-        self.cognitive_mcp
+        self.cognitive
             .set(runtime)
             .map_err(|_| anyhow::anyhow!("cognitive fixture owner already configured"))
     }
 
-    pub(crate) async fn cognitive_mcp(&self) -> anyhow::Result<&Arc<CognitiveMcpServer>> {
-        self.cognitive_mcp
+    pub(crate) async fn cognitive(&self) -> anyhow::Result<&Arc<CognitiveServer>> {
+        self.cognitive
             .get_or_try_init(|| async {
-                let path = std::env::var("COGNITIVE_MCP_DB_PATH")
+                let path = std::env::var("COGNITIVE_DB_PATH")
                     .unwrap_or_else(|_| "/var/lib/op-dbus/cognitive-memory.db".to_string());
                 crate::chatbot_episode_state::require_distinct_database_paths(
                     &std::env::var("CTL_PLANE_CHATBOT_EPISODE_DB_PATH")
                         .unwrap_or_else(|_| "/var/lib/op-dbus/chatbot-episodes.db".to_string()),
                 )?;
-                let server = CognitiveMcpServer::new_durable(&path)
+                let server = CognitiveServer::new_durable(&path)
                     .await
                     .map_err(|error| {
                         anyhow::anyhow!("durable cognitive runtime unavailable: {error}")
@@ -2448,6 +2472,26 @@ impl MutationEngine {
             .await
             .cloned()
             .map_err(|e| anyhow::anyhow!(e))
+    }
+
+    async fn openflow_permit_authority(
+        &self,
+    ) -> anyhow::Result<&crate::openflow_permit::OpenFlowPermitAuthority> {
+        self.openflow_permit_authority
+            .get_or_try_init(|| async {
+                tokio::time::timeout(
+                    std::time::Duration::from_secs(10),
+                    async {
+                        crate::openflow_permit::OpenFlowPermitAuthority::new(
+                            self.dbus_connection().await?,
+                        )
+                        .await
+                    },
+                )
+                .await
+                .context("OpenFlow admission authority initialization timed out")?
+            })
+            .await
     }
 
     /// Get or create the session bus connection (for projection tree introspection)
@@ -3525,6 +3569,13 @@ impl MutationEngine {
                 ));
             }
 
+            // Routing owners consume bounded queue/byte/audit capacity before
+            // an untrusted JSON buffer is copied or parsed. Keep both the
+            // sealed method pin and reservation in the owned call task.
+            let early_routing = crate::routing_dispatch::reserve_before_parse(
+                self, plugin_id, method, capability_id, actor_id, session_id, session_genesis,
+            ).await?;
+
             // Parse the verbatim json_args string. If parsing fails, propagate
             // the error — the bridge converts it to fdo::Error::Failed.
             let parsed_value: simd_json::OwnedValue = {
@@ -3539,12 +3590,21 @@ impl MutationEngine {
 
             // Admit the sealed method before notarizing arguments so OD-91 can
             // digest `x-opdbus-private` fields from the method's args schema.
-            let (declaration, admitted_schema) =
-                crate::method_contract_admission::admit_compiled_invocation(
-                    plugin_id,
-                    method,
-                    capability_id,
-                )?;
+            let (declaration, admitted_schema, routing_admission) = match early_routing {
+                Some((schema, admission)) => {
+                    let declaration = schema.methods.get(method).cloned()
+                        .context("routing method is absent from admitted schema")?;
+                    // Reconstitute the existing pair shape while keeping the
+                    // reservation available for transfer to AdmittedMethodCall.
+                    (declaration, schema, Some(admission))
+                }
+                None => {
+                    let (declaration, schema) = crate::method_contract_admission::admit_compiled_invocation(
+                        plugin_id, method, capability_id,
+                    )?;
+                    (declaration, schema, None)
+                }
+            };
             anyhow::ensure!(declaration.returns.is_some(), "missing_result_contract");
             let return_contract = serde_json::to_value(
                 declaration
@@ -3573,7 +3633,7 @@ impl MutationEngine {
 
             // Compliance graph deny rules (no-op when the cognitive Cozo store
             // is absent or has no Deny rows).
-            if let Ok(mcp) = self.cognitive_mcp().await {
+            if let Ok(mcp) = self.cognitive().await {
                 let verdict = mcp.cozo_shuttle().evaluate_mutation(plugin_id, method);
                 if !verdict.allow {
                     anyhow::bail!(
@@ -3645,6 +3705,7 @@ impl MutationEngine {
                 facade_origin,
                 bound_oracle,
                 change,
+                routing_admission,
             };
             let engine = self.clone();
             let permit = self
@@ -3697,6 +3758,7 @@ impl MutationEngine {
             facade_origin,
             bound_oracle,
             change,
+            routing_admission,
         } = call;
         let plugin_id = plugin_id.as_str();
         let method = method.as_str();
@@ -3718,6 +3780,21 @@ impl MutationEngine {
             require_bound_oracle_grant(actor_id, capability_id)?;
         }
         let mut method_result: serde_json::Value = match plugin_id {
+            "routing_decision" | "schema_tag_registry" => {
+                crate::routing_dispatch::dispatch(
+                    self,
+                    plugin_id,
+                    method,
+                    &serde_json::to_value(&parsed_value)?,
+                    actor_id,
+                    capability_id,
+                    session_id,
+                    session_genesis,
+                    &admitted_schema,
+                    &change.change_id,
+                    routing_admission.context("routing owner reservation missing")?,
+                ).await?
+            }
             "mcp" => {
                 crate::mcp_config_dispatch::dispatch(
                     self,
@@ -4057,7 +4134,7 @@ impl MutationEngine {
                     }
                     let envelope = self
                         .dispatch_method_call_with_identity(
-                            "cognitive_mcp",
+                            "cognitive",
                             &target.declaration.name,
                             &serde_json::to_string(&arguments)?,
                             Some(required),
@@ -4173,7 +4250,7 @@ impl MutationEngine {
                         serde_json::from_value(args)?;
                     serde_json::to_value(self.refresh_system_graph(input.expected_revision).await?)?
                 } else {
-                    let store = self.cognitive_mcp().await?.cozo_shuttle();
+                    let store = self.cognitive().await?.cozo_shuttle();
                     op_plugins::state_plugins::cozo::dispatch_cozo_method(store, method, &args)
                         .await?
                 }
@@ -4192,7 +4269,7 @@ impl MutationEngine {
                 let service = self
                     .memory_methods
                     .get_or_try_init(|| async {
-                        let store = self.cognitive_mcp().await?.cozo_shuttle();
+                        let store = self.cognitive().await?.cozo_shuttle();
                         Ok::<_, anyhow::Error>(MemoryMethods::from_shared(store))
                     })
                     .await?;
@@ -4774,8 +4851,34 @@ impl MutationEngine {
                         )
                         .await?
                     } else {
-                        crate::openflow_methods::dispatch_openflow_flow_method(method, &args)
-                            .await?
+                        let engine = self.clone();
+                        let admitted = admitted_schema.clone();
+                        let method = method.to_owned();
+                        let caller = Arc::new(caller);
+                        let final_method = method.clone();
+                        let final_admission: crate::openflow_permit::FinalAdmission =
+                            Arc::new(move || {
+                                let engine = engine.clone();
+                                let admitted = admitted.clone();
+                                let method = final_method.clone();
+                                let caller = caller.clone();
+                                Box::pin(async move {
+                                    // The dispatch worker retains openflow_projection.
+                                    // Do not reacquire that lock in the controller callback.
+                                    crate::tched_router_admission::readmit_call(
+                                        &engine, &admitted, "openflow", &method, &caller,
+                                    )
+                                    .await?;
+                                    Ok(())
+                                })
+                            });
+                        crate::openflow_methods::dispatch_openflow_flow_method_attributed(
+                            self.openflow_permit_authority().await?,
+                            &method,
+                            &args,
+                            final_admission,
+                        )
+                        .await?
                     };
                     let projection = crate::openflow_methods::projection_change(&receipt)?;
                     self.commit_state_update(
@@ -4927,10 +5030,10 @@ impl MutationEngine {
                     );
                 op_plugins::state_plugins::ghostbridge::dispatch_ghostbridge_method(method, &state)?
             }
-            "cognitive_mcp" => {
+            "cognitive" => {
                 let args = serde_json::to_value(&parsed_value)?;
                 let result = self
-                    .dispatch_cognitive_mcp_method(
+                    .dispatch_cognitive_method(
                         crate::specialist::CognitiveCaller {
                             actor_id,
                             session_id,
@@ -5006,6 +5109,14 @@ impl MutationEngine {
             // The same initialized chain owns both audit persistence and the
             // Snowball data snapshots. Never open an empty replacement store.
             "snowball" => match method {
+                "search_own_events" => {
+                    let input = serde_json::from_value(serde_json::to_value(&parsed_value)?)?;
+                    serde_json::to_value(crate::accountability_search::search(
+                        self,
+                        crate::specialist::CognitiveCaller { actor_id, session_id, session_genesis },
+                        input,
+                    ).await?)?
+                }
                 "query_events" => {
                     dispatch_snowball_query_events(&self.event_chain, &parsed_value).await?
                 }
@@ -5604,12 +5715,12 @@ impl MutationEngine {
             }
             let provenance = bundle.provenance();
             // The turn itself is session activity for the context engine.
-            if has_memory && let Ok(runtime) = self.cognitive_mcp().await {
+            if has_memory && let Ok(runtime) = self.cognitive().await {
                 runtime
                     .context_engine()
                     .record_activity(
                         &scope.session_id,
-                        op_cognitive_mcp::context_awareness::ActivityType::Query,
+                        op_cognitive::context_awareness::ActivityType::Query,
                         turn_query.clone(),
                         serde_json::json!({ "source": "tched_router.chat", "context": provenance }),
                     )
@@ -5862,7 +5973,7 @@ impl MutationEngine {
         }
     }
 
-    async fn projected_state<T>(&self, plugin_id: &str) -> anyhow::Result<Option<T>>
+    pub(crate) async fn projected_state<T>(&self, plugin_id: &str) -> anyhow::Result<Option<T>>
     where
         T: serde::de::DeserializeOwned,
     {
@@ -6633,7 +6744,7 @@ fn event_to_footprint(event: &ChainEvent) -> PluginFootprint {
 }
 
 /// Flatten a chain event into the plugin-surface record shape.
-fn chain_event_to_record(event: &ChainEvent) -> AuditEventRecord {
+pub(crate) fn chain_event_to_record(event: &ChainEvent) -> AuditEventRecord {
     AuditEventRecord {
         event_id: event.event_id,
         event_hash: event.event_hash.clone(),
@@ -6988,16 +7099,16 @@ mod xray_unavailable_method_tests {
     }
 }
 
-/// Dispatch a `cognitive_mcp` schema method to the cognitive tool registry.
+/// Dispatch a `cognitive` schema method to the cognitive tool registry.
 ///
-/// OSCAL subid: mut.service.cognitive-mcp.dispatch@v1
+/// OSCAL subid: mut.service.cognitive.dispatch@v1
 ///
 /// The runtime is in-process, but this function is reached only after the call has
 /// passed through the canonical `PluginService`/`MutationEngine` method gate.  The
 /// registry is therefore an implementation detail behind D-Bus, not a second
 /// listener or control plane.
 impl MutationEngine {
-    async fn dispatch_cognitive_mcp_method(
+    async fn dispatch_cognitive_method(
         &self,
         caller: crate::specialist::CognitiveCaller<'_>,
         method: &str,
@@ -7029,7 +7140,7 @@ impl MutationEngine {
                 );
                 let envelope = self
                     .dispatch_method_call_with_identity(
-                        "cognitive_mcp",
+                        "cognitive",
                         target,
                         &serde_json::to_string(&arguments)?,
                         Some(required),
@@ -7079,7 +7190,7 @@ impl MutationEngine {
         // failed on every bridge. Starting the runtime is the health check:
         // it fails exactly when every other cognitive operation would.
         if method == "get_health" {
-            let runtime = self.cognitive_mcp().await?;
+            let runtime = self.cognitive().await?;
             let (remaining, limit) = runtime.quota_manager().status().await;
             return Ok(serde_json::json!({
                 "bridge_owned": true,
@@ -7094,7 +7205,7 @@ impl MutationEngine {
         // `list_tools` is an MCP *protocol* method (`tools/list`), not an entry in the
         // tool registry, so it cannot go through `tools/call`.
         if method == "list_tools" {
-            let runtime = self.cognitive_mcp().await?;
+            let runtime = self.cognitive().await?;
             let descriptors = runtime
                 .tool_registry()
                 .list_descriptors()
@@ -7219,7 +7330,7 @@ impl MutationEngine {
             None
         };
         let (tool_name, tool_args) = map_schema_method_to_tool(method, &bound_args)?;
-        let runtime = self.cognitive_mcp().await?;
+        let runtime = self.cognitive().await?;
         let input = simd_json::serde::to_owned_value(&tool_args)?;
         let result = runtime.tool_registry().execute(&tool_name, input).await?;
         let mut value = serde_json::to_value(result)?;
@@ -7242,9 +7353,9 @@ impl MutationEngine {
                 .and_then(|v| v.as_bool())
                 .unwrap_or(true);
             let activity = match (success, operation) {
-                (false, "test") => op_cognitive_mcp::context_awareness::ActivityType::TestFailure,
-                (false, _) => op_cognitive_mcp::context_awareness::ActivityType::BuildError,
-                (true, _) => op_cognitive_mcp::context_awareness::ActivityType::ToolCall,
+                (false, "test") => op_cognitive::context_awareness::ActivityType::TestFailure,
+                (false, _) => op_cognitive::context_awareness::ActivityType::BuildError,
+                (true, _) => op_cognitive::context_awareness::ActivityType::ToolCall,
             };
             let data = value
                 .get("data")
@@ -7330,7 +7441,7 @@ fn project_sealed_cognitive_tool_descriptor(
             .insert("authority_method".into(), name.into());
         return Some(candidate);
     }
-    let schema = op_plugins::cognitive_mcp_plugin_schema();
+    let schema = op_plugins::cognitive_plugin_schema();
     let method = schema.methods.get(&name)?;
     let sealed_capability = method.required_capability.as_deref()?;
     if candidate_capability != sealed_capability || candidate_subid != method.subid {
@@ -7355,7 +7466,7 @@ fn project_sealed_cognitive_tool_descriptor(
     Some(candidate)
 }
 
-/// Translate a `cognitive_mcp` schema method name into a live tool-registry call.
+/// Translate a `cognitive` schema method name into a live tool-registry call.
 ///
 /// The schema method names do not map one-to-one onto registry tool names: the
 /// registry exposes a single `cognitive_memory` tool selected by an `operation`
@@ -7431,7 +7542,7 @@ fn map_schema_method_to_tool(
             Ok((tool_name, tool_args))
         }
         other => Err(anyhow::anyhow!(
-            "cognitive_mcp method '{other}' has no tool-registry mapping"
+            "cognitive method '{other}' has no tool-registry mapping"
         )),
     }
 }
@@ -7474,7 +7585,7 @@ mod cognitive_dispatch_tests {
 
     #[test]
     fn cognitive_discovery_contracts_reject_admission_placeholders_and_descriptor_objects() {
-        let schema = op_plugins::cognitive_mcp_plugin_schema();
+        let schema = op_plugins::cognitive_plugin_schema();
         let validate = crate::method_contract_admission::validate_admitted_output;
         assert!(
             validate(
@@ -7509,19 +7620,19 @@ mod cognitive_dispatch_tests {
     fn tool_authority_is_projected_only_from_an_exact_sealed_method() {
         let projected = project_sealed_cognitive_tool_descriptor(serde_json::json!({
             "name": "code_search",
-            "required_capability": "cognitive_mcp.read",
+            "required_capability": "cognitive.read",
             "subid": "obs.service.code-rag.search@v1",
             "input_schema": {"type": "object"}
         }))
         .expect("code_search has an exact sealed MethodDecl");
         assert_eq!(projected["authority_method"], "code_search");
-        assert_eq!(projected["required_capability"], "cognitive_mcp.read");
+        assert_eq!(projected["required_capability"], "cognitive.read");
 
         assert!(
             project_sealed_cognitive_tool_descriptor(serde_json::json!({
                 "name": "search_blob_vectors",
-                "required_capability": "cognitive_mcp.read",
-                "subid": "obs.service.cognitive-mcp.blob-vectors.search@v1",
+                "required_capability": "cognitive.read",
+                "subid": "obs.service.cognitive.blob-vectors.search@v1",
                 "input_schema": {"type": "object"}
             }))
             .is_none()
@@ -7529,7 +7640,7 @@ mod cognitive_dispatch_tests {
         assert!(
             project_sealed_cognitive_tool_descriptor(serde_json::json!({
                 "name": "code_index",
-                "required_capability": "cognitive_mcp.read",
+                "required_capability": "cognitive.read",
                 "subid": "mut.service.code-rag.index@v1",
                 "input_schema": {"type": "object"}
             }))
@@ -7685,7 +7796,7 @@ mod private_method_audit_tests {
                 r#"{"operations":[{"value":"private credential"}]}"#,
             ),
             (
-                "cognitive_mcp",
+                "cognitive",
                 "agent_backend_architect_consult",
                 r#"{"question":"private code"}"#,
             ),

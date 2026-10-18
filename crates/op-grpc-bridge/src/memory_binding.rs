@@ -254,12 +254,12 @@ mod tests {
 
     #[tokio::test]
     async fn bound_memory_round_trip_uses_verified_identity_and_isolates_sessions() {
-        use op_cognitive_mcp::{cognitive_tools::MemoryTool, memory_store::CognitiveMemoryStore};
+        use op_cognitive::{cognitive_tools::MemoryTool, memory_store::CognitiveMemoryStore};
         use op_mcp::tool_registry::Tool;
         use std::sync::Arc;
 
         fn validate(method: &str, result: &simd_json::OwnedValue) {
-            let schema = op_plugins::cognitive_mcp_plugin_schema();
+            let schema = op_plugins::cognitive_plugin_schema();
             crate::method_contract_admission::validate_admitted_output(
                 &schema.methods[method],
                 &serde_json::to_value(result).unwrap(),

@@ -284,7 +284,7 @@ impl CozoGraphShuttle {
     }
 
     pub fn from_env() -> std::result::Result<Self, CozoError> {
-        if let Ok(p) = std::env::var("COGNITIVE_MCP_COZO_DB_PATH") {
+        if let Ok(p) = std::env::var("COGNITIVE_COZO_DB_PATH") {
             Self::new_persistent(PathBuf::from(p))
         } else {
             Self::new_in_memory()

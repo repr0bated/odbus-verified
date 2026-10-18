@@ -89,7 +89,7 @@ async fn project_membership_and_context_methods_enforce_durable_session_ownershi
     let owner = &identities[0];
     let member = &identities[1];
     std::fs::write(&grants_path, serde_json::to_vec(&json!({
-        (owner.principal_id.clone()): {"capabilities":["project.read","project.admin","chat.context","chat.control_plane","cognitive_mcp.read","cognitive_mcp.memory.write","snowball.read"]},
+        (owner.principal_id.clone()): {"capabilities":["project.read","project.admin","chat.context","chat.control_plane","cognitive.read","cognitive.memory.write","snowball.read"]},
         (member.principal_id.clone()): {"capabilities":["project.read","project.admin","chat.context"]}
     })).unwrap()).unwrap();
 
@@ -232,8 +232,8 @@ async fn project_membership_and_context_methods_enforce_durable_session_ownershi
             false,
             json!([
                 "chat.context",
-                "cognitive_mcp.memory.write",
-                "cognitive_mcp.read"
+                "cognitive.memory.write",
+                "cognitive.read"
             ]),
         ),
         (
@@ -242,8 +242,8 @@ async fn project_membership_and_context_methods_enforce_durable_session_ownershi
             false,
             json!([
                 "chat.context",
-                "cognitive_mcp.memory.write",
-                "cognitive_mcp.read"
+                "cognitive.memory.write",
+                "cognitive.read"
             ]),
         ),
         (

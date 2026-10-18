@@ -81,7 +81,7 @@ TODO(jeremy): confirm/redraw to taste; keep it to ONE figure.
 
 ## 6. Why NVIDIA / GPU / AI (the Inception lane)
 Make the AI the product and the privacy fabric the enabler.
-- Gemma routing brain, cognitive-mcp + RAG, embeddings/vector store — the GPU-justifying workload.
+- Gemma routing brain, cognitive + RAG, embeddings/vector store — the GPU-justifying workload.
 - TODO(jeremy): the AI product a customer actually buys; where GPUs are non-optional.
 - TODO(jeremy): traction / users / regulatory angle (compliance/OSCAL target) if applicable.
 
