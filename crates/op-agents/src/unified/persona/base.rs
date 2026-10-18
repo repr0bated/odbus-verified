@@ -180,7 +180,7 @@ impl UnifiedAgent for PersonaAgent {
 
         let _ = query;
         AgentResponse::failure(format!(
-            "persona operation '{}' requires authenticated bridge consultation via cognitive_mcp.specialist",
+            "persona operation '{}' requires authenticated bridge consultation via cognitive.specialist",
             op
         ))
     }

@@ -1,14 +1,15 @@
 //! Native btrfs device operations via ioctl — no CLI subprocesses.
 //!
-//! An identity device joins and leaves an already-mounted filesystem with
-//! `BTRFS_IOC_ADD_DEV` and `BTRFS_IOC_RM_DEV`. That is not a mount or unmount
-//! of the identity image.
+//! Explicit storage provisioning may change membership. Identity startup and
+//! shutdown only verify mounts: an absent mount must never turn into a device
+//! addition to the host filesystem beneath its directory.
 
 use std::ffi::CString;
 use std::fs::File;
 use std::os::fd::AsRawFd;
+use std::os::unix::fs::{FileExt, OpenOptionsExt};
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 
@@ -43,30 +44,6 @@ pub fn device_add(device: &Path, mount_point: &Path) -> Result<()> {
 /// is the kernel member path, usually the loop device btrfs already has.
 pub fn device_remove(device: &Path, mount_point: &Path) -> Result<()> {
     vol_args_ioctl(BTRFS_IOC_RM_DEV, "BTRFS_IOC_RM_DEV", device, mount_point)
-}
-
-/// Add the registered backing to `mount_point` when it is not already a member.
-pub fn ensure_device_added(device: &Path, mount_point: &Path) -> Result<()> {
-    if member_kernel_path(device, mount_point)?.is_some() {
-        return Ok(());
-    }
-    let block = backing_block_path(device)?;
-    if let Err(error) = device_add(&block, mount_point) {
-        if member_kernel_path(device, mount_point)?.is_some() {
-            return Ok(());
-        }
-        return Err(error);
-    }
-    Ok(())
-}
-
-/// Remove the registered backing from `mount_point` when it is still a member.
-/// A device that is already absent is left alone.
-pub fn ensure_device_removed(device: &Path, mount_point: &Path) -> Result<()> {
-    let Some(kernel_path) = member_kernel_path(device, mount_point)? else {
-        return Ok(());
-    };
-    device_remove(Path::new(&kernel_path), mount_point)
 }
 
 fn vol_args_ioctl(
@@ -155,114 +132,128 @@ const _: () = assert!(std::mem::size_of::<FsInfo>() == 1024);
 const _: () = assert!(std::mem::size_of::<DevInfo>() == 4096);
 const _: () = assert!(std::mem::size_of::<LoopInfo64>() == 232);
 
-fn member_kernel_path(device: &Path, mount_point: &Path) -> Result<Option<String>> {
-    let dir = match File::open(mount_point) {
-        Ok(dir) => dir,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => {
-            return Err(error).context("open btrfs mount while looking up an identity device");
-        }
-    };
-    let backing = File::open(device).context("open registered identity btrfs backing")?;
-    let backing_meta = backing.metadata()?;
-    // SAFETY: FsInfo is an integer-only kernel ABI struct.
-    let mut fs: FsInfo = unsafe { std::mem::zeroed() };
-    if unsafe { libc::ioctl(dir.as_raw_fd(), 0x8400_941f as libc::c_ulong, &mut fs) } != 0 {
-        return Err(std::io::Error::last_os_error()).context("query btrfs filesystem devices");
-    }
-    for devid in 1..=fs.max_id {
-        // SAFETY: DevInfo is an integer-only kernel ABI struct.
-        let mut dev: DevInfo = unsafe { std::mem::zeroed() };
-        dev.devid = devid;
-        if unsafe { libc::ioctl(dir.as_raw_fd(), 0xd000_941e as libc::c_ulong, &mut dev) } != 0 {
-            continue;
-        }
-        let Some(end) = dev.path.iter().position(|byte| *byte == 0) else {
-            continue;
-        };
-        let Ok(actual) = std::str::from_utf8(&dev.path[..end]) else {
-            continue;
-        };
-        if actual.is_empty() {
-            continue;
-        }
-        if kernel_member_matches(actual, &backing_meta)? {
-            return Ok(Some(actual.to_string()));
-        }
-    }
-    Ok(None)
+fn uuid_device_path(expected_uuid: &str) -> Result<PathBuf> {
+    let uuid = uuid::Uuid::parse_str(expected_uuid).context("invalid registered btrfs UUID")?;
+    anyhow::ensure!(!uuid.is_nil(), "registered btrfs UUID must not be nil");
+    Ok(Path::new("/dev/disk/by-uuid").join(uuid.hyphenated().to_string()))
 }
 
-fn kernel_member_matches(kernel_path: &str, backing_meta: &std::fs::Metadata) -> Result<bool> {
-    let actual_device = match File::open(kernel_path) {
-        Ok(file) => file,
-        Err(_) => return Ok(false),
+fn mount_id(file: &File) -> Result<u64> {
+    // SAFETY: statx writes to an initialized integer-only ABI struct; the
+    // empty path and AT_EMPTY_PATH query the held directory descriptor.
+    let mut info: libc::statx = unsafe { std::mem::zeroed() };
+    let rc = unsafe {
+        libc::statx(
+            file.as_raw_fd(),
+            c"".as_ptr(),
+            libc::AT_EMPTY_PATH,
+            libc::STATX_MNT_ID,
+            &mut info,
+        )
     };
-    let actual_meta = actual_device.metadata()?;
-    if !actual_meta.file_type().is_block_device() {
-        return Ok(false);
-    }
-    if backing_meta.is_file() {
-        // SAFETY: loop_info64 is a fixed-size integer kernel ABI struct.
-        let mut loop_status: LoopInfo64 = unsafe { std::mem::zeroed() };
-        if unsafe {
-            libc::ioctl(
-                actual_device.as_raw_fd(),
-                LOOP_GET_STATUS64,
-                &mut loop_status,
-            )
-        } != 0
-        {
-            return Ok(false);
-        }
-        return Ok(loop_status_matches_backing(&loop_status, backing_meta));
-    }
-    if backing_meta.file_type().is_block_device() {
-        return Ok(backing_meta.rdev() == actual_meta.rdev());
-    }
-    Ok(false)
-}
-
-fn backing_block_path(device: &Path) -> Result<std::path::PathBuf> {
-    let meta = std::fs::metadata(device)
-        .with_context(|| format!("inspect identity btrfs backing {}", device.display()))?;
-    if meta.file_type().is_block_device() {
-        return Ok(device.to_path_buf());
+    if rc != 0 {
+        return Err(std::io::Error::last_os_error()).context("read identity mount boundary");
     }
     anyhow::ensure!(
-        meta.is_file(),
-        "identity btrfs backing is neither a block device nor an image file"
+        info.stx_mask & libc::STATX_MNT_ID != 0,
+        "kernel lacks mount ID readback"
     );
-    for entry in std::fs::read_dir("/dev").context("list loop devices")? {
-        let entry = entry?;
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        let Some(digits) = name.strip_prefix("loop") else {
-            continue;
-        };
-        if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
-            continue;
-        }
-        let file = match File::options().read(true).open(entry.path()) {
-            Ok(file) => file,
-            Err(_) => continue,
-        };
-        if !file.metadata()?.file_type().is_block_device() {
-            continue;
-        }
-        // SAFETY: loop_info64 is a fixed-size integer kernel ABI struct.
-        let mut status: LoopInfo64 = unsafe { std::mem::zeroed() };
-        if unsafe { libc::ioctl(file.as_raw_fd(), LOOP_GET_STATUS64, &mut status) } != 0 {
-            continue;
-        }
-        if loop_status_matches_backing(&status, &meta) {
-            return Ok(entry.path());
-        }
-    }
-    bail!(
-        "identity image {} has no loop device to add into the mounted filesystem",
-        device.display()
-    )
+    Ok(info.stx_mnt_id)
+}
+
+/// Observe an exact mount boundary; a directory on its parent's filesystem is
+/// not a mounted identity. Noncanonical and absent paths are errors.
+pub fn identity_mount_present(mount_point: &Path) -> Result<bool> {
+    anyhow::ensure!(
+        mount_point.is_absolute() && mount_point != Path::new("/"),
+        "identity mount must be an absolute non-root mount point"
+    );
+    anyhow::ensure!(
+        std::fs::canonicalize(mount_point).context("resolve identity mount")? == mount_point,
+        "identity mount path must be canonical and contain no symlinks"
+    );
+    let dir = File::options()
+        .read(true)
+        .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW)
+        .open(mount_point)
+        .context("open identity mount directory")?;
+    let parent = File::open(
+        mount_point
+            .parent()
+            .context("identity mount has no parent")?,
+    )?;
+    Ok(mount_id(&dir)? != mount_id(&parent)?)
+}
+
+fn verify_exact_mount(mount_point: &Path) -> Result<()> {
+    anyhow::ensure!(
+        identity_mount_present(mount_point)?,
+        "registered identity mount is absent; refusing the containing filesystem"
+    );
+    Ok(())
+}
+
+fn verify_superblock_identity(superblock: &[u8; 4096], expected_uuid: &str) -> Result<()> {
+    let expected = uuid::Uuid::parse_str(expected_uuid).context("invalid registered btrfs UUID")?;
+    anyhow::ensure!(!expected.is_nil(), "registered btrfs UUID must not be nil");
+    anyhow::ensure!(
+        &superblock[64..72] == b"_BHRfS_M",
+        "UUID source is not Btrfs"
+    );
+    anyhow::ensure!(
+        u64::from_le_bytes(superblock[48..56].try_into()?) == 65536,
+        "invalid primary Btrfs superblock offset"
+    );
+    anyhow::ensure!(
+        &superblock[32..48] == expected.as_bytes(),
+        "on-disk Btrfs UUID differs from the registered UUID; refusing cached device identity"
+    );
+    let members = u64::from_le_bytes(superblock[136..144].try_into()?);
+    anyhow::ensure!(
+        members == 1,
+        "UUID source belongs to a multi-device filesystem"
+    );
+    Ok(())
+}
+
+/// Read the primary superblock through a held read-only block descriptor before
+/// asking UDisks to mount. Its cached IdUUID alone is not sufficient after a
+/// format or device-add operation. The kernel validates the complete filesystem
+/// when mounting; this preflight rejects stale identity and shared-pool sources.
+pub fn verify_unmounted_source(source: &File, expected_uuid: &str) -> Result<()> {
+    anyhow::ensure!(
+        source.metadata()?.file_type().is_block_device(),
+        "UUID source must be a block device"
+    );
+    let mut superblock = [0_u8; 4096];
+    source
+        .read_exact_at(&mut superblock, 65536)
+        .context("read Btrfs source superblock")?;
+    verify_superblock_identity(&superblock, expected_uuid)
+}
+
+/// Verify an identity's existing mount using its registered filesystem UUID.
+/// Block device names are discovery hints only: `/dev/sdX` may change on boot.
+/// Image-backed sprouts additionally retain their inode/loop provenance check.
+/// The storage owner must mount the declared subvolume first; this binding has
+/// no subvolume selector, so guessing the filesystem default would be unsafe.
+/// This function never mounts, formats, adds or removes a device.
+pub fn verify_identity_mount(device: &Path, mount_point: &Path, expected_uuid: &str) -> Result<()> {
+    let uuid_path = uuid_device_path(expected_uuid)?;
+    verify_exact_mount(mount_point)?;
+    // A stale /dev name must not be opened or used as fallback if UUID lookup
+    // fails. Regular image paths remain pinned to the actual backing inode.
+    let backing = if device.starts_with("/dev") {
+        uuid_path
+    } else {
+        let metadata = std::fs::metadata(device).context("inspect identity image backing")?;
+        anyhow::ensure!(
+            metadata.is_file(),
+            "identity image backing must be a regular file"
+        );
+        device.to_path_buf()
+    };
+    verify_dedicated_mount(&backing, mount_point, expected_uuid)
 }
 
 fn loop_status_matches_backing(loop_status: &LoopInfo64, backing: &std::fs::Metadata) -> bool {
@@ -350,14 +341,116 @@ pub fn verify_dedicated_mount(
 mod tests {
     use super::*;
     use std::os::unix::fs::MetadataExt;
+
     #[test]
-    fn dedicated_mount_verification_rejects_invalid_uuid_before_io() {
+    fn uuid_device_selection_is_canonical_and_rejects_paths() {
+        assert_eq!(
+            uuid_device_path("806E2801-8BE0-4B0D-919C-3E319452667B").unwrap(),
+            Path::new("/dev/disk/by-uuid/806e2801-8be0-4b0d-919c-3e319452667b")
+        );
+        for invalid in [
+            "",
+            "../../sdb2",
+            "/dev/sdb2",
+            "00000000-0000-0000-0000-000000000000",
+        ] {
+            assert!(uuid_device_path(invalid).is_err());
+        }
+    }
+
+    #[test]
+    fn source_preflight_rejects_stale_uuid_and_pool_membership() {
+        let uuid = "806e2801-8be0-4b0d-919c-3e319452667b";
+        let mut superblock = [0_u8; 4096];
+        superblock[32..48].copy_from_slice(uuid::Uuid::parse_str(uuid).unwrap().as_bytes());
+        superblock[64..72].copy_from_slice(b"_BHRfS_M");
+        superblock[48..56].copy_from_slice(&65536_u64.to_le_bytes());
+        superblock[136..144].copy_from_slice(&1_u64.to_le_bytes());
+        verify_superblock_identity(&superblock, uuid).unwrap();
+        superblock[32] ^= 1;
         assert!(
-            verify_dedicated_mount(Path::new("/missing"), Path::new("/missing"), "invalid")
+            verify_superblock_identity(&superblock, uuid)
                 .unwrap_err()
                 .to_string()
-                .contains("UUID")
+                .contains("on-disk")
         );
+        superblock[32] ^= 1;
+        superblock[136..144].copy_from_slice(&3_u64.to_le_bytes());
+        assert!(
+            verify_superblock_identity(&superblock, uuid)
+                .unwrap_err()
+                .to_string()
+                .contains("multi-device")
+        );
+        superblock[64] = 0;
+        assert!(
+            verify_superblock_identity(&superblock, uuid)
+                .unwrap_err()
+                .to_string()
+                .contains("not Btrfs")
+        );
+    }
+
+    #[test]
+    fn identity_directory_cannot_be_treated_as_its_parent_filesystem() {
+        let dir = tempfile::tempdir().unwrap();
+        let error = verify_identity_mount(
+            Path::new("/dev/nonexistent-stale-device"),
+            dir.path(),
+            "806e2801-8be0-4b0d-919c-3e319452667b",
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("mount is absent"));
+        assert!(verify_exact_mount(Path::new("/")).is_err());
+        let link = dir.path().join("alias");
+        std::os::unix::fs::symlink(dir.path(), &link).unwrap();
+        assert!(
+            verify_exact_mount(&link)
+                .unwrap_err()
+                .to_string()
+                .contains("canonical")
+        );
+    }
+
+    /// Run through deploy/scripts/tests/test-identity-uuid-mount.sh, which owns
+    /// disposable loop devices and a private mount namespace/UUID alias tree.
+    #[test]
+    #[ignore = "requires isolated root-owned Btrfs loop fixture"]
+    fn native_uuid_mount_fixture() {
+        let fixture = PathBuf::from(std::env::var_os("IDENTITY_UUID_FIXTURE").unwrap());
+        let uuid = std::fs::read_to_string(fixture.join("uuid")).unwrap();
+        let uuid = uuid.trim();
+        let mount = fixture.join("mount");
+        let source = File::open(uuid_device_path(uuid).unwrap()).unwrap();
+        verify_unmounted_source(&source, uuid).unwrap();
+        // Neither an absent historical name nor another current block device
+        // is authoritative once the registered UUID has been resolved.
+        verify_identity_mount(Path::new("/dev/stale-sdb2"), &mount, uuid).unwrap();
+        verify_identity_mount(Path::new("/dev/sda4"), &mount, uuid).unwrap();
+        verify_identity_mount(&fixture.join("image"), &mount, uuid).unwrap();
+        assert!(verify_identity_mount(&fixture.join("other-image"), &mount, uuid).is_err());
+        assert!(
+            verify_identity_mount(
+                Path::new("/dev/stale-sdb2"),
+                &fixture.join("unmounted"),
+                uuid
+            )
+            .is_err()
+        );
+        let wrong_uuid = "806e2801-8be0-4b0d-919c-3e319452667b";
+        assert!(verify_unmounted_source(&source, wrong_uuid).is_err());
+        assert!(verify_identity_mount(Path::new("/dev/stale-sdb2"), &mount, wrong_uuid).is_err());
+        // A stale by-uuid alias cannot override the FSID reported by the kernel.
+        std::os::unix::fs::symlink(
+            uuid_device_path(uuid).unwrap(),
+            uuid_device_path(wrong_uuid).unwrap(),
+        )
+        .unwrap();
+        assert!(verify_identity_mount(Path::new("/dev/stale-sdb2"), &mount, wrong_uuid).is_err());
+        std::fs::remove_file(uuid_device_path(uuid).unwrap()).unwrap();
+        assert!(verify_identity_mount(Path::new("/dev/stale-sdb2"), &mount, uuid).is_err());
+        // Failure does not damage or eject the actual image-backed filesystem.
+        verify_identity_mount(&fixture.join("image"), &mount, uuid).unwrap();
     }
 
     #[test]
