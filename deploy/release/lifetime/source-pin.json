@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "repository": "https://gitlab.com/xanmod/linux",
+  "tag": "6.18.57-xanmod1",
+  "commit": "cb444174e58f61ebed6c4140af0579cdcc6fa1e1",
+  "native_release": "6.18.57-x64v3-xanmod1",
+  "native_target": "x86_64-unknown-linux-gnu",
+  "native_config_sha256": "a62c2dad1ba4d2275dcdb5545952f51883362c750a3587e62a12fc5ad51eb6db",
+  "native_config_origin": "Stock 6.18.56-x64v3-xanmod1 configuration, preserved unchanged; build-native.sh applies the explicit profile and records the effective configuration.",
+  "native_config": {
+    "CONFIG_BTRFS_FS": "y",
+    "CONFIG_OVERLAY_FS": "m",
+    "CONFIG_LIVEPATCH": "n"
+  },
+  "base_archive": {
+    "method": "git archive",
+    "format": "tar",
+    "commit": "cb444174e58f61ebed6c4140af0579cdcc6fa1e1",
+    "paths": [
+      "fs/btrfs",
+      "include/uapi/linux/btrfs.h"
+    ],
+    "sha256": "50772932d64a61621671d81ed13dbe2d84de07436af8adbee4d274d606f85e5e"
+  },
+  "base_files_sha256": {
+    "fs/btrfs/btrfs_inode.h": "457221ffd6cf789206d400422c0f0a237b6d4346289d32090e1c35728766208d",
+    "fs/btrfs/ctree.h": "a7e74963034f3ab5e4296b53be8fb2ef50ace6b11583883dbad62a678580b14f",
+    "fs/btrfs/disk-io.c": "3667addc7c411ef01c3f473a72d4668c07788193f44f44059ab6a872742f4610",
+    "fs/btrfs/disk-io.h": "ff720f99ae800b1311140c5546f65945445221d5daa2cff2d0d7f26a201cacf6",
+    "fs/btrfs/fs.h": "03954752ceff4b69d2af579d6e146a6629f61c4edfebd933d1cc4f1c4692e8e9",
+    "fs/btrfs/inode.c": "7325a5722e7e88f19737457dd4844ccfe4d0c3aa47c12aebf2d33661d6d34226",
+    "fs/btrfs/ioctl.c": "b2c8c16652b2d2474cfd33fd4309910d87b50597341d0ba166e8319fae450226",
+    "include/uapi/linux/btrfs.h": "27845fc3e523e4b02f75779013f1f3663717229dcb8554835a6d0d3cdcd052eb"
+  },
+  "patched_files_sha256": {
+    "fs/btrfs/btrfs_inode.h": "b445543a8ead665f5df0dc5e4aa94f0c53ec8a826cf094dbd2aeea77f94b66dc",
+    "fs/btrfs/ctree.h": "cf0ce094393369a908a9b7d13ddffebe80a0ffbd80d98c5d8d8eb7d9d3b96dd2",
+    "fs/btrfs/disk-io.c": "de3d72520a42985ea3577b221ae9cc7fa91f315612df19f832a4de0210db55e6",
+    "fs/btrfs/disk-io.h": "af1d68ba5729e732ce233852c391e32dedf8ac80f965de595563dbecdfe2aa4f",
+    "fs/btrfs/fs.h": "93de29186b21396f3a5a0b17d3463260cb6535746165f5cf83ae71d8613a3382",
+    "fs/btrfs/inode.c": "0bf993a3d75795ebf77760d7023b586a5f8702eefd20e355068881b792986bfe",
+    "fs/btrfs/ioctl.c": "bb753596971e6e95ee54740fb957db1f0470fa9aa2b798baa90efaa1dbb961c7",
+    "include/uapi/linux/btrfs.h": "0611fa179e9904aa3e653a62171ef01e9fda69d79b757fbdc093444a7262fb12"
+  },
+  "patch": "0001-btrfs-quiescent-destroy.patch",
+  "patch_sha256": "a684f8c19b92a73e1dec7f88563413daf0799e2ff3957b1de494de3d953d91a2",
+  "source_lineage": {
+    "original_tag": "6.18.56-xanmod1",
+    "original_commit": "95d03facd0b1f7aa185682797863b4a2e639d5f2",
+    "original_base_archive_url": "https://gitlab.com/api/v4/projects/xanmod%2Flinux/repository/archive.tar.gz?sha=95d03facd0b1f7aa185682797863b4a2e639d5f2&path=fs%2Fbtrfs",
+    "original_base_archive_sha256": "18f50a428af3fb6755a501a879e81b5713c1f2b3d02d27b84abf61c9b78c9d13",
+    "original_saved_patch_sha256": "b6d1229008911503822cca9be442d31565d86aa393ca79fe68829c54b21e39ac",
+    "completed_original_base_patch_sha256": "a3c7f47e592b425c5a0163e506227bf8de76556e49c331d79af0ed87e9a19d1b",
+    "migration": "Resumed preserved scratch, completed the original-base source, then rebased onto the owner-authorized full 6.18.57-xanmod1 stable update. Original scratch and completed original-base patch preserved; no rejected historical controller reused.",
+    "post_rebase_review": "Made existing cached-only btrfs_lookup_fs_root internal-global with a disk-io.h declaration for its inode.c caller; no constructor lookup substitution or module export."
+  },
+  "downstream_abi": {
+    "name": "BTRFS_IOC_SNAP_DESTROY_QUIESCENT",
+    "request_x86_64": "0x406094ff",
+    "argument_bytes": 96,
+    "identity": [
+      "fsid",
+      "subvolid",
+      "uuid",
+      "received_uuid"
+    ],
+    "flags": 0,
+    "reserved_u64": 4,
+    "requires_readonly": true
+  },
+  "activation": "Requires separately approved replacement-kernel boot; no loading, reboot or enforcement activation authorized by this artifact.",
+  "verification": "Source artifact only. Original-base patch applied to the new pristine stable source with fuzz=0 during rebase; final patch generated directly against the new pristine base. No compilation, tests, formatters or kernel/VM execution performed. Parent owns integration, build and isolated operational safety evidence."
+}

@@ -1,0 +1,90 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          op-release-activate
+# Required-Start:    $local_fs
+# Required-Stop:
+# Default-Start:     S
+# Default-Stop:
+# Short-Description: Mount the last committed application release target set
+### END INIT INFO
+# Install as /etc/init.d/op-release-activate with rcS S12 ordering after S10mountall.sh.
+# Boot must never run transaction recovery, catalog mutation or service management.
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+LC_ALL=C
+export PATH LC_ALL
+base=/usr/local/libexec/opdbus-release
+# Authenticate the launcher's bytes before executing it. Its independent
+# verifier checks the entire exact kit and kernel/BTF before native boot.
+approved_launcher() {
+    [ "$(id -u)" = 0 ] || return 1
+    for directory in / /usr /usr/local /usr/local/libexec "$base"; do
+        [ -d "$directory" ] && [ ! -L "$directory" ] &&
+            [ "$(stat -c %u:%g "$directory")" = 0:0 ] &&
+            [ "$((0$(stat -c %a "$directory") & 07022))" -eq 0 ] || return 1
+    done
+    [ -f "$base/op-release-launch" ] && [ ! -L "$base/op-release-launch" ] &&
+        [ "$(stat -c %u:%g:%a:%h "$base/op-release-launch")" = 0:0:755:1 ] || return 1
+    [ -f "$base/manifest.sha256" ] && [ ! -L "$base/manifest.sha256" ] &&
+        [ "$(stat -c %u:%g:%a:%h "$base/manifest.sha256")" = 0:0:600:1 ] &&
+        [ "$(stat -c %s "$base/manifest.sha256")" -le 1024 ] || return 1
+    expected=$(awk -v path="$base/op-release-launch" '
+        $2 == path {
+            if (NF != 2 || length($1) != 64 || $1 ~ /[^0-9a-f]/ ||
+                $0 != $1 "  " $2) { invalid = 1; exit 1 }
+            digest = $1
+            count++
+        }
+        END { if (invalid || count != 1) exit 1; print digest }
+    ' "$base/manifest.sha256") || return 1
+    actual=$(sha256sum "$base/op-release-launch") || return 1
+    [ "${actual%% *}" = "$expected" ]
+}
+prepare_release_cgroup() {
+    # Release administration must work while the separate BPF guard stays OFF.
+    # This boot-owned cgroup grants no BPF trust and enables no controllers.
+    for directory in /sys /sys/fs /sys/fs/cgroup; do
+        [ -d "$directory" ] && [ ! -L "$directory" ] &&
+            [ "$(stat -c %u:%g "$directory")" = 0:0 ] &&
+            [ "$((0$(stat -c %a "$directory") & 07022))" -eq 0 ] || return 1
+    done
+    case "$(stat -f -c %T /sys/fs/cgroup)" in
+        cgroup2fs) ;;
+        sysfs)
+            # Early boot may not have mounted the unified hierarchy yet.
+            # Never cover an existing mount, v1 hierarchy or populated directory.
+            if mountpoint -q /sys/fs/cgroup; then
+                return 1
+            else
+                [ "$?" -eq 32 ] || return 1
+            fi
+            contents=$(find /sys/fs/cgroup -mindepth 1 -maxdepth 1 -print -quit) || return 1
+            [ -z "$contents" ] || return 1
+            mount -t cgroup2 -o nosuid,nodev,noexec,nsdelegate,memory_recursiveprot \
+                cgroup2 /sys/fs/cgroup || return 1
+            ;;
+        *) return 1 ;;
+    esac
+    [ "$(stat -f -c %T /sys/fs/cgroup)" = cgroup2fs ] || return 1
+    cgroup=/sys/fs/cgroup/opdbus-release
+    if [ ! -e "$cgroup" ] && [ ! -L "$cgroup" ]; then
+        mkdir -m 0700 "$cgroup" || return 1
+    fi
+    [ -d "$cgroup" ] && [ ! -L "$cgroup" ] &&
+        [ "$(stat -c %u:%g:%a "$cgroup")" = 0:0:700 ] || return 1
+    for control in cgroup.procs cgroup.threads cgroup.subtree_control; do
+        path=$cgroup/$control
+        [ -f "$path" ] && [ ! -L "$path" ] &&
+            [ "$(stat -c %u:%g "$path")" = 0:0 ] || return 1
+        chmod 0600 "$path" || return 1
+    done
+}
+case "${1:-start}" in
+    start)
+        if ! approved_launcher || ! prepare_release_cgroup || ! "$base/op-release-launch" boot; then
+            printf '%s\n' 'op-release: committed targets unavailable; release services remain readiness-gated' >&2
+        fi
+        ;;
+    stop|restart|force-reload) ;;
+    *) printf '%s\n' 'usage: op-release-activate {start|stop|restart|force-reload}' >&2; exit 2 ;;
+esac
+exit 0
