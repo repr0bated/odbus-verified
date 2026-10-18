@@ -4,8 +4,8 @@
 // and orchestrates — but always delegates execution to agents. Forced tool
 // calling is mandatory: even user-facing responses are emitted as tool calls.
 //
-// zeroclaw owns LLM provider/model routing (OD-28). SendRequest carries
-// the provider/model selection from zeroclaw's state; the server does not
+// threetched owns LLM provider/model routing (OD-28). SendRequest carries
+// the provider/model selection from threetched's state; the server does not
 // make routing decisions.
 //
 // Wire vocabulary mirrors AI SDK UIMessage part kinds so renderers stay
@@ -42,8 +42,8 @@ message SendRequest {
   string conversation_id = 1;   // Groups episodes into task chains (threaded)
   bytes  ui_messages = 2;       // JSON-encoded UIMessage[] (AI SDK shape)
   optional string persona_id = 3;
-  string provider = 4;          // zeroclaw-selected provider (OD-28)
-  string model = 5;             // zeroclaw-selected model (OD-28)
+  string provider = 4;          // threetched-selected provider (OD-28)
+  string model = 5;             // threetched-selected model (OD-28)
   optional uint64 resume_cursor = 6;  // Resume from last known cursor on reconnect
 }
 

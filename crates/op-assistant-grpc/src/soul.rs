@@ -1,6 +1,6 @@
 //! SoulService — persistent agent identity.
 //!
-//! Production: D-Bus `PluginV1.Call` on the cognitive_mcp plugin (the Cozo
+//! Production: D-Bus `PluginV1.Call` on the cognitive plugin (the Cozo
 //! owner). Tests: in-process `SoulMemoryStore` over in-memory Cozo.
 
 use crate::cognitive_client::SoulBackend;
@@ -10,7 +10,7 @@ use crate::proto::{
     DeleteSoulMemoryRequest, Empty, GetSoulMemoryRequest, ListSoulMemoriesRequest,
     ListSoulMemoriesResponse, SoulMemory, UpdateSoulMemoryRequest,
 };
-use op_cognitive_mcp::soul_memory::{SoulMemory as StoreSoul, SoulMemoryStore, SoulUpdate};
+use op_cognitive::soul_memory::{SoulMemory as StoreSoul, SoulMemoryStore, SoulUpdate};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 

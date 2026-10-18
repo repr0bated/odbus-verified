@@ -238,11 +238,6 @@ impl AgentConnection {
         }
     }
 
-    #[allow(dead_code)]
-    fn full_address(&self) -> String {
-        format!("{}:{}", self.address, self.port)
-    }
-
     fn uptime(&self) -> Option<Duration> {
         self.started_at.map(|t| t.elapsed())
     }
@@ -606,6 +601,38 @@ impl GrpcAgentPool {
     // ========================================================================
     // EXECUTION
     // ========================================================================
+
+    /// The legacy transport has no RPC/permission envelope seam. Do not strip
+    /// the caller's scope or fall back to the correlation-only execution path.
+    pub async fn execute_scoped(
+        &self,
+        _scope: &super::VerifiedScope,
+        agent_id: &str,
+        operation: &str,
+        _arguments: Value,
+    ) -> OrchestrationResult<Value> {
+        Err(OrchestrationError::new(
+            ErrorCode::OperationNotSupported,
+            format!(
+                "scoped agent RPC unavailable: {agent_id}.{operation}; no identity and sealed capability envelope is wired"
+            ),
+        ))
+    }
+
+    pub async fn execute_streaming_scoped<F>(
+        &self,
+        scope: &super::VerifiedScope,
+        agent_id: &str,
+        operation: &str,
+        arguments: Value,
+        _on_chunk: F,
+    ) -> OrchestrationResult<Value>
+    where
+        F: Fn(StreamChunk) + Send + Sync + 'static,
+    {
+        self.execute_scoped(scope, agent_id, operation, arguments)
+            .await
+    }
 
     /// Execute an operation on an agent
     #[instrument(skip(self, arguments), fields(

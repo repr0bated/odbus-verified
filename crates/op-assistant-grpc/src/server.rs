@@ -2,7 +2,7 @@
 //! reflection, health checks, the WireGuard auth interceptor, and an optional
 //! gRPC-Web layer for browser clients.
 //!
-//! Memory / soul / namespace services talk to cognitive-mcp over the session
+//! Memory / soul / namespace services talk to cognitive over the session
 //! bus (`PluginV1.Call`). This process never opens Cozo RocksDB.
 
 use crate::agents::AgentServiceImpl;
@@ -40,7 +40,7 @@ pub struct ServerConfig {
     pub transport: TransportConfig,
     pub enable_grpc_web: bool,
     pub enable_reflection: bool,
-    /// Session-bus address for `PluginV1.Call` on cognitive_mcp.
+    /// Session-bus address for `PluginV1.Call` on cognitive.
     /// Default: `DBUS_SESSION_BUS_ADDRESS` or `unix:path=/run/opdbus/session-bus.sock`.
     pub cognitive_bus_address: String,
 }
@@ -189,7 +189,7 @@ mod tests {
             ..Default::default()
         };
         assert!(bind_addr(&cfg).is_err());
-        cfg.host = "10.200.0.2".into();
+        cfg.host = "10.0.0.2".into();
         assert!(bind_addr(&cfg).is_err());
         cfg.host = "127.0.0.1".into();
         assert!(bind_addr(&cfg).is_ok());

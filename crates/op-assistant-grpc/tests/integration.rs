@@ -2,7 +2,7 @@
 //!
 //! These hit the in-process CognitiveMemoryStore + SoulMemoryStore directly
 //! through the service implementations (in-memory Cozo). Production serve
-//! uses D-Bus PluginV1.Call to cognitive-mcp instead — see cognitive_client.rs.
+//! uses D-Bus PluginV1.Call to cognitive instead — see cognitive_client.rs.
 
 use op_assistant_grpc::memory::{MemoryServiceImpl, ensure_namespace};
 use op_assistant_grpc::namespace::NamespaceMemoryServiceImpl;
@@ -14,9 +14,9 @@ use op_assistant_grpc::proto::{
     UpdateSoulMemoryRequest, WriteMemoryRequest,
 };
 use op_assistant_grpc::soul::SoulServiceImpl;
-use op_cognitive_mcp::cozo_shuttle::CozoGraphShuttle;
-use op_cognitive_mcp::memory_store::{CognitiveMemoryStore, NamespaceKind};
-use op_cognitive_mcp::soul_memory::SoulMemoryStore;
+use op_cognitive::cozo_shuttle::CozoGraphShuttle;
+use op_cognitive::memory_store::{CognitiveMemoryStore, NamespaceKind};
+use op_cognitive::soul_memory::SoulMemoryStore;
 use std::sync::Arc;
 use tonic::Request;
 
