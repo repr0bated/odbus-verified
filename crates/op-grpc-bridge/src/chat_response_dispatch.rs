@@ -12,16 +12,16 @@ use anyhow::{Context, Result};
 use op_cozo_store::{ChatConversationRecord, ChatTurnDraft, CozoError, EpisodeScope};
 use op_plugins::state_plugins::{
     chat_response::{
-        ChatTurn, ConversationSummary, RESPOND_CAPABILITY, RESPONSE_COMMITTED_SIGNAL,
-        ResponseCommittedSignal, ResponseContent,
+        ChatTurn, ConversationSummary, ResponseCommittedSignal, ResponseContent,
+        RESPOND_CAPABILITY, RESPONSE_COMMITTED_SIGNAL,
     },
     chat_response_methods::{
-        CannotPerformInput, GetConversationInput, GetConversationOutput, GetTurnResponseInput,
-        GetTurnResponseOutput, ListConversationsInput, ListConversationsOutput, NewConversation,
-        NewTurn, RequestClarificationInput, RespondToUserInput, RespondToUserOutput,
-        ResponseCommitOutput, StartConversationInput, StartConversationOutput, build_conversation,
-        build_turn, validate_conversation, validate_title, validate_turn, validate_uuid,
-        verify_turn_chain,
+        build_conversation, build_turn, validate_conversation, validate_title, validate_turn,
+        validate_uuid, verify_turn_chain, CannotPerformInput, GetConversationInput,
+        GetConversationOutput, GetTurnResponseInput, GetTurnResponseOutput, ListConversationsInput,
+        ListConversationsOutput, NewConversation, NewTurn, RequestClarificationInput,
+        RespondToUserInput, RespondToUserOutput, ResponseCommitOutput, StartConversationInput,
+        StartConversationOutput,
     },
     json_render::canvas_profile::PinnedCanvasValidator,
 };
@@ -29,7 +29,7 @@ use op_state_store::PluginSchema;
 
 use crate::{
     chat_response_state::{
-        CONVERSATION_SNAPSHOT_LIMIT, DoorbellWake, PLUGIN, TURN_SNAPSHOT_LIMIT, owner_key,
+        owner_key, DoorbellWake, CONVERSATION_SNAPSHOT_LIMIT, PLUGIN, TURN_SNAPSHOT_LIMIT,
     },
     chat_response_turns::{TurnClaim, TurnOwner},
     interceptor::load_capability_grants,
@@ -47,6 +47,8 @@ mod tests;
 const LIST_LIMIT: usize = 100;
 /// Turns returned by `get_conversation` (newest window, ascending).
 const TURN_PAGE_LIMIT: usize = 100;
+/// Maximum durable conversations per principal to prevent quota abuse.
+const MAX_CONVERSATIONS_PER_PRINCIPAL: usize = 10000;
 const RENDERER: &str = "json_render";
 
 /// The admitted method call's own global chain event, recorded before
@@ -417,6 +419,34 @@ async fn dispatch_owned(
                 first_turn_index,
             })?
         }
+        "list_pending_turns" => {
+            use op_plugins::state_plugins::chat_response_methods::{
+                ListPendingTurnsInput, ListPendingTurnsOutput, PendingTurnInfo,
+            };
+            let _: ListPendingTurnsInput = serde_json::from_value(args.clone())
+                .context("invalid list_pending_turns arguments")?;
+            // The caller must have the respond capability — verified by the interceptor.
+            // Return all pending turns assigned to this responder.
+            let pending = engine
+                .chat_turns()
+                .list_pending_for_responder(&caller.principal_id);
+            let pending_turns: Vec<PendingTurnInfo> = pending
+                .into_iter()
+                .map(|p| PendingTurnInfo {
+                    turn_id: p.request_id.clone(),
+                    conversation_id: p.context.conversation_id.clone(),
+                    turn_index: p.context.turn_index,
+                    owner_key: super::chat_response_state::owner_key(&p.owner.principal_id),
+                    owner_principal_id: p.owner.principal_id.clone(),
+                    opened_at: p.opened_at.to_rfc3339(),
+                })
+                .collect();
+            let pending_count = pending_turns.len() as u64;
+            serde_json::to_value(ListPendingTurnsOutput {
+                pending_turns,
+                pending_count,
+            })?
+        }
         _ => anyhow::bail!("unsupported {PLUGIN} method: {method}"),
     };
     validate_output(admitted, method, &output)?;
@@ -432,6 +462,23 @@ async fn start_conversation(
     input: StartConversationInput,
 ) -> Result<StartConversationOutput> {
     validate_title(input.title.as_deref())?;
+    let store = engine.chat_response_cozo().await?;
+    let principal = caller.principal_id.clone();
+    let count = tokio::task::spawn_blocking({
+        let store = store.clone();
+        let principal = principal.clone();
+        move || -> anyhow::Result<usize> {
+            store
+                .count_principal_conversations(&principal)
+                .map_err(Into::into)
+        }
+    })
+    .await??;
+    anyhow::ensure!(
+        count < MAX_CONVERSATIONS_PER_PRINCIPAL,
+        "conversation quota ({}) exceeded for principal",
+        MAX_CONVERSATIONS_PER_PRINCIPAL
+    );
     // The bridge mints the id; UUIDv7 orders conversations by start time.
     let conversation_id = uuid::Uuid::now_v7().to_string();
     let started_at = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
@@ -451,12 +498,11 @@ async fn start_conversation(
         revision: 0,
         conversation: serde_json::to_value(&summary)?,
     };
-    let store = engine.chat_response_cozo().await?;
     let publisher = engine.chat_response_publisher()?.clone();
     let effect = publisher.admit(store.clone(), &caller.principal_id).await?;
     revalidate_boundary(engine, method, caller, admitted, pin).await?;
-    publisher
-        .commit(effect, move || {
+    let ((_, _snapshot), published) = publisher
+        .commit_reporting(effect, move || {
             store
                 .insert_chat_conversation_and_snapshot(
                     &record,
@@ -466,6 +512,12 @@ async fn start_conversation(
                 .map_err(Into::into)
         })
         .await?;
+    if !published {
+        tracing::debug!(
+            conversation_id = %conversation_id,
+            "conversation created durably but private state pending recovery"
+        );
+    }
     Ok(StartConversationOutput {
         conversation_id,
         started_at,
@@ -511,7 +563,7 @@ async fn commit_response(
             // A durable row means the turn is answered even though a later
             // step failed; otherwise the designated responder may retry.
             let owner = claim.turn().owner.principal_id.clone();
-            let id = claim.turn().turn_id.clone();
+            let id = claim.turn().turn_id().to_string();
             let answered = blocking(move || store.get_chat_turn(&owner, &id).map_err(Into::into))
                 .await
                 .map(|row| row.is_some())
@@ -579,6 +631,11 @@ pub(crate) async fn commit_human_turn(
 ) -> Result<ChatTurn> {
     let content = ResponseContent::HumanMessage { message };
     op_plugins::state_plugins::chat_response_methods::validate_content(&content)?;
+    anyhow::ensure!(
+        crate::interceptor::load_capability_grants(&owner.principal_id)
+            .contains(op_plugins::state_plugins::chat_response::READ_CAPABILITY),
+        "human must hold chat_response.read to append a message"
+    );
     let store = engine.chat_response_cozo().await?;
     let head_store = store.clone();
     let principal = owner.principal_id.clone();
@@ -589,16 +646,11 @@ pub(crate) async fn commit_human_turn(
             .context("conversation does not exist in the asking principal's scope")
     })
     .await?;
-    let now = chrono::Utc::now();
-    let pending = crate::chat_response_turns::PendingTurn {
-        turn_id: uuid::Uuid::now_v7().to_string(),
-        owner: owner.clone(),
-        conversation_id: conversation_id.to_string(),
-        turn_index: head.turn_count,
-        responder_principal_id: owner.principal_id.clone(),
-        opened_at: now,
-        expires_at: now,
-    };
+    let pending = crate::chat_response_turns::PendingTurn::for_human_message(
+        owner.clone(),
+        conversation_id,
+        head.turn_count,
+    );
     let (turn, _revision) = commit_turn(
         engine,
         pending,
@@ -653,15 +705,15 @@ async fn commit_turn(
         move |head: &ChatConversationRecord| -> Result<(ChatTurn, ConversationSummary)> {
             let mut summary = decode_conversation(head, &pending.owner.principal_id)?;
             anyhow::ensure!(
-                head.turn_count == pending.turn_index,
+                head.turn_count == pending.turn_index(),
                 "chat turn is no longer the conversation head"
             );
             let turn = build_turn(NewTurn {
                 principal_id: pending.owner.principal_id.clone(),
                 session_id: pending.owner.session_id.clone(),
                 session_genesis: pending.owner.session_genesis.clone(),
-                conversation_id: pending.conversation_id.clone(),
-                turn_id: pending.turn_id.clone(),
+                conversation_id: pending.conversation_id().to_string(),
+                turn_id: pending.turn_id().to_string(),
                 turn_index: head.turn_count,
                 prev_turn_hash: head.head_turn_hash.clone(),
                 response_id: response_id.clone(),
@@ -686,8 +738,8 @@ async fn commit_turn(
     // now, so the durable write is attempted only for an admissible turn.
     let precheck_store = store.clone();
     let precheck_owner = owner.principal_id.clone();
-    let precheck_turn = pending.turn_id.clone();
-    let precheck_conversation = pending.conversation_id.clone();
+    let precheck_turn = pending.turn_id().to_string();
+    let precheck_conversation = pending.conversation_id().to_string();
     let (head, answered) = blocking(move || {
         let head = precheck_store
             .get_chat_conversation(&precheck_owner, &precheck_conversation)?
@@ -702,9 +754,9 @@ async fn commit_turn(
     make_turn(&head)?;
 
     let principal = owner.principal_id.clone();
-    let conversation_id = pending.conversation_id.clone();
-    let turn_key = pending.turn_id.clone();
-    let index = pending.turn_index;
+    let conversation_id = pending.conversation_id().to_string();
+    let turn_key = pending.turn_id().to_string();
+    let index = pending.turn_index();
     let durable_store = store.clone();
     let ((record, snapshot), published) = publisher
         .commit_reporting(effect, move || {
@@ -735,7 +787,7 @@ async fn commit_turn(
         .await?;
     let turn = decode_turn(&record, &owner.principal_id)?;
     anyhow::ensure!(
-        turn.responder_principal_id == author && turn.turn_id == pending.turn_id,
+        turn.responder_principal_id == author && turn.turn_id == pending.turn_id(),
         "committed turn differs from the claimed turn"
     );
 
@@ -774,12 +826,12 @@ async fn commit_turn(
         },
     )
     .await;
-    anyhow::ensure!(
-        published,
-        "chat_response turn {} committed durably and announced, but its private state \
-         is pending recovery; recovery republishes it and rings the asking session",
-        turn.turn_id
-    );
+    if !published {
+        tracing::debug!(
+            turn_id = %turn.turn_id,
+            "chat_response turn committed durably and announced, but private state pending recovery"
+        );
+    }
     Ok((turn, snapshot.revision))
 }
 

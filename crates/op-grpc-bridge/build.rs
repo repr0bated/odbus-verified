@@ -7,6 +7,36 @@ mod json_schema_proto;
 use json_schema_proto::json_schema_type_to_proto;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    for name in [
+        "THREETCHED_CAPTURE_BIN",
+        "THREETCHED_CAPTURE_MANIFEST",
+        "THREETCHED_BIN",
+        "THREETCHED_MANIFEST",
+        "TCHED_ROUTER_CONFIG_DIR",
+    ] {
+        println!("cargo:rerun-if-env-changed={name}");
+    }
+    for (capture, runtime, default) in [
+        ("THREETCHED_CAPTURE_BIN", "THREETCHED_BIN", "/usr/local/libexec/op-dbus/threetched/threetched"),
+        (
+            "THREETCHED_CAPTURE_MANIFEST",
+            "THREETCHED_MANIFEST",
+            "/usr/share/op-dbus/threetched-manifests/tched-router.json",
+        ),
+    ] {
+        let selected = PathBuf::from(
+            env::var_os(capture)
+                .or_else(|| env::var_os(runtime))
+                .unwrap_or_else(|| default.into()),
+        );
+        // Watch both the selected link and its resolved release artifact.
+        println!("cargo:rerun-if-changed={}", selected.display());
+        if let Ok(resolved) = std::fs::canonicalize(&selected)
+            && resolved != selected
+        {
+            println!("cargo:rerun-if-changed={}", resolved.display());
+        }
+    }
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let generated_proto = out_dir.join("plugin_methods.proto");
     let generated_routes = out_dir.join("plugin_method_routes.rs");
@@ -37,6 +67,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //   3. Add rerun-if-changed below
     //   4. Add the generated server/client to grpc_server.rs
     tonic_build::configure()
+        // Generated inputs live in OUT_DIR; watching them would make this
+        // script invalidate itself on the next Cargo invocation. The authored
+        // proto roots and plugin inputs are explicitly watched below.
+        .emit_rerun_if_changed(false)
         .build_server(true)
         .build_client(true)
         .file_descriptor_set_path(out_dir.join("operation_descriptor.bin"))
@@ -64,6 +98,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ],
         )?;
 
+    // Watch imported authored protos as well as the entry points.
+    println!("cargo:rerun-if-changed=proto");
+    println!("cargo:rerun-if-changed=../op-chat/proto");
+    println!("cargo:rerun-if-changed=src/grpc");
     println!("cargo:rerun-if-changed=proto/operation.proto");
     println!("cargo:rerun-if-changed=proto/mail.proto");
     println!("cargo:rerun-if-changed=proto/privacy_network.proto");
@@ -332,8 +370,14 @@ fn schema_message_proto(message_name: &str, schema: &simd_json::OwnedValue) -> S
             ""
         };
         proto.push_str(&format!(
-            "  {}{} {} = {};\n",
-            repeated, field.proto_type, field.name, field.number
+            "  {}{} {} = {}{};\n",
+            repeated,
+            field.proto_type,
+            field.name,
+            field.number,
+            field.json_name.as_ref().map_or_else(String::new, |name| {
+                format!(" [json_name = {}]", proto_string_literal(name))
+            })
         ));
     }
 
@@ -344,6 +388,7 @@ fn schema_message_proto(message_name: &str, schema: &simd_json::OwnedValue) -> S
 #[derive(Debug, Clone)]
 struct ProtoField {
     name: String,
+    json_name: Option<String>,
     proto_type: String,
     repeated: bool,
     number: i32,
@@ -363,13 +408,17 @@ fn schema_fields(schema: &simd_json::OwnedValue) -> Vec<ProtoField> {
 
     let mut fields = properties.iter().collect::<Vec<_>>();
     fields.sort_by_key(|(name, _)| *name);
+    op_blob::descriptor::validate_proto_field_aliases(properties.keys().map(String::as_str))
+        .expect("JSON Schema properties have ambiguous protobuf field aliases");
 
     fields
         .into_iter()
         .map(|(name, property)| {
             let (proto_type, repeated) = json_schema_type_to_proto(property);
+            let proto_name = op_blob::descriptor::proto_field_name(name);
             ProtoField {
-                name: sanitize_proto_ident(name),
+                json_name: (proto_name != *name).then(|| name.clone()),
+                name: proto_name,
                 proto_type,
                 repeated,
                 number: stable_field_number(name),
@@ -381,6 +430,7 @@ fn schema_fields(schema: &simd_json::OwnedValue) -> Vec<ProtoField> {
 fn fallback_field(name: &str, proto_type: &str, repeated: bool) -> ProtoField {
     ProtoField {
         name: name.to_string(),
+        json_name: None,
         proto_type: proto_type.to_string(),
         repeated,
         number: stable_field_number(name),
@@ -407,23 +457,18 @@ fn stable_field_number(name: &str) -> i32 {
     number as i32
 }
 
-fn sanitize_proto_ident(value: &str) -> String {
-    let mut ident = String::new();
-    for ch in value.chars() {
-        if ch.is_ascii_alphanumeric() || ch == '_' {
-            ident.push(ch);
-        } else {
-            ident.push('_');
+fn proto_string_literal(value: &str) -> String {
+    let mut literal = String::from("\"");
+    for byte in value.bytes() {
+        match byte {
+            b'"' => literal.push_str("\\\""),
+            b'\\' => literal.push_str("\\\\"),
+            0x20..=0x7e => literal.push(char::from(byte)),
+            _ => write!(literal, "\\{byte:03o}").unwrap(),
         }
     }
-
-    if ident.is_empty() {
-        "field".to_string()
-    } else if ident.chars().next().is_some_and(|ch| ch.is_ascii_digit()) {
-        format!("_{ident}")
-    } else {
-        ident
-    }
+    literal.push('"');
+    literal
 }
 
 fn to_pascal_ident(value: &str) -> String {

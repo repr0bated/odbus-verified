@@ -18,7 +18,7 @@
 
 use std::time::Duration;
 
-use op_cognitive_mcp::CognitiveMcpServer;
+use op_cognitive::CognitiveServer;
 use op_cozo_store::EpisodeScope;
 
 use crate::mutation_engine::MutationEngine;
@@ -199,7 +199,7 @@ pub async fn assemble_for_context(
         Err(error) => tracing::warn!(%error, "context bundle: episode store unavailable"),
     }
 
-    let Ok(runtime) = engine.cognitive_mcp().await else {
+    let Ok(runtime) = engine.cognitive().await else {
         bundle.pushes = engine.take_pending_knowledge(&scope.session_id).await;
         return bundle;
     };
@@ -225,7 +225,7 @@ pub async fn assemble_for_context(
 }
 
 async fn semantic_recall(
-    runtime: &CognitiveMcpServer,
+    runtime: &CognitiveServer,
     namespace: &str,
     query: &str,
 ) -> Vec<String> {

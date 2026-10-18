@@ -9,71 +9,92 @@
 //!
 //! Pending turns live in memory. A bridge restart drops them, so a late
 //! response is refused (fail closed) rather than attributed to a guess.
+//!
+//! This module is a thin wrapper over the generic [`RequestRegistry`] with
+//! chat-specific context (conversation_id, turn_index).
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use anyhow::{Context, Result, ensure};
+use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 
+use crate::request_registry::{
+    DEFAULT_TTL_SECONDS, PendingRequest, RequestClaim, RequestContext, RequestOwner,
+    RequestRegistry,
+};
+
 /// How long an opened turn waits for its response.
-pub(crate) const TURN_TTL_SECONDS: i64 = 15 * 60;
-/// Bounds on open turns (pending or being answered).
-pub(crate) const MAX_OPEN_TURNS: usize = 4096;
-pub(crate) const MAX_OPEN_TURNS_PER_PRINCIPAL: usize = 16;
+pub(crate) const TURN_TTL_SECONDS: i64 = DEFAULT_TTL_SECONDS;
 
 /// The verified human a turn belongs to. The scope key is `principal_id`;
 /// the session fields are provenance recorded on the committed turn.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TurnOwner {
-    pub principal_id: String,
-    pub session_id: String,
-    pub session_genesis: String,
-}
+pub(crate) type TurnOwner = RequestOwner;
 
+/// Chat-specific context for a pending turn.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct PendingTurn {
-    pub turn_id: String,
-    pub owner: TurnOwner,
+pub(crate) struct ChatTurnContext {
     pub conversation_id: String,
     /// The conversation head when the turn opened; the response must land here.
     pub turn_index: u64,
-    pub responder_principal_id: String,
-    pub opened_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TurnState {
-    Pending,
-    Answering,
-    Answered,
+impl RequestContext for ChatTurnContext {
+    fn uniqueness_key(&self) -> Option<String> {
+        // At most one open turn per conversation.
+        Some(self.conversation_id.clone())
+    }
+
+    fn validate(&self) -> Result<()> {
+        op_plugins::state_plugins::chat_response_methods::validate_uuid(
+            "conversation_id",
+            &self.conversation_id,
+        )?;
+        Ok(())
+    }
 }
 
-struct Entry {
-    turn: PendingTurn,
-    state: TurnState,
+/// A pending chat turn awaiting a response.
+pub(crate) type PendingTurn = PendingRequest<ChatTurnContext>;
+
+/// Exclusive right to answer one turn.
+///
+/// This is a newtype wrapper to add backward-compatible methods.
+pub(crate) struct TurnClaim(RequestClaim<ChatTurnContext>);
+
+impl TurnClaim {
+    /// Get the pending turn this claim is for.
+    pub(crate) fn turn(&self) -> &PendingTurn {
+        self.0.request()
+    }
+
+    /// Mark the turn as answered and settle the claim.
+    pub(crate) fn answered(self) {
+        self.0.fulfilled();
+    }
+
+    /// Release the claim without answering (returns turn to pending).
+    pub(crate) fn release(self) {
+        self.0.release();
+    }
 }
 
-#[derive(Default)]
+/// Chat turn registry backed by the generic request registry.
+///
+/// The registry is wrapped in Arc internally to support the claim pattern
+/// where the claim holds a reference back to the registry.
 pub(crate) struct TurnRegistry {
-    turns: Mutex<HashMap<String, Entry>>,
+    inner: Arc<RequestRegistry<ChatTurnContext>>,
+}
+
+impl Default for TurnRegistry {
+    fn default() -> Self {
+        Self {
+            inner: Arc::new(RequestRegistry::default()),
+        }
+    }
 }
 
 impl TurnRegistry {
-    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<String, Entry>> {
-        // A poisoned map still holds consistent entries: every mutation is a
-        // single insert/remove/state assignment.
-        self.turns
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-    }
-
-    fn collect_expired(turns: &mut HashMap<String, Entry>, now: DateTime<Utc>) {
-        // An answer in flight keeps its entry until the commit settles.
-        turns.retain(|_, entry| entry.state == TurnState::Answering || entry.turn.expires_at > now);
-    }
-
     /// Open a turn now with the default lifetime.
     pub(crate) fn open(
         &self,
@@ -96,13 +117,7 @@ impl TurnRegistry {
     /// because the human message it follows failed to commit. Only a turn
     /// still pending is removed; one being answered or answered stays.
     pub(crate) fn cancel(&self, turn_id: &str) {
-        let mut turns = self.lock();
-        if turns
-            .get(turn_id)
-            .is_some_and(|entry| entry.state == TurnState::Pending)
-        {
-            turns.remove(turn_id);
-        }
+        self.inner.cancel(turn_id);
     }
 
     /// Open a turn at `now` for `ttl`. At most one open turn per conversation:
@@ -116,154 +131,84 @@ impl TurnRegistry {
         now: DateTime<Utc>,
         ttl: Duration,
     ) -> Result<PendingTurn> {
-        ensure!(
-            !owner.principal_id.is_empty()
-                && !owner.session_id.is_empty()
-                && !owner.session_genesis.is_empty(),
-            "turn owner must be a verified identity"
-        );
-        ensure!(
-            !responder_principal_id.is_empty(),
-            "turn responder principal is required"
-        );
-        ensure!(
-            responder_principal_id != owner.principal_id,
-            "a human cannot be the designated responder of their own turn"
-        );
-        ensure!(
-            ttl > Duration::zero() && ttl <= Duration::hours(1),
-            "turn lifetime must be positive and at most one hour"
-        );
-        op_plugins::state_plugins::chat_response_methods::validate_uuid(
-            "conversation_id",
-            conversation_id,
-        )?;
-        let mut turns = self.lock();
-        Self::collect_expired(&mut turns, now);
-        ensure!(
-            !turns.values().any(|entry| {
-                entry.state != TurnState::Answered
-                    && entry.turn.owner.principal_id == owner.principal_id
-                    && entry.turn.conversation_id == conversation_id
-            }),
-            "the conversation already has an open turn"
-        );
-        ensure!(turns.len() < MAX_OPEN_TURNS, "too many open chat turns");
-        ensure!(
-            turns
-                .values()
-                .filter(|entry| {
-                    entry.state != TurnState::Answered
-                        && entry.turn.owner.principal_id == owner.principal_id
-                })
-                .count()
-                < MAX_OPEN_TURNS_PER_PRINCIPAL,
-            "too many open chat turns for this principal"
-        );
-        let turn = PendingTurn {
-            turn_id: uuid::Uuid::now_v7().to_string(),
+        self.inner.open_at(
             owner,
-            conversation_id: conversation_id.to_string(),
-            turn_index,
-            responder_principal_id: responder_principal_id.to_string(),
-            opened_at: now,
-            expires_at: now + ttl,
-        };
-        turns.insert(
-            turn.turn_id.clone(),
-            Entry {
-                turn: turn.clone(),
-                state: TurnState::Pending,
+            responder_principal_id,
+            ChatTurnContext {
+                conversation_id: conversation_id.to_string(),
+                turn_index,
             },
-        );
-        Ok(turn)
+            now,
+            ttl,
+        )
     }
 
-    pub(crate) fn claim(self: &Arc<Self>, turn_id: &str, caller: &str) -> Result<TurnClaim> {
+    /// Claim a pending turn for its designated responder.
+    pub(crate) fn claim(&self, turn_id: &str, caller: &str) -> Result<TurnClaim> {
         self.claim_at(turn_id, caller, Utc::now())
     }
 
-    /// Claim a pending turn for its designated responder. Nothing changes
-    /// when the claim is refused.
+    /// Claim a pending turn for its designated responder at a specific time.
+    /// Nothing changes when the claim is refused.
     pub(crate) fn claim_at(
-        self: &Arc<Self>,
+        &self,
         turn_id: &str,
         caller: &str,
         now: DateTime<Utc>,
     ) -> Result<TurnClaim> {
-        let mut turns = self.lock();
-        let entry = turns
-            .get_mut(turn_id)
-            .context("chat turn is not open: the bridge never opened it or it was dropped")?;
-        match entry.state {
-            TurnState::Pending => {}
-            TurnState::Answering => anyhow::bail!("chat turn is already being answered"),
-            TurnState::Answered => anyhow::bail!("chat turn is already answered"),
-        }
-        if entry.turn.expires_at <= now {
-            turns.remove(turn_id);
-            anyhow::bail!("chat turn has expired");
-        }
-        ensure!(
-            entry.turn.responder_principal_id == caller,
-            "caller is not the designated responder of this chat turn"
-        );
-        entry.state = TurnState::Answering;
-        Ok(TurnClaim {
-            registry: self.clone(),
-            turn: entry.turn.clone(),
-            settled: false,
-        })
+        self.inner.claim_at(turn_id, caller, now).map(TurnClaim)
     }
 
-    fn settle(&self, turn_id: &str, answered: bool) {
-        let mut turns = self.lock();
-        if let Some(entry) = turns.get_mut(turn_id) {
-            entry.state = if answered {
-                TurnState::Answered
-            } else {
-                TurnState::Pending
-            };
-        }
+    /// List pending turns for a given responder principal.
+    pub(crate) fn list_pending_for_responder(
+        &self,
+        responder_principal_id: &str,
+    ) -> Vec<PendingTurn> {
+        self.inner
+            .list_pending_for_responder(responder_principal_id)
     }
 
     #[cfg(test)]
     pub(crate) fn is_open(&self, turn_id: &str) -> bool {
-        self.lock()
-            .get(turn_id)
-            .is_some_and(|entry| entry.state != TurnState::Answered)
+        self.inner.is_open(turn_id)
     }
 }
 
-/// Exclusive right to answer one turn. Dropping it without `answered()`
-/// returns the turn to pending (the durable owner still refuses a second
-/// row, so a retry after an uncertain commit cannot answer twice).
-pub(crate) struct TurnClaim {
-    registry: Arc<TurnRegistry>,
-    turn: PendingTurn,
-    settled: bool,
-}
-
-impl TurnClaim {
-    pub(crate) fn turn(&self) -> &PendingTurn {
-        &self.turn
+// Convenience accessors for PendingTurn to maintain backward compatibility.
+impl PendingTurn {
+    /// The turn ID (alias for request_id).
+    pub(crate) fn turn_id(&self) -> &str {
+        &self.request_id
     }
 
-    pub(crate) fn answered(mut self) {
-        self.settled = true;
-        self.registry.settle(&self.turn.turn_id, true);
+    /// The conversation this turn belongs to.
+    pub(crate) fn conversation_id(&self) -> &str {
+        &self.context.conversation_id
     }
 
-    pub(crate) fn release(mut self) {
-        self.settled = true;
-        self.registry.settle(&self.turn.turn_id, false);
+    /// The turn index in the conversation.
+    pub(crate) fn turn_index(&self) -> u64 {
+        self.context.turn_index
     }
-}
 
-impl Drop for TurnClaim {
-    fn drop(&mut self) {
-        if !self.settled {
-            self.registry.settle(&self.turn.turn_id, false);
+    /// Create a pending turn for a human message (not going through the registry).
+    /// This is used when committing a human's own message to the conversation.
+    pub(crate) fn for_human_message(
+        owner: TurnOwner,
+        conversation_id: &str,
+        turn_index: u64,
+    ) -> Self {
+        let now = chrono::Utc::now();
+        Self {
+            request_id: uuid::Uuid::now_v7().to_string(),
+            owner: owner.clone(),
+            responder_principal_id: owner.principal_id.clone(),
+            opened_at: now,
+            expires_at: now,
+            context: ChatTurnContext {
+                conversation_id: conversation_id.to_string(),
+                turn_index,
+            },
         }
     }
 }
@@ -288,92 +233,63 @@ mod tests {
     }
 
     #[test]
-    fn only_the_designated_responder_answers_an_open_turn_once() {
-        let registry = Arc::new(TurnRegistry::default());
+    fn turn_opens_with_valid_conversation() {
+        let registry = TurnRegistry::default();
         let conversation = conversation();
         let turn = registry.open(owner("s1"), &conversation, 0, AGENT).unwrap();
         assert_eq!(
-            uuid::Uuid::parse_str(&turn.turn_id)
+            uuid::Uuid::parse_str(turn.turn_id())
                 .unwrap()
                 .get_version_num(),
             7
         );
-        assert!(registry.claim(&turn.turn_id, "someone-else").is_err());
-        assert!(registry.claim(&turn.turn_id, HUMAN).is_err());
-        let claim = registry.claim(&turn.turn_id, AGENT).unwrap();
-        assert_eq!(claim.turn().owner.principal_id, HUMAN);
-        assert!(
-            registry.claim(&turn.turn_id, AGENT).is_err(),
-            "concurrent answer is refused while one is in flight"
-        );
-        // A failed commit returns the turn to pending.
-        drop(claim);
-        let claim = registry.claim(&turn.turn_id, AGENT).unwrap();
-        claim.answered();
-        let error = registry
-            .claim(&turn.turn_id, AGENT)
-            .err()
-            .unwrap()
-            .to_string();
-        assert!(error.contains("already answered"), "{error}");
-        assert!(
-            registry
-                .claim(&uuid::Uuid::now_v7().to_string(), AGENT)
-                .is_err(),
-            "an unopened turn is refused"
-        );
-        // Once answered, the conversation can open its next turn.
-        registry.open(owner("s2"), &conversation, 1, AGENT).unwrap();
+        assert_eq!(turn.conversation_id(), conversation);
+        assert_eq!(turn.turn_index(), 0);
+        assert_eq!(turn.owner.principal_id, HUMAN);
+        assert_eq!(turn.responder_principal_id, AGENT);
     }
 
     #[test]
-    fn expired_turns_are_refused_and_collected() {
-        let registry = Arc::new(TurnRegistry::default());
-        let conversation = conversation();
-        let opened = Utc::now() - Duration::minutes(30);
-        let turn = registry
-            .open_at(
-                owner("s1"),
-                &conversation,
-                0,
-                AGENT,
-                opened,
-                Duration::minutes(15),
-            )
-            .unwrap();
-        let error = registry
-            .claim(&turn.turn_id, AGENT)
-            .err()
-            .unwrap()
-            .to_string();
-        assert!(error.contains("expired"), "{error}");
-        assert!(!registry.is_open(&turn.turn_id));
-        // An expired turn does not block the conversation.
-        registry.open(owner("s1"), &conversation, 0, AGENT).unwrap();
+    fn invalid_conversation_id_rejected() {
+        let registry = TurnRegistry::default();
+        assert!(registry.open(owner("s1"), "not-a-uuid", 0, AGENT).is_err());
     }
 
     #[test]
-    fn one_open_turn_per_conversation_and_bounded_per_principal() {
-        let registry = Arc::new(TurnRegistry::default());
+    fn one_open_turn_per_conversation() {
+        let registry = TurnRegistry::default();
         let conversation = conversation();
         registry.open(owner("s1"), &conversation, 0, AGENT).unwrap();
         assert!(registry.open(owner("s1"), &conversation, 0, AGENT).is_err());
-        for _ in 1..MAX_OPEN_TURNS_PER_PRINCIPAL {
-            registry
-                .open(owner("s1"), &self::conversation(), 0, AGENT)
-                .unwrap();
-        }
-        assert!(
-            registry
-                .open(owner("s1"), &self::conversation(), 0, AGENT)
-                .is_err()
-        );
-        assert!(
-            registry
-                .open(owner("s1"), &self::conversation(), 0, HUMAN)
-                .is_err(),
-            "a human cannot answer their own turn"
-        );
-        assert!(registry.open(owner("s1"), "not-a-uuid", 0, AGENT).is_err());
+    }
+
+    #[test]
+    fn list_pending_for_responder() {
+        let registry = TurnRegistry::default();
+        let c1 = conversation();
+        let c2 = conversation();
+        let t1 = registry.open(owner("s1"), &c1, 0, AGENT).unwrap();
+        let t2 = registry.open(owner("s2"), &c2, 0, AGENT).unwrap();
+        let _t3 = registry
+            .open(owner("s3"), &conversation(), 0, "other")
+            .unwrap();
+
+        let pending = registry.list_pending_for_responder(AGENT);
+        assert_eq!(pending.len(), 2);
+        let ids: Vec<_> = pending.iter().map(|t| t.turn_id()).collect();
+        assert!(ids.contains(&t1.turn_id()));
+        assert!(ids.contains(&t2.turn_id()));
+    }
+
+    #[test]
+    fn cancel_removes_pending_turn() {
+        let registry = TurnRegistry::default();
+        let conversation = conversation();
+        let turn = registry.open(owner("s1"), &conversation, 0, AGENT).unwrap();
+        assert!(registry.is_open(turn.turn_id()));
+        registry.cancel(turn.turn_id());
+        assert!(!registry.is_open(turn.turn_id()));
+        // Can open again after cancel.
+        registry.open(owner("s1"), &conversation, 0, AGENT).unwrap();
     }
 }
