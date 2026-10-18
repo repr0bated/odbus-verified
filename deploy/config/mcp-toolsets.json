@@ -1,5 +1,5 @@
 {
-  "generation": 8,
+  "generation": 9,
   "hot": [
     "memory_recall",
     "memory_store",
@@ -140,35 +140,6 @@
         "plugin.notebooklm.batch",
         "plugin.notebooklm.pipeline",
         "plugin.notebooklm.tag"
-      ]
-    },
-    {
-      "id": "mongodb_knowledge",
-      "temperature": "warm",
-      "provider": "mongodb-mcp-server",
-      "requires_provider_health": true,
-      "tools": [
-        "plugin.mongodb_mcp.list_knowledge_sources",
-        "plugin.mongodb_mcp.search_knowledge"
-      ]
-    },
-    {
-      "id": "mongodb_data",
-      "temperature": "warm",
-      "provider": "mongodb-mcp-server-authenticated",
-      "requires_provider_health": true,
-      "tools": [
-        "plugin.mongodb_mcp.list_connections",
-        "plugin.mongodb_mcp.list_databases",
-        "plugin.mongodb_mcp.list_collections",
-        "plugin.mongodb_mcp.db_stats",
-        "plugin.mongodb_mcp.collection_schema",
-        "plugin.mongodb_mcp.collection_indexes",
-        "plugin.mongodb_mcp.collection_storage_size",
-        "plugin.mongodb_mcp.find",
-        "plugin.mongodb_mcp.count",
-        "plugin.mongodb_mcp.aggregate",
-        "plugin.mongodb_mcp.aggregate_db"
       ]
     },
     {

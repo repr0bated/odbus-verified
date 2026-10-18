@@ -1,0 +1,20 @@
+{
+  "global_active": 32,
+  "owner_active": 4,
+  "global_queued": 64,
+  "owner_queued": 8,
+  "global_bytes": 67108864,
+  "owner_bytes": 16777216,
+  "global_audit_bytes": 67108864,
+  "owner_audit_bytes": 16777216,
+  "max_owners": 256,
+  "max_document_bytes": 1048576,
+  "max_records": 256,
+  "max_tags": 256,
+  "max_policies": 256,
+  "max_markers": 1024,
+  "max_page_size": 100,
+  "max_evidence_fanout": 64,
+  "queue_wait_ms": 10000,
+  "record_expiry_seconds": null
+}
