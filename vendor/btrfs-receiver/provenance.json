@@ -1,0 +1,46 @@
+{
+  "format": "opdbus.btrfs-receiver-source.v1",
+  "upstream": {
+    "project": "btrfs-progs",
+    "tag": "v7.1",
+    "archive_url": "https://www.kernel.org/pub/linux/kernel/people/kdave/btrfs-progs/btrfs-progs-v7.1.tar.xz",
+    "archive_sha256": "d1f55cc2971398c9142eaa79d203e63d586a3b4b867f956664a1d68322cd4e34",
+    "checksums_url": "https://www.kernel.org/pub/linux/kernel/people/kdave/btrfs-progs/sha256sums.asc",
+    "checksums_capture": "upstream-sha256sums.asc",
+    "checksums_capture_sha256": "7c9b8c7e8763c6dd1e23b668d0897bf9dae780688f768205fcdc3eb879ecffa8",
+    "authentication": "Primary upstream HTTPS archive download matched the primary upstream HTTPS published SHA256. PGP signature retained as provenance, not independently verified.",
+    "source_date_epoch": 1784068908,
+    "source_date_epoch_origin": "VERSION mtime in the pinned release tar archive",
+    "patches": []
+  },
+  "build": {
+    "target": "x86_64-unknown-linux-gnu",
+    "libc": "glibc",
+    "upstream_make_target": "btrfs.static",
+    "configuration_evidence": ["configure.ac:208-270", "configure.ac:322-378", "configure.ac:452-523", "Makefile:172-175", "Makefile:715-717", "Makefile.inc.in:44-45"],
+    "required_static_libraries": ["libc", "libpthread", "libm", "libgcc", "libblkid", "libuuid", "zlib", "libzstd", "liblzo2"],
+    "retained_receive_features": ["upstream send-stream parser", "incremental UUID and received-UUID parent lookup", "clone operations", "zlib decoding", "zstd decoding", "LZO decoding", "encoded write with upstream decompression fallback", "fsverity"],
+    "disabled_nonreceiver_features": ["documentation generation", "shared libraries", "Python bindings", "btrfs-convert", "udev multipath discovery", "backtrace generation", "raw zoned-device support", "experimental features"],
+    "reproducibility_boundary": "Pinned pristine upstream archive and fixed recipe/options; build manifest records actual native toolchain and static library hashes. Identical output across different toolchain/library inputs is not asserted. No build was performed when this provenance was captured."
+  },
+  "receiver_contract": {
+    "argv": ["btrfs", "receive", "-e", "-m", "/", "/.release-incoming"],
+    "launch": "Authenticate and open static ELF before chroot; child fchdir(detached Btrfs top-level FD), chroot('.'), chdir('/'), then fexecve(executable FD). Kernel execveat support is required; do not rely on a /proc/self/fd fallback.",
+    "root": "Btrfs filesystem top-level subvolume ID 5, containing the incoming directory and the unchanged received parent/clone roots. Root need not be attached to any namespace.",
+    "input": "Send stream on inherited standard input; inherited stdout/stderr for diagnostics. -e accepts one stream through its first END command.",
+    "proc_dev": "The inspected startup, receive and UUID lookup paths require no /proc or /dev mount: explicit -m / bypasses mount discovery and stdin bypasses file input. This is source-derived, not an executed chroot receive result.",
+    "parent_lookup": "TREE_SEARCH UUID/received-UUID and INO_LOOKUP on open('/') resolve subvolume paths, then openat(mnt_fd, parent path). Preserve parent received_uuid and stransid; use matching immutable parent on send side.",
+    "privilege": "Receiver needs the normal Btrfs receive privileges for tree search, snapshot creation, metadata ownership/xattrs/device nodes and encoded writes as applicable. chroot is not a substitute for trusted send-stream input or controller admission/lifetime enforcement.",
+    "evidence": ["btrfs.c:425-478", "common/utils.c:930-935", "cmds/receive.c:228-262", "cmds/receive.c:305-362", "cmds/receive.c:1175-1313", "cmds/receive.c:1473-1603", "cmds/receive.c:1658-1660", "common/send-utils.c:182-338"],
+    "upstream_limitations": ["FILEATTR is intentionally ignored upstream (cmds/receive.c:1345-1376), as in upstream stream v1 behavior; this package does not claim to restore otherwise unsupported inode attributes.", "Encoded stream encryption is rejected by upstream; this package does not add encryption support."]
+  },
+  "local_prerequisite_observation": {
+    "date": "2026-10-17",
+    "compiler": "gcc 14.2.0, x86_64-linux-gnu",
+    "libc": "glibc 2.41",
+    "pkg_config_versions": {"blkid": "2.41.5", "uuid": "2.41.5", "zlib": "1.3.1", "libzstd": "1.5.7"},
+    "available_static_archives": ["libc.a", "libpthread.a", "libm.a", "libgcc.a", "libblkid.a", "libuuid.a", "libz.a", "libzstd.a"],
+    "missing": ["native liblzo2.a", "LZO2 development headers under /usr/include/lzo"],
+    "action": "Supply native LZO2 development headers and static library through the separately authorized host dependency preparation (Debian package liblzo2-dev). Do not disable LZO receive support. No package installation or build performed."
+  }
+}
