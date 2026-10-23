@@ -563,13 +563,20 @@ fn name(value: Option<&JsonValue>) -> Option<String> {
 /// The models in a provider's list response. Entries with an unusable id
 /// are skipped; a response over [`MAX_MODELS_PER_PROVIDER`] models, or with
 /// no list at all, is rejected so a truncated answer never marks the rest
-/// unavailable.
+/// unavailable. This parser accepts complete inventories only; a continuation
+/// requires an explicit paginating fetch before refresh can publish success.
 pub fn parse_models_response(format: ModelListFormat, body: &[u8]) -> Result<Vec<ObservedModel>> {
     ensure!(
         body.len() <= MAX_MODELS_RESPONSE_BYTES,
         "model list exceeds {MAX_MODELS_RESPONSE_BYTES} bytes"
     );
     let document: JsonValue = serde_json::from_slice(body).context("model list is not JSON")?;
+    if let Some(has_more) = document.get("has_more") {
+        ensure!(
+            has_more.as_bool() == Some(false),
+            "model list is incomplete or has invalid pagination metadata"
+        );
+    }
     let entries = match &document {
         JsonValue::Object(object) => object.get("data").and_then(JsonValue::as_array),
         JsonValue::Array(entries) if format == ModelListFormat::Openai => Some(entries),
@@ -1375,6 +1382,13 @@ native_provider_id = "custom.dashboard"
 
     #[test]
     fn unusable_lists_are_rejected_not_truncated() {
+        for format in [ModelListFormat::Anthropic, ModelListFormat::Openai] {
+            for has_more in [json!(true), json!("false"), JsonValue::Null] {
+                let body = json!({"data": [{"id": "first-page-model"}], "has_more": has_more,
+                    "last_id": "first-page-model"}).to_string();
+                assert!(parse_models_response(format, body.as_bytes()).is_err());
+            }
+        }
         assert!(parse_models_response(ModelListFormat::Openai, b"{\"error\":\"x\"}").is_err());
         assert!(parse_models_response(ModelListFormat::Openai, b"not json").is_err());
         let many: Vec<_> = (0..=MAX_MODELS_PER_PROVIDER)
