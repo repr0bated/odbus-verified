@@ -47,7 +47,8 @@ echo ""
 
 # Test the Cloud Code API
 echo "Testing Cloud Code API access..."
-curl -s -H "Authorization: Bearer $TOKEN" \
+printf 'Authorization: Bearer %s\n' "$TOKEN" |
+curl -s -H @- \
     "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:fetchAvailableModels" \
     | jq . || echo "API call failed (may need enterprise access)"
 

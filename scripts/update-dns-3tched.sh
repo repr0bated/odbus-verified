@@ -20,6 +20,7 @@ load_credentials() {
     ZONE_ID="${CF_ZONEID_3TCHEDCOM:-${CF_ZONE_ID_3TCHED:-${CF_ZONEID_3TCHED:-}}}"
 
     [ -n "$CF_TOKEN" ] || die "CF_DNS_ZONE_TOKEN missing from ~/.bash_secrets"
+    [[ "$CF_TOKEN" != *$'\n'* && "$CF_TOKEN" != *$'\r'* ]] || die 'Cloudflare token must be one line'
     [ -n "$ZONE_ID" ] || die "CF_ZONEID_3TCHEDCOM missing from ~/.bash_secrets"
 }
 
@@ -36,15 +37,17 @@ cf_api() {
 
     if [ -n "$payload" ]; then
         response=$(
+            printf 'Authorization: Bearer %s\n' "$CF_TOKEN" |
             curl -fsS -X "$method" "https://api.cloudflare.com/client/v4${endpoint}" \
-                -H "Authorization: Bearer ${CF_TOKEN}" \
+                -H @- \
                 -H "Content-Type: application/json" \
                 --data "$payload"
         )
     else
         response=$(
+            printf 'Authorization: Bearer %s\n' "$CF_TOKEN" |
             curl -fsS -X "$method" "https://api.cloudflare.com/client/v4${endpoint}" \
-                -H "Authorization: Bearer ${CF_TOKEN}" \
+                -H @- \
                 -H "Content-Type: application/json"
         )
     fi
