@@ -133,7 +133,7 @@ impl GovernanceTaxonomy {
                     .map(|s| format!("{:?}", s))
                     .collect(),
                 can_delegate: false,
-                parent_role: Some("admin".to_string()),
+                parent_role: None,
             },
         );
 
@@ -188,7 +188,7 @@ impl GovernanceTaxonomy {
             org_id: "org-default".to_string(),
             roles,
             capabilities,
-            root_roles: ["admin".to_string()].iter().cloned().collect(),
+            root_roles: ["admin".to_string(), "user".to_string()].iter().cloned().collect(),
             default_data_scope: [
                 ("admin".to_string(), DataScope::OrgWide),
                 ("user".to_string(), DataScope::SelfOnly),
@@ -255,6 +255,10 @@ mod tests {
         let taxonomy = GovernanceTaxonomy::bootstrap();
         assert!(taxonomy.role_has_capability("admin", "shell.execute"));
         assert!(!taxonomy.role_has_capability("user", "shell.execute"));
+        assert_eq!(taxonomy.role_all_capabilities("user"),
+            HashSet::from(["state.read".to_string(), "identity.self_read".to_string()]));
+        assert_eq!(taxonomy.role_all_data_scopes("user"),
+            HashSet::from(["SelfOnly".to_string()]));
     }
 
     #[test]
