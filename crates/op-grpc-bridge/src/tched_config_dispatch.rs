@@ -9,14 +9,35 @@ use op_plugins::state_plugins::tched_router::{
     ConfigGetInput, ConfigInitInput, ConfigListInput, ConfigMigrateInput, ConfigPatchInput,
     ConfigSetInput,
 };
-use op_plugins::state_plugins::tched_router_config_surface::{
-    ConfigMethodBacking, config_method_backing,
-};
 use serde_json::Value;
 
 use crate::tched_router_runtime::{
     ConfigSecretPolicy, NativeConfigMutation, TchedRouterRuntimeClient,
 };
+
+/// Backing for the authored typed config methods. The generated per-section
+/// getters retired; only the two load-bearing operations remain, routed by
+/// the same names the plugin declares (`NATIVE_CONFIG_METHODS`).
+pub enum ConfigMethodBacking {
+    /// Masked `GET /api/config` from the pinned loopback gateway.
+    WholeNativeConfig,
+    /// Bounded typed property operations sent to native `PATCH /api/config`.
+    NativePropertyPatch,
+    /// The named native configuration section, masked and committed under
+    /// the same seal pin (the MCP facade's narrow read).
+    NativeSection(&'static str),
+}
+
+/// Resolve a canonical method name to its backing without reading state or
+/// consulting the Rust registry for plugin existence.
+pub fn config_method_backing(method: &str) -> Option<ConfigMethodBacking> {
+    match method {
+        "GetConfig" => Some(ConfigMethodBacking::WholeNativeConfig),
+        "PatchConfig" => Some(ConfigMethodBacking::NativePropertyPatch),
+        "GetMcpConfig" => Some(ConfigMethodBacking::NativeSection("mcp")),
+        _ => None,
+    }
+}
 
 pub(crate) enum ConfigReadDispatch {
     Handled(Value),
@@ -25,9 +46,6 @@ pub(crate) enum ConfigReadDispatch {
     NativeConfig {
         section: Option<&'static str>,
     },
-    /// The six plugin-owned fields are read from exact committed protected SHM
-    /// by MutationEngine under the same catalog pin.
-    CommittedField(&'static str),
     NotAConfigRead,
 }
 
@@ -93,12 +111,9 @@ pub(crate) async fn dispatch_config_read(
                     section: Some(section),
                 })
             }
-            Some(ConfigMethodBacking::CommittedPluginStateSection(field)) => {
-                Ok(ConfigReadDispatch::CommittedField(field))
-            }
-            Some(ConfigMethodBacking::NativePropertyPatch) | None => {
-                Ok(ConfigReadDispatch::NotAConfigRead)
-            }
+            // The generated per-section getters retired; anything else is
+            // not a config read (PatchConfig is a mutation, handled later).
+            _ => Ok(ConfigReadDispatch::NotAConfigRead),
         },
     }
 }

@@ -17,6 +17,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_stream::stream;
+use anyhow::Context;
 use axum::Router;
 use axum::{body::Body, extract::connect_info::ConnectInfo};
 use hyper::body::Incoming;
@@ -722,6 +723,7 @@ fn build_axum_app_with_mcp(
     )
     .merge(build_routes(loader, server, validator).into_axum_router())
     .layer(cors)
+    .layer(axum::middleware::from_fn(crate::agent_ui_proxy::route))
     .layer(GhostbridgeTraceLayer::new())
 }
 
@@ -822,6 +824,14 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
     // workspace rows remain absent until an admitted explicit recovery/mutation.
     let ui_workspace_root =
         op_core::projection_shm::PrivateProjectionDirectory::prepare(&config.ui_workspace_shm_dir)?;
+    let routing_root = ui_workspace_root.prepare_child("routing")?;
+    let routing_limits = load_routing_limits()?;
+    mutation_engine.configure_routing_store(
+        op_plugins::state_plugins::runtime_documents::runtime_documents().await?,
+        routing_root,
+        catalog_dir.clone(),
+        crate::routing_resources::RoutingResources::new(routing_limits)?,
+    )?;
     mutation_engine.configure_chatbot_episode_projection(
         ui_workspace_root.prepare_child("chatbot-episodes")?,
         crate::sealed_schema_reader::blob_catalog_dir_from_env(),
@@ -871,14 +881,32 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
     mutation_engine
         .bootstrap_control_plane_chatbot_identity()
         .await?;
-    let chatbot_containers =
-        crate::identity_sled_dispatch::start_service_identity_containers(mutation_engine.as_ref())
-            .await?;
-    if chatbot_containers > 0 {
+    let refreshed = crate::identity_sled_dispatch::refresh_drifted_schema_content_hashes(
+        mutation_engine.as_ref(),
+    )
+    .await?;
+    if refreshed > 0 {
         tracing::info!(
+            refreshed,
+            "refreshed drifted identity schema_content_hash rows"
+        );
+    }
+    // Identity recovery and bootstrap above remain startup requirements. A
+    // container's unavailable external storage must not take down the bridge
+    // surfaces needed to inspect and repair it. Explicit activation still
+    // returns its error and never substitutes a device-add or mount fallback.
+    match crate::identity_sled_dispatch::start_service_identity_containers(mutation_engine.as_ref())
+        .await
+    {
+        Ok(chatbot_containers) if chatbot_containers > 0 => tracing::info!(
             chatbot_containers,
             "control-plane chatbot identity container is running"
-        );
+        ),
+        Ok(_) => {}
+        Err(error) => tracing::error!(
+            error = %format!("{error:#}"),
+            "control-plane chatbot container is unavailable; bridge remains available for operator recovery"
+        ),
     }
     let unattended_engine = mutation_engine.clone();
     tokio::spawn(async move {
@@ -913,6 +941,11 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         .await?;
     let mutation_engine_for_dbus = mutation_engine.clone();
     mutation_engine.clone().start().await?;
+    // The reactive workstack runner owns one bounded queue per bridge; it
+    // is fed only by admitted `workflows.start_workflow` calls (no timer,
+    // no poll) and executes under each starter's verified identity session.
+    crate::workstack_runner::start_once(mutation_engine.clone());
+    crate::workstack_service::start_once(mutation_engine.clone());
     let operation_server = OperationGrpcServer::new(mutation_engine.clone());
     // The sealed SHM blob catalog IS the plugin set: hydrate reflection from
     // it so a bridge restart advertises every sealed plugin immediately.
@@ -1039,7 +1072,7 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
     // Attach the semantic shuttle for parity with run_grpc_server so
     // SearchSemanticTrace behaves identically on both endpoints (best-effort:
     // if Qdrant is unavailable the method returns failed_precondition).
-    let operation_server = match op_cognitive_mcp::QdrantSemanticShuttle::new().await {
+    let operation_server = match op_cognitive::QdrantSemanticShuttle::new().await {
         Ok(shuttle) => operation_server.with_semantic_shuttle(Arc::new(shuttle)),
         Err(error) => {
             tracing::warn!(%error, "semantic shuttle unavailable; SearchSemanticTrace will return failed_precondition");
@@ -1281,6 +1314,17 @@ pub async fn run_tched_router_server(config: ServerConfig) -> anyhow::Result<()>
         result = tcp_fut => result,
         result = emqx_exhook_fut => result,
     }
+}
+
+fn load_routing_limits() -> anyhow::Result<crate::routing_resources::RoutingLimits> {
+    let bytes = match std::env::var_os("OP_ROUTING_LIMITS_CONFIG") {
+        Some(path) => {
+            let display = PathBuf::from(path.clone()).display().to_string();
+            std::fs::read(&path).with_context(|| format!("read configured routing limits {display}"))?
+        }
+        None => include_bytes!("../../../deploy/config/routing-limits.json").to_vec(),
+    };
+    serde_json::from_slice(&bytes).context("parse routing limits configuration")
 }
 
 fn validate_catalog_selection(
