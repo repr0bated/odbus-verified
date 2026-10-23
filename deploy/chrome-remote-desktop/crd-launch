@@ -72,6 +72,20 @@ case "$CRD_SESSION" in
         ;;
 esac
 
+# Cursor on Plasma stores its login key in KWallet unless told otherwise.
+# Prepare KeePassXC as the Secret Service provider before the session starts.
+# Failure here must not take down remote desktop.
+CRD_LIB="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+if [ -x "$CRD_LIB/cursor-use-keepass" ]; then
+    setpriv --reuid="$CRD_USER" --regid="$CRD_GROUP" --init-groups -- \
+        env -i HOME="$CRD_HOME" USER="$CRD_USER" LOGNAME="$CRD_USER" \
+        PATH=/usr/local/bin:/usr/bin:/bin \
+        "$CRD_LIB/cursor-use-keepass" "$CRD_HOME" "$CRD_USER" "$CRD_GROUP" \
+        || echo "cursor-use-keepass failed; starting the session anyway" >&2
+else
+    echo "cursor-use-keepass is not installed beside crd-launch" >&2
+fi
+
 # setpriv execs in place, so the host keeps this pid and stays the process the
 # supervisor is watching. env -i keeps DISPLAY unset - the host checks it to
 # choose between sudo and pkexec - and stops the supervisor's environment from
