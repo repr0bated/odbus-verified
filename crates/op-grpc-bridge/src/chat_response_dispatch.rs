@@ -463,22 +463,6 @@ async fn start_conversation(
 ) -> Result<StartConversationOutput> {
     validate_title(input.title.as_deref())?;
     let store = engine.chat_response_cozo().await?;
-    let principal = caller.principal_id.clone();
-    let count = tokio::task::spawn_blocking({
-        let store = store.clone();
-        let principal = principal.clone();
-        move || -> anyhow::Result<usize> {
-            store
-                .count_principal_conversations(&principal)
-                .map_err(Into::into)
-        }
-    })
-    .await??;
-    anyhow::ensure!(
-        count < MAX_CONVERSATIONS_PER_PRINCIPAL,
-        "conversation quota ({}) exceeded for principal",
-        MAX_CONVERSATIONS_PER_PRINCIPAL
-    );
     // The bridge mints the id; UUIDv7 orders conversations by start time.
     let conversation_id = uuid::Uuid::now_v7().to_string();
     let started_at = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
@@ -504,10 +488,11 @@ async fn start_conversation(
     let ((_, _snapshot), published) = publisher
         .commit_reporting(effect, move || {
             store
-                .insert_chat_conversation_and_snapshot(
+                .insert_chat_conversation_and_snapshot_bounded(
                     &record,
                     CONVERSATION_SNAPSHOT_LIMIT,
                     TURN_SNAPSHOT_LIMIT,
+                    MAX_CONVERSATIONS_PER_PRINCIPAL,
                 )
                 .map_err(Into::into)
         })
