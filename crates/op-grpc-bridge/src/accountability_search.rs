@@ -29,10 +29,13 @@ pub(crate) async fn search(
     input: SearchOwnEventsInput,
 ) -> Result<SearchOwnEventsOutput> {
     let session = scope(engine, caller).await?;
+    ensure!(input.query.len() <= 4000, "evidence query exceeds 4000 UTF-8 bytes");
+    let limit = input.limit.unwrap_or(10);
+    ensure!((1..=20).contains(&limit), "evidence search limit must be between 1 and 20");
     let (embedding_model, hits) = tokio::time::timeout(
         std::time::Duration::from_secs(45),
         op_cognitive::chain_vectors::search_session_events(
-            &input.query, caller.actor_id, &session, input.limit.unwrap_or(10),
+            &input.query, caller.actor_id, &session, limit,
         ),
     ).await.context("evidence search timed out")??;
     ensure!(scope(engine, caller).await? == session, "evidence scope changed during search");
