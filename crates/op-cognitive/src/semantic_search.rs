@@ -58,15 +58,8 @@ impl SemanticSearch {
     }
 
     /// Index a file live.
-    pub async fn index_file(&self, repo: &str, file_path: &str, content: &str) -> Result<Value> {
-        // TODO: Call RagPipeline::index_file when available
-        Ok(json!({
-            "repo": repo,
-            "file_path": file_path,
-            "chunks_indexed": 1,
-            "tokens_used": content.len() / 4,
-            "status": "indexed"
-        }))
+    pub async fn index_file(&self, _repo: &str, _file_path: &str, _content: &str) -> Result<Value> {
+        anyhow::bail!("semantic index_file is unsupported; use the declared code ingestion operation")
     }
 
     /// List active collections.
