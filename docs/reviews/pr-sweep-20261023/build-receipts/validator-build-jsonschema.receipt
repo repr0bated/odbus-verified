@@ -1,0 +1,11 @@
+started=2026-10-23T21:19:01Z
+pid=32316
+uid=1000
+command=cargo build --locked --offline -p jsonschema --lib --target x86_64-unknown-linux-gnu
+RUSTUP_TOOLCHAIN=stable-x86_64-unknown-linux-gnu
+RUSTC=/home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc
+RUSTDOC=/home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustdoc
+CARGO_TARGET_DIR=/var/lib/cargo-build/odbus-verified
+finished=2026-10-23T21:19:09Z
+status=completed
+exit_code=0

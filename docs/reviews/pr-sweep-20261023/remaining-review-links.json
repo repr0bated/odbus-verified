@@ -1,0 +1,2390 @@
+[
+  {
+    "pr": 10,
+    "thread_id": "PRRT_kwDOUgxzzc6tpbDp",
+    "path": "crates/op-agents/src/unified/execution/shell.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/10#discussion_r4306599547"
+  },
+  {
+    "pr": 10,
+    "thread_id": "PRRT_kwDOUgxzzc6tpbDs",
+    "path": "crates/op-agents/src/unified/execution/shell.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/10#discussion_r4306599550"
+  },
+  {
+    "pr": 10,
+    "thread_id": "PRRT_kwDOUgxzzc6tpbDw",
+    "path": "crates/op-agents/src/security/profiles.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/10#discussion_r4306599554"
+  },
+  {
+    "pr": 10,
+    "thread_id": "PRRT_kwDOUgxzzc6tpbDz",
+    "path": "crates/op-grpc-bridge/src/interceptor.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/10#discussion_r4306599557"
+  },
+  {
+    "pr": 10,
+    "thread_id": "PRRT_kwDOUgxzzc6tpbD3",
+    "path": "PpGcgpsWpxx7u4DB2qY2dJ",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/10#discussion_r4306599562"
+  },
+  {
+    "pr": 10,
+    "thread_id": "PRRT_kwDOUgxzzc6tpcQF",
+    "path": "deploy/release/lifetime/build-native.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/10#discussion_r4306607449"
+  },
+  {
+    "pr": 10,
+    "thread_id": "PRRT_kwDOUgxzzc6tpd17",
+    "path": "crates/op-chat-responder/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/10#discussion_r4306618128"
+  },
+  {
+    "pr": 10,
+    "thread_id": "PRRT_kwDOUgxzzc6tpd2B",
+    "path": "crates/op-grpc-bridge/src/identity_physical_root.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/10#discussion_r4306618137"
+  },
+  {
+    "pr": 10,
+    "thread_id": "PRRT_kwDOUgxzzc6tpd2F",
+    "path": "deploy/config/identities/control-plane-chatbot.crontab",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/10#discussion_r4306618141"
+  },
+  {
+    "pr": 10,
+    "thread_id": "PRRT_kwDOUgxzzc6tpd2I",
+    "path": "crates/op-grpc-bridge/src/chat_response_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/10#discussion_r4306618146"
+  },
+  {
+    "pr": 11,
+    "thread_id": "PRRT_kwDOUgxzzc6tpo3R",
+    "path": "crates/op-blob/src/descriptor.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/11#discussion_r4306691114"
+  },
+  {
+    "pr": 11,
+    "thread_id": "PRRT_kwDOUgxzzc6tpo3Y",
+    "path": "crates/op-blob/src/descriptor.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/11#discussion_r4306691125"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpqZB",
+    "path": "crates/op-state-store/src/event_chain.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306701341"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpqZE",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306701347"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpqZH",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306701352"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tprS4",
+    "path": "crates/op-core/src/runit.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306707168"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tprTR",
+    "path": "crates/op-state/src/authority.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306707212"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tprTs",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306707247"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tprUF",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306707289"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tprUv",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306707349"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tprVP",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306707399"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tprVj",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306707438"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tprVt",
+    "path": "crates/op-state-store/src/schema_projection.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306707462"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tptFv",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306718668"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tptFy",
+    "path": "crates/op-state/src/authority.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306718671"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tptFz",
+    "path": "crates/op-state-store/src/schema_projection.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306718673"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tptF2",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306718676"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tptF3",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306718677"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tptF4",
+    "path": "crates/op-core/src/runit.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306718678"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tptF7",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306718681"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tptF8",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306718683"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tptF9",
+    "path": "crates/op-core/src/projection_transactions.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306718684"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpu3a",
+    "path": "crates/op-core/src/runit.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306729831"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpu3h",
+    "path": "crates/op-state/src/authority.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306729841"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpu3l",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306729847"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpu3p",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306729851"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpu3s",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306729855"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpu3w",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306729860"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpu3z",
+    "path": "crates/op-cache/src/btrfs_cache.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306729863"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpu34",
+    "path": "crates/op-cache/src/numa.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306729870"
+  },
+  {
+    "pr": 12,
+    "thread_id": "PRRT_kwDOUgxzzc6tpu38",
+    "path": "crates/op-snowball/src/snowball.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/12#discussion_r4306729874"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tppao",
+    "path": "crates/op-cozo-store/src/bin/get-migration-preflight.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306694820"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tppas",
+    "path": "crates/op-cozo-store/src/external_mcp_sessions.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306694828"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tppax",
+    "path": "crates/op-cozo-store/src/bin/get-migration-preflight.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306694834"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tprC9",
+    "path": "crates/op-cozo-store/src/lib.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306705553"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tprEY",
+    "path": "crates/op-cozo-store/src/bin/validate-chatbot-state.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306705705"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tprFN",
+    "path": "crates/op-cozo-store/src/bin/update-chatbot-fsid.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306705792"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tprFo",
+    "path": "crates/op-cozo-store/src/bin/get-migration-preflight.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306705838"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tprGC",
+    "path": "crates/op-cozo-store/src/bin/list-genesis.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306705879"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsAW",
+    "path": "crates/op-cozo-store/src/bin/get-migration-preflight.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306711858"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsAd",
+    "path": "crates/op-cozo-store/src/bin/update-chatbot-fsid.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306711865"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsAq",
+    "path": "crates/op-cozo-store/src/ui_gallery.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306711885"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsAs",
+    "path": "crates/op-cozo-store/src/lib.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306711890"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsAu",
+    "path": "crates/op-cozo-store/src/identity_transactions.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306711893"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6tpxzM",
+    "path": "crates/op-cozo-store/src/ui_gallery.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4306749190"
+  },
+  {
+    "pr": 13,
+    "thread_id": "PRRT_kwDOUgxzzc6vx15k",
+    "path": "crates/op-cozo-store/src/chat_response_conversations.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/13#discussion_r4364374283"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tpptg",
+    "path": "crates/op-plugins/src/state_plugins/ghostbridge.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306696706"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tpptj",
+    "path": "crates/op-plugins/src/state_plugins/identity_sled.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306696709"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tprMW",
+    "path": "crates/op-plugins/src/state_plugins/cozo.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306706574"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tprMq",
+    "path": "crates/op-plugins/src/state_plugins/chat_response.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306706609"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tprNy",
+    "path": "crates/op-plugins/src/state_plugins/embedding_model.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306706704"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tprPl",
+    "path": "crates/op-plugins/src/state_plugins/binary_namespace.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306706856"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps4_",
+    "path": "crates/op-plugins/src/state_plugins/cognitive.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717452"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5B",
+    "path": "crates/op-plugins/src/state_plugins/emqx.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717455"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5C",
+    "path": "crates/op-plugins/src/state_plugins/identity_sled.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717456"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5E",
+    "path": "crates/op-plugins/src/state_plugins/elevation.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717458"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5H",
+    "path": "crates/op-plugins/src/state_plugins/cozo.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717461"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5M",
+    "path": "crates/op-plugins/src/state_plugins/chat_response.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717466"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5N",
+    "path": "crates/op-plugins/src/state_plugins/emqx.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717468"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5P",
+    "path": "crates/op-plugins/src/bin/gen_tched_router_config_surface.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717475"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5S",
+    "path": "crates/op-plugins/src/default_registry.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717478"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5U",
+    "path": "crates/op-plugins/src/service_def.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717481"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5V",
+    "path": "crates/op-plugins/src/state_plugins/incus_device.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717484"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps5Y",
+    "path": "crates/op-plugins/src/state_plugins/identity_sled.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717494"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps9d",
+    "path": "crates/op-plugins/src/lib.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717888"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps9g",
+    "path": "crates/op-plugins/src/state_plugins/emqx.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717894"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps9i",
+    "path": "crates/op-plugins/src/state_plugins/cozo.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717897"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps9k",
+    "path": "crates/op-plugins/src/state_plugins/chat_response.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717902"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps9m",
+    "path": "crates/op-plugins/src/state_plugins/identity_sled.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717904"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps9s",
+    "path": "crates/op-plugins/src/state_plugins/identity_sled.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717911"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps9v",
+    "path": "crates/op-plugins/src/state_plugins/binary_namespace.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717914"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps9x",
+    "path": "crates/op-plugins/src/state_plugins/binary_namespace.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717917"
+  },
+  {
+    "pr": 14,
+    "thread_id": "PRRT_kwDOUgxzzc6tps90",
+    "path": "crates/op-plugins/src/state_plugins/binary_namespace.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/14#discussion_r4306717920"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tppuO",
+    "path": "crates/op-plugins/src/state_plugins/tched_plugins.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306696774"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tprP1",
+    "path": "crates/op-plugins/src/state_plugins/service/methods.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306706878"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tprQV",
+    "path": "crates/op-plugins/src/state_plugins/json_render.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306706924"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tprTM",
+    "path": "crates/op-plugins/src/state_plugins/tched_plugins.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306707200"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tprTk",
+    "path": "crates/op-plugins/src/state_plugins/model_registry.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306707236"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsXZ",
+    "path": "crates/op-plugins/src/state_plugins/rtnetlink.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306714011"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsXa",
+    "path": "crates/op-plugins/src/state_plugins/service/methods.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306714014"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsXc",
+    "path": "crates/op-plugins/src/state_plugins/mod.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306714016"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsXh",
+    "path": "crates/op-plugins/src/state_plugins/tched_plugins.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306714023"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsXk",
+    "path": "crates/op-plugins/src/state_plugins/tched_plugins.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306714028"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsXn",
+    "path": "crates/op-plugins/src/state_plugins/snowball_methods.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306714031"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQU",
+    "path": "crates/op-plugins/src/state_plugins/service/methods.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306719720"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQY",
+    "path": "crates/op-plugins/src/state_plugins/tched_plugins.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306719727"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQf",
+    "path": "crates/op-plugins/src/state_plugins/model_registry.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306719734"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQk",
+    "path": "crates/op-plugins/src/state_plugins/routing_decision_methods.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306719740"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQp",
+    "path": "crates/op-plugins/src/state_plugins/notebooklm.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4306719745"
+  },
+  {
+    "pr": 15,
+    "thread_id": "PRRT_kwDOUgxzzc6vx15o",
+    "path": "deploy/config/threetched-skills/default/ui-authoring/SKILL.md",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/15#discussion_r4364374295"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpp1B",
+    "path": "crates/op-plugins/src/state_plugins/threetched.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306697493"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpp1C",
+    "path": "crates/op-plugins/src/state_plugins/threetched.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306697496"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpp1D",
+    "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306697497"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpp1G",
+    "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306697500"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpriu",
+    "path": "crates/op-plugins/src/state_plugins/tched_skills.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306708799"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tprjD",
+    "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306708847"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tprjo",
+    "path": "crates/op-plugins/src/state_plugins/tched_router_paths.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306708896"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tprk4",
+    "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306709005"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tprlE",
+    "path": "crates/op-plugins/src/state_plugins/tched_skills.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306709038"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tprt4",
+    "path": "crates/op-plugins/src/state_plugins/threetched.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306709919"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tprt7",
+    "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306709924"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tprt8",
+    "path": "crates/op-plugins/src/state_plugins/tched_router_generation.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306709926"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsTN",
+    "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306713622"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsTP",
+    "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306713625"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsTT",
+    "path": "crates/op-plugins/src/state_plugins/tched_skills.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306713630"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsTX",
+    "path": "crates/op-plugins/src/state_plugins/threetched.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306713634"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsTa",
+    "path": "crates/op-plugins/src/state_plugins/tched_router_paths.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306713639"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsTb",
+    "path": "crates/op-plugins/src/state_plugins/tched_skills.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306713643"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsTd",
+    "path": "crates/op-plugins/src/state_plugins/tched_skills.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306713645"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsTg",
+    "path": "crates/op-plugins/src/state_plugins/tched_router_contract.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306713652"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsTk",
+    "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4306713656"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6vx2Yy",
+    "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4364377522"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6vy86W",
+    "path": "crates/op-plugins/src/state_plugins/tched_router.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4364854033"
+  },
+  {
+    "pr": 16,
+    "thread_id": "PRRT_kwDOUgxzzc6vy87I",
+    "path": "crates/op-plugins/src/state_plugins/threetched.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/16#discussion_r4364854125"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tppOf",
+    "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306693603"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tppOg",
+    "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306693604"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tppOo",
+    "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306693614"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tpq9z",
+    "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306705085"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tpq93",
+    "path": "crates/op-plugins/src/state_plugins/threetched_fs_contract.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306705092"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tprMJ",
+    "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306706553"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tprMg",
+    "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306706590"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tprpo",
+    "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306709519"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tprpp",
+    "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306709522"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tprpq",
+    "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306709524"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tprpr",
+    "path": "crates/op-plugins/src/state_plugins/workflows_plugin.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306709526"
+  },
+  {
+    "pr": 17,
+    "thread_id": "PRRT_kwDOUgxzzc6tprpu",
+    "path": "crates/op-plugins/src/state_plugins/threetched_fs_contract.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/17#discussion_r4306709529"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tpqOi",
+    "path": "crates/op-grpc-bridge/src/grpc_server.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306700251"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tpqOl",
+    "path": "crates/op-grpc-bridge/src/grpc_server.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306700257"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tprO3",
+    "path": "crates/op-grpc-bridge/src/identity_clean_provision/storage.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306706798"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tprPp",
+    "path": "crates/op-grpc-bridge/src/chatbot_episode_state.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306706861"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tprQd",
+    "path": "crates/op-grpc-bridge/src/agent_ui_proxy.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306706933"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSH",
+    "path": "crates/op-grpc-bridge/src/chatbot_episode_state.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306719878"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSI",
+    "path": "crates/op-grpc-bridge/src/grpc_server.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306719879"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSL",
+    "path": "crates/op-grpc-bridge/src/grpc_server.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306719883"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSN",
+    "path": "crates/op-grpc-bridge/src/freedesktop_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306719885"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSQ",
+    "path": "crates/op-grpc-bridge/src/agent_ui_proxy.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306719889"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSX",
+    "path": "crates/op-grpc-bridge/src/catalog_ordinary_profile.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306719898"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSb",
+    "path": "crates/op-grpc-bridge/src/identity_clean_provision/partitioned.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306719901"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSf",
+    "path": "crates/op-grpc-bridge/src/identity_clean_provision.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306719906"
+  },
+  {
+    "pr": 18,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSj",
+    "path": "crates/op-grpc-bridge/src/chat_response_state.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/18#discussion_r4306719910"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpp_R",
+    "path": "crates/op-grpc-bridge/src/interceptor.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306698599"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpp_Y",
+    "path": "crates/op-grpc-bridge/src/interceptor.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306698607"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tprXq",
+    "path": "crates/op-grpc-bridge/src/lungs_socket.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306707682"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tprX7",
+    "path": "crates/op-grpc-bridge/src/lungs_socket.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306707720"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpto2",
+    "path": "crates/op-grpc-bridge/src/identity_sled_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306721954"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpto5",
+    "path": "crates/op-grpc-bridge/src/model_registry_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306721957"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpto8",
+    "path": "crates/op-grpc-bridge/src/model_registry_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306721960"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tptpA",
+    "path": "crates/op-grpc-bridge/src/model_registry_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306721965"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tptpB",
+    "path": "crates/op-grpc-bridge/src/model_registry_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306721969"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tptpD",
+    "path": "crates/op-grpc-bridge/src/model_registry_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306721971"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tptpF",
+    "path": "crates/op-grpc-bridge/src/lungs_socket.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306721974"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tptpH",
+    "path": "crates/op-grpc-bridge/src/incus_observer.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306721978"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt8l",
+    "path": "crates/op-grpc-bridge/src/lungs_socket.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306723885"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt8q",
+    "path": "crates/op-grpc-bridge/src/json_render_gallery_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306723890"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt8u",
+    "path": "crates/op-grpc-bridge/src/incus_observer.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306723895"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt8y",
+    "path": "crates/op-grpc-bridge/src/mcp_frontend.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306723899"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt84",
+    "path": "crates/op-grpc-bridge/src/model_registry_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306723905"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt89",
+    "path": "crates/op-grpc-bridge/src/identity_root_repair.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306723910"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt8-",
+    "path": "crates/op-grpc-bridge/src/mcp_frontend.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306723912"
+  },
+  {
+    "pr": 19,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt8_",
+    "path": "crates/op-grpc-bridge/src/nlm_cli.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/19#discussion_r4306723913"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpqHE",
+    "path": "crates/op-grpc-bridge/src/workstack_service.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306699442"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpqHG",
+    "path": "crates/op-grpc-bridge/src/tched_router_runtime.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306699445"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpru7",
+    "path": "crates/op-grpc-bridge/src/routing_store.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306710027"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tprvM",
+    "path": "crates/op-grpc-bridge/src/request_registry.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306710062"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tprvn",
+    "path": "crates/op-grpc-bridge/src/pam_auth.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306710116"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsvm",
+    "path": "crates/op-grpc-bridge/src/workstack_service.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306716577"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsvn",
+    "path": "crates/op-grpc-bridge/src/workstack_service.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306716578"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsvq",
+    "path": "crates/op-grpc-bridge/src/request_registry.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306716583"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsvs",
+    "path": "crates/op-grpc-bridge/src/workstack_service.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306716586"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsvu",
+    "path": "crates/op-grpc-bridge/src/workstack_service.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306716589"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsvw",
+    "path": "crates/op-grpc-bridge/src/system_graph_dispatch.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306716592"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsvx",
+    "path": "crates/op-grpc-bridge/src/tched_config_engine.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306716595"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsvy",
+    "path": "crates/op-grpc-bridge/src/workstack_service.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306716597"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpvyN",
+    "path": "crates/op-grpc-bridge/src/server.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306735823"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpvyQ",
+    "path": "crates/op-grpc-bridge/src/workstack_service.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306735826"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpvyW",
+    "path": "crates/op-grpc-bridge/src/workstack_runner.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306735837"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6tpvyY",
+    "path": "crates/op-grpc-bridge/src/responder_wake.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4306735839"
+  },
+  {
+    "pr": 20,
+    "thread_id": "PRRT_kwDOUgxzzc6vx13P",
+    "path": "crates/op-grpc-bridge/src/task_elevation.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/20#discussion_r4364374014"
+  },
+  {
+    "pr": 21,
+    "thread_id": "PRRT_kwDOUgxzzc6tpqvr",
+    "path": "crates/op-grpc-bridge/tests/negative_topology_gates.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/21#discussion_r4306703636"
+  },
+  {
+    "pr": 21,
+    "thread_id": "PRRT_kwDOUgxzzc6tprHd",
+    "path": "crates/op-grpc-bridge/tests/negative_topology_gates.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/21#discussion_r4306706036"
+  },
+  {
+    "pr": 22,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsV3",
+    "path": "crates/threetched-fs/src/namespace.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/22#discussion_r4306713868"
+  },
+  {
+    "pr": 22,
+    "thread_id": "PRRT_kwDOUgxzzc6tps_Q",
+    "path": "crates/threetched-fs/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/22#discussion_r4306718041"
+  },
+  {
+    "pr": 22,
+    "thread_id": "PRRT_kwDOUgxzzc6vyQD1",
+    "path": "crates/threetched-fs/examples/typed_specialize.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/22#discussion_r4364550930"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6tprEQ",
+    "path": "crates/op-chat-responder/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4306705685"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6tprEq",
+    "path": "crates/op-chat-responder/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4306705733"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6tprFr",
+    "path": "crates/op-chat-responder/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4306705844"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6tpr3P",
+    "path": "crates/op-chat-responder/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4306710935"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6tpr3S",
+    "path": "crates/op-chat/src/system_prompt.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4306710943"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6tpr3W",
+    "path": "crates/op-chat-responder/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4306710949"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6tpr3b",
+    "path": "crates/op-cognitive-mcp/Cargo.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4306710960"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuMm",
+    "path": "crates/op-chat-responder/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4306725430"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuMo",
+    "path": "crates/op-chat-responder/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4306725432"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6vx5cE",
+    "path": "crates/op-chat-responder/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4364398231"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6vyQHx",
+    "path": "crates/op-chat/src/system_prompt.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4364551347"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6vyQJL",
+    "path": "crates/op-chat/src/system_prompt.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4364551472"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6vyQMF",
+    "path": "crates/op-chat/src/system_prompt.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4364551728"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6vyQNP",
+    "path": "crates/op-chat/src/system_prompt.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4364551842"
+  },
+  {
+    "pr": 23,
+    "thread_id": "PRRT_kwDOUgxzzc6vyQPA",
+    "path": "crates/op-chat/src/system_prompt.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/23#discussion_r4364552020"
+  },
+  {
+    "pr": 26,
+    "thread_id": "PRRT_kwDOUgxzzc6tprPr",
+    "path": "crates/op-mcp/src/cognitive_bridge.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/26#discussion_r4306706864"
+  },
+  {
+    "pr": 26,
+    "thread_id": "PRRT_kwDOUgxzzc6tprPs",
+    "path": "crates/op-mcp/src/cognitive_bridge.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/26#discussion_r4306706865"
+  },
+  {
+    "pr": 27,
+    "thread_id": "PRRT_kwDOUgxzzc6tps34",
+    "path": "crates/op-deployment/src/bin/release/transfer.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/27#discussion_r4306717341"
+  },
+  {
+    "pr": 27,
+    "thread_id": "PRRT_kwDOUgxzzc6tpujb",
+    "path": "crates/op-network/src/door/proxy.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/27#discussion_r4306727735"
+  },
+  {
+    "pr": 27,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuje",
+    "path": "crates/op-network/src/door/mod.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/27#discussion_r4306727742"
+  },
+  {
+    "pr": 27,
+    "thread_id": "PRRT_kwDOUgxzzc6tpujj",
+    "path": "crates/op-deployment/src/bin/release/lifetime.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/27#discussion_r4306727749"
+  },
+  {
+    "pr": 27,
+    "thread_id": "PRRT_kwDOUgxzzc6tpujk",
+    "path": "crates/op-deployment/src/bin/release/model.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/27#discussion_r4306727750"
+  },
+  {
+    "pr": 27,
+    "thread_id": "PRRT_kwDOUgxzzc6tpujm",
+    "path": "crates/op-deployment/src/bin/release/fs.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/27#discussion_r4306727752"
+  },
+  {
+    "pr": 27,
+    "thread_id": "PRRT_kwDOUgxzzc6tpujp",
+    "path": "crates/op-network/src/bin/op-ovsbr0-setup.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/27#discussion_r4306727756"
+  },
+  {
+    "pr": 27,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk7f",
+    "path": "crates/op-deployment/src/bin/release/boot.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/27#discussion_r4307082302"
+  },
+  {
+    "pr": 27,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk_I",
+    "path": "crates/op-network/src/door/proxy.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/27#discussion_r4307082659"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsDX",
+    "path": "crates/op-runit-systemctl/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4306712157"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsDa",
+    "path": "crates/op-web/src/sse.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4306712161"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsUn",
+    "path": "crates/op-runit-systemctl/src/dbus.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4306713763"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsUq",
+    "path": "crates/op-runit-systemctl/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4306713767"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsUu",
+    "path": "crates/op-web/src/sse.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4306713772"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsUx",
+    "path": "crates/op-web/src/routes/mod.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4306713776"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsU2",
+    "path": "crates/op-uds-relay/Cargo.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4306713782"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsU4",
+    "path": "crates/op-network/src/lib.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4306713787"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsU5",
+    "path": "crates/op-web/src/sse.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4306713789"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk98",
+    "path": "crates/op-web/src/sse.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4307082529"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk-d",
+    "path": "crates/op-web/src/handlers/agents.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4307082578"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk-_",
+    "path": "crates/op-services/src/manager/service_manager.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4307082634"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk_K",
+    "path": "crates/op-runit-systemctl/src/main.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4307082666"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk_g",
+    "path": "crates/op-web/src/handlers/agents.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4307082725"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6vyfh2",
+    "path": "crates/op-web/src/state.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4364655103"
+  },
+  {
+    "pr": 28,
+    "thread_id": "PRRT_kwDOUgxzzc6vzIXb",
+    "path": "crates/op-uds-relay/src/bin/op-uds-relay.rs",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/28#discussion_r4364931808"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQH",
+    "path": "deploy/config/mongodb-mcp-server.version",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719704"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQK",
+    "path": "deploy/config/model-providers.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719708"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQN",
+    "path": "deploy/config/threetched-runtime.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719711"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQQ",
+    "path": "deploy/config/threetched-runtime.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719716"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQV",
+    "path": "deploy/config/nftables.conf",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719721"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQZ",
+    "path": "deploy/config/network.conf",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719726"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQd",
+    "path": "deploy/config/network.conf",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719732"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQi",
+    "path": "deploy/config/agents/conf/threetched-fs@.service",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719738"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQn",
+    "path": "deploy/config/model-providers.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719743"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQt",
+    "path": "deploy/config/container-socket-contracts.json",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719749"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQx",
+    "path": "deploy/config/model-providers.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719753"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tptQ1",
+    "path": "deploy/config/agents/conf/threetched-fs@.service",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306719758"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuOp",
+    "path": "deploy/config/agents/conf/threetched-fs@.service",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306725661"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuOr",
+    "path": "deploy/config/agents/conf/threetched-fs@.service",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306725663"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuOs",
+    "path": "deploy/config/threetched-runtime.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4306725665"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk7_",
+    "path": "deploy/config/mongodb-mcp-server.version",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4307082349"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk8-",
+    "path": "deploy/config/network.conf",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4307082431"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk93",
+    "path": "deploy/config/threetched-runtime.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4307082523"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk-R",
+    "path": "deploy/config/network.conf",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4307082562"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk-0",
+    "path": "deploy/config/nftables.conf",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4307082615"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk_H",
+    "path": "deploy/config/model-providers.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4307082661"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk_a",
+    "path": "deploy/config/iptables.rules",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4307082704"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6vx2XD",
+    "path": "deploy/config/identities/control-plane-chatbot.crontab",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4364377320"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6vx2X0",
+    "path": "deploy/config/identities/control-plane-chatbot.crontab",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4364377421"
+  },
+  {
+    "pr": 30,
+    "thread_id": "PRRT_kwDOUgxzzc6vygJO",
+    "path": "deploy/config/network.conf",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/30#discussion_r4364659366"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tpslJ",
+    "path": "deploy/runit/enabled-services",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4306715524"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tpslK",
+    "path": "deploy/runit/libexec-3tched/restore-chatbot-root",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4306715525"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tpslL",
+    "path": "deploy/runit/identity-roots/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4306715527"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSV",
+    "path": "deploy/runit/identity-roots/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4306719896"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSd",
+    "path": "deploy/runit/libexec-3tched/op-identity-root",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4306719904"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSh",
+    "path": "deploy/runit/build-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4306719908"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSk",
+    "path": "deploy/runit/libexec-3tched/op-identity-root",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4306719911"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSo",
+    "path": "deploy/runit/libexec-3tched/op-identity-root",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4306719916"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSr",
+    "path": "deploy/runit/check-host-runtime-packages.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4306719919"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tptSt",
+    "path": "deploy/runit/gre-decoy/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4306719925"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tqky0",
+    "path": "deploy/runit/enabled-services",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4307081410"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tqkzR",
+    "path": "deploy/runit/gre-decoy/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4307081457"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tqkzq",
+    "path": "deploy/runit/build-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4307081501"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk0C",
+    "path": "deploy/runit/libexec-3tched/op-identity-root",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4307081537"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk0c",
+    "path": "deploy/runit/identity-roots/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4307081586"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk1D",
+    "path": "deploy/runit/libexec-3tched/op-identity-root",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4307081648"
+  },
+  {
+    "pr": 31,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk1k",
+    "path": "deploy/runit/libexec-3tched/op-lungs-check",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/31#discussion_r4307081691"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsZM",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4306714197"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsgn",
+    "path": "deploy/runit/ovs-vswitchd/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4306715011"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsgo",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4306715014"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsgr",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4306715019"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuc2",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4306727127"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuc5",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4306727131"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuc7",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4306727134"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuc-",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4306727138"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tqkkW",
+    "path": "deploy/runit/ovs-vswitchd/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4307079952"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tqklt",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4307080071"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tqkmC",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4307080110"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tqkmf",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4307080152"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tqkms",
+    "path": "deploy/runit/notebook-sources-sync/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4307080184"
+  },
+  {
+    "pr": 32,
+    "thread_id": "PRRT_kwDOUgxzzc6tqknJ",
+    "path": "deploy/runit/opencode-door/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/32#discussion_r4307080227"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tps3K",
+    "path": "deploy/runit/threetched-fs/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4306717275"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tps3S",
+    "path": "deploy/runit/ovsbr0-cutover/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4306717284"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt4f",
+    "path": "deploy/runit/ovsbr0-cutover/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4306723493"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt4h",
+    "path": "deploy/runit/ovsbr0-persist/ovsbr0-persist.conf",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4306723496"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt4j",
+    "path": "deploy/runit/threetched-fs/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4306723498"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt4l",
+    "path": "deploy/runit/threetched-fs/check",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4306723501"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt4o",
+    "path": "deploy/runit/tched-router/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4306723505"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt4p",
+    "path": "deploy/runit/tched-router/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4306723506"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk4Y",
+    "path": "deploy/runit/tched-router/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4307081966"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk40",
+    "path": "deploy/runit/threetched-fs/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4307082010"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk5H",
+    "path": "deploy/runit/ovsbr0-cutover/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4307082054"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk5d",
+    "path": "deploy/runit/threetched-fs/check",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4307082098"
+  },
+  {
+    "pr": 33,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk6C",
+    "path": "deploy/runit/threetched-fs/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/33#discussion_r4307082164"
+  },
+  {
+    "pr": 34,
+    "thread_id": "PRRT_kwDOUgxzzc6tprfT",
+    "path": "deploy/runit/xray-native/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/34#discussion_r4306708454"
+  },
+  {
+    "pr": 34,
+    "thread_id": "PRRT_kwDOUgxzzc6tprfX",
+    "path": "deploy/runit/xray-native/run",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/34#discussion_r4306708458"
+  },
+  {
+    "pr": 35,
+    "thread_id": "PRRT_kwDOUgxzzc6tpskA",
+    "path": "deploy/decoy-warp-ssh/host-admission.nft",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/35#discussion_r4306715398"
+  },
+  {
+    "pr": 35,
+    "thread_id": "PRRT_kwDOUgxzzc6tpskB",
+    "path": "deploy/decoy-warp-ssh/systemd/op-warp-routes.service",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/35#discussion_r4306715400"
+  },
+  {
+    "pr": 35,
+    "thread_id": "PRRT_kwDOUgxzzc6tpskC",
+    "path": "deploy/decoy-warp-ssh/decoy-egress.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/35#discussion_r4306715403"
+  },
+  {
+    "pr": 35,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsqs",
+    "path": "deploy/decoy-warp-ssh/host-admission.nft",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/35#discussion_r4306716063"
+  },
+  {
+    "pr": 35,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsqu",
+    "path": "deploy/decoy-warp-ssh/admission.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/35#discussion_r4306716066"
+  },
+  {
+    "pr": 35,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsqv",
+    "path": "deploy/decoy-warp-ssh/decoy-egress.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/35#discussion_r4306716067"
+  },
+  {
+    "pr": 35,
+    "thread_id": "PRRT_kwDOUgxzzc6vx1k2",
+    "path": "deploy/decoy-warp-ssh/host-admission.nft",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/35#discussion_r4364372035"
+  },
+  {
+    "pr": 35,
+    "thread_id": "PRRT_kwDOUgxzzc6vx1l-",
+    "path": "deploy/decoy-warp-ssh/host-admission.nft",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/35#discussion_r4364372152"
+  },
+  {
+    "pr": 35,
+    "thread_id": "PRRT_kwDOUgxzzc6vx1m8",
+    "path": "deploy/decoy-warp-ssh/decoy-egress.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/35#discussion_r4364372257"
+  },
+  {
+    "pr": 35,
+    "thread_id": "PRRT_kwDOUgxzzc6vx1n-",
+    "path": "deploy/decoy-warp-ssh/decoy-admission.nft",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/35#discussion_r4364372365"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsT2",
+    "path": "deploy/decoy/decoy-fabric-egress",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4306713685"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsT5",
+    "path": "deploy/decoy-warp-ssh/test-decoy-egress.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4306713690"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsT7",
+    "path": "deploy/xray-hardening/test-reality.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4306713694"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6tpsT8",
+    "path": "deploy/xray-hardening/transform.jq",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4306713695"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6tps1V",
+    "path": "deploy/decoy/decoy-fabric-egress",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4306717115"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6tps1a",
+    "path": "deploy/decoy-warp-ssh/test-decoy-egress.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4306717120"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6tps1d",
+    "path": "deploy/workspace-network/prepare-central-xray.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4306717123"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6tps1f",
+    "path": "deploy/xray-hardening/transform.jq",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4306717127"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6vx11D",
+    "path": "deploy/xray-hardening/transform.jq",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4364373795"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6vx12P",
+    "path": "deploy/decoy-warp-ssh/systemd/warp-svc.conf",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4364373916"
+  },
+  {
+    "pr": 36,
+    "thread_id": "PRRT_kwDOUgxzzc6vx13Z",
+    "path": "deploy/xray-hardening/prepare.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/36#discussion_r4364374031"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tptze",
+    "path": "activate-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4306723047"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tptzi",
+    "path": "deploy/lib/golden/test-build-golden-nlm.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4306723053"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuOu",
+    "path": "activate-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4306725667"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuOz",
+    "path": "deploy/lib/golden/build-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4306725673"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuO3",
+    "path": "deploy/lib/golden/test-build-golden-nlm.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4306725677"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuO4",
+    "path": "deploy/release/lifetime/build-native.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4306725678"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuO7",
+    "path": "deploy/lib/golden/build-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4306725681"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuO-",
+    "path": "deploy/lib/golden/build-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4306725685"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tqkzh",
+    "path": "deploy/lib/golden/build-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4307081476"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk1H",
+    "path": "activate-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4307081652"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk1r",
+    "path": "deploy/release/op-release-launch",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4307081701"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk1_",
+    "path": "deploy/lib/golden/build-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4307081733"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk2X",
+    "path": "activate-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4307081772"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk24",
+    "path": "deploy/lib/golden/build-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4307081832"
+  },
+  {
+    "pr": 37,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk31",
+    "path": "deploy/lib/golden/build-golden.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/37#discussion_r4307081915"
+  },
+  {
+    "pr": 38,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt-F",
+    "path": "vendor/tched-router/patches/0002-stateless-provider-generation.patch",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/38#discussion_r4306724017"
+  },
+  {
+    "pr": 38,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt-J",
+    "path": "vendor/tched-router/patches/0003-threetched-branding.patch",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/38#discussion_r4306724023"
+  },
+  {
+    "pr": 38,
+    "thread_id": "PRRT_kwDOUgxzzc6tpt-M",
+    "path": "vendor/tched-router/patches/0003-threetched-branding.patch",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/38#discussion_r4306724026"
+  },
+  {
+    "pr": 38,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuPV",
+    "path": "vendor/tched-router/patches/0002-stateless-provider-generation.patch",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/38#discussion_r4306725722"
+  },
+  {
+    "pr": 38,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuPX",
+    "path": "vendor/tched-router/patches/0002-stateless-provider-generation.patch",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/38#discussion_r4306725725"
+  },
+  {
+    "pr": 38,
+    "thread_id": "PRRT_kwDOUgxzzc6tqko8",
+    "path": "vendor/tched-router/patches/0002-stateless-provider-generation.patch",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/38#discussion_r4307080440"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tptxu",
+    "path": "deploy/scripts/provision-workspace-subscriber.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306722876"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tptxv",
+    "path": "deploy/scripts/disk-retention.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306722877"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tptxw",
+    "path": "deploy/efi-boot/build.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306722880"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tptx3",
+    "path": "deploy/scripts/provision-workspace-subscriber.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306722887"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tptx5",
+    "path": "deploy/scripts/sync-instance-upgrade.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306722891"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tptx6",
+    "path": "deploy/efi-boot/build.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306722893"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuw8",
+    "path": "deploy/pam/op-dbus-elevate",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729094"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuw_",
+    "path": "deploy/btrfs-layout.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729098"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuxB",
+    "path": "deploy/scripts/provision-workspace-subscriber.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729101"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuxD",
+    "path": "deploy/scripts/disk-retention.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729103"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuxF",
+    "path": "Cargo.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729106"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuxI",
+    "path": "deploy/efi-boot/build.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729110"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuxK",
+    "path": "deploy/scripts/tests/test-shared-seed-siblings.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729114"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuxR",
+    "path": "deploy/scripts/tests/test-provision-identity-mode.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729122"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuxS",
+    "path": "Cargo.toml",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729123"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuxT",
+    "path": "deploy/efi-boot/initcpio/install/opnet",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729125"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuxW",
+    "path": "deploy/efi-boot/build.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4306729131"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk3J",
+    "path": "deploy/scripts/sync-instance-upgrade.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4307081851"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk34",
+    "path": "deploy/scripts/sync-instance-upgrade.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4307081918"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk4y",
+    "path": "deploy/scripts/disk-retention.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4307082006"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk5k",
+    "path": "deploy/scripts/provision-workspace-subscriber.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4307082112"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk5w",
+    "path": "deploy/scripts/disk-retention.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4307082138"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6tqk6R",
+    "path": "deploy/scripts/provision-workspace-subscriber.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4307082185"
+  },
+  {
+    "pr": 42,
+    "thread_id": "PRRT_kwDOUgxzzc6vx39U",
+    "path": "deploy/scripts/3tchedfs-invoke.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/42#discussion_r4364388483"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuH5",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724946"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuH6",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724951"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuH8",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724953"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuH9",
+    "path": "scripts/export-verified-source.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724954"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuIA",
+    "path": "install_3tched_skills.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724958"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuIC",
+    "path": "scripts/probes/cache-memory-parser.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724960"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuIE",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724964"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuIF",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724966"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuII",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724969"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuIK",
+    "path": "scripts/setup-ovs-bridge-native.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724971"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuIM",
+    "path": "scripts/uv-tools/notebook_sync.py",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724973"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuIP",
+    "path": "scripts/uv-tools/notebook_sync.py",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724977"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuIR",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306724980"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuL6",
+    "path": "deploy/security/capability-grants.json",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306725369"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuL7",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306725370"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuL9",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306725372"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuMF",
+    "path": "install_3tched_skills.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306725380"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuMH",
+    "path": "scripts/probes/cache-memory-parser.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306725383"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuMJ",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306725386"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tpuML",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4306725389"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tql7d",
+    "path": "scripts/export-verified-source.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4307088965"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tql7v",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4307089004"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tql8V",
+    "path": "scripts/uv-tools/notebook_sync.py",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4307089059"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tql8w",
+    "path": "scripts/chatbot-migrate.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4307089115"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tql9i",
+    "path": "install_3tched_skills.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4307089213"
+  },
+  {
+    "pr": 43,
+    "thread_id": "PRRT_kwDOUgxzzc6tql-x",
+    "path": "deploy/workspace-desktop/prepare.sh",
+    "url": "https://github.com/repr0bated/odbus-verified/pull/43#discussion_r4307089343"
+  }
+]

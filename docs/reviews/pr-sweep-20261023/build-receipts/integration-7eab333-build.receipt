@@ -1,0 +1,21 @@
+started=2026-10-23T22:21:22Z
+pid=32598
+uid=1000
+source_head=7eab33332eb5f5632896e1705d25d8415811b059
+command=cargo build --locked --offline --target x86_64-unknown-linux-gnu -p op-cozo-store -p op-plugins -p op-grpc-bridge -p op-cognitive -p op-dbus-cli -p op-web
+RUSTUP_TOOLCHAIN=stable-x86_64-unknown-linux-gnu
+RUSTC=/home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustc
+RUSTDOC=/home/jeremy/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustdoc
+CARGO_TARGET_DIR=/var/lib/cargo-build/odbus-verified
+THREETCHED_CAPTURE_BIN=/var/lib/cargo-build/odbus-verified/threetched-artifacts/tched-router/threetched
+THREETCHED_CAPTURE_MANIFEST=/var/lib/cargo-build/odbus-verified/threetched-artifacts/tched-router/manifest.json
+TCHED_ROUTER_CONFIG_DIR=/var/lib/tched-router
+22e121f5eb1b66352138b714cc3d40d9eb977ed0c13bd6316f693a11a875a75e  /var/lib/cargo-build/odbus-verified/threetched-artifacts/tched-router/threetched
+5fd1a4db784f20a788d16722d86dde01ee0d9ba574598b007d5f1c3e4585b5b7  /var/lib/cargo-build/odbus-verified/threetched-artifacts/tched-router/manifest.json
+capture_manifest_branding_sha256=d950152b857ee1068d1919de1318beb8705f91d1113b804ff06f6458ccd3c0eb
+PATCH_BRANDING_SHA256=6e35f93c3064a547e01735ea61a5f52302df40a92447dcca520f6b31cacc9491
+provenance_limit=Capture branding patch differs from stack pin; build evidence is not release compatibility or deployment evidence.
+finished=2026-10-23T22:21:25Z
+status=completed
+exit_code=101
+source_head_after=7eab33332eb5f5632896e1705d25d8415811b059
