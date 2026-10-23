@@ -110,39 +110,58 @@ impl ItemsFilter for Draft2019ItemsFilter {
         let mut ref_ = None;
 
         if let Some(Value::String(reference)) = parent.get("$ref") {
-            let resolved = ctx.lookup(reference)?;
-            if let Value::Object(subschema) = resolved.contents() {
-                ref_ = Some(Box::new(Self::new(ctx, subschema)?));
+            let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
+            let vocabularies = ctx.registry.find_vocabularies(draft, contents);
+            let referenced_ctx = ctx.with_resolver_and_draft(
+                resolver,
+                draft,
+                vocabularies,
+                ctx.location().clone(),
+            );
+            if let Value::Object(subschema) = contents {
+                ref_ = Some(Box::new(
+                    Self::new(&referenced_ctx, subschema).map_err(|error| error.to_owned())?,
+                ));
             }
         }
         let mut recursive_ref = None;
 
         if parent.contains_key("$recursiveRef") {
-            let resolved = ctx.lookup_recursive_reference()?;
-            if let Value::Object(subschema) = resolved.contents() {
-                recursive_ref = Some(Box::new(Self::new(ctx, subschema)?));
+            let (contents, resolver, draft) = ctx.lookup_recursive_reference()?.into_inner();
+            let vocabularies = ctx.registry.find_vocabularies(draft, contents);
+            let referenced_ctx = ctx.with_resolver_and_draft(
+                resolver,
+                draft,
+                vocabularies,
+                ctx.location().clone(),
+            );
+            if let Value::Object(subschema) = contents {
+                recursive_ref = Some(Box::new(
+                    Self::new(&referenced_ctx, subschema).map_err(|error| error.to_owned())?,
+                ));
             }
         }
 
         let mut conditional = None;
 
         if let Some(subschema) = parent.get("if") {
-            if let Value::Object(if_parent) = subschema {
-                let mut then_ = None;
-                if let Some(Value::Object(subschema)) = parent.get("then") {
-                    then_ = Some(Self::new(ctx, subschema)?);
-                }
-                let mut else_ = None;
-                if let Some(Value::Object(subschema)) = parent.get("else") {
-                    else_ = Some(Self::new(ctx, subschema)?);
-                }
-                conditional = Some(Box::new(ConditionalFilter {
-                    condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
-                    if_: Self::new(ctx, if_parent)?,
-                    then_,
-                    else_,
-                }));
+            let mut then_ = None;
+            if let Some(Value::Object(subschema)) = parent.get("then") {
+                then_ = Some(Self::new(ctx, subschema)?);
             }
+            let mut else_ = None;
+            if let Some(Value::Object(subschema)) = parent.get("else") {
+                else_ = Some(Self::new(ctx, subschema)?);
+            }
+            conditional = Some(Box::new(ConditionalFilter {
+                condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                if_: subschema
+                    .as_object()
+                    .map(|parent| Self::new(ctx, parent))
+                    .transpose()?,
+                then_,
+                else_,
+            }));
         }
 
         let mut contains = None;
@@ -167,12 +186,15 @@ impl ItemsFilter for Draft2019ItemsFilter {
         };
         let mut items = None;
         if let Some(subschema) = parent.get("items") {
-            let limit = if parent.contains_key("additionalItems") || subschema.is_object() {
+            let limit = if parent.contains_key("additionalItems")
+                || subschema.is_object()
+                || subschema.is_boolean()
+            {
                 usize::MAX
             } else {
                 subschema
                     .as_array()
-                    .expect("Items are either an object or an array")
+                    .expect("Items are a schema or an array of schemas")
                     .len()
             };
             items = Some(limit);
@@ -241,13 +263,7 @@ impl ItemsFilter for Draft2019ItemsFilter {
         }
 
         if let Some(combinator) = &self.any_of {
-            if combinator
-                .subschemas
-                .iter()
-                .all(|(v, _)| v.is_valid(instance))
-            {
-                combinator.mark_evaluated_indexes(instance, indexes);
-            }
+            combinator.mark_evaluated_indexes(instance, indexes);
         }
 
         if let Some(combinator) = &self.one_of {
@@ -285,40 +301,59 @@ impl ItemsFilter for DefaultItemsFilter {
         let mut ref_ = None;
 
         if let Some(Value::String(reference)) = parent.get("$ref") {
-            let resolved = ctx.lookup(reference)?;
-            if let Value::Object(subschema) = resolved.contents() {
-                ref_ = Some(Box::new(Self::new(ctx, subschema)?));
+            let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
+            let vocabularies = ctx.registry.find_vocabularies(draft, contents);
+            let referenced_ctx = ctx.with_resolver_and_draft(
+                resolver,
+                draft,
+                vocabularies,
+                ctx.location().clone(),
+            );
+            if let Value::Object(subschema) = contents {
+                ref_ = Some(Box::new(
+                    Self::new(&referenced_ctx, subschema).map_err(|error| error.to_owned())?,
+                ));
             }
         }
 
         let mut dynamic_ref = None;
 
         if let Some(Value::String(reference)) = parent.get("$dynamicRef") {
-            let resolved = ctx.lookup(reference)?;
-            if let Value::Object(subschema) = resolved.contents() {
-                dynamic_ref = Some(Box::new(Self::new(ctx, subschema)?));
+            let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
+            let vocabularies = ctx.registry.find_vocabularies(draft, contents);
+            let referenced_ctx = ctx.with_resolver_and_draft(
+                resolver,
+                draft,
+                vocabularies,
+                ctx.location().clone(),
+            );
+            if let Value::Object(subschema) = contents {
+                dynamic_ref = Some(Box::new(
+                    Self::new(&referenced_ctx, subschema).map_err(|error| error.to_owned())?,
+                ));
             }
         }
 
         let mut conditional = None;
 
         if let Some(subschema) = parent.get("if") {
-            if let Value::Object(if_parent) = subschema {
-                let mut then_ = None;
-                if let Some(Value::Object(subschema)) = parent.get("then") {
-                    then_ = Some(Self::new(ctx, subschema)?);
-                }
-                let mut else_ = None;
-                if let Some(Value::Object(subschema)) = parent.get("else") {
-                    else_ = Some(Self::new(ctx, subschema)?);
-                }
-                conditional = Some(Box::new(ConditionalFilter {
-                    condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
-                    if_: Self::new(ctx, if_parent)?,
-                    then_,
-                    else_,
-                }));
+            let mut then_ = None;
+            if let Some(Value::Object(subschema)) = parent.get("then") {
+                then_ = Some(Self::new(ctx, subschema)?);
             }
+            let mut else_ = None;
+            if let Some(Value::Object(subschema)) = parent.get("else") {
+                else_ = Some(Self::new(ctx, subschema)?);
+            }
+            conditional = Some(Box::new(ConditionalFilter {
+                condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                if_: subschema
+                    .as_object()
+                    .map(|parent| Self::new(ctx, parent))
+                    .transpose()?,
+                then_,
+                else_,
+            }));
         }
 
         let mut prefix_items = None;
@@ -419,13 +454,7 @@ impl ItemsFilter for DefaultItemsFilter {
         }
 
         if let Some(combinator) = &self.any_of {
-            if combinator
-                .subschemas
-                .iter()
-                .all(|(v, _)| v.is_valid(instance))
-            {
-                combinator.mark_evaluated_indexes(instance, indexes);
-            }
+            combinator.mark_evaluated_indexes(instance, indexes);
         }
 
         if let Some(combinator) = &self.one_of {
@@ -443,13 +472,17 @@ impl ItemsFilter for DefaultItemsFilter {
 }
 
 struct CombinatorFilter<F> {
-    subschemas: Vec<(SchemaNode, F)>,
+    subschemas: Vec<(SchemaNode, Option<F>)>,
 }
 
 impl<F: ItemsFilter> CombinatorFilter<F> {
     fn mark_evaluated_indexes(&self, instance: &Value, indexes: &mut Vec<bool>) {
-        for (_, subschema) in &self.subschemas {
-            subschema.mark_evaluated_indexes(instance, indexes);
+        for (validator, subschema) in &self.subschemas {
+            if validator.is_valid(instance) {
+                if let Some(subschema) = subschema {
+                    subschema.mark_evaluated_indexes(instance, indexes);
+                }
+            }
         }
     }
 }
@@ -461,12 +494,12 @@ impl<F: ItemsFilter> CombinatorFilter<F> {
     ) -> Result<CombinatorFilter<F>, ValidationError<'a>> {
         let mut buffer = Vec::with_capacity(subschemas.len());
         for subschema in subschemas {
-            if let Value::Object(parent) = subschema {
-                buffer.push((
-                    compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
-                    F::new(ctx, parent)?,
-                ));
-            }
+            let validator = compiler::compile(ctx, ctx.as_resource_ref(subschema))?;
+            let filter = subschema
+                .as_object()
+                .map(|parent| F::new(ctx, parent))
+                .transpose()?;
+            buffer.push((validator, filter));
         }
         Ok(CombinatorFilter { subschemas: buffer })
     }
@@ -474,7 +507,7 @@ impl<F: ItemsFilter> CombinatorFilter<F> {
 
 struct ConditionalFilter<F> {
     condition: SchemaNode,
-    if_: F,
+    if_: Option<F>,
     then_: Option<F>,
     else_: Option<F>,
 }
@@ -482,7 +515,9 @@ struct ConditionalFilter<F> {
 impl<F: ItemsFilter> ConditionalFilter<F> {
     fn mark_evaluated_indexes(&self, instance: &Value, indexes: &mut Vec<bool>) {
         if self.condition.is_valid(instance) {
-            self.if_.mark_evaluated_indexes(instance, indexes);
+            if let Some(if_) = &self.if_ {
+                if_.mark_evaluated_indexes(instance, indexes);
+            }
             if let Some(then_) = &self.then_ {
                 then_.mark_evaluated_indexes(instance, indexes);
             }
@@ -516,6 +551,82 @@ pub(crate) fn compile<'a>(
 #[cfg(test)]
 mod tests {
     use serde_json::json;
+
+    #[test]
+    fn relative_references_use_the_referenced_resource() {
+        for (draft, tuple_keyword) in [
+            (crate::Draft::Draft201909, "items"),
+            (crate::Draft::Draft202012, "prefixItems"),
+        ] {
+            let mut schema = json!({
+                "$id": "https://example.com/root",
+                "$defs": {
+                    "array": {
+                        "$id": "arrays/",
+                        "$defs": {"head": {"$id": "head"}},
+                        "$ref": "head"
+                    }
+                },
+                "$ref": "arrays/",
+                "unevaluatedItems": false
+            });
+            schema["$defs"]["array"]["$defs"]["head"][tuple_keyword] = json!([true]);
+            crate::tests_util::is_valid_with_draft(draft, &schema, &json!([1]));
+            crate::tests_util::is_not_valid_with_draft(draft, &schema, &json!([1, 2]));
+        }
+    }
+
+    #[test]
+    fn successful_combinators_only_contribute_annotations() {
+        for (draft, tuple_keyword) in [
+            (crate::Draft::Draft201909, "items"),
+            (crate::Draft::Draft202012, "prefixItems"),
+        ] {
+            for keyword in ["anyOf", "oneOf"] {
+                let mut successful = json!({});
+                successful[tuple_keyword] = json!([true]);
+                let mut failed = json!({"minItems": 3});
+                failed[tuple_keyword] = json!([true, true]);
+                let mut schema = json!({"unevaluatedItems": false});
+                schema[keyword] = json!([successful, failed]);
+                crate::tests_util::is_valid_with_draft(draft, &schema, &json!([1]));
+                crate::tests_util::is_not_valid_with_draft(draft, &schema, &json!([1, 2]));
+
+                // A successful boolean branch contributes no annotations.
+                schema[keyword] = json!([true, schema[keyword][1].clone()]);
+                crate::tests_util::is_not_valid_with_draft(draft, &schema, &json!([1, 2]));
+            }
+        }
+    }
+
+    #[test]
+    fn boolean_conditions_select_annotation_branch() {
+        for (draft, tuple_keyword) in [
+            (crate::Draft::Draft201909, "items"),
+            (crate::Draft::Draft202012, "prefixItems"),
+        ] {
+            for (condition, branch) in [(true, "then"), (false, "else")] {
+                let mut schema = json!({"if": condition, "unevaluatedItems": false});
+                schema[branch] = json!({});
+                schema[branch][tuple_keyword] = json!([true]);
+                crate::tests_util::is_valid_with_draft(draft, &schema, &json!([1]));
+                crate::tests_util::is_not_valid_with_draft(draft, &schema, &json!([1, 2]));
+            }
+        }
+    }
+
+    #[test]
+    fn draft_2019_boolean_items() {
+        for items in [true, false] {
+            let schema = json!({"items": items, "unevaluatedItems": false});
+            crate::tests_util::is_valid_with_draft(crate::Draft::Draft201909, &schema, &json!([]));
+            let validator = crate::options()
+                .with_draft(crate::Draft::Draft201909)
+                .build(&schema)
+                .expect("Boolean items is a schema");
+            assert_eq!(validator.is_valid(&json!([1])), items);
+        }
+    }
 
     #[test]
     fn test_unevaluated_items_with_recursion() {

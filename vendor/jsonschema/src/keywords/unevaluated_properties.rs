@@ -150,14 +150,11 @@ struct LazyReference<T> {
 
 impl<T: PropertiesFilter> LazyReference<T> {
     fn new<'a>(ctx: &compiler::Context) -> Result<Self, ValidationError<'a>> {
-        let scopes = ctx.scopes();
-        let resolved = ctx.lookup_recursive_reference()?;
-        let resource = ctx.draft().create_resource(resolved.contents().clone());
-        let resolver = resolved.resolver();
-        let mut base_uri = resolver.base_uri();
-        if let Some(id) = resource.id() {
-            base_uri = resolver.resolve_against(&base_uri.borrow(), id)?;
-        }
+        let (contents, resolver, draft) = ctx.lookup_recursive_reference()?.into_inner();
+        let resource = draft.create_resource(contents.clone());
+        let scopes = resolver.dynamic_scope();
+        let base_uri = resolver.base_uri();
+        let vocabularies = ctx.registry.find_vocabularies(draft, contents);
 
         Ok(LazyReference {
             resource,
@@ -165,9 +162,9 @@ impl<T: PropertiesFilter> LazyReference<T> {
             registry: Arc::clone(&ctx.registry),
             base_uri,
             scopes,
-            vocabularies: ctx.vocabularies().clone(),
+            vocabularies,
             location: ctx.location().clone(),
-            draft: ctx.draft(),
+            draft,
             inner: OnceCell::default(),
         })
     }
@@ -209,9 +206,18 @@ impl PropertiesFilter for Draft2019PropertiesFilter {
         let mut ref_ = None;
 
         if let Some(Value::String(reference)) = parent.get("$ref") {
-            let resolved = ctx.lookup(reference)?;
-            if let Value::Object(subschema) = resolved.contents() {
-                ref_ = Some(Box::new(Self::new(ctx, subschema)?));
+            let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
+            let vocabularies = ctx.registry.find_vocabularies(draft, contents);
+            let referenced_ctx = ctx.with_resolver_and_draft(
+                resolver,
+                draft,
+                vocabularies,
+                ctx.location().clone(),
+            );
+            if let Value::Object(subschema) = contents {
+                ref_ = Some(Box::new(
+                    Self::new(&referenced_ctx, subschema).map_err(|error| error.to_owned())?,
+                ));
             }
         }
 
@@ -223,22 +229,23 @@ impl PropertiesFilter for Draft2019PropertiesFilter {
         let mut conditional = None;
 
         if let Some(subschema) = parent.get("if") {
-            if let Value::Object(if_parent) = subschema {
-                let mut then_ = None;
-                if let Some(Value::Object(subschema)) = parent.get("then") {
-                    then_ = Some(Self::new(ctx, subschema)?);
-                }
-                let mut else_ = None;
-                if let Some(Value::Object(subschema)) = parent.get("else") {
-                    else_ = Some(Self::new(ctx, subschema)?);
-                }
-                conditional = Some(Box::new(ConditionalFilter {
-                    condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
-                    if_: Self::new(ctx, if_parent)?,
-                    then_,
-                    else_,
-                }));
+            let mut then_ = None;
+            if let Some(Value::Object(subschema)) = parent.get("then") {
+                then_ = Some(Self::new(ctx, subschema)?);
             }
+            let mut else_ = None;
+            if let Some(Value::Object(subschema)) = parent.get("else") {
+                else_ = Some(Self::new(ctx, subschema)?);
+            }
+            conditional = Some(Box::new(ConditionalFilter {
+                condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                if_: subschema
+                    .as_object()
+                    .map(|parent| Self::new(ctx, parent))
+                    .transpose()?,
+                then_,
+                else_,
+            }));
         }
 
         let mut properties = Vec::new();
@@ -401,7 +408,9 @@ impl PropertiesFilter for Draft2019PropertiesFilter {
             if result.iter().filter(|v| **v).count() == 1 {
                 for ((_, subschema), is_valid) in combinator.subschemas.iter().zip(result) {
                     if is_valid {
-                        subschema.mark_evaluated_properties(instance, properties);
+                        if let Some(subschema) = subschema {
+                            subschema.mark_evaluated_properties(instance, properties);
+                        }
                         break;
                     }
                 }
@@ -437,14 +446,11 @@ impl PropertiesFilter for DefaultPropertiesFilter {
 
         if let Some(Value::String(reference)) = parent.get("$ref") {
             if ctx.is_circular_reference(reference)? {
-                let scopes = ctx.scopes();
-                let resolved = ctx.lookup(reference)?;
-                let resource = ctx.draft().create_resource(resolved.contents().clone());
-                let resolver = resolved.resolver();
-                let mut base_uri = resolver.base_uri();
-                if let Some(id) = resource.id() {
-                    base_uri = resolver.resolve_against(&base_uri.borrow(), id)?;
-                }
+                let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
+                let resource = draft.create_resource(contents.clone());
+                let scopes = resolver.dynamic_scope();
+                let base_uri = resolver.base_uri();
+                let vocabularies = ctx.registry.find_vocabularies(draft, contents);
 
                 ref_ = Some(ReferenceFilter::Recursive(LazyReference {
                     resource,
@@ -452,18 +458,26 @@ impl PropertiesFilter for DefaultPropertiesFilter {
                     registry: Arc::clone(&ctx.registry),
                     base_uri,
                     scopes,
-                    vocabularies: ctx.vocabularies().clone(),
+                    vocabularies,
                     location: ctx.location().clone(),
-                    draft: ctx.draft(),
+                    draft,
                     inner: OnceCell::default(),
                 }));
             } else {
                 ctx.mark_seen(reference)?;
-                let resolved = ctx.lookup(reference)?;
-                if let Value::Object(subschema) = resolved.contents() {
-                    ref_ = Some(ReferenceFilter::Default(Box::new(Self::new(
-                        ctx, subschema,
-                    )?)));
+                let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
+                let vocabularies = ctx.registry.find_vocabularies(draft, contents);
+                let referenced_ctx = ctx.with_resolver_and_draft(
+                    resolver,
+                    draft,
+                    vocabularies,
+                    ctx.location().clone(),
+                );
+                if let Value::Object(subschema) = contents {
+                    ref_ = Some(ReferenceFilter::Default(Box::new(
+                        Self::new(&referenced_ctx, subschema)
+                            .map_err(|error| error.to_owned())?,
+                    )));
                 }
             };
         }
@@ -471,31 +485,41 @@ impl PropertiesFilter for DefaultPropertiesFilter {
         let mut dynamic_ref = None;
 
         if let Some(Value::String(reference)) = parent.get("$dynamicRef") {
-            let resolved = ctx.lookup(reference)?;
-            if let Value::Object(subschema) = resolved.contents() {
-                dynamic_ref = Some(Box::new(Self::new(ctx, subschema)?));
+            let (contents, resolver, draft) = ctx.lookup(reference)?.into_inner();
+            let vocabularies = ctx.registry.find_vocabularies(draft, contents);
+            let referenced_ctx = ctx.with_resolver_and_draft(
+                resolver,
+                draft,
+                vocabularies,
+                ctx.location().clone(),
+            );
+            if let Value::Object(subschema) = contents {
+                dynamic_ref = Some(Box::new(
+                    Self::new(&referenced_ctx, subschema).map_err(|error| error.to_owned())?,
+                ));
             }
         }
 
         let mut conditional = None;
 
         if let Some(subschema) = parent.get("if") {
-            if let Value::Object(if_parent) = subschema {
-                let mut then_ = None;
-                if let Some(Value::Object(subschema)) = parent.get("then") {
-                    then_ = Some(Self::new(ctx, subschema)?);
-                }
-                let mut else_ = None;
-                if let Some(Value::Object(subschema)) = parent.get("else") {
-                    else_ = Some(Self::new(ctx, subschema)?);
-                }
-                conditional = Some(Box::new(ConditionalFilter {
-                    condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
-                    if_: Self::new(ctx, if_parent)?,
-                    then_,
-                    else_,
-                }));
+            let mut then_ = None;
+            if let Some(Value::Object(subschema)) = parent.get("then") {
+                then_ = Some(Self::new(ctx, subschema)?);
             }
+            let mut else_ = None;
+            if let Some(Value::Object(subschema)) = parent.get("else") {
+                else_ = Some(Self::new(ctx, subschema)?);
+            }
+            conditional = Some(Box::new(ConditionalFilter {
+                condition: compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
+                if_: subschema
+                    .as_object()
+                    .map(|parent| Self::new(ctx, parent))
+                    .transpose()?,
+                then_,
+                else_,
+            }));
         }
 
         let mut properties = Vec::new();
@@ -656,7 +680,9 @@ impl PropertiesFilter for DefaultPropertiesFilter {
             if result.iter().filter(|v| **v).count() == 1 {
                 for ((_, subschema), is_valid) in combinator.subschemas.iter().zip(result) {
                     if is_valid {
-                        subschema.mark_evaluated_properties(instance, properties);
+                        if let Some(subschema) = subschema {
+                            subschema.mark_evaluated_properties(instance, properties);
+                        }
                         break;
                     }
                 }
@@ -670,7 +696,7 @@ impl PropertiesFilter for DefaultPropertiesFilter {
 }
 
 struct CombinatorFilter<F> {
-    subschemas: Vec<(SchemaNode, F)>,
+    subschemas: Vec<(SchemaNode, Option<F>)>,
 }
 
 impl<F: PropertiesFilter> CombinatorFilter<F> {
@@ -679,8 +705,12 @@ impl<F: PropertiesFilter> CombinatorFilter<F> {
         instance: &'i Value,
         properties: &mut AHashSet<&'i String>,
     ) {
-        for (_, subschema) in &self.subschemas {
-            subschema.mark_evaluated_properties(instance, properties);
+        for (validator, subschema) in &self.subschemas {
+            if validator.is_valid(instance) {
+                if let Some(subschema) = subschema {
+                    subschema.mark_evaluated_properties(instance, properties);
+                }
+            }
         }
     }
 }
@@ -692,12 +722,12 @@ impl<F: PropertiesFilter> CombinatorFilter<F> {
     ) -> Result<CombinatorFilter<F>, ValidationError<'a>> {
         let mut buffer = Vec::with_capacity(subschemas.len());
         for subschema in subschemas {
-            if let Value::Object(parent) = subschema {
-                buffer.push((
-                    compiler::compile(ctx, ctx.as_resource_ref(subschema))?,
-                    F::new(ctx, parent)?,
-                ));
-            }
+            let validator = compiler::compile(ctx, ctx.as_resource_ref(subschema))?;
+            let filter = subschema
+                .as_object()
+                .map(|parent| F::new(ctx, parent))
+                .transpose()?;
+            buffer.push((validator, filter));
         }
         Ok(CombinatorFilter { subschemas: buffer })
     }
@@ -705,7 +735,7 @@ impl<F: PropertiesFilter> CombinatorFilter<F> {
 
 struct ConditionalFilter<F> {
     condition: SchemaNode,
-    if_: F,
+    if_: Option<F>,
     then_: Option<F>,
     else_: Option<F>,
 }
@@ -717,7 +747,9 @@ impl<F: PropertiesFilter> ConditionalFilter<F> {
         properties: &mut AHashSet<&'i String>,
     ) {
         if self.condition.is_valid(instance) {
-            self.if_.mark_evaluated_properties(instance, properties);
+            if let Some(if_) = &self.if_ {
+                if_.mark_evaluated_properties(instance, properties);
+            }
             if let Some(then_) = &self.then_ {
                 then_.mark_evaluated_properties(instance, properties);
             }
@@ -754,6 +786,56 @@ pub(crate) fn compile<'a>(
 mod tests {
     use crate::{tests_util, Draft};
     use serde_json::json;
+
+    #[test]
+    fn relative_references_use_the_referenced_resource() {
+        for draft in [Draft::Draft201909, Draft::Draft202012] {
+            let schema = json!({
+                "$id": "https://example.com/root",
+                "$defs": {
+                    "object": {
+                        "$id": "objects/",
+                        "$defs": {"head": {
+                            "$id": "head",
+                            "properties": {"allowed": true}
+                        }},
+                        "$ref": "head"
+                    }
+                },
+                "$ref": "objects/",
+                "unevaluatedProperties": false
+            });
+            tests_util::is_valid_with_draft(draft, &schema, &json!({"allowed": 1}));
+            tests_util::is_not_valid_with_draft(draft, &schema, &json!({"unexpected": 1}));
+        }
+    }
+
+    #[test]
+    fn failed_any_of_branch_does_not_evaluate_properties() {
+        for draft in [Draft::Draft201909, Draft::Draft202012] {
+            let schema = json!({
+                "anyOf": [
+                    {"properties": {"allowed": true}},
+                    {"properties": {"unexpected": true}, "required": ["missing"]}
+                ],
+                "unevaluatedProperties": false
+            });
+            tests_util::is_valid_with_draft(draft, &schema, &json!({"allowed": 1}));
+            tests_util::is_not_valid_with_draft(draft, &schema, &json!({"unexpected": 1}));
+        }
+    }
+
+    #[test]
+    fn boolean_conditions_select_annotation_branch() {
+        for draft in [Draft::Draft201909, Draft::Draft202012] {
+            for (condition, branch) in [(true, "then"), (false, "else")] {
+                let mut schema = json!({"if": condition, "unevaluatedProperties": false});
+                schema[branch] = json!({"properties": {"allowed": true}});
+                tests_util::is_valid_with_draft(draft, &schema, &json!({"allowed": 1}));
+                tests_util::is_not_valid_with_draft(draft, &schema, &json!({"unexpected": 1}));
+            }
+        }
+    }
 
     #[test]
     fn one_of() {
