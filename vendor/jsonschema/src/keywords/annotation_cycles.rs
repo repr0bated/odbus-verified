@@ -10,19 +10,43 @@ use crate::{compiler, paths::Location, Draft, ValidationError};
 
 // Bound this recursive preflight independently of whether a cycle is present.
 const MAX_ACTIVE_FILTERS: usize = 256;
+// A shallow shared DAG can expand exponentially without repeating an active
+// object. Count every traversed schema, including repeated and boolean leaves.
+const MAX_FILTER_VISITS: usize = 4096;
 
 pub(crate) fn check(
     ctx: &compiler::Context,
     parent: &Map<String, Value>,
     properties: bool,
 ) -> Result<(), ValidationError<'static>> {
+    let mut remaining = MAX_FILTER_VISITS;
     visit(
         ctx,
         parent,
         properties,
         ctx.draft() == Draft::Draft201909,
         &mut AHashSet::new(),
+        &mut remaining,
     )
+}
+
+fn charge_visit(
+    ctx: &compiler::Context,
+    remaining: &mut usize,
+) -> Result<(), ValidationError<'static>> {
+    if *remaining == 0 {
+        return Err(
+            ValidationError::custom(
+                Location::new(),
+                ctx.location().clone(),
+                &Value::Null,
+                "in-place annotation dependency traversal exceeds the supported limit of 4096 schema visits",
+            )
+            .to_owned(),
+        );
+    }
+    *remaining -= 1;
+    Ok(())
 }
 
 fn visit(
@@ -31,7 +55,9 @@ fn visit(
     properties: bool,
     recursive_draft: bool,
     active: &mut AHashSet<usize>,
+    remaining: &mut usize,
 ) -> Result<(), ValidationError<'static>> {
+    charge_visit(ctx, remaining)?;
     if active.len() >= MAX_ACTIVE_FILTERS {
         return Err(
             ValidationError::custom(
@@ -94,7 +120,9 @@ fn visit(
                     vocabularies,
                     ctx.location().join(keyword),
                 );
-                visit(&referenced, subschema, properties, recursive_draft, active)?;
+                visit(&referenced, subschema, properties, recursive_draft, active, remaining)?;
+            } else {
+                charge_visit(ctx, remaining)?;
             }
         }
         for keyword in ["allOf", "anyOf", "oneOf"] {
@@ -107,6 +135,7 @@ fn visit(
                         properties,
                         recursive_draft,
                         active,
+                        remaining,
                     )?;
                 }
             }
@@ -121,6 +150,7 @@ fn visit(
                         properties,
                         recursive_draft,
                         active,
+                        remaining,
                     )?;
                 }
             }
@@ -135,6 +165,7 @@ fn visit(
                         properties,
                         recursive_draft,
                         active,
+                        remaining,
                     )?;
                 }
             }
@@ -154,12 +185,15 @@ fn visit_inline(
     properties: bool,
     recursive_draft: bool,
     active: &mut AHashSet<usize>,
+    remaining: &mut usize,
 ) -> Result<(), ValidationError<'static>> {
+    let nested = ctx.with_location(location);
     if let Value::Object(parent) = schema {
         // Inline filter constructors retain this resolver; only reference
         // edges replace it. Match the graph the filter actually constructs.
-        let nested = ctx.with_location(location);
-        visit(&nested, parent, properties, recursive_draft, active)?;
+        visit(&nested, parent, properties, recursive_draft, active, remaining)?;
+    } else {
+        charge_visit(&nested, remaining)?;
     }
     Ok(())
 }
@@ -251,6 +285,68 @@ mod tests {
                 let error = check_filter(draft, &schema, properties).unwrap_err();
                 assert!(error.to_string().contains("supported limit of 256"));
             }
+        }
+    }
+
+    fn shared_dag(depth: usize) -> Value {
+        let mut definitions = Map::new();
+        for index in 0..depth {
+            let reference = format!("#/$defs/{}", index + 1);
+            definitions.insert(index.to_string(), json!({
+                "allOf": [{"$ref": reference}, {"$ref": reference}],
+            }));
+        }
+        definitions.insert(depth.to_string(), json!({}));
+        json!({"$defs": definitions, "$ref": "#/$defs/0"})
+    }
+
+    #[test]
+    fn shared_dag_and_boolean_leaf_work_are_bounded() {
+        for draft in [Draft::Draft201909, Draft::Draft202012] {
+            for properties in [false, true] {
+                assert!(check_filter(draft, &shared_dag(4), properties).is_ok());
+                for schema in [shared_dag(16), json!({"allOf": vec![true; MAX_FILTER_VISITS]})] {
+                    let error = check_filter(draft, &schema, properties).unwrap_err();
+                    assert!(error.to_string().contains("limit of 4096 schema visits"));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_shared_object_is_rechecked_in_each_dynamic_scope() {
+        let schema = json!({
+            "$defs": {
+                "shared": {
+                    "$id": "https://example.com/shared",
+                    "$defs": {"fallback": {"$dynamicAnchor": "choice"}},
+                    "$dynamicRef": "#choice"
+                },
+                "safe": {
+                    "$id": "https://example.com/safe",
+                    "$ref": "https://example.com/shared",
+                    "$defs": {"choice": {"$dynamicAnchor": "choice"}}
+                },
+                "cyclic": {
+                    "$id": "https://example.com/cyclic",
+                    "$ref": "https://example.com/shared",
+                    "$defs": {"choice": {
+                        "$dynamicAnchor": "choice",
+                        "$ref": "https://example.com/shared"
+                    }}
+                }
+            },
+            "allOf": [
+                {"$ref": "https://example.com/safe"},
+                {"$ref": "https://example.com/cyclic"}
+            ]
+        });
+        for properties in [false, true] {
+            let mut safe = schema.clone();
+            safe["allOf"][1] = json!({"$ref": "https://example.com/safe"});
+            assert!(check_filter(Draft::Draft202012, &safe, properties).is_ok());
+            let error = check_filter(Draft::Draft202012, &schema, properties).unwrap_err();
+            assert!(error.to_string().contains("cyclic in-place annotation dependency"));
         }
     }
 
